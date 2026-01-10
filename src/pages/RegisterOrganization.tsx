@@ -4,31 +4,35 @@ import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Mail, Lock, User, Loader2 } from "lucide-react";
+import { ArrowLeft, Mail, Lock, User, Building, Phone, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
-const Register = () => {
-  const [fullName, setFullName] = useState("");
+const RegisterOrganization = () => {
+  const [orgName, setOrgName] = useState("");
+  const [contactName, setContactName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [inn, setInn] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   
-  const { signUp, user, loading } = useAuth();
+  const { user, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
     if (user && !loading) {
-      navigate("/student");
+      navigate("/organization");
     }
   }, [user, loading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!fullName || !email || !password) {
+    if (!orgName || !contactName || !email || !password) {
       toast({
         title: "Ошибка",
         description: "Заполните все обязательные поля",
@@ -57,11 +61,59 @@ const Register = () => {
 
     setIsLoading(true);
     
-    const { error } = await signUp(email, password, fullName);
-    
-    if (error) {
+    try {
+      // 1. Create organization first
+      const { data: orgData, error: orgError } = await supabase
+        .from('organizations')
+        .insert({
+          name: orgName,
+          email: email,
+          phone: phone || null,
+          inn: inn || null,
+          contact_name: contactName
+        })
+        .select()
+        .single();
+
+      if (orgError) throw orgError;
+
+      // 2. Sign up user
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/organization`,
+          data: {
+            full_name: contactName,
+          },
+        },
+      });
+
+      if (authError) throw authError;
+
+      // 3. Update profile with organization_id
+      if (authData.user) {
+        await supabase
+          .from('profiles')
+          .update({ organization_id: orgData.id })
+          .eq('user_id', authData.user.id);
+
+        // 4. Update user role to 'organization'
+        await supabase
+          .from('user_roles')
+          .update({ role: 'organization' })
+          .eq('user_id', authData.user.id);
+      }
+
+      toast({
+        title: "Успешно!",
+        description: "Организация зарегистрирована. Добро пожаловать!",
+      });
+      navigate("/organization");
+      
+    } catch (error: any) {
       let errorMessage = error.message;
-      if (error.message.includes("already registered")) {
+      if (error.message?.includes("already registered")) {
         errorMessage = "Пользователь с таким email уже зарегистрирован";
       }
       toast({
@@ -69,12 +121,6 @@ const Register = () => {
         description: errorMessage,
         variant: "destructive",
       });
-    } else {
-      toast({
-        title: "Успешно!",
-        description: "Аккаунт создан. Добро пожаловать!",
-      });
-      navigate("/student");
     }
     
     setIsLoading(false);
@@ -91,18 +137,18 @@ const Register = () => {
   return (
     <div className="min-h-screen bg-background flex">
       {/* Left side - Visual */}
-      <div className="hidden lg:flex flex-1 relative bg-gradient-to-br from-sigma-purple via-accent to-primary items-center justify-center overflow-hidden">
+      <div className="hidden lg:flex flex-1 relative bg-gradient-to-br from-sigma-blue via-primary to-sigma-cyan items-center justify-center overflow-hidden">
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzRoLTJ2LTRoMnY0em0wLTZoLTJ2LTRoMnY0em0wLTZoLTJ2LTRoMnY0em0wLTZoLTJ2LTRoMnY0em0wLTZoLTJWNmgydjR6Ii8+PC9nPjwvZz48L3N2Zz4=')] opacity-30" />
         
         <div className="relative z-10 text-center text-white px-12">
           <div className="w-32 h-32 rounded-3xl bg-white/20 backdrop-blur-xl flex items-center justify-center mx-auto mb-8">
-            <span className="font-display text-6xl font-bold">Σ</span>
+            <Building className="w-16 h-16" />
           </div>
           <h2 className="font-display text-4xl font-bold mb-4">
-            Начните сегодня
+            Для организаций
           </h2>
           <p className="text-white/80 text-lg max-w-md">
-            Создайте аккаунт и начните обучение прямо сейчас
+            Создавайте курсы, управляйте учениками и получайте детальную аналитику
           </p>
         </div>
 
@@ -112,7 +158,7 @@ const Register = () => {
       </div>
 
       {/* Right side - Form */}
-      <div className="flex-1 flex flex-col justify-center px-8 lg:px-16">
+      <div className="flex-1 flex flex-col justify-center px-8 lg:px-16 py-10 overflow-y-auto">
         <div className="max-w-md w-full mx-auto">
           <Link to="/" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-8">
             <ArrowLeft className="w-4 h-4" />
@@ -121,23 +167,70 @@ const Register = () => {
           
           <SigmaLogo size="lg" className="mb-8" />
           
-          <h1 className="font-display text-3xl font-bold mb-2">Регистрация</h1>
+          <h1 className="font-display text-3xl font-bold mb-2">Регистрация организации</h1>
           <p className="text-muted-foreground mb-8">
-            Создайте аккаунт для начала обучения
+            Создайте аккаунт для вашей организации
           </p>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Ваше имя *</Label>
+              <Label htmlFor="orgName">Название организации *</Label>
+              <div className="relative">
+                <Building className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <Input 
+                  id="orgName" 
+                  type="text" 
+                  placeholder="ООО «Компания»" 
+                  className="pl-10 h-12 rounded-xl"
+                  value={orgName}
+                  onChange={(e) => setOrgName(e.target.value)}
+                  disabled={isLoading}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="contactName">Контактное лицо *</Label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <Input 
-                  id="name" 
+                  id="contactName" 
                   type="text" 
                   placeholder="Иван Иванов" 
                   className="pl-10 h-12 rounded-xl"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
+                  value={contactName}
+                  onChange={(e) => setContactName(e.target.value)}
+                  disabled={isLoading}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="phone">Телефон</Label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                  <Input 
+                    id="phone" 
+                    type="tel" 
+                    placeholder="+7 (999) 123-45-67" 
+                    className="pl-10 h-12 rounded-xl"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    disabled={isLoading}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="inn">ИНН</Label>
+                <Input 
+                  id="inn" 
+                  type="text" 
+                  placeholder="1234567890" 
+                  className="h-12 rounded-xl"
+                  value={inn}
+                  onChange={(e) => setInn(e.target.value)}
                   disabled={isLoading}
                 />
               </div>
@@ -150,7 +243,7 @@ const Register = () => {
                 <Input 
                   id="email" 
                   type="email" 
-                  placeholder="your@email.com" 
+                  placeholder="org@company.com" 
                   className="pl-10 h-12 rounded-xl"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -199,10 +292,10 @@ const Register = () => {
               {isLoading ? (
                 <>
                   <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  Создание аккаунта...
+                  Регистрация...
                 </>
               ) : (
-                "Создать аккаунт"
+                "Зарегистрировать организацию"
               )}
             </Button>
           </form>
@@ -215,9 +308,9 @@ const Register = () => {
           </p>
           
           <p className="text-center text-muted-foreground mt-4">
-            Представляете организацию?{" "}
-            <Link to="/register-organization" className="text-primary hover:underline font-medium">
-              Регистрация для организаций
+            Хотите зарегистрироваться как ученик?{" "}
+            <Link to="/register" className="text-primary hover:underline font-medium">
+              Регистрация ученика
             </Link>
           </p>
         </div>
@@ -226,4 +319,4 @@ const Register = () => {
   );
 };
 
-export default Register;
+export default RegisterOrganization;
