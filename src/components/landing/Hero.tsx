@@ -35,9 +35,9 @@ export function Hero() {
                 Войти
               </Button>
             </Link>
-            <Link to="/register">
+            <Link to="/register-organization">
               <Button className="btn-gradient rounded-xl px-6">
-                Начать бесплатно
+                Для организаций
               </Button>
             </Link>
           </div>

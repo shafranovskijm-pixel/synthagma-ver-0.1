@@ -8,7 +8,9 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import RegisterOrganization from "./pages/RegisterOrganization";
 import StudentDashboard from "./pages/StudentDashboard";
+import OrganizationDashboard from "./pages/OrganizationDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,9 +26,15 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/register-organization" element={<RegisterOrganization />} />
             <Route path="/student" element={
               <ProtectedRoute>
                 <StudentDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/organization" element={
+              <ProtectedRoute requiredRole="organization">
+                <OrganizationDashboard />
               </ProtectedRoute>
             } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
