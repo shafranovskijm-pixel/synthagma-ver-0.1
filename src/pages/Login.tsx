@@ -1,11 +1,71 @@
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Link } from "react-router-dom";
-import { ArrowLeft, Mail, Lock } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { ArrowLeft, Mail, Lock, Loader2 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
 const Login = () => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  
+  const { signIn, user, loading } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (user && !loading) {
+      navigate("/student");
+    }
+  }, [user, loading, navigate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!email || !password) {
+      toast({
+        title: "Ошибка",
+        description: "Заполните все поля",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    
+    const { error } = await signIn(email, password);
+    
+    if (error) {
+      toast({
+        title: "Ошибка входа",
+        description: error.message === "Invalid login credentials" 
+          ? "Неверный email или пароль" 
+          : error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Успешно!",
+        description: "Вы вошли в систему",
+      });
+      navigate("/student");
+    }
+    
+    setIsLoading(false);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background flex">
       {/* Left side - Form */}
@@ -23,7 +83,7 @@ const Login = () => {
             Введите свои данные для входа в аккаунт
           </p>
 
-          <form className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <div className="relative">
@@ -33,6 +93,9 @@ const Login = () => {
                   type="email" 
                   placeholder="your@email.com" 
                   className="pl-10 h-12 rounded-xl"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={isLoading}
                 />
               </div>
             </div>
@@ -46,22 +109,26 @@ const Login = () => {
                   type="password" 
                   placeholder="••••••••" 
                   className="pl-10 h-12 rounded-xl"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={isLoading}
                 />
               </div>
             </div>
 
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" className="rounded border-border" />
-                Запомнить меня
-              </label>
-              <a href="#" className="text-sm text-primary hover:underline">
-                Забыли пароль?
-              </a>
-            </div>
-
-            <Button className="w-full btn-gradient h-12 rounded-xl text-lg">
-              Войти
+            <Button 
+              type="submit" 
+              className="w-full btn-gradient h-12 rounded-xl text-lg"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  Вход...
+                </>
+              ) : (
+                "Войти"
+              )}
             </Button>
           </form>
 

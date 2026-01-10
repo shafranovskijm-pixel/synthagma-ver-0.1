@@ -1,11 +1,93 @@
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Link } from "react-router-dom";
-import { ArrowLeft, Mail, Lock, User, Building } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { ArrowLeft, Mail, Lock, User, Loader2 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
 const Register = () => {
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  
+  const { signUp, user, loading } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (user && !loading) {
+      navigate("/student");
+    }
+  }, [user, loading, navigate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!fullName || !email || !password) {
+      toast({
+        title: "Ошибка",
+        description: "Заполните все обязательные поля",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      toast({
+        title: "Ошибка",
+        description: "Пароли не совпадают",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (password.length < 6) {
+      toast({
+        title: "Ошибка",
+        description: "Пароль должен быть не менее 6 символов",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    
+    const { error } = await signUp(email, password, fullName);
+    
+    if (error) {
+      let errorMessage = error.message;
+      if (error.message.includes("already registered")) {
+        errorMessage = "Пользователь с таким email уже зарегистрирован";
+      }
+      toast({
+        title: "Ошибка регистрации",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Успешно!",
+        description: "Аккаунт создан. Добро пожаловать!",
+      });
+      navigate("/student");
+    }
+    
+    setIsLoading(false);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background flex">
       {/* Left side - Visual */}
@@ -20,7 +102,7 @@ const Register = () => {
             Начните сегодня
           </h2>
           <p className="text-white/80 text-lg max-w-md">
-            Создайте свою образовательную платформу за считанные минуты
+            Создайте аккаунт и начните обучение прямо сейчас
           </p>
         </div>
 
@@ -41,25 +123,12 @@ const Register = () => {
           
           <h1 className="font-display text-3xl font-bold mb-2">Регистрация</h1>
           <p className="text-muted-foreground mb-8">
-            Создайте аккаунт для вашей организации
+            Создайте аккаунт для начала обучения
           </p>
 
-          <form className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
-              <Label htmlFor="org">Название организации</Label>
-              <div className="relative">
-                <Building className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <Input 
-                  id="org" 
-                  type="text" 
-                  placeholder="ООО «Компания»" 
-                  className="pl-10 h-12 rounded-xl"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="name">Ваше имя</Label>
+              <Label htmlFor="name">Ваше имя *</Label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <Input 
@@ -67,12 +136,15 @@ const Register = () => {
                   type="text" 
                   placeholder="Иван Иванов" 
                   className="pl-10 h-12 rounded-xl"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  disabled={isLoading}
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">Email *</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <Input 
@@ -80,35 +152,58 @@ const Register = () => {
                   type="email" 
                   placeholder="your@email.com" 
                   className="pl-10 h-12 rounded-xl"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={isLoading}
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Пароль</Label>
+              <Label htmlFor="password">Пароль *</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <Input 
                   id="password" 
                   type="password" 
-                  placeholder="••••••••" 
+                  placeholder="Минимум 6 символов" 
                   className="pl-10 h-12 rounded-xl"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={isLoading}
                 />
               </div>
             </div>
 
-            <div className="flex items-start gap-2">
-              <input type="checkbox" className="rounded border-border mt-1" />
-              <span className="text-sm text-muted-foreground">
-                Я соглашаюсь с{" "}
-                <a href="#" className="text-primary hover:underline">условиями использования</a>
-                {" "}и{" "}
-                <a href="#" className="text-primary hover:underline">политикой конфиденциальности</a>
-              </span>
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Подтвердите пароль *</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <Input 
+                  id="confirmPassword" 
+                  type="password" 
+                  placeholder="Повторите пароль" 
+                  className="pl-10 h-12 rounded-xl"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  disabled={isLoading}
+                />
+              </div>
             </div>
 
-            <Button className="w-full btn-gradient h-12 rounded-xl text-lg">
-              Создать аккаунт
+            <Button 
+              type="submit" 
+              className="w-full btn-gradient h-12 rounded-xl text-lg"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  Создание аккаунта...
+                </>
+              ) : (
+                "Создать аккаунт"
+              )}
             </Button>
           </form>
 
