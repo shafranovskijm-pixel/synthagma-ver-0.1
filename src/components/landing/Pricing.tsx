@@ -22,19 +22,20 @@ const plans = [
   },
   {
     name: "Оптимальный",
-    price: "По запросу",
-    period: "",
-    description: "Заполните позже — настроим под вас",
+    price: "12 000",
+    period: "₽/мес",
+    description: "Полный функционал для организаций",
     icon: Star,
     popular: true,
     features: [
       "Всё из тарифа «Стартовый»",
-      "Расширенные лимиты",
+      "Неограниченное число учеников",
+      "Документооборот организации",
+      "Мобильное приложение",
       "Расширенная аналитика",
       "Приоритетная поддержка",
-      "Массовый импорт учеников",
     ],
-    cta: "Связаться с нами",
+    cta: "Начать обучение",
     variant: "default" as const,
   },
   {
@@ -137,12 +138,12 @@ export function Pricing() {
                 <Button
                   size="lg"
                   variant={plan.variant}
-                  className={`w-full rounded-xl h-12 font-semibold gap-2 ${
-                    plan.popular ? "btn-gradient sigma-glow" : ""
+                  className={`w-full rounded-xl h-12 font-semibold gap-2 group ${
+                    plan.popular ? "bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-white shadow-lg" : ""
                   }`}
                 >
-                  {plan.cta}
-                  <ArrowRight className="w-4 h-4" />
+                  <span className="relative z-10">{plan.cta}</span>
+                  <ArrowRight className="w-4 h-4 relative z-10 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </Link>
             </div>
