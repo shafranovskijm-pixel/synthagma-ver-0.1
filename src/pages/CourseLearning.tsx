@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,8 +16,14 @@ import {
   ClipboardList,
   ChevronLeft,
   ChevronRight,
-  Trophy
+  Trophy,
+  Sparkles,
+  BookOpen,
+  Clock,
+  Loader2
 } from "lucide-react";
+import { ContentBlock, jsonToBlocks, BlockRenderer } from "@/components/course-builder/BlockEditor";
+import { cn } from "@/lib/utils";
 
 interface Lesson {
   id: string;
@@ -50,6 +56,7 @@ const CourseLearning = () => {
   const { courseId } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const contentRef = useRef<HTMLDivElement>(null);
   
   const [course, setCourse] = useState<Course | null>(null);
   const [lessons, setLessons] = useState<Lesson[]>([]);
@@ -57,6 +64,7 @@ const CourseLearning = () => {
   const [lessonProgress, setLessonProgress] = useState<LessonProgress[]>([]);
   const [loading, setLoading] = useState(true);
   const [enrollmentId, setEnrollmentId] = useState<string | null>(null);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   
   // Test state
   const [testQuestions, setTestQuestions] = useState<TestQuestion[]>([]);
@@ -67,6 +75,11 @@ const CourseLearning = () => {
   const currentLesson = lessons[currentLessonIndex];
   const completedCount = lessonProgress.filter(p => p.completed).length;
   const progressPercent = lessons.length > 0 ? (completedCount / lessons.length) * 100 : 0;
+
+  // Parse content blocks
+  const contentBlocks: ContentBlock[] = currentLesson?.content 
+    ? parseContentToBlocks(currentLesson.content) 
+    : [];
 
   useEffect(() => {
     if (courseId && user) {
@@ -80,9 +93,15 @@ const CourseLearning = () => {
     }
   }, [currentLesson?.id]);
 
+  // Scroll to top on lesson change
+  useEffect(() => {
+    if (contentRef.current) {
+      contentRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [currentLessonIndex]);
+
   const fetchCourseData = async () => {
     try {
-      // Fetch course
       const { data: courseData, error: courseError } = await supabase
         .from('courses')
         .select('*')
@@ -92,7 +111,6 @@ const CourseLearning = () => {
       if (courseError) throw courseError;
       setCourse(courseData);
 
-      // Fetch lessons
       const { data: lessonsData, error: lessonsError } = await supabase
         .from('lessons')
         .select('*')
@@ -102,7 +120,6 @@ const CourseLearning = () => {
       if (lessonsError) throw lessonsError;
       setLessons(lessonsData || []);
 
-      // Check/create enrollment
       let { data: enrollment, error: enrollmentError } = await supabase
         .from('enrollments')
         .select('*')
@@ -111,7 +128,6 @@ const CourseLearning = () => {
         .single();
 
       if (enrollmentError && enrollmentError.code === 'PGRST116') {
-        // Create enrollment
         const { data: newEnrollment, error: createError } = await supabase
           .from('enrollments')
           .insert({
@@ -129,7 +145,6 @@ const CourseLearning = () => {
         setEnrollmentId(enrollment.id);
       }
 
-      // Fetch lesson progress
       const { data: progressData } = await supabase
         .from('lesson_progress')
         .select('lesson_id, completed')
@@ -161,7 +176,6 @@ const CourseLearning = () => {
     setTestSubmitted(false);
     setTestScore(null);
 
-    // Check if already attempted
     const { data: attempts } = await supabase
       .from('test_attempts')
       .select('*')
@@ -190,7 +204,6 @@ const CourseLearning = () => {
       return;
     }
 
-    // Upsert lesson progress
     const { error } = await supabase
       .from('lesson_progress')
       .upsert({
@@ -201,7 +214,6 @@ const CourseLearning = () => {
       }, { onConflict: 'lesson_id,user_id' });
 
     if (error) {
-      // If upsert fails, try insert
       const { error: insertError } = await supabase
         .from('lesson_progress')
         .insert({
@@ -223,7 +235,6 @@ const CourseLearning = () => {
       { lesson_id: currentLesson.id, completed: true }
     ]);
 
-    // Update enrollment progress
     const newProgress = Math.round(((completedCount + 1) / lessons.length) * 100);
     await supabase
       .from('enrollments')
@@ -236,13 +247,31 @@ const CourseLearning = () => {
 
   const goToNextLesson = () => {
     if (currentLessonIndex < lessons.length - 1) {
-      setCurrentLessonIndex(prev => prev + 1);
+      setIsTransitioning(true);
+      setTimeout(() => {
+        setCurrentLessonIndex(prev => prev + 1);
+        setIsTransitioning(false);
+      }, 300);
     }
   };
 
   const goToPrevLesson = () => {
     if (currentLessonIndex > 0) {
-      setCurrentLessonIndex(prev => prev - 1);
+      setIsTransitioning(true);
+      setTimeout(() => {
+        setCurrentLessonIndex(prev => prev - 1);
+        setIsTransitioning(false);
+      }, 300);
+    }
+  };
+
+  const goToLesson = (index: number) => {
+    if (index !== currentLessonIndex) {
+      setIsTransitioning(true);
+      setTimeout(() => {
+        setCurrentLessonIndex(index);
+        setIsTransitioning(false);
+      }, 300);
     }
   };
 
@@ -258,7 +287,6 @@ const CourseLearning = () => {
 
     const maxScore = testQuestions.length;
 
-    // Save attempt
     const { error } = await supabase
       .from('test_attempts')
       .insert({
@@ -278,7 +306,6 @@ const CourseLearning = () => {
     setTestSubmitted(true);
     setTestScore({ score, max: maxScore });
 
-    // Mark lesson as complete if passed (>=60%)
     if (score / maxScore >= 0.6) {
       await supabase
         .from('lesson_progress')
@@ -321,7 +348,10 @@ const CourseLearning = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">Загрузка курса...</p>
+        </div>
       </div>
     );
   }
@@ -330,6 +360,7 @@ const CourseLearning = () => {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
+          <BookOpen className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
           <h1 className="text-2xl font-bold mb-4">Курс не найден</h1>
           <Button onClick={() => navigate('/student')}>
             Вернуться в кабинет
@@ -348,7 +379,7 @@ const CourseLearning = () => {
             variant="ghost" 
             size="sm" 
             onClick={() => navigate('/student')}
-            className="mb-4"
+            className="mb-4 hover:bg-secondary"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Назад
@@ -357,14 +388,14 @@ const CourseLearning = () => {
           <div className="mt-4">
             <div className="flex justify-between text-sm text-muted-foreground mb-2">
               <span>Прогресс</span>
-              <span>{completedCount}/{lessons.length}</span>
+              <span className="font-medium">{completedCount}/{lessons.length}</span>
             </div>
             <Progress value={progressPercent} className="h-2" />
           </div>
         </div>
         
         <ScrollArea className="flex-1">
-          <div className="p-2">
+          <div className="p-2 space-y-1">
             {lessons.map((lesson, index) => {
               const Icon = getLessonIcon(lesson.type);
               const completed = isLessonCompleted(lesson.id);
@@ -373,17 +404,25 @@ const CourseLearning = () => {
               return (
                 <button
                   key={lesson.id}
-                  onClick={() => setCurrentLessonIndex(index)}
-                  className={`w-full flex items-center gap-3 p-3 rounded-lg text-left transition-colors ${
+                  onClick={() => goToLesson(index)}
+                  className={cn(
+                    "w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all duration-200",
                     isCurrent 
-                      ? 'bg-primary/10 text-primary' 
-                      : 'hover:bg-muted'
-                  }`}
+                      ? "bg-primary/10 text-primary shadow-sm" 
+                      : "hover:bg-muted"
+                  )}
                 >
                   {completed ? (
-                    <CheckCircle2 className="w-5 h-5 text-sigma-green shrink-0" />
+                    <div className="w-8 h-8 rounded-full bg-sigma-green/10 flex items-center justify-center shrink-0">
+                      <CheckCircle2 className="w-5 h-5 text-sigma-green" />
+                    </div>
                   ) : (
-                    <Circle className={`w-5 h-5 shrink-0 ${isCurrent ? 'text-primary' : 'text-muted-foreground'}`} />
+                    <div className={cn(
+                      "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
+                      isCurrent ? "bg-primary/10" : "bg-muted"
+                    )}>
+                      <Circle className={cn("w-5 h-5", isCurrent ? "text-primary" : "text-muted-foreground")} />
+                    </div>
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium line-clamp-2">{lesson.title}</div>
@@ -399,6 +438,20 @@ const CourseLearning = () => {
             })}
           </div>
         </ScrollArea>
+
+        {/* Sidebar footer with stats */}
+        <div className="p-4 border-t border-border">
+          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+            <div className="flex items-center gap-1">
+              <Clock className="w-4 h-4" />
+              <span>{lessons.length} уроков</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Trophy className="w-4 h-4 text-sigma-green" />
+              <span>{completedCount} пройдено</span>
+            </div>
+          </div>
+        </div>
       </aside>
 
       {/* Main content */}
@@ -408,7 +461,7 @@ const CourseLearning = () => {
           <div className="flex items-center gap-4">
             <SigmaLogo size="sm" />
             <span className="text-muted-foreground">|</span>
-            <span className="font-medium">{currentLesson?.title}</span>
+            <span className="font-medium truncate max-w-md">{currentLesson?.title}</span>
           </div>
           <div className="flex items-center gap-2">
             <Button 
@@ -416,43 +469,80 @@ const CourseLearning = () => {
               size="sm"
               disabled={currentLessonIndex === 0}
               onClick={goToPrevLesson}
+              className="rounded-lg"
             >
               <ChevronLeft className="w-4 h-4" />
             </Button>
-            <span className="text-sm text-muted-foreground px-2">
-              {currentLessonIndex + 1} / {lessons.length}
-            </span>
+            <div className="px-3 py-1 bg-secondary rounded-lg text-sm">
+              <span className="font-medium">{currentLessonIndex + 1}</span>
+              <span className="text-muted-foreground"> / {lessons.length}</span>
+            </div>
             <Button 
               variant="outline" 
               size="sm"
               disabled={currentLessonIndex === lessons.length - 1}
               onClick={goToNextLesson}
+              className="rounded-lg"
             >
               <ChevronRight className="w-4 h-4" />
             </Button>
           </div>
         </header>
 
-        {/* Lesson content */}
-        <ScrollArea className="flex-1">
-          <div className="max-w-4xl mx-auto p-8">
+        {/* Lesson content with animation */}
+        <ScrollArea className="flex-1" ref={contentRef}>
+          <div 
+            className={cn(
+              "max-w-4xl mx-auto p-8 transition-all duration-300",
+              isTransitioning ? "opacity-0 translate-y-4" : "opacity-100 translate-y-0"
+            )}
+          >
             {currentLesson?.type === 'text' && (
-              <div className="prose prose-lg max-w-none">
-                <div 
-                  className="whitespace-pre-wrap"
-                  dangerouslySetInnerHTML={{ 
-                    __html: currentLesson.content?.replace(/\n/g, '<br/>') || '' 
-                  }}
-                />
+              <div className="space-y-6 animate-fade-in">
+                {/* Lesson header */}
+                <div className="flex items-center gap-3 pb-4 border-b border-border">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                    <FileText className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <h1 className="font-display text-2xl font-bold">{currentLesson.title}</h1>
+                    <p className="text-sm text-muted-foreground">Урок {currentLessonIndex + 1}</p>
+                  </div>
+                </div>
+
+                {/* Block content or raw content */}
+                {contentBlocks.length > 0 ? (
+                  <BlockRenderer blocks={contentBlocks} />
+                ) : (
+                  <div className="prose prose-lg max-w-none dark:prose-invert">
+                    <div 
+                      className="whitespace-pre-wrap"
+                      dangerouslySetInnerHTML={{ 
+                        __html: currentLesson.content?.replace(/\n/g, '<br/>') || '' 
+                      }}
+                    />
+                  </div>
+                )}
               </div>
             )}
 
             {currentLesson?.type === 'video' && (
-              <div className="space-y-6">
-                <div className="aspect-video bg-muted rounded-xl flex items-center justify-center">
+              <div className="space-y-6 animate-fade-in">
+                {/* Video header */}
+                <div className="flex items-center gap-3 pb-4 border-b border-border">
+                  <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center">
+                    <Video className="w-5 h-5 text-red-500" />
+                  </div>
+                  <div>
+                    <h1 className="font-display text-2xl font-bold">{currentLesson.title}</h1>
+                    <p className="text-sm text-muted-foreground">Видеоурок {currentLessonIndex + 1}</p>
+                  </div>
+                </div>
+
+                <div className="aspect-video bg-muted rounded-2xl flex items-center justify-center overflow-hidden shadow-lg">
                   {currentLesson.content?.includes('youtube.com') || currentLesson.content?.includes('youtu.be') ? (
                     <iframe
-                      className="w-full h-full rounded-xl"
+                      className="w-full h-full rounded-2xl"
                       src={getYouTubeEmbedUrl(currentLesson.content)}
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       allowFullScreen
@@ -460,7 +550,7 @@ const CourseLearning = () => {
                   ) : currentLesson.content ? (
                     <video 
                       controls 
-                      className="w-full h-full rounded-xl"
+                      className="w-full h-full rounded-2xl"
                       src={currentLesson.content}
                     />
                   ) : (
@@ -474,19 +564,39 @@ const CourseLearning = () => {
             )}
 
             {currentLesson?.type === 'test' && (
-              <div className="space-y-6">
+              <div className="space-y-6 animate-fade-in">
+                {/* Test header */}
+                <div className="flex items-center gap-3 pb-4 border-b border-border">
+                  <div className="w-10 h-10 rounded-xl bg-sigma-purple/10 flex items-center justify-center">
+                    <ClipboardList className="w-5 h-5 text-sigma-purple" />
+                  </div>
+                  <div>
+                    <h1 className="font-display text-2xl font-bold">{currentLesson.title}</h1>
+                    <p className="text-sm text-muted-foreground">Тестирование • {testQuestions.length} вопросов</p>
+                  </div>
+                </div>
+
                 {testScore && (
-                  <div className={`p-6 rounded-xl ${
+                  <div className={cn(
+                    "p-6 rounded-2xl border transition-all",
                     testScore.score / testScore.max >= 0.6 
-                      ? 'bg-sigma-green/10 border border-sigma-green/20' 
-                      : 'bg-destructive/10 border border-destructive/20'
-                  }`}>
+                      ? "bg-sigma-green/10 border-sigma-green/20" 
+                      : "bg-destructive/10 border-destructive/20"
+                  )}>
                     <div className="flex items-center gap-4">
-                      <Trophy className={`w-12 h-12 ${
+                      <div className={cn(
+                        "w-16 h-16 rounded-full flex items-center justify-center",
                         testScore.score / testScore.max >= 0.6 
-                          ? 'text-sigma-green' 
-                          : 'text-destructive'
-                      }`} />
+                          ? "bg-sigma-green/20" 
+                          : "bg-destructive/20"
+                      )}>
+                        <Trophy className={cn(
+                          "w-8 h-8",
+                          testScore.score / testScore.max >= 0.6 
+                            ? "text-sigma-green" 
+                            : "text-destructive"
+                        )} />
+                      </div>
                       <div>
                         <h3 className="text-xl font-bold">
                           {testScore.score / testScore.max >= 0.6 ? 'Тест пройден!' : 'Тест не пройден'}
@@ -498,6 +608,7 @@ const CourseLearning = () => {
                     </div>
                     {testScore.score / testScore.max < 0.6 && (
                       <Button className="mt-4" onClick={retryTest}>
+                        <Sparkles className="w-4 h-4 mr-2" />
                         Попробовать снова
                       </Button>
                     )}
@@ -505,38 +616,68 @@ const CourseLearning = () => {
                 )}
 
                 {!testSubmitted && testQuestions.map((question, qIndex) => (
-                  <div key={question.id} className="bg-card rounded-xl p-6 border border-border">
-                    <h3 className="font-semibold mb-4">
-                      {qIndex + 1}. {question.question}
+                  <div 
+                    key={question.id} 
+                    className="bg-card rounded-2xl p-6 border border-border shadow-sm hover:shadow-md transition-shadow"
+                    style={{ animationDelay: `${qIndex * 100}ms` }}
+                  >
+                    <h3 className="font-semibold mb-4 flex items-center gap-2">
+                      <span className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary">
+                        {qIndex + 1}
+                      </span>
+                      {question.question}
                     </h3>
                     <div className="space-y-2">
                       {(Array.isArray(question.options) ? question.options : []).map((option: string, oIndex: number) => (
                         <label 
                           key={oIndex}
-                          className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                          className={cn(
+                            "flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-all",
                             answers[question.id] === oIndex 
-                              ? 'border-primary bg-primary/5' 
-                              : 'border-border hover:bg-muted'
-                          }`}
+                              ? "border-primary bg-primary/5 shadow-sm" 
+                              : "border-border hover:bg-muted hover:border-primary/30"
+                          )}
                         >
-                          <input
-                            type="radio"
-                            name={question.id}
-                            checked={answers[question.id] === oIndex}
-                            onChange={() => setAnswers(prev => ({ ...prev, [question.id]: oIndex }))}
-                            className="w-4 h-4"
-                          />
+                          <div className={cn(
+                            "w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors",
+                            answers[question.id] === oIndex 
+                              ? "border-primary bg-primary" 
+                              : "border-muted-foreground"
+                          )}>
+                            {answers[question.id] === oIndex && (
+                              <div className="w-2 h-2 rounded-full bg-white" />
+                            )}
+                          </div>
                           <span>{option}</span>
                         </label>
                       ))}
                     </div>
+                    <input
+                      type="hidden"
+                      name={question.id}
+                      checked={answers[question.id] !== undefined}
+                      onChange={() => {}}
+                    />
+                    {(Array.isArray(question.options) ? question.options : []).map((_, oIndex: number) => (
+                      <input
+                        key={oIndex}
+                        type="radio"
+                        name={question.id}
+                        className="sr-only"
+                        checked={answers[question.id] === oIndex}
+                        onChange={() => setAnswers(prev => ({ ...prev, [question.id]: oIndex }))}
+                      />
+                    ))}
                   </div>
                 ))}
 
                 {testSubmitted && testQuestions.map((question, qIndex) => (
-                  <div key={question.id} className="bg-card rounded-xl p-6 border border-border">
-                    <h3 className="font-semibold mb-4">
-                      {qIndex + 1}. {question.question}
+                  <div key={question.id} className="bg-card rounded-2xl p-6 border border-border">
+                    <h3 className="font-semibold mb-4 flex items-center gap-2">
+                      <span className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary">
+                        {qIndex + 1}
+                      </span>
+                      {question.question}
                     </h3>
                     <div className="space-y-2">
                       {(Array.isArray(question.options) ? question.options : []).map((option: string, oIndex: number) => {
@@ -546,18 +687,19 @@ const CourseLearning = () => {
                         return (
                           <div 
                             key={oIndex}
-                            className={`flex items-center gap-3 p-3 rounded-lg border ${
+                            className={cn(
+                              "flex items-center gap-3 p-4 rounded-xl border",
                               isCorrect 
-                                ? 'border-sigma-green bg-sigma-green/10' 
+                                ? "border-sigma-green bg-sigma-green/10" 
                                 : isSelected 
-                                  ? 'border-destructive bg-destructive/10' 
-                                  : 'border-border'
-                            }`}
+                                  ? "border-destructive bg-destructive/10" 
+                                  : "border-border"
+                            )}
                           >
-                            <span className={isCorrect ? 'text-sigma-green' : isSelected ? 'text-destructive' : ''}>
+                            <span className={isCorrect ? "text-sigma-green" : isSelected ? "text-destructive" : ""}>
                               {option}
                             </span>
-                            {isCorrect && <CheckCircle2 className="w-4 h-4 text-sigma-green ml-auto" />}
+                            {isCorrect && <CheckCircle2 className="w-5 h-5 text-sigma-green ml-auto" />}
                           </div>
                         );
                       })}
@@ -573,7 +715,7 @@ const CourseLearning = () => {
         <footer className="border-t border-border bg-card px-6 py-4 flex justify-between items-center">
           <div className="text-sm text-muted-foreground">
             {isLessonCompleted(currentLesson?.id || '') && (
-              <span className="flex items-center gap-2 text-sigma-green">
+              <span className="flex items-center gap-2 text-sigma-green font-medium">
                 <CheckCircle2 className="w-4 h-4" />
                 Урок завершён
               </span>
@@ -584,24 +726,25 @@ const CourseLearning = () => {
               <Button 
                 onClick={submitTest}
                 disabled={Object.keys(answers).length !== testQuestions.length}
+                className="btn-gradient rounded-xl"
               >
                 Отправить ответы
               </Button>
             )}
             {currentLesson?.type !== 'test' && !isLessonCompleted(currentLesson?.id || '') && (
-              <Button onClick={markLessonComplete}>
+              <Button onClick={markLessonComplete} className="btn-gradient rounded-xl">
                 Завершить урок
                 <ChevronRight className="w-4 h-4 ml-2" />
               </Button>
             )}
             {isLessonCompleted(currentLesson?.id || '') && currentLessonIndex < lessons.length - 1 && (
-              <Button onClick={goToNextLesson}>
+              <Button onClick={goToNextLesson} className="btn-gradient rounded-xl">
                 Следующий урок
                 <ChevronRight className="w-4 h-4 ml-2" />
               </Button>
             )}
             {isLessonCompleted(currentLesson?.id || '') && currentLessonIndex === lessons.length - 1 && (
-              <Button onClick={() => navigate('/student')}>
+              <Button onClick={() => navigate('/student')} className="btn-gradient rounded-xl">
                 <Trophy className="w-4 h-4 mr-2" />
                 Курс завершён!
               </Button>
@@ -618,6 +761,19 @@ function getYouTubeEmbedUrl(url: string): string {
   const match = url.match(regExp);
   const videoId = match && match[2].length === 11 ? match[2] : null;
   return videoId ? `https://www.youtube.com/embed/${videoId}` : '';
+}
+
+function parseContentToBlocks(content: string): ContentBlock[] {
+  // Try to parse as JSON blocks first
+  try {
+    const parsed = JSON.parse(content);
+    if (Array.isArray(parsed) && parsed.every(item => item.type && item.id)) {
+      return parsed;
+    }
+  } catch {
+    // Not JSON, return empty to use raw content
+  }
+  return [];
 }
 
 export default CourseLearning;
