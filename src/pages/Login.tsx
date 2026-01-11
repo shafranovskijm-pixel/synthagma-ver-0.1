@@ -159,7 +159,9 @@ const Login = () => {
     });
 
     // Navigate based on role
-    if (accountType === "organization") {
+    if (accountType === "admin") {
+      navigate("/admin");
+    } else if (accountType === "organization") {
       navigate("/organization");
     } else {
       navigate("/student");
