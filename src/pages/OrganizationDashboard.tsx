@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import ImportStudentsForm from "@/components/ImportStudentsForm";
 import { useNavigate } from "react-router-dom";
+import { OrgDocumentsManager } from "@/components/organization/OrgDocumentsManager";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -150,7 +151,7 @@ interface RegistrationLink {
 export default function OrganizationDashboard() {
   const navigate = useNavigate();
   const { signOut, user } = useAuth();
-  const [activeTab, setActiveTab] = useState<"courses" | "organizations" | "students" | "stats" | "links">("courses");
+  const [activeTab, setActiveTab] = useState<"courses" | "organizations" | "students" | "stats" | "links" | "documents">("courses");
   const [searchQuery, setSearchQuery] = useState("");
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [showAddStudentDialog, setShowAddStudentDialog] = useState(false);
@@ -1289,6 +1290,17 @@ export default function OrganizationDashboard() {
               <Link className="w-5 h-5" />
               Ссылки регистрации
             </button>
+            <button
+              onClick={() => setActiveTab("documents")}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
+                activeTab === "documents"
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-secondary"
+              }`}
+            >
+              <FileText className="w-5 h-5" />
+              Документы
+            </button>
             <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors">
               <Settings className="w-5 h-5" />
               Настройки
@@ -1319,6 +1331,7 @@ export default function OrganizationDashboard() {
                 {activeTab === "students" && "Все ученики"}
                 {activeTab === "stats" && "Статистика обучения"}
                 {activeTab === "links" && "Ссылки для регистрации"}
+                {activeTab === "documents" && "Документооборот"}
               </h1>
               <p className="text-muted-foreground">{organizationName}</p>
             </div>
@@ -2079,6 +2092,11 @@ export default function OrganizationDashboard() {
                 </div>
               )}
             </div>
+          )}
+
+          {/* Documents Tab */}
+          {activeTab === "documents" && organizationId && (
+            <OrgDocumentsManager organizationId={organizationId} />
           )}
         </div>
       </main>
