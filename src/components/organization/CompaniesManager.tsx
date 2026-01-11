@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -43,6 +43,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import * as XLSX from "xlsx";
 import { Progress } from "@/components/ui/progress";
+import { DocumentDropZone } from "./DocumentDropZone";
 
 interface Company {
   id: string;
@@ -1189,277 +1190,202 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Contracts */}
                     <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <FileText className="w-5 h-5 text-orange-500" />
-                          <h3 className="font-semibold">Договоры</h3>
-                          <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
-                            {getDocumentsByType('contract').length}
-                          </span>
-                        </div>
-                        <label className="cursor-pointer">
-                          <input
-                            type="file"
-                            className="hidden"
-                            accept=".pdf,.doc,.docx"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) handleUploadDocument('contract', file);
-                              e.target.value = '';
-                            }}
-                            disabled={isUploadingDocument === 'contract'}
-                          />
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="rounded-lg gap-2 pointer-events-none h-8"
-                            disabled={isUploadingDocument === 'contract'}
-                          >
-                            {isUploadingDocument === 'contract' ? (
-                              <Loader2 className="w-3 h-3 animate-spin" />
-                            ) : (
-                              <Upload className="w-3 h-3" />
-                            )}
-                          </Button>
-                        </label>
+                      <div className="flex items-center gap-2">
+                        <FileText className="w-5 h-5 text-orange-500" />
+                        <h3 className="font-semibold">Договоры</h3>
+                        <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
+                          {getDocumentsByType('contract').length}
+                        </span>
                       </div>
-                      <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
-                        {getDocumentsByType('contract').length === 0 ? (
-                          <div className="text-sm text-muted-foreground text-center py-8 border border-dashed border-border rounded-xl">
-                            Нет договоров
-                          </div>
-                        ) : (
-                          getDocumentsByType('contract').map((doc) => (
-                            <div key={doc.id} className="flex items-center gap-2 p-3 rounded-xl border border-border bg-card hover:bg-secondary/30 transition-colors">
-                              <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center flex-shrink-0">
-                                <FileText className="w-4 h-4 text-orange-500" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="font-medium text-xs truncate">{doc.name}</div>
-                                <div className="text-xs text-muted-foreground">
-                                  {formatFileSize(doc.file_size)} • {formatDate(doc.uploaded_at)}
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-0.5">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="rounded-lg h-7 w-7 text-primary hover:text-primary"
-                                  onClick={() => handleViewDocument(doc)}
-                                  title="Просмотреть"
-                                >
-                                  <Eye className="w-3 h-3" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="rounded-lg h-7 w-7"
-                                  onClick={() => handleDownloadDocument(doc)}
-                                  title="Скачать"
-                                >
-                                  <Download className="w-3 h-3" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="rounded-lg h-7 w-7 text-destructive hover:text-destructive"
-                                  onClick={() => handleDeleteDocument(doc)}
-                                  disabled={isDeletingDocument === doc.id}
-                                >
-                                  {isDeletingDocument === doc.id ? (
-                                    <Loader2 className="w-3 h-3 animate-spin" />
-                                  ) : (
-                                    <X className="w-3 h-3" />
-                                  )}
-                                </Button>
+                      
+                      {/* Drag & Drop Zone */}
+                      <DocumentDropZone
+                        type="contract"
+                        isUploading={isUploadingDocument === 'contract'}
+                        onUpload={(file) => handleUploadDocument('contract', file)}
+                      />
+
+                      <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                        {getDocumentsByType('contract').map((doc) => (
+                          <div key={doc.id} className="flex items-center gap-2 p-3 rounded-xl border border-border bg-card hover:bg-secondary/30 transition-colors">
+                            <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center flex-shrink-0">
+                              <FileText className="w-4 h-4 text-orange-500" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-xs truncate">{doc.name}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {formatFileSize(doc.file_size)} • {formatDate(doc.uploaded_at)}
                               </div>
                             </div>
-                          ))
-                        )}
+                            <div className="flex items-center gap-0.5">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="rounded-lg h-7 w-7 text-primary hover:text-primary"
+                                onClick={() => handleViewDocument(doc)}
+                                title="Просмотреть"
+                              >
+                                <Eye className="w-3 h-3" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="rounded-lg h-7 w-7"
+                                onClick={() => handleDownloadDocument(doc)}
+                                title="Скачать"
+                              >
+                                <Download className="w-3 h-3" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="rounded-lg h-7 w-7 text-destructive hover:text-destructive"
+                                onClick={() => handleDeleteDocument(doc)}
+                                disabled={isDeletingDocument === doc.id}
+                              >
+                                {isDeletingDocument === doc.id ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : (
+                                  <X className="w-3 h-3" />
+                                )}
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
 
                     {/* Invoices */}
                     <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Receipt className="w-5 h-5 text-blue-500" />
-                          <h3 className="font-semibold">Счета</h3>
-                          <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
-                            {getDocumentsByType('invoice').length}
-                          </span>
-                        </div>
-                        <label className="cursor-pointer">
-                          <input
-                            type="file"
-                            className="hidden"
-                            accept=".pdf,.doc,.docx"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) handleUploadDocument('invoice', file);
-                              e.target.value = '';
-                            }}
-                            disabled={isUploadingDocument === 'invoice'}
-                          />
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="rounded-lg gap-2 pointer-events-none h-8"
-                            disabled={isUploadingDocument === 'invoice'}
-                          >
-                            {isUploadingDocument === 'invoice' ? (
-                              <Loader2 className="w-3 h-3 animate-spin" />
-                            ) : (
-                              <Upload className="w-3 h-3" />
-                            )}
-                          </Button>
-                        </label>
+                      <div className="flex items-center gap-2">
+                        <Receipt className="w-5 h-5 text-blue-500" />
+                        <h3 className="font-semibold">Счета</h3>
+                        <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
+                          {getDocumentsByType('invoice').length}
+                        </span>
                       </div>
-                      <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
-                        {getDocumentsByType('invoice').length === 0 ? (
-                          <div className="text-sm text-muted-foreground text-center py-8 border border-dashed border-border rounded-xl">
-                            Нет счетов
-                          </div>
-                        ) : (
-                          getDocumentsByType('invoice').map((doc) => (
-                            <div key={doc.id} className="flex items-center gap-2 p-3 rounded-xl border border-border bg-card hover:bg-secondary/30 transition-colors">
-                              <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">
-                                <Receipt className="w-4 h-4 text-blue-500" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="font-medium text-xs truncate">{doc.name}</div>
-                                <div className="text-xs text-muted-foreground">
-                                  {formatFileSize(doc.file_size)} • {formatDate(doc.uploaded_at)}
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-0.5">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="rounded-lg h-7 w-7 text-primary hover:text-primary"
-                                  onClick={() => handleViewDocument(doc)}
-                                  title="Просмотреть"
-                                >
-                                  <Eye className="w-3 h-3" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="rounded-lg h-7 w-7"
-                                  onClick={() => handleDownloadDocument(doc)}
-                                  title="Скачать"
-                                >
-                                  <Download className="w-3 h-3" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="rounded-lg h-7 w-7 text-destructive hover:text-destructive"
-                                  onClick={() => handleDeleteDocument(doc)}
-                                  disabled={isDeletingDocument === doc.id}
-                                >
-                                  {isDeletingDocument === doc.id ? (
-                                    <Loader2 className="w-3 h-3 animate-spin" />
-                                  ) : (
-                                    <X className="w-3 h-3" />
-                                  )}
-                                </Button>
+                      
+                      {/* Drag & Drop Zone */}
+                      <DocumentDropZone
+                        type="invoice"
+                        isUploading={isUploadingDocument === 'invoice'}
+                        onUpload={(file) => handleUploadDocument('invoice', file)}
+                      />
+
+                      <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                        {getDocumentsByType('invoice').map((doc) => (
+                          <div key={doc.id} className="flex items-center gap-2 p-3 rounded-xl border border-border bg-card hover:bg-secondary/30 transition-colors">
+                            <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+                              <Receipt className="w-4 h-4 text-blue-500" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-xs truncate">{doc.name}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {formatFileSize(doc.file_size)} • {formatDate(doc.uploaded_at)}
                               </div>
                             </div>
-                          ))
-                        )}
+                            <div className="flex items-center gap-0.5">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="rounded-lg h-7 w-7 text-primary hover:text-primary"
+                                onClick={() => handleViewDocument(doc)}
+                                title="Просмотреть"
+                              >
+                                <Eye className="w-3 h-3" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="rounded-lg h-7 w-7"
+                                onClick={() => handleDownloadDocument(doc)}
+                                title="Скачать"
+                              >
+                                <Download className="w-3 h-3" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="rounded-lg h-7 w-7 text-destructive hover:text-destructive"
+                                onClick={() => handleDeleteDocument(doc)}
+                                disabled={isDeletingDocument === doc.id}
+                              >
+                                {isDeletingDocument === doc.id ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : (
+                                  <X className="w-3 h-3" />
+                                )}
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
 
                     {/* Acts */}
                     <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <FileCheck className="w-5 h-5 text-sigma-green" />
-                          <h3 className="font-semibold">Акты</h3>
-                          <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
-                            {getDocumentsByType('act').length}
-                          </span>
-                        </div>
-                        <label className="cursor-pointer">
-                          <input
-                            type="file"
-                            className="hidden"
-                            accept=".pdf,.doc,.docx"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) handleUploadDocument('act', file);
-                              e.target.value = '';
-                            }}
-                            disabled={isUploadingDocument === 'act'}
-                          />
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="rounded-lg gap-2 pointer-events-none h-8"
-                            disabled={isUploadingDocument === 'act'}
-                          >
-                            {isUploadingDocument === 'act' ? (
-                              <Loader2 className="w-3 h-3 animate-spin" />
-                            ) : (
-                              <Upload className="w-3 h-3" />
-                            )}
-                          </Button>
-                        </label>
+                      <div className="flex items-center gap-2">
+                        <FileCheck className="w-5 h-5 text-sigma-green" />
+                        <h3 className="font-semibold">Акты</h3>
+                        <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
+                          {getDocumentsByType('act').length}
+                        </span>
                       </div>
-                      <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
-                        {getDocumentsByType('act').length === 0 ? (
-                          <div className="text-sm text-muted-foreground text-center py-8 border border-dashed border-border rounded-xl">
-                            Нет актов
-                          </div>
-                        ) : (
-                          getDocumentsByType('act').map((doc) => (
-                            <div key={doc.id} className="flex items-center gap-2 p-3 rounded-xl border border-border bg-card hover:bg-secondary/30 transition-colors">
-                              <div className="w-8 h-8 rounded-lg bg-sigma-green/10 flex items-center justify-center flex-shrink-0">
-                                <FileCheck className="w-4 h-4 text-sigma-green" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="font-medium text-xs truncate">{doc.name}</div>
-                                <div className="text-xs text-muted-foreground">
-                                  {formatFileSize(doc.file_size)} • {formatDate(doc.uploaded_at)}
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-0.5">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="rounded-lg h-7 w-7 text-primary hover:text-primary"
-                                  onClick={() => handleViewDocument(doc)}
-                                  title="Просмотреть"
-                                >
-                                  <Eye className="w-3 h-3" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="rounded-lg h-7 w-7"
-                                  onClick={() => handleDownloadDocument(doc)}
-                                  title="Скачать"
-                                >
-                                  <Download className="w-3 h-3" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="rounded-lg h-7 w-7 text-destructive hover:text-destructive"
-                                  onClick={() => handleDeleteDocument(doc)}
-                                  disabled={isDeletingDocument === doc.id}
-                                >
-                                  {isDeletingDocument === doc.id ? (
-                                    <Loader2 className="w-3 h-3 animate-spin" />
-                                  ) : (
-                                    <X className="w-3 h-3" />
-                                  )}
-                                </Button>
+                      
+                      {/* Drag & Drop Zone */}
+                      <DocumentDropZone
+                        type="act"
+                        isUploading={isUploadingDocument === 'act'}
+                        onUpload={(file) => handleUploadDocument('act', file)}
+                      />
+
+                      <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                        {getDocumentsByType('act').map((doc) => (
+                          <div key={doc.id} className="flex items-center gap-2 p-3 rounded-xl border border-border bg-card hover:bg-secondary/30 transition-colors">
+                            <div className="w-8 h-8 rounded-lg bg-sigma-green/10 flex items-center justify-center flex-shrink-0">
+                              <FileCheck className="w-4 h-4 text-sigma-green" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-xs truncate">{doc.name}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {formatFileSize(doc.file_size)} • {formatDate(doc.uploaded_at)}
                               </div>
                             </div>
-                          ))
-                        )}
+                            <div className="flex items-center gap-0.5">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="rounded-lg h-7 w-7 text-primary hover:text-primary"
+                                onClick={() => handleViewDocument(doc)}
+                                title="Просмотреть"
+                              >
+                                <Eye className="w-3 h-3" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="rounded-lg h-7 w-7"
+                                onClick={() => handleDownloadDocument(doc)}
+                                title="Скачать"
+                              >
+                                <Download className="w-3 h-3" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="rounded-lg h-7 w-7 text-destructive hover:text-destructive"
+                                onClick={() => handleDeleteDocument(doc)}
+                                disabled={isDeletingDocument === doc.id}
+                              >
+                                {isDeletingDocument === doc.id ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : (
+                                  <X className="w-3 h-3" />
+                                )}
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   </div>
