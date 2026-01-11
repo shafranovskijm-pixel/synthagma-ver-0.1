@@ -67,6 +67,10 @@ export function LibraryManager({ organizationId }: LibraryManagerProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  
+  // Preview state
+  const [previewDoc, setPreviewDoc] = useState<LibraryDocument | null>(null);
+  const [showPreviewDialog, setShowPreviewDialog] = useState(false);
 
   // Form state
   const [docName, setDocName] = useState("");
@@ -210,6 +214,43 @@ export function LibraryManager({ organizationId }: LibraryManagerProps) {
   });
 
   const currentTypeConfig = LIBRARY_TYPES.find(t => t.value === docType);
+
+  const getPreviewUrl = (fileUrl: string) => {
+    // Use Microsoft Office Online Viewer for office documents
+    return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl)}`;
+  };
+
+  const canPreviewInBrowser = (type: string, fileUrl: string | null) => {
+    if (!fileUrl) return false;
+    const ext = fileUrl.split('.').pop()?.toLowerCase();
+    // Office documents that can be previewed via Microsoft viewer
+    if (['pptx', 'ppt', 'docx', 'doc', 'xlsx', 'xls'].includes(ext || '')) return true;
+    // PDF can be viewed natively
+    if (ext === 'pdf') return true;
+    return false;
+  };
+
+  const handlePreview = (doc: LibraryDocument) => {
+    if (!doc.file_url) return;
+    
+    const ext = doc.file_url.split('.').pop()?.toLowerCase();
+    
+    // PDF opens in new tab natively
+    if (ext === 'pdf') {
+      window.open(doc.file_url, '_blank');
+      return;
+    }
+    
+    // Office documents open in preview dialog
+    if (['pptx', 'ppt', 'docx', 'doc', 'xlsx', 'xls'].includes(ext || '')) {
+      setPreviewDoc(doc);
+      setShowPreviewDialog(true);
+      return;
+    }
+    
+    // Others open in new tab
+    window.open(doc.file_url, '_blank');
+  };
 
   return (
     <div className="space-y-6">
@@ -426,7 +467,8 @@ export function LibraryManager({ organizationId }: LibraryManagerProps) {
                               variant="outline"
                               size="sm"
                               className="rounded-lg"
-                              onClick={() => window.open(doc.file_url!, "_blank")}
+                              onClick={() => handlePreview(doc)}
+                              title="Просмотр"
                             >
                               <Eye className="w-4 h-4" />
                             </Button>
@@ -440,6 +482,7 @@ export function LibraryManager({ organizationId }: LibraryManagerProps) {
                                 link.download = doc.name;
                                 link.click();
                               }}
+                              title="Скачать"
                             >
                               <Download className="w-4 h-4" />
                             </Button>
@@ -450,6 +493,7 @@ export function LibraryManager({ organizationId }: LibraryManagerProps) {
                           size="sm"
                           className="rounded-lg text-destructive hover:text-destructive"
                           onClick={() => handleDelete(doc.id, doc.file_url)}
+                          title="Удалить"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -462,6 +506,28 @@ export function LibraryManager({ organizationId }: LibraryManagerProps) {
           </table>
         </div>
       )}
+
+      {/* Preview Dialog */}
+      <Dialog open={showPreviewDialog} onOpenChange={setShowPreviewDialog}>
+        <DialogContent className="max-w-5xl h-[85vh] rounded-2xl p-0 overflow-hidden">
+          <DialogHeader className="p-4 border-b border-border">
+            <DialogTitle className="font-display flex items-center gap-2">
+              <Presentation className="w-5 h-5 text-primary" />
+              {previewDoc?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 h-full min-h-0">
+            {previewDoc?.file_url && (
+              <iframe
+                src={getPreviewUrl(previewDoc.file_url)}
+                className="w-full h-[calc(85vh-80px)] border-0"
+                title={previewDoc.name}
+                allowFullScreen
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
