@@ -568,6 +568,50 @@ export default function CourseBuilder() {
     setLessons([...lessons, newLesson]);
   };
 
+  const handleGenerateStructure = async () => {
+    if (!courseTitle.trim()) {
+      toast.error("Введите название курса");
+      return;
+    }
+
+    setIsGenerating(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-course-structure", {
+        body: { title: courseTitle, description: courseDescription }
+      });
+
+      if (error) {
+        throw new Error(error.message || "Ошибка генерации");
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || "Ошибка генерации структуры");
+      }
+
+      const generatedLessons: Lesson[] = (data.lessons || []).map((l: any) => ({
+        id: crypto.randomUUID(),
+        type: l.type as LessonType,
+        title: l.title,
+        content: l.description || "",
+        expanded: false,
+        blocks: l.type === "text" ? [] : undefined,
+      }));
+
+      if (generatedLessons.length > 0) {
+        setLessons(generatedLessons);
+        toast.success(`Создано ${generatedLessons.length} уроков`);
+      } else {
+        toast.error("AI не вернул уроки");
+      }
+    } catch (error: any) {
+      console.error("Generate structure error:", error);
+      toast.error(error.message || "Ошибка генерации структуры");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const updateLesson = (id: string, updates: Partial<Lesson>) => {
     setLessons(lessons.map(l => l.id === id ? { ...l, ...updates } : l));
   };
@@ -864,6 +908,14 @@ export default function CourseBuilder() {
                     className="rounded-xl min-h-[100px]"
                   />
                 </div>
+                <Button
+                  onClick={handleGenerateStructure}
+                  disabled={isGenerating || !courseTitle.trim()}
+                  className="btn-gradient rounded-xl gap-2 w-full sm:w-auto"
+                >
+                  {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                  {isGenerating ? "Генерация..." : "Сгенерировать структуру с AI"}
+                </Button>
               </div>
             </div>
 
