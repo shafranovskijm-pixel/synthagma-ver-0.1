@@ -867,12 +867,20 @@ export default function OrganizationDashboard() {
     setSelectedStudentIds(newSet);
   };
 
-  const toggleSelectAll = () => {
-    if (selectedStudentIds.size === students.length) {
-      setSelectedStudentIds(new Set());
+  const toggleSelectAll = (filteredList: Student[]) => {
+    const filteredIds = filteredList.map(s => s.enrollment_id || s.user_id);
+    const allSelected = filteredIds.every(id => selectedStudentIds.has(id)) && filteredIds.length > 0;
+    
+    if (allSelected) {
+      // Deselect all filtered
+      const newSet = new Set(selectedStudentIds);
+      filteredIds.forEach(id => newSet.delete(id));
+      setSelectedStudentIds(newSet);
     } else {
-      const allIds = students.map(s => s.enrollment_id || s.user_id);
-      setSelectedStudentIds(new Set(allIds));
+      // Select all filtered
+      const newSet = new Set(selectedStudentIds);
+      filteredIds.forEach(id => newSet.add(id));
+      setSelectedStudentIds(newSet);
     }
   };
 
@@ -2290,8 +2298,8 @@ export default function OrganizationDashboard() {
                         <th className="text-left px-4 py-4 text-sm font-medium text-muted-foreground w-12">
                           <input
                             type="checkbox"
-                            checked={selectedStudentIds.size === filteredStudents.length && filteredStudents.length > 0}
-                            onChange={toggleSelectAll}
+                            checked={filteredStudents.length > 0 && filteredStudents.every(s => selectedStudentIds.has(s.enrollment_id || s.user_id))}
+                            onChange={() => toggleSelectAll(filteredStudents)}
                             className="w-4 h-4 rounded border-border"
                           />
                         </th>
