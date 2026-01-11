@@ -1176,7 +1176,7 @@ const CourseLearning = () => {
       <Button
         onClick={() => setIsChatOpen(true)}
         className={cn(
-          "fixed bottom-6 right-6 w-14 h-14 rounded-full shadow-lg z-40",
+          "fixed bottom-24 right-6 w-14 h-14 rounded-full shadow-lg z-40",
           "bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70",
           "transition-transform hover:scale-105",
           isChatOpen && "hidden"
@@ -1187,7 +1187,7 @@ const CourseLearning = () => {
 
       {/* AI Chat Panel */}
       {isChatOpen && (
-        <div className="fixed bottom-6 right-6 w-96 h-[500px] bg-card border border-border rounded-2xl shadow-2xl z-50 flex flex-col overflow-hidden animate-fade-in">
+        <div className="fixed bottom-24 right-6 w-96 h-[500px] bg-card border border-border rounded-2xl shadow-2xl z-50 flex flex-col overflow-hidden animate-fade-in">
           {/* Chat Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
             <div className="flex items-center gap-2">
