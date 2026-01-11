@@ -1,0 +1,320 @@
+import { useState, useRef } from "react";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { Upload, FileSpreadsheet, Loader2, Download, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
+
+interface Course {
+  id: string;
+  title: string;
+}
+
+interface ImportResult {
+  success: boolean;
+  email: string;
+  name: string;
+  error?: string;
+  password?: string;
+}
+
+interface ImportStudentsFormProps {
+  organizationId: string | null;
+  courses: Course[];
+  onSuccess: () => void;
+}
+
+export default function ImportStudentsForm({ organizationId, courses, onSuccess }: ImportStudentsFormProps) {
+  const [file, setFile] = useState<File | null>(null);
+  const [selectedCourseId, setSelectedCourseId] = useState<string>("");
+  const [isImporting, setIsImporting] = useState(false);
+  const [results, setResults] = useState<ImportResult[]>([]);
+  const [showResults, setShowResults] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+
+  const generatePassword = () => {
+    const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let password = "";
+    for (let i = 0; i < 10; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return password;
+  };
+
+  const parseCSV = (text: string): { email: string; name: string }[] => {
+    const lines = text.trim().split("\n");
+    const students: { email: string; name: string }[] = [];
+
+    const startIndex = lines[0]?.toLowerCase().includes("email") || lines[0]?.toLowerCase().includes("фио") ? 1 : 0;
+
+    for (let i = startIndex; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+
+      const separator = line.includes(";") ? ";" : ",";
+      const parts = line.split(separator).map(p => p.trim().replace(/^["']|["']$/g, ""));
+
+      if (parts.length >= 2) {
+        const emailIndex = parts[0].includes("@") ? 0 : 1;
+        const nameIndex = emailIndex === 0 ? 1 : 0;
+
+        const email = parts[emailIndex]?.trim();
+        const name = parts[nameIndex]?.trim();
+
+        if (email && email.includes("@") && name) {
+          students.push({ email, name });
+        }
+      }
+    }
+
+    return students;
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) {
+      setFile(selectedFile);
+      setResults([]);
+      setShowResults(false);
+    }
+  };
+
+  const handleImport = async () => {
+    if (!file || !organizationId) {
+      toast({ title: "Ошибка", description: "Выберите файл для импорта", variant: "destructive" });
+      return;
+    }
+
+    setIsImporting(true);
+    setResults([]);
+
+    try {
+      const text = await file.text();
+      const students = parseCSV(text);
+
+      if (students.length === 0) {
+        toast({ title: "Ошибка", description: "Не найдено записей для импорта", variant: "destructive" });
+        setIsImporting(false);
+        return;
+      }
+
+      const importResults: ImportResult[] = [];
+
+      for (const student of students) {
+        try {
+          const password = generatePassword();
+
+          const { data, error } = await supabase.functions.invoke("register-student", {
+            body: {
+              email: student.email,
+              password,
+              full_name: student.name,
+              organization_id: organizationId,
+              course_id: selectedCourseId || null
+            }
+          });
+
+          if (error) throw error;
+          if (data?.error) throw new Error(data.error);
+
+          importResults.push({
+            success: true,
+            email: student.email,
+            name: student.name,
+            password
+          });
+        } catch (err: any) {
+          importResults.push({
+            success: false,
+            email: student.email,
+            name: student.name,
+            error: err.message || "Ошибка создания"
+          });
+        }
+      }
+
+      setResults(importResults);
+      setShowResults(true);
+
+      const successCount = importResults.filter(r => r.success).length;
+      const failCount = importResults.filter(r => !r.success).length;
+
+      if (failCount === 0) {
+        toast({ title: "Успешно", description: `Импортировано ${successCount} учеников` });
+      } else if (successCount === 0) {
+        toast({ title: "Ошибка", description: `Ошибка импорта всех ${failCount} учеников`, variant: "destructive" });
+      } else {
+        toast({ title: "Частичный успех", description: `Импортировано ${successCount} из ${students.length} учеников` });
+      }
+    } catch (error: any) {
+      console.error("Import error:", error);
+      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const downloadResults = () => {
+    const successResults = results.filter(r => r.success);
+    if (successResults.length === 0) return;
+
+    const csv = "ФИО;Email;Пароль\n" + successResults.map(r => `${r.name};${r.email};${r.password}`).join("\n");
+    const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "imported_students.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadTemplate = () => {
+    const template = "ФИО;Email\nИванов Иван Иванович;ivanov@example.com\nПетрова Мария Сергеевна;petrova@example.com";
+    const blob = new Blob(["\ufeff" + template], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "students_template.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  if (showResults) {
+    const successCount = results.filter(r => r.success).length;
+    const failCount = results.filter(r => !r.success).length;
+
+    return (
+      <div className="space-y-4 py-4">
+        <div className="flex items-center gap-4 p-4 bg-secondary/50 rounded-xl">
+          <div className="flex items-center gap-2 text-green-500">
+            <CheckCircle2 className="w-5 h-5" />
+            <span className="font-medium">{successCount} успешно</span>
+          </div>
+          {failCount > 0 && (
+            <div className="flex items-center gap-2 text-destructive">
+              <XCircle className="w-5 h-5" />
+              <span className="font-medium">{failCount} с ошибками</span>
+            </div>
+          )}
+        </div>
+
+        <div className="max-h-60 overflow-y-auto space-y-2">
+          {results.map((result, idx) => (
+            <div
+              key={idx}
+              className={`p-3 rounded-lg border ${
+                result.success ? "bg-green-500/5 border-green-500/20" : "bg-destructive/5 border-destructive/20"
+              }`}
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="font-medium text-sm">{result.name}</div>
+                  <div className="text-xs text-muted-foreground">{result.email}</div>
+                </div>
+                {result.success ? (
+                  <div className="text-xs text-muted-foreground">
+                    Пароль: <code className="bg-secondary px-1 rounded">{result.password}</code>
+                  </div>
+                ) : (
+                  <div className="text-xs text-destructive">{result.error}</div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex gap-3 pt-2">
+          {successCount > 0 && (
+            <Button variant="outline" className="flex-1 rounded-xl gap-2" onClick={downloadResults}>
+              <Download className="w-4 h-4" />
+              Скачать пароли
+            </Button>
+          )}
+          <Button className="flex-1 btn-gradient rounded-xl" onClick={onSuccess}>
+            Готово
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4 py-4">
+      <div className="p-4 bg-secondary/50 rounded-xl">
+        <div className="flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
+          <div className="text-sm text-muted-foreground">
+            <p className="font-medium text-foreground mb-1">Формат файла:</p>
+            <p>CSV файл с колонками: ФИО и Email</p>
+            <p>Разделитель: запятая или точка с запятой</p>
+          </div>
+        </div>
+        <Button variant="link" className="mt-2 h-auto p-0 text-primary" onClick={downloadTemplate}>
+          <Download className="w-4 h-4 mr-1" />
+          Скачать шаблон
+        </Button>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Файл со списком учеников *</Label>
+        <div
+          className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${
+            file ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
+          }`}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <input ref={fileInputRef} type="file" accept=".csv,.txt" className="hidden" onChange={handleFileChange} />
+          {file ? (
+            <div className="flex items-center justify-center gap-2">
+              <FileSpreadsheet className="w-6 h-6 text-primary" />
+              <span className="font-medium">{file.name}</span>
+            </div>
+          ) : (
+            <div>
+              <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">Нажмите для выбора или перетащите файл</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Курс для зачисления (опционально)</Label>
+        <Select value={selectedCourseId} onValueChange={setSelectedCourseId}>
+          <SelectTrigger className="rounded-xl">
+            <SelectValue placeholder="Выберите курс" />
+          </SelectTrigger>
+          <SelectContent>
+            {courses.map((course) => (
+              <SelectItem key={course.id} value={course.id}>
+                {course.title}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <Button className="w-full btn-gradient rounded-xl gap-2" onClick={handleImport} disabled={!file || isImporting}>
+        {isImporting ? (
+          <>
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Импорт...
+          </>
+        ) : (
+          <>
+            <Upload className="w-4 h-4" />
+            Импортировать
+          </>
+        )}
+      </Button>
+    </div>
+  );
+}
