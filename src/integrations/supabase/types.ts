@@ -643,6 +643,7 @@ export type Database = {
         Row: {
           ai_enabled: boolean
           ai_tokens_limit: number
+          branding: Json | null
           contact_name: string | null
           created_at: string
           email: string
@@ -658,6 +659,7 @@ export type Database = {
         Insert: {
           ai_enabled?: boolean
           ai_tokens_limit?: number
+          branding?: Json | null
           contact_name?: string | null
           created_at?: string
           email: string
@@ -673,6 +675,7 @@ export type Database = {
         Update: {
           ai_enabled?: boolean
           ai_tokens_limit?: number
+          branding?: Json | null
           contact_name?: string | null
           created_at?: string
           email?: string
