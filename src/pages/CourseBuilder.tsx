@@ -600,9 +600,58 @@ function SortableLessonItem({
             </div>
           )}
           {lesson.type === "image" && (
-            <div className="border-2 border-dashed border-border rounded-xl p-8 text-center">
-              <Image className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">Загрузите изображения</p>
+            <div className="space-y-3">
+              <Input
+                value={lesson.content}
+                onChange={(e) => onUpdate({ content: e.target.value })}
+                placeholder="Вставьте ссылку на изображение или загрузите файл"
+                className="rounded-xl"
+              />
+              <div className="border-2 border-dashed border-border rounded-xl p-8 text-center">
+                <Image className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">Загрузите изображение (JPG, PNG, GIF, WebP)</p>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="mt-3"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (file && courseId) {
+                      const toastId = toast.loading("Загрузка изображения...");
+                      try {
+                        const fileExt = file.name.split('.').pop();
+                        const fileName = `image_${lesson.id}_${Date.now()}.${fileExt}`;
+                        const filePath = `${courseId}/${fileName}`;
+                        
+                        const { error: uploadError } = await supabase.storage
+                          .from('course-files')
+                          .upload(filePath, file);
+                          
+                        if (uploadError) throw uploadError;
+                        
+                        const { data: { publicUrl } } = supabase.storage
+                          .from('course-files')
+                          .getPublicUrl(filePath);
+                          
+                        onUpdate({ content: publicUrl });
+                        toast.success("Изображение загружено!", { id: toastId });
+                      } catch (error: any) {
+                        console.error("Image upload error:", error);
+                        toast.error(`Ошибка загрузки: ${error.message}`, { id: toastId });
+                      }
+                    }
+                  }}
+                />
+              </div>
+              {lesson.content && lesson.content.startsWith('http') && (
+                <div className="mt-3 rounded-xl overflow-hidden border border-border">
+                  <img 
+                    src={lesson.content} 
+                    alt="Превью" 
+                    className="w-full max-h-96 object-contain bg-secondary/20"
+                  />
+                </div>
+              )}
             </div>
           )}
           {lesson.type === "test" && (
