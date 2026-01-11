@@ -31,9 +31,10 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Building2, Loader2, Users, BookOpen, Key, Eye, EyeOff, Copy, Check } from "lucide-react";
+import { Plus, Pencil, Trash2, Building2, Loader2, Users, BookOpen, Key, Eye, EyeOff, Copy, Check, Download } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import * as XLSX from "xlsx";
 
 interface Organization {
   id: string;
@@ -271,6 +272,47 @@ export function OrganizationsManager() {
     setTimeout(() => setCopiedField(null), 2000);
   };
 
+  const exportToExcel = () => {
+    const data = organizations.map((org, index) => ({
+      "№": index + 1,
+      "Название": org.name,
+      "ИНН": org.inn || "",
+      "Email организации": org.email,
+      "Телефон": org.phone || "",
+      "Контактное лицо": org.contact_name || "",
+      "Логин для входа": org.credentials?.login_email || "",
+      "Пароль": org.credentials?.login_password || "",
+      "Сотрудников": org.users_count || 0,
+      "Курсов": org.courses_count || 0,
+      "Дата создания": format(new Date(org.created_at), "dd.MM.yyyy", { locale: ru }),
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    
+    // Set column widths
+    worksheet["!cols"] = [
+      { wch: 5 },   // №
+      { wch: 30 },  // Название
+      { wch: 15 },  // ИНН
+      { wch: 25 },  // Email организации
+      { wch: 18 },  // Телефон
+      { wch: 20 },  // Контактное лицо
+      { wch: 25 },  // Логин для входа
+      { wch: 15 },  // Пароль
+      { wch: 12 },  // Сотрудников
+      { wch: 10 },  // Курсов
+      { wch: 15 },  // Дата создания
+    ];
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Организации");
+    
+    const fileName = `Организации_${format(new Date(), "dd-MM-yyyy")}.xlsx`;
+    XLSX.writeFile(workbook, fileName);
+    
+    toast({ title: "Успешно", description: "Файл скачан" });
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -281,18 +323,23 @@ export function OrganizationsManager() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-2xl font-display font-bold">Организации</h2>
           <p className="text-muted-foreground">Управление организациями платформы</p>
         </div>
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-          <DialogTrigger asChild>
-            <Button className="btn-gradient">
-              <Plus className="w-4 h-4 mr-2" />
-              Добавить
-            </Button>
-          </DialogTrigger>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={exportToExcel} disabled={organizations.length === 0}>
+            <Download className="w-4 h-4 mr-2" />
+            Экспорт в Excel
+          </Button>
+          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+            <DialogTrigger asChild>
+              <Button className="btn-gradient">
+                <Plus className="w-4 h-4 mr-2" />
+                Добавить
+              </Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Новая организация</DialogTitle>
@@ -377,6 +424,7 @@ export function OrganizationsManager() {
             </div>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Stats Cards */}
