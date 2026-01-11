@@ -413,40 +413,67 @@ export default function CourseBuilder() {
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Import multiple files - chunked to avoid backend worker limits
   const handleFileImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const fileList = e.target.files;
     if (!fileList || fileList.length === 0) return;
 
-    setIsImporting(true);
-    try {
-      const allFiles = Array.from(fileList).sort((a, b) => {
-        const na = a.name.match(/(\d+(?:[\.,]\d+)*)/)?.[1];
-        const nb = b.name.match(/(\d+(?:[\.,]\d+)*)/)?.[1];
-        if (na && nb) return na.localeCompare(nb, 'ru', { numeric: true });
-        return a.name.localeCompare(b.name, 'ru', { numeric: true });
-      });
+    const CHUNK_SIZE = 3;
 
+    // Sort files (by number in name, then alphabetically) to keep a sensible course order
+    const allFiles = Array.from(fileList).sort((a, b) => {
+      const na = a.name.match(/(\d+(?:[\.,]\d+)*)/)?.[1];
+      const nb = b.name.match(/(\d+(?:[\.,]\d+)*)/)?.[1];
+      if (na && nb) return na.localeCompare(nb, 'ru', { numeric: true });
+      return a.name.localeCompare(b.name, 'ru', { numeric: true });
+    });
+
+    setIsImporting(true);
+
+    try {
       let totalImported = 0;
 
-      for (const file of allFiles) {
-        const text = await file.text();
-        const title = file.name.replace(/\.[^/.]+$/, "");
-        const blocks = htmlToBlocks(text);
+      for (let offset = 0; offset < allFiles.length; offset += CHUNK_SIZE) {
+        const chunk = allFiles.slice(offset, offset + CHUNK_SIZE);
 
-        const newLesson: Lesson = {
-          id: crypto.randomUUID(),
-          type: "text",
-          title,
-          content: blocksToJson(blocks),
-          blocks,
-          expanded: false,
-        };
+        const formData = new FormData();
+        chunk.forEach((file, i) => formData.append(`file_${offset + i}`, file));
 
-        setLessons((prev) => [...prev, newLesson]);
-        totalImported++;
+        const { data, error } = await supabase.functions.invoke("import-course", {
+          body: formData,
+        });
+
+        if (error) {
+          throw new Error(error.message || "Ошибка импорта");
+        }
+
+        if (!data.success) {
+          throw new Error(data.error || 'Ошибка импорта');
+        }
+
+        if (!courseTitle && data.courseTitle) {
+          setCourseTitle(data.courseTitle);
+        }
+
+        const importedLessons: Lesson[] = (data.lessons || []).map((l: any) => {
+          const blocks = htmlToBlocks(l.content || "");
+          return {
+            id: l.id,
+            type: "text" as LessonType,
+            title: l.title,
+            content: blocksToJson(blocks),
+            blocks: blocks,
+            expanded: false,
+          };
+        });
+
+        totalImported += importedLessons.length;
+        setLessons((prev) => [...prev, ...importedLessons]);
       }
 
-      toast.success(`Импортировано ${totalImported} ${totalImported === 1 ? 'лекция' : totalImported < 5 ? 'лекции' : 'лекций'}`);
+      toast.success(
+        `Импортировано ${totalImported} ${totalImported === 1 ? 'лекция' : totalImported < 5 ? 'лекции' : 'лекций'}`
+      );
     } catch (error: any) {
       console.error('Import error:', error);
       toast.error(error.message || 'Ошибка импорта файлов');
@@ -847,23 +874,23 @@ export default function CourseBuilder() {
                   <FileUp className="w-6 h-6 text-white" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-display font-semibold text-lg mb-1">Импорт лекций из файлов</h3>
-                  <p className="text-muted-foreground text-sm mb-2">
-                    Загрузите HTML или TXT — каждый файл станет лекцией
-                  </p>
+                    <h3 className="font-display font-semibold text-lg mb-1">Импорт лекций из файлов</h3>
+                    <p className="text-muted-foreground text-sm mb-2">
+                      Загрузите DOC, DOCX, HTML или TXT — каждый файл станет лекцией
+                    </p>
                   {lessons.length > 0 && (
                     <p className="text-xs text-primary mb-3">
                       ✓ Загружено {lessons.length} {lessons.length === 1 ? 'лекция' : lessons.length < 5 ? 'лекции' : 'лекций'}
                     </p>
                   )}
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".html,.htm,.txt"
-                    onChange={handleFileImport}
-                    multiple
-                    className="hidden"
-                  />
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".doc,.docx,.html,.htm,.txt"
+                      onChange={handleFileImport}
+                      multiple
+                      className="hidden"
+                    />
                   <Button
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isImporting}
