@@ -69,6 +69,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface CourseCategory {
   id: string;
@@ -180,6 +181,8 @@ export default function OrganizationDashboard() {
   const [isLoadingStudents, setIsLoadingStudents] = useState(true);
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [organizationName, setOrganizationName] = useState("Организация");
+  const [selectedExistingStudentId, setSelectedExistingStudentId] = useState<string>("");
+  const [isEnrollingExisting, setIsEnrollingExisting] = useState(false);
   
   // Admin view mode
   const [isAdminView, setIsAdminView] = useState(false);
@@ -684,6 +687,72 @@ export default function OrganizationDashboard() {
       toast.error(error.message || "Ошибка создания ученика");
     } finally {
       setIsCreatingStudent(false);
+    }
+  };
+
+  const handleEnrollExistingStudent = async () => {
+    if (!selectedExistingStudentId || !selectedCourseId) {
+      toast.error("Выберите ученика и курс");
+      return;
+    }
+
+    setIsEnrollingExisting(true);
+    try {
+      // Check if already enrolled
+      const { data: existingEnrollment } = await supabase
+        .from("enrollments")
+        .select("id")
+        .eq("user_id", selectedExistingStudentId)
+        .eq("course_id", selectedCourseId)
+        .single();
+
+      if (existingEnrollment) {
+        toast.error("Ученик уже зачислен на этот курс");
+        return;
+      }
+
+      const { data: enrollment, error } = await supabase
+        .from("enrollments")
+        .insert({
+          user_id: selectedExistingStudentId,
+          course_id: selectedCourseId,
+          status: "active",
+          progress: 0
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Find student info
+      const student = [...students, ...allProfiles].find(s => s.user_id === selectedExistingStudentId);
+      const course = courses.find(c => c.id === selectedCourseId);
+
+      if (student && course) {
+        const newEnrollment: Student = {
+          id: student.id,
+          user_id: student.user_id,
+          enrollment_id: enrollment.id,
+          name: student.name,
+          email: student.email,
+          course: course.title,
+          course_id: selectedCourseId,
+          progress: 0,
+          lastActivity: new Date().toISOString(),
+          status: "active"
+        };
+        setStudents(prev => [...prev, newEnrollment]);
+      }
+
+      toast.success("Ученик зачислен на курс");
+      setShowAddStudentDialog(false);
+      setSelectedExistingStudentId("");
+      setSelectedCourseId("");
+    } catch (error: any) {
+      console.error("Error enrolling student:", error);
+      toast.error(error.message || "Ошибка зачисления");
+    } finally {
+      setIsEnrollingExisting(false);
     }
   };
 
@@ -2373,76 +2442,135 @@ export default function OrganizationDashboard() {
 
       {/* Add Student Dialog */}
       <Dialog open={showAddStudentDialog} onOpenChange={setShowAddStudentDialog}>
-        <DialogContent className="rounded-2xl">
+        <DialogContent className="rounded-2xl max-w-lg">
           <DialogHeader>
             <DialogTitle className="font-display">Добавить ученика</DialogTitle>
             <DialogDescription>
-              Создайте нового ученика для организации
+              Создайте нового ученика или зачислите существующего на курс
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>ФИО *</Label>
-              <Input
-                placeholder="Иванов Иван Иванович"
-                className="rounded-xl"
-                value={newStudentName}
-                onChange={(e) => setNewStudentName(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Email *</Label>
-              <Input
-                type="email"
-                placeholder="ivan@example.com"
-                className="rounded-xl"
-                value={newStudentEmail}
-                onChange={(e) => setNewStudentEmail(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Компания (необязательно)</Label>
-              <Select value={selectedCompanyId} onValueChange={setSelectedCompanyId}>
-                <SelectTrigger className="rounded-xl">
-                  <SelectValue placeholder="Выберите компанию" />
-                </SelectTrigger>
-                <SelectContent>
-                  {companies.map(company => (
-                    <SelectItem key={company.id} value={company.id}>
-                      {company.name} {company.inn ? `(ИНН: ${company.inn})` : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Курс (необязательно)</Label>
-              <Select value={selectedCourseId} onValueChange={setSelectedCourseId}>
-                <SelectTrigger className="rounded-xl">
-                  <SelectValue placeholder="Выберите курс" />
-                </SelectTrigger>
-                <SelectContent>
-                  {courses.filter(c => c.is_published).map(course => (
-                    <SelectItem key={course.id} value={course.id}>{course.title}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <Button
-              className="w-full btn-gradient rounded-xl"
-              onClick={handleCreateStudent}
-              disabled={isCreatingStudent}
-            >
-              {isCreatingStudent ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Создание...
-                </>
-              ) : (
-                "Создать ученика"
-              )}
-            </Button>
-          </div>
+          <Tabs defaultValue="new" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-4">
+              <TabsTrigger value="new">Новый ученик</TabsTrigger>
+              <TabsTrigger value="existing">Существующий</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="new" className="space-y-4">
+              <div className="space-y-2">
+                <Label>ФИО *</Label>
+                <Input
+                  placeholder="Иванов Иван Иванович"
+                  className="rounded-xl"
+                  value={newStudentName}
+                  onChange={(e) => setNewStudentName(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Email *</Label>
+                <Input
+                  type="email"
+                  placeholder="ivan@example.com"
+                  className="rounded-xl"
+                  value={newStudentEmail}
+                  onChange={(e) => setNewStudentEmail(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Компания (необязательно)</Label>
+                <Select value={selectedCompanyId} onValueChange={setSelectedCompanyId}>
+                  <SelectTrigger className="rounded-xl">
+                    <SelectValue placeholder="Выберите компанию" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {companies.map(company => (
+                      <SelectItem key={company.id} value={company.id}>
+                        {company.name} {company.inn ? `(ИНН: ${company.inn})` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Курс (необязательно)</Label>
+                <Select value={selectedCourseId} onValueChange={setSelectedCourseId}>
+                  <SelectTrigger className="rounded-xl">
+                    <SelectValue placeholder="Выберите курс" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {courses.filter(c => c.is_published).map(course => (
+                      <SelectItem key={course.id} value={course.id}>{course.title}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                className="w-full btn-gradient rounded-xl"
+                onClick={handleCreateStudent}
+                disabled={isCreatingStudent}
+              >
+                {isCreatingStudent ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Создание...
+                  </>
+                ) : (
+                  "Создать ученика"
+                )}
+              </Button>
+            </TabsContent>
+            
+            <TabsContent value="existing" className="space-y-4">
+              <div className="space-y-2">
+                <Label>Выберите ученика *</Label>
+                <Select value={selectedExistingStudentId} onValueChange={setSelectedExistingStudentId}>
+                  <SelectTrigger className="rounded-xl">
+                    <SelectValue placeholder="Выберите ученика" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allProfiles.map(student => (
+                      <SelectItem key={student.user_id} value={student.user_id}>
+                        {student.name} ({student.email})
+                      </SelectItem>
+                    ))}
+                    {students.filter((s, i, arr) => 
+                      arr.findIndex(x => x.user_id === s.user_id) === i
+                    ).map(student => (
+                      <SelectItem key={student.user_id} value={student.user_id}>
+                        {student.name} ({student.email})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Курс для зачисления *</Label>
+                <Select value={selectedCourseId} onValueChange={setSelectedCourseId}>
+                  <SelectTrigger className="rounded-xl">
+                    <SelectValue placeholder="Выберите курс" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {courses.filter(c => c.is_published).map(course => (
+                      <SelectItem key={course.id} value={course.id}>{course.title}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                className="w-full btn-gradient rounded-xl"
+                onClick={handleEnrollExistingStudent}
+                disabled={isEnrollingExisting || !selectedExistingStudentId || !selectedCourseId}
+              >
+                {isEnrollingExisting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Зачисление...
+                  </>
+                ) : (
+                  "Зачислить на курс"
+                )}
+              </Button>
+            </TabsContent>
+          </Tabs>
         </DialogContent>
       </Dialog>
 
