@@ -475,6 +475,44 @@ export type Database = {
           },
         ]
       }
+      organization_usage: {
+        Row: {
+          ai_tokens_used: number
+          created_at: string
+          id: string
+          month_start: string
+          organization_id: string
+          storage_bytes: number
+          updated_at: string
+        }
+        Insert: {
+          ai_tokens_used?: number
+          created_at?: string
+          id?: string
+          month_start?: string
+          organization_id: string
+          storage_bytes?: number
+          updated_at?: string
+        }
+        Update: {
+          ai_tokens_used?: number
+          created_at?: string
+          id?: string
+          month_start?: string
+          organization_id?: string
+          storage_bytes?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_usage_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizations: {
         Row: {
           ai_enabled: boolean
