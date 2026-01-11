@@ -38,6 +38,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
 
 interface Organization {
   id: string;
@@ -85,6 +86,13 @@ interface UsageData {
   ai_tokens_used: number;
 }
 
+interface UsageHistoryItem {
+  month: string;
+  month_label: string;
+  ai_tokens_used: number;
+  storage_bytes: number;
+}
+
 interface OrganizationDetailsViewProps {
   organization: Organization;
   onBack: () => void;
@@ -97,6 +105,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
   const [courses, setCourses] = useState<Course[]>([]);
   const [documents, setDocuments] = useState<OrgDocument[]>([]);
   const [usage, setUsage] = useState<UsageData>({ storage_bytes: 0, ai_tokens_used: 0 });
+  const [usageHistory, setUsageHistory] = useState<UsageHistoryItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [settings, setSettings] = useState({
     ai_enabled: organization.ai_enabled,
@@ -128,6 +137,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
         fetchCourses(),
         fetchDocuments(),
         fetchUsage(),
+        fetchUsageHistory(),
       ]);
     } finally {
       setLoading(false);
@@ -135,69 +145,83 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
   };
 
   const fetchStudents = async () => {
-    // Get all profiles for this organization
-    const { data: profiles, error } = await supabase
-      .from("profiles")
-      .select("id, user_id, full_name, email, login")
-      .eq("organization_id", organization.id);
+    try {
+      // Get all profiles for this organization - admin has access via RLS
+      const { data: profiles, error } = await supabase
+        .from("profiles")
+        .select("id, user_id, full_name, email, login")
+        .eq("organization_id", organization.id);
 
-    if (error) {
-      console.error("Error fetching students:", error);
-      return;
-    }
+      if (error) {
+        console.error("Error fetching students:", error);
+        return;
+      }
 
-    // Get all enrollments for these users
-    const userIds = (profiles || []).map(p => p.user_id);
-    if (userIds.length === 0) {
-      setStudents([]);
-      setStats(prev => ({ ...prev, totalStudents: 0 }));
-      return;
-    }
+      console.log("Fetched profiles for org:", organization.id, profiles);
 
-    const { data: enrollments } = await supabase
-      .from("enrollments")
-      .select("user_id, course_id, progress, status, started_at")
-      .in("user_id", userIds);
+      if (!profiles || profiles.length === 0) {
+        setStudents([]);
+        setStats(prev => ({ ...prev, totalStudents: 0 }));
+        return;
+      }
 
-    // Get course titles
-    const courseIds = [...new Set((enrollments || []).map(e => e.course_id))];
-    let coursesMap: Record<string, string> = {};
-    if (courseIds.length > 0) {
-      const { data: coursesData } = await supabase
+      // Get courses for this organization first
+      const { data: orgCourses } = await supabase
         .from("courses")
         .select("id, title")
-        .in("id", courseIds);
-      coursesMap = Object.fromEntries((coursesData || []).map(c => [c.id, c.title]));
+        .eq("organization_id", organization.id);
+
+      const courseIds = (orgCourses || []).map(c => c.id);
+      const coursesMap: Record<string, string> = Object.fromEntries(
+        (orgCourses || []).map(c => [c.id, c.title])
+      );
+
+      // Get enrollments for these courses
+      let enrollments: any[] = [];
+      if (courseIds.length > 0) {
+        const { data: enrollmentsData, error: enrollError } = await supabase
+          .from("enrollments")
+          .select("user_id, course_id, progress, status, started_at")
+          .in("course_id", courseIds);
+
+        if (enrollError) {
+          console.error("Error fetching enrollments:", enrollError);
+        } else {
+          enrollments = enrollmentsData || [];
+        }
+      }
+
+      // Combine data
+      const studentsWithEnrollments = profiles.map(profile => ({
+        ...profile,
+        enrollments: enrollments
+          .filter(e => e.user_id === profile.user_id)
+          .map(e => ({
+            course_title: coursesMap[e.course_id] || "Неизвестный курс",
+            progress: e.progress,
+            status: e.status,
+            started_at: e.started_at,
+          })),
+      }));
+
+      setStudents(studentsWithEnrollments);
+
+      // Calculate stats
+      const totalEnrollments = enrollments.length;
+      const completedEnrollments = enrollments.filter(e => e.status === "completed").length;
+      const avgProgress = totalEnrollments > 0
+        ? enrollments.reduce((sum, e) => sum + (e.progress || 0), 0) / totalEnrollments
+        : 0;
+
+      setStats(prev => ({
+        ...prev,
+        totalStudents: profiles.length,
+        completedEnrollments,
+        averageProgress: Math.round(avgProgress),
+      }));
+    } catch (err) {
+      console.error("Error in fetchStudents:", err);
     }
-
-    // Combine data
-    const studentsWithEnrollments = (profiles || []).map(profile => ({
-      ...profile,
-      enrollments: (enrollments || [])
-        .filter(e => e.user_id === profile.user_id)
-        .map(e => ({
-          course_title: coursesMap[e.course_id] || "Неизвестный курс",
-          progress: e.progress,
-          status: e.status,
-          started_at: e.started_at,
-        })),
-    }));
-
-    setStudents(studentsWithEnrollments);
-
-    // Calculate stats
-    const totalEnrollments = enrollments?.length || 0;
-    const completedEnrollments = (enrollments || []).filter(e => e.status === "completed").length;
-    const avgProgress = totalEnrollments > 0
-      ? (enrollments || []).reduce((sum, e) => sum + (e.progress || 0), 0) / totalEnrollments
-      : 0;
-
-    setStats(prev => ({
-      ...prev,
-      totalStudents: profiles?.length || 0,
-      completedEnrollments,
-      averageProgress: Math.round(avgProgress),
-    }));
   };
 
   const fetchCourses = async () => {
@@ -259,7 +283,6 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
 
     if (error) {
       console.error("Error fetching usage:", error);
-      return;
     }
 
     if (data) {
@@ -271,13 +294,8 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
         .select("file_url")
         .eq("organization_id", organization.id);
 
-      const { data: courseDocsData } = await supabase
-        .from("course_documents")
-        .select("file_url, courses!inner(organization_id)")
-        .eq("courses.organization_id", organization.id);
-
       // Estimate storage (we'll track this more accurately later)
-      const totalDocs = (docsData?.length || 0) + (courseDocsData?.length || 0);
+      const totalDocs = docsData?.length || 0;
       const estimatedBytes = totalDocs * 500 * 1024; // Estimate 500KB per doc
 
       setUsage({
@@ -285,6 +303,43 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
         ai_tokens_used: 0,
       });
     }
+  };
+
+  const fetchUsageHistory = async () => {
+    // Get last 6 months of usage
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    const startDate = sixMonthsAgo.toISOString().slice(0, 7) + "-01";
+
+    const { data, error } = await supabase
+      .from("organization_usage")
+      .select("month_start, ai_tokens_used, storage_bytes")
+      .eq("organization_id", organization.id)
+      .gte("month_start", startDate)
+      .order("month_start", { ascending: true });
+
+    if (error) {
+      console.error("Error fetching usage history:", error);
+      return;
+    }
+
+    // Generate all months in range
+    const months: UsageHistoryItem[] = [];
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthStr = date.toISOString().slice(0, 10);
+      const existingData = data?.find(d => d.month_start === monthStr);
+      
+      months.push({
+        month: monthStr,
+        month_label: format(date, "MMM yy", { locale: ru }),
+        ai_tokens_used: existingData?.ai_tokens_used || 0,
+        storage_bytes: existingData?.storage_bytes || 0,
+      });
+    }
+
+    setUsageHistory(months);
   };
 
   const saveSettings = async () => {
@@ -444,6 +499,97 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
 
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-6">
+          {/* Usage Charts */}
+          <div className="grid md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-primary" />
+                  Использование ИИ токенов
+                </CardTitle>
+                <CardDescription>Последние 6 месяцев</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[250px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={usageHistory}>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                      <XAxis 
+                        dataKey="month_label" 
+                        tick={{ fontSize: 12 }}
+                        className="text-muted-foreground"
+                      />
+                      <YAxis 
+                        tick={{ fontSize: 12 }}
+                        tickFormatter={(value) => formatTokens(value)}
+                        className="text-muted-foreground"
+                      />
+                      <Tooltip 
+                        formatter={(value: number) => [formatTokens(value), "Токены"]}
+                        labelClassName="text-foreground"
+                        contentStyle={{ 
+                          backgroundColor: 'hsl(var(--card))', 
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px'
+                        }}
+                      />
+                      <Bar 
+                        dataKey="ai_tokens_used" 
+                        fill="hsl(var(--primary))" 
+                        radius={[4, 4, 0, 0]}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <HardDrive className="w-5 h-5 text-primary" />
+                  Использование хранилища
+                </CardTitle>
+                <CardDescription>Последние 6 месяцев</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[250px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={usageHistory}>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                      <XAxis 
+                        dataKey="month_label" 
+                        tick={{ fontSize: 12 }}
+                        className="text-muted-foreground"
+                      />
+                      <YAxis 
+                        tick={{ fontSize: 12 }}
+                        tickFormatter={(value) => formatBytes(value)}
+                        className="text-muted-foreground"
+                      />
+                      <Tooltip 
+                        formatter={(value: number) => [formatBytes(value), "Хранилище"]}
+                        labelClassName="text-foreground"
+                        contentStyle={{ 
+                          backgroundColor: 'hsl(var(--card))', 
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px'
+                        }}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="storage_bytes" 
+                        stroke="hsl(var(--primary))" 
+                        strokeWidth={2}
+                        dot={{ fill: 'hsl(var(--primary))' }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
           <div className="grid md:grid-cols-2 gap-6">
             {/* Recent Students */}
             <Card>
@@ -495,10 +641,10 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
             </Card>
           </div>
 
-          {/* Usage Chart */}
+          {/* Usage Limits */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Использование ресурсов</CardTitle>
+              <CardTitle className="text-lg">Использование ресурсов (текущий месяц)</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -533,6 +679,9 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                 className="pl-10"
               />
             </div>
+            <Badge variant="outline" className="text-sm">
+              Всего: {students.length}
+            </Badge>
           </div>
 
           <Card>
@@ -564,7 +713,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                           {student.enrollments.length > 0 ? (
                             <div className="space-y-1">
                               {student.enrollments.slice(0, 2).map((e, i) => (
-                                <Badge key={i} variant="secondary" className="text-xs">
+                                <Badge key={i} variant="secondary" className="text-xs mr-1">
                                   {e.course_title}
                                 </Badge>
                               ))}
@@ -575,7 +724,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                               )}
                             </div>
                           ) : (
-                            <span className="text-muted-foreground">—</span>
+                            <span className="text-muted-foreground">Не записан</span>
                           )}
                         </TableCell>
                         <TableCell>
@@ -606,9 +755,10 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                                 >
                                   {e.status === "completed" && <CheckCircle2 className="w-3 h-3 mr-1" />}
                                   {e.status === "in_progress" && <Clock className="w-3 h-3 mr-1" />}
+                                  {e.status === "active" && <Clock className="w-3 h-3 mr-1" />}
                                   {e.status === "not_started" && <XCircle className="w-3 h-3 mr-1" />}
                                   {e.status === "completed" ? "Завершён" :
-                                   e.status === "in_progress" ? "В процессе" : "Не начат"}
+                                   e.status === "in_progress" || e.status === "active" ? "В процессе" : "Не начат"}
                                 </Badge>
                               ))}
                             </div>
@@ -621,7 +771,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                     {filteredStudents.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                          {searchQuery ? "Ничего не найдено" : "Нет учеников"}
+                          {searchQuery ? "Ничего не найдено" : "Нет учеников в этой организации"}
                         </TableCell>
                       </TableRow>
                     )}
