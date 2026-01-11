@@ -657,25 +657,36 @@ export default function OrganizationDashboard() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      toast.success(`Ученик создан. Пароль: ${password} (сохраните его!)`);
+      // Show appropriate message based on whether user is new or existing
+      if (data.is_existing) {
+        toast.success(data.message || "Ученик зачислен на курс");
+      } else {
+        toast.success(`Ученик создан. Пароль: ${password} (сохраните его!)`);
+      }
       
-      // Add new student to the list without page reload
+      // Add or update student in the list
+      const course = courses.find(c => c.id === selectedCourseId);
       const newStudent: Student = {
         id: data.user_id,
         user_id: data.user_id,
         enrollment_id: null,
         name: newStudentName,
         email: newStudentEmail,
-        course: null,
-        course_id: null,
+        course: course?.title || null,
+        course_id: selectedCourseId || null,
         progress: 0,
-        lastActivity: null,
-        status: null
+        lastActivity: new Date().toISOString(),
+        status: selectedCourseId ? "active" : null
       };
       
-      setStudents(prev => [...prev, newStudent]);
-      setAllProfiles(prev => [...prev, newStudent]);
-      setStats(prev => ({ ...prev, totalStudents: prev.totalStudents + 1 }));
+      if (!data.is_existing) {
+        setStudents(prev => [...prev, newStudent]);
+        setAllProfiles(prev => [...prev, newStudent]);
+        setStats(prev => ({ ...prev, totalStudents: prev.totalStudents + 1 }));
+      } else if (data.enrollment_created && selectedCourseId) {
+        // Add enrollment entry for existing user
+        setStudents(prev => [...prev, newStudent]);
+      }
 
       setShowAddStudentDialog(false);
       setNewStudentName("");
@@ -2442,135 +2453,79 @@ export default function OrganizationDashboard() {
 
       {/* Add Student Dialog */}
       <Dialog open={showAddStudentDialog} onOpenChange={setShowAddStudentDialog}>
-        <DialogContent className="rounded-2xl max-w-lg">
+        <DialogContent className="rounded-2xl">
           <DialogHeader>
             <DialogTitle className="font-display">Добавить ученика</DialogTitle>
             <DialogDescription>
-              Создайте нового ученика или зачислите существующего на курс
+              Создайте нового ученика или добавьте существующего на курс
             </DialogDescription>
           </DialogHeader>
-          <Tabs defaultValue="new" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-4">
-              <TabsTrigger value="new">Новый ученик</TabsTrigger>
-              <TabsTrigger value="existing">Существующий</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="new" className="space-y-4">
-              <div className="space-y-2">
-                <Label>ФИО *</Label>
-                <Input
-                  placeholder="Иванов Иван Иванович"
-                  className="rounded-xl"
-                  value={newStudentName}
-                  onChange={(e) => setNewStudentName(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Email *</Label>
-                <Input
-                  type="email"
-                  placeholder="ivan@example.com"
-                  className="rounded-xl"
-                  value={newStudentEmail}
-                  onChange={(e) => setNewStudentEmail(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Компания (необязательно)</Label>
-                <Select value={selectedCompanyId} onValueChange={setSelectedCompanyId}>
-                  <SelectTrigger className="rounded-xl">
-                    <SelectValue placeholder="Выберите компанию" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {companies.map(company => (
-                      <SelectItem key={company.id} value={company.id}>
-                        {company.name} {company.inn ? `(ИНН: ${company.inn})` : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Курс (необязательно)</Label>
-                <Select value={selectedCourseId} onValueChange={setSelectedCourseId}>
-                  <SelectTrigger className="rounded-xl">
-                    <SelectValue placeholder="Выберите курс" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {courses.filter(c => c.is_published).map(course => (
-                      <SelectItem key={course.id} value={course.id}>{course.title}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button
-                className="w-full btn-gradient rounded-xl"
-                onClick={handleCreateStudent}
-                disabled={isCreatingStudent}
-              >
-                {isCreatingStudent ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Создание...
-                  </>
-                ) : (
-                  "Создать ученика"
-                )}
-              </Button>
-            </TabsContent>
-            
-            <TabsContent value="existing" className="space-y-4">
-              <div className="space-y-2">
-                <Label>Выберите ученика *</Label>
-                <Select value={selectedExistingStudentId} onValueChange={setSelectedExistingStudentId}>
-                  <SelectTrigger className="rounded-xl">
-                    <SelectValue placeholder="Выберите ученика" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {allProfiles.map(student => (
-                      <SelectItem key={student.user_id} value={student.user_id}>
-                        {student.name} ({student.email})
-                      </SelectItem>
-                    ))}
-                    {students.filter((s, i, arr) => 
-                      arr.findIndex(x => x.user_id === s.user_id) === i
-                    ).map(student => (
-                      <SelectItem key={student.user_id} value={student.user_id}>
-                        {student.name} ({student.email})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Курс для зачисления *</Label>
-                <Select value={selectedCourseId} onValueChange={setSelectedCourseId}>
-                  <SelectTrigger className="rounded-xl">
-                    <SelectValue placeholder="Выберите курс" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {courses.filter(c => c.is_published).map(course => (
-                      <SelectItem key={course.id} value={course.id}>{course.title}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button
-                className="w-full btn-gradient rounded-xl"
-                onClick={handleEnrollExistingStudent}
-                disabled={isEnrollingExisting || !selectedExistingStudentId || !selectedCourseId}
-              >
-                {isEnrollingExisting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Зачисление...
-                  </>
-                ) : (
-                  "Зачислить на курс"
-                )}
-              </Button>
-            </TabsContent>
-          </Tabs>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>ФИО *</Label>
+              <Input
+                placeholder="Иванов Иван Иванович"
+                className="rounded-xl"
+                value={newStudentName}
+                onChange={(e) => setNewStudentName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Email *</Label>
+              <Input
+                type="email"
+                placeholder="ivan@example.com"
+                className="rounded-xl"
+                value={newStudentEmail}
+                onChange={(e) => setNewStudentEmail(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Если ученик с таким email уже существует — он будет зачислен на курс
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label>Компания (необязательно)</Label>
+              <Select value={selectedCompanyId} onValueChange={setSelectedCompanyId}>
+                <SelectTrigger className="rounded-xl">
+                  <SelectValue placeholder="Выберите компанию" />
+                </SelectTrigger>
+                <SelectContent>
+                  {companies.map(company => (
+                    <SelectItem key={company.id} value={company.id}>
+                      {company.name} {company.inn ? `(ИНН: ${company.inn})` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Курс (необязательно)</Label>
+              <Select value={selectedCourseId} onValueChange={setSelectedCourseId}>
+                <SelectTrigger className="rounded-xl">
+                  <SelectValue placeholder="Выберите курс" />
+                </SelectTrigger>
+                <SelectContent>
+                  {courses.filter(c => c.is_published).map(course => (
+                    <SelectItem key={course.id} value={course.id}>{course.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              className="w-full btn-gradient rounded-xl"
+              onClick={handleCreateStudent}
+              disabled={isCreatingStudent}
+            >
+              {isCreatingStudent ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Добавление...
+                </>
+              ) : (
+                "Добавить ученика"
+              )}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 
