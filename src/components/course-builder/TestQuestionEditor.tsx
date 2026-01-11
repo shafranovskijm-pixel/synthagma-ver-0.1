@@ -9,6 +9,7 @@ import {
   GripVertical,
   Save,
   Loader2,
+  Sparkles,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -50,6 +51,7 @@ export function TestQuestionEditor({
   const [questions, setQuestions] = useState<TestQuestion[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [generatingExplanationId, setGeneratingExplanationId] = useState<string | null>(null);
 
   // Handle generated questions from AI
   useEffect(() => {
@@ -181,6 +183,44 @@ export function TestQuestionEditor({
       setQuestions(questions.map(q =>
         q.id === id ? { ...q, isDeleted: true } : q
       ));
+    }
+  };
+
+  const generateExplanation = async (questionId: string) => {
+    const question = questions.find(q => q.id === questionId);
+    if (!question || !question.question.trim()) {
+      toast.error("Сначала заполните вопрос");
+      return;
+    }
+
+    const filledOptions = question.options.filter(o => o.text.trim());
+    if (filledOptions.length < 2) {
+      toast.error("Добавьте минимум 2 варианта ответа");
+      return;
+    }
+
+    setGeneratingExplanationId(questionId);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-explanation", {
+        body: {
+          question: question.question,
+          options: question.options.map(o => o.text),
+          correctAnswer: question.correct_answer,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data.explanation) {
+        updateQuestion(questionId, { explanation: data.explanation });
+        toast.success("Пояснение сгенерировано");
+      }
+    } catch (error: any) {
+      console.error("Error generating explanation:", error);
+      toast.error("Ошибка генерации: " + (error.message || "Попробуйте позже"));
+    } finally {
+      setGeneratingExplanationId(null);
     }
   };
 
@@ -355,9 +395,30 @@ export function TestQuestionEditor({
                   
                   {/* Explanation field */}
                   <div className="mt-4 space-y-2">
-                    <Label className="text-xs text-muted-foreground">
-                      Пояснение (показывается при неправильном ответе):
-                    </Label>
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs text-muted-foreground">
+                        Пояснение (показывается при неправильном ответе):
+                      </Label>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs gap-1 text-primary"
+                        onClick={() => generateExplanation(question.id)}
+                        disabled={generatingExplanationId === question.id}
+                      >
+                        {generatingExplanationId === question.id ? (
+                          <>
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            Генерация...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-3 h-3" />
+                            Сгенерировать ИИ
+                          </>
+                        )}
+                      </Button>
+                    </div>
                     <textarea
                       value={question.explanation || ''}
                       onChange={(e) => updateQuestion(question.id, { explanation: e.target.value })}
