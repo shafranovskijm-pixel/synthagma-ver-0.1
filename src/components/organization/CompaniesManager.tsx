@@ -114,6 +114,15 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
   const [isLoadingCourses, setIsLoadingCourses] = useState(false);
   const [isEnrolling, setIsEnrolling] = useState(false);
 
+  // Company detail dialog
+  const [showCompanyDetail, setShowCompanyDetail] = useState(false);
+  const [selectedCompanyForDetail, setSelectedCompanyForDetail] = useState<Company | null>(null);
+
+  const handleOpenCompanyDetail = (company: Company) => {
+    setSelectedCompanyForDetail(company);
+    setShowCompanyDetail(true);
+  };
+
   const fetchCompanies = async () => {
     setIsLoading(true);
     try {
@@ -771,23 +780,23 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
                 <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">
                   Дата создания
                 </th>
-                <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">
-                  Действия
-                </th>
               </tr>
             </thead>
             <tbody>
               {filteredCompanies.map((company) => (
                 <tr
                   key={company.id}
-                  className="border-b border-border last:border-0 hover:bg-secondary/50 transition-colors"
+                  className="border-b border-border last:border-0 hover:bg-secondary/50 transition-colors cursor-pointer"
+                  onClick={() => handleOpenCompanyDetail(company)}
                 >
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
                         <Building2 className="w-4 h-4 text-primary" />
                       </div>
-                      <span className="font-medium">{company.name}</span>
+                      <span className="font-medium hover:text-primary transition-colors">
+                        {company.name}
+                      </span>
                     </div>
                   </td>
                   <td className="px-6 py-4 text-sm text-muted-foreground">
@@ -802,70 +811,117 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
                   <td className="px-6 py-4 text-sm text-muted-foreground">
                     {new Date(company.created_at).toLocaleDateString("ru-RU")}
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="rounded-lg"
-                        onClick={() => handleViewStudents(company)}
-                        title="Просмотр учеников"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="rounded-lg text-sigma-green hover:text-sigma-green"
-                        onClick={() => handleOpenBulkAssign(company)}
-                        title="Назначить учеников"
-                      >
-                        <UserPlus className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="rounded-lg text-blue-500 hover:text-blue-500"
-                        onClick={() => handleOpenLinkDialog(company)}
-                        title="Ссылки для регистрации"
-                      >
-                        <Link2 className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="rounded-lg text-purple-500 hover:text-purple-500"
-                        onClick={() => handleOpenBulkEnroll(company)}
-                        title="Назначить на курсы"
-                      >
-                        <BookOpen className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="rounded-lg"
-                        onClick={() => handleEdit(company)}
-                        title="Редактировать"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="rounded-lg text-destructive hover:text-destructive"
-                        onClick={() => handleDeleteClick(company)}
-                        title="Удалить"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       )}
+
+      {/* Company Detail Dialog */}
+      <Dialog open={showCompanyDetail} onOpenChange={setShowCompanyDetail}>
+        <DialogContent className="rounded-2xl max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="font-display flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Building2 className="w-5 h-5 text-primary" />
+              </div>
+              {selectedCompanyForDetail?.name}
+            </DialogTitle>
+            <DialogDescription>
+              {selectedCompanyForDetail?.inn && `ИНН: ${selectedCompanyForDetail.inn}`}
+              {!selectedCompanyForDetail?.inn && "Управление компанией"}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4 space-y-4">
+            {/* Stats */}
+            <div className="flex gap-4">
+              <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 rounded-lg">
+                <Users className="w-4 h-4 text-primary" />
+                <span className="text-sm font-medium">{selectedCompanyForDetail?.studentsCount || 0} учеников</span>
+              </div>
+              <div className="text-sm text-muted-foreground flex items-center">
+                Создана: {selectedCompanyForDetail && new Date(selectedCompanyForDetail.created_at).toLocaleDateString("ru-RU")}
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                variant="outline"
+                className="rounded-xl gap-2 h-auto py-4 flex-col"
+                onClick={() => {
+                  setShowCompanyDetail(false);
+                  if (selectedCompanyForDetail) handleViewStudents(selectedCompanyForDetail);
+                }}
+              >
+                <Eye className="w-5 h-5" />
+                <span>Просмотр учеников</span>
+              </Button>
+              <Button
+                variant="outline"
+                className="rounded-xl gap-2 h-auto py-4 flex-col text-sigma-green hover:text-sigma-green"
+                onClick={() => {
+                  setShowCompanyDetail(false);
+                  if (selectedCompanyForDetail) handleOpenBulkAssign(selectedCompanyForDetail);
+                }}
+              >
+                <UserPlus className="w-5 h-5" />
+                <span>Назначить учеников</span>
+              </Button>
+              <Button
+                variant="outline"
+                className="rounded-xl gap-2 h-auto py-4 flex-col text-blue-500 hover:text-blue-500"
+                onClick={() => {
+                  setShowCompanyDetail(false);
+                  if (selectedCompanyForDetail) handleOpenLinkDialog(selectedCompanyForDetail);
+                }}
+              >
+                <Link2 className="w-5 h-5" />
+                <span>Ссылки регистрации</span>
+              </Button>
+              <Button
+                variant="outline"
+                className="rounded-xl gap-2 h-auto py-4 flex-col text-purple-500 hover:text-purple-500"
+                onClick={() => {
+                  setShowCompanyDetail(false);
+                  if (selectedCompanyForDetail) handleOpenBulkEnroll(selectedCompanyForDetail);
+                }}
+              >
+                <BookOpen className="w-5 h-5" />
+                <span>Назначить на курсы</span>
+              </Button>
+            </div>
+
+            {/* Edit & Delete */}
+            <div className="flex gap-3 pt-4 border-t border-border">
+              <Button
+                variant="outline"
+                className="flex-1 rounded-xl gap-2"
+                onClick={() => {
+                  setShowCompanyDetail(false);
+                  if (selectedCompanyForDetail) handleEdit(selectedCompanyForDetail);
+                }}
+              >
+                <Edit className="w-4 h-4" />
+                Редактировать
+              </Button>
+              <Button
+                variant="outline"
+                className="rounded-xl gap-2 text-destructive hover:text-destructive"
+                onClick={() => {
+                  setShowCompanyDetail(false);
+                  if (selectedCompanyForDetail) handleDeleteClick(selectedCompanyForDetail);
+                }}
+              >
+                <Trash2 className="w-4 h-4" />
+                Удалить
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Create Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
