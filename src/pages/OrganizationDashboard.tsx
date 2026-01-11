@@ -2785,8 +2785,8 @@ export default function OrganizationDashboard() {
           )}
 
           {/* Services Tab */}
-          {activeTab === "services" && (
-            <ServicesManager />
+          {activeTab === "services" && organizationId && (
+            <ServicesManager organizationId={organizationId} />
           )}
 
           {/* Settings Tab */}

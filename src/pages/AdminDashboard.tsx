@@ -4,10 +4,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
-import { LogOut, Building2, Users, Shield, BarChart3 } from "lucide-react";
+import { LogOut, Building2, Users, Shield, BarChart3, ShoppingBag } from "lucide-react";
 import { OrganizationsManager } from "@/components/admin/OrganizationsManager";
 import { UsersManager } from "@/components/admin/UsersManager";
 import { AdminAnalytics } from "@/components/admin/AdminAnalytics";
+import { ServiceOrdersManager } from "@/components/admin/ServiceOrdersManager";
 
 const AdminDashboard = () => {
   const { user, signOut } = useAuth();
@@ -47,7 +48,7 @@ const AdminDashboard = () => {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full max-w-lg grid-cols-3">
+          <TabsList className="grid w-full max-w-2xl grid-cols-4">
             <TabsTrigger value="analytics" className="flex items-center gap-2">
               <BarChart3 className="w-4 h-4" />
               Аналитика
@@ -55,6 +56,10 @@ const AdminDashboard = () => {
             <TabsTrigger value="organizations" className="flex items-center gap-2">
               <Building2 className="w-4 h-4" />
               Организации
+            </TabsTrigger>
+            <TabsTrigger value="orders" className="flex items-center gap-2">
+              <ShoppingBag className="w-4 h-4" />
+              Заявки
             </TabsTrigger>
             <TabsTrigger value="users" className="flex items-center gap-2">
               <Users className="w-4 h-4" />
@@ -68,6 +73,10 @@ const AdminDashboard = () => {
 
           <TabsContent value="organizations" className="space-y-6">
             <OrganizationsManager />
+          </TabsContent>
+
+          <TabsContent value="orders" className="space-y-6">
+            <ServiceOrdersManager />
           </TabsContent>
 
           <TabsContent value="users" className="space-y-6">
