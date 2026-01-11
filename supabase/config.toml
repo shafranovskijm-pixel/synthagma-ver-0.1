@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.generate-lesson-content]
 verify_jwt = false
+
+[functions.create-org-user]
+verify_jwt = false
