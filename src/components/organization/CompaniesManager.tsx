@@ -38,12 +38,18 @@ import {
   Upload,
   Download,
   X,
+  CalendarDays,
+  Clock,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import * as XLSX from "xlsx";
 import { Progress } from "@/components/ui/progress";
 import { DocumentDropZone } from "./DocumentDropZone";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format } from "date-fns";
+import { ru } from "date-fns/locale";
 
 interface Company {
   id: string;
@@ -69,11 +75,21 @@ interface CompanyStudent {
   user_id: string;
   full_name: string;
   email: string;
+  created_at: string;
   enrollments: {
     course_title: string;
     progress: number;
     status: string;
   }[];
+}
+
+interface LinkStudent {
+  id: string;
+  user_id: string;
+  full_name: string;
+  email: string | null;
+  login: string | null;
+  created_at: string;
 }
 
 interface CompaniesManagerProps {
@@ -145,10 +161,39 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
   const [isUploadingDocument, setIsUploadingDocument] = useState<string | null>(null);
   const [isDeletingDocument, setIsDeletingDocument] = useState<string | null>(null);
 
+  // Students by link tab
+  const [linkStudents, setLinkStudents] = useState<LinkStudent[]>([]);
+  const [isLoadingLinkStudents, setIsLoadingLinkStudents] = useState(false);
+  const [dateFilter, setDateFilter] = useState<{ from: Date | undefined; to: Date | undefined }>({ from: undefined, to: undefined });
+  const [linkStudentSearchQuery, setLinkStudentSearchQuery] = useState("");
+
   const handleOpenCompanyDetail = async (company: Company) => {
     setSelectedCompanyForDetail(company);
     setShowCompanyDetail(true);
-    await fetchCompanyDocuments(company.id);
+    setDateFilter({ from: undefined, to: undefined });
+    setLinkStudentSearchQuery("");
+    await Promise.all([
+      fetchCompanyDocuments(company.id),
+      fetchLinkStudents(company.id)
+    ]);
+  };
+
+  const fetchLinkStudents = async (companyId: string) => {
+    setIsLoadingLinkStudents(true);
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, user_id, full_name, email, login, created_at")
+        .eq("company_id", companyId)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setLinkStudents((data || []) as LinkStudent[]);
+    } catch (error) {
+      console.error("Error fetching link students:", error);
+    } finally {
+      setIsLoadingLinkStudents(false);
+    }
   };
 
   const fetchCompanyDocuments = async (companyId: string) => {
@@ -432,7 +477,7 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
       // Fetch profiles for this company
       const { data: profiles, error } = await supabase
         .from("profiles")
-        .select("id, user_id, full_name, email")
+        .select("id, user_id, full_name, email, created_at")
         .eq("company_id", company.id);
 
       if (error) throw error;
@@ -467,6 +512,7 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
             user_id: profile.user_id,
             full_name: profile.full_name || "Без имени",
             email: profile.email || "",
+            created_at: profile.created_at,
             enrollments: enrollmentsWithTitles,
           };
         })
@@ -1093,8 +1139,12 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
           </div>
 
           {/* Tabs Content */}
-          <Tabs defaultValue="actions" className="flex-1 overflow-hidden flex flex-col">
+          <Tabs defaultValue="students" className="flex-1 overflow-hidden flex flex-col">
             <TabsList className="w-full justify-start rounded-none border-b border-border bg-transparent px-6 h-12">
+              <TabsTrigger value="students" className="rounded-lg data-[state=active]:bg-primary/10">
+                <Users className="w-4 h-4 mr-2" />
+                Ученики
+              </TabsTrigger>
               <TabsTrigger value="actions" className="rounded-lg data-[state=active]:bg-primary/10">
                 Действия
               </TabsTrigger>
@@ -1107,6 +1157,178 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
             </TabsList>
 
             <div className="flex-1 overflow-y-auto p-6">
+              {/* Students Tab */}
+              <TabsContent value="students" className="m-0 space-y-4">
+                {/* Date filter and search */}
+                <div className="flex flex-wrap gap-3 items-center">
+                  <div className="relative flex-1 min-w-[200px]">
+                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      placeholder="Поиск по имени или email..."
+                      value={linkStudentSearchQuery}
+                      onChange={(e) => setLinkStudentSearchQuery(e.target.value)}
+                      className="pl-10 rounded-xl"
+                    />
+                  </div>
+                  
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="rounded-xl gap-2 min-w-[180px] justify-start">
+                        <CalendarDays className="w-4 h-4" />
+                        {dateFilter.from ? (
+                          dateFilter.to ? (
+                            <>
+                              {format(dateFilter.from, "dd.MM.yy", { locale: ru })} - {format(dateFilter.to, "dd.MM.yy", { locale: ru })}
+                            </>
+                          ) : (
+                            format(dateFilter.from, "dd MMM yyyy", { locale: ru })
+                          )
+                        ) : (
+                          "Дата регистрации"
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0 z-[100]" align="start">
+                      <CalendarComponent
+                        mode="range"
+                        selected={{ from: dateFilter.from, to: dateFilter.to }}
+                        onSelect={(range) => setDateFilter({ from: range?.from, to: range?.to })}
+                        locale={ru}
+                        numberOfMonths={2}
+                      />
+                      {(dateFilter.from || dateFilter.to) && (
+                        <div className="p-3 border-t border-border">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="w-full"
+                            onClick={() => setDateFilter({ from: undefined, to: undefined })}
+                          >
+                            Сбросить фильтр
+                          </Button>
+                        </div>
+                      )}
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                {/* Stats */}
+                <div className="flex gap-4">
+                  <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 rounded-lg">
+                    <Users className="w-4 h-4 text-primary" />
+                    <span className="text-sm font-medium">
+                      {(() => {
+                        const filtered = linkStudents.filter(s => {
+                          const matchesSearch = (s.full_name || "").toLowerCase().includes(linkStudentSearchQuery.toLowerCase()) ||
+                            (s.email || "").toLowerCase().includes(linkStudentSearchQuery.toLowerCase()) ||
+                            (s.login || "").toLowerCase().includes(linkStudentSearchQuery.toLowerCase());
+                          
+                          if (!dateFilter.from) return matchesSearch;
+                          
+                          const studentDate = new Date(s.created_at);
+                          const fromDate = new Date(dateFilter.from);
+                          fromDate.setHours(0, 0, 0, 0);
+                          
+                          if (dateFilter.to) {
+                            const toDate = new Date(dateFilter.to);
+                            toDate.setHours(23, 59, 59, 999);
+                            return matchesSearch && studentDate >= fromDate && studentDate <= toDate;
+                          }
+                          
+                          return matchesSearch && studentDate >= fromDate;
+                        });
+                        return filtered.length;
+                      })()} учеников
+                    </span>
+                  </div>
+                </div>
+
+                {/* Students List */}
+                {isLoadingLinkStudents ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                  </div>
+                ) : linkStudents.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>Нет учеников в этой компании</p>
+                  </div>
+                ) : (
+                  <div className="bg-card border border-border rounded-xl overflow-hidden">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-border bg-secondary/50">
+                          <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">ФИО</th>
+                          <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">Email / Логин</th>
+                          <th className="text-left px-4 py-3 text-sm font-medium text-muted-foreground">
+                            <div className="flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              Дата регистрации
+                            </div>
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {linkStudents
+                          .filter(s => {
+                            const matchesSearch = (s.full_name || "").toLowerCase().includes(linkStudentSearchQuery.toLowerCase()) ||
+                              (s.email || "").toLowerCase().includes(linkStudentSearchQuery.toLowerCase()) ||
+                              (s.login || "").toLowerCase().includes(linkStudentSearchQuery.toLowerCase());
+                            
+                            if (!dateFilter.from) return matchesSearch;
+                            
+                            const studentDate = new Date(s.created_at);
+                            const fromDate = new Date(dateFilter.from);
+                            fromDate.setHours(0, 0, 0, 0);
+                            
+                            if (dateFilter.to) {
+                              const toDate = new Date(dateFilter.to);
+                              toDate.setHours(23, 59, 59, 999);
+                              return matchesSearch && studentDate >= fromDate && studentDate <= toDate;
+                            }
+                            
+                            return matchesSearch && studentDate >= fromDate;
+                          })
+                          .map((student) => (
+                            <tr key={student.id} className="border-b border-border last:border-0 hover:bg-secondary/50 transition-colors">
+                              <td className="px-4 py-3">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                    <Users className="w-4 h-4 text-primary" />
+                                  </div>
+                                  <span className="font-medium">{student.full_name || "Без имени"}</span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-sm">
+                                {student.email ? (
+                                  <div className="flex items-center gap-1 text-muted-foreground">
+                                    <Mail className="w-3 h-3" />
+                                    {student.email}
+                                  </div>
+                                ) : student.login ? (
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                                      {student.login}
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <span className="text-muted-foreground">—</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-muted-foreground">
+                                <div className="flex items-center gap-1">
+                                  <Calendar className="w-3 h-3" />
+                                  {format(new Date(student.created_at), "dd MMM yyyy, HH:mm", { locale: ru })}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </TabsContent>
+
               {/* Actions Tab */}
               <TabsContent value="actions" className="m-0 space-y-4">
                 <div className="grid grid-cols-2 gap-3">
@@ -1630,6 +1852,10 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
                           <div className="text-sm text-muted-foreground flex items-center gap-1">
                             <Mail className="w-3 h-3" />
                             {student.email}
+                          </div>
+                          <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                            <Calendar className="w-3 h-3" />
+                            Регистрация: {format(new Date(student.created_at), "dd MMM yyyy", { locale: ru })}
                           </div>
                         </div>
                         <span className="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full">
