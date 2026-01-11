@@ -28,7 +28,15 @@ import {
   Link2,
   Copy,
   BookOpen,
+  FileText,
+  Receipt,
+  FileCheck,
+  BarChart3,
+  TrendingUp,
+  Calendar,
+  ChevronRight,
 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import * as XLSX from "xlsx";
 import { Progress } from "@/components/ui/progress";
@@ -820,106 +828,279 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
 
       {/* Company Detail Dialog */}
       <Dialog open={showCompanyDetail} onOpenChange={setShowCompanyDetail}>
-        <DialogContent className="rounded-2xl max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="font-display flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Building2 className="w-5 h-5 text-primary" />
+        <DialogContent className="rounded-2xl max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-6 border-b border-border">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-primary/20 flex items-center justify-center">
+                  <Building2 className="w-7 h-7 text-primary" />
+                </div>
+                <div>
+                  <h2 className="font-display text-xl font-bold">{selectedCompanyForDetail?.name}</h2>
+                  <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
+                    {selectedCompanyForDetail?.inn && (
+                      <span>ИНН: {selectedCompanyForDetail.inn}</span>
+                    )}
+                    <span className="flex items-center gap-1">
+                      <Calendar className="w-3 h-3" />
+                      {selectedCompanyForDetail && new Date(selectedCompanyForDetail.created_at).toLocaleDateString("ru-RU")}
+                    </span>
+                  </div>
+                </div>
               </div>
-              {selectedCompanyForDetail?.name}
-            </DialogTitle>
-            <DialogDescription>
-              {selectedCompanyForDetail?.inn && `ИНН: ${selectedCompanyForDetail.inn}`}
-              {!selectedCompanyForDetail?.inn && "Управление компанией"}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="py-4 space-y-4">
-            {/* Stats */}
-            <div className="flex gap-4">
-              <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 rounded-lg">
-                <Users className="w-4 h-4 text-primary" />
-                <span className="text-sm font-medium">{selectedCompanyForDetail?.studentsCount || 0} учеников</span>
-              </div>
-              <div className="text-sm text-muted-foreground flex items-center">
-                Создана: {selectedCompanyForDetail && new Date(selectedCompanyForDetail.created_at).toLocaleDateString("ru-RU")}
+              <div className="flex gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="rounded-xl"
+                  onClick={() => {
+                    setShowCompanyDetail(false);
+                    if (selectedCompanyForDetail) handleEdit(selectedCompanyForDetail);
+                  }}
+                >
+                  <Edit className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="rounded-xl text-destructive hover:text-destructive"
+                  onClick={() => {
+                    setShowCompanyDetail(false);
+                    if (selectedCompanyForDetail) handleDeleteClick(selectedCompanyForDetail);
+                  }}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
               </div>
             </div>
 
-            {/* Actions */}
-            <div className="grid grid-cols-2 gap-3">
-              <Button
-                variant="outline"
-                className="rounded-xl gap-2 h-auto py-4 flex-col"
-                onClick={() => {
-                  setShowCompanyDetail(false);
-                  if (selectedCompanyForDetail) handleViewStudents(selectedCompanyForDetail);
-                }}
-              >
-                <Eye className="w-5 h-5" />
-                <span>Просмотр учеников</span>
-              </Button>
-              <Button
-                variant="outline"
-                className="rounded-xl gap-2 h-auto py-4 flex-col text-sigma-green hover:text-sigma-green"
-                onClick={() => {
-                  setShowCompanyDetail(false);
-                  if (selectedCompanyForDetail) handleOpenBulkAssign(selectedCompanyForDetail);
-                }}
-              >
-                <UserPlus className="w-5 h-5" />
-                <span>Назначить учеников</span>
-              </Button>
-              <Button
-                variant="outline"
-                className="rounded-xl gap-2 h-auto py-4 flex-col text-blue-500 hover:text-blue-500"
-                onClick={() => {
-                  setShowCompanyDetail(false);
-                  if (selectedCompanyForDetail) handleOpenLinkDialog(selectedCompanyForDetail);
-                }}
-              >
-                <Link2 className="w-5 h-5" />
-                <span>Ссылки регистрации</span>
-              </Button>
-              <Button
-                variant="outline"
-                className="rounded-xl gap-2 h-auto py-4 flex-col text-purple-500 hover:text-purple-500"
-                onClick={() => {
-                  setShowCompanyDetail(false);
-                  if (selectedCompanyForDetail) handleOpenBulkEnroll(selectedCompanyForDetail);
-                }}
-              >
-                <BookOpen className="w-5 h-5" />
-                <span>Назначить на курсы</span>
-              </Button>
-            </div>
-
-            {/* Edit & Delete */}
-            <div className="flex gap-3 pt-4 border-t border-border">
-              <Button
-                variant="outline"
-                className="flex-1 rounded-xl gap-2"
-                onClick={() => {
-                  setShowCompanyDetail(false);
-                  if (selectedCompanyForDetail) handleEdit(selectedCompanyForDetail);
-                }}
-              >
-                <Edit className="w-4 h-4" />
-                Редактировать
-              </Button>
-              <Button
-                variant="outline"
-                className="rounded-xl gap-2 text-destructive hover:text-destructive"
-                onClick={() => {
-                  setShowCompanyDetail(false);
-                  if (selectedCompanyForDetail) handleDeleteClick(selectedCompanyForDetail);
-                }}
-              >
-                <Trash2 className="w-4 h-4" />
-                Удалить
-              </Button>
+            {/* Stats Row */}
+            <div className="grid grid-cols-4 gap-3 mt-5">
+              <div className="bg-card/80 backdrop-blur rounded-xl p-3 border border-border">
+                <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
+                  <Users className="w-3.5 h-3.5" />
+                  Ученики
+                </div>
+                <div className="text-xl font-bold">{selectedCompanyForDetail?.studentsCount || 0}</div>
+              </div>
+              <div className="bg-card/80 backdrop-blur rounded-xl p-3 border border-border">
+                <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
+                  <BookOpen className="w-3.5 h-3.5" />
+                  Курсов
+                </div>
+                <div className="text-xl font-bold">—</div>
+              </div>
+              <div className="bg-card/80 backdrop-blur rounded-xl p-3 border border-border">
+                <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
+                  <TrendingUp className="w-3.5 h-3.5" />
+                  Прогресс
+                </div>
+                <div className="text-xl font-bold">—%</div>
+              </div>
+              <div className="bg-card/80 backdrop-blur rounded-xl p-3 border border-border">
+                <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
+                  <GraduationCap className="w-3.5 h-3.5" />
+                  Завершили
+                </div>
+                <div className="text-xl font-bold">—</div>
+              </div>
             </div>
           </div>
+
+          {/* Tabs Content */}
+          <Tabs defaultValue="actions" className="flex-1 overflow-hidden flex flex-col">
+            <TabsList className="w-full justify-start rounded-none border-b border-border bg-transparent px-6 h-12">
+              <TabsTrigger value="actions" className="rounded-lg data-[state=active]:bg-primary/10">
+                Действия
+              </TabsTrigger>
+              <TabsTrigger value="documents" className="rounded-lg data-[state=active]:bg-primary/10">
+                Документы
+              </TabsTrigger>
+              <TabsTrigger value="stats" className="rounded-lg data-[state=active]:bg-primary/10">
+                Статистика
+              </TabsTrigger>
+            </TabsList>
+
+            <div className="flex-1 overflow-y-auto p-6">
+              {/* Actions Tab */}
+              <TabsContent value="actions" className="m-0 space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    className="flex items-center gap-4 p-4 rounded-xl border border-border bg-card hover:bg-secondary/50 transition-all text-left group"
+                    onClick={() => {
+                      setShowCompanyDetail(false);
+                      if (selectedCompanyForDetail) handleViewStudents(selectedCompanyForDetail);
+                    }}
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                      <Eye className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-medium">Просмотр учеников</div>
+                      <div className="text-xs text-muted-foreground">Список и прогресс</div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                  </button>
+
+                  <button
+                    className="flex items-center gap-4 p-4 rounded-xl border border-border bg-card hover:bg-secondary/50 transition-all text-left group"
+                    onClick={() => {
+                      setShowCompanyDetail(false);
+                      if (selectedCompanyForDetail) handleOpenBulkAssign(selectedCompanyForDetail);
+                    }}
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-sigma-green/10 flex items-center justify-center group-hover:bg-sigma-green/20 transition-colors">
+                      <UserPlus className="w-5 h-5 text-sigma-green" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-medium">Назначить учеников</div>
+                      <div className="text-xs text-muted-foreground">Добавить в компанию</div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                  </button>
+
+                  <button
+                    className="flex items-center gap-4 p-4 rounded-xl border border-border bg-card hover:bg-secondary/50 transition-all text-left group"
+                    onClick={() => {
+                      setShowCompanyDetail(false);
+                      if (selectedCompanyForDetail) handleOpenLinkDialog(selectedCompanyForDetail);
+                    }}
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
+                      <Link2 className="w-5 h-5 text-blue-500" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-medium">Ссылки регистрации</div>
+                      <div className="text-xs text-muted-foreground">Приглашения учеников</div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                  </button>
+
+                  <button
+                    className="flex items-center gap-4 p-4 rounded-xl border border-border bg-card hover:bg-secondary/50 transition-all text-left group"
+                    onClick={() => {
+                      setShowCompanyDetail(false);
+                      if (selectedCompanyForDetail) handleOpenBulkEnroll(selectedCompanyForDetail);
+                    }}
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center group-hover:bg-purple-500/20 transition-colors">
+                      <BookOpen className="w-5 h-5 text-purple-500" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-medium">Назначить на курсы</div>
+                      <div className="text-xs text-muted-foreground">Массовое зачисление</div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                  </button>
+                </div>
+              </TabsContent>
+
+              {/* Documents Tab */}
+              <TabsContent value="documents" className="m-0 space-y-4">
+                <div className="space-y-3">
+                  <button
+                    className="w-full flex items-center gap-4 p-4 rounded-xl border border-border bg-card hover:bg-secondary/50 transition-all text-left group"
+                    onClick={() => toast.info("Функция в разработке")}
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center">
+                      <FileText className="w-6 h-6 text-orange-500" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-medium">Договор</div>
+                      <div className="text-sm text-muted-foreground">Договор на оказание образовательных услуг</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">Не загружен</span>
+                      <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                    </div>
+                  </button>
+
+                  <button
+                    className="w-full flex items-center gap-4 p-4 rounded-xl border border-border bg-card hover:bg-secondary/50 transition-all text-left group"
+                    onClick={() => toast.info("Функция в разработке")}
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                      <Receipt className="w-6 h-6 text-blue-500" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-medium">Счёт</div>
+                      <div className="text-sm text-muted-foreground">Счёт на оплату обучения</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">Не загружен</span>
+                      <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                    </div>
+                  </button>
+
+                  <button
+                    className="w-full flex items-center gap-4 p-4 rounded-xl border border-border bg-card hover:bg-secondary/50 transition-all text-left group"
+                    onClick={() => toast.info("Функция в разработке")}
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-sigma-green/10 flex items-center justify-center">
+                      <FileCheck className="w-6 h-6 text-sigma-green" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-medium">Акт</div>
+                      <div className="text-sm text-muted-foreground">Акт выполненных работ</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">Не загружен</span>
+                      <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                    </div>
+                  </button>
+                </div>
+
+                <div className="pt-4 border-t border-border">
+                  <Button variant="outline" className="w-full rounded-xl gap-2">
+                    <Plus className="w-4 h-4" />
+                    Загрузить документ
+                  </Button>
+                </div>
+              </TabsContent>
+
+              {/* Stats Tab */}
+              <TabsContent value="stats" className="m-0 space-y-4">
+                <div className="bg-secondary/30 rounded-xl p-6 text-center">
+                  <BarChart3 className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-50" />
+                  <h3 className="font-medium mb-2">Статистика обучения</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Детальная статистика по курсам и прогрессу учеников компании
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    className="rounded-xl gap-2"
+                    onClick={() => {
+                      setShowCompanyDetail(false);
+                      if (selectedCompanyForDetail) handleViewStudents(selectedCompanyForDetail);
+                    }}
+                  >
+                    <Eye className="w-4 h-4" />
+                    Посмотреть учеников
+                  </Button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-card border border-border rounded-xl p-4">
+                    <div className="text-sm text-muted-foreground mb-2">Всего зачислений</div>
+                    <div className="text-2xl font-bold">—</div>
+                  </div>
+                  <div className="bg-card border border-border rounded-xl p-4">
+                    <div className="text-sm text-muted-foreground mb-2">Средний прогресс</div>
+                    <div className="text-2xl font-bold">—%</div>
+                  </div>
+                  <div className="bg-card border border-border rounded-xl p-4">
+                    <div className="text-sm text-muted-foreground mb-2">Завершённых курсов</div>
+                    <div className="text-2xl font-bold">—</div>
+                  </div>
+                  <div className="bg-card border border-border rounded-xl p-4">
+                    <div className="text-sm text-muted-foreground mb-2">Средний балл тестов</div>
+                    <div className="text-2xl font-bold">—</div>
+                  </div>
+                </div>
+              </TabsContent>
+            </div>
+          </Tabs>
         </DialogContent>
       </Dialog>
 
