@@ -785,7 +785,7 @@ export default function OrganizationDashboard() {
                     <Upload className="w-4 h-4" />
                     Импорт из GitHub
                   </Button>
-                  <Button className="btn-gradient rounded-xl gap-2" onClick={() => navigate("/course/new/edit")}>
+                  <Button className="btn-gradient rounded-xl gap-2" onClick={() => navigate("/course-builder")}>
                     <Plus className="w-4 h-4" />
                     Создать курс
                   </Button>

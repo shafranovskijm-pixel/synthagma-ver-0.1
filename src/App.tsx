@@ -12,6 +12,7 @@ import RegisterOrganization from "./pages/RegisterOrganization";
 import StudentDashboard from "./pages/StudentDashboard";
 import OrganizationDashboard from "./pages/OrganizationDashboard";
 import CourseEditor from "./pages/CourseEditor";
+import CourseBuilder from "./pages/CourseBuilder";
 import CourseLearning from "./pages/CourseLearning";
 import JoinByLink from "./pages/JoinByLink";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -44,6 +45,16 @@ const App = () => (
             <Route path="/course/:courseId/edit" element={
               <ProtectedRoute requiredRole="organization">
                 <CourseEditor />
+              </ProtectedRoute>
+            } />
+            <Route path="/course-builder" element={
+              <ProtectedRoute requiredRole="organization">
+                <CourseBuilder />
+              </ProtectedRoute>
+            } />
+            <Route path="/course-builder/:courseId" element={
+              <ProtectedRoute requiredRole="organization">
+                <CourseBuilder />
               </ProtectedRoute>
             } />
             <Route path="/course/:courseId/learn" element={
