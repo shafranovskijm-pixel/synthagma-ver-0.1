@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
+import DOMPurify from "dompurify";
 import {
   ArrowLeft,
   Plus,
@@ -50,6 +51,113 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+
+// Helper function to get embed URL from video content
+const getVideoEmbedUrl = (content: string): string | null => {
+  if (!content) return null;
+  
+  // Check if it's an iframe embed code
+  const iframeSrcMatch = content.match(/<iframe[^>]*src=["']([^"']+)["']/i);
+  if (iframeSrcMatch) {
+    return iframeSrcMatch[1];
+  }
+  
+  // YouTube
+  const youtubeMatch = content.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/);
+  if (youtubeMatch) {
+    return `https://www.youtube.com/embed/${youtubeMatch[1]}`;
+  }
+  
+  // Vimeo
+  const vimeoMatch = content.match(/vimeo\.com\/(?:video\/)?(\d+)/);
+  if (vimeoMatch) {
+    return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
+  }
+  
+  // Rutube
+  const rutubeMatch = content.match(/rutube\.ru\/video\/([a-zA-Z0-9]+)/);
+  if (rutubeMatch) {
+    return `https://rutube.ru/play/embed/${rutubeMatch[1]}`;
+  }
+  
+  // VK Video
+  const vkMatch = content.match(/vk\.com\/video(-?\d+)_(\d+)/);
+  if (vkMatch) {
+    return `https://vk.com/video_ext.php?oid=${vkMatch[1]}&id=${vkMatch[2]}`;
+  }
+  
+  // Одноклассники
+  const okMatch = content.match(/ok\.ru\/video\/(\d+)/);
+  if (okMatch) {
+    return `https://ok.ru/videoembed/${okMatch[1]}`;
+  }
+  
+  // Mail.ru
+  const mailMatch = content.match(/my\.mail\.ru\/video\/embed\/(\d+)/);
+  if (mailMatch) {
+    return `https://my.mail.ru/video/embed/${mailMatch[1]}`;
+  }
+  
+  // Дзен
+  const dzenMatch = content.match(/dzen\.ru\/video\/watch\/([a-zA-Z0-9]+)/);
+  if (dzenMatch) {
+    return `https://dzen.ru/embed/${dzenMatch[1]}`;
+  }
+  
+  // Яндекс Видео
+  const yandexMatch = content.match(/yandex\.ru\/video\/preview\/(\d+)/);
+  if (yandexMatch) {
+    return `https://yandex.ru/video/preview/${yandexMatch[1]}`;
+  }
+  
+  return null;
+};
+
+// Check if content is an iframe embed
+const isIframeEmbed = (content: string): boolean => {
+  return content.trim().startsWith('<iframe');
+};
+
+// Video preview component
+const VideoPreviewInline = ({ content }: { content: string }) => {
+  if (!content) return null;
+  
+  // If it's a full iframe embed code, render it directly
+  if (isIframeEmbed(content)) {
+    const sanitized = DOMPurify.sanitize(content, {
+      ADD_TAGS: ['iframe'],
+      ADD_ATTR: ['allow', 'allowfullscreen', 'frameborder', 'src', 'width', 'height', 'title', 'referrerpolicy']
+    });
+    return (
+      <div 
+        className="aspect-video w-full rounded-xl overflow-hidden bg-muted"
+        dangerouslySetInnerHTML={{ __html: sanitized }}
+      />
+    );
+  }
+  
+  // Try to get embed URL from link
+  const embedUrl = getVideoEmbedUrl(content);
+  
+  if (embedUrl) {
+    return (
+      <div className="aspect-video w-full rounded-xl overflow-hidden bg-muted">
+        <iframe
+          src={embedUrl}
+          className="w-full h-full"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+        />
+      </div>
+    );
+  }
+  
+  return (
+    <div className="aspect-video w-full rounded-xl overflow-hidden bg-muted flex items-center justify-center">
+      <p className="text-sm text-muted-foreground">Неподдерживаемый формат видео</p>
+    </div>
+  );
+};
 
 type LessonType = "text" | "video" | "image" | "test" | "audio";
 
@@ -420,16 +528,21 @@ function SortableLessonItem({
           )}
           {lesson.type === "video" && (
             <div className="space-y-3">
-              <Input
-                value={lesson.content}
-                onChange={(e) => onUpdate({ content: e.target.value })}
-                placeholder="Вставьте ссылку на видео (YouTube, Vimeo и др.)"
-                className="rounded-xl"
-              />
-              <div className="border-2 border-dashed border-border rounded-xl p-8 text-center">
-                <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">Или загрузите видеофайл</p>
+              <div className="space-y-2">
+                <Label>Ссылка на видео или код для встраивания</Label>
+                <Textarea
+                  value={lesson.content || ''}
+                  onChange={(e) => onUpdate({ content: e.target.value })}
+                  placeholder="Вставьте ссылку (YouTube, Vimeo, Rutube, VK Video, Дзен и др.) или код iframe для встраивания"
+                  className="rounded-xl min-h-[100px] font-mono text-sm"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Поддерживаются: YouTube, Vimeo, Rutube, VK Video, Одноклассники, Mail.ru, Дзен, Яндекс Видео
+                </p>
               </div>
+              {lesson.content && (
+                <VideoPreviewInline content={lesson.content} />
+              )}
             </div>
           )}
           {lesson.type === "audio" && (
