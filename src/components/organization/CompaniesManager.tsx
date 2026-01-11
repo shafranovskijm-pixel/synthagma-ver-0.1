@@ -23,7 +23,10 @@ import {
   Eye,
   Mail,
   GraduationCap,
+  UserPlus,
+  Check,
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import * as XLSX from "xlsx";
 import { Progress } from "@/components/ui/progress";
 
@@ -80,6 +83,16 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
   const [companyStudents, setCompanyStudents] = useState<CompanyStudent[]>([]);
   const [isLoadingStudents, setIsLoadingStudents] = useState(false);
   const [studentSearchQuery, setStudentSearchQuery] = useState("");
+
+  // Bulk assign students dialog
+  const [showBulkAssignDialog, setShowBulkAssignDialog] = useState(false);
+  const [selectedCompanyForAssign, setSelectedCompanyForAssign] = useState<Company | null>(null);
+  const [availableStudents, setAvailableStudents] = useState<{ id: string; user_id: string; full_name: string; email: string; company_id: string | null; company_name: string | null }[]>([]);
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+  const [isLoadingAvailableStudents, setIsLoadingAvailableStudents] = useState(false);
+  const [isAssigning, setIsAssigning] = useState(false);
+  const [assignSearchQuery, setAssignSearchQuery] = useState("");
+  const [showOnlyUnassigned, setShowOnlyUnassigned] = useState(false);
 
   const fetchCompanies = async () => {
     setIsLoading(true);
@@ -252,6 +265,106 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
       s.full_name.toLowerCase().includes(studentSearchQuery.toLowerCase()) ||
       s.email.toLowerCase().includes(studentSearchQuery.toLowerCase())
   );
+
+  const handleOpenBulkAssign = async (company: Company) => {
+    setSelectedCompanyForAssign(company);
+    setShowBulkAssignDialog(true);
+    setSelectedStudentIds([]);
+    setAssignSearchQuery("");
+    setShowOnlyUnassigned(false);
+    setIsLoadingAvailableStudents(true);
+
+    try {
+      // Fetch all profiles in this organization
+      const { data: profiles, error } = await supabase
+        .from("profiles")
+        .select("id, user_id, full_name, email, company_id")
+        .eq("organization_id", organizationId);
+
+      if (error) throw error;
+
+      // Get company names for profiles that have a company_id
+      const studentsWithCompanyNames = await Promise.all(
+        (profiles || []).map(async (profile) => {
+          let companyName: string | null = null;
+          if (profile.company_id) {
+            const { data: companyData } = await supabase
+              .from("companies")
+              .select("name")
+              .eq("id", profile.company_id)
+              .single();
+            companyName = companyData?.name || null;
+          }
+          return {
+            id: profile.id,
+            user_id: profile.user_id,
+            full_name: profile.full_name || "Без имени",
+            email: profile.email || "",
+            company_id: profile.company_id,
+            company_name: companyName,
+          };
+        })
+      );
+
+      setAvailableStudents(studentsWithCompanyNames);
+    } catch (error) {
+      console.error("Error fetching available students:", error);
+      toast.error("Ошибка загрузки учеников");
+    } finally {
+      setIsLoadingAvailableStudents(false);
+    }
+  };
+
+  const handleBulkAssign = async () => {
+    if (selectedStudentIds.length === 0 || !selectedCompanyForAssign) {
+      toast.error("Выберите учеников для назначения");
+      return;
+    }
+
+    setIsAssigning(true);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ company_id: selectedCompanyForAssign.id })
+        .in("id", selectedStudentIds);
+
+      if (error) throw error;
+
+      toast.success(`${selectedStudentIds.length} учеников назначены в компанию "${selectedCompanyForAssign.name}"`);
+      setShowBulkAssignDialog(false);
+      setSelectedStudentIds([]);
+      fetchCompanies();
+    } catch (error) {
+      console.error("Error assigning students:", error);
+      toast.error("Ошибка назначения учеников");
+    } finally {
+      setIsAssigning(false);
+    }
+  };
+
+  const toggleStudentSelection = (studentId: string) => {
+    setSelectedStudentIds((prev) =>
+      prev.includes(studentId)
+        ? prev.filter((id) => id !== studentId)
+        : [...prev, studentId]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedStudentIds.length === filteredAvailableStudents.length) {
+      setSelectedStudentIds([]);
+    } else {
+      setSelectedStudentIds(filteredAvailableStudents.map((s) => s.id));
+    }
+  };
+
+  const filteredAvailableStudents = availableStudents.filter((s) => {
+    const matchesSearch =
+      s.full_name.toLowerCase().includes(assignSearchQuery.toLowerCase()) ||
+      s.email.toLowerCase().includes(assignSearchQuery.toLowerCase());
+    const matchesFilter = showOnlyUnassigned ? !s.company_id : true;
+    return matchesSearch && matchesFilter;
+  });
 
   const handleDeleteClick = (company: Company) => {
     setDeletingCompany(company);
@@ -477,6 +590,15 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
                         title="Просмотр учеников"
                       >
                         <Eye className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="rounded-lg text-sigma-green hover:text-sigma-green"
+                        onClick={() => handleOpenBulkAssign(company)}
+                        title="Назначить учеников"
+                      >
+                        <UserPlus className="w-4 h-4" />
                       </Button>
                       <Button
                         variant="ghost"
@@ -796,6 +918,155 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
               onClick={() => setShowStudentsDialog(false)}
             >
               Закрыть
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Assign Students Dialog */}
+      <Dialog open={showBulkAssignDialog} onOpenChange={setShowBulkAssignDialog}>
+        <DialogContent className="rounded-2xl max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="font-display flex items-center gap-2">
+              <UserPlus className="w-5 h-5 text-sigma-green" />
+              Назначить учеников в компанию
+            </DialogTitle>
+            <DialogDescription>
+              Выберите учеников для назначения в «{selectedCompanyForAssign?.name}»
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4 space-y-4 flex-1 overflow-hidden flex flex-col">
+            {/* Search & Filter */}
+            <div className="flex gap-3">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Поиск по имени или email..."
+                  value={assignSearchQuery}
+                  onChange={(e) => setAssignSearchQuery(e.target.value)}
+                  className="pl-10 rounded-xl"
+                />
+              </div>
+              <Button
+                variant={showOnlyUnassigned ? "default" : "outline"}
+                className="rounded-xl gap-2"
+                onClick={() => setShowOnlyUnassigned(!showOnlyUnassigned)}
+              >
+                {showOnlyUnassigned && <Check className="w-4 h-4" />}
+                Без компании
+              </Button>
+            </div>
+
+            {/* Stats */}
+            <div className="flex items-center justify-between">
+              <div className="flex gap-4">
+                <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 rounded-lg">
+                  <Users className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-medium">{filteredAvailableStudents.length} учеников</span>
+                </div>
+                {selectedStudentIds.length > 0 && (
+                  <div className="flex items-center gap-2 px-3 py-2 bg-sigma-green/10 rounded-lg">
+                    <Check className="w-4 h-4 text-sigma-green" />
+                    <span className="text-sm font-medium">{selectedStudentIds.length} выбрано</span>
+                  </div>
+                )}
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-sm"
+                onClick={toggleSelectAll}
+                disabled={filteredAvailableStudents.length === 0}
+              >
+                {selectedStudentIds.length === filteredAvailableStudents.length && filteredAvailableStudents.length > 0
+                  ? "Снять выделение"
+                  : "Выбрать всех"}
+              </Button>
+            </div>
+
+            {/* Students List */}
+            <div className="flex-1 overflow-y-auto border border-border rounded-xl">
+              {isLoadingAvailableStudents ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                </div>
+              ) : filteredAvailableStudents.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>{assignSearchQuery || showOnlyUnassigned ? "Ученики не найдены" : "Нет учеников в организации"}</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-border">
+                  {filteredAvailableStudents.map((student) => {
+                    const isSelected = selectedStudentIds.includes(student.id);
+                    const isAlreadyInCompany = student.company_id === selectedCompanyForAssign?.id;
+                    
+                    return (
+                      <div
+                        key={student.id}
+                        className={`flex items-center gap-4 p-4 hover:bg-secondary/50 transition-colors cursor-pointer ${
+                          isSelected ? "bg-primary/5" : ""
+                        } ${isAlreadyInCompany ? "opacity-50" : ""}`}
+                        onClick={() => !isAlreadyInCompany && toggleStudentSelection(student.id)}
+                      >
+                        <Checkbox
+                          checked={isSelected}
+                          disabled={isAlreadyInCompany}
+                          onCheckedChange={() => !isAlreadyInCompany && toggleStudentSelection(student.id)}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium">{student.full_name}</div>
+                          <div className="text-sm text-muted-foreground flex items-center gap-1">
+                            <Mail className="w-3 h-3" />
+                            {student.email}
+                          </div>
+                        </div>
+                        {student.company_name ? (
+                          <span className={`text-xs px-2 py-1 rounded-full ${
+                            isAlreadyInCompany 
+                              ? "bg-sigma-green/10 text-sigma-green" 
+                              : "bg-muted text-muted-foreground"
+                          }`}>
+                            {isAlreadyInCompany ? "Уже в этой компании" : student.company_name}
+                          </span>
+                        ) : (
+                          <span className="text-xs px-2 py-1 rounded-full bg-orange-500/10 text-orange-500">
+                            Без компании
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex justify-between pt-4 border-t border-border">
+            <Button
+              variant="outline"
+              className="rounded-xl"
+              onClick={() => setShowBulkAssignDialog(false)}
+            >
+              Отмена
+            </Button>
+            <Button
+              className="btn-gradient rounded-xl gap-2"
+              onClick={handleBulkAssign}
+              disabled={selectedStudentIds.length === 0 || isAssigning}
+            >
+              {isAssigning ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Назначение...
+                </>
+              ) : (
+                <>
+                  <UserPlus className="w-4 h-4" />
+                  Назначить ({selectedStudentIds.length})
+                </>
+              )}
             </Button>
           </div>
         </DialogContent>
