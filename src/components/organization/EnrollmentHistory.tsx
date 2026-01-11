@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, UserPlus, UserMinus, History, FileSpreadsheet, Filter, X, Calendar } from "lucide-react";
+import { Loader2, UserPlus, UserMinus, History, FileSpreadsheet, Filter, X, Calendar, BarChart3 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,16 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from "recharts";
 
 interface EnrollmentHistoryItem {
   id: string;
@@ -39,6 +49,7 @@ interface EnrollmentHistoryProps {
 export function EnrollmentHistory({ courseId, organizationId, courseName }: EnrollmentHistoryProps) {
   const [history, setHistory] = useState<EnrollmentHistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showChart, setShowChart] = useState(false);
   
   // Filters
   const [selectedAction, setSelectedAction] = useState<string>("all");
@@ -52,7 +63,6 @@ export function EnrollmentHistory({ courseId, organizationId, courseName }: Enro
   const fetchHistory = async () => {
     setIsLoading(true);
     try {
-      // Fetch history
       const { data: historyData, error } = await supabase
         .from("enrollment_history")
         .select("*")
@@ -62,7 +72,6 @@ export function EnrollmentHistory({ courseId, organizationId, courseName }: Enro
 
       if (error) throw error;
 
-      // Fetch profiles for user names
       const { data: profiles } = await supabase
         .from("profiles")
         .select("user_id, full_name, email")
@@ -90,12 +99,10 @@ export function EnrollmentHistory({ courseId, organizationId, courseName }: Enro
   // Filtered data
   const filteredHistory = useMemo(() => {
     return history.filter(item => {
-      // Action filter
       if (selectedAction !== "all" && item.action !== selectedAction) {
         return false;
       }
       
-      // Date from filter
       if (dateFrom) {
         const itemDate = new Date(item.created_at);
         const fromDate = new Date(dateFrom);
@@ -103,7 +110,6 @@ export function EnrollmentHistory({ courseId, organizationId, courseName }: Enro
         if (itemDate < fromDate) return false;
       }
       
-      // Date to filter
       if (dateTo) {
         const itemDate = new Date(item.created_at);
         const toDate = new Date(dateTo);
@@ -114,6 +120,30 @@ export function EnrollmentHistory({ courseId, organizationId, courseName }: Enro
       return true;
     });
   }, [history, selectedAction, dateFrom, dateTo]);
+
+  // Chart data - aggregate by date
+  const chartData = useMemo(() => {
+    const dateMap = new Map<string, { date: string; enrolled: number; unenrolled: number }>();
+    
+    filteredHistory.forEach(item => {
+      const dateKey = format(new Date(item.created_at), "dd.MM", { locale: ru });
+      const fullDate = format(new Date(item.created_at), "dd MMM", { locale: ru });
+      
+      if (!dateMap.has(dateKey)) {
+        dateMap.set(dateKey, { date: fullDate, enrolled: 0, unenrolled: 0 });
+      }
+      
+      const entry = dateMap.get(dateKey)!;
+      if (item.action === "enrolled") {
+        entry.enrolled++;
+      } else {
+        entry.unenrolled++;
+      }
+    });
+    
+    // Sort by date and return as array (reverse to show chronologically)
+    return Array.from(dateMap.values()).reverse();
+  }, [filteredHistory]);
 
   const hasActiveFilters = selectedAction !== "all" || dateFrom || dateTo;
 
@@ -166,7 +196,6 @@ export function EnrollmentHistory({ courseId, organizationId, courseName }: Enro
       <div className="flex flex-wrap gap-2 items-center">
         <Filter className="w-4 h-4 text-muted-foreground" />
         
-        {/* Action filter */}
         <Select value={selectedAction} onValueChange={setSelectedAction}>
           <SelectTrigger className="w-[140px] h-8 text-sm">
             <SelectValue placeholder="Тип действия" />
@@ -178,7 +207,6 @@ export function EnrollmentHistory({ courseId, organizationId, courseName }: Enro
           </SelectContent>
         </Select>
 
-        {/* Date from */}
         <Popover>
           <PopoverTrigger asChild>
             <Button variant="outline" size="sm" className="h-8 gap-1.5">
@@ -196,7 +224,6 @@ export function EnrollmentHistory({ courseId, organizationId, courseName }: Enro
           </PopoverContent>
         </Popover>
 
-        {/* Date to */}
         <Popover>
           <PopoverTrigger asChild>
             <Button variant="outline" size="sm" className="h-8 gap-1.5">
@@ -214,7 +241,6 @@ export function EnrollmentHistory({ courseId, organizationId, courseName }: Enro
           </PopoverContent>
         </Popover>
 
-        {/* Reset filters */}
         {hasActiveFilters && (
           <Button
             variant="ghost"
@@ -229,7 +255,16 @@ export function EnrollmentHistory({ courseId, organizationId, courseName }: Enro
 
         <div className="flex-1" />
 
-        {/* Export */}
+        <Button
+          variant={showChart ? "secondary" : "outline"}
+          size="sm"
+          className="h-8 gap-1.5"
+          onClick={() => setShowChart(!showChart)}
+        >
+          <BarChart3 className="w-3.5 h-3.5" />
+          График
+        </Button>
+
         <Button
           variant="outline"
           size="sm"
@@ -247,6 +282,55 @@ export function EnrollmentHistory({ courseId, organizationId, courseName }: Enro
         <p className="text-xs text-muted-foreground">
           Найдено: {filteredHistory.length} из {history.length}
         </p>
+      )}
+
+      {/* Chart */}
+      {showChart && chartData.length > 0 && (
+        <div className="bg-muted/30 rounded-xl p-4">
+          <h4 className="text-sm font-medium mb-3">Динамика зачислений</h4>
+          <ResponsiveContainer width="100%" height={180}>
+            <BarChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+              <XAxis 
+                dataKey="date" 
+                tick={{ fontSize: 11 }} 
+                tickLine={false}
+                className="text-muted-foreground"
+              />
+              <YAxis 
+                tick={{ fontSize: 11 }} 
+                tickLine={false}
+                allowDecimals={false}
+                className="text-muted-foreground"
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "hsl(var(--background))",
+                  border: "1px solid hsl(var(--border))",
+                  borderRadius: "8px",
+                  fontSize: "12px",
+                }}
+                labelStyle={{ fontWeight: 600 }}
+              />
+              <Legend 
+                wrapperStyle={{ fontSize: "12px" }}
+                formatter={(value) => value === "enrolled" ? "Зачислено" : "Отчислено"}
+              />
+              <Bar 
+                dataKey="enrolled" 
+                name="enrolled"
+                fill="hsl(142, 76%, 36%)" 
+                radius={[4, 4, 0, 0]}
+              />
+              <Bar 
+                dataKey="unenrolled" 
+                name="unenrolled"
+                fill="hsl(var(--destructive))" 
+                radius={[4, 4, 0, 0]}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       )}
 
       {/* History list */}
