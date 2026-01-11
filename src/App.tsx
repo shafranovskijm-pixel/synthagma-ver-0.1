@@ -11,6 +11,7 @@ import Register from "./pages/Register";
 import RegisterOrganization from "./pages/RegisterOrganization";
 import StudentDashboard from "./pages/StudentDashboard";
 import OrganizationDashboard from "./pages/OrganizationDashboard";
+import CourseEditor from "./pages/CourseEditor";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -35,6 +36,11 @@ const App = () => (
             <Route path="/organization" element={
               <ProtectedRoute requiredRole="organization">
                 <OrganizationDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/course/:courseId/edit" element={
+              <ProtectedRoute requiredRole="organization">
+                <CourseEditor />
               </ProtectedRoute>
             } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

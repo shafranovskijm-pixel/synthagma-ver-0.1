@@ -475,6 +475,10 @@ const OrganizationDashboard = () => {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => navigate(`/course/${course.id}/edit`)}>
+                            <Edit className="w-4 h-4 mr-2" />
+                            Редактировать
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleTogglePublish(course)}>
                             <Eye className="w-4 h-4 mr-2" />
                             {course.is_published ? 'Снять с публикации' : 'Опубликовать'}
