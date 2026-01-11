@@ -26,6 +26,21 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
     return <Navigate to="/login" replace />;
   }
 
+  // Wait for role to load before making redirect decisions
+  if (requiredRole && !userRole) {
+    // Role is still loading, show loading state
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-pulse flex flex-col items-center gap-4">
+          <div className="w-16 h-16 rounded-2xl bg-primary/20 flex items-center justify-center">
+            <span className="font-display text-3xl font-bold text-primary">Σ</span>
+          </div>
+          <p className="text-muted-foreground">Загрузка...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (requiredRole && userRole !== requiredRole && userRole !== 'admin') {
     // Redirect based on actual role
     if (userRole === 'organization') {
