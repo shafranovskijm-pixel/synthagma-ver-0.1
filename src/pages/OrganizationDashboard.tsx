@@ -154,6 +154,12 @@ interface RegistrationLink {
   created_at: string;
 }
 
+interface Company {
+  id: string;
+  name: string;
+  inn: string | null;
+}
+
 export default function OrganizationDashboard() {
   const navigate = useNavigate();
   const { signOut, user } = useAuth();
@@ -216,6 +222,10 @@ export default function OrganizationDashboard() {
   const [newLinkInn, setNewLinkInn] = useState("");
   const [isCreatingLink, setIsCreatingLink] = useState(false);
   const [isCreatingStudent, setIsCreatingStudent] = useState(false);
+
+  // Companies state
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string>("");
 
   // Student selection for bulk actions
   const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
@@ -426,6 +436,15 @@ export default function OrganizationDashboard() {
 
         setCategories(categoriesData || []);
 
+        // Fetch companies
+        const { data: companiesData } = await supabase
+          .from("companies")
+          .select("id, name, inn")
+          .eq("organization_id", orgId)
+          .order("name");
+
+        setCompanies(companiesData || []);
+
         // Process courses with stats
         const coursesWithStats = (coursesData || []).map((course: any) => {
           const courseEnrollments = allEnrollments.filter(e => e.course_id === course.id);
@@ -626,7 +645,8 @@ export default function OrganizationDashboard() {
           password,
           full_name: newStudentName,
           organization_id: organizationId,
-          course_id: selectedCourseId || null
+          course_id: selectedCourseId || null,
+          company_id: selectedCompanyId || null
         }
       });
 
@@ -640,6 +660,7 @@ export default function OrganizationDashboard() {
       setNewStudentName("");
       setNewStudentEmail("");
       setSelectedCourseId("");
+      setSelectedCompanyId("");
     } catch (error: any) {
       console.error("Error creating student:", error);
       toast.error(error.message || "Ошибка создания ученика");
@@ -2384,6 +2405,7 @@ export default function OrganizationDashboard() {
             <ImportStudentsForm 
               organizationId={organizationId} 
               courses={courses.filter(c => c.is_published)}
+              companies={companies}
               onSuccess={() => {
                 setShowImportDialog(false);
                 window.location.reload();
@@ -2462,6 +2484,21 @@ export default function OrganizationDashboard() {
                 value={newStudentEmail}
                 onChange={(e) => setNewStudentEmail(e.target.value)}
               />
+            </div>
+            <div className="space-y-2">
+              <Label>Компания (необязательно)</Label>
+              <Select value={selectedCompanyId} onValueChange={setSelectedCompanyId}>
+                <SelectTrigger className="rounded-xl">
+                  <SelectValue placeholder="Выберите компанию" />
+                </SelectTrigger>
+                <SelectContent>
+                  {companies.map(company => (
+                    <SelectItem key={company.id} value={company.id}>
+                      {company.name} {company.inn ? `(ИНН: ${company.inn})` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Курс (необязательно)</Label>

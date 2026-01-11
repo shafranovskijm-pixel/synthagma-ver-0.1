@@ -19,9 +19,9 @@ serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    const { email, password, full_name, organization_id, course_id } = await req.json();
+    const { email, password, full_name, organization_id, course_id, company_id } = await req.json();
 
-    console.log(`Registering student: ${email} for org: ${organization_id}`);
+    console.log(`Registering student: ${email} for org: ${organization_id}, company: ${company_id || 'none'}`);
 
     if (!email || !password || !full_name || !organization_id) {
       return new Response(
@@ -48,14 +48,15 @@ serve(async (req) => {
 
     const userId = authData.user.id;
 
-    // Create profile
+    // Create profile with company_id if provided
     const { error: profileError } = await supabaseAdmin
       .from("profiles")
       .insert({
         user_id: userId,
         full_name,
         email,
-        organization_id
+        organization_id,
+        company_id: company_id || null
       });
 
     if (profileError) {
