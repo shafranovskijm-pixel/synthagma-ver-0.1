@@ -50,6 +50,17 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import {
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 
 interface Company {
   id: string;
@@ -1615,43 +1626,210 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
               </TabsContent>
 
               {/* Stats Tab */}
-              <TabsContent value="stats" className="m-0 space-y-4">
-                <div className="bg-secondary/30 rounded-xl p-6 text-center">
-                  <BarChart3 className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-                  <h3 className="font-medium mb-2">Статистика обучения</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Детальная статистика по курсам и прогрессу учеников компании
-                  </p>
-                  <Button 
-                    variant="outline" 
-                    className="rounded-xl gap-2"
-                    onClick={() => {
-                      setShowCompanyDetail(false);
-                      if (selectedCompanyForDetail) handleViewStudents(selectedCompanyForDetail);
-                    }}
-                  >
-                    <Eye className="w-4 h-4" />
-                    Посмотреть учеников
-                  </Button>
+              <TabsContent value="stats" className="m-0 space-y-6">
+                {/* Registration Chart */}
+                <div className="bg-card border border-border rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="font-semibold">Регистрации по дням</h3>
+                      <p className="text-sm text-muted-foreground">Динамика регистрации учеников</p>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <div className="w-3 h-3 rounded-full bg-primary" />
+                      Регистрации
+                    </div>
+                  </div>
+                  
+                  {linkStudents.length === 0 ? (
+                    <div className="h-[200px] flex items-center justify-center text-muted-foreground">
+                      <div className="text-center">
+                        <BarChart3 className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                        <p>Нет данных для отображения</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="h-[250px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart
+                          data={(() => {
+                            // Group students by date
+                            const grouped = linkStudents.reduce((acc, student) => {
+                              const date = format(new Date(student.created_at), "dd.MM", { locale: ru });
+                              const fullDate = format(new Date(student.created_at), "yyyy-MM-dd");
+                              acc[fullDate] = acc[fullDate] || { date, fullDate, count: 0 };
+                              acc[fullDate].count++;
+                              return acc;
+                            }, {} as Record<string, { date: string; fullDate: string; count: number }>);
+                            
+                            // Sort by date and return last 30 days
+                            return Object.values(grouped)
+                              .sort((a, b) => a.fullDate.localeCompare(b.fullDate))
+                              .slice(-30);
+                          })()}
+                          margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                        >
+                          <defs>
+                            <linearGradient id="colorRegistrations" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                              <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                          <XAxis 
+                            dataKey="date" 
+                            stroke="hsl(var(--muted-foreground))" 
+                            fontSize={12}
+                            tickLine={false}
+                            axisLine={false}
+                          />
+                          <YAxis 
+                            stroke="hsl(var(--muted-foreground))" 
+                            fontSize={12}
+                            tickLine={false}
+                            axisLine={false}
+                            allowDecimals={false}
+                          />
+                          <Tooltip 
+                            contentStyle={{ 
+                              backgroundColor: 'hsl(var(--card))', 
+                              border: '1px solid hsl(var(--border))',
+                              borderRadius: '8px',
+                              fontSize: '12px'
+                            }}
+                            labelStyle={{ color: 'hsl(var(--foreground))' }}
+                            formatter={(value: number) => [`${value} учеников`, 'Регистрации']}
+                          />
+                          <Area
+                            type="monotone"
+                            dataKey="count"
+                            stroke="hsl(var(--primary))"
+                            strokeWidth={2}
+                            fillOpacity={1}
+                            fill="url(#colorRegistrations)"
+                          />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                {/* Summary Stats */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                   <div className="bg-card border border-border rounded-xl p-4">
-                    <div className="text-sm text-muted-foreground mb-2">Всего зачислений</div>
-                    <div className="text-2xl font-bold">—</div>
+                    <div className="text-sm text-muted-foreground mb-2">Всего учеников</div>
+                    <div className="text-2xl font-bold">{linkStudents.length}</div>
                   </div>
                   <div className="bg-card border border-border rounded-xl p-4">
-                    <div className="text-sm text-muted-foreground mb-2">Средний прогресс</div>
-                    <div className="text-2xl font-bold">—%</div>
+                    <div className="text-sm text-muted-foreground mb-2">За последние 7 дней</div>
+                    <div className="text-2xl font-bold text-primary">
+                      {linkStudents.filter(s => {
+                        const sevenDaysAgo = new Date();
+                        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+                        return new Date(s.created_at) >= sevenDaysAgo;
+                      }).length}
+                    </div>
                   </div>
                   <div className="bg-card border border-border rounded-xl p-4">
-                    <div className="text-sm text-muted-foreground mb-2">Завершённых курсов</div>
-                    <div className="text-2xl font-bold">—</div>
+                    <div className="text-sm text-muted-foreground mb-2">За последние 30 дней</div>
+                    <div className="text-2xl font-bold">
+                      {linkStudents.filter(s => {
+                        const thirtyDaysAgo = new Date();
+                        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+                        return new Date(s.created_at) >= thirtyDaysAgo;
+                      }).length}
+                    </div>
                   </div>
                   <div className="bg-card border border-border rounded-xl p-4">
-                    <div className="text-sm text-muted-foreground mb-2">Средний балл тестов</div>
-                    <div className="text-2xl font-bold">—</div>
+                    <div className="text-sm text-muted-foreground mb-2">Последняя регистрация</div>
+                    <div className="text-lg font-bold">
+                      {linkStudents.length > 0 
+                        ? format(new Date(linkStudents[0].created_at), "dd MMM", { locale: ru })
+                        : "—"
+                      }
+                    </div>
                   </div>
+                </div>
+
+                {/* Registration by Week Chart */}
+                <div className="bg-card border border-border rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="font-semibold">Регистрации по неделям</h3>
+                      <p className="text-sm text-muted-foreground">Сравнение за последние недели</p>
+                    </div>
+                  </div>
+                  
+                  {linkStudents.length === 0 ? (
+                    <div className="h-[150px] flex items-center justify-center text-muted-foreground">
+                      Нет данных
+                    </div>
+                  ) : (
+                    <div className="h-[200px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                          data={(() => {
+                            const weeks: Record<string, { week: string; count: number }> = {};
+                            const now = new Date();
+                            
+                            // Initialize last 8 weeks
+                            for (let i = 7; i >= 0; i--) {
+                              const weekStart = new Date(now);
+                              weekStart.setDate(weekStart.getDate() - (i * 7));
+                              const weekKey = format(weekStart, "dd.MM", { locale: ru });
+                              weeks[`week_${i}`] = { week: weekKey, count: 0 };
+                            }
+                            
+                            // Count registrations per week
+                            linkStudents.forEach(student => {
+                              const studentDate = new Date(student.created_at);
+                              const diffDays = Math.floor((now.getTime() - studentDate.getTime()) / (1000 * 60 * 60 * 24));
+                              const weekIndex = Math.floor(diffDays / 7);
+                              
+                              if (weekIndex >= 0 && weekIndex <= 7) {
+                                const key = `week_${7 - weekIndex}`;
+                                if (weeks[key]) {
+                                  weeks[key].count++;
+                                }
+                              }
+                            });
+                            
+                            return Object.values(weeks);
+                          })()}
+                          margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                          <XAxis 
+                            dataKey="week" 
+                            stroke="hsl(var(--muted-foreground))" 
+                            fontSize={12}
+                            tickLine={false}
+                            axisLine={false}
+                          />
+                          <YAxis 
+                            stroke="hsl(var(--muted-foreground))" 
+                            fontSize={12}
+                            tickLine={false}
+                            axisLine={false}
+                            allowDecimals={false}
+                          />
+                          <Tooltip 
+                            contentStyle={{ 
+                              backgroundColor: 'hsl(var(--card))', 
+                              border: '1px solid hsl(var(--border))',
+                              borderRadius: '8px',
+                              fontSize: '12px'
+                            }}
+                            formatter={(value: number) => [`${value} учеников`, 'Регистрации']}
+                          />
+                          <Bar 
+                            dataKey="count" 
+                            fill="hsl(var(--primary))" 
+                            radius={[4, 4, 0, 0]}
+                          />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
                 </div>
               </TabsContent>
             </div>
