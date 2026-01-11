@@ -13,10 +13,14 @@ interface LinkData {
   id: string;
   token: string;
   organization_id: string;
+  company_id: string | null;
   name: string | null;
   expires_at: string | null;
   used_count: number;
   organization?: {
+    name: string;
+  };
+  company?: {
     name: string;
   };
 }
@@ -29,6 +33,7 @@ const JoinByLink = () => {
 
   const [linkData, setLinkData] = useState<LinkData | null>(null);
   const [organizationName, setOrganizationName] = useState<string>("");
+  const [companyName, setCompanyName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -80,8 +85,20 @@ const JoinByLink = () => {
         .eq('id', link.organization_id)
         .single();
 
+      // Fetch company name if company_id exists
+      let compName: string | null = null;
+      if (link.company_id) {
+        const { data: comp } = await supabase
+          .from('companies')
+          .select('name')
+          .eq('id', link.company_id)
+          .single();
+        compName = comp?.name || null;
+      }
+
       setLinkData(link);
       setOrganizationName(org?.name || 'Организация');
+      setCompanyName(compName);
       setLoading(false);
     } catch (err) {
       setError('Произошла ошибка при проверке ссылки');
@@ -139,12 +156,13 @@ const JoinByLink = () => {
       if (authError) throw authError;
 
       if (authData.user) {
-        // Update profile with organization_id
+        // Update profile with organization_id and company_id
         const { error: profileError } = await supabase
           .from('profiles')
           .update({
             full_name: fullName,
-            organization_id: linkData.organization_id
+            organization_id: linkData.organization_id,
+            company_id: linkData.company_id || null
           })
           .eq('user_id', authData.user.id);
 
@@ -248,6 +266,11 @@ const JoinByLink = () => {
             {linkData?.name && (
               <p className="text-sm text-muted-foreground mt-1">
                 {linkData.name}
+              </p>
+            )}
+            {companyName && (
+              <p className="text-sm text-muted-foreground mt-1">
+                Компания: {companyName}
               </p>
             )}
           </div>

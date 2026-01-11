@@ -25,6 +25,9 @@ import {
   GraduationCap,
   UserPlus,
   Check,
+  Link2,
+  Copy,
+  BookOpen,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import * as XLSX from "xlsx";
@@ -93,6 +96,23 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
   const [isAssigning, setIsAssigning] = useState(false);
   const [assignSearchQuery, setAssignSearchQuery] = useState("");
   const [showOnlyUnassigned, setShowOnlyUnassigned] = useState(false);
+
+  // Registration link dialog
+  const [showLinkDialog, setShowLinkDialog] = useState(false);
+  const [selectedCompanyForLink, setSelectedCompanyForLink] = useState<Company | null>(null);
+  const [companyLinks, setCompanyLinks] = useState<{ id: string; token: string; name: string | null; expires_at: string | null; used_count: number }[]>([]);
+  const [isLoadingLinks, setIsLoadingLinks] = useState(false);
+  const [newLinkName, setNewLinkName] = useState("");
+  const [newLinkExpiresDays, setNewLinkExpiresDays] = useState("");
+  const [isCreatingLink, setIsCreatingLink] = useState(false);
+
+  // Bulk enroll to courses dialog
+  const [showBulkEnrollDialog, setShowBulkEnrollDialog] = useState(false);
+  const [selectedCompanyForEnroll, setSelectedCompanyForEnroll] = useState<Company | null>(null);
+  const [availableCourses, setAvailableCourses] = useState<{ id: string; title: string; is_published: boolean }[]>([]);
+  const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>([]);
+  const [isLoadingCourses, setIsLoadingCourses] = useState(false);
+  const [isEnrolling, setIsEnrolling] = useState(false);
 
   const fetchCompanies = async () => {
     setIsLoading(true);
@@ -366,6 +386,208 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
     return matchesSearch && matchesFilter;
   });
 
+  // Registration links functions
+  const handleOpenLinkDialog = async (company: Company) => {
+    setSelectedCompanyForLink(company);
+    setShowLinkDialog(true);
+    setIsLoadingLinks(true);
+    setNewLinkName("");
+    setNewLinkExpiresDays("");
+
+    try {
+      const { data, error } = await supabase
+        .from("registration_links")
+        .select("id, token, name, expires_at, used_count")
+        .eq("company_id", company.id)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setCompanyLinks(data || []);
+    } catch (error) {
+      console.error("Error fetching company links:", error);
+      toast.error("Ошибка загрузки ссылок");
+    } finally {
+      setIsLoadingLinks(false);
+    }
+  };
+
+  const generateToken = () => {
+    return Array.from(crypto.getRandomValues(new Uint8Array(16)))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+  };
+
+  const handleCreateCompanyLink = async () => {
+    if (!selectedCompanyForLink) return;
+
+    setIsCreatingLink(true);
+    try {
+      const token = generateToken();
+      const expiresAt = newLinkExpiresDays
+        ? new Date(Date.now() + parseInt(newLinkExpiresDays) * 24 * 60 * 60 * 1000).toISOString()
+        : null;
+
+      const { data, error } = await supabase
+        .from("registration_links")
+        .insert({
+          token,
+          name: newLinkName || `Ссылка для ${selectedCompanyForLink.name}`,
+          organization_id: organizationId,
+          company_id: selectedCompanyForLink.id,
+          expires_at: expiresAt,
+        })
+        .select("id, token, name, expires_at, used_count")
+        .single();
+
+      if (error) throw error;
+
+      setCompanyLinks([data, ...companyLinks]);
+      setNewLinkName("");
+      setNewLinkExpiresDays("");
+      toast.success("Ссылка создана");
+    } catch (error) {
+      console.error("Error creating link:", error);
+      toast.error("Ошибка создания ссылки");
+    } finally {
+      setIsCreatingLink(false);
+    }
+  };
+
+  const handleDeleteLink = async (linkId: string) => {
+    try {
+      const { error } = await supabase
+        .from("registration_links")
+        .delete()
+        .eq("id", linkId);
+
+      if (error) throw error;
+
+      setCompanyLinks(companyLinks.filter((l) => l.id !== linkId));
+      toast.success("Ссылка удалена");
+    } catch (error) {
+      console.error("Error deleting link:", error);
+      toast.error("Ошибка удаления ссылки");
+    }
+  };
+
+  const copyLink = (token: string) => {
+    const url = `${window.location.origin}/join/${token}`;
+    navigator.clipboard.writeText(url);
+    toast.success("Ссылка скопирована");
+  };
+
+  const isLinkExpired = (expiresAt: string | null) => {
+    if (!expiresAt) return false;
+    return new Date(expiresAt) < new Date();
+  };
+
+  // Bulk enroll functions
+  const handleOpenBulkEnroll = async (company: Company) => {
+    setSelectedCompanyForEnroll(company);
+    setShowBulkEnrollDialog(true);
+    setSelectedCourseIds([]);
+    setIsLoadingCourses(true);
+
+    try {
+      const { data, error } = await supabase
+        .from("courses")
+        .select("id, title, is_published")
+        .eq("organization_id", organizationId)
+        .order("title");
+
+      if (error) throw error;
+      setAvailableCourses(data || []);
+    } catch (error) {
+      console.error("Error fetching courses:", error);
+      toast.error("Ошибка загрузки курсов");
+    } finally {
+      setIsLoadingCourses(false);
+    }
+  };
+
+  const toggleCourseSelection = (courseId: string) => {
+    setSelectedCourseIds((prev) =>
+      prev.includes(courseId)
+        ? prev.filter((id) => id !== courseId)
+        : [...prev, courseId]
+    );
+  };
+
+  const handleBulkEnroll = async () => {
+    if (!selectedCompanyForEnroll || selectedCourseIds.length === 0) {
+      toast.error("Выберите курсы для зачисления");
+      return;
+    }
+
+    setIsEnrolling(true);
+    try {
+      // Get all students in this company
+      const { data: profiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("user_id")
+        .eq("company_id", selectedCompanyForEnroll.id);
+
+      if (profilesError) throw profilesError;
+
+      if (!profiles || profiles.length === 0) {
+        toast.error("В компании нет учеников");
+        setIsEnrolling(false);
+        return;
+      }
+
+      // Get existing enrollments
+      const { data: existingEnrollments, error: enrollError } = await supabase
+        .from("enrollments")
+        .select("user_id, course_id")
+        .in("user_id", profiles.map((p) => p.user_id))
+        .in("course_id", selectedCourseIds);
+
+      if (enrollError) throw enrollError;
+
+      const existingPairs = new Set(
+        (existingEnrollments || []).map((e) => `${e.user_id}-${e.course_id}`)
+      );
+
+      // Create new enrollments
+      const newEnrollments: { user_id: string; course_id: string; status: string; progress: number }[] = [];
+      
+      for (const profile of profiles) {
+        for (const courseId of selectedCourseIds) {
+          const key = `${profile.user_id}-${courseId}`;
+          if (!existingPairs.has(key)) {
+            newEnrollments.push({
+              user_id: profile.user_id,
+              course_id: courseId,
+              status: "active",
+              progress: 0,
+            });
+          }
+        }
+      }
+
+      if (newEnrollments.length === 0) {
+        toast.info("Все ученики уже зачислены на выбранные курсы");
+        setIsEnrolling(false);
+        return;
+      }
+
+      const { error: insertError } = await supabase
+        .from("enrollments")
+        .insert(newEnrollments);
+
+      if (insertError) throw insertError;
+
+      toast.success(`${newEnrollments.length} зачислений создано`);
+      setShowBulkEnrollDialog(false);
+      setSelectedCourseIds([]);
+    } catch (error) {
+      console.error("Error bulk enrolling:", error);
+      toast.error("Ошибка зачисления");
+    } finally {
+      setIsEnrolling(false);
+    }
+  };
+
   const handleDeleteClick = (company: Company) => {
     setDeletingCompany(company);
     setShowDeleteConfirm(true);
@@ -599,6 +821,24 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
                         title="Назначить учеников"
                       >
                         <UserPlus className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="rounded-lg text-blue-500 hover:text-blue-500"
+                        onClick={() => handleOpenLinkDialog(company)}
+                        title="Ссылки для регистрации"
+                      >
+                        <Link2 className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="rounded-lg text-purple-500 hover:text-purple-500"
+                        onClick={() => handleOpenBulkEnroll(company)}
+                        title="Назначить на курсы"
+                      >
+                        <BookOpen className="w-4 h-4" />
                       </Button>
                       <Button
                         variant="ghost"
@@ -1065,6 +1305,259 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
                 <>
                   <UserPlus className="w-4 h-4" />
                   Назначить ({selectedStudentIds.length})
+                </>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Registration Links Dialog */}
+      <Dialog open={showLinkDialog} onOpenChange={setShowLinkDialog}>
+        <DialogContent className="rounded-2xl max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="font-display flex items-center gap-2">
+              <Link2 className="w-5 h-5 text-blue-500" />
+              Ссылки для регистрации
+            </DialogTitle>
+            <DialogDescription>
+              Создайте ссылку для регистрации учеников в компанию «{selectedCompanyForLink?.name}»
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4 space-y-4 flex-1 overflow-hidden flex flex-col">
+            {/* Create new link */}
+            <div className="bg-secondary/50 rounded-xl p-4 space-y-3">
+              <div className="text-sm font-medium">Создать новую ссылку</div>
+              <div className="flex gap-3">
+                <Input
+                  placeholder="Название (например: Группа 2024)"
+                  value={newLinkName}
+                  onChange={(e) => setNewLinkName(e.target.value)}
+                  className="flex-1 rounded-xl"
+                />
+                <Input
+                  type="number"
+                  placeholder="Дней"
+                  value={newLinkExpiresDays}
+                  onChange={(e) => setNewLinkExpiresDays(e.target.value)}
+                  className="w-24 rounded-xl"
+                />
+                <Button
+                  className="btn-gradient rounded-xl gap-2"
+                  onClick={handleCreateCompanyLink}
+                  disabled={isCreatingLink}
+                >
+                  {isCreatingLink ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4" />
+                      Создать
+                    </>
+                  )}
+                </Button>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Оставьте поле "Дней" пустым для бессрочной ссылки
+              </div>
+            </div>
+
+            {/* Links list */}
+            <div className="flex-1 overflow-y-auto">
+              {isLoadingLinks ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                </div>
+              ) : companyLinks.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Link2 className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>Нет ссылок для этой компании</p>
+                  <p className="text-sm">Создайте первую ссылку выше</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {companyLinks.map((link) => {
+                    const expired = isLinkExpired(link.expires_at);
+                    return (
+                      <div
+                        key={link.id}
+                        className={`flex items-center justify-between p-4 rounded-xl border ${
+                          expired
+                            ? "bg-muted/50 border-muted opacity-60"
+                            : "bg-card border-border"
+                        }`}
+                      >
+                        <div className="flex items-center gap-4">
+                          <div
+                            className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                              expired
+                                ? "bg-muted text-muted-foreground"
+                                : "bg-blue-500/10 text-blue-500"
+                            }`}
+                          >
+                            <Link2 className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <div className="font-medium">
+                              {link.name || "Без названия"}
+                              {expired && (
+                                <span className="ml-2 text-xs text-destructive">(истекла)</span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <Users className="w-3 h-3" />
+                                {link.used_count} регистраций
+                              </span>
+                              {link.expires_at && (
+                                <span>
+                                  до {new Date(link.expires_at).toLocaleDateString("ru-RU")}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => copyLink(link.token)}
+                            disabled={expired}
+                          >
+                            <Copy className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => handleDeleteLink(link.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-4 border-t border-border">
+            <Button
+              variant="outline"
+              className="rounded-xl"
+              onClick={() => setShowLinkDialog(false)}
+            >
+              Закрыть
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Enroll to Courses Dialog */}
+      <Dialog open={showBulkEnrollDialog} onOpenChange={setShowBulkEnrollDialog}>
+        <DialogContent className="rounded-2xl max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="font-display flex items-center gap-2">
+              <BookOpen className="w-5 h-5 text-purple-500" />
+              Назначить на курсы
+            </DialogTitle>
+            <DialogDescription>
+              Зачислите всех учеников компании «{selectedCompanyForEnroll?.name}» на выбранные курсы
+              {selectedCompanyForEnroll && (
+                <span className="block mt-1">
+                  ({selectedCompanyForEnroll.studentsCount || 0} учеников в компании)
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4 space-y-4 flex-1 overflow-hidden flex flex-col">
+            {/* Stats */}
+            <div className="flex gap-4">
+              <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 rounded-lg">
+                <BookOpen className="w-4 h-4 text-primary" />
+                <span className="text-sm font-medium">{availableCourses.length} курсов</span>
+              </div>
+              {selectedCourseIds.length > 0 && (
+                <div className="flex items-center gap-2 px-3 py-2 bg-purple-500/10 rounded-lg">
+                  <Check className="w-4 h-4 text-purple-500" />
+                  <span className="text-sm font-medium">{selectedCourseIds.length} выбрано</span>
+                </div>
+              )}
+            </div>
+
+            {/* Courses List */}
+            <div className="flex-1 overflow-y-auto border border-border rounded-xl">
+              {isLoadingCourses ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                </div>
+              ) : availableCourses.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <BookOpen className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>Нет доступных курсов</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-border">
+                  {availableCourses.map((course) => {
+                    const isSelected = selectedCourseIds.includes(course.id);
+                    return (
+                      <div
+                        key={course.id}
+                        className={`flex items-center gap-4 p-4 hover:bg-secondary/50 transition-colors cursor-pointer ${
+                          isSelected ? "bg-purple-500/5" : ""
+                        }`}
+                        onClick={() => toggleCourseSelection(course.id)}
+                      >
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={() => toggleCourseSelection(course.id)}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium">{course.title}</div>
+                        </div>
+                        <span
+                          className={`text-xs px-2 py-1 rounded-full ${
+                            course.is_published
+                              ? "bg-sigma-green/10 text-sigma-green"
+                              : "bg-orange-500/10 text-orange-500"
+                          }`}
+                        >
+                          {course.is_published ? "Опубликован" : "Черновик"}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex justify-between pt-4 border-t border-border">
+            <Button
+              variant="outline"
+              className="rounded-xl"
+              onClick={() => setShowBulkEnrollDialog(false)}
+            >
+              Отмена
+            </Button>
+            <Button
+              className="btn-gradient rounded-xl gap-2"
+              onClick={handleBulkEnroll}
+              disabled={selectedCourseIds.length === 0 || isEnrolling || !selectedCompanyForEnroll?.studentsCount}
+            >
+              {isEnrolling ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Зачисление...
+                </>
+              ) : (
+                <>
+                  <GraduationCap className="w-4 h-4" />
+                  Зачислить всех ({selectedCourseIds.length} курсов)
                 </>
               )}
             </Button>
