@@ -516,35 +516,47 @@ export type Database = {
       organizations: {
         Row: {
           ai_enabled: boolean
+          ai_tokens_limit: number
           contact_name: string | null
           created_at: string
           email: string
           id: string
           inn: string | null
           name: string
+          notify_on_limit_80: boolean
+          notify_on_limit_exceeded: boolean
           phone: string | null
+          storage_limit_bytes: number
           updated_at: string
         }
         Insert: {
           ai_enabled?: boolean
+          ai_tokens_limit?: number
           contact_name?: string | null
           created_at?: string
           email: string
           id?: string
           inn?: string | null
           name: string
+          notify_on_limit_80?: boolean
+          notify_on_limit_exceeded?: boolean
           phone?: string | null
+          storage_limit_bytes?: number
           updated_at?: string
         }
         Update: {
           ai_enabled?: boolean
+          ai_tokens_limit?: number
           contact_name?: string | null
           created_at?: string
           email?: string
           id?: string
           inn?: string | null
           name?: string
+          notify_on_limit_80?: boolean
+          notify_on_limit_exceeded?: boolean
           phone?: string | null
+          storage_limit_bytes?: number
           updated_at?: string
         }
         Relationships: []
