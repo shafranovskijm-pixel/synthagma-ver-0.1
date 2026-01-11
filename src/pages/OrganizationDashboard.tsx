@@ -2812,7 +2812,36 @@ export default function OrganizationDashboard() {
               </div>
 
               <div>
-                <h3 className="font-semibold mb-3">Результаты тестов</h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold">Результаты тестов</h3>
+                  {selectedStudent.testAttempts.length > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-lg gap-2"
+                      onClick={() => {
+                        import('xlsx').then(XLSX => {
+                          const exportData = selectedStudent.testAttempts.map(attempt => ({
+                            'Тест': attempt.lesson_title,
+                            'Баллы': attempt.score,
+                            'Макс. баллы': attempt.max_score,
+                            'Процент': Math.round((attempt.score / attempt.max_score) * 100) + '%',
+                            'Результат': attempt.score >= attempt.max_score * 0.7 ? 'Пройден' : 'Не пройден',
+                            'Дата': new Date(attempt.completed_at).toLocaleString('ru-RU')
+                          }));
+                          const ws = XLSX.utils.json_to_sheet(exportData);
+                          const wb = XLSX.utils.book_new();
+                          XLSX.utils.book_append_sheet(wb, ws, 'Результаты тестов');
+                          XLSX.writeFile(wb, `тесты_${selectedStudent.student.name}_${new Date().toISOString().split('T')[0]}.xlsx`);
+                          toast.success('Результаты тестов экспортированы');
+                        });
+                      }}
+                    >
+                      <FileSpreadsheet className="w-4 h-4" />
+                      Экспорт
+                    </Button>
+                  )}
+                </div>
                 {selectedStudent.testAttempts.length === 0 ? (
                   <p className="text-muted-foreground text-sm">Нет пройденных тестов</p>
                 ) : (
