@@ -32,10 +32,11 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Building2, Loader2, Users, BookOpen, Key, Eye, EyeOff, Copy, Check, Download, ExternalLink, Search, X } from "lucide-react";
+import { Plus, Pencil, Trash2, Building2, Loader2, Users, BookOpen, Key, Eye, EyeOff, Copy, Check, Download, ExternalLink, Search, X, FolderOpen } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import * as XLSX from "xlsx";
+import { OrganizationDetailsView } from "./OrganizationDetailsView";
 
 interface Organization {
   id: string;
@@ -62,6 +63,7 @@ export function OrganizationsManager() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [deleteOrg, setDeleteOrg] = useState<Organization | null>(null);
   const [editOrg, setEditOrg] = useState<Organization | null>(null);
+  const [viewingOrg, setViewingOrg] = useState<Organization | null>(null);
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -347,6 +349,19 @@ export function OrganizationsManager() {
     );
   }
 
+  // Show organization details view if selected
+  if (viewingOrg) {
+    return (
+      <OrganizationDetailsView
+        organization={viewingOrg}
+        onBack={() => {
+          setViewingOrg(null);
+          fetchOrganizations(); // Refresh data when returning
+        }}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -618,10 +633,18 @@ export function OrganizationsManager() {
                         <Button 
                           variant="ghost" 
                           size="icon" 
+                          onClick={() => setViewingOrg(org)}
+                          title="Просмотреть детали"
+                        >
+                          <FolderOpen className="w-4 h-4 text-primary" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
                           onClick={() => viewAsOrganization(org)}
                           title="Войти в организацию"
                         >
-                          <ExternalLink className="w-4 h-4 text-primary" />
+                          <ExternalLink className="w-4 h-4 text-muted-foreground" />
                         </Button>
                         <Button variant="ghost" size="icon" onClick={() => openEdit(org)}>
                           <Pencil className="w-4 h-4" />
