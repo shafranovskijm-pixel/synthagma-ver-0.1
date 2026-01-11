@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, UserPlus, UserMinus, History } from "lucide-react";
+import { Loader2, UserPlus, UserMinus, History, FileSpreadsheet } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 interface EnrollmentHistoryItem {
   id: string;
@@ -18,9 +20,10 @@ interface EnrollmentHistoryItem {
 interface EnrollmentHistoryProps {
   courseId: string;
   organizationId: string;
+  courseName?: string;
 }
 
-export function EnrollmentHistory({ courseId, organizationId }: EnrollmentHistoryProps) {
+export function EnrollmentHistory({ courseId, organizationId, courseName }: EnrollmentHistoryProps) {
   const [history, setHistory] = useState<EnrollmentHistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -66,6 +69,26 @@ export function EnrollmentHistory({ courseId, organizationId }: EnrollmentHistor
     }
   };
 
+  const handleExport = () => {
+    import('xlsx').then(XLSX => {
+      const exportData = history.map(h => ({
+        'ФИО': h.user_name,
+        'Email': h.user_email,
+        'Действие': h.action === 'enrolled' ? 'Зачислен' : 'Отчислен',
+        'Дата и время': format(new Date(h.created_at), "dd.MM.yyyy HH:mm", { locale: ru }),
+        'Выполнил': h.performed_by_name
+      }));
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'История зачислений');
+      const fileName = courseName 
+        ? `история_зачислений_${courseName}_${new Date().toISOString().split('T')[0]}.xlsx`
+        : `история_зачислений_${new Date().toISOString().split('T')[0]}.xlsx`;
+      XLSX.writeFile(wb, fileName);
+      toast.success('История зачислений экспортирована');
+    });
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -84,7 +107,19 @@ export function EnrollmentHistory({ courseId, organizationId }: EnrollmentHistor
   }
 
   return (
-    <div className="space-y-2 max-h-60 overflow-auto">
+    <div className="space-y-3">
+      <div className="flex justify-end">
+        <Button
+          variant="outline"
+          size="sm"
+          className="rounded-lg gap-2"
+          onClick={handleExport}
+        >
+          <FileSpreadsheet className="w-4 h-4" />
+          Экспорт в Excel
+        </Button>
+      </div>
+      <div className="space-y-2 max-h-60 overflow-auto">
       {history.map(item => (
         <div
           key={item.id}
@@ -121,7 +156,8 @@ export function EnrollmentHistory({ courseId, organizationId }: EnrollmentHistor
             </p>
           </div>
         </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }
