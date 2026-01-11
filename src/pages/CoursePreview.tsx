@@ -424,7 +424,10 @@ const CoursePreview = () => {
                       </div>
                     </div>
                     <audio controls className="w-full">
-                      <source src={currentLesson.content} />
+                      <source src={currentLesson.content} type="audio/mpeg" />
+                      <source src={currentLesson.content} type="audio/wav" />
+                      <source src={currentLesson.content} type="audio/ogg" />
+                      Ваш браузер не поддерживает аудио.
                     </audio>
                   </div>
                 ) : (

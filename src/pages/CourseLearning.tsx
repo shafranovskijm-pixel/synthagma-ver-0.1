@@ -24,7 +24,8 @@ import {
   Loader2,
   Volume2,
   VolumeX,
-  Square
+  Square,
+  Headphones
 } from "lucide-react";
 import { ContentBlock, jsonToBlocks, BlockRenderer } from "@/components/course-builder/BlockEditor";
 import { cn } from "@/lib/utils";
@@ -565,6 +566,7 @@ const CourseLearning = () => {
     switch (type) {
       case 'video': return Video;
       case 'test': return ClipboardList;
+      case 'audio': return Headphones;
       default: return FileText;
     }
   };
@@ -659,6 +661,7 @@ const CourseLearning = () => {
                       {lesson.type === 'text' && 'Текст'}
                       {lesson.type === 'video' && 'Видео'}
                       {lesson.type === 'test' && 'Тест'}
+                      {lesson.type === 'audio' && 'Аудио'}
                     </div>
                   </div>
                 </button>
@@ -799,6 +802,37 @@ const CourseLearning = () => {
                     <div className="text-center text-muted-foreground">
                       <Video className="w-16 h-16 mx-auto mb-4" />
                       <p>Видео не загружено</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {currentLesson?.type === 'audio' && (
+              <div className="space-y-6 animate-fade-in">
+                {/* Audio header */}
+                <div className="flex items-center gap-3 pb-4 border-b border-border">
+                  <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center">
+                    <Headphones className="w-5 h-5 text-green-500" />
+                  </div>
+                  <div>
+                    <h1 className="font-display text-2xl font-bold">{currentLesson.title}</h1>
+                    <p className="text-sm text-muted-foreground">Аудиолекция {currentLessonIndex + 1}</p>
+                  </div>
+                </div>
+
+                <div className="bg-card rounded-2xl border border-border p-6">
+                  {currentLesson.content && currentLesson.content.startsWith('http') ? (
+                    <audio controls className="w-full">
+                      <source src={currentLesson.content} type="audio/mpeg" />
+                      <source src={currentLesson.content} type="audio/wav" />
+                      <source src={currentLesson.content} type="audio/ogg" />
+                      Ваш браузер не поддерживает аудио.
+                    </audio>
+                  ) : (
+                    <div className="text-center text-muted-foreground py-8">
+                      <Headphones className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                      <p>Аудио не загружено</p>
                     </div>
                   )}
                 </div>

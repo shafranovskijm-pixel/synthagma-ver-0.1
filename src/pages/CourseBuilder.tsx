@@ -550,7 +550,7 @@ function SortableLessonItem({
               <Input
                 value={lesson.content}
                 onChange={(e) => onUpdate({ content: e.target.value })}
-                placeholder="Вставьте ссылку на аудио"
+                placeholder="Вставьте ссылку на аудио или загрузите файл"
                 className="rounded-xl"
               />
               <div className="border-2 border-dashed border-border rounded-xl p-8 text-center">
@@ -560,17 +560,41 @@ function SortableLessonItem({
                   type="file"
                   accept="audio/*"
                   className="mt-3"
-                  onChange={(e) => {
+                  onChange={async (e) => {
                     const file = e.target.files?.[0];
-                    if (file) {
-                      onUpdate({ content: `[Audio: ${file.name}]` });
+                    if (file && courseId) {
+                      const toastId = toast.loading("Загрузка аудио...");
+                      try {
+                        const fileExt = file.name.split('.').pop();
+                        const fileName = `audio_${lesson.id}_${Date.now()}.${fileExt}`;
+                        const filePath = `${courseId}/${fileName}`;
+                        
+                        const { error: uploadError } = await supabase.storage
+                          .from('course-files')
+                          .upload(filePath, file);
+                          
+                        if (uploadError) throw uploadError;
+                        
+                        const { data: { publicUrl } } = supabase.storage
+                          .from('course-files')
+                          .getPublicUrl(filePath);
+                          
+                        onUpdate({ content: publicUrl });
+                        toast.success("Аудио загружено!", { id: toastId });
+                      } catch (error: any) {
+                        console.error("Audio upload error:", error);
+                        toast.error(`Ошибка загрузки: ${error.message}`, { id: toastId });
+                      }
                     }
                   }}
                 />
               </div>
               {lesson.content && lesson.content.startsWith('http') && (
                 <audio controls className="w-full mt-2">
-                  <source src={lesson.content} />
+                  <source src={lesson.content} type="audio/mpeg" />
+                  <source src={lesson.content} type="audio/wav" />
+                  <source src={lesson.content} type="audio/ogg" />
+                  Ваш браузер не поддерживает аудио.
                 </audio>
               )}
             </div>
