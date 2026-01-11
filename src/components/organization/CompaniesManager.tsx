@@ -247,6 +247,28 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
     }
   };
 
+  const handleViewDocument = async (doc: CompanyDocument) => {
+    if (!doc.file_path) {
+      toast.error("Файл не найден");
+      return;
+    }
+
+    try {
+      // Create signed URL for private bucket (valid for 1 hour)
+      const { data, error } = await supabase.storage
+        .from("company-documents")
+        .createSignedUrl(doc.file_path, 3600);
+
+      if (error) throw error;
+
+      // Open in new tab
+      window.open(data.signedUrl, '_blank');
+    } catch (error) {
+      console.error("Error viewing document:", error);
+      toast.error("Ошибка открытия документа");
+    }
+  };
+
   const handleDownloadDocument = async (doc: CompanyDocument) => {
     if (!doc.file_path) return;
 
@@ -1222,8 +1244,18 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
                                 <Button
                                   variant="ghost"
                                   size="icon"
+                                  className="rounded-lg h-7 w-7 text-primary hover:text-primary"
+                                  onClick={() => handleViewDocument(doc)}
+                                  title="Просмотреть"
+                                >
+                                  <Eye className="w-3 h-3" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
                                   className="rounded-lg h-7 w-7"
                                   onClick={() => handleDownloadDocument(doc)}
+                                  title="Скачать"
                                 >
                                   <Download className="w-3 h-3" />
                                 </Button>
@@ -1304,8 +1336,18 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
                                 <Button
                                   variant="ghost"
                                   size="icon"
+                                  className="rounded-lg h-7 w-7 text-primary hover:text-primary"
+                                  onClick={() => handleViewDocument(doc)}
+                                  title="Просмотреть"
+                                >
+                                  <Eye className="w-3 h-3" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
                                   className="rounded-lg h-7 w-7"
                                   onClick={() => handleDownloadDocument(doc)}
+                                  title="Скачать"
                                 >
                                   <Download className="w-3 h-3" />
                                 </Button>
@@ -1386,8 +1428,18 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
                                 <Button
                                   variant="ghost"
                                   size="icon"
+                                  className="rounded-lg h-7 w-7 text-primary hover:text-primary"
+                                  onClick={() => handleViewDocument(doc)}
+                                  title="Просмотреть"
+                                >
+                                  <Eye className="w-3 h-3" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
                                   className="rounded-lg h-7 w-7"
                                   onClick={() => handleDownloadDocument(doc)}
+                                  title="Скачать"
                                 >
                                   <Download className="w-3 h-3" />
                                 </Button>
