@@ -9,6 +9,7 @@ import { EnrollmentHistory } from "@/components/organization/EnrollmentHistory";
 import { CourseTestReport } from "@/components/organization/CourseTestReport";
 import { CompaniesManager } from "@/components/organization/CompaniesManager";
 import { LibraryManager } from "@/components/organization/LibraryManager";
+import { ServicesManager } from "@/components/organization/ServicesManager";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -55,7 +56,8 @@ import {
   Trophy,
   MessageCircle,
   Image,
-  ExternalLink
+  ExternalLink,
+  ShoppingBag
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
@@ -175,7 +177,7 @@ interface Company {
 export default function OrganizationDashboard() {
   const navigate = useNavigate();
   const { signOut, user } = useAuth();
-  const [activeTab, setActiveTab] = useState<"courses" | "organizations" | "students" | "library" | "stats" | "links" | "documents" | "settings">("courses");
+  const [activeTab, setActiveTab] = useState<"courses" | "organizations" | "students" | "library" | "stats" | "links" | "documents" | "services" | "settings">("courses");
   const [searchQuery, setSearchQuery] = useState("");
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [showAddStudentDialog, setShowAddStudentDialog] = useState(false);
@@ -1962,10 +1964,21 @@ export default function OrganizationDashboard() {
                     : "text-muted-foreground hover:bg-secondary"
                 }`}
               >
-                <FileText className="w-5 h-5" />
-                Документы
-              </button>
+              <FileText className="w-5 h-5" />
+              Документы
+            </button>
             )}
+            <button
+              onClick={() => setActiveTab("services")}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
+                activeTab === "services"
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-secondary"
+              }`}
+            >
+              <ShoppingBag className="w-5 h-5" />
+              Услуги
+            </button>
             <button
               onClick={() => setActiveTab("settings")}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
@@ -2005,6 +2018,7 @@ export default function OrganizationDashboard() {
                 {activeTab === "stats" && "Статистика обучения"}
                 {activeTab === "links" && "Ссылки для регистрации"}
                 {activeTab === "documents" && "Документооборот"}
+                {activeTab === "services" && "Услуги"}
                 {activeTab === "settings" && "Настройки"}
               </h1>
               <p className="text-muted-foreground">{organizationName}</p>
@@ -2768,6 +2782,11 @@ export default function OrganizationDashboard() {
               </div>
               <OrgDocumentsManager organizationId={organizationId} />
             </div>
+          )}
+
+          {/* Services Tab */}
+          {activeTab === "services" && (
+            <ServicesManager />
           )}
 
           {/* Settings Tab */}
