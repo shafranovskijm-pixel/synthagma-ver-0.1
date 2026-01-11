@@ -173,6 +173,44 @@ export type Database = {
           },
         ]
       }
+      enrollment_history: {
+        Row: {
+          action: string
+          course_id: string
+          created_at: string
+          enrollment_id: string | null
+          id: string
+          performed_by: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          course_id: string
+          created_at?: string
+          enrollment_id?: string | null
+          id?: string
+          performed_by?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          course_id?: string
+          created_at?: string
+          enrollment_id?: string | null
+          id?: string
+          performed_by?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "enrollment_history_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       enrollments: {
         Row: {
           completed_at: string | null
