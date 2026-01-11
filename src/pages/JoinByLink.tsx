@@ -158,66 +158,45 @@ const JoinByLink = () => {
     setIsSubmitting(true);
 
     try {
-      // Create user
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: fullName,
-            organization_id: linkData.organization_id
-          }
+      // Use edge function to register student with proper permissions
+      const { data: result, error: registerError } = await supabase.functions.invoke('register-student', {
+        body: {
+          email,
+          password,
+          full_name: fullName,
+          organization_id: linkData.organization_id,
+          company_id: linkData.company_id || null,
+          course_id: linkData.course_id || null
         }
       });
 
-      if (authError) throw authError;
+      if (registerError) throw registerError;
+      if (result?.error) throw new Error(result.error);
 
-      if (authData.user) {
-        // Update profile with organization_id and company_id
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({
-            full_name: fullName,
-            organization_id: linkData.organization_id,
-            company_id: linkData.company_id || null
-          })
-          .eq('user_id', authData.user.id);
+      // Now sign in the user
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
 
-        if (profileError) {
-          console.error('Profile update error:', profileError);
-        }
-
-        // Auto-enroll in course if course_id exists
-        if (linkData.course_id) {
-          const { error: enrollError } = await supabase
-            .from('enrollments')
-            .insert({
-              user_id: authData.user.id,
-              course_id: linkData.course_id,
-              status: 'active',
-              progress: 0
-            });
-          
-          if (enrollError) {
-            console.error('Enrollment error:', enrollError);
-          }
-        }
-
-        // Increment used_count on the link
-        await supabase
-          .from('registration_links')
-          .update({ used_count: (linkData.used_count || 0) + 1 })
-          .eq('id', linkData.id);
-
-        toast({
-          title: "Успешно!",
-          description: linkData.course_id 
-            ? `Вы зарегистрированы и записаны на курс` 
-            : `Вы зарегистрированы в ${organizationName}`,
-        });
-
-        navigate('/student');
+      if (signInError) {
+        console.error('Sign in error:', signInError);
       }
+
+      // Increment used_count on the link
+      await supabase
+        .from('registration_links')
+        .update({ used_count: (linkData.used_count || 0) + 1 })
+        .eq('id', linkData.id);
+
+      toast({
+        title: "Успешно!",
+        description: linkData.course_id 
+          ? `Вы зарегистрированы и записаны на курс` 
+          : `Вы зарегистрированы в ${organizationName}`,
+      });
+
+      navigate('/student');
     } catch (err: any) {
       let errorMessage = err.message;
       if (err.message.includes("already registered")) {
