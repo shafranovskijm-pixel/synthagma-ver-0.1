@@ -1,0 +1,595 @@
+import { useState, useCallback } from "react";
+import DOMPurify from "dompurify";
+import {
+  Plus,
+  GripVertical,
+  Trash2,
+  Type,
+  Heading1,
+  Heading2,
+  List,
+  ListOrdered,
+  Quote,
+  AlertCircle,
+  Lightbulb,
+  HelpCircle,
+  ChevronDown,
+  ChevronRight,
+  BookOpen,
+  Image as ImageIcon,
+  Video,
+  Upload,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+
+const sanitizeHtml = (html: string): string => {
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: ['strong', 'b', 'em', 'i', 'u', 'br', 'p', 'span', 'h1', 'h2', 'h3', 'h4', 'ul', 'ol', 'li', 'table', 'thead', 'tbody', 'tr', 'td', 'th', 'a', 'img'],
+    ALLOWED_ATTR: ['href', 'target', 'rel', 'src', 'alt', 'class', 'style', 'colspan', 'rowspan'],
+    ALLOW_DATA_ATTR: false,
+  });
+};
+
+export type BlockType =
+  | "paragraph"
+  | "heading1"
+  | "heading2"
+  | "bulletList"
+  | "numberedList"
+  | "quote"
+  | "callout-info"
+  | "callout-warning"
+  | "callout-tip"
+  | "accordion"
+  | "quiz"
+  | "image"
+  | "video";
+
+export interface QuizOption {
+  text: string;
+  isCorrect: boolean;
+}
+
+export interface ContentBlock {
+  id: string;
+  type: BlockType;
+  content: string;
+  accordionTitle?: string;
+  accordionOpen?: boolean;
+  quizQuestion?: string;
+  quizOptions?: QuizOption[];
+  quizExplanation?: string;
+  imageSrc?: string;
+  imageAlt?: string;
+  videoUrl?: string;
+}
+
+interface BlockEditorProps {
+  blocks: ContentBlock[];
+  onChange: (blocks: ContentBlock[]) => void;
+  readOnly?: boolean;
+}
+
+const blockTypeConfig: Record<BlockType, { icon: any; label: string; color: string }> = {
+  paragraph: { icon: Type, label: "Параграф", color: "text-foreground" },
+  heading1: { icon: Heading1, label: "Заголовок 1", color: "text-foreground" },
+  heading2: { icon: Heading2, label: "Заголовок 2", color: "text-foreground" },
+  bulletList: { icon: List, label: "Маркированный список", color: "text-foreground" },
+  numberedList: { icon: ListOrdered, label: "Нумерованный список", color: "text-foreground" },
+  quote: { icon: Quote, label: "Цитата", color: "text-muted-foreground" },
+  "callout-info": { icon: AlertCircle, label: "Информация", color: "text-blue-500" },
+  "callout-warning": { icon: AlertCircle, label: "Предупреждение", color: "text-amber-500" },
+  "callout-tip": { icon: Lightbulb, label: "Совет", color: "text-green-500" },
+  accordion: { icon: ChevronDown, label: "Сворачиваемая секция", color: "text-purple-500" },
+  quiz: { icon: HelpCircle, label: "Мини-квиз", color: "text-primary" },
+  image: { icon: ImageIcon, label: "Изображение", color: "text-green-500" },
+  video: { icon: Video, label: "Видео", color: "text-red-500" },
+};
+
+const createBlock = (type: BlockType): ContentBlock => ({
+  id: crypto.randomUUID(),
+  type,
+  content: "",
+  ...(type === "accordion" && { accordionTitle: "Заголовок секции", accordionOpen: true }),
+  ...(type === "quiz" && {
+    quizQuestion: "",
+    quizOptions: [
+      { text: "", isCorrect: true },
+      { text: "", isCorrect: false },
+    ],
+    quizExplanation: ""
+  }),
+  ...(type === "image" && { imageSrc: "", imageAlt: "" }),
+  ...(type === "video" && { videoUrl: "" }),
+});
+
+export function BlockEditor({ blocks, onChange, readOnly = false }: BlockEditorProps) {
+  const [focusedBlockId, setFocusedBlockId] = useState<string | null>(null);
+
+  const addBlock = useCallback((type: BlockType, afterIndex?: number) => {
+    const newBlock = createBlock(type);
+    const newBlocks = [...blocks];
+    if (afterIndex !== undefined) {
+      newBlocks.splice(afterIndex + 1, 0, newBlock);
+    } else {
+      newBlocks.push(newBlock);
+    }
+    onChange(newBlocks);
+    setFocusedBlockId(newBlock.id);
+  }, [blocks, onChange]);
+
+  const updateBlock = useCallback((id: string, updates: Partial<ContentBlock>) => {
+    onChange(blocks.map(b => b.id === id ? { ...b, ...updates } : b));
+  }, [blocks, onChange]);
+
+  const deleteBlock = useCallback((id: string) => {
+    onChange(blocks.filter(b => b.id !== id));
+  }, [blocks, onChange]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      const oldIndex = blocks.findIndex((b) => b.id === active.id);
+      const newIndex = blocks.findIndex((b) => b.id === over.id);
+      onChange(arrayMove(blocks, oldIndex, newIndex));
+    }
+  };
+
+  if (readOnly) {
+    return <BlockRenderer blocks={blocks} />;
+  }
+
+  return (
+    <div className="space-y-2">
+      {blocks.length === 0 && (
+        <div className="text-center py-8 text-muted-foreground border-2 border-dashed border-border rounded-xl">
+          <Type className="w-8 h-8 mx-auto mb-2 opacity-50" />
+          <p className="text-sm mb-3">Начните добавлять контент</p>
+          <AddBlockButton onAdd={(type) => addBlock(type)} />
+        </div>
+      )}
+
+      {blocks.length > 0 && (
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
+            {blocks.map((block, index) => (
+              <SortableBlockItem
+                key={block.id}
+                block={block}
+                isFocused={focusedBlockId === block.id}
+                onFocus={() => setFocusedBlockId(block.id)}
+                onUpdate={(updates) => updateBlock(block.id, updates)}
+                onDelete={() => deleteBlock(block.id)}
+                onAddAfter={(type) => addBlock(type, index)}
+              />
+            ))}
+          </SortableContext>
+        </DndContext>
+      )}
+
+      {blocks.length > 0 && (
+        <div className="flex justify-center pt-2">
+          <AddBlockButton onAdd={(type) => addBlock(type)} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AddBlockButton({ onAdd }: { onAdd: (type: BlockType) => void }) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="sm" className="rounded-lg gap-2">
+          <Plus className="w-4 h-4" />
+          Добавить блок
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="center" className="w-56">
+        <DropdownMenuItem onClick={() => onAdd("paragraph")}>
+          <Type className="w-4 h-4 mr-2" />Параграф
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onAdd("heading1")}>
+          <Heading1 className="w-4 h-4 mr-2" />Заголовок 1
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onAdd("heading2")}>
+          <Heading2 className="w-4 h-4 mr-2" />Заголовок 2
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => onAdd("bulletList")}>
+          <List className="w-4 h-4 mr-2" />Маркированный список
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onAdd("numberedList")}>
+          <ListOrdered className="w-4 h-4 mr-2" />Нумерованный список
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onAdd("quote")}>
+          <Quote className="w-4 h-4 mr-2" />Цитата
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => onAdd("callout-info")}>
+          <AlertCircle className="w-4 h-4 mr-2 text-blue-500" />Информация
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onAdd("callout-warning")}>
+          <AlertCircle className="w-4 h-4 mr-2 text-amber-500" />Предупреждение
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onAdd("callout-tip")}>
+          <Lightbulb className="w-4 h-4 mr-2 text-green-500" />Совет
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => onAdd("accordion")}>
+          <ChevronDown className="w-4 h-4 mr-2 text-purple-500" />Сворачиваемая секция
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onAdd("quiz")}>
+          <HelpCircle className="w-4 h-4 mr-2 text-primary" />Мини-квиз
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => onAdd("image")}>
+          <ImageIcon className="w-4 h-4 mr-2 text-green-500" />Изображение
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onAdd("video")}>
+          <Video className="w-4 h-4 mr-2 text-red-500" />Видео
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+interface SortableBlockItemProps {
+  block: ContentBlock;
+  isFocused: boolean;
+  onFocus: () => void;
+  onUpdate: (updates: Partial<ContentBlock>) => void;
+  onDelete: () => void;
+  onAddAfter: (type: BlockType) => void;
+}
+
+function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAddAfter }: SortableBlockItemProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 1000 : 'auto',
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn("group relative flex gap-2 rounded-lg transition-all", isFocused && "bg-secondary/30")}
+      onClick={onFocus}
+    >
+      <div className="flex flex-col items-center gap-1 pt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch-none">
+          <GripVertical className="w-4 h-4" />
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-6 w-6"><Plus className="w-3 h-3" /></Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-48">
+            {Object.entries(blockTypeConfig).map(([type, cfg]) => (
+              <DropdownMenuItem key={type} onClick={() => onAddAfter(type as BlockType)}>
+                <cfg.icon className={cn("w-4 h-4 mr-2", cfg.color)} />{cfg.label}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={(e) => { e.stopPropagation(); onDelete(); }}>
+          <Trash2 className="w-3 h-3" />
+        </Button>
+      </div>
+      <div className="flex-1 min-w-0">
+        <BlockContent block={block} onUpdate={onUpdate} />
+      </div>
+    </div>
+  );
+}
+
+function BlockContent({ block, onUpdate }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void }) {
+  const [isEditing, setIsEditing] = useState(false);
+
+  switch (block.type) {
+    case "paragraph":
+      return (
+        <div className="py-2 min-h-[40px] cursor-text" onClick={() => setIsEditing(true)}>
+          {isEditing ? (
+            <Textarea autoFocus value={block.content} onChange={(e) => onUpdate({ content: e.target.value })} onBlur={() => setIsEditing(false)} placeholder="Введите текст..." className="min-h-[60px] border-0 bg-transparent resize-none focus-visible:ring-0 px-0" />
+          ) : (
+            <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: sanitizeHtml(block.content) || '<span class="text-muted-foreground">Введите текст...</span>' }} />
+          )}
+        </div>
+      );
+
+    case "heading1":
+      return <Input value={block.content} onChange={(e) => onUpdate({ content: e.target.value })} placeholder="Заголовок 1" className="text-2xl font-bold border-0 bg-transparent focus-visible:ring-0 px-0 h-auto py-2" />;
+
+    case "heading2":
+      return <Input value={block.content} onChange={(e) => onUpdate({ content: e.target.value })} placeholder="Заголовок 2" className="text-xl font-semibold border-0 bg-transparent focus-visible:ring-0 px-0 h-auto py-2" />;
+
+    case "bulletList":
+    case "numberedList":
+      return (
+        <div className="space-y-1 py-2">
+          <Textarea value={block.content} onChange={(e) => onUpdate({ content: e.target.value })} placeholder="Элемент списка (каждая строка — отдельный пункт)" className="min-h-[60px] border-0 bg-secondary/30 resize-none focus-visible:ring-1 rounded-lg text-sm" />
+        </div>
+      );
+
+    case "quote":
+      return (
+        <div className="border-l-4 border-muted-foreground/30 pl-4 py-2">
+          <Textarea value={block.content} onChange={(e) => onUpdate({ content: e.target.value })} placeholder="Введите цитату..." className="min-h-[60px] border-0 bg-transparent resize-none focus-visible:ring-0 px-0 italic text-muted-foreground" />
+        </div>
+      );
+
+    case "callout-info":
+    case "callout-warning":
+    case "callout-tip":
+      return <CalloutBlock block={block} onUpdate={onUpdate} />;
+
+    case "accordion":
+      return <AccordionBlock block={block} onUpdate={onUpdate} />;
+
+    case "quiz":
+      return <QuizBlock block={block} onUpdate={onUpdate} />;
+
+    case "image":
+      return <ImageBlock block={block} onUpdate={onUpdate} />;
+
+    case "video":
+      return <VideoBlock block={block} onUpdate={onUpdate} />;
+
+    default:
+      return null;
+  }
+}
+
+function ImageBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void }) {
+  return (
+    <div className="py-2">
+      {block.imageSrc ? (
+        <div className="space-y-2">
+          <div className="relative group/img">
+            <img src={block.imageSrc} alt={block.imageAlt || ""} className="rounded-lg max-w-full h-auto max-h-[400px] object-contain" />
+            <Button variant="secondary" size="sm" className="absolute top-2 right-2 opacity-0 group-hover/img:opacity-100" onClick={() => onUpdate({ imageSrc: "", imageAlt: "" })}>Удалить</Button>
+          </div>
+          <Input value={block.imageAlt || ""} onChange={(e) => onUpdate({ imageAlt: e.target.value })} placeholder="Подпись к изображению..." className="text-sm border-0 bg-secondary/30 focus-visible:ring-1 rounded-lg" />
+        </div>
+      ) : (
+        <div className="bg-muted rounded-xl p-6 space-y-4">
+          <div className="text-center">
+            <ImageIcon className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground mb-4">Добавьте изображение по ссылке</p>
+          </div>
+          <Input value={block.imageSrc || ""} onChange={(e) => onUpdate({ imageSrc: e.target.value })} placeholder="https://example.com/image.jpg" className="text-sm" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function VideoBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void }) {
+  const getEmbedUrl = (url: string): string | null => {
+    if (!url) return null;
+    const ytMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/);
+    if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`;
+    const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
+    if (vimeoMatch) return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
+    return null;
+  };
+  const embedUrl = getEmbedUrl(block.videoUrl || "");
+
+  return (
+    <div className="py-2">
+      {embedUrl ? (
+        <div className="space-y-2">
+          <div className="relative group/video aspect-video bg-black rounded-lg overflow-hidden">
+            <iframe src={embedUrl} className="w-full h-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+            <Button variant="secondary" size="sm" className="absolute top-2 right-2 opacity-0 group-hover/video:opacity-100" onClick={() => onUpdate({ videoUrl: "" })}>Удалить</Button>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-muted rounded-xl p-6 text-center">
+          <Video className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground mb-4">Добавьте видео по ссылке</p>
+          <Input value={block.videoUrl || ""} onChange={(e) => onUpdate({ videoUrl: e.target.value })} placeholder="YouTube, Vimeo..." className="text-sm" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CalloutBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void }) {
+  const styles = {
+    "callout-info": { bg: "bg-blue-500/10", border: "border-blue-500/30", icon: AlertCircle, iconColor: "text-blue-500" },
+    "callout-warning": { bg: "bg-amber-500/10", border: "border-amber-500/30", icon: AlertCircle, iconColor: "text-amber-500" },
+    "callout-tip": { bg: "bg-green-500/10", border: "border-green-500/30", icon: Lightbulb, iconColor: "text-green-500" },
+  };
+  const style = styles[block.type as keyof typeof styles];
+  const Icon = style.icon;
+
+  return (
+    <div className={cn("rounded-xl p-4 border", style.bg, style.border)}>
+      <div className="flex items-start gap-3">
+        <Icon className={cn("w-5 h-5 mt-0.5 flex-shrink-0", style.iconColor)} />
+        <Textarea value={block.content} onChange={(e) => onUpdate({ content: e.target.value })} placeholder="Введите текст..." className="min-h-[40px] border-0 bg-transparent resize-none focus-visible:ring-0 px-0 flex-1" />
+      </div>
+    </div>
+  );
+}
+
+function AccordionBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void }) {
+  const isOpen = block.accordionOpen ?? true;
+
+  return (
+    <div className="rounded-xl border border-purple-500/30 bg-purple-500/5 overflow-hidden">
+      <div className="flex items-center gap-2 p-3 cursor-pointer hover:bg-purple-500/10" onClick={() => onUpdate({ accordionOpen: !isOpen })}>
+        {isOpen ? <ChevronDown className="w-4 h-4 text-purple-500" /> : <ChevronRight className="w-4 h-4 text-purple-500" />}
+        <Input value={block.accordionTitle || ""} onChange={(e) => { e.stopPropagation(); onUpdate({ accordionTitle: e.target.value }); }} onClick={(e) => e.stopPropagation()} placeholder="Заголовок секции" className="border-0 bg-transparent focus-visible:ring-0 px-0 font-medium" />
+      </div>
+      {isOpen && (
+        <div className="p-3 pt-0 border-t border-purple-500/20">
+          <Textarea value={block.content} onChange={(e) => onUpdate({ content: e.target.value })} placeholder="Скрытое содержимое..." className="min-h-[80px] border-0 bg-transparent resize-none focus-visible:ring-0 px-0" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function QuizBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void }) {
+  const options = block.quizOptions || [{ text: "", isCorrect: true }, { text: "", isCorrect: false }];
+
+  const updateOption = (index: number, updates: Partial<QuizOption>) => {
+    const newOptions = options.map((opt, i) => i === index ? { ...opt, ...updates } : updates.isCorrect ? { ...opt, isCorrect: false } : opt);
+    onUpdate({ quizOptions: newOptions });
+  };
+
+  const addOption = () => onUpdate({ quizOptions: [...options, { text: "", isCorrect: false }] });
+  const removeOption = (index: number) => { if (options.length > 2) onUpdate({ quizOptions: options.filter((_, i) => i !== index) }); };
+
+  return (
+    <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-3">
+      <div className="flex items-center gap-2 text-primary">
+        <HelpCircle className="w-5 h-5" />
+        <span className="font-medium">Мини-квиз</span>
+      </div>
+      <Input value={block.quizQuestion || ""} onChange={(e) => onUpdate({ quizQuestion: e.target.value })} placeholder="Введите вопрос..." className="font-medium" />
+      <div className="space-y-2">
+        {options.map((option, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <input type="radio" checked={option.isCorrect} onChange={() => updateOption(i, { isCorrect: true })} className="w-4 h-4 text-primary" />
+            <Input value={option.text} onChange={(e) => updateOption(i, { text: e.target.value })} placeholder={`Вариант ${i + 1}`} className="flex-1" />
+            {options.length > 2 && (
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => removeOption(i)}><Trash2 className="w-4 h-4" /></Button>
+            )}
+          </div>
+        ))}
+      </div>
+      <Button variant="outline" size="sm" onClick={addOption} className="gap-2"><Plus className="w-4 h-4" />Добавить вариант</Button>
+      <Textarea value={block.quizExplanation || ""} onChange={(e) => onUpdate({ quizExplanation: e.target.value })} placeholder="Пояснение к правильному ответу (опционально)" className="min-h-[40px] text-sm bg-white/50 dark:bg-black/20" />
+    </div>
+  );
+}
+
+// Read-only renderer
+export function BlockRenderer({ blocks }: { blocks: ContentBlock[] }) {
+  const [quizAnswers, setQuizAnswers] = useState<Record<string, number>>({});
+  const [quizSubmitted, setQuizSubmitted] = useState<Record<string, boolean>>({});
+
+  return (
+    <div className="prose prose-sm max-w-none dark:prose-invert space-y-4">
+      {blocks.map((block) => (
+        <RenderBlock
+          key={block.id}
+          block={block}
+          quizAnswer={quizAnswers[block.id]}
+          quizSubmitted={quizSubmitted[block.id]}
+          onQuizAnswer={(index) => setQuizAnswers(prev => ({ ...prev, [block.id]: index }))}
+          onQuizSubmit={() => setQuizSubmitted(prev => ({ ...prev, [block.id]: true }))}
+        />
+      ))}
+    </div>
+  );
+}
+
+function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSubmit }: { block: ContentBlock; quizAnswer?: number; quizSubmitted?: boolean; onQuizAnswer: (index: number) => void; onQuizSubmit: () => void }) {
+  const [accordionOpen, setAccordionOpen] = useState(false);
+
+  switch (block.type) {
+    case "paragraph":
+      return <p dangerouslySetInnerHTML={{ __html: sanitizeHtml(block.content) }} />;
+    case "heading1":
+      return <h1 className="text-2xl font-bold">{block.content}</h1>;
+    case "heading2":
+      return <h2 className="text-xl font-semibold">{block.content}</h2>;
+    case "bulletList":
+      return <ul className="list-disc pl-6">{(block.content || "").split("\n").filter(Boolean).map((item, i) => <li key={i}>{item}</li>)}</ul>;
+    case "numberedList":
+      return <ol className="list-decimal pl-6">{(block.content || "").split("\n").filter(Boolean).map((item, i) => <li key={i}>{item}</li>)}</ol>;
+    case "quote":
+      return <blockquote className="border-l-4 border-muted-foreground/30 pl-4 italic text-muted-foreground">{block.content}</blockquote>;
+    case "callout-info":
+      return <div className="rounded-xl p-4 bg-blue-500/10 border border-blue-500/30 flex gap-3 not-prose"><AlertCircle className="w-5 h-5 text-blue-500 flex-shrink-0" /><p className="text-sm">{block.content}</p></div>;
+    case "callout-warning":
+      return <div className="rounded-xl p-4 bg-amber-500/10 border border-amber-500/30 flex gap-3 not-prose"><AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0" /><p className="text-sm">{block.content}</p></div>;
+    case "callout-tip":
+      return <div className="rounded-xl p-4 bg-green-500/10 border border-green-500/30 flex gap-3 not-prose"><Lightbulb className="w-5 h-5 text-green-500 flex-shrink-0" /><p className="text-sm">{block.content}</p></div>;
+    case "accordion":
+      return (
+        <div className="rounded-xl border border-purple-500/30 bg-purple-500/5 overflow-hidden not-prose">
+          <button className="w-full flex items-center gap-2 p-3 text-left hover:bg-purple-500/10" onClick={() => setAccordionOpen(!accordionOpen)}>
+            {accordionOpen ? <ChevronDown className="w-4 h-4 text-purple-500" /> : <ChevronRight className="w-4 h-4 text-purple-500" />}
+            <span className="font-medium">{block.accordionTitle}</span>
+          </button>
+          {accordionOpen && <div className="p-3 pt-0 border-t border-purple-500/20"><p className="text-sm">{block.content}</p></div>}
+        </div>
+      );
+    case "quiz":
+      const options = block.quizOptions || [];
+      const correctIndex = options.findIndex(o => o.isCorrect);
+      const isCorrect = quizSubmitted && quizAnswer === correctIndex;
+      return (
+        <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-3 not-prose">
+          <div className="flex items-center gap-2 text-primary"><HelpCircle className="w-5 h-5" /><span className="font-medium">Проверьте себя</span></div>
+          <p className="font-medium">{block.quizQuestion}</p>
+          <div className="space-y-2">
+            {options.map((option, i) => (
+              <button key={i} onClick={() => onQuizAnswer(i)} disabled={quizSubmitted} className={cn("w-full text-left p-3 rounded-lg border transition-all", quizAnswer === i && !quizSubmitted && "border-primary bg-primary/10", quizSubmitted && option.isCorrect && "border-green-500 bg-green-500/10", quizSubmitted && quizAnswer === i && !option.isCorrect && "border-destructive bg-destructive/10", !quizSubmitted && quizAnswer !== i && "border-border hover:border-primary/50")}>
+                {option.text}
+              </button>
+            ))}
+          </div>
+          {!quizSubmitted && quizAnswer !== undefined && <Button onClick={onQuizSubmit} size="sm">Проверить</Button>}
+          {quizSubmitted && <div className={cn("p-3 rounded-lg text-sm", isCorrect ? "bg-green-500/10 text-green-700 dark:text-green-400" : "bg-destructive/10 text-destructive")}>{isCorrect ? "Правильно! " : "Неправильно. "}{block.quizExplanation}</div>}
+        </div>
+      );
+    case "image":
+      return block.imageSrc ? <img src={block.imageSrc} alt={block.imageAlt || ""} className="rounded-lg max-w-full h-auto not-prose" /> : null;
+    case "video":
+      const embedUrl = block.videoUrl?.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1];
+      return embedUrl ? <div className="aspect-video not-prose"><iframe src={`https://www.youtube.com/embed/${embedUrl}`} className="w-full h-full rounded-lg" allowFullScreen /></div> : null;
+    default:
+      return null;
+  }
+}
+
+export function blocksToJson(blocks: ContentBlock[]): string {
+  return JSON.stringify(blocks);
+}
+
+export function jsonToBlocks(json: string): ContentBlock[] {
+  try { return JSON.parse(json); } catch { return []; }
+}
