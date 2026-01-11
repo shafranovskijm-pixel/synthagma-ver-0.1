@@ -593,3 +593,68 @@ export function blocksToJson(blocks: ContentBlock[]): string {
 export function jsonToBlocks(json: string): ContentBlock[] {
   try { return JSON.parse(json); } catch { return []; }
 }
+
+export function htmlToBlocks(html: string): ContentBlock[] {
+  const blocks: ContentBlock[] = [];
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, "text/html");
+
+  const processNode = (node: Node) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const text = node.textContent?.trim();
+      if (text) {
+        blocks.push({ id: crypto.randomUUID(), type: "paragraph", content: text });
+      }
+      return;
+    }
+
+    if (node.nodeType !== Node.ELEMENT_NODE) return;
+
+    const el = node as Element;
+    const tagName = el.tagName.toLowerCase();
+
+    switch (tagName) {
+      case "h1":
+        blocks.push({ id: crypto.randomUUID(), type: "heading1", content: el.textContent || "" });
+        break;
+      case "h2":
+      case "h3":
+        blocks.push({ id: crypto.randomUUID(), type: "heading2", content: el.textContent || "" });
+        break;
+      case "p":
+        const imgInP = el.querySelector("img");
+        if (imgInP && el.childNodes.length === 1) {
+          blocks.push({ id: crypto.randomUUID(), type: "image", content: "", imageSrc: imgInP.getAttribute("src") || "", imageAlt: imgInP.getAttribute("alt") || "" });
+        } else {
+          blocks.push({ id: crypto.randomUUID(), type: "paragraph", content: el.innerHTML || "" });
+        }
+        break;
+      case "ul":
+        const bulletItems = Array.from(el.querySelectorAll(":scope > li")).map(li => li.innerHTML || "").join("\n");
+        blocks.push({ id: crypto.randomUUID(), type: "bulletList", content: bulletItems });
+        break;
+      case "ol":
+        const numberedItems = Array.from(el.querySelectorAll(":scope > li")).map(li => li.innerHTML || "").join("\n");
+        blocks.push({ id: crypto.randomUUID(), type: "numberedList", content: numberedItems });
+        break;
+      case "blockquote":
+        blocks.push({ id: crypto.randomUUID(), type: "quote", content: el.innerHTML || "" });
+        break;
+      case "img":
+        blocks.push({ id: crypto.randomUUID(), type: "image", content: "", imageSrc: el.getAttribute("src") || "", imageAlt: el.getAttribute("alt") || "" });
+        break;
+      case "div":
+      case "section":
+      case "article":
+      case "span":
+        el.childNodes.forEach(processNode);
+        break;
+      default:
+        el.childNodes.forEach(processNode);
+    }
+  };
+
+  doc.body.childNodes.forEach(processNode);
+
+  return blocks.filter(b => b.content || b.imageSrc || b.type === "quiz" || b.type === "accordion" || b.type === "image");
+}
