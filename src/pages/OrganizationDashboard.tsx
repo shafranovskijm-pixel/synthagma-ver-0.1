@@ -53,7 +53,9 @@ import {
   Sun,
   Library,
   Trophy,
-  MessageCircle
+  MessageCircle,
+  Image,
+  ExternalLink
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
@@ -334,6 +336,18 @@ export default function OrganizationDashboard() {
     showDocuments: false
   });
 
+  // Branding settings
+  const [brandingSettings, setBrandingSettings] = useState({
+    coverUrl: '',
+    primaryColor: '#6366f1',
+    secondaryColor: '#8b5cf6',
+    logoUrl: '',
+    showOrgName: true
+  });
+  const [isUploadingCover, setIsUploadingCover] = useState(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [isSavingBranding, setIsSavingBranding] = useState(false);
+
   // Load theme and settings on mount
   useEffect(() => {
     // Load theme
@@ -366,6 +380,137 @@ export default function OrganizationDashboard() {
       }
     }
   }, []);
+
+  // Load branding settings from organization
+  useEffect(() => {
+    const loadBranding = async () => {
+      if (!organizationId) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('organizations')
+          .select('branding')
+          .eq('id', organizationId)
+          .single();
+        
+        if (error) throw error;
+        
+        if (data?.branding && typeof data.branding === 'object') {
+          const branding = data.branding as Record<string, unknown>;
+          setBrandingSettings({
+            coverUrl: (branding.coverUrl as string) || '',
+            primaryColor: (branding.primaryColor as string) || '#6366f1',
+            secondaryColor: (branding.secondaryColor as string) || '#8b5cf6',
+            logoUrl: (branding.logoUrl as string) || '',
+            showOrgName: branding.showOrgName !== false
+          });
+        }
+      } catch (error) {
+        console.error('Error loading branding:', error);
+      }
+    };
+    
+    loadBranding();
+  }, [organizationId]);
+
+  // Handle cover image upload
+  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Файл слишком большой. Максимум 5 МБ');
+      return;
+    }
+
+    setIsUploadingCover(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const filePath = `${user.id}/cover.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('org-branding')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('org-branding')
+        .getPublicUrl(filePath);
+
+      setBrandingSettings(prev => ({ ...prev, coverUrl: publicUrl }));
+      toast.success('Обложка загружена');
+    } catch (error) {
+      console.error('Error uploading cover:', error);
+      toast.error('Ошибка загрузки обложки');
+    } finally {
+      setIsUploadingCover(false);
+    }
+  };
+
+  // Handle logo upload
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Файл слишком большой. Максимум 2 МБ');
+      return;
+    }
+
+    setIsUploadingLogo(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const filePath = `${user.id}/logo.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('org-branding')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('org-branding')
+        .getPublicUrl(filePath);
+
+      setBrandingSettings(prev => ({ ...prev, logoUrl: publicUrl }));
+      toast.success('Логотип загружен');
+    } catch (error) {
+      console.error('Error uploading logo:', error);
+      toast.error('Ошибка загрузки логотипа');
+    } finally {
+      setIsUploadingLogo(false);
+    }
+  };
+
+  // Save branding settings
+  const handleSaveBranding = async () => {
+    if (!organizationId) return;
+
+    setIsSavingBranding(true);
+    try {
+      const { error } = await supabase
+        .from('organizations')
+        .update({ branding: brandingSettings })
+        .eq('id', organizationId);
+
+      if (error) throw error;
+      toast.success('Настройки брендирования сохранены');
+    } catch (error) {
+      console.error('Error saving branding:', error);
+      toast.error('Ошибка сохранения настроек');
+    } finally {
+      setIsSavingBranding(false);
+    }
+  };
+
+  // Preview student dashboard
+  const handlePreviewStudentDashboard = () => {
+    // Store branding and settings for preview
+    localStorage.setItem('previewStudentDashboard', 'true');
+    localStorage.setItem('studentDashboardSettings', JSON.stringify(studentDashboardSettings));
+    window.open('/student', '_blank');
+  };
 
   // Fetch organization data
   useEffect(() => {
@@ -2648,120 +2793,7 @@ export default function OrganizationDashboard() {
                 </div>
               </div>
 
-              {/* Student Dashboard Settings */}
-              <div className="bg-card rounded-2xl border border-border p-6">
-                <h3 className="font-display font-semibold text-lg mb-4 flex items-center gap-2">
-                  <Settings className="w-5 h-5" />
-                  Настройки личного кабинета ученика
-                </h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Настройте, какие разделы будут отображаться в личном кабинете учеников
-                </p>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between py-3 border-b border-border">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                        <Library className="w-5 h-5 text-primary" />
-                      </div>
-                      <div>
-                        <p className="font-medium">Библиотека</p>
-                        <p className="text-sm text-muted-foreground">Раздел с дополнительными материалами</p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => setStudentDashboardSettings(prev => ({ ...prev, showLibrary: !prev.showLibrary }))}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                        studentDashboardSettings.showLibrary ? 'bg-primary' : 'bg-muted'
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          studentDashboardSettings.showLibrary ? 'translate-x-6' : 'translate-x-1'
-                        }`}
-                      />
-                    </button>
-                  </div>
-                  <div className="flex items-center justify-between py-3 border-b border-border">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-sigma-orange/10 flex items-center justify-center">
-                        <Trophy className="w-5 h-5 text-sigma-orange" />
-                      </div>
-                      <div>
-                        <p className="font-medium">Достижения</p>
-                        <p className="text-sm text-muted-foreground">Раздел с наградами и достижениями</p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => setStudentDashboardSettings(prev => ({ ...prev, showAchievements: !prev.showAchievements }))}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                        studentDashboardSettings.showAchievements ? 'bg-primary' : 'bg-muted'
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          studentDashboardSettings.showAchievements ? 'translate-x-6' : 'translate-x-1'
-                        }`}
-                      />
-                    </button>
-                  </div>
-                  <div className="flex items-center justify-between py-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-sigma-cyan/10 flex items-center justify-center">
-                        <MessageCircle className="w-5 h-5 text-sigma-cyan" />
-                      </div>
-                      <div>
-                        <p className="font-medium">ИИ-помощник</p>
-                        <p className="text-sm text-muted-foreground">Чат с ИИ для помощи в обучении</p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => setStudentDashboardSettings(prev => ({ ...prev, showAiChat: !prev.showAiChat }))}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                        studentDashboardSettings.showAiChat ? 'bg-primary' : 'bg-muted'
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          studentDashboardSettings.showAiChat ? 'translate-x-6' : 'translate-x-1'
-                        }`}
-                      />
-                    </button>
-                  </div>
-                </div>
-                <div className="mt-6 pt-4 border-t border-border">
-                  <Button
-                    className="btn-gradient rounded-xl gap-2"
-                    onClick={() => {
-                      setIsSavingSettings(true);
-                      try {
-                        // Save settings to localStorage for now
-                        localStorage.setItem('studentDashboardSettings', JSON.stringify(studentDashboardSettings));
-                        toast.success('Настройки сохранены');
-                      } catch (error) {
-                        console.error('Error saving settings:', error);
-                        toast.error('Ошибка сохранения настроек');
-                      } finally {
-                        setIsSavingSettings(false);
-                      }
-                    }}
-                    disabled={isSavingSettings}
-                  >
-                    {isSavingSettings ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Сохранение...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="w-4 h-4" />
-                        Сохранить настройки
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-
-              {/* Menu Items Settings */}
+              {/* Menu Items Settings - Right after theme */}
               <div className="bg-card rounded-2xl border border-border p-6">
                 <h3 className="font-display font-semibold text-lg mb-4 flex items-center gap-2">
                   <LayoutGrid className="w-5 h-5" />
@@ -2856,6 +2888,323 @@ export default function OrganizationDashboard() {
                   >
                     <Save className="w-4 h-4" />
                     Сохранить настройки меню
+                  </Button>
+                </div>
+              </div>
+
+              {/* Branding Settings */}
+              <div className="bg-card rounded-2xl border border-border p-6">
+                <h3 className="font-display font-semibold text-lg mb-4 flex items-center gap-2">
+                  <Image className="w-5 h-5" />
+                  Брендирование
+                </h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Настройте внешний вид кабинета с вашим фирменным стилем
+                </p>
+                
+                <div className="space-y-6">
+                  {/* Cover Image */}
+                  <div>
+                    <Label className="text-sm font-medium mb-2 block">Обложка организации</Label>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Изображение отображается в шапке личного кабинета (рекомендуется 1920×400 px)
+                    </p>
+                    <div className="relative">
+                      {brandingSettings.coverUrl ? (
+                        <div className="relative rounded-xl overflow-hidden border border-border">
+                          <img 
+                            src={brandingSettings.coverUrl} 
+                            alt="Обложка" 
+                            className="w-full h-32 object-cover"
+                          />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                            <label className="cursor-pointer">
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={handleCoverUpload}
+                              />
+                              <Button size="sm" variant="secondary" className="rounded-lg pointer-events-none">
+                                Заменить
+                              </Button>
+                            </label>
+                            <Button 
+                              size="sm" 
+                              variant="destructive" 
+                              className="rounded-lg"
+                              onClick={() => setBrandingSettings(prev => ({ ...prev, coverUrl: '' }))}
+                            >
+                              Удалить
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <label className="cursor-pointer">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={handleCoverUpload}
+                          />
+                          <div className="border-2 border-dashed border-border rounded-xl h-32 flex flex-col items-center justify-center gap-2 hover:border-primary/50 hover:bg-primary/5 transition-colors">
+                            {isUploadingCover ? (
+                              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                            ) : (
+                              <>
+                                <Upload className="w-6 h-6 text-muted-foreground" />
+                                <span className="text-sm text-muted-foreground">Загрузить обложку</span>
+                              </>
+                            )}
+                          </div>
+                        </label>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Logo */}
+                  <div>
+                    <Label className="text-sm font-medium mb-2 block">Логотип организации</Label>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Отображается вместо стандартного логотипа (рекомендуется квадрат или прозрачный PNG)
+                    </p>
+                    <div className="flex items-start gap-4">
+                      {brandingSettings.logoUrl ? (
+                        <div className="relative">
+                          <img 
+                            src={brandingSettings.logoUrl} 
+                            alt="Логотип" 
+                            className="w-20 h-20 object-contain rounded-xl border border-border bg-background p-2"
+                          />
+                          <button
+                            onClick={() => setBrandingSettings(prev => ({ ...prev, logoUrl: '' }))}
+                            className="absolute -top-2 -right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center hover:bg-destructive/80"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ) : (
+                        <label className="cursor-pointer">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={handleLogoUpload}
+                          />
+                          <div className="w-20 h-20 border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center gap-1 hover:border-primary/50 hover:bg-primary/5 transition-colors">
+                            {isUploadingLogo ? (
+                              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                            ) : (
+                              <>
+                                <Upload className="w-5 h-5 text-muted-foreground" />
+                                <span className="text-xs text-muted-foreground">Логотип</span>
+                              </>
+                            )}
+                          </div>
+                        </label>
+                      )}
+                      <div className="flex-1 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-medium text-sm">Показывать название</p>
+                            <p className="text-xs text-muted-foreground">Отображать название организации рядом с логотипом</p>
+                          </div>
+                          <button
+                            onClick={() => setBrandingSettings(prev => ({ ...prev, showOrgName: !prev.showOrgName }))}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                              brandingSettings.showOrgName ? 'bg-primary' : 'bg-muted'
+                            }`}
+                          >
+                            <span
+                              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                brandingSettings.showOrgName ? 'translate-x-6' : 'translate-x-1'
+                              }`}
+                            />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Colors */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm font-medium mb-2 block">Основной цвет</Label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={brandingSettings.primaryColor}
+                          onChange={(e) => setBrandingSettings(prev => ({ ...prev, primaryColor: e.target.value }))}
+                          className="w-10 h-10 rounded-lg cursor-pointer border border-border"
+                        />
+                        <Input
+                          value={brandingSettings.primaryColor}
+                          onChange={(e) => setBrandingSettings(prev => ({ ...prev, primaryColor: e.target.value }))}
+                          className="rounded-xl flex-1"
+                          placeholder="#6366f1"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium mb-2 block">Дополнительный цвет</Label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={brandingSettings.secondaryColor}
+                          onChange={(e) => setBrandingSettings(prev => ({ ...prev, secondaryColor: e.target.value }))}
+                          className="w-10 h-10 rounded-lg cursor-pointer border border-border"
+                        />
+                        <Input
+                          value={brandingSettings.secondaryColor}
+                          onChange={(e) => setBrandingSettings(prev => ({ ...prev, secondaryColor: e.target.value }))}
+                          className="rounded-xl flex-1"
+                          placeholder="#8b5cf6"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6 pt-4 border-t border-border">
+                  <Button
+                    className="btn-gradient rounded-xl gap-2"
+                    onClick={handleSaveBranding}
+                    disabled={isSavingBranding}
+                  >
+                    {isSavingBranding ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Сохранение...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4" />
+                        Сохранить брендирование
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Student Dashboard Settings - At the bottom */}
+              <div className="bg-card rounded-2xl border border-border p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-display font-semibold text-lg flex items-center gap-2">
+                    <Settings className="w-5 h-5" />
+                    Настройки личного кабинета ученика
+                  </h3>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-xl gap-2"
+                    onClick={handlePreviewStudentDashboard}
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    Просмотр кабинета
+                  </Button>
+                </div>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Настройте, какие разделы будут отображаться в личном кабинете учеников
+                </p>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between py-3 border-b border-border">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                        <Library className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-medium">Библиотека</p>
+                        <p className="text-sm text-muted-foreground">Раздел с дополнительными материалами</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setStudentDashboardSettings(prev => ({ ...prev, showLibrary: !prev.showLibrary }))}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        studentDashboardSettings.showLibrary ? 'bg-primary' : 'bg-muted'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          studentDashboardSettings.showLibrary ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between py-3 border-b border-border">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-sigma-orange/10 flex items-center justify-center">
+                        <Trophy className="w-5 h-5 text-sigma-orange" />
+                      </div>
+                      <div>
+                        <p className="font-medium">Достижения</p>
+                        <p className="text-sm text-muted-foreground">Раздел с наградами и достижениями</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setStudentDashboardSettings(prev => ({ ...prev, showAchievements: !prev.showAchievements }))}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        studentDashboardSettings.showAchievements ? 'bg-primary' : 'bg-muted'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          studentDashboardSettings.showAchievements ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-sigma-cyan/10 flex items-center justify-center">
+                        <MessageCircle className="w-5 h-5 text-sigma-cyan" />
+                      </div>
+                      <div>
+                        <p className="font-medium">ИИ-помощник</p>
+                        <p className="text-sm text-muted-foreground">Чат с ИИ для помощи в обучении</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setStudentDashboardSettings(prev => ({ ...prev, showAiChat: !prev.showAiChat }))}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        studentDashboardSettings.showAiChat ? 'bg-primary' : 'bg-muted'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          studentDashboardSettings.showAiChat ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+                <div className="mt-6 pt-4 border-t border-border">
+                  <Button
+                    className="btn-gradient rounded-xl gap-2"
+                    onClick={() => {
+                      setIsSavingSettings(true);
+                      try {
+                        localStorage.setItem('studentDashboardSettings', JSON.stringify(studentDashboardSettings));
+                        toast.success('Настройки сохранены');
+                      } catch (error) {
+                        console.error('Error saving settings:', error);
+                        toast.error('Ошибка сохранения настроек');
+                      } finally {
+                        setIsSavingSettings(false);
+                      }
+                    }}
+                    disabled={isSavingSettings}
+                  >
+                    {isSavingSettings ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Сохранение...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4" />
+                        Сохранить настройки
+                      </>
+                    )}
                   </Button>
                 </div>
               </div>
