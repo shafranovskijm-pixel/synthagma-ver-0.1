@@ -35,17 +35,37 @@ function VideoPreview({ videoUrl }: { videoUrl: string }) {
       return { type: 'iframe', value: content };
     }
     
+    // YouTube
     const ytMatch = content.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/);
     if (ytMatch) return { type: 'url', value: `https://www.youtube.com/embed/${ytMatch[1]}` };
     
+    // Vimeo
     const vimeoMatch = content.match(/vimeo\.com\/(\d+)/);
     if (vimeoMatch) return { type: 'url', value: `https://player.vimeo.com/video/${vimeoMatch[1]}` };
     
+    // Rutube
     const rutubeMatch = content.match(/rutube\.ru\/video\/([a-zA-Z0-9]+)/);
     if (rutubeMatch) return { type: 'url', value: `https://rutube.ru/play/embed/${rutubeMatch[1]}` };
     
+    // VK Video
     const vkMatch = content.match(/vk\.com\/video(-?\d+)_(\d+)/);
     if (vkMatch) return { type: 'url', value: `https://vk.com/video_ext.php?oid=${vkMatch[1]}&id=${vkMatch[2]}` };
+    
+    // Яндекс Дзен (dzen.ru)
+    const dzenMatch = content.match(/dzen\.ru\/(?:video\/watch|embed)\/([a-zA-Z0-9_-]+)/);
+    if (dzenMatch) return { type: 'url', value: `https://dzen.ru/embed/${dzenMatch[1]}` };
+    
+    // Одноклассники (ok.ru)
+    const okMatch = content.match(/ok\.ru\/video\/(\d+)/);
+    if (okMatch) return { type: 'url', value: `https://ok.ru/videoembed/${okMatch[1]}` };
+    
+    // Mail.ru Video
+    const mailMatch = content.match(/my\.mail\.ru\/(?:mail|bk|inbox|list)\/([^\/]+)\/video\/([^\/]+)\/(\d+)/);
+    if (mailMatch) return { type: 'url', value: `https://my.mail.ru/video/embed/${mailMatch[3]}` };
+    
+    // Yandex Video (yandex.ru/video)
+    const yandexMatch = content.match(/yandex\.ru\/video\/preview\/(\d+)/);
+    if (yandexMatch) return { type: 'url', value: `https://yandex.ru/video/preview/${yandexMatch[1]}` };
     
     return { type: null, value: null };
   };
@@ -399,7 +419,7 @@ export const LessonEditor = ({
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label>Ссылка на видео или embed код</Label>
-                  <p className="text-xs text-muted-foreground">YouTube, Vimeo, Rutube, VK Video или вставьте &lt;iframe&gt; код</p>
+                  <p className="text-xs text-muted-foreground">YouTube, Vimeo, Rutube, VK, Дзен, OK.ru, Mail.ru или &lt;iframe&gt;</p>
                   <Textarea
                     placeholder="https://youtube.com/watch?v=... или <iframe>...</iframe>"
                     value={videoUrl}
