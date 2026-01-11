@@ -542,12 +542,15 @@ export function OrganizationsManager() {
                 filteredOrganizations.map((org) => (
                   <TableRow key={org.id}>
                     <TableCell>
-                      <div className="flex items-center gap-3">
+                      <div 
+                        className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => setViewingOrg(org)}
+                      >
                         <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
                           <Building2 className="w-5 h-5 text-primary" />
                         </div>
                         <div>
-                          <div className="font-medium">{org.name}</div>
+                          <div className="font-medium text-primary hover:underline">{org.name}</div>
                           {org.inn && (
                             <div className="text-sm text-muted-foreground">ИНН: {org.inn}</div>
                           )}

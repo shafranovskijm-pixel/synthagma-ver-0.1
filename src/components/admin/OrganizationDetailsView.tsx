@@ -37,11 +37,16 @@ import {
   Save,
   TrendingUp,
   AlertTriangle,
-  Bell
+  Bell,
+  MessageSquare,
+  ShieldOff,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
+import { OrgDocumentsTab } from "./OrgDocumentsTab";
+import { OrgCommentsTab } from "./OrgCommentsTab";
+import { OrgRemindersTab } from "./OrgRemindersTab";
 
 interface Organization {
   id: string;
@@ -136,6 +141,10 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
   const isTokensWarning = tokensLimitPercent >= 80;
   const isTokensExceeded = tokensLimitPercent >= 100;
 
+  // AI should be auto-blocked when tokens exceeded
+  const isAIBlocked = isTokensExceeded && !settings.ai_enabled;
+  const shouldBlockAI = isTokensExceeded;
+
   // Stats
   const [stats, setStats] = useState({
     totalStudents: 0,
@@ -165,7 +174,6 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
 
   const fetchStudents = async () => {
     try {
-      // Get all profiles for this organization - admin has access via RLS
       const { data: profiles, error } = await supabase
         .from("profiles")
         .select("id, user_id, full_name, email, login")
@@ -176,15 +184,12 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
         return;
       }
 
-      console.log("Fetched profiles for org:", organization.id, profiles);
-
       if (!profiles || profiles.length === 0) {
         setStudents([]);
         setStats(prev => ({ ...prev, totalStudents: 0 }));
         return;
       }
 
-      // Get courses for this organization first
       const { data: orgCourses } = await supabase
         .from("courses")
         .select("id, title")
@@ -195,7 +200,6 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
         (orgCourses || []).map(c => [c.id, c.title])
       );
 
-      // Get enrollments for these courses
       let enrollments: any[] = [];
       if (courseIds.length > 0) {
         const { data: enrollmentsData, error: enrollError } = await supabase
@@ -210,7 +214,6 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
         }
       }
 
-      // Combine data
       const studentsWithEnrollments = profiles.map(profile => ({
         ...profile,
         enrollments: enrollments
@@ -225,7 +228,6 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
 
       setStudents(studentsWithEnrollments);
 
-      // Calculate stats
       const totalEnrollments = enrollments.length;
       const completedEnrollments = enrollments.filter(e => e.status === "completed").length;
       const avgProgress = totalEnrollments > 0
@@ -254,7 +256,6 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
       return;
     }
 
-    // Get lessons count and students count for each course
     const coursesWithStats = await Promise.all(
       (coursesData || []).map(async (course) => {
         const [lessonsResult, enrollmentsResult] = await Promise.all([
@@ -290,7 +291,6 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
   };
 
   const fetchUsage = async () => {
-    // Get current month usage
     const currentMonth = new Date().toISOString().slice(0, 7) + "-01";
     
     const { data, error } = await supabase
@@ -307,15 +307,13 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
     if (data) {
       setUsage(data);
     } else {
-      // Calculate storage from documents
       const { data: docsData } = await supabase
         .from("org_documents")
         .select("file_url")
         .eq("organization_id", organization.id);
 
-      // Estimate storage (we'll track this more accurately later)
       const totalDocs = docsData?.length || 0;
-      const estimatedBytes = totalDocs * 500 * 1024; // Estimate 500KB per doc
+      const estimatedBytes = totalDocs * 500 * 1024;
 
       setUsage({
         storage_bytes: estimatedBytes,
@@ -325,7 +323,6 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
   };
 
   const fetchUsageHistory = async () => {
-    // Get last 6 months of usage
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
     const startDate = sixMonthsAgo.toISOString().slice(0, 7) + "-01";
@@ -342,7 +339,6 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
       return;
     }
 
-    // Generate all months in range
     const months: UsageHistoryItem[] = [];
     const now = new Date();
     for (let i = 5; i >= 0; i--) {
@@ -364,6 +360,9 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
   const saveSettings = async () => {
     setIsSaving(true);
     try {
+      // Auto-block AI if tokens exceeded
+      const aiEnabled = shouldBlockAI ? false : settings.ai_enabled;
+
       const { error } = await supabase
         .from("organizations")
         .update({
@@ -372,7 +371,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
           phone: settings.phone || null,
           inn: settings.inn || null,
           contact_name: settings.contact_name || null,
-          ai_enabled: settings.ai_enabled,
+          ai_enabled: aiEnabled,
           storage_limit_bytes: settings.storage_limit_bytes,
           ai_tokens_limit: settings.ai_tokens_limit,
           notify_on_limit_80: settings.notify_on_limit_80,
@@ -381,7 +380,12 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
         .eq("id", organization.id);
 
       if (error) throw error;
-      toast.success("Настройки сохранены");
+      
+      if (shouldBlockAI && settings.ai_enabled) {
+        toast.success("Настройки сохранены. ИИ-помощник заблокирован из-за превышения лимита токенов.");
+      } else {
+        toast.success("Настройки сохранены");
+      }
     } catch (error) {
       console.error("Error saving settings:", error);
       toast.error("Ошибка сохранения настроек");
@@ -441,6 +445,12 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
             <p className="text-muted-foreground">{organization.email}</p>
           </div>
         </div>
+        {shouldBlockAI && (
+          <Badge variant="destructive" className="ml-auto flex items-center gap-1">
+            <ShieldOff className="w-3 h-3" />
+            ИИ заблокирован
+          </Badge>
+        )}
       </div>
 
       {/* Limit Warnings */}
@@ -450,7 +460,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
           <AlertTitle>Лимит превышен!</AlertTitle>
           <AlertDescription>
             {isStorageExceeded && "Лимит хранилища превышен. "}
-            {isTokensExceeded && "Лимит ИИ токенов превышен. "}
+            {isTokensExceeded && "Лимит ИИ токенов превышен. ИИ-помощник автоматически заблокирован. "}
             Увеличьте лимиты в настройках организации.
           </AlertDescription>
         </Alert>
@@ -535,7 +545,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full max-w-2xl grid-cols-5">
+        <TabsList className="grid w-full max-w-4xl grid-cols-7">
           <TabsTrigger value="overview" className="flex items-center gap-1">
             <BarChart3 className="w-4 h-4" />
             <span className="hidden sm:inline">Обзор</span>
@@ -551,6 +561,14 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
           <TabsTrigger value="documents" className="flex items-center gap-1">
             <FileText className="w-4 h-4" />
             <span className="hidden sm:inline">Документы</span>
+          </TabsTrigger>
+          <TabsTrigger value="comments" className="flex items-center gap-1">
+            <MessageSquare className="w-4 h-4" />
+            <span className="hidden sm:inline">Заметки</span>
+          </TabsTrigger>
+          <TabsTrigger value="reminders" className="flex items-center gap-1">
+            <Bell className="w-4 h-4" />
+            <span className="hidden sm:inline">Напоминания</span>
           </TabsTrigger>
           <TabsTrigger value="settings" className="flex items-center gap-1">
             <Settings className="w-4 h-4" />
@@ -712,16 +730,16 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm text-muted-foreground">Хранилище</span>
-                    <span className="text-sm font-medium">{formatBytes(usage.storage_bytes)} / 1 ГБ</span>
+                    <span className="text-sm font-medium">{formatBytes(usage.storage_bytes)} / {formatBytes(settings.storage_limit_bytes)}</span>
                   </div>
-                  <Progress value={(usage.storage_bytes / (1024 * 1024 * 1024)) * 100} className="h-2" />
+                  <Progress value={Math.min(storageLimitPercent, 100)} className="h-2" />
                 </div>
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm text-muted-foreground">ИИ токены (месяц)</span>
-                    <span className="text-sm font-medium">{formatTokens(usage.ai_tokens_used)} / 100K</span>
+                    <span className="text-sm font-medium">{formatTokens(usage.ai_tokens_used)} / {formatTokens(settings.ai_tokens_limit)}</span>
                   </div>
-                  <Progress value={(usage.ai_tokens_used / 100000) * 100} className="h-2" />
+                  <Progress value={Math.min(tokensLimitPercent, 100)} className="h-2" />
                 </div>
               </div>
             </CardContent>
@@ -893,44 +911,21 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
 
         {/* Documents Tab */}
         <TabsContent value="documents" className="space-y-4">
-          <Card>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Название</TableHead>
-                    <TableHead>Тип</TableHead>
-                    <TableHead>Дата</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {documents.map((doc) => (
-                    <TableRow key={doc.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <FileText className="w-4 h-4 text-muted-foreground" />
-                          <span className="font-medium">{doc.name}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{doc.type}</Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {format(new Date(doc.created_at), "d MMM yyyy", { locale: ru })}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {documents.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
-                        Нет документов
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+          <OrgDocumentsTab
+            organizationId={organization.id}
+            documents={documents}
+            onDocumentsChange={fetchDocuments}
+          />
+        </TabsContent>
+
+        {/* Comments Tab */}
+        <TabsContent value="comments" className="space-y-4">
+          <OrgCommentsTab organizationId={organization.id} />
+        </TabsContent>
+
+        {/* Reminders Tab */}
+        <TabsContent value="reminders" className="space-y-4">
+          <OrgRemindersTab organizationId={organization.id} />
         </TabsContent>
 
         {/* Settings Tab */}
@@ -983,14 +978,26 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
               <div className="border-t pt-6">
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
-                    <Label>ИИ-помощник</Label>
+                    <Label className="flex items-center gap-2">
+                      ИИ-помощник
+                      {shouldBlockAI && (
+                        <Badge variant="destructive" className="text-xs">
+                          <ShieldOff className="w-3 h-3 mr-1" />
+                          Заблокирован
+                        </Badge>
+                      )}
+                    </Label>
                     <p className="text-sm text-muted-foreground">
-                      Разрешить использование ИИ-помощника для учеников
+                      {shouldBlockAI 
+                        ? "ИИ-помощник заблокирован из-за превышения лимита токенов"
+                        : "Разрешить использование ИИ-помощника для учеников"
+                      }
                     </p>
                   </div>
                   <Switch
                     checked={settings.ai_enabled}
                     onCheckedChange={(checked) => setSettings({ ...settings, ai_enabled: checked })}
+                    disabled={shouldBlockAI}
                   />
                 </div>
               </div>
