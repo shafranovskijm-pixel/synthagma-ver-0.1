@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { OrgDocumentsManager } from "@/components/organization/OrgDocumentsManager";
 import { CourseDocumentsManager } from "@/components/organization/CourseDocumentsManager";
 import { StudentDocumentsManager } from "@/components/organization/StudentDocumentsManager";
+import { BulkDocumentUpload } from "@/components/organization/BulkDocumentUpload";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -268,6 +269,9 @@ export default function OrganizationDashboard() {
     studentName: string;
     courseName: string;
   } | null>(null);
+
+  // Bulk document upload state
+  const [showBulkUploadDialog, setShowBulkUploadDialog] = useState(false);
 
   // Statistics state
   const [stats, setStats] = useState({
@@ -2124,7 +2128,19 @@ export default function OrganizationDashboard() {
 
           {/* Documents Tab */}
           {activeTab === "documents" && organizationId && (
-            <OrgDocumentsManager organizationId={organizationId} />
+            <div className="space-y-6">
+              <div className="flex justify-end">
+                <Button
+                  variant="outline"
+                  className="rounded-xl gap-2"
+                  onClick={() => setShowBulkUploadDialog(true)}
+                >
+                  <Users className="w-4 h-4" />
+                  Массовая загрузка ученикам
+                </Button>
+              </div>
+              <OrgDocumentsManager organizationId={organizationId} />
+            </div>
           )}
         </div>
       </main>
@@ -2756,6 +2772,15 @@ export default function OrganizationDashboard() {
             setShowStudentDocsDialog(false);
             setSelectedStudentForDocs(null);
           }}
+        />
+      )}
+
+      {/* Bulk Document Upload */}
+      {organizationId && (
+        <BulkDocumentUpload
+          organizationId={organizationId}
+          isOpen={showBulkUploadDialog}
+          onClose={() => setShowBulkUploadDialog(false)}
         />
       )}
     </div>
