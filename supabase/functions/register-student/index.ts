@@ -49,8 +49,12 @@ serve(async (req) => {
 
     if (authError) {
       console.error("Auth error:", authError);
+      let errorMessage = authError.message;
+      if (authError.message.includes("already been registered")) {
+        errorMessage = "Пользователь с таким email уже зарегистрирован";
+      }
       return new Response(
-        JSON.stringify({ error: authError.message }),
+        JSON.stringify({ error: errorMessage }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
