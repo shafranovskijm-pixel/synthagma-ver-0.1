@@ -517,6 +517,7 @@ export type Database = {
       }
       registration_links: {
         Row: {
+          company_id: string | null
           created_at: string
           expires_at: string | null
           id: string
@@ -527,6 +528,7 @@ export type Database = {
           used_count: number
         }
         Insert: {
+          company_id?: string | null
           created_at?: string
           expires_at?: string | null
           id?: string
@@ -537,6 +539,7 @@ export type Database = {
           used_count?: number
         }
         Update: {
+          company_id?: string | null
           created_at?: string
           expires_at?: string | null
           id?: string
@@ -547,6 +550,13 @@ export type Database = {
           used_count?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "registration_links_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "registration_links_organization_id_fkey"
             columns: ["organization_id"]
