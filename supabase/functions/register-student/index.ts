@@ -112,6 +112,8 @@ serve(async (req) => {
 
     // Enroll in course if specified
     let enrollmentCreated = false;
+    let alreadyEnrolled = false;
+    
     if (course_id) {
       // Check if already enrolled
       const { data: existingEnrollment } = await supabaseAdmin
@@ -123,6 +125,7 @@ serve(async (req) => {
 
       if (existingEnrollment) {
         console.log(`User already enrolled in course: ${course_id}`);
+        alreadyEnrolled = true;
       } else {
         const { error: enrollError } = await supabaseAdmin
           .from("enrollments")
@@ -141,9 +144,20 @@ serve(async (req) => {
       }
     }
 
-    const message = isExisting 
-      ? (enrollmentCreated ? `Ученик ${existingName} зачислен на курс` : `Ученик ${existingName} уже зачислен на этот курс`)
-      : `Ученик создан`;
+    let message: string;
+    if (isExisting) {
+      if (!course_id) {
+        message = `Ученик ${existingName} уже существует в системе`;
+      } else if (enrollmentCreated) {
+        message = `Ученик ${existingName} зачислен на курс`;
+      } else if (alreadyEnrolled) {
+        message = `Ученик ${existingName} уже зачислен на этот курс`;
+      } else {
+        message = `Ученик ${existingName} добавлен`;
+      }
+    } else {
+      message = `Ученик создан`;
+    }
 
     console.log(`Successfully processed student: ${email}`);
 
