@@ -45,25 +45,74 @@ serve(async (req) => {
     let isExisting = false;
     let existingName = "";
     let isNoLogin = no_login === true;
+    let generatedLogin = "";
+    let generatedPassword = "";
+
+    // Generate unique login for no-login students
+    const generateLogin = async (): Promise<string> => {
+      const randomNum = Math.floor(10000 + Math.random() * 90000);
+      const login = `student_${randomNum}`;
+      
+      // Check if login already exists
+      const { data: existing } = await supabaseAdmin
+        .from("profiles")
+        .select("id")
+        .eq("login", login)
+        .maybeSingle();
+      
+      if (existing) {
+        return generateLogin(); // Recursively try again
+      }
+      return login;
+    };
+
+    // Generate random password
+    const generatePassword = (): string => {
+      const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+      let password = '';
+      for (let i = 0; i < 8; i++) {
+        password += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return password;
+    };
 
     if (isNoLogin) {
-      // Create student without auth account (allows duplicate emails)
-      // Generate a unique ID for this profile
+      // Create student with auto-generated login (allows duplicate emails)
       userId = crypto.randomUUID();
+      generatedLogin = await generateLogin();
+      generatedPassword = generatePassword();
       
-      // Create profile directly
-      const { data: profileData, error: profileError } = await supabaseAdmin
+      // Create auth user with generated email
+      const fakeEmail = `${generatedLogin}@student.local`;
+      const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+        email: fakeEmail,
+        password: generatedPassword,
+        email_confirm: true,
+        user_metadata: { full_name, is_login_user: true }
+      });
+
+      if (authError) {
+        console.error("Auth error for login user:", authError);
+        return new Response(
+          JSON.stringify({ error: "Ошибка создания пользователя: " + authError.message }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      userId = authData.user.id;
+      
+      // Create profile with login
+      const { error: profileError } = await supabaseAdmin
         .from("profiles")
         .insert({
           id: crypto.randomUUID(),
           user_id: userId,
           full_name,
           email: email?.toLowerCase() || null,
+          login: generatedLogin,
           organization_id,
           company_id: company_id || null
-        })
-        .select()
-        .single();
+        });
 
       if (profileError) {
         console.error("Profile error:", profileError);
@@ -73,7 +122,15 @@ serve(async (req) => {
         );
       }
 
-      console.log(`Created no-login student: ${full_name}`);
+      // Assign student role
+      await supabaseAdmin
+        .from("user_roles")
+        .insert({
+          user_id: userId,
+          role: "student"
+        });
+
+      console.log(`Created login-based student: ${full_name}, login: ${generatedLogin}`);
     } else {
       // Check if user already exists by email in profiles
       if (email) {
@@ -191,8 +248,8 @@ serve(async (req) => {
     let message: string;
     if (isNoLogin) {
       message = course_id 
-        ? `Ученик ${full_name} добавлен и зачислен на курс`
-        : `Ученик ${full_name} добавлен (без входа в систему)`;
+        ? `Ученик ${full_name} добавлен. Логин: ${generatedLogin}, Пароль: ${generatedPassword}`
+        : `Ученик ${full_name} добавлен. Логин: ${generatedLogin}, Пароль: ${generatedPassword}`;
     } else if (isExisting) {
       if (!course_id) {
         message = `Ученик ${existingName} уже существует в системе`;
@@ -216,6 +273,8 @@ serve(async (req) => {
         is_existing: isExisting,
         is_no_login: isNoLogin,
         enrollment_created: enrollmentCreated,
+        login: generatedLogin || undefined,
+        password: generatedPassword || undefined,
         message 
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
