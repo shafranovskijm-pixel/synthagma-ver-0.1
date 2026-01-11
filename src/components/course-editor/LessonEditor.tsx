@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,9 +15,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { FileText, Video, HelpCircle, Plus, Trash2, Upload } from "lucide-react";
-import { MarkdownEditor } from "./MarkdownEditor";
-import { FileUploadDialog } from "./FileUploadDialog";
+import { FileText, Video, HelpCircle, Plus, Trash2 } from "lucide-react";
+import { BlockEditor, ContentBlock } from "@/components/course-builder/BlockEditor";
 
 interface Lesson {
   id: string;
@@ -60,23 +59,76 @@ export const LessonEditor = ({
 }: LessonEditorProps) => {
   const [title, setTitle] = useState("");
   const [type, setType] = useState("text");
-  const [content, setContent] = useState("");
+  const [blocks, setBlocks] = useState<ContentBlock[]>([]);
+  const [videoUrl, setVideoUrl] = useState("");
   const [questions, setQuestions] = useState<TestQuestion[]>([]);
-  const [isFileUploadOpen, setIsFileUploadOpen] = useState(false);
+
+  // Parse content to blocks or use as video URL
+  const parseContent = useCallback((content: string | null, lessonType: string) => {
+    if (!content) {
+      setBlocks([]);
+      setVideoUrl("");
+      return;
+    }
+    
+    if (lessonType === "video") {
+      setVideoUrl(content);
+      setBlocks([]);
+      return;
+    }
+    
+    // Try to parse as JSON blocks
+    try {
+      const parsed = JSON.parse(content);
+      if (Array.isArray(parsed)) {
+        setBlocks(parsed);
+        return;
+      }
+    } catch {
+      // Not JSON, convert markdown to blocks
+      const lines = content.split('\n').filter(line => line.trim());
+      const convertedBlocks: ContentBlock[] = lines.map((line, index) => {
+        const id = crypto.randomUUID();
+        
+        if (line.startsWith('# ')) {
+          return { id, type: 'heading1' as const, content: line.slice(2) };
+        }
+        if (line.startsWith('## ') || line.startsWith('### ')) {
+          return { id, type: 'heading2' as const, content: line.replace(/^#{2,3}\s/, '') };
+        }
+        if (line.startsWith('> ')) {
+          return { id, type: 'quote' as const, content: line.slice(2) };
+        }
+        if (line.startsWith('- ') || line.startsWith('* ')) {
+          return { id, type: 'bulletList' as const, content: line.slice(2) };
+        }
+        if (/^\d+\.\s/.test(line)) {
+          return { id, type: 'numberedList' as const, content: line.replace(/^\d+\.\s/, '') };
+        }
+        if (line.startsWith('![')) {
+          const match = line.match(/!\[.*?\]\((.*?)\)/);
+          return { id, type: 'image' as const, content: '', imageSrc: match?.[1] || '' };
+        }
+        return { id, type: 'paragraph' as const, content: line };
+      });
+      setBlocks(convertedBlocks.length > 0 ? convertedBlocks : []);
+    }
+  }, []);
 
   useEffect(() => {
     if (lesson) {
       setTitle(lesson.title);
       setType(lesson.type);
-      setContent(lesson.content || "");
+      parseContent(lesson.content, lesson.type);
       setQuestions(existingQuestions);
     } else {
       setTitle("");
       setType("text");
-      setContent("");
+      setBlocks([]);
+      setVideoUrl("");
       setQuestions([]);
     }
-  }, [lesson, existingQuestions, isOpen]);
+  }, [lesson, existingQuestions, isOpen, parseContent]);
 
   const handleAddQuestion = () => {
     setQuestions([
@@ -106,23 +158,20 @@ export const LessonEditor = ({
 
   const handleSave = () => {
     if (!title.trim()) return;
+    
+    let content = "";
+    if (type === "text") {
+      content = JSON.stringify(blocks);
+    } else if (type === "video") {
+      content = videoUrl;
+    }
+    
     onSave({
       title,
       type,
       content,
       questions: type === "test" ? questions : undefined,
     });
-  };
-
-  const handleFileUpload = (url: string, fileType: "image" | "video" | "file") => {
-    if (fileType === "image") {
-      setContent(content + `\n![Изображение](${url})\n`);
-    } else if (fileType === "video") {
-      setContent(content + `\n<video src="${url}" controls></video>\n`);
-    } else {
-      setContent(content + `\n[Скачать файл](${url})\n`);
-    }
-    setIsFileUploadOpen(false);
   };
 
   return (
@@ -179,23 +228,10 @@ export const LessonEditor = ({
 
             {type === "text" && (
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label>Содержание урока (Markdown)</Label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsFileUploadOpen(true)}
-                    className="gap-2"
-                  >
-                    <Upload className="w-4 h-4" />
-                    Загрузить файл
-                  </Button>
-                </div>
-                <MarkdownEditor
-                  value={content}
-                  onChange={setContent}
-                  onImageUpload={() => setIsFileUploadOpen(true)}
+                <Label>Содержание урока</Label>
+                <BlockEditor
+                  blocks={blocks}
+                  onChange={setBlocks}
                 />
               </div>
             )}
@@ -206,12 +242,12 @@ export const LessonEditor = ({
                   <Label>Ссылка на видео (YouTube, Vimeo)</Label>
                   <Input
                     placeholder="https://youtube.com/watch?v=..."
-                    value={content}
-                    onChange={(e) => setContent(e.target.value)}
+                    value={videoUrl}
+                    onChange={(e) => setVideoUrl(e.target.value)}
                     className="h-11"
                   />
                 </div>
-                {content && (
+                {videoUrl && (
                   <div className="aspect-video bg-muted rounded-xl flex items-center justify-center border border-border">
                     <Video className="w-16 h-16 text-muted-foreground/30" />
                   </div>
@@ -338,13 +374,6 @@ export const LessonEditor = ({
           </div>
         </DialogContent>
       </Dialog>
-
-      <FileUploadDialog
-        isOpen={isFileUploadOpen}
-        onClose={() => setIsFileUploadOpen(false)}
-        onUpload={handleFileUpload}
-        courseId={courseId || lesson?.course_id || ""}
-      />
     </>
   );
 };
