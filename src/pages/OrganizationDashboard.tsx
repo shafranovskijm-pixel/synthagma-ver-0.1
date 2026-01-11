@@ -220,6 +220,9 @@ export default function OrganizationDashboard() {
   const [showStudentDialog, setShowStudentDialog] = useState(false);
   const [isLoadingStudentDetails, setIsLoadingStudentDetails] = useState(false);
   const [testQuestions, setTestQuestions] = useState<Record<string, TestQuestion[]>>({});
+  const [studentCompanyId, setStudentCompanyId] = useState<string>("");
+  const [isSavingStudentCompany, setIsSavingStudentCompany] = useState(false);
+  const [isSendingCredentials, setIsSendingCredentials] = useState(false);
 
   // Registration links state
   const [registrationLinks, setRegistrationLinks] = useState<RegistrationLink[]>([]);
@@ -1291,6 +1294,73 @@ export default function OrganizationDashboard() {
     return categories.find(c => c.id === categoryId);
   };
 
+  // Copy credentials to clipboard
+  const handleCopyCredentials = (login: string, password: string) => {
+    const text = `Логин: ${login}\nПароль: ${password}`;
+    navigator.clipboard.writeText(text);
+    toast.success("Логин и пароль скопированы");
+  };
+
+  // Attach student to company
+  const handleAttachStudentToCompany = async () => {
+    if (!selectedStudent || !studentCompanyId) {
+      toast.error("Выберите компанию");
+      return;
+    }
+
+    setIsSavingStudentCompany(true);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ company_id: studentCompanyId })
+        .eq("user_id", selectedStudent.student.user_id);
+
+      if (error) throw error;
+
+      toast.success("Ученик прикреплён к компании");
+      // Update local state
+      setStudents(prev => prev.map(s => 
+        s.user_id === selectedStudent.student.user_id 
+          ? { ...s, company_id: studentCompanyId } 
+          : s
+      ));
+    } catch (error) {
+      console.error("Error attaching student to company:", error);
+      toast.error("Ошибка прикрепления к компании");
+    } finally {
+      setIsSavingStudentCompany(false);
+    }
+  };
+
+  // Send credentials via email (placeholder - needs email service)
+  const handleSendCredentials = async () => {
+    if (!selectedStudent) return;
+    
+    const student = selectedStudent.student;
+    if (!student.login || !student.generated_password) {
+      toast.error("У ученика нет логина для входа");
+      return;
+    }
+
+    if (!student.email) {
+      toast.error("У ученика не указан email");
+      return;
+    }
+
+    setIsSendingCredentials(true);
+    try {
+      // For now, just copy to clipboard with a message
+      const text = `Здравствуйте!\n\nВаши данные для входа в систему обучения:\n\nЛогин: ${student.login}\nПароль: ${student.generated_password}\n\nСсылка для входа: ${window.location.origin}/login`;
+      await navigator.clipboard.writeText(text);
+      toast.success("Сообщение с данными скопировано в буфер обмена. Отправьте его ученику вручную.");
+    } catch (error) {
+      console.error("Error:", error);
+      toast.error("Ошибка копирования");
+    } finally {
+      setIsSendingCredentials(false);
+    }
+  };
+
   // View student details
   const handleViewStudent = async (student: Student) => {
     setShowStudentDialog(true);
@@ -2208,6 +2278,18 @@ export default function OrganizationDashboard() {
                                         {student.generated_password && (
                                           <span className="bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs font-mono">{student.generated_password}</span>
                                         )}
+                                        {student.login && student.generated_password && (
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleCopyCredentials(student.login!, student.generated_password!);
+                                            }}
+                                            className="p-1 hover:bg-muted rounded transition-colors"
+                                            title="Копировать логин и пароль"
+                                          >
+                                            <Copy className="w-3 h-3 text-muted-foreground" />
+                                          </button>
+                                        )}
                                       </span>
                                       {student.email && <span className="text-muted-foreground/50 text-xs">{student.email}</span>}
                                     </div>
@@ -2908,16 +2990,108 @@ export default function OrganizationDashboard() {
             </div>
           ) : selectedStudent && (
             <div className="space-y-6">
+              {/* Basic Info */}
               <div className="bg-secondary/30 rounded-xl p-4">
                 <h3 className="font-semibold text-lg">{selectedStudent.student.name}</h3>
-                <p className="text-muted-foreground">{selectedStudent.student.email}</p>
+                <p className="text-muted-foreground">{selectedStudent.student.email || "Email не указан"}</p>
+                
+                {/* Login credentials */}
+                {selectedStudent.student.login && (
+                  <div className="mt-3 p-3 bg-background rounded-lg border border-border">
+                    <p className="text-sm text-muted-foreground mb-2">Данные для входа:</p>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <span className="bg-primary/10 text-primary px-2 py-1 rounded text-sm font-mono">
+                        {selectedStudent.student.login}
+                      </span>
+                      {selectedStudent.student.generated_password && (
+                        <span className="bg-muted text-muted-foreground px-2 py-1 rounded text-sm font-mono">
+                          {selectedStudent.student.generated_password}
+                        </span>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="rounded-lg gap-1 ml-auto"
+                        onClick={() => handleCopyCredentials(
+                          selectedStudent.student.login!,
+                          selectedStudent.student.generated_password || ""
+                        )}
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                        Копировать
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
                 {selectedStudent.student.course && (
-                  <p className="text-sm mt-2">Курс: <span className="font-medium">{selectedStudent.student.course}</span></p>
+                  <p className="text-sm mt-3">Курс: <span className="font-medium">{selectedStudent.student.course}</span></p>
                 )}
                 <div className="flex items-center gap-3 mt-3">
                   <Progress value={selectedStudent.student.progress} className="flex-1 h-3" />
                   <span className="font-semibold">{selectedStudent.student.progress}%</span>
                 </div>
+              </div>
+
+              {/* Actions */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Attach to company */}
+                <div className="bg-secondary/30 rounded-xl p-4">
+                  <h4 className="font-medium mb-3 flex items-center gap-2">
+                    <Building2 className="w-4 h-4" />
+                    Прикрепить к компании
+                  </h4>
+                  <div className="flex gap-2">
+                    <Select value={studentCompanyId} onValueChange={setStudentCompanyId}>
+                      <SelectTrigger className="flex-1 rounded-lg">
+                        <SelectValue placeholder="Выберите компанию" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {companies.map(company => (
+                          <SelectItem key={company.id} value={company.id}>
+                            {company.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="rounded-lg shrink-0"
+                      onClick={handleAttachStudentToCompany}
+                      disabled={!studentCompanyId || isSavingStudentCompany}
+                    >
+                      {isSavingStudentCompany ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Save className="w-4 h-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Send credentials */}
+                {selectedStudent.student.login && selectedStudent.student.generated_password && (
+                  <div className="bg-secondary/30 rounded-xl p-4">
+                    <h4 className="font-medium mb-3 flex items-center gap-2">
+                      <Send className="w-4 h-4" />
+                      Отправить данные для входа
+                    </h4>
+                    <Button
+                      variant="outline"
+                      className="w-full rounded-lg gap-2"
+                      onClick={handleSendCredentials}
+                      disabled={isSendingCredentials || !selectedStudent.student.email}
+                    >
+                      {isSendingCredentials ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Copy className="w-4 h-4" />
+                      )}
+                      {selectedStudent.student.email ? "Скопировать сообщение" : "Email не указан"}
+                    </Button>
+                  </div>
+                )}
               </div>
 
               <div>
