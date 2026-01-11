@@ -73,6 +73,10 @@ export function CourseDocumentsManager({
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
 
+  // Preview state
+  const [previewDoc, setPreviewDoc] = useState<CourseDocument | null>(null);
+  const [showPreviewDialog, setShowPreviewDialog] = useState(false);
+
   // Form state
   const [docName, setDocName] = useState("");
   const [docType, setDocType] = useState("material");
@@ -197,7 +201,39 @@ export function CourseDocumentsManager({
   };
 
   const getDocTypeInfo = (type: string) => {
-    return DOCUMENT_TYPES.find((t) => t.value === type) || DOCUMENT_TYPES[4];
+    return DOCUMENT_TYPES.find((t) => t.value === type) || DOCUMENT_TYPES[5];
+  };
+
+  const getPreviewUrl = (fileUrl: string) => {
+    return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl)}`;
+  };
+
+  const handlePreview = (doc: CourseDocument) => {
+    if (!doc.file_url) return;
+    
+    // Links open directly
+    if (doc.type === "link") {
+      window.open(doc.file_url, "_blank");
+      return;
+    }
+    
+    const ext = doc.file_url.split('.').pop()?.toLowerCase();
+    
+    // PDF opens in new tab natively
+    if (ext === 'pdf') {
+      window.open(doc.file_url, '_blank');
+      return;
+    }
+    
+    // Office documents open in preview dialog
+    if (['pptx', 'ppt', 'docx', 'doc', 'xlsx', 'xls'].includes(ext || '')) {
+      setPreviewDoc(doc);
+      setShowPreviewDialog(true);
+      return;
+    }
+    
+    // Others open in new tab
+    window.open(doc.file_url, '_blank');
   };
 
   return (
@@ -366,7 +402,8 @@ export function CourseDocumentsManager({
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => window.open(doc.file_url!, "_blank")}
+                            onClick={() => handlePreview(doc)}
+                            title="Просмотр"
                           >
                             <Eye className="w-4 h-4" />
                           </Button>
@@ -380,6 +417,7 @@ export function CourseDocumentsManager({
                                 link.download = doc.name;
                                 link.click();
                               }}
+                              title="Скачать"
                             >
                               <Download className="w-4 h-4" />
                             </Button>
@@ -391,6 +429,7 @@ export function CourseDocumentsManager({
                         size="icon"
                         onClick={() => handleDelete(doc.id)}
                         className="text-destructive hover:text-destructive"
+                        title="Удалить"
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
@@ -402,6 +441,28 @@ export function CourseDocumentsManager({
           )}
         </div>
       </DialogContent>
+
+      {/* Preview Dialog */}
+      <Dialog open={showPreviewDialog} onOpenChange={setShowPreviewDialog}>
+        <DialogContent className="max-w-5xl h-[85vh] rounded-2xl p-0 overflow-hidden">
+          <DialogHeader className="p-4 border-b border-border">
+            <DialogTitle className="font-display flex items-center gap-2">
+              <File className="w-5 h-5 text-primary" />
+              {previewDoc?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 h-full min-h-0">
+            {previewDoc?.file_url && (
+              <iframe
+                src={getPreviewUrl(previewDoc.file_url)}
+                className="w-full h-[calc(85vh-80px)] border-0"
+                title={previewDoc.name}
+                allowFullScreen
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }
