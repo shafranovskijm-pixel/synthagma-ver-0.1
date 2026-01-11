@@ -6,6 +6,7 @@ import { CourseDocumentsManager } from "@/components/organization/CourseDocument
 import { StudentDocumentsManager } from "@/components/organization/StudentDocumentsManager";
 import { BulkDocumentUpload } from "@/components/organization/BulkDocumentUpload";
 import { EnrollmentHistory } from "@/components/organization/EnrollmentHistory";
+import { CourseTestReport } from "@/components/organization/CourseTestReport";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -2721,6 +2722,21 @@ export default function OrganizationDashboard() {
                   </>
                 )}
               </div>
+
+              {/* Course Test Report */}
+              {selectedCourse && organizationId && (
+                <div>
+                  <h3 className="font-semibold mb-3 flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4" />
+                    Результаты тестирования
+                  </h3>
+                  <CourseTestReport
+                    courseId={selectedCourse.id}
+                    courseName={selectedCourse.title}
+                    organizationId={organizationId}
+                  />
+                </div>
+              )}
 
               {/* Enrollment History */}
               {selectedCourse && organizationId && (
