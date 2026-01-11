@@ -4,10 +4,11 @@ import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Mail, Lock, Loader2, Shield, Building2, GraduationCap } from "lucide-react";
+import { ArrowLeft, Mail, Lock, Loader2, Shield, Building2, GraduationCap, User } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const DEMO_ACCOUNTS = {
   admin: { email: "admin@demo.sigma", password: "demo123456", role: "admin", label: "Админ", icon: Shield, color: "bg-sigma-purple" },
@@ -17,9 +18,11 @@ const DEMO_ACCOUNTS = {
 
 const Login = () => {
   const [email, setEmail] = useState("");
+  const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [demoLoading, setDemoLoading] = useState<string | null>(null);
+  const [loginMode, setLoginMode] = useState<"email" | "login">("email");
   
   const { signIn, user, userRole, loading } = useAuth();
   const navigate = useNavigate();
@@ -43,7 +46,16 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!email || !password) {
+    if (loginMode === "email" && (!email || !password)) {
+      toast({
+        title: "Ошибка",
+        description: "Заполните все поля",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (loginMode === "login" && (!login || !password)) {
       toast({
         title: "Ошибка",
         description: "Заполните все поля",
@@ -54,13 +66,37 @@ const Login = () => {
 
     setIsLoading(true);
     
-    const { error } = await signIn(email, password);
+    let signInEmail = email;
+    
+    // If login mode, find the user's fake email by login
+    if (loginMode === "login") {
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("user_id, login")
+        .eq("login", login)
+        .maybeSingle();
+      
+      if (profileError || !profile) {
+        toast({
+          title: "Ошибка входа",
+          description: "Неверный логин или пароль",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+      
+      // Use the fake email format for login-based users
+      signInEmail = `${login}@student.local`;
+    }
+    
+    const { error } = await signIn(signInEmail, password);
     
     if (error) {
       toast({
         title: "Ошибка входа",
         description: error.message === "Invalid login credentials" 
-          ? "Неверный email или пароль" 
+          ? (loginMode === "login" ? "Неверный логин или пароль" : "Неверный email или пароль")
           : error.message,
         variant: "destructive",
       });
@@ -234,26 +270,57 @@ const Login = () => {
               <span className="w-full border-t border-border" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">или войдите с email</span>
+              <span className="bg-background px-2 text-muted-foreground">или войдите</span>
             </div>
           </div>
 
+          <Tabs value={loginMode} onValueChange={(v) => setLoginMode(v as "email" | "login")} className="mb-6">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="email" className="flex items-center gap-2">
+                <Mail className="w-4 h-4" />
+                По email
+              </TabsTrigger>
+              <TabsTrigger value="login" className="flex items-center gap-2">
+                <User className="w-4 h-4" />
+                По логину
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <Input 
-                  id="email" 
-                  type="email" 
-                  placeholder="your@email.com" 
-                  className="pl-10 h-12 rounded-xl"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  disabled={isLoading}
-                />
+            {loginMode === "email" ? (
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                  <Input 
+                    id="email" 
+                    type="email" 
+                    placeholder="your@email.com" 
+                    className="pl-10 h-12 rounded-xl"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    disabled={isLoading}
+                  />
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="space-y-2">
+                <Label htmlFor="login">Логин</Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                  <Input 
+                    id="login" 
+                    type="text" 
+                    placeholder="student_12345" 
+                    className="pl-10 h-12 rounded-xl"
+                    value={login}
+                    onChange={(e) => setLogin(e.target.value)}
+                    disabled={isLoading}
+                  />
+                </div>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="password">Пароль</Label>
