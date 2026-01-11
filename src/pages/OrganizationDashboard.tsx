@@ -7,6 +7,7 @@ import { StudentDocumentsManager } from "@/components/organization/StudentDocume
 import { BulkDocumentUpload } from "@/components/organization/BulkDocumentUpload";
 import { EnrollmentHistory } from "@/components/organization/EnrollmentHistory";
 import { CourseTestReport } from "@/components/organization/CourseTestReport";
+import { CompaniesManager } from "@/components/organization/CompaniesManager";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -1949,112 +1950,9 @@ export default function OrganizationDashboard() {
             </div>
           )}
 
-          {/* Organizations Tab */}
-          {activeTab === "organizations" && (
-            <div className="bg-card rounded-2xl border border-border">
-              <div className="p-6 border-b border-border flex items-center justify-between">
-                <h2 className="font-display text-xl font-semibold">Список компаний</h2>
-                <div className="relative">
-                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    placeholder="Поиск по названию, email, ИНН..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 w-64 rounded-xl"
-                  />
-                </div>
-              </div>
-
-              {isLoadingOrgs ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-border">
-                        <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Компания</th>
-                        <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Контакт</th>
-                        <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">ИНН</th>
-                        <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Студенты</th>
-                        <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Курсы</th>
-                        <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">ИИ</th>
-                        <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Действия</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredOrganizations.map((org) => (
-                        <tr key={org.id} className="border-b border-border last:border-0 hover:bg-secondary/50 transition-colors">
-                          <td className="px-6 py-4">
-                            <div>
-                              <div className="font-medium">{org.name}</div>
-                              <div className="text-sm text-muted-foreground">{org.email}</div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div>
-                              <div className="text-sm">{org.contact_name || "—"}</div>
-                              <div className="text-sm text-muted-foreground">{org.phone || "—"}</div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 text-sm">{org.inn || "—"}</td>
-                          <td className="px-6 py-4">
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
-                              <Users className="w-3 h-3" />
-                              {org.studentsCount || 0}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-accent/10 text-accent">
-                              <BookOpen className="w-3 h-3" />
-                              {org.coursesCount || 0}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
-                              org.ai_enabled
-                                ? 'bg-sigma-green/10 text-sigma-green'
-                                : 'bg-muted text-muted-foreground'
-                            }`}>
-                              {org.ai_enabled ? 'Включён' : 'Выключен'}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="flex gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="rounded-lg gap-1"
-                                onClick={() => handleEditCompany(org)}
-                              >
-                                <Edit className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="rounded-lg gap-1"
-                                onClick={() => handleViewOrg(org)}
-                              >
-                                <Eye className="w-4 h-4" />
-                                Подробнее
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                      {filteredOrganizations.length === 0 && (
-                        <tr>
-                          <td colSpan={7} className="px-6 py-12 text-center text-muted-foreground">
-                            Нет компаний
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
+          {/* Organizations/Companies Tab */}
+          {activeTab === "organizations" && organizationId && (
+            <CompaniesManager organizationId={organizationId} />
           )}
 
           {/* Students Tab */}
