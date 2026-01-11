@@ -905,8 +905,9 @@ const CourseLearning = () => {
                     </h3>
                     <div className="space-y-2">
                       {(Array.isArray(question.options) ? question.options : []).map((option: unknown, oIndex: number) => (
-                        <label 
+                        <div 
                           key={oIndex}
+                          onClick={() => setAnswers(prev => ({ ...prev, [question.id]: oIndex }))}
                           className={cn(
                             "flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-all",
                             answers[question.id] === oIndex 
@@ -925,25 +926,9 @@ const CourseLearning = () => {
                             )}
                           </div>
                           <span>{getOptionText(option)}</span>
-                        </label>
+                        </div>
                       ))}
                     </div>
-                    <input
-                      type="hidden"
-                      name={question.id}
-                      checked={answers[question.id] !== undefined}
-                      onChange={() => {}}
-                    />
-                    {(Array.isArray(question.options) ? question.options : []).map((_, oIndex: number) => (
-                      <input
-                        key={oIndex}
-                        type="radio"
-                        name={question.id}
-                        className="sr-only"
-                        checked={answers[question.id] === oIndex}
-                        onChange={() => setAnswers(prev => ({ ...prev, [question.id]: oIndex }))}
-                      />
-                    ))}
                   </div>
                 ))}
 
