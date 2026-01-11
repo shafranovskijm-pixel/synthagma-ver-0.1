@@ -47,7 +47,12 @@ import {
   Filter,
   Tag,
   Palette,
-  History
+  History,
+  Moon,
+  Sun,
+  Library,
+  Trophy,
+  MessageCircle
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
@@ -167,7 +172,7 @@ interface Company {
 export default function OrganizationDashboard() {
   const navigate = useNavigate();
   const { signOut, user } = useAuth();
-  const [activeTab, setActiveTab] = useState<"courses" | "organizations" | "students" | "stats" | "links" | "documents">("courses");
+  const [activeTab, setActiveTab] = useState<"courses" | "organizations" | "students" | "stats" | "links" | "documents" | "settings">("courses");
   const [searchQuery, setSearchQuery] = useState("");
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [showAddStudentDialog, setShowAddStudentDialog] = useState(false);
@@ -281,8 +286,8 @@ export default function OrganizationDashboard() {
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
   const [editingCategory, setEditingCategory] = useState<CourseCategory | null>(null);
 
-  // Student filter state
-  const [studentStatusFilter, setStudentStatusFilter] = useState<"all" | "active" | "completed" | "not_enrolled">("all");
+  // Student filter state - default to not_enrolled
+  const [studentStatusFilter, setStudentStatusFilter] = useState<"all" | "active" | "completed" | "not_enrolled">("not_enrolled");
 
   // Course documents state
   const [showCourseDocsDialog, setShowCourseDocsDialog] = useState(false);
@@ -306,6 +311,43 @@ export default function OrganizationDashboard() {
     completedCount: 0,
     averageProgress: 0
   });
+
+  // Settings state
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return document.documentElement.classList.contains('dark');
+    }
+    return false;
+  });
+  const [studentDashboardSettings, setStudentDashboardSettings] = useState({
+    showLibrary: true,
+    showAchievements: true,
+    showAiChat: true
+  });
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+
+  // Load theme and settings on mount
+  useEffect(() => {
+    // Load theme
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark') {
+      setIsDarkMode(true);
+      document.documentElement.classList.add('dark');
+    } else if (savedTheme === 'light') {
+      setIsDarkMode(false);
+      document.documentElement.classList.remove('dark');
+    }
+
+    // Load student dashboard settings
+    const savedSettings = localStorage.getItem('studentDashboardSettings');
+    if (savedSettings) {
+      try {
+        setStudentDashboardSettings(JSON.parse(savedSettings));
+      } catch (e) {
+        console.error('Error loading settings:', e);
+      }
+    }
+  }, []);
 
   // Fetch organization data
   useEffect(() => {
@@ -1716,7 +1758,14 @@ export default function OrganizationDashboard() {
               <FileText className="w-5 h-5" />
               Документы
             </button>
-            <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors">
+            <button
+              onClick={() => setActiveTab("settings")}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
+                activeTab === "settings"
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-secondary"
+              }`}
+            >
               <Settings className="w-5 h-5" />
               Настройки
             </button>
@@ -1747,6 +1796,7 @@ export default function OrganizationDashboard() {
                 {activeTab === "stats" && "Статистика обучения"}
                 {activeTab === "links" && "Ссылки для регистрации"}
                 {activeTab === "documents" && "Документооборот"}
+                {activeTab === "settings" && "Настройки"}
               </h1>
               <p className="text-muted-foreground">{organizationName}</p>
             </div>
@@ -2131,7 +2181,7 @@ export default function OrganizationDashboard() {
                                 className="rounded-lg"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  navigate(`/course/${course.id}`);
+                                  navigate(`/course-preview/${course.id}`);
                                 }}
                               >
                                 <Eye className="w-4 h-4" />
@@ -2505,6 +2555,164 @@ export default function OrganizationDashboard() {
               <OrgDocumentsManager organizationId={organizationId} />
             </div>
           )}
+
+          {/* Settings Tab */}
+          {activeTab === "settings" && (
+            <div className="max-w-2xl space-y-6">
+              {/* Theme Settings */}
+              <div className="bg-card rounded-2xl border border-border p-6">
+                <h3 className="font-display font-semibold text-lg mb-4 flex items-center gap-2">
+                  <Palette className="w-5 h-5" />
+                  Тема оформления
+                </h3>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">Режим оформления</p>
+                    <p className="text-sm text-muted-foreground">Выберите светлую или тёмную тему</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant={!isDarkMode ? "default" : "outline"}
+                      className="rounded-xl gap-2"
+                      onClick={() => {
+                        setIsDarkMode(false);
+                        document.documentElement.classList.remove('dark');
+                        localStorage.setItem('theme', 'light');
+                      }}
+                    >
+                      <Sun className="w-4 h-4" />
+                      Светлая
+                    </Button>
+                    <Button
+                      variant={isDarkMode ? "default" : "outline"}
+                      className="rounded-xl gap-2"
+                      onClick={() => {
+                        setIsDarkMode(true);
+                        document.documentElement.classList.add('dark');
+                        localStorage.setItem('theme', 'dark');
+                      }}
+                    >
+                      <Moon className="w-4 h-4" />
+                      Тёмная
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Student Dashboard Settings */}
+              <div className="bg-card rounded-2xl border border-border p-6">
+                <h3 className="font-display font-semibold text-lg mb-4 flex items-center gap-2">
+                  <Settings className="w-5 h-5" />
+                  Настройки личного кабинета ученика
+                </h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Настройте, какие разделы будут отображаться в личном кабинете учеников
+                </p>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between py-3 border-b border-border">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                        <Library className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-medium">Библиотека</p>
+                        <p className="text-sm text-muted-foreground">Раздел с дополнительными материалами</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setStudentDashboardSettings(prev => ({ ...prev, showLibrary: !prev.showLibrary }))}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        studentDashboardSettings.showLibrary ? 'bg-primary' : 'bg-muted'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          studentDashboardSettings.showLibrary ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between py-3 border-b border-border">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-sigma-orange/10 flex items-center justify-center">
+                        <Trophy className="w-5 h-5 text-sigma-orange" />
+                      </div>
+                      <div>
+                        <p className="font-medium">Достижения</p>
+                        <p className="text-sm text-muted-foreground">Раздел с наградами и достижениями</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setStudentDashboardSettings(prev => ({ ...prev, showAchievements: !prev.showAchievements }))}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        studentDashboardSettings.showAchievements ? 'bg-primary' : 'bg-muted'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          studentDashboardSettings.showAchievements ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-sigma-cyan/10 flex items-center justify-center">
+                        <MessageCircle className="w-5 h-5 text-sigma-cyan" />
+                      </div>
+                      <div>
+                        <p className="font-medium">ИИ-помощник</p>
+                        <p className="text-sm text-muted-foreground">Чат с ИИ для помощи в обучении</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setStudentDashboardSettings(prev => ({ ...prev, showAiChat: !prev.showAiChat }))}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        studentDashboardSettings.showAiChat ? 'bg-primary' : 'bg-muted'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          studentDashboardSettings.showAiChat ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+                <div className="mt-6 pt-4 border-t border-border">
+                  <Button
+                    className="btn-gradient rounded-xl gap-2"
+                    onClick={() => {
+                      setIsSavingSettings(true);
+                      try {
+                        // Save settings to localStorage for now
+                        localStorage.setItem('studentDashboardSettings', JSON.stringify(studentDashboardSettings));
+                        toast.success('Настройки сохранены');
+                      } catch (error) {
+                        console.error('Error saving settings:', error);
+                        toast.error('Ошибка сохранения настроек');
+                      } finally {
+                        setIsSavingSettings(false);
+                      }
+                    }}
+                    disabled={isSavingSettings}
+                  >
+                    {isSavingSettings ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Сохранение...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4" />
+                        Сохранить настройки
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </main>
 
@@ -2665,30 +2873,84 @@ export default function OrganizationDashboard() {
         </DialogContent>
       </Dialog>
 
-      {/* Enroll Dialog */}
+      {/* Enroll Dialog - Enhanced with search */}
       <Dialog open={showEnrollDialog} onOpenChange={setShowEnrollDialog}>
-        <DialogContent className="rounded-2xl">
+        <DialogContent className="rounded-2xl max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle className="font-display">Зачислить на курс</DialogTitle>
             <DialogDescription>
-              Выберите курс для зачисления выбранных учеников
+              Выберите курс для зачисления {selectedStudentIds.size} учеников
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <Select value={enrollCourseId} onValueChange={setEnrollCourseId}>
-              <SelectTrigger className="rounded-xl">
-                <SelectValue placeholder="Выберите курс" />
-              </SelectTrigger>
-              <SelectContent>
-                {courses.filter(c => c.is_published).map(course => (
-                  <SelectItem key={course.id} value={course.id}>{course.title}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="space-y-4 py-4 flex-1 overflow-hidden flex flex-col">
+            <div className="relative">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Поиск курса..."
+                value={courseSearchQuery}
+                onChange={(e) => setCourseSearchQuery(e.target.value)}
+                className="pl-10 rounded-xl"
+              />
+            </div>
+            <div className="flex-1 overflow-auto border border-border rounded-xl p-2 space-y-2 min-h-[200px] max-h-[300px]">
+              {courses.filter(c => c.is_published && c.title.toLowerCase().includes(courseSearchQuery.toLowerCase())).length === 0 ? (
+                <div className="text-center text-muted-foreground py-8">
+                  <BookOpen className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <p>Курсы не найдены</p>
+                </div>
+              ) : (
+                courses.filter(c => c.is_published && c.title.toLowerCase().includes(courseSearchQuery.toLowerCase())).map(course => {
+                  const category = getCategoryById(course.category_id);
+                  const isSelected = enrollCourseId === course.id;
+                  
+                  return (
+                    <div
+                      key={course.id}
+                      onClick={() => setEnrollCourseId(course.id)}
+                      className={`p-3 rounded-xl cursor-pointer transition-colors ${
+                        isSelected
+                          ? 'bg-primary/10 border-2 border-primary'
+                          : 'bg-secondary/30 hover:bg-secondary/50 border-2 border-transparent'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                          isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted'
+                        }`}>
+                          <BookOpen className="w-5 h-5" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="font-medium">{course.title}</div>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <span>{course.lessonsCount} уроков</span>
+                            <span>•</span>
+                            <span>{course.studentsCount} учеников</span>
+                            {category && (
+                              <>
+                                <span>•</span>
+                                <span
+                                  className="px-1.5 py-0.5 rounded text-xs"
+                                  style={{ backgroundColor: category.color + '20', color: category.color }}
+                                >
+                                  {category.name}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        {isSelected && (
+                          <CheckCircle2 className="w-5 h-5 text-primary" />
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
             <Button
               className="w-full btn-gradient rounded-xl"
               onClick={handleBulkEnroll}
-              disabled={isEnrolling}
+              disabled={isEnrolling || !enrollCourseId}
             >
               {isEnrolling ? (
                 <>
@@ -2696,7 +2958,10 @@ export default function OrganizationDashboard() {
                   Зачисление...
                 </>
               ) : (
-                "Зачислить"
+                <>
+                  <GraduationCap className="w-4 h-4 mr-2" />
+                  Зачислить на курс
+                </>
               )}
             </Button>
           </div>
