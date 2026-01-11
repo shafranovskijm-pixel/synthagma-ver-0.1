@@ -242,6 +242,7 @@ export default function OrganizationDashboard() {
   const [selectedCoursesToAdd, setSelectedCoursesToAdd] = useState<Set<string>>(new Set());
   const [isLoadingStudentCourses, setIsLoadingStudentCourses] = useState(false);
   const [isAddingCoursesToStudent, setIsAddingCoursesToStudent] = useState(false);
+  const [studentCoursesSearchQuery, setStudentCoursesSearchQuery] = useState("");
 
   // All profiles (students without enrollments)
   const [allProfiles, setAllProfiles] = useState<Student[]>([]);
@@ -864,6 +865,116 @@ export default function OrganizationDashboard() {
       console.error("Error removing enrollment:", error);
       toast.error("Ошибка удаления");
     }
+  };
+
+  // Open student courses management dialog
+  const handleOpenStudentCourses = async (student: Student) => {
+    setSelectedStudentForCourses(student);
+    setShowStudentCoursesDialog(true);
+    setIsLoadingStudentCourses(true);
+    setSelectedCoursesToAdd(new Set());
+    setStudentCoursesSearchQuery("");
+
+    try {
+      // Get all enrollments for this student
+      const { data: enrollmentsData, error: enrollmentsError } = await supabase
+        .from("enrollments")
+        .select("id, course_id, progress, status")
+        .eq("user_id", student.user_id);
+
+      if (enrollmentsError) throw enrollmentsError;
+
+      const enrolledCourseIds = new Set((enrollmentsData || []).map(e => e.course_id));
+
+      // Get course details for enrolled courses
+      const enrolledList: {course: Course; enrollment_id: string; progress: number; status: string}[] = [];
+      for (const enrollment of enrollmentsData || []) {
+        const course = courses.find(c => c.id === enrollment.course_id);
+        if (course) {
+          enrolledList.push({
+            course,
+            enrollment_id: enrollment.id,
+            progress: enrollment.progress || 0,
+            status: enrollment.status || "active"
+          });
+        }
+      }
+      setStudentEnrollments(enrolledList);
+
+      // Get available courses (not enrolled yet)
+      const availableCourses = courses.filter(c => 
+        c.is_published && !enrolledCourseIds.has(c.id)
+      );
+      setAvailableCoursesForStudent(availableCourses);
+    } catch (error) {
+      console.error("Error loading student courses:", error);
+      toast.error("Ошибка загрузки данных");
+    } finally {
+      setIsLoadingStudentCourses(false);
+    }
+  };
+
+  // Add multiple courses to student
+  const handleAddCoursesToStudent = async () => {
+    if (!selectedStudentForCourses || selectedCoursesToAdd.size === 0) return;
+
+    setIsAddingCoursesToStudent(true);
+    try {
+      const enrollmentsToInsert = Array.from(selectedCoursesToAdd).map(courseId => ({
+        user_id: selectedStudentForCourses.user_id,
+        course_id: courseId,
+        status: "active",
+        progress: 0
+      }));
+
+      const { error } = await supabase
+        .from("enrollments")
+        .insert(enrollmentsToInsert);
+
+      if (error) throw error;
+
+      toast.success(`Зачислено на ${selectedCoursesToAdd.size} курсов`);
+      setSelectedCoursesToAdd(new Set());
+      
+      // Refresh data
+      handleOpenStudentCourses(selectedStudentForCourses);
+    } catch (error) {
+      console.error("Error adding courses to student:", error);
+      toast.error("Ошибка зачисления");
+    } finally {
+      setIsAddingCoursesToStudent(false);
+    }
+  };
+
+  // Remove student from a course (from student courses dialog)
+  const handleRemoveStudentFromCourse = async (enrollmentId: string) => {
+    if (!selectedStudentForCourses) return;
+    
+    try {
+      const { error } = await supabase
+        .from("enrollments")
+        .delete()
+        .eq("id", enrollmentId);
+
+      if (error) throw error;
+
+      toast.success("Отчислен с курса");
+      handleOpenStudentCourses(selectedStudentForCourses);
+    } catch (error) {
+      console.error("Error removing enrollment:", error);
+      toast.error("Ошибка отчисления");
+    }
+  };
+
+  // Toggle course selection for bulk enrollment
+  const toggleCourseSelection = (courseId: string) => {
+    const newSelected = new Set(selectedCoursesToAdd);
+    if (newSelected.has(courseId)) {
+      newSelected.delete(courseId);
+    } else {
+      newSelected.add(courseId);
+    }
+    setSelectedCoursesToAdd(newSelected);
   };
 
   // Send course invitation by email
@@ -1970,8 +2081,19 @@ export default function OrganizationDashboard() {
                                 <Button
                                   variant="outline"
                                   size="sm"
+                                  className="rounded-lg gap-1"
+                                  onClick={() => handleOpenStudentCourses(student)}
+                                  title="Управление курсами"
+                                >
+                                  <BookOpen className="w-4 h-4" />
+                                  Курсы
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
                                   className="rounded-lg"
                                   onClick={() => handleViewStudent(student)}
+                                  title="Просмотр профиля"
                                 >
                                   <Eye className="w-4 h-4" />
                                 </Button>
@@ -1981,6 +2103,7 @@ export default function OrganizationDashboard() {
                                   className="rounded-lg text-destructive hover:text-destructive"
                                   onClick={() => handleDeleteStudent(student.enrollment_id)}
                                   disabled={!student.enrollment_id}
+                                  title="Удалить запись"
                                 >
                                   <Trash2 className="w-4 h-4" />
                                 </Button>
@@ -2741,6 +2864,154 @@ export default function OrganizationDashboard() {
                       </div>
                     ))}
                   </div>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Student Courses Management Dialog */}
+      <Dialog open={showStudentCoursesDialog} onOpenChange={setShowStudentCoursesDialog}>
+        <DialogContent className="max-w-3xl rounded-2xl max-h-[90vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle className="font-display">
+              Курсы ученика: {selectedStudentForCourses?.name}
+            </DialogTitle>
+            <DialogDescription>
+              Управление зачислениями на курсы
+            </DialogDescription>
+          </DialogHeader>
+          
+          {isLoadingStudentCourses ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Current enrollments */}
+              <div>
+                <h3 className="font-semibold mb-3 flex items-center gap-2">
+                  <GraduationCap className="w-5 h-5" />
+                  Текущие курсы ({studentEnrollments.length})
+                </h3>
+                {studentEnrollments.length === 0 ? (
+                  <p className="text-muted-foreground text-sm bg-secondary/30 rounded-xl p-4">
+                    Ученик не зачислен ни на один курс
+                  </p>
+                ) : (
+                  <div className="space-y-2 max-h-48 overflow-auto">
+                    {studentEnrollments.map(({ course, enrollment_id, progress, status }) => (
+                      <div key={enrollment_id} className="flex items-center justify-between p-3 bg-secondary/30 rounded-xl">
+                        <div className="flex-1">
+                          <div className="font-medium">{course.title}</div>
+                          <div className="flex items-center gap-3 mt-1">
+                            <Progress value={progress} className="w-24 h-2" />
+                            <span className="text-sm text-muted-foreground">{progress}%</span>
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${
+                              status === 'completed' ? 'bg-sigma-green/10 text-sigma-green' : 'bg-primary/10 text-primary'
+                            }`}>
+                              {status === 'completed' ? 'Завершён' : 'В процессе'}
+                            </span>
+                          </div>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="rounded-lg text-destructive hover:text-destructive ml-3"
+                          onClick={() => handleRemoveStudentFromCourse(enrollment_id)}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Available courses to add */}
+              <div>
+                <h3 className="font-semibold mb-3 flex items-center gap-2">
+                  <Plus className="w-5 h-5" />
+                  Зачислить на курсы
+                </h3>
+                
+                {availableCoursesForStudent.length === 0 ? (
+                  <p className="text-muted-foreground text-sm bg-secondary/30 rounded-xl p-4">
+                    Все доступные курсы уже назначены
+                  </p>
+                ) : (
+                  <>
+                    <div className="relative mb-3">
+                      <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        placeholder="Поиск курсов..."
+                        value={studentCoursesSearchQuery}
+                        onChange={(e) => setStudentCoursesSearchQuery(e.target.value)}
+                        className="pl-10 rounded-xl"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2 max-h-48 overflow-auto border border-border rounded-xl p-2">
+                      {availableCoursesForStudent
+                        .filter(c => 
+                          studentCoursesSearchQuery === "" || 
+                          c.title.toLowerCase().includes(studentCoursesSearchQuery.toLowerCase())
+                        )
+                        .map(course => {
+                          const isSelected = selectedCoursesToAdd.has(course.id);
+                          const category = getCategoryById(course.category_id);
+                          
+                          return (
+                            <div
+                              key={course.id}
+                              className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-colors ${
+                                isSelected ? 'bg-primary/10 border border-primary' : 'bg-secondary/30 hover:bg-secondary/50'
+                              }`}
+                              onClick={() => toggleCourseSelection(course.id)}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => toggleCourseSelection(course.id)}
+                                className="w-4 h-4 rounded"
+                              />
+                              <div className="flex-1">
+                                <div className="font-medium">{course.title}</div>
+                                {category && (
+                                  <span
+                                    className="text-xs px-2 py-0.5 rounded-full mt-1 inline-block"
+                                    style={{ backgroundColor: category.color + '20', color: category.color }}
+                                  >
+                                    {category.name}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                    
+                    {selectedCoursesToAdd.size > 0 && (
+                      <Button
+                        className="w-full btn-gradient rounded-xl mt-4"
+                        onClick={handleAddCoursesToStudent}
+                        disabled={isAddingCoursesToStudent}
+                      >
+                        {isAddingCoursesToStudent ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Зачисление...
+                          </>
+                        ) : (
+                          <>
+                            <GraduationCap className="w-4 h-4 mr-2" />
+                            Зачислить на {selectedCoursesToAdd.size} курсов
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </>
                 )}
               </div>
             </div>
