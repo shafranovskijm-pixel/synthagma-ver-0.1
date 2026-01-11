@@ -16,6 +16,7 @@ import {
   Video,
   HelpCircle,
   Loader2,
+  Github,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -36,11 +37,13 @@ import {
 } from "@dnd-kit/sortable";
 import { LessonItem } from "@/components/course-editor/LessonItem";
 import { LessonEditor } from "@/components/course-editor/LessonEditor";
+import { GitHubImportDialog } from "@/components/course-editor/GitHubImportDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
@@ -103,6 +106,9 @@ const CourseEditor = () => {
 
   // Delete confirmation
   const [deletingLessonId, setDeletingLessonId] = useState<string | null>(null);
+
+  // GitHub import
+  const [isGitHubImportOpen, setIsGitHubImportOpen] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -359,6 +365,47 @@ const CourseEditor = () => {
     setDeletingLessonId(null);
   };
 
+  const handleGitHubImport = async (data: {
+    title: string;
+    description: string;
+    lessons: { title: string; content: string; type: string }[];
+  }) => {
+    if (!courseId) return;
+
+    // Update course info
+    if (data.title || data.description) {
+      setTitle(data.title || title);
+      setDescription(data.description || description);
+    }
+
+    // Create lessons
+    for (let i = 0; i < data.lessons.length; i++) {
+      const lessonData = data.lessons[i];
+      const { data: newLesson, error } = await supabase
+        .from("lessons")
+        .insert({
+          course_id: courseId,
+          title: lessonData.title,
+          type: lessonData.type,
+          content: lessonData.content,
+          order_index: lessons.length + i,
+        })
+        .select()
+        .single();
+
+      if (!error && newLesson) {
+        setLessons((prev) => [...prev, newLesson]);
+      }
+    }
+
+    toast({
+      title: "Импорт завершён",
+      description: `Импортировано ${data.lessons.length} уроков`,
+    });
+
+    setIsGitHubImportOpen(false);
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -514,6 +561,11 @@ const CourseEditor = () => {
                   <HelpCircle className="w-4 h-4 mr-2" />
                   Тест
                 </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setIsGitHubImportOpen(true)}>
+                  <Github className="w-4 h-4 mr-2" />
+                  Импорт с GitHub
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -577,6 +629,14 @@ const CourseEditor = () => {
         }}
         onSave={handleSaveLesson}
         existingQuestions={editingQuestions}
+        courseId={courseId}
+      />
+
+      {/* GitHub Import Dialog */}
+      <GitHubImportDialog
+        isOpen={isGitHubImportOpen}
+        onClose={() => setIsGitHubImportOpen(false)}
+        onImport={handleGitHubImport}
       />
 
       {/* Delete Confirmation */}
