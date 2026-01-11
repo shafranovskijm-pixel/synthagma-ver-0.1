@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
+import DOMPurify from "dompurify";
 import { 
   ArrowLeft, 
   CheckCircle2, 
@@ -20,10 +21,131 @@ import {
   Sparkles,
   BookOpen,
   Clock,
-  Loader2
+  Loader2,
+  Volume2,
+  VolumeX,
+  Square
 } from "lucide-react";
 import { ContentBlock, jsonToBlocks, BlockRenderer } from "@/components/course-builder/BlockEditor";
 import { cn } from "@/lib/utils";
+
+// Helper to get text from option (handles both string and {text: string} formats)
+const getOptionText = (option: unknown): string => {
+  if (typeof option === 'object' && option !== null && 'text' in option) {
+    return (option as { text: string }).text;
+  }
+  return String(option);
+};
+
+// Helper to check if content is an iframe embed
+const isIframeEmbed = (content: string): boolean => {
+  return content.trim().startsWith('<iframe');
+};
+
+// Helper function to get embed URL from video content
+const getVideoEmbedUrl = (content: string): string | null => {
+  if (!content) return null;
+  
+  // Check if it's an iframe embed code
+  const iframeSrcMatch = content.match(/<iframe[^>]*src=["']([^"']+)["']/i);
+  if (iframeSrcMatch) {
+    return iframeSrcMatch[1];
+  }
+  
+  // YouTube
+  const youtubeMatch = content.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/);
+  if (youtubeMatch) {
+    return `https://www.youtube.com/embed/${youtubeMatch[1]}`;
+  }
+  
+  // Vimeo
+  const vimeoMatch = content.match(/vimeo\.com\/(?:video\/)?(\d+)/);
+  if (vimeoMatch) {
+    return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
+  }
+  
+  // Rutube
+  const rutubeMatch = content.match(/rutube\.ru\/video\/([a-zA-Z0-9]+)/);
+  if (rutubeMatch) {
+    return `https://rutube.ru/play/embed/${rutubeMatch[1]}`;
+  }
+  
+  // VK Video
+  const vkMatch = content.match(/vk\.com\/video(-?\d+)_(\d+)/);
+  if (vkMatch) {
+    return `https://vk.com/video_ext.php?oid=${vkMatch[1]}&id=${vkMatch[2]}`;
+  }
+  
+  // Одноклассники
+  const okMatch = content.match(/ok\.ru\/video\/(\d+)/);
+  if (okMatch) {
+    return `https://ok.ru/videoembed/${okMatch[1]}`;
+  }
+  
+  // Mail.ru
+  const mailMatch = content.match(/my\.mail\.ru\/video\/embed\/(\d+)/);
+  if (mailMatch) {
+    return `https://my.mail.ru/video/embed/${mailMatch[1]}`;
+  }
+  
+  // Дзен
+  const dzenMatch = content.match(/dzen\.ru\/video\/watch\/([a-zA-Z0-9]+)/);
+  if (dzenMatch) {
+    return `https://dzen.ru/embed/${dzenMatch[1]}`;
+  }
+  
+  // Яндекс Видео
+  const yandexMatch = content.match(/yandex\.ru\/video\/preview\/(\d+)/);
+  if (yandexMatch) {
+    return `https://yandex.ru/video/preview/${yandexMatch[1]}`;
+  }
+  
+  return null;
+};
+
+// Video preview component for learning
+const VideoPlayerInline = ({ content }: { content: string }) => {
+  if (!content) return null;
+  
+  // If it's a full iframe embed code, render it directly
+  if (isIframeEmbed(content)) {
+    const sanitized = DOMPurify.sanitize(content, {
+      ADD_TAGS: ['iframe'],
+      ADD_ATTR: ['allow', 'allowfullscreen', 'frameborder', 'src', 'width', 'height', 'title', 'referrerpolicy']
+    });
+    return (
+      <div 
+        className="aspect-video w-full rounded-2xl overflow-hidden bg-black"
+        dangerouslySetInnerHTML={{ __html: sanitized }}
+      />
+    );
+  }
+  
+  // Try to get embed URL from link
+  const embedUrl = getVideoEmbedUrl(content);
+  
+  if (embedUrl) {
+    return (
+      <div className="aspect-video w-full rounded-2xl overflow-hidden bg-black">
+        <iframe
+          src={embedUrl}
+          className="w-full h-full"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+        />
+      </div>
+    );
+  }
+  
+  // Fallback to video tag
+  return (
+    <video 
+      controls 
+      className="w-full h-full rounded-2xl"
+      src={content}
+    />
+  );
+};
 
 interface Lesson {
   id: string;
@@ -72,6 +194,10 @@ const CourseLearning = () => {
   const [testSubmitted, setTestSubmitted] = useState(false);
   const [testScore, setTestScore] = useState<{ score: number; max: number } | null>(null);
 
+  // Text-to-speech state
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const speechSynthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
+
   const currentLesson = lessons[currentLessonIndex];
   const completedCount = lessonProgress.filter(p => p.completed).length;
   const progressPercent = lessons.length > 0 ? (completedCount / lessons.length) * 100 : 0;
@@ -80,6 +206,108 @@ const CourseLearning = () => {
   const contentBlocks: ContentBlock[] = currentLesson?.content 
     ? parseContentToBlocks(currentLesson.content) 
     : [];
+
+  // Text-to-speech functions
+  const extractTextFromBlocks = (blocks: ContentBlock[]): string => {
+    return blocks.map(block => {
+      switch (block.type) {
+        case 'paragraph':
+        case 'heading1':
+        case 'heading2':
+        case 'quote':
+        case 'callout-info':
+        case 'callout-warning':
+        case 'callout-tip':
+          return block.content?.replace(/<[^>]*>/g, '') || '';
+        case 'bulletList':
+        case 'numberedList':
+          return (block.content || '').split('\n').filter(Boolean).join('. ');
+        case 'accordion':
+          return `${block.accordionTitle || ''}. ${block.content || ''}`;
+        case 'quiz':
+          return `Вопрос: ${block.quizQuestion || ''}`;
+        default:
+          return '';
+      }
+    }).filter(Boolean).join('. ');
+  };
+
+  const speakText = () => {
+    if (!currentLesson) return;
+
+    // Stop if already speaking
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      return;
+    }
+
+    // Get text to speak
+    let textToSpeak = '';
+    
+    if (currentLesson.type === 'text') {
+      if (contentBlocks.length > 0) {
+        textToSpeak = extractTextFromBlocks(contentBlocks);
+      } else {
+        textToSpeak = currentLesson.content?.replace(/<[^>]*>/g, '').replace(/\n/g, '. ') || '';
+      }
+    } else if (currentLesson.type === 'test') {
+      textToSpeak = testQuestions.map((q, i) => {
+        const options = Array.isArray(q.options) ? q.options : [];
+        const optionsText = options.map((opt, j) => `${j + 1}. ${getOptionText(opt)}`).join('. ');
+        return `Вопрос ${i + 1}: ${q.question}. Варианты ответа: ${optionsText}`;
+      }).join('. ');
+    }
+
+    if (!textToSpeak) {
+      toast.error('Нет текста для озвучивания');
+      return;
+    }
+
+    // Check if speech synthesis is supported
+    if (!('speechSynthesis' in window)) {
+      toast.error('Озвучивание не поддерживается в вашем браузере');
+      return;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(textToSpeak);
+    utterance.lang = 'ru-RU';
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+
+    // Find Russian voice if available
+    const voices = window.speechSynthesis.getVoices();
+    const russianVoice = voices.find(v => v.lang.startsWith('ru'));
+    if (russianVoice) {
+      utterance.voice = russianVoice;
+    }
+
+    utterance.onend = () => {
+      setIsSpeaking(false);
+    };
+
+    utterance.onerror = () => {
+      setIsSpeaking(false);
+      toast.error('Ошибка озвучивания');
+    };
+
+    speechSynthesisRef.current = utterance;
+    window.speechSynthesis.speak(utterance);
+    setIsSpeaking(true);
+  };
+
+  // Stop speaking when lesson changes
+  useEffect(() => {
+    window.speechSynthesis.cancel();
+    setIsSpeaking(false);
+  }, [currentLessonIndex]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      window.speechSynthesis.cancel();
+    };
+  }, []);
 
   useEffect(() => {
     if (courseId && user) {
@@ -464,6 +692,31 @@ const CourseLearning = () => {
             <span className="font-medium truncate max-w-md">{currentLesson?.title}</span>
           </div>
           <div className="flex items-center gap-2">
+            {/* Text-to-speech button */}
+            {(currentLesson?.type === 'text' || currentLesson?.type === 'test') && (
+              <Button 
+                variant={isSpeaking ? "default" : "outline"}
+                size="sm"
+                onClick={speakText}
+                className={cn(
+                  "rounded-lg gap-1",
+                  isSpeaking && "bg-primary text-primary-foreground"
+                )}
+                title={isSpeaking ? "Остановить озвучивание" : "Озвучить текст"}
+              >
+                {isSpeaking ? (
+                  <>
+                    <Square className="w-4 h-4" />
+                    <span className="hidden sm:inline">Стоп</span>
+                  </>
+                ) : (
+                  <>
+                    <Volume2 className="w-4 h-4" />
+                    <span className="hidden sm:inline">Озвучить</span>
+                  </>
+                )}
+              </Button>
+            )}
             <Button 
               variant="outline" 
               size="sm"
@@ -540,19 +793,8 @@ const CourseLearning = () => {
                 </div>
 
                 <div className="aspect-video bg-muted rounded-2xl flex items-center justify-center overflow-hidden shadow-lg">
-                  {currentLesson.content?.includes('youtube.com') || currentLesson.content?.includes('youtu.be') ? (
-                    <iframe
-                      className="w-full h-full rounded-2xl"
-                      src={getYouTubeEmbedUrl(currentLesson.content)}
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                    />
-                  ) : currentLesson.content ? (
-                    <video 
-                      controls 
-                      className="w-full h-full rounded-2xl"
-                      src={currentLesson.content}
-                    />
+                  {currentLesson.content ? (
+                    <VideoPlayerInline content={currentLesson.content} />
                   ) : (
                     <div className="text-center text-muted-foreground">
                       <Video className="w-16 h-16 mx-auto mb-4" />
@@ -628,7 +870,7 @@ const CourseLearning = () => {
                       {question.question}
                     </h3>
                     <div className="space-y-2">
-                      {(Array.isArray(question.options) ? question.options : []).map((option: string, oIndex: number) => (
+                      {(Array.isArray(question.options) ? question.options : []).map((option: unknown, oIndex: number) => (
                         <label 
                           key={oIndex}
                           className={cn(
@@ -648,7 +890,7 @@ const CourseLearning = () => {
                               <div className="w-2 h-2 rounded-full bg-white" />
                             )}
                           </div>
-                          <span>{option}</span>
+                          <span>{getOptionText(option)}</span>
                         </label>
                       ))}
                     </div>
@@ -680,7 +922,7 @@ const CourseLearning = () => {
                       {question.question}
                     </h3>
                     <div className="space-y-2">
-                      {(Array.isArray(question.options) ? question.options : []).map((option: string, oIndex: number) => {
+                      {(Array.isArray(question.options) ? question.options : []).map((option: unknown, oIndex: number) => {
                         const isSelected = answers[question.id] === oIndex;
                         const isCorrect = question.correct_answer === oIndex;
                         
@@ -697,7 +939,7 @@ const CourseLearning = () => {
                             )}
                           >
                             <span className={isCorrect ? "text-sigma-green" : isSelected ? "text-destructive" : ""}>
-                              {option}
+                              {getOptionText(option)}
                             </span>
                             {isCorrect && <CheckCircle2 className="w-5 h-5 text-sigma-green ml-auto" />}
                           </div>
@@ -756,12 +998,6 @@ const CourseLearning = () => {
   );
 };
 
-function getYouTubeEmbedUrl(url: string): string {
-  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-  const match = url.match(regExp);
-  const videoId = match && match[2].length === 11 ? match[2] : null;
-  return videoId ? `https://www.youtube.com/embed/${videoId}` : '';
-}
 
 function parseContentToBlocks(content: string): ContentBlock[] {
   // Try to parse as JSON blocks first
