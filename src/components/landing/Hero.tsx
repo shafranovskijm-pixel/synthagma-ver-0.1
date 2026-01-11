@@ -4,9 +4,9 @@ import { ArrowRight, Play, Sparkles, CheckCircle2, GraduationCap, Users, FileChe
 import { Link } from "react-router-dom";
 
 const heroFeatures = [
-  { icon: GraduationCap, text: "Создание курсов с ИИ" },
-  { icon: Users, text: "До 50 000+ учеников" },
-  { icon: FileCheck, text: "Соответствие 273-ФЗ" },
+  { icon: GraduationCap, text: "Дистанционное обучение" },
+  { icon: FileCheck, text: "Документооборот организации" },
+  { icon: Users, text: "Соответствие 273-ФЗ" },
 ];
 
 export function Hero() {
@@ -67,15 +67,15 @@ export function Hero() {
           <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/20 mb-8 animate-fade-in shadow-sm">
             <Sparkles className="w-5 h-5 text-primary" />
             <span className="text-sm font-semibold text-primary">
-              №1 платформа дистанционного обучения
+              Система дистанционного обучения и документооборота
             </span>
           </div>
 
           {/* Main headline */}
           <h1 className="font-display text-5xl md:text-7xl lg:text-8xl font-bold leading-[1.1] mb-8 animate-slide-up">
-            Обучайте{" "}
+            Обучение и{" "}
             <span className="gradient-text relative">
-              эффективно
+              документы
               <svg className="absolute -bottom-2 left-0 w-full" viewBox="0 0 300 12" fill="none">
                 <path d="M2 8C50 4 100 2 150 6C200 10 250 8 298 4" stroke="url(#underline-gradient)" strokeWidth="4" strokeLinecap="round"/>
                 <defs>
@@ -88,13 +88,13 @@ export function Hero() {
               </svg>
             </span>
             <br />
-            <span className="text-muted-foreground">с помощью ИИ</span>
+            <span className="text-muted-foreground">в одной системе</span>
           </h1>
 
           {/* Subtitle */}
           <p className="text-xl md:text-2xl text-muted-foreground mb-10 max-w-3xl mx-auto animate-slide-up delay-100 leading-relaxed">
-            Создавайте курсы за минуты, автоматизируйте документооборот и
-            получайте <span className="text-foreground font-medium">детальную аналитику</span> по каждому ученику
+            Дистанционное обучение, автоматический документооборот организации и
+            <span className="text-foreground font-medium"> детальная аналитика</span> по каждому ученику
           </p>
 
           {/* Feature pills */}
