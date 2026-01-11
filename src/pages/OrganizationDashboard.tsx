@@ -166,6 +166,10 @@ export default function OrganizationDashboard() {
   const [isLoadingStudents, setIsLoadingStudents] = useState(true);
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [organizationName, setOrganizationName] = useState("Организация");
+  
+  // Admin view mode
+  const [isAdminView, setIsAdminView] = useState(false);
+  const [adminViewOrgId, setAdminViewOrgId] = useState<string | null>(null);
 
   // Organizations state
   const [allOrganizations, setAllOrganizations] = useState<Organization[]>([]);
@@ -259,29 +263,42 @@ export default function OrganizationDashboard() {
       if (!user) return;
 
       try {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("organization_id")
-          .eq("user_id", user.id)
-          .single();
+        // Check for admin view mode
+        const adminViewData = localStorage.getItem("adminViewAsOrg");
+        let orgId: string | null = null;
+        
+        if (adminViewData) {
+          const adminView = JSON.parse(adminViewData);
+          orgId = adminView.id;
+          setAdminViewOrgId(adminView.id);
+          setOrganizationName(adminView.name);
+          setIsAdminView(true);
+        } else {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("organization_id")
+            .eq("user_id", user.id)
+            .single();
 
-        if (!profile?.organization_id) {
-          setIsLoadingCourses(false);
-          return;
+          if (!profile?.organization_id) {
+            setIsLoadingCourses(false);
+            return;
+          }
+
+          orgId = profile.organization_id;
+
+          const { data: orgData } = await supabase
+            .from("organizations")
+            .select("name")
+            .eq("id", orgId)
+            .single();
+
+          if (orgData) {
+            setOrganizationName(orgData.name);
+          }
         }
-
-        const orgId = profile.organization_id;
+        
         setOrganizationId(orgId);
-
-        const { data: orgData } = await supabase
-          .from("organizations")
-          .select("name")
-          .eq("id", orgId)
-          .single();
-
-        if (orgData) {
-          setOrganizationName(orgData.name);
-        }
 
         // Fetch courses
         const { data: coursesData, error } = await supabase
@@ -1130,15 +1147,41 @@ export default function OrganizationDashboard() {
     return matchesSearch && matchesFilter && matchesCategory;
   });
 
+  const exitAdminView = () => {
+    localStorage.removeItem("adminViewAsOrg");
+    navigate("/admin");
+  };
+
   return (
     <div className="min-h-screen bg-background flex">
+      {/* Admin View Banner */}
+      {isAdminView && (
+        <div className="fixed top-0 left-0 right-0 z-50 bg-primary text-primary-foreground py-2 px-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Eye className="w-4 h-4" />
+            <span className="text-sm font-medium">Режим просмотра: {organizationName}</span>
+          </div>
+          <Button 
+            variant="secondary" 
+            size="sm" 
+            onClick={exitAdminView}
+            className="gap-1"
+          >
+            <X className="w-3 h-3" />
+            Выйти
+          </Button>
+        </div>
+      )}
+      
       {/* Sidebar */}
-      <aside className="w-64 bg-card border-r border-border flex flex-col">
+      <aside className={`w-64 bg-card border-r border-border flex flex-col ${isAdminView ? 'mt-10' : ''}`}>
         <div className="p-6 border-b border-border">
           <SigmaLogo size="md" />
           <div className="mt-4 p-3 bg-secondary rounded-xl">
             <div className="font-semibold text-sm">{organizationName}</div>
-            <div className="text-xs text-muted-foreground">Организация</div>
+            <div className="text-xs text-muted-foreground">
+              {isAdminView ? "Просмотр от имени" : "Организация"}
+            </div>
           </div>
         </div>
 
@@ -1218,7 +1261,7 @@ export default function OrganizationDashboard() {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 overflow-auto">
+      <main className={`flex-1 overflow-auto ${isAdminView ? 'mt-10' : ''}`}>
         {/* Header */}
         <header className="bg-card border-b border-border px-8 py-6">
           <div className="flex items-center justify-between">
