@@ -20,8 +20,12 @@ import {
   Loader2,
   Users,
   FileSpreadsheet,
+  Eye,
+  Mail,
+  GraduationCap,
 } from "lucide-react";
 import * as XLSX from "xlsx";
+import { Progress } from "@/components/ui/progress";
 
 interface Company {
   id: string;
@@ -29,6 +33,18 @@ interface Company {
   inn: string | null;
   created_at: string;
   studentsCount?: number;
+}
+
+interface CompanyStudent {
+  id: string;
+  user_id: string;
+  full_name: string;
+  email: string;
+  enrollments: {
+    course_title: string;
+    progress: number;
+    status: string;
+  }[];
 }
 
 interface CompaniesManagerProps {
@@ -57,6 +73,13 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingCompany, setDeletingCompany] = useState<Company | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Students dialog
+  const [showStudentsDialog, setShowStudentsDialog] = useState(false);
+  const [selectedCompanyForStudents, setSelectedCompanyForStudents] = useState<Company | null>(null);
+  const [companyStudents, setCompanyStudents] = useState<CompanyStudent[]>([]);
+  const [isLoadingStudents, setIsLoadingStudents] = useState(false);
+  const [studentSearchQuery, setStudentSearchQuery] = useState("");
 
   const fetchCompanies = async () => {
     setIsLoading(true);
@@ -164,6 +187,71 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
       setIsSaving(false);
     }
   };
+
+  const handleViewStudents = async (company: Company) => {
+    setSelectedCompanyForStudents(company);
+    setShowStudentsDialog(true);
+    setIsLoadingStudents(true);
+    setStudentSearchQuery("");
+
+    try {
+      // Fetch profiles for this company
+      const { data: profiles, error } = await supabase
+        .from("profiles")
+        .select("id, user_id, full_name, email")
+        .eq("company_id", company.id);
+
+      if (error) throw error;
+
+      // Fetch enrollments for each profile
+      const studentsWithEnrollments: CompanyStudent[] = await Promise.all(
+        (profiles || []).map(async (profile) => {
+          const { data: enrollments } = await supabase
+            .from("enrollments")
+            .select("course_id, progress, status")
+            .eq("user_id", profile.user_id);
+
+          // Get course titles
+          const enrollmentsWithTitles = await Promise.all(
+            (enrollments || []).map(async (enrollment) => {
+              const { data: course } = await supabase
+                .from("courses")
+                .select("title")
+                .eq("id", enrollment.course_id)
+                .single();
+
+              return {
+                course_title: course?.title || "Неизвестный курс",
+                progress: enrollment.progress || 0,
+                status: enrollment.status || "active",
+              };
+            })
+          );
+
+          return {
+            id: profile.id,
+            user_id: profile.user_id,
+            full_name: profile.full_name || "Без имени",
+            email: profile.email || "",
+            enrollments: enrollmentsWithTitles,
+          };
+        })
+      );
+
+      setCompanyStudents(studentsWithEnrollments);
+    } catch (error) {
+      console.error("Error fetching company students:", error);
+      toast.error("Ошибка загрузки учеников");
+    } finally {
+      setIsLoadingStudents(false);
+    }
+  };
+
+  const filteredCompanyStudents = companyStudents.filter(
+    (s) =>
+      s.full_name.toLowerCase().includes(studentSearchQuery.toLowerCase()) ||
+      s.email.toLowerCase().includes(studentSearchQuery.toLowerCase())
+  );
 
   const handleDeleteClick = (company: Company) => {
     setDeletingCompany(company);
@@ -385,7 +473,17 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
                         variant="ghost"
                         size="icon"
                         className="rounded-lg"
+                        onClick={() => handleViewStudents(company)}
+                        title="Просмотр учеников"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="rounded-lg"
                         onClick={() => handleEdit(company)}
+                        title="Редактировать"
                       >
                         <Edit className="w-4 h-4" />
                       </Button>
@@ -394,6 +492,7 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
                         size="icon"
                         className="rounded-lg text-destructive hover:text-destructive"
                         onClick={() => handleDeleteClick(company)}
+                        title="Удалить"
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
@@ -530,6 +629,133 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
               ) : (
                 "Удалить"
               )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Students Dialog */}
+      <Dialog open={showStudentsDialog} onOpenChange={setShowStudentsDialog}>
+        <DialogContent className="rounded-2xl max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="font-display flex items-center gap-2">
+              <Building2 className="w-5 h-5 text-primary" />
+              {selectedCompanyForStudents?.name}
+            </DialogTitle>
+            <DialogDescription>
+              Список учеников компании
+              {selectedCompanyForStudents?.inn && ` (ИНН: ${selectedCompanyForStudents.inn})`}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4 space-y-4 flex-1 overflow-hidden flex flex-col">
+            {/* Search */}
+            <div className="relative">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Поиск по имени или email..."
+                value={studentSearchQuery}
+                onChange={(e) => setStudentSearchQuery(e.target.value)}
+                className="pl-10 rounded-xl"
+              />
+            </div>
+
+            {/* Stats */}
+            <div className="flex gap-4">
+              <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 rounded-lg">
+                <Users className="w-4 h-4 text-primary" />
+                <span className="text-sm font-medium">{companyStudents.length} учеников</span>
+              </div>
+              <div className="flex items-center gap-2 px-3 py-2 bg-sigma-green/10 rounded-lg">
+                <GraduationCap className="w-4 h-4 text-sigma-green" />
+                <span className="text-sm font-medium">
+                  {companyStudents.reduce((sum, s) => sum + s.enrollments.length, 0)} зачислений
+                </span>
+              </div>
+            </div>
+
+            {/* Students List */}
+            <div className="flex-1 overflow-y-auto">
+              {isLoadingStudents ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                </div>
+              ) : filteredCompanyStudents.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>{studentSearchQuery ? "Ученики не найдены" : "Нет учеников в этой компании"}</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {filteredCompanyStudents.map((student) => (
+                    <div
+                      key={student.id}
+                      className="bg-secondary/50 rounded-xl p-4 border border-border"
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <div className="font-medium">{student.full_name}</div>
+                          <div className="text-sm text-muted-foreground flex items-center gap-1">
+                            <Mail className="w-3 h-3" />
+                            {student.email}
+                          </div>
+                        </div>
+                        <span className="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full">
+                          {student.enrollments.length} курсов
+                        </span>
+                      </div>
+
+                      {student.enrollments.length > 0 ? (
+                        <div className="space-y-2">
+                          {student.enrollments.map((enrollment, idx) => (
+                            <div
+                              key={idx}
+                              className="flex items-center justify-between bg-background rounded-lg px-3 py-2"
+                            >
+                              <div className="flex-1 min-w-0 mr-4">
+                                <div className="text-sm font-medium truncate">
+                                  {enrollment.course_title}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2 w-32">
+                                  <Progress value={enrollment.progress} className="h-2 flex-1" />
+                                  <span className="text-xs font-medium w-10 text-right">
+                                    {enrollment.progress}%
+                                  </span>
+                                </div>
+                                <span
+                                  className={`text-xs px-2 py-0.5 rounded-full ${
+                                    enrollment.status === "completed"
+                                      ? "bg-sigma-green/10 text-sigma-green"
+                                      : "bg-muted text-muted-foreground"
+                                  }`}
+                                >
+                                  {enrollment.status === "completed" ? "Завершён" : "Активный"}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-sm text-muted-foreground italic">
+                          Не зачислен на курсы
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-4 border-t border-border">
+            <Button
+              variant="outline"
+              className="rounded-xl"
+              onClick={() => setShowStudentsDialog(false)}
+            >
+              Закрыть
             </Button>
           </div>
         </DialogContent>
