@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import ImportStudentsForm from "@/components/ImportStudentsForm";
 import { useNavigate } from "react-router-dom";
 import { OrgDocumentsManager } from "@/components/organization/OrgDocumentsManager";
+import { CourseDocumentsManager } from "@/components/organization/CourseDocumentsManager";
+import { StudentDocumentsManager } from "@/components/organization/StudentDocumentsManager";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -254,6 +256,18 @@ export default function OrganizationDashboard() {
 
   // Student filter state
   const [studentStatusFilter, setStudentStatusFilter] = useState<"all" | "active" | "completed" | "not_enrolled">("all");
+
+  // Course documents state
+  const [showCourseDocsDialog, setShowCourseDocsDialog] = useState(false);
+  const [selectedCourseForDocs, setSelectedCourseForDocs] = useState<Course | null>(null);
+
+  // Student documents state
+  const [showStudentDocsDialog, setShowStudentDocsDialog] = useState(false);
+  const [selectedStudentForDocs, setSelectedStudentForDocs] = useState<{
+    enrollmentId: string;
+    studentName: string;
+    courseName: string;
+  } | null>(null);
 
   // Statistics state
   const [stats, setStats] = useState({
@@ -1613,6 +1627,20 @@ export default function OrganizationDashboard() {
                             className="flex-1 rounded-xl gap-2"
                             onClick={(e) => {
                               e.stopPropagation();
+                              setSelectedCourseForDocs(course);
+                              setShowCourseDocsDialog(true);
+                            }}
+                          >
+                            <FileText className="w-4 h-4" />
+                            Материалы
+                          </Button>
+                        </div>
+                        <div className="flex gap-2 mt-2">
+                          <Button
+                            variant="outline"
+                            className="flex-1 rounded-xl gap-2"
+                            onClick={(e) => {
+                              e.stopPropagation();
                               navigate(`/course-builder/${course.id}`);
                             }}
                           >
@@ -2336,6 +2364,23 @@ export default function OrganizationDashboard() {
                           <Button
                             variant="ghost"
                             size="sm"
+                            onClick={() => {
+                              if (s.enrollment_id && selectedCourse) {
+                                setSelectedStudentForDocs({
+                                  enrollmentId: s.enrollment_id,
+                                  studentName: s.name,
+                                  courseName: selectedCourse.title
+                                });
+                                setShowStudentDocsDialog(true);
+                              }
+                            }}
+                            title="Документы ученика"
+                          >
+                            <FileText className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             className="text-destructive hover:text-destructive"
                             onClick={() => s.enrollment_id && handleRemoveFromCourse(s.enrollment_id)}
                           >
@@ -2686,6 +2731,33 @@ export default function OrganizationDashboard() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Course Documents Manager */}
+      {selectedCourseForDocs && (
+        <CourseDocumentsManager
+          courseId={selectedCourseForDocs.id}
+          courseName={selectedCourseForDocs.title}
+          isOpen={showCourseDocsDialog}
+          onClose={() => {
+            setShowCourseDocsDialog(false);
+            setSelectedCourseForDocs(null);
+          }}
+        />
+      )}
+
+      {/* Student Documents Manager */}
+      {selectedStudentForDocs && (
+        <StudentDocumentsManager
+          enrollmentId={selectedStudentForDocs.enrollmentId}
+          studentName={selectedStudentForDocs.studentName}
+          courseName={selectedStudentForDocs.courseName}
+          isOpen={showStudentDocsDialog}
+          onClose={() => {
+            setShowStudentDocsDialog(false);
+            setSelectedStudentForDocs(null);
+          }}
+        />
+      )}
     </div>
   );
 }
