@@ -206,8 +206,8 @@ export const LessonEditor = ({
           }))
         );
         toast({
-          title: "Тест сгенерирован",
-          description: `Создано ${data.questions.length} вопросов`,
+          title: "✨ Тест сгенерирован",
+          description: `Создано ${data.questions.length} вопросов. Отредактируйте их при необходимости.`,
         });
       } else if (data.blocks) {
         const generatedBlocks: ContentBlock[] = data.blocks.map((block: any) => ({
@@ -217,8 +217,8 @@ export const LessonEditor = ({
         }));
         setBlocks(generatedBlocks);
         toast({
-          title: "Контент сгенерирован",
-          description: "Содержание урока создано с помощью ИИ",
+          title: "✨ Контент сгенерирован",
+          description: "Отредактируйте содержание при необходимости и сохраните урок.",
         });
       }
     } catch (error) {
