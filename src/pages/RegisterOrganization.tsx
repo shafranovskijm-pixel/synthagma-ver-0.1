@@ -91,18 +91,28 @@ const RegisterOrganization = () => {
 
       if (authError) throw authError;
 
-      // 3. Update profile with organization_id
+      // 3. Update profile with organization_id and upgrade role securely
       if (authData.user) {
-        await supabase
+        // Update profile with organization_id
+        const { error: profileError } = await supabase
           .from('profiles')
           .update({ organization_id: orgData.id })
           .eq('user_id', authData.user.id);
+          
+        if (profileError) {
+          console.error("Profile update error:", profileError);
+        }
 
-        // 4. Update user role to 'organization'
-        await supabase
-          .from('user_roles')
-          .update({ role: 'organization' })
-          .eq('user_id', authData.user.id);
+        // 4. Use secure RPC function to upgrade role to 'organization'
+        const { error: roleError } = await supabase.rpc('upgrade_to_organization_role', {
+          p_user_id: authData.user.id,
+          p_organization_id: orgData.id
+        });
+        
+        if (roleError) {
+          console.error("Role upgrade error:", roleError);
+          // Don't throw - user is created, just role upgrade failed
+        }
       }
 
       toast({

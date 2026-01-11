@@ -744,6 +744,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_update_user_role: {
+        Args: {
+          p_new_role: Database["public"]["Enums"]["app_role"]
+          p_user_id: string
+        }
+        Returns: undefined
+      }
       current_organization_id: { Args: never; Returns: string }
       get_user_role: {
         Args: { _user_id: string }
@@ -755,6 +762,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      upgrade_to_organization_role: {
+        Args: { p_organization_id: string; p_user_id: string }
+        Returns: undefined
       }
     }
     Enums: {
