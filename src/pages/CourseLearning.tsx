@@ -739,9 +739,9 @@ const CourseLearning = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="h-screen bg-background flex overflow-hidden">
       {/* Sidebar */}
-      <aside className="w-80 bg-card border-r border-border flex flex-col">
+      <aside className="w-80 bg-card border-r border-border flex flex-col h-screen sticky top-0 shrink-0">
         <div className="p-4 border-b border-border">
           <Button 
             variant="ghost" 
@@ -824,9 +824,9 @@ const CourseLearning = () => {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 flex flex-col">
+      <main className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* Header */}
-        <header className="border-b border-border bg-card px-6 py-4 flex items-center justify-between">
+        <header className="border-b border-border bg-card px-6 py-4 flex items-center justify-between shrink-0 sticky top-0 z-10">
           <div className="flex items-center gap-4">
             <SigmaLogo size="sm" />
             <span className="text-muted-foreground">|</span>
