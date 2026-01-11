@@ -95,6 +95,7 @@ interface Student {
   enrollment_id: string | null;
   name: string;
   email: string;
+  login: string | null;
   course: string | null;
   course_id: string | null;
   progress: number;
@@ -369,7 +370,7 @@ export default function OrganizationDashboard() {
         // Fetch students
         const { data: allProfilesData } = await supabase
           .from("profiles")
-          .select("id, user_id, full_name, email")
+          .select("id, user_id, full_name, email, login")
           .eq("organization_id", orgId);
 
         const userEnrollmentsMap: Record<string, any[]> = {};
@@ -393,6 +394,7 @@ export default function OrganizationDashboard() {
               enrollment_id: null,
               name: profile.full_name || "Без имени",
               email: profile.email || "",
+              login: profile.login || null,
               course: null,
               course_id: null,
               progress: 0,
@@ -408,6 +410,7 @@ export default function OrganizationDashboard() {
                 enrollment_id: enrollment.id,
                 name: profile.full_name || "Без имени",
                 email: profile.email || "",
+                login: profile.login || null,
                 course: course?.title || "—",
                 course_id: enrollment.course_id,
                 progress: enrollment.progress || 0,
@@ -676,6 +679,7 @@ export default function OrganizationDashboard() {
         enrollment_id: null,
         name: newStudentName,
         email: newStudentEmail || "",
+        login: data.login || null,
         course: course?.title || null,
         course_id: selectedCourseId || null,
         progress: 0,
@@ -760,6 +764,7 @@ export default function OrganizationDashboard() {
           enrollment_id: enrollment.id,
           name: student.name,
           email: student.email,
+          login: student.login || null,
           course: course.title,
           course_id: selectedCourseId,
           progress: 0,
@@ -950,7 +955,7 @@ export default function OrganizationDashboard() {
       for (const enrollment of enrollments || []) {
         const { data: profile } = await supabase
           .from("profiles")
-          .select("id, user_id, full_name, email")
+          .select("id, user_id, full_name, email, login")
           .eq("user_id", enrollment.user_id)
           .single();
 
@@ -961,6 +966,7 @@ export default function OrganizationDashboard() {
             enrollment_id: enrollment.id,
             name: profile.full_name || "Без имени",
             email: profile.email || "",
+            login: profile.login || null,
             course: course.title,
             course_id: course.id,
             progress: enrollment.progress,
@@ -974,7 +980,7 @@ export default function OrganizationDashboard() {
       if (organizationId) {
         const { data: allProfiles } = await supabase
           .from("profiles")
-          .select("id, user_id, full_name, email")
+          .select("id, user_id, full_name, email, login")
           .eq("organization_id", organizationId);
 
         const available = (allProfiles || [])
@@ -985,6 +991,7 @@ export default function OrganizationDashboard() {
             enrollment_id: null,
             name: p.full_name || "Без имени",
             email: p.email || "",
+            login: p.login || null,
             course: null,
             course_id: null,
             progress: 0,
@@ -1466,7 +1473,7 @@ export default function OrganizationDashboard() {
 
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("id, user_id, full_name, email")
+        .select("id, user_id, full_name, email, login")
         .eq("organization_id", org.id);
 
       const studentsList: Student[] = (profiles || []).map(p => ({
@@ -1475,6 +1482,7 @@ export default function OrganizationDashboard() {
         enrollment_id: null,
         name: p.full_name || "Без имени",
         email: p.email || "",
+        login: p.login || null,
         course: null,
         course_id: null,
         progress: 0,
@@ -2184,7 +2192,16 @@ export default function OrganizationDashboard() {
                             <td className="px-6 py-4">
                               <div>
                                 <div className="font-medium">{student.name}</div>
-                                <div className="text-sm text-muted-foreground">{student.email}</div>
+                                <div className="text-sm text-muted-foreground">
+                                  {student.login ? (
+                                    <span className="inline-flex items-center gap-1">
+                                      <span className="bg-primary/10 text-primary px-1.5 py-0.5 rounded text-xs font-mono">{student.login}</span>
+                                      {student.email && <span className="text-muted-foreground/50">• {student.email}</span>}
+                                    </span>
+                                  ) : (
+                                    student.email
+                                  )}
+                                </div>
                               </div>
                             </td>
                             <td className="px-6 py-4 text-sm">
