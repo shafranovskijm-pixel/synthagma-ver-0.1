@@ -16,7 +16,9 @@ import {
   Lock,
   Send,
   Sparkles,
-  Loader2
+  Loader2,
+  Library,
+  Eye
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
@@ -35,6 +37,15 @@ interface Course {
 interface Profile {
   full_name: string | null;
   organization_name: string | null;
+  organization_id: string | null;
+}
+
+interface Branding {
+  coverUrl: string;
+  primaryColor: string;
+  secondaryColor: string;
+  logoUrl: string;
+  showOrgName: boolean;
 }
 
 interface ChatMessage {
@@ -55,9 +66,20 @@ export default function StudentDashboard() {
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [courses, setCourses] = useState<Course[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [branding, setBranding] = useState<Branding | null>(null);
   const [loading, setLoading] = useState(true);
   const [totalTimeSpent, setTotalTimeSpent] = useState(0);
   const [totalCompletedLessons, setTotalCompletedLessons] = useState(0);
+  const [isPreviewMode, setIsPreviewMode] = useState(false);
+
+  useEffect(() => {
+    // Check for preview mode
+    const preview = localStorage.getItem('previewStudentDashboard');
+    if (preview === 'true') {
+      setIsPreviewMode(true);
+      localStorage.removeItem('previewStudentDashboard');
+    }
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -73,15 +95,29 @@ export default function StudentDashboard() {
       // Load profile with organization
       const { data: profileData } = await supabase
         .from("profiles")
-        .select("full_name, organization_id, organizations(name)")
+        .select("full_name, organization_id, organizations(name, branding)")
         .eq("user_id", user.id)
         .single();
 
       if (profileData) {
+        const org = profileData.organizations as any;
         setProfile({
           full_name: profileData.full_name,
-          organization_name: (profileData.organizations as any)?.name || null
+          organization_name: org?.name || null,
+          organization_id: profileData.organization_id
         });
+
+        // Load branding from organization
+        if (org?.branding && typeof org.branding === 'object') {
+          const b = org.branding as Record<string, unknown>;
+          setBranding({
+            coverUrl: (b.coverUrl as string) || '',
+            primaryColor: (b.primaryColor as string) || '#6366f1',
+            secondaryColor: (b.secondaryColor as string) || '#8b5cf6',
+            logoUrl: (b.logoUrl as string) || '',
+            showOrgName: b.showOrgName !== false
+          });
+        }
       }
 
       // Load enrollments with courses
@@ -228,10 +264,42 @@ export default function StudentDashboard() {
 
   return (
     <div className="min-h-screen bg-background flex">
+      {/* Preview Mode Banner */}
+      {isPreviewMode && (
+        <div className="fixed top-0 left-0 right-0 bg-primary text-primary-foreground py-2 px-4 text-center text-sm z-50 flex items-center justify-center gap-2">
+          <Eye className="w-4 h-4" />
+          Режим предпросмотра личного кабинета ученика
+          <Button
+            size="sm"
+            variant="secondary"
+            className="ml-4 h-7 rounded-lg"
+            onClick={() => window.close()}
+          >
+            Закрыть предпросмотр
+          </Button>
+        </div>
+      )}
+
       {/* Sidebar */}
-      <aside className="w-64 bg-card border-r border-border flex flex-col">
+      <aside className={`w-64 bg-card border-r border-border flex flex-col ${isPreviewMode ? 'mt-10' : ''}`}>
         <div className="p-6 border-b border-border">
-          <SigmaLogo size="md" />
+          {/* Custom branding logo or default */}
+          {branding?.logoUrl ? (
+            <div className="flex items-center gap-3">
+              <img 
+                src={branding.logoUrl} 
+                alt="Логотип" 
+                className="w-10 h-10 object-contain rounded-lg"
+              />
+              {branding.showOrgName && profile?.organization_name && (
+                <span className="font-display font-bold text-lg truncate">
+                  {profile.organization_name}
+                </span>
+              )}
+            </div>
+          ) : (
+            <SigmaLogo size="md" />
+          )}
           <div className="mt-4 p-3 bg-secondary rounded-xl">
             <div className="font-semibold text-sm">{profile?.full_name || "Ученик"}</div>
             <div className="text-xs text-muted-foreground">{profile?.organization_name || "Организация"}</div>
@@ -264,6 +332,10 @@ export default function StudentDashboard() {
               <span className="ml-auto w-2 h-2 rounded-full bg-sigma-green animate-pulse" />
             </button>
             <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors">
+              <Library className="w-5 h-5" />
+              Библиотека
+            </button>
+            <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors">
               <Trophy className="w-5 h-5" />
               Достижения
             </button>
@@ -286,22 +358,42 @@ export default function StudentDashboard() {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 overflow-auto">
+      <main className={`flex-1 overflow-auto ${isPreviewMode ? 'mt-10' : ''}`}>
         {activeTab === "courses" && (
           <>
-            {/* Header */}
-            <header className="bg-card border-b border-border px-8 py-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h1 className="font-display text-2xl font-bold">Добро пожаловать, {firstName}!</h1>
-                  <p className="text-muted-foreground">Продолжайте обучение</p>
+            {/* Cover Image / Header */}
+            {branding?.coverUrl ? (
+              <div 
+                className="relative h-40 bg-cover bg-center"
+                style={{ backgroundImage: `url(${branding.coverUrl})` }}
+              >
+                <div className="absolute inset-0 bg-gradient-to-b from-transparent to-background/80" />
+                <div className="absolute bottom-0 left-0 right-0 px-8 py-4">
+                  <h1 className="font-display text-2xl font-bold text-white drop-shadow-lg">
+                    Добро пожаловать, {firstName}!
+                  </h1>
+                  <p className="text-white/80 drop-shadow">Продолжайте обучение</p>
                 </div>
               </div>
-            </header>
+            ) : (
+              <header className="bg-card border-b border-border px-8 py-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h1 className="font-display text-2xl font-bold">Добро пожаловать, {firstName}!</h1>
+                    <p className="text-muted-foreground">Продолжайте обучение</p>
+                  </div>
+                </div>
+              </header>
+            )}
 
             <div className="p-8">
               {/* Progress overview */}
-              <div className="bg-gradient-to-r from-primary via-accent to-sigma-purple rounded-2xl p-6 mb-8 text-white">
+              <div 
+                className={`rounded-2xl p-6 mb-8 text-white ${!branding ? 'bg-gradient-to-r from-primary via-accent to-sigma-purple' : ''}`}
+                style={branding ? {
+                  background: `linear-gradient(135deg, ${branding.primaryColor}, ${branding.secondaryColor})`
+                } : undefined}
+              >
                 <div className="flex items-center justify-between">
                   <div>
                     <h2 className="font-display text-xl font-semibold mb-2">Общий прогресс</h2>
