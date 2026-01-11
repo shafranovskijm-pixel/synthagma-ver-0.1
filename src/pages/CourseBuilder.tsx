@@ -78,6 +78,12 @@ const lessonColors = {
   audio: "text-green-500 bg-green-500/10",
 };
 
+interface GeneratedQuestion {
+  question: string;
+  options: string[];
+  correctAnswer: number;
+}
+
 interface SortableLessonProps {
   lesson: Lesson;
   index: number;
@@ -88,6 +94,8 @@ interface SortableLessonProps {
   courseId: string | undefined;
   courseTitle: string;
   courseDescription: string;
+  generatedQuestions?: GeneratedQuestion[];
+  onQuestionsProcessed?: () => void;
 }
 
 function SortableLessonItem({
@@ -99,7 +107,9 @@ function SortableLessonItem({
   onDelete,
   courseId,
   courseTitle,
-  courseDescription
+  courseDescription,
+  generatedQuestions,
+  onQuestionsProcessed
 }: SortableLessonProps) {
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [isGeneratingContent, setIsGeneratingContent] = useState(false);
@@ -229,15 +239,13 @@ function SortableLessonItem({
       }
 
       if (lesson.type === "test") {
-        // For tests, we need to save questions to the database
+        // For tests, pass questions directly to TestQuestionEditor
         const questions = data.questions || [];
         if (questions.length > 0) {
-          // Save questions via TestQuestionEditor's mechanism
-          toast.success(`Сгенерировано ${questions.length} вопросов. Откройте редактор теста.`);
-          // Store questions in content field for TestQuestionEditor to pick up
           onUpdate({
             content: JSON.stringify({ generatedQuestions: questions })
           });
+          toast.success(`Сгенерировано ${questions.length} вопросов`);
         }
       } else {
         // For text lessons, convert blocks
@@ -477,6 +485,15 @@ function SortableLessonItem({
               <TestQuestionEditor
                 lessonId={lesson.id}
                 courseId={courseId}
+                generatedQuestions={(() => {
+                  try {
+                    const parsed = JSON.parse(lesson.content || '{}');
+                    return parsed.generatedQuestions;
+                  } catch {
+                    return undefined;
+                  }
+                })()}
+                onQuestionsProcessed={() => onUpdate({ content: '' })}
               />
             </div>
           )}

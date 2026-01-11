@@ -32,12 +32,41 @@ interface TestQuestion {
 interface TestQuestionEditorProps {
   lessonId: string;
   courseId: string | undefined;
+  generatedQuestions?: Array<{
+    question: string;
+    options: string[];
+    correctAnswer: number;
+  }>;
+  onQuestionsProcessed?: () => void;
 }
 
-export function TestQuestionEditor({ lessonId, courseId }: TestQuestionEditorProps) {
+export function TestQuestionEditor({ 
+  lessonId, 
+  courseId, 
+  generatedQuestions,
+  onQuestionsProcessed 
+}: TestQuestionEditorProps) {
   const [questions, setQuestions] = useState<TestQuestion[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Handle generated questions from AI
+  useEffect(() => {
+    if (generatedQuestions && generatedQuestions.length > 0) {
+      const newQuestions: TestQuestion[] = generatedQuestions.map((q, index) => ({
+        id: crypto.randomUUID(),
+        question: q.question,
+        options: q.options.map(text => ({ text })),
+        correct_answer: q.correctAnswer,
+        order_index: questions.length + index,
+        isNew: true
+      }));
+      
+      setQuestions(prev => [...prev, ...newQuestions]);
+      onQuestionsProcessed?.();
+      toast.success(`Добавлено ${newQuestions.length} вопросов`);
+    }
+  }, [generatedQuestions]);
 
   useEffect(() => {
     const fetchQuestions = async () => {
