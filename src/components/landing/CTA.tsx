@@ -24,12 +24,12 @@ export function CTA() {
           </div>
 
           <h2 className="font-display text-4xl md:text-6xl font-bold text-white mb-6 leading-tight">
-            Готовы автоматизировать обучение?
+            Готовы автоматизировать обучение и документооборот?
           </h2>
 
           <p className="text-xl text-white/80 mb-10 max-w-2xl mx-auto">
             Присоединяйтесь к десяткам организаций, которые уже используют нашу платформу
-            для эффективного дистанционного обучения
+            для дистанционного обучения и документооборота
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">

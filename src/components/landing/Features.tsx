@@ -58,10 +58,10 @@ export function Features() {
             <span className="text-sm font-medium text-accent">Возможности платформы</span>
           </div>
           <h2 className="font-display text-4xl md:text-5xl font-bold mb-4">
-            Всё для <span className="gradient-text">эффективного</span> обучения
+            Обучение и <span className="gradient-text">документооборот</span>
           </h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Мощные инструменты для создания курсов, управления учениками и аналитики
+            Мощные инструменты для дистанционного обучения, документооборота организации и аналитики
           </p>
         </div>
 
