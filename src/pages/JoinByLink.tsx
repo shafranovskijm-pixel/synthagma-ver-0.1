@@ -7,13 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { ArrowLeft, Mail, Lock, User, Loader2, Building2, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Mail, Lock, User, Loader2, Building2, AlertTriangle, BookOpen } from "lucide-react";
 
 interface LinkData {
   id: string;
   token: string;
   organization_id: string;
   company_id: string | null;
+  course_id: string | null;
   name: string | null;
   expires_at: string | null;
   used_count: number;
@@ -22,6 +23,9 @@ interface LinkData {
   };
   company?: {
     name: string;
+  };
+  course?: {
+    title: string;
   };
 }
 
@@ -34,6 +38,7 @@ const JoinByLink = () => {
   const [linkData, setLinkData] = useState<LinkData | null>(null);
   const [organizationName, setOrganizationName] = useState<string>("");
   const [companyName, setCompanyName] = useState<string | null>(null);
+  const [courseName, setCourseName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -96,9 +101,21 @@ const JoinByLink = () => {
         compName = comp?.name || null;
       }
 
+      // Fetch course name if course_id exists
+      let crsName: string | null = null;
+      if (link.course_id) {
+        const { data: crs } = await supabase
+          .from('courses')
+          .select('title')
+          .eq('id', link.course_id)
+          .single();
+        crsName = crs?.title || null;
+      }
+
       setLinkData(link);
       setOrganizationName(org?.name || 'Организация');
       setCompanyName(compName);
+      setCourseName(crsName);
       setLoading(false);
     } catch (err) {
       setError('Произошла ошибка при проверке ссылки');
@@ -170,6 +187,22 @@ const JoinByLink = () => {
           console.error('Profile update error:', profileError);
         }
 
+        // Auto-enroll in course if course_id exists
+        if (linkData.course_id) {
+          const { error: enrollError } = await supabase
+            .from('enrollments')
+            .insert({
+              user_id: authData.user.id,
+              course_id: linkData.course_id,
+              status: 'active',
+              progress: 0
+            });
+          
+          if (enrollError) {
+            console.error('Enrollment error:', enrollError);
+          }
+        }
+
         // Increment used_count on the link
         await supabase
           .from('registration_links')
@@ -178,7 +211,9 @@ const JoinByLink = () => {
 
         toast({
           title: "Успешно!",
-          description: `Вы зарегистрированы в ${organizationName}`,
+          description: linkData.course_id 
+            ? `Вы зарегистрированы и записаны на курс` 
+            : `Вы зарегистрированы в ${organizationName}`,
         });
 
         navigate('/student');
@@ -271,6 +306,12 @@ const JoinByLink = () => {
             {companyName && (
               <p className="text-sm text-muted-foreground mt-1">
                 Компания: {companyName}
+              </p>
+            )}
+            {courseName && (
+              <p className="text-sm text-primary mt-1 flex items-center gap-1">
+                <BookOpen className="w-3 h-3" />
+                Курс: {courseName}
               </p>
             )}
           </div>
