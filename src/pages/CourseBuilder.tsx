@@ -816,7 +816,7 @@ export default function CourseBuilder() {
                 className="rounded-xl gap-2"
                 onClick={() => {
                   if (courseId) {
-                    navigate(`/course/${courseId}/learn`);
+                    navigate(`/course-preview/${courseId}`);
                   } else {
                     toast.error("Сначала сохраните курс");
                   }

@@ -14,6 +14,7 @@ import OrganizationDashboard from "./pages/OrganizationDashboard";
 import CourseEditor from "./pages/CourseEditor";
 import CourseBuilder from "./pages/CourseBuilder";
 import CourseLearning from "./pages/CourseLearning";
+import CoursePreview from "./pages/CoursePreview";
 import JoinByLink from "./pages/JoinByLink";
 import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
@@ -55,6 +56,11 @@ const App = () => (
             <Route path="/course-builder/:courseId" element={
               <ProtectedRoute requiredRole="organization">
                 <CourseBuilder />
+              </ProtectedRoute>
+            } />
+            <Route path="/course-preview/:courseId" element={
+              <ProtectedRoute requiredRole="organization">
+                <CoursePreview />
               </ProtectedRoute>
             } />
             <Route path="/course/:courseId/learn" element={
