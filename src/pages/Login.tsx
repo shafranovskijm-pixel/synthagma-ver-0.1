@@ -66,7 +66,7 @@ const Login = () => {
         title: "Успешно!",
         description: "Вы вошли в систему",
       });
-      navigate("/student");
+      // Navigation will be handled by useEffect when userRole loads
     }
     
     setIsLoading(false);
