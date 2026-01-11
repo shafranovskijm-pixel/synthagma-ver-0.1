@@ -32,7 +32,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Building2, Loader2, Users, BookOpen, Key, Eye, EyeOff, Copy, Check, Download, ExternalLink } from "lucide-react";
+import { Plus, Pencil, Trash2, Building2, Loader2, Users, BookOpen, Key, Eye, EyeOff, Copy, Check, Download, ExternalLink, Search, X } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import * as XLSX from "xlsx";
@@ -64,6 +64,7 @@ export function OrganizationsManager() {
   const [editOrg, setEditOrg] = useState<Organization | null>(null);
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -75,6 +76,20 @@ export function OrganizationsManager() {
   });
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
+
+  // Filter organizations based on search query
+  const filteredOrganizations = organizations.filter((org) => {
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      org.name.toLowerCase().includes(query) ||
+      org.email.toLowerCase().includes(query) ||
+      (org.inn && org.inn.toLowerCase().includes(query)) ||
+      (org.phone && org.phone.toLowerCase().includes(query)) ||
+      (org.contact_name && org.contact_name.toLowerCase().includes(query)) ||
+      (org.credentials?.login_email && org.credentials.login_email.toLowerCase().includes(query))
+    );
+  });
 
   const viewAsOrganization = (org: Organization) => {
     // Store admin view context in localStorage
@@ -464,6 +479,27 @@ export function OrganizationsManager() {
         </Card>
       </div>
 
+      {/* Search */}
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          placeholder="Поиск по названию, email, ИНН, телефону..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-10 pr-10"
+        />
+        {searchQuery && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+            onClick={() => setSearchQuery("")}
+          >
+            <X className="w-4 h-4" />
+          </Button>
+        )}
+      </div>
+
       {/* Table */}
       <Card>
         <CardContent className="p-0">
@@ -480,15 +516,15 @@ export function OrganizationsManager() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {organizations.length === 0 ? (
+              {filteredOrganizations.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                     <Building2 className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                    Организации не найдены
+                    {searchQuery ? "Ничего не найдено" : "Организации не найдены"}
                   </TableCell>
                 </TableRow>
               ) : (
-                organizations.map((org) => (
+                filteredOrganizations.map((org) => (
                   <TableRow key={org.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
