@@ -128,15 +128,45 @@ export function OrganizationsManager() {
 
     setSaving(true);
     try {
-      const { error } = await supabase.from("organizations").insert({
+      // Create organization
+      const { data: newOrg, error } = await supabase.from("organizations").insert({
         name: formData.name,
         email: formData.email,
         phone: formData.phone || null,
         inn: formData.inn || null,
         contact_name: formData.contact_name || null,
-      });
+      }).select().single();
 
       if (error) throw error;
+
+      // If credentials provided, create user and save credentials
+      if (formData.login_email && formData.login_password) {
+        // Call edge function to create user
+        const { error: userError } = await supabase.functions.invoke("create-org-user", {
+          body: {
+            email: formData.login_email,
+            password: formData.login_password,
+            fullName: formData.contact_name || "Администратор",
+            organizationId: newOrg.id
+          }
+        });
+
+        if (userError) {
+          console.error("Error creating user:", userError);
+          toast({
+            title: "Предупреждение",
+            description: "Организация создана, но не удалось создать пользователя",
+            variant: "destructive",
+          });
+        } else {
+          // Save credentials for admin reference
+          await supabase.from("organization_credentials").insert({
+            organization_id: newOrg.id,
+            login_email: formData.login_email,
+            login_password: formData.login_password,
+          });
+        }
+      }
 
       toast({ title: "Успешно", description: "Организация создана" });
       setIsCreateOpen(false);
@@ -313,6 +343,32 @@ export function OrganizationsManager() {
                   onChange={(e) => setFormData({ ...formData, contact_name: e.target.value })}
                   placeholder="Иван Иванов"
                 />
+              </div>
+              
+              <div className="border-t pt-4 mt-4">
+                <p className="text-sm font-medium mb-3">Учётные данные для входа</p>
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="login_email">Email для входа</Label>
+                    <Input
+                      id="login_email"
+                      type="email"
+                      value={formData.login_email}
+                      onChange={(e) => setFormData({ ...formData, login_email: e.target.value })}
+                      placeholder="admin@company.ru"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="login_password">Пароль</Label>
+                    <Input
+                      id="login_password"
+                      type="text"
+                      value={formData.login_password}
+                      onChange={(e) => setFormData({ ...formData, login_password: e.target.value })}
+                      placeholder="Минимум 6 символов"
+                    />
+                  </div>
+                </div>
               </div>
               <Button onClick={handleCreate} disabled={saving} className="w-full">
                 {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
