@@ -4,14 +4,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
-import { LogOut, Building2, Users, Shield, Settings } from "lucide-react";
+import { LogOut, Building2, Users, Shield, BarChart3 } from "lucide-react";
 import { OrganizationsManager } from "@/components/admin/OrganizationsManager";
 import { UsersManager } from "@/components/admin/UsersManager";
+import { AdminAnalytics } from "@/components/admin/AdminAnalytics";
 
 const AdminDashboard = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("organizations");
+  const [activeTab, setActiveTab] = useState("analytics");
 
   const handleSignOut = async () => {
     await signOut();
@@ -46,7 +47,11 @@ const AdminDashboard = () => {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsList className="grid w-full max-w-lg grid-cols-3">
+            <TabsTrigger value="analytics" className="flex items-center gap-2">
+              <BarChart3 className="w-4 h-4" />
+              Аналитика
+            </TabsTrigger>
             <TabsTrigger value="organizations" className="flex items-center gap-2">
               <Building2 className="w-4 h-4" />
               Организации
@@ -56,6 +61,10 @@ const AdminDashboard = () => {
               Пользователи
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="analytics" className="space-y-6">
+            <AdminAnalytics />
+          </TabsContent>
 
           <TabsContent value="organizations" className="space-y-6">
             <OrganizationsManager />
