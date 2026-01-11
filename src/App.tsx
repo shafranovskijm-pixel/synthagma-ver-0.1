@@ -14,6 +14,7 @@ import OrganizationDashboard from "./pages/OrganizationDashboard";
 import CourseEditor from "./pages/CourseEditor";
 import CourseLearning from "./pages/CourseLearning";
 import JoinByLink from "./pages/JoinByLink";
+import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -51,6 +52,11 @@ const App = () => (
               </ProtectedRoute>
             } />
             <Route path="/join/:token" element={<JoinByLink />} />
+            <Route path="/admin" element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminDashboard />
+              </ProtectedRoute>
+            } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
