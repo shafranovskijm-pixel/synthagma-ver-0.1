@@ -27,7 +27,6 @@ import {
   Loader2,
   Upload,
   BookOpen,
-  Video,
   Presentation,
   FileSpreadsheet,
   Eye,
@@ -52,9 +51,10 @@ const LIBRARY_TYPES = [
   { value: "document", label: "Документ (DOC, PDF)", icon: FileText, accept: ".doc,.docx,.pdf" },
   { value: "presentation", label: "Презентация (PPTX)", icon: Presentation, accept: ".ppt,.pptx" },
   { value: "spreadsheet", label: "Таблица (XLSX)", icon: FileSpreadsheet, accept: ".xls,.xlsx" },
-  { value: "video", label: "Видеоматериал", icon: Video, accept: ".mp4,.avi,.mov,.webm" },
   { value: "other", label: "Прочее", icon: File, accept: "*" },
 ];
+
+const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
 
 interface LibraryManagerProps {
   organizationId: string;
@@ -104,6 +104,10 @@ export function LibraryManager({ organizationId }: LibraryManagerProps) {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size > MAX_FILE_SIZE) {
+        toast.error("Файл слишком большой. Максимальный размер: 100 МБ");
+        return;
+      }
       setSelectedFile(file);
       if (!docName) {
         setDocName(file.name.replace(/\.[^/.]+$/, ""));
@@ -114,6 +118,11 @@ export function LibraryManager({ organizationId }: LibraryManagerProps) {
   const handleAdd = async () => {
     if (!docName.trim() || !selectedFile) {
       toast.error("Введите название и выберите файл");
+      return;
+    }
+
+    if (selectedFile.size > MAX_FILE_SIZE) {
+      toast.error("Файл слишком большой. Максимальный размер: 100 МБ");
       return;
     }
 
@@ -358,7 +367,7 @@ export function LibraryManager({ organizationId }: LibraryManagerProps) {
                           Нажмите для выбора файла
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          {currentTypeConfig?.accept || "Любой формат"}
+                          {currentTypeConfig?.accept || "Любой формат"} • Макс. 100 МБ
                         </div>
                       </div>
                     )}
