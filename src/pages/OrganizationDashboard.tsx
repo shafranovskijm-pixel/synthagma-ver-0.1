@@ -655,7 +655,24 @@ export default function OrganizationDashboard() {
       if (data?.error) throw new Error(data.error);
 
       toast.success(`Ученик создан. Пароль: ${password} (сохраните его!)`);
-      window.location.reload();
+      
+      // Add new student to the list without page reload
+      const newStudent: Student = {
+        id: data.user_id,
+        user_id: data.user_id,
+        enrollment_id: null,
+        name: newStudentName,
+        email: newStudentEmail,
+        course: null,
+        course_id: null,
+        progress: 0,
+        lastActivity: null,
+        status: null
+      };
+      
+      setStudents(prev => [...prev, newStudent]);
+      setAllProfiles(prev => [...prev, newStudent]);
+      setStats(prev => ({ ...prev, totalStudents: prev.totalStudents + 1 }));
 
       setShowAddStudentDialog(false);
       setNewStudentName("");
