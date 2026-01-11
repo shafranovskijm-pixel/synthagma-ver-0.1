@@ -341,13 +341,29 @@ const CourseLearning = () => {
     setChatMessages(prev => [...prev, { role: 'user', content: userMessage }]);
     setIsChatLoading(true);
 
+    // Extract lesson content for context
+    let lessonContent = '';
+    if (currentLesson) {
+      if (currentLesson.type === 'text' && contentBlocks.length > 0) {
+        lessonContent = extractTextFromBlocks(contentBlocks);
+      } else if (currentLesson.content) {
+        lessonContent = currentLesson.content.replace(/<[^>]*>/g, '').substring(0, 3000);
+      }
+    }
+
     try {
       const { data, error } = await supabase.functions.invoke('student-chat', {
         body: {
           messages: [
             ...chatMessages,
             { role: 'user', content: userMessage }
-          ]
+          ],
+          context: {
+            courseTitle: course?.title || '',
+            lessonTitle: currentLesson?.title || '',
+            lessonType: currentLesson?.type || '',
+            lessonContent: lessonContent,
+          }
         }
       });
 
