@@ -11,13 +11,21 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { 
   Link2, 
   Plus, 
   Copy, 
   Trash2, 
   Users,
-  Calendar
+  Calendar,
+  BookOpen
 } from "lucide-react";
 
 interface RegistrationLink {
@@ -27,6 +35,15 @@ interface RegistrationLink {
   expires_at: string | null;
   used_count: number;
   created_at: string;
+  course_id: string | null;
+  course?: {
+    title: string;
+  } | null;
+}
+
+interface Course {
+  id: string;
+  title: string;
 }
 
 interface Props {
@@ -35,27 +52,47 @@ interface Props {
 
 export const RegistrationLinksManager = ({ organizationId }: Props) => {
   const [links, setLinks] = useState<RegistrationLink[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newLinkName, setNewLinkName] = useState("");
   const [expiresInDays, setExpiresInDays] = useState("");
+  const [selectedCourseId, setSelectedCourseId] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
     fetchLinks();
+    fetchCourses();
   }, [organizationId]);
+
+  const fetchCourses = async () => {
+    const { data, error } = await supabase
+      .from('courses')
+      .select('id, title')
+      .eq('organization_id', organizationId)
+      .eq('is_published', true)
+      .order('title');
+
+    if (!error && data) {
+      setCourses(data);
+    }
+  };
 
   const fetchLinks = async () => {
     const { data, error } = await supabase
       .from('registration_links')
-      .select('*')
+      .select('*, courses:course_id(title)')
       .eq('organization_id', organizationId)
       .order('created_at', { ascending: false });
 
     if (error) {
       console.error('Error fetching links:', error);
     } else {
-      setLinks(data || []);
+      const formattedLinks = (data || []).map(link => ({
+        ...link,
+        course: link.courses ? { title: link.courses.title } : null
+      }));
+      setLinks(formattedLinks);
     }
     setIsLoading(false);
   };
@@ -78,9 +115,10 @@ export const RegistrationLinksManager = ({ organizationId }: Props) => {
         token,
         name: newLinkName || null,
         organization_id: organizationId,
-        expires_at: expiresAt
+        expires_at: expiresAt,
+        course_id: selectedCourseId || null
       })
-      .select()
+      .select('*, courses:course_id(title)')
       .single();
 
     if (error) {
@@ -90,14 +128,21 @@ export const RegistrationLinksManager = ({ organizationId }: Props) => {
         variant: "destructive",
       });
     } else {
+      const formattedLink = {
+        ...data,
+        course: data.courses ? { title: data.courses.title } : null
+      };
       toast({
         title: "Ссылка создана!",
-        description: "Скопируйте ссылку и отправьте ученикам",
+        description: selectedCourseId 
+          ? "Ученики будут автоматически записаны на курс" 
+          : "Скопируйте ссылку и отправьте ученикам",
       });
-      setLinks([data, ...links]);
+      setLinks([formattedLink, ...links]);
       setIsCreateOpen(false);
       setNewLinkName("");
       setExpiresInDays("");
+      setSelectedCourseId("");
     }
   };
 
@@ -177,6 +222,25 @@ export const RegistrationLinksManager = ({ organizationId }: Props) => {
                 />
               </div>
               <div className="space-y-2">
+                <Label>Автозапись на курс (опционально)</Label>
+                <Select value={selectedCourseId} onValueChange={setSelectedCourseId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Выберите курс для автозаписи" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Без автозаписи</SelectItem>
+                    {courses.map(course => (
+                      <SelectItem key={course.id} value={course.id}>
+                        {course.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Ученики будут автоматически записаны на этот курс при регистрации
+                </p>
+              </div>
+              <div className="space-y-2">
                 <Label>Срок действия (дней)</Label>
                 <Input 
                   type="number"
@@ -233,6 +297,12 @@ export const RegistrationLinksManager = ({ organizationId }: Props) => {
                       <Users className="w-3 h-3" />
                       {link.used_count} регистраций
                     </span>
+                    {link.course && (
+                      <span className="flex items-center gap-1 text-primary">
+                        <BookOpen className="w-3 h-3" />
+                        {link.course.title}
+                      </span>
+                    )}
                     {link.expires_at && (
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3 h-3" />

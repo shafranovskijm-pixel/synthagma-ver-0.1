@@ -568,6 +568,7 @@ export type Database = {
       registration_links: {
         Row: {
           company_id: string | null
+          course_id: string | null
           created_at: string
           expires_at: string | null
           id: string
@@ -579,6 +580,7 @@ export type Database = {
         }
         Insert: {
           company_id?: string | null
+          course_id?: string | null
           created_at?: string
           expires_at?: string | null
           id?: string
@@ -590,6 +592,7 @@ export type Database = {
         }
         Update: {
           company_id?: string | null
+          course_id?: string | null
           created_at?: string
           expires_at?: string | null
           id?: string
@@ -605,6 +608,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "registration_links_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
             referencedColumns: ["id"]
           },
           {
