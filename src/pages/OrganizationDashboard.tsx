@@ -360,16 +360,6 @@ export default function OrganizationDashboard() {
       document.documentElement.classList.remove('dark');
     }
 
-    // Load student dashboard settings
-    const savedSettings = localStorage.getItem('studentDashboardSettings');
-    if (savedSettings) {
-      try {
-        setStudentDashboardSettings(JSON.parse(savedSettings));
-      } catch (e) {
-        console.error('Error loading settings:', e);
-      }
-    }
-
     // Load menu settings
     const savedMenuSettings = localStorage.getItem('orgMenuSettings');
     if (savedMenuSettings) {
@@ -380,6 +370,36 @@ export default function OrganizationDashboard() {
       }
     }
   }, []);
+
+  // Load student dashboard settings from organization
+  useEffect(() => {
+    const loadStudentSettings = async () => {
+      if (!organizationId) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('organizations')
+          .select('student_dashboard_settings')
+          .eq('id', organizationId)
+          .single();
+        
+        if (error) throw error;
+        
+        if (data?.student_dashboard_settings && typeof data.student_dashboard_settings === 'object') {
+          const settings = data.student_dashboard_settings as Record<string, unknown>;
+          setStudentDashboardSettings({
+            showLibrary: settings.showLibrary !== false,
+            showAchievements: settings.showAchievements !== false,
+            showAiChat: settings.showAiChat !== false
+          });
+        }
+      } catch (error) {
+        console.error('Error loading student dashboard settings:', error);
+      }
+    };
+    
+    loadStudentSettings();
+  }, [organizationId]);
 
   // Load branding settings from organization
   useEffect(() => {
@@ -3180,10 +3200,16 @@ export default function OrganizationDashboard() {
                 <div className="mt-6 pt-4 border-t border-border">
                   <Button
                     className="btn-gradient rounded-xl gap-2"
-                    onClick={() => {
+                    onClick={async () => {
+                      if (!organizationId) return;
                       setIsSavingSettings(true);
                       try {
-                        localStorage.setItem('studentDashboardSettings', JSON.stringify(studentDashboardSettings));
+                        const { error } = await supabase
+                          .from('organizations')
+                          .update({ student_dashboard_settings: studentDashboardSettings })
+                          .eq('id', organizationId);
+                        
+                        if (error) throw error;
                         toast.success('Настройки сохранены');
                       } catch (error) {
                         console.error('Error saving settings:', error);

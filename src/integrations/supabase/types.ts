@@ -654,6 +654,7 @@ export type Database = {
           notify_on_limit_exceeded: boolean
           phone: string | null
           storage_limit_bytes: number
+          student_dashboard_settings: Json | null
           updated_at: string
         }
         Insert: {
@@ -670,6 +671,7 @@ export type Database = {
           notify_on_limit_exceeded?: boolean
           phone?: string | null
           storage_limit_bytes?: number
+          student_dashboard_settings?: Json | null
           updated_at?: string
         }
         Update: {
@@ -686,6 +688,7 @@ export type Database = {
           notify_on_limit_exceeded?: boolean
           phone?: string | null
           storage_limit_bytes?: number
+          student_dashboard_settings?: Json | null
           updated_at?: string
         }
         Relationships: []
