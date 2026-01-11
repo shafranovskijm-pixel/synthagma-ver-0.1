@@ -2258,8 +2258,12 @@ export default function OrganizationDashboard() {
                         const isSelected = selectedStudentIds.has(uniqueId);
 
                         return (
-                          <tr key={uniqueId} className={`border-b border-border last:border-0 hover:bg-secondary/50 transition-colors ${isSelected ? 'bg-primary/5' : ''}`}>
-                            <td className="px-4 py-4">
+                          <tr 
+                            key={uniqueId} 
+                            className={`border-b border-border last:border-0 hover:bg-secondary/50 transition-colors cursor-pointer ${isSelected ? 'bg-primary/5' : ''}`}
+                            onClick={() => handleViewStudent(student)}
+                          >
+                            <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
                               <input
                                 type="checkbox"
                                 checked={isSelected}
@@ -2320,34 +2324,26 @@ export default function OrganizationDashboard() {
                                  student.status === 'active' ? 'Активный' : '—'}
                               </span>
                             </td>
-                            <td className="px-6 py-4">
+                            <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                               <div className="flex gap-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="rounded-lg gap-1"
-                                  onClick={() => handleOpenStudentCourses(student)}
-                                  title="Управление курсами"
-                                >
-                                  <BookOpen className="w-4 h-4" />
-                                  Курсы
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="rounded-lg"
-                                  onClick={() => handleViewStudent(student)}
-                                  title="Просмотр профиля"
-                                >
-                                  <Eye className="w-4 h-4" />
-                                </Button>
+                                {student.login && student.generated_password && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="rounded-lg gap-1"
+                                    onClick={() => handleCopyCredentials(student.login!, student.generated_password!)}
+                                    title="Копировать логин и пароль"
+                                  >
+                                    <Copy className="w-4 h-4" />
+                                  </Button>
+                                )}
                                 <Button
                                   variant="outline"
                                   size="sm"
                                   className="rounded-lg text-destructive hover:text-destructive"
                                   onClick={() => handleDeleteStudent(student.enrollment_id)}
                                   disabled={!student.enrollment_id}
-                                  title="Удалить запись"
+                                  title="Отчислить с курса"
                                 >
                                   <Trash2 className="w-4 h-4" />
                                 </Button>
