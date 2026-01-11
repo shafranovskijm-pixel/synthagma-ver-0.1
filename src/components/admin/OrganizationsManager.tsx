@@ -31,7 +31,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Building2, Loader2, Users, BookOpen } from "lucide-react";
+import { Plus, Pencil, Trash2, Building2, Loader2, Users, BookOpen, Key, Eye, EyeOff, Copy, Check } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 
@@ -46,6 +46,10 @@ interface Organization {
   created_at: string;
   users_count?: number;
   courses_count?: number;
+  credentials?: {
+    login_email: string;
+    login_password: string;
+  } | null;
 }
 
 export function OrganizationsManager() {
@@ -55,12 +59,16 @@ export function OrganizationsManager() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [deleteOrg, setDeleteOrg] = useState<Organization | null>(null);
   const [editOrg, setEditOrg] = useState<Organization | null>(null);
+  const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
+  const [copiedField, setCopiedField] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     phone: "",
     inn: "",
     contact_name: "",
+    login_email: "",
+    login_password: "",
   });
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
@@ -78,17 +86,19 @@ export function OrganizationsManager() {
 
       if (error) throw error;
 
-      // Get counts for each org
+      // Get counts and credentials for each org
       const orgsWithCounts = await Promise.all(
         (data || []).map(async (org) => {
-          const [usersResult, coursesResult] = await Promise.all([
+          const [usersResult, coursesResult, credentialsResult] = await Promise.all([
             supabase.from("profiles").select("id", { count: "exact" }).eq("organization_id", org.id),
             supabase.from("courses").select("id", { count: "exact" }).eq("organization_id", org.id),
+            supabase.from("organization_credentials").select("login_email, login_password").eq("organization_id", org.id).maybeSingle(),
           ]);
           return {
             ...org,
             users_count: usersResult.count || 0,
             courses_count: coursesResult.count || 0,
+            credentials: credentialsResult.data || null,
           };
         })
       );
@@ -130,7 +140,7 @@ export function OrganizationsManager() {
 
       toast({ title: "Успешно", description: "Организация создана" });
       setIsCreateOpen(false);
-      setFormData({ name: "", email: "", phone: "", inn: "", contact_name: "" });
+      setFormData({ name: "", email: "", phone: "", inn: "", contact_name: "", login_email: "", login_password: "" });
       fetchOrganizations();
     } catch (error) {
       console.error("Error creating organization:", error);
@@ -172,7 +182,7 @@ export function OrganizationsManager() {
       toast({ title: "Успешно", description: "Организация обновлена" });
       setIsEditOpen(false);
       setEditOrg(null);
-      setFormData({ name: "", email: "", phone: "", inn: "", contact_name: "" });
+      setFormData({ name: "", email: "", phone: "", inn: "", contact_name: "", login_email: "", login_password: "" });
       fetchOrganizations();
     } catch (error) {
       console.error("Error updating organization:", error);
@@ -215,8 +225,20 @@ export function OrganizationsManager() {
       phone: org.phone || "",
       inn: org.inn || "",
       contact_name: org.contact_name || "",
+      login_email: org.credentials?.login_email || "",
+      login_password: org.credentials?.login_password || "",
     });
     setIsEditOpen(true);
+  };
+
+  const togglePassword = (orgId: string) => {
+    setShowPasswords(prev => ({ ...prev, [orgId]: !prev[orgId] }));
+  };
+
+  const copyToClipboard = async (text: string, fieldId: string) => {
+    await navigator.clipboard.writeText(text);
+    setCopiedField(fieldId);
+    setTimeout(() => setCopiedField(null), 2000);
   };
 
   if (loading) {
@@ -335,6 +357,7 @@ export function OrganizationsManager() {
               <TableRow>
                 <TableHead>Организация</TableHead>
                 <TableHead>Контакты</TableHead>
+                <TableHead>Учётные данные</TableHead>
                 <TableHead className="text-center">Сотрудники</TableHead>
                 <TableHead className="text-center">Курсы</TableHead>
                 <TableHead>Создана</TableHead>
@@ -344,7 +367,7 @@ export function OrganizationsManager() {
             <TableBody>
               {organizations.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                     <Building2 className="w-12 h-12 mx-auto mb-2 opacity-50" />
                     Организации не найдены
                   </TableCell>
@@ -370,6 +393,59 @@ export function OrganizationsManager() {
                         <div>{org.email}</div>
                         {org.phone && <div className="text-muted-foreground">{org.phone}</div>}
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      {org.credentials ? (
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1">
+                            <Key className="w-3 h-3 text-muted-foreground" />
+                            <span className="text-sm font-mono">{org.credentials.login_email}</span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() => copyToClipboard(org.credentials!.login_email, `email-${org.id}`)}
+                            >
+                              {copiedField === `email-${org.id}` ? (
+                                <Check className="w-3 h-3 text-green-500" />
+                              ) : (
+                                <Copy className="w-3 h-3" />
+                              )}
+                            </Button>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-sm font-mono text-muted-foreground">
+                              {showPasswords[org.id] ? org.credentials.login_password : '••••••••'}
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() => togglePassword(org.id)}
+                            >
+                              {showPasswords[org.id] ? (
+                                <EyeOff className="w-3 h-3" />
+                              ) : (
+                                <Eye className="w-3 h-3" />
+                              )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() => copyToClipboard(org.credentials!.login_password, `pass-${org.id}`)}
+                            >
+                              {copiedField === `pass-${org.id}` ? (
+                                <Check className="w-3 h-3 text-green-500" />
+                              ) : (
+                                <Copy className="w-3 h-3" />
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">Не задано</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-center">
                       <Badge variant="secondary" className="gap-1">
