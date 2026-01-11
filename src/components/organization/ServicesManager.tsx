@@ -1,7 +1,18 @@
-import { ExternalLink, FileText, GraduationCap, FileCheck, Award, ScrollText, ShieldCheck } from "lucide-react";
+import { useState } from "react";
+import { ExternalLink, FileText, GraduationCap, FileCheck, Award, ScrollText, ShieldCheck, Loader2, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface Service {
   id: string;
@@ -12,6 +23,10 @@ interface Service {
   icon: React.ReactNode;
   features: string[];
   popular?: boolean;
+}
+
+interface ServicesManagerProps {
+  organizationId: string;
 }
 
 const services: Service[] = [
@@ -97,11 +112,46 @@ const services: Service[] = [
   }
 ];
 
-export function ServicesManager() {
-  const handleOrderService = (service: Service) => {
-    const message = `Здравствуйте! Меня интересует услуга "${service.title}" (${service.price}).`;
-    const encodedMessage = encodeURIComponent(message);
-    window.open(`mailto:info@sigma-edu.ru?subject=Заявка на услугу&body=${encodedMessage}`, '_blank');
+export function ServicesManager({ organizationId }: ServicesManagerProps) {
+  const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [showOrderDialog, setShowOrderDialog] = useState(false);
+  const [notes, setNotes] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+
+  const handleOrderClick = (service: Service) => {
+    setSelectedService(service);
+    setNotes("");
+    setShowOrderDialog(true);
+  };
+
+  const handleSubmitOrder = async () => {
+    if (!selectedService || !organizationId) return;
+
+    setIsSubmitting(true);
+    try {
+      const { error } = await supabase
+        .from('service_orders')
+        .insert({
+          organization_id: organizationId,
+          service_id: selectedService.id,
+          service_title: selectedService.title,
+          service_price: selectedService.price,
+          notes: notes || null,
+          status: 'pending'
+        });
+
+      if (error) throw error;
+
+      setShowOrderDialog(false);
+      setShowSuccessDialog(true);
+      toast.success('Заявка успешно отправлена!');
+    } catch (error: any) {
+      console.error('Error submitting order:', error);
+      toast.error('Ошибка при отправке заявки');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -153,7 +203,7 @@ export function ServicesManager() {
               </ul>
               <Button 
                 className="w-full btn-gradient rounded-xl"
-                onClick={() => handleOrderService(service)}
+                onClick={() => handleOrderClick(service)}
               >
                 Заказать
               </Button>
@@ -183,6 +233,70 @@ export function ServicesManager() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Order Dialog */}
+      <Dialog open={showOrderDialog} onOpenChange={setShowOrderDialog}>
+        <DialogContent className="rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-display">Оформление заявки</DialogTitle>
+            <DialogDescription>
+              {selectedService?.title}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="bg-secondary/50 rounded-xl p-4">
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Стоимость:</span>
+                <span className="font-bold text-primary text-lg">{selectedService?.price}</span>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Комментарий к заявке (необязательно)</label>
+              <Textarea
+                placeholder="Опишите ваши пожелания или уточнения..."
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                className="rounded-xl min-h-[100px]"
+              />
+            </div>
+            <Button
+              className="w-full btn-gradient rounded-xl"
+              onClick={handleSubmitOrder}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Отправка...
+                </>
+              ) : (
+                "Отправить заявку"
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Success Dialog */}
+      <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+        <DialogContent className="rounded-2xl text-center">
+          <div className="py-6">
+            <div className="w-16 h-16 rounded-full bg-sigma-green/10 flex items-center justify-center mx-auto mb-4">
+              <CheckCircle className="w-8 h-8 text-sigma-green" />
+            </div>
+            <DialogTitle className="font-display text-xl mb-2">Заявка отправлена!</DialogTitle>
+            <DialogDescription className="text-base">
+              Мы получили вашу заявку и свяжемся с вами в ближайшее время для уточнения деталей.
+            </DialogDescription>
+            <Button
+              className="mt-6 btn-gradient rounded-xl"
+              onClick={() => setShowSuccessDialog(false)}
+            >
+              Отлично
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

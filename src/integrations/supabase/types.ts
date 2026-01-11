@@ -863,6 +863,50 @@ export type Database = {
           },
         ]
       }
+      service_orders: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          organization_id: string
+          service_id: string
+          service_price: string
+          service_title: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          organization_id: string
+          service_id: string
+          service_price: string
+          service_title: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          organization_id?: string
+          service_id?: string
+          service_price?: string
+          service_title?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_orders_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_documents: {
         Row: {
           created_at: string
