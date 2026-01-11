@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { messages } = await req.json();
+    const { messages, context } = await req.json();
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -21,6 +21,23 @@ serve(async (req) => {
     }
 
     console.log("Processing student chat request with", messages?.length || 0, "messages");
+
+    // Build context-aware system prompt
+    let contextInfo = '';
+    if (context) {
+      if (context.courseTitle) {
+        contextInfo += `\n\nТекущий курс: "${context.courseTitle}"`;
+      }
+      if (context.lessonTitle) {
+        contextInfo += `\nТекущий урок: "${context.lessonTitle}"`;
+        if (context.lessonType === 'test') {
+          contextInfo += ' (это тестовый урок)';
+        }
+      }
+      if (context.lessonContent) {
+        contextInfo += `\n\nСодержание текущего урока:\n${context.lessonContent.substring(0, 4000)}`;
+      }
+    }
 
     const systemPrompt = `Ты — ИИ-помощник образовательной платформы СИНТАГМА. 
 Твоя задача — помогать студентам в обучении:
@@ -31,7 +48,8 @@ serve(async (req) => {
 - Давать полезные советы по эффективному обучению
 
 Будь дружелюбным, терпеливым и поддерживающим. Используй примеры для лучшего понимания.
-Отвечай на русском языке. Если вопрос не связан с обучением, вежливо направь разговор в образовательное русло.`;
+Отвечай на русском языке. Если вопрос не связан с обучением, вежливо направь разговор в образовательное русло.
+${contextInfo}`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
