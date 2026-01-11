@@ -15,8 +15,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { FileText, Video, HelpCircle, Plus, Trash2 } from "lucide-react";
+import { FileText, Video, HelpCircle, Plus, Trash2, Sparkles, Loader2 } from "lucide-react";
 import { BlockEditor, ContentBlock } from "@/components/course-builder/BlockEditor";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface Lesson {
   id: string;
@@ -47,6 +49,8 @@ interface LessonEditorProps {
   }) => void;
   existingQuestions?: TestQuestion[];
   courseId?: string;
+  courseTitle?: string;
+  courseDescription?: string;
 }
 
 export const LessonEditor = ({ 
@@ -55,13 +59,17 @@ export const LessonEditor = ({
   onClose, 
   onSave,
   existingQuestions = [],
-  courseId = ""
+  courseId = "",
+  courseTitle = "",
+  courseDescription = ""
 }: LessonEditorProps) => {
+  const { toast } = useToast();
   const [title, setTitle] = useState("");
   const [type, setType] = useState("text");
   const [blocks, setBlocks] = useState<ContentBlock[]>([]);
   const [videoUrl, setVideoUrl] = useState("");
   const [questions, setQuestions] = useState<TestQuestion[]>([]);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   // Parse content to blocks or use as video URL
   const parseContent = useCallback((content: string | null, lessonType: string) => {
@@ -156,6 +164,75 @@ export const LessonEditor = ({
     setQuestions(questions.filter((_, i) => i !== index));
   };
 
+  const handleGenerateContent = async () => {
+    if (!title.trim()) {
+      toast({
+        title: "Введите название урока",
+        description: "Для генерации контента нужно указать название урока",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-lesson-content", {
+        body: {
+          lessonTitle: title,
+          lessonType: type,
+          courseTitle,
+          courseDescription,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data.error) {
+        toast({
+          title: "Ошибка генерации",
+          description: data.error,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (type === "test" && data.questions) {
+        setQuestions(
+          data.questions.map((q: any, index: number) => ({
+            question: q.question,
+            options: q.options,
+            correct_answer: q.correctAnswer,
+            order_index: index,
+          }))
+        );
+        toast({
+          title: "Тест сгенерирован",
+          description: `Создано ${data.questions.length} вопросов`,
+        });
+      } else if (data.blocks) {
+        const generatedBlocks: ContentBlock[] = data.blocks.map((block: any) => ({
+          id: crypto.randomUUID(),
+          type: block.type,
+          content: block.content,
+        }));
+        setBlocks(generatedBlocks);
+        toast({
+          title: "Контент сгенерирован",
+          description: "Содержание урока создано с помощью ИИ",
+        });
+      }
+    } catch (error) {
+      console.error("Generate content error:", error);
+      toast({
+        title: "Ошибка",
+        description: "Не удалось сгенерировать контент",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const handleSave = () => {
     if (!title.trim()) return;
     
@@ -228,7 +305,24 @@ export const LessonEditor = ({
 
             {type === "text" && (
               <div className="space-y-2">
-                <Label>Содержание урока</Label>
+                <div className="flex items-center justify-between">
+                  <Label>Содержание урока</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleGenerateContent}
+                    disabled={isGenerating || !title.trim()}
+                    className="gap-2"
+                  >
+                    {isGenerating ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Sparkles className="w-4 h-4" />
+                    )}
+                    {isGenerating ? "Генерация..." : "Сгенерировать ИИ"}
+                  </Button>
+                </div>
                 <BlockEditor
                   blocks={blocks}
                   onChange={setBlocks}
@@ -259,16 +353,33 @@ export const LessonEditor = ({
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <Label className="text-base font-semibold">Вопросы теста</Label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleAddQuestion}
-                    className="gap-2"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Добавить вопрос
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleGenerateContent}
+                      disabled={isGenerating || !title.trim()}
+                      className="gap-2"
+                    >
+                      {isGenerating ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Sparkles className="w-4 h-4" />
+                      )}
+                      {isGenerating ? "Генерация..." : "Сгенерировать ИИ"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleAddQuestion}
+                      className="gap-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Добавить вопрос
+                    </Button>
+                  </div>
                 </div>
 
                 {questions.length === 0 ? (

@@ -630,6 +630,8 @@ const CourseEditor = () => {
         onSave={handleSaveLesson}
         existingQuestions={editingQuestions}
         courseId={courseId}
+        courseTitle={title}
+        courseDescription={description}
       />
 
       {/* GitHub Import Dialog */}
