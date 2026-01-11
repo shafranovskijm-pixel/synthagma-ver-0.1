@@ -19,94 +19,138 @@ serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    const { email, password, full_name, organization_id, course_id, company_id } = await req.json();
+    const { email, password, full_name, organization_id, course_id, company_id, no_login } = await req.json();
 
-    console.log(`Registering student: ${email} for org: ${organization_id}, company: ${company_id || 'none'}`);
+    console.log(`Registering student: ${full_name} (${email}) for org: ${organization_id}, no_login: ${no_login}`);
 
-    if (!email || !full_name || !organization_id) {
+    if (!full_name || !organization_id) {
       return new Response(
         JSON.stringify({ error: "Заполните все обязательные поля" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Validate email format (only ASCII characters allowed)
-    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    if (!emailRegex.test(email)) {
-      return new Response(
-        JSON.stringify({ error: "Неверный формат email. Используйте только латинские буквы." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    // Validate email format if provided (only ASCII characters allowed)
+    if (email) {
+      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+      if (!emailRegex.test(email)) {
+        return new Response(
+          JSON.stringify({ error: "Неверный формат email. Используйте только латинские буквы." }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
-    // Check if user already exists by email in profiles
-    const { data: existingProfile } = await supabaseAdmin
-      .from("profiles")
-      .select("user_id, full_name")
-      .eq("email", email.toLowerCase())
-      .single();
-
-    let userId: string;
+    let userId: string = "";
     let isExisting = false;
     let existingName = "";
+    let isNoLogin = no_login === true;
 
-    if (existingProfile) {
-      // User already exists - use existing user
-      userId = existingProfile.user_id;
-      isExisting = true;
-      existingName = existingProfile.full_name || full_name;
-      console.log(`User already exists: ${email}, enrolling to course`);
-    } else {
-      // Create new user
-      if (!password) {
-        return new Response(
-          JSON.stringify({ error: "Пароль обязателен для нового ученика" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-        email,
-        password,
-        email_confirm: true,
-        user_metadata: { full_name }
-      });
-
-      if (authError) {
-        console.error("Auth error:", authError);
-        return new Response(
-          JSON.stringify({ error: authError.message }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      userId = authData.user.id;
-
-      // Create profile with company_id if provided
-      const { error: profileError } = await supabaseAdmin
+    if (isNoLogin) {
+      // Create student without auth account (allows duplicate emails)
+      // Generate a unique ID for this profile
+      userId = crypto.randomUUID();
+      
+      // Create profile directly
+      const { data: profileData, error: profileError } = await supabaseAdmin
         .from("profiles")
         .insert({
+          id: crypto.randomUUID(),
           user_id: userId,
           full_name,
-          email: email.toLowerCase(),
+          email: email?.toLowerCase() || null,
           organization_id,
           company_id: company_id || null
-        });
+        })
+        .select()
+        .single();
 
       if (profileError) {
         console.error("Profile error:", profileError);
+        return new Response(
+          JSON.stringify({ error: "Ошибка создания профиля: " + profileError.message }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
 
-      // Assign student role
-      const { error: roleError } = await supabaseAdmin
-        .from("user_roles")
-        .insert({
-          user_id: userId,
-          role: "student"
+      console.log(`Created no-login student: ${full_name}`);
+    } else {
+      // Check if user already exists by email in profiles
+      if (email) {
+        const { data: existingProfile } = await supabaseAdmin
+          .from("profiles")
+          .select("user_id, full_name")
+          .eq("email", email.toLowerCase())
+          .maybeSingle();
+
+        if (existingProfile) {
+          // User already exists - use existing user
+          userId = existingProfile.user_id;
+          isExisting = true;
+          existingName = existingProfile.full_name || full_name;
+          console.log(`User already exists: ${email}, enrolling to course`);
+        }
+      }
+
+      if (!isExisting) {
+        // Create new user with auth
+        if (!password) {
+          return new Response(
+            JSON.stringify({ error: "Пароль обязателен для ученика с доступом в систему" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        if (!email) {
+          return new Response(
+            JSON.stringify({ error: "Email обязателен для ученика с доступом в систему" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+          email,
+          password,
+          email_confirm: true,
+          user_metadata: { full_name }
         });
 
-      if (roleError) {
-        console.error("Role error:", roleError);
+        if (authError) {
+          console.error("Auth error:", authError);
+          return new Response(
+            JSON.stringify({ error: authError.message }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        userId = authData.user.id;
+
+        // Create profile with company_id if provided
+        const { error: profileError } = await supabaseAdmin
+          .from("profiles")
+          .insert({
+            user_id: userId,
+            full_name,
+            email: email.toLowerCase(),
+            organization_id,
+            company_id: company_id || null
+          });
+
+        if (profileError) {
+          console.error("Profile error:", profileError);
+        }
+
+        // Assign student role
+        const { error: roleError } = await supabaseAdmin
+          .from("user_roles")
+          .insert({
+            user_id: userId,
+            role: "student"
+          });
+
+        if (roleError) {
+          console.error("Role error:", roleError);
+        }
       }
     }
 
@@ -121,7 +165,7 @@ serve(async (req) => {
         .select("id")
         .eq("user_id", userId)
         .eq("course_id", course_id)
-        .single();
+        .maybeSingle();
 
       if (existingEnrollment) {
         console.log(`User already enrolled in course: ${course_id}`);
@@ -145,7 +189,11 @@ serve(async (req) => {
     }
 
     let message: string;
-    if (isExisting) {
+    if (isNoLogin) {
+      message = course_id 
+        ? `Ученик ${full_name} добавлен и зачислен на курс`
+        : `Ученик ${full_name} добавлен (без входа в систему)`;
+    } else if (isExisting) {
       if (!course_id) {
         message = `Ученик ${existingName} уже существует в системе`;
       } else if (enrollmentCreated) {
@@ -159,13 +207,14 @@ serve(async (req) => {
       message = `Ученик создан`;
     }
 
-    console.log(`Successfully processed student: ${email}`);
+    console.log(`Successfully processed student: ${full_name}`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        user_id: userId, 
+        user_id: userId!, 
         is_existing: isExisting,
+        is_no_login: isNoLogin,
         enrollment_created: enrollmentCreated,
         message 
       }),

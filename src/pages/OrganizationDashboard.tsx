@@ -183,6 +183,7 @@ export default function OrganizationDashboard() {
   const [organizationName, setOrganizationName] = useState("Организация");
   const [selectedExistingStudentId, setSelectedExistingStudentId] = useState<string>("");
   const [isEnrollingExisting, setIsEnrollingExisting] = useState(false);
+  const [noLoginStudent, setNoLoginStudent] = useState(false);
   
   // Admin view mode
   const [isAdminView, setIsAdminView] = useState(false);
@@ -640,25 +641,28 @@ export default function OrganizationDashboard() {
 
     setIsCreatingStudent(true);
     try {
-      const password = generatePassword();
+      const password = noLoginStudent ? null : generatePassword();
 
       const { data, error } = await supabase.functions.invoke("register-student", {
         body: {
           token: null,
-          email: newStudentEmail,
+          email: newStudentEmail || null,
           password,
           full_name: newStudentName,
           organization_id: organizationId,
           course_id: selectedCourseId || null,
-          company_id: selectedCompanyId || null
+          company_id: selectedCompanyId || null,
+          no_login: noLoginStudent
         }
       });
 
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      // Show appropriate message based on whether user is new or existing
-      if (data.is_existing) {
+      // Show appropriate message based on response
+      if (data.is_no_login) {
+        toast.success(data.message || "Ученик добавлен");
+      } else if (data.is_existing) {
         toast.success(data.message || "Ученик зачислен на курс");
       } else {
         toast.success(`Ученик создан. Пароль: ${password} (сохраните его!)`);
@@ -671,7 +675,7 @@ export default function OrganizationDashboard() {
         user_id: data.user_id,
         enrollment_id: null,
         name: newStudentName,
-        email: newStudentEmail,
+        email: newStudentEmail || "",
         course: course?.title || null,
         course_id: selectedCourseId || null,
         progress: 0,
@@ -683,8 +687,8 @@ export default function OrganizationDashboard() {
       const existsInList = students.some(s => s.user_id === data.user_id) || 
                            allProfiles.some(s => s.user_id === data.user_id);
       
-      if (!data.is_existing) {
-        // New student - add to lists
+      if (data.is_no_login || !data.is_existing) {
+        // New student (with or without login) - add to lists
         setStudents(prev => [...prev, newStudent]);
         setAllProfiles(prev => [...prev, newStudent]);
         setStats(prev => ({ ...prev, totalStudents: prev.totalStudents + 1 }));
@@ -702,6 +706,7 @@ export default function OrganizationDashboard() {
       setNewStudentEmail("");
       setSelectedCourseId("");
       setSelectedCompanyId("");
+      setNoLoginStudent(false);
     } catch (error: any) {
       console.error("Error creating student:", error);
       toast.error(error.message || "Ошибка создания ученика");
@@ -2480,7 +2485,7 @@ export default function OrganizationDashboard() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Email *</Label>
+              <Label>Email {!noLoginStudent && "*"}</Label>
               <Input
                 type="email"
                 placeholder="ivan@example.com"
@@ -2488,9 +2493,23 @@ export default function OrganizationDashboard() {
                 value={newStudentEmail}
                 onChange={(e) => setNewStudentEmail(e.target.value)}
               />
-              <p className="text-xs text-muted-foreground">
-                Если ученик с таким email уже существует — он будет зачислен на курс
-              </p>
+              {!noLoginStudent && (
+                <p className="text-xs text-muted-foreground">
+                  Если ученик с таким email уже существует — он будет зачислен на курс
+                </p>
+              )}
+            </div>
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="noLogin"
+                checked={noLoginStudent}
+                onChange={(e) => setNoLoginStudent(e.target.checked)}
+                className="rounded"
+              />
+              <Label htmlFor="noLogin" className="text-sm font-normal cursor-pointer">
+                Без входа в систему (можно использовать одну почту для нескольких учеников)
+              </Label>
             </div>
             <div className="space-y-2">
               <Label>Компания (необязательно)</Label>
