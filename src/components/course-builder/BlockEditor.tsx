@@ -402,30 +402,86 @@ function ImageBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updat
 }
 
 function VideoBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void }) {
-  const getEmbedUrl = (url: string): string | null => {
-    if (!url) return null;
-    const ytMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/);
-    if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`;
-    const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
-    if (vimeoMatch) return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
-    return null;
+  // Check if the content is an iframe embed code
+  const isIframeEmbed = (content: string): boolean => {
+    return content.trim().startsWith('<iframe') && content.includes('</iframe>');
   };
-  const embedUrl = getEmbedUrl(block.videoUrl || "");
+
+  // Extract src from iframe if it's embed code
+  const getEmbedFromContent = (content: string): { type: 'iframe' | 'url' | null; value: string | null } => {
+    if (!content) return { type: null, value: null };
+    
+    // Check for iframe embed code
+    if (isIframeEmbed(content)) {
+      return { type: 'iframe', value: content };
+    }
+    
+    // Check for YouTube URL
+    const ytMatch = content.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/);
+    if (ytMatch) return { type: 'url', value: `https://www.youtube.com/embed/${ytMatch[1]}` };
+    
+    // Check for Vimeo URL
+    const vimeoMatch = content.match(/vimeo\.com\/(\d+)/);
+    if (vimeoMatch) return { type: 'url', value: `https://player.vimeo.com/video/${vimeoMatch[1]}` };
+    
+    // Check for Rutube URL
+    const rutubeMatch = content.match(/rutube\.ru\/video\/([a-zA-Z0-9]+)/);
+    if (rutubeMatch) return { type: 'url', value: `https://rutube.ru/play/embed/${rutubeMatch[1]}` };
+    
+    // Check for VK Video URL
+    const vkMatch = content.match(/vk\.com\/video(-?\d+)_(\d+)/);
+    if (vkMatch) return { type: 'url', value: `https://vk.com/video_ext.php?oid=${vkMatch[1]}&id=${vkMatch[2]}` };
+    
+    return { type: null, value: null };
+  };
+
+  const embedResult = getEmbedFromContent(block.videoUrl || "");
+  const hasValidEmbed = embedResult.type !== null;
 
   return (
     <div className="py-2">
-      {embedUrl ? (
+      {hasValidEmbed ? (
         <div className="space-y-2">
           <div className="relative group/video aspect-video bg-black rounded-lg overflow-hidden">
-            <iframe src={embedUrl} className="w-full h-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
-            <Button variant="secondary" size="sm" className="absolute top-2 right-2 opacity-0 group-hover/video:opacity-100" onClick={() => onUpdate({ videoUrl: "" })}>Удалить</Button>
+            {embedResult.type === 'iframe' ? (
+              <div 
+                className="w-full h-full [&>iframe]:w-full [&>iframe]:h-full [&>iframe]:border-0"
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(embedResult.value || '', {
+                  ALLOWED_TAGS: ['iframe'],
+                  ALLOWED_ATTR: ['src', 'width', 'height', 'frameborder', 'allow', 'allowfullscreen', 'title', 'referrerpolicy'],
+                }) }}
+              />
+            ) : (
+              <iframe 
+                src={embedResult.value || ''} 
+                className="w-full h-full border-0" 
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                allowFullScreen 
+              />
+            )}
+            <Button 
+              variant="secondary" 
+              size="sm" 
+              className="absolute top-2 right-2 opacity-0 group-hover/video:opacity-100" 
+              onClick={() => onUpdate({ videoUrl: "" })}
+            >
+              Удалить
+            </Button>
           </div>
         </div>
       ) : (
-        <div className="bg-muted rounded-xl p-6 text-center">
-          <Video className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground mb-4">Добавьте видео по ссылке</p>
-          <Input value={block.videoUrl || ""} onChange={(e) => onUpdate({ videoUrl: e.target.value })} placeholder="YouTube, Vimeo..." className="text-sm" />
+        <div className="bg-muted rounded-xl p-6 space-y-4">
+          <div className="text-center">
+            <Video className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground mb-2">Добавьте видео по ссылке или вставьте embed код</p>
+            <p className="text-xs text-muted-foreground/70">YouTube, Vimeo, Rutube, VK Video или &lt;iframe&gt; код</p>
+          </div>
+          <Textarea 
+            value={block.videoUrl || ""} 
+            onChange={(e) => onUpdate({ videoUrl: e.target.value })} 
+            placeholder="https://youtube.com/watch?v=... или <iframe>...</iframe>" 
+            className="text-sm min-h-[80px] resize-none"
+          />
         </div>
       )}
     </div>
