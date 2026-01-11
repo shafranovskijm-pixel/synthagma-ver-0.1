@@ -219,6 +219,8 @@ export default function OrganizationDashboard() {
   const [showEnrollDialog, setShowEnrollDialog] = useState(false);
   const [enrollCourseId, setEnrollCourseId] = useState<string>("");
   const [isEnrolling, setIsEnrolling] = useState(false);
+  const [isUnenrolling, setIsUnenrolling] = useState(false);
+  const [showUnenrollConfirm, setShowUnenrollConfirm] = useState(false);
 
   // Course details dialog (for assigning students to course)
   const [showCourseStudentsDialog, setShowCourseStudentsDialog] = useState(false);
@@ -747,6 +749,50 @@ export default function OrganizationDashboard() {
     } finally {
       setIsEnrolling(false);
     }
+  };
+
+  // Bulk unenroll selected students
+  const handleBulkUnenroll = async () => {
+    // Get enrollment IDs from selected students
+    const enrollmentIds = Array.from(selectedStudentIds).filter(id => {
+      // Check if it's an enrollment_id (not user_id)
+      const student = students.find(s => s.enrollment_id === id);
+      return student !== undefined;
+    });
+
+    if (enrollmentIds.length === 0) {
+      toast.error("Нет выбранных зачислений для отчисления");
+      setShowUnenrollConfirm(false);
+      return;
+    }
+
+    setIsUnenrolling(true);
+    try {
+      const { error } = await supabase
+        .from("enrollments")
+        .delete()
+        .in("id", enrollmentIds);
+
+      if (error) throw error;
+
+      toast.success(`Отчислено ${enrollmentIds.length} учеников`);
+      setShowUnenrollConfirm(false);
+      setSelectedStudentIds(new Set());
+      window.location.reload();
+    } catch (error) {
+      console.error("Error unenrolling students:", error);
+      toast.error("Ошибка отчисления");
+    } finally {
+      setIsUnenrolling(false);
+    }
+  };
+
+  // Get count of selected enrollments (not just profiles)
+  const getSelectedEnrollmentsCount = () => {
+    return Array.from(selectedStudentIds).filter(id => {
+      const student = students.find(s => s.enrollment_id === id);
+      return student !== undefined;
+    }).length;
   };
 
   // Open course details to assign students
@@ -1976,10 +2022,22 @@ export default function OrganizationDashboard() {
                 <h2 className="font-display text-xl font-semibold">Все ученики</h2>
                 <div className="flex items-center gap-3 flex-wrap">
                   {selectedStudentIds.size > 0 && (
-                    <Button onClick={() => setShowEnrollDialog(true)} className="btn-gradient rounded-xl gap-2">
-                      <GraduationCap className="w-4 h-4" />
-                      Зачислить на курс ({selectedStudentIds.size})
-                    </Button>
+                    <>
+                      <Button onClick={() => setShowEnrollDialog(true)} className="btn-gradient rounded-xl gap-2">
+                        <GraduationCap className="w-4 h-4" />
+                        Зачислить на курс ({selectedStudentIds.size})
+                      </Button>
+                      {getSelectedEnrollmentsCount() > 0 && (
+                        <Button 
+                          onClick={() => setShowUnenrollConfirm(true)} 
+                          variant="outline"
+                          className="rounded-xl gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <XCircle className="w-4 h-4" />
+                          Отчислить ({getSelectedEnrollmentsCount()})
+                        </Button>
+                      )}
+                    </>
                   )}
                   <Select value={studentStatusFilter} onValueChange={(v) => setStudentStatusFilter(v as any)}>
                     <SelectTrigger className="w-44 rounded-xl">
@@ -2288,6 +2346,47 @@ export default function OrganizationDashboard() {
               }} 
             />
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Unenroll Confirmation Dialog */}
+      <Dialog open={showUnenrollConfirm} onOpenChange={setShowUnenrollConfirm}>
+        <DialogContent className="rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-display text-destructive">Подтвердите отчисление</DialogTitle>
+            <DialogDescription>
+              Вы действительно хотите отчислить {getSelectedEnrollmentsCount()} учеников с курсов? 
+              Это действие нельзя отменить.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-3 justify-end pt-4">
+            <Button
+              variant="outline"
+              className="rounded-xl"
+              onClick={() => setShowUnenrollConfirm(false)}
+              disabled={isUnenrolling}
+            >
+              Отмена
+            </Button>
+            <Button
+              variant="destructive"
+              className="rounded-xl"
+              onClick={handleBulkUnenroll}
+              disabled={isUnenrolling}
+            >
+              {isUnenrolling ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Отчисление...
+                </>
+              ) : (
+                <>
+                  <XCircle className="w-4 h-4 mr-2" />
+                  Отчислить
+                </>
+              )}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 
