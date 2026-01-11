@@ -780,10 +780,16 @@ export default function OrganizationDashboard() {
                 </>
               )}
               {activeTab === "courses" && (
-                <Button className="btn-gradient rounded-xl gap-2" onClick={() => navigate("/course/new/edit")}>
-                  <Plus className="w-4 h-4" />
-                  Создать курс
-                </Button>
+                <>
+                  <Button variant="outline" className="rounded-xl gap-2" onClick={() => navigate("/course/new/edit?import=github")}>
+                    <Upload className="w-4 h-4" />
+                    Импорт из GitHub
+                  </Button>
+                  <Button className="btn-gradient rounded-xl gap-2" onClick={() => navigate("/course/new/edit")}>
+                    <Plus className="w-4 h-4" />
+                    Создать курс
+                  </Button>
+                </>
               )}
             </div>
           </div>
