@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.student-chat]
 verify_jwt = false
+
+[functions.import-course]
+verify_jwt = false
