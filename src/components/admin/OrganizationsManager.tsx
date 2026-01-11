@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,7 +32,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Building2, Loader2, Users, BookOpen, Key, Eye, EyeOff, Copy, Check, Download } from "lucide-react";
+import { Plus, Pencil, Trash2, Building2, Loader2, Users, BookOpen, Key, Eye, EyeOff, Copy, Check, Download, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import * as XLSX from "xlsx";
@@ -54,6 +55,7 @@ interface Organization {
 }
 
 export function OrganizationsManager() {
+  const navigate = useNavigate();
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -73,6 +75,15 @@ export function OrganizationsManager() {
   });
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
+
+  const viewAsOrganization = (org: Organization) => {
+    // Store admin view context in localStorage
+    localStorage.setItem("adminViewAsOrg", JSON.stringify({
+      id: org.id,
+      name: org.name,
+    }));
+    navigate("/organization");
+  };
 
   useEffect(() => {
     fetchOrganizations();
@@ -567,7 +578,15 @@ export function OrganizationsManager() {
                       {format(new Date(org.created_at), "d MMM yyyy", { locale: ru })}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => viewAsOrganization(org)}
+                          title="Войти в организацию"
+                        >
+                          <ExternalLink className="w-4 h-4 text-primary" />
+                        </Button>
                         <Button variant="ghost" size="icon" onClick={() => openEdit(org)}>
                           <Pencil className="w-4 h-4" />
                         </Button>
