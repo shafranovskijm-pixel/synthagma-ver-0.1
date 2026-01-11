@@ -1,10 +1,23 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, UserPlus, UserMinus, History, FileSpreadsheet } from "lucide-react";
+import { Loader2, UserPlus, UserMinus, History, FileSpreadsheet, Filter, X, Calendar } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 
 interface EnrollmentHistoryItem {
   id: string;
@@ -26,6 +39,11 @@ interface EnrollmentHistoryProps {
 export function EnrollmentHistory({ courseId, organizationId, courseName }: EnrollmentHistoryProps) {
   const [history, setHistory] = useState<EnrollmentHistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Filters
+  const [selectedAction, setSelectedAction] = useState<string>("all");
+  const [dateFrom, setDateFrom] = useState<Date | undefined>();
+  const [dateTo, setDateTo] = useState<Date | undefined>();
 
   useEffect(() => {
     fetchHistory();
@@ -69,9 +87,45 @@ export function EnrollmentHistory({ courseId, organizationId, courseName }: Enro
     }
   };
 
+  // Filtered data
+  const filteredHistory = useMemo(() => {
+    return history.filter(item => {
+      // Action filter
+      if (selectedAction !== "all" && item.action !== selectedAction) {
+        return false;
+      }
+      
+      // Date from filter
+      if (dateFrom) {
+        const itemDate = new Date(item.created_at);
+        const fromDate = new Date(dateFrom);
+        fromDate.setHours(0, 0, 0, 0);
+        if (itemDate < fromDate) return false;
+      }
+      
+      // Date to filter
+      if (dateTo) {
+        const itemDate = new Date(item.created_at);
+        const toDate = new Date(dateTo);
+        toDate.setHours(23, 59, 59, 999);
+        if (itemDate > toDate) return false;
+      }
+      
+      return true;
+    });
+  }, [history, selectedAction, dateFrom, dateTo]);
+
+  const hasActiveFilters = selectedAction !== "all" || dateFrom || dateTo;
+
+  const resetFilters = () => {
+    setSelectedAction("all");
+    setDateFrom(undefined);
+    setDateTo(undefined);
+  };
+
   const handleExport = () => {
     import('xlsx').then(XLSX => {
-      const exportData = history.map(h => ({
+      const exportData = filteredHistory.map(h => ({
         'ФИО': h.user_name,
         'Email': h.user_email,
         'Действие': h.action === 'enrolled' ? 'Зачислен' : 'Отчислен',
@@ -108,56 +162,139 @@ export function EnrollmentHistory({ courseId, organizationId, courseName }: Enro
 
   return (
     <div className="space-y-3">
-      <div className="flex justify-end">
+      {/* Filters */}
+      <div className="flex flex-wrap gap-2 items-center">
+        <Filter className="w-4 h-4 text-muted-foreground" />
+        
+        {/* Action filter */}
+        <Select value={selectedAction} onValueChange={setSelectedAction}>
+          <SelectTrigger className="w-[140px] h-8 text-sm">
+            <SelectValue placeholder="Тип действия" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Все действия</SelectItem>
+            <SelectItem value="enrolled">Зачислен</SelectItem>
+            <SelectItem value="unenrolled">Отчислен</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {/* Date from */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" className="h-8 gap-1.5">
+              <Calendar className="w-3.5 h-3.5" />
+              {dateFrom ? format(dateFrom, "dd.MM.yy", { locale: ru }) : "От"}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <CalendarComponent
+              mode="single"
+              selected={dateFrom}
+              onSelect={setDateFrom}
+              initialFocus
+            />
+          </PopoverContent>
+        </Popover>
+
+        {/* Date to */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" className="h-8 gap-1.5">
+              <Calendar className="w-3.5 h-3.5" />
+              {dateTo ? format(dateTo, "dd.MM.yy", { locale: ru }) : "До"}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <CalendarComponent
+              mode="single"
+              selected={dateTo}
+              onSelect={setDateTo}
+              initialFocus
+            />
+          </PopoverContent>
+        </Popover>
+
+        {/* Reset filters */}
+        {hasActiveFilters && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 gap-1.5 text-muted-foreground"
+            onClick={resetFilters}
+          >
+            <X className="w-3.5 h-3.5" />
+            Сбросить
+          </Button>
+        )}
+
+        <div className="flex-1" />
+
+        {/* Export */}
         <Button
           variant="outline"
           size="sm"
-          className="rounded-lg gap-2"
+          className="h-8 gap-1.5"
           onClick={handleExport}
+          disabled={filteredHistory.length === 0}
         >
-          <FileSpreadsheet className="w-4 h-4" />
-          Экспорт в Excel
+          <FileSpreadsheet className="w-3.5 h-3.5" />
+          Экспорт
         </Button>
       </div>
-      <div className="space-y-2 max-h-60 overflow-auto">
-      {history.map(item => (
-        <div
-          key={item.id}
-          className={`flex items-start gap-3 p-3 rounded-xl ${
-            item.action === "enrolled" ? "bg-sigma-green/10" : "bg-destructive/10"
-          }`}
-        >
-          <div className={`p-2 rounded-lg ${
-            item.action === "enrolled" ? "bg-sigma-green/20 text-sigma-green" : "bg-destructive/20 text-destructive"
-          }`}>
-            {item.action === "enrolled" ? (
-              <UserPlus className="w-4 h-4" />
-            ) : (
-              <UserMinus className="w-4 h-4" />
-            )}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-medium truncate">{item.user_name}</span>
-              <span className={`text-xs px-2 py-0.5 rounded-full ${
-                item.action === "enrolled" 
-                  ? "bg-sigma-green/20 text-sigma-green" 
-                  : "bg-destructive/20 text-destructive"
-              }`}>
-                {item.action === "enrolled" ? "Зачислен" : "Отчислен"}
-              </span>
-            </div>
-            {item.user_email && (
-              <p className="text-sm text-muted-foreground truncate">{item.user_email}</p>
-            )}
-            <p className="text-xs text-muted-foreground mt-1">
-              {format(new Date(item.created_at), "d MMM yyyy, HH:mm", { locale: ru })}
-              {item.performed_by_name && ` • ${item.performed_by_name}`}
-            </p>
-          </div>
+
+      {/* Results count */}
+      {hasActiveFilters && (
+        <p className="text-xs text-muted-foreground">
+          Найдено: {filteredHistory.length} из {history.length}
+        </p>
+      )}
+
+      {/* History list */}
+      {filteredHistory.length === 0 ? (
+        <div className="text-center py-6 text-muted-foreground">
+          <p className="text-sm">Нет записей по выбранным фильтрам</p>
         </div>
-        ))}
-      </div>
+      ) : (
+        <div className="space-y-2 max-h-60 overflow-auto">
+          {filteredHistory.map(item => (
+            <div
+              key={item.id}
+              className={`flex items-start gap-3 p-3 rounded-xl ${
+                item.action === "enrolled" ? "bg-sigma-green/10" : "bg-destructive/10"
+              }`}
+            >
+              <div className={`p-2 rounded-lg ${
+                item.action === "enrolled" ? "bg-sigma-green/20 text-sigma-green" : "bg-destructive/20 text-destructive"
+              }`}>
+                {item.action === "enrolled" ? (
+                  <UserPlus className="w-4 h-4" />
+                ) : (
+                  <UserMinus className="w-4 h-4" />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-medium truncate">{item.user_name}</span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${
+                    item.action === "enrolled" 
+                      ? "bg-sigma-green/20 text-sigma-green" 
+                      : "bg-destructive/20 text-destructive"
+                  }`}>
+                    {item.action === "enrolled" ? "Зачислен" : "Отчислен"}
+                  </span>
+                </div>
+                {item.user_email && (
+                  <p className="text-sm text-muted-foreground truncate">{item.user_email}</p>
+                )}
+                <p className="text-xs text-muted-foreground mt-1">
+                  {format(new Date(item.created_at), "d MMM yyyy, HH:mm", { locale: ru })}
+                  {item.performed_by_name && ` • ${item.performed_by_name}`}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
