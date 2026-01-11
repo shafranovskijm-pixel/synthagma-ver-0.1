@@ -490,36 +490,41 @@ const CoursePreview = () => {
                             <h4 className="font-medium text-lg">{question.question}</h4>
                           </div>
                           
-                          <div className="space-y-3 ml-12">
-                            {options.map((option: string, oIndex: number) => (
-                              <button
-                                key={oIndex}
-                                onClick={() => setSelectedAnswers(prev => ({
-                                  ...prev,
-                                  [question.id]: oIndex
-                                }))}
-                                className={cn(
-                                  "w-full p-4 rounded-xl border text-left transition-all",
-                                  selectedAnswers[question.id] === oIndex
-                                    ? "border-primary bg-primary/5"
-                                    : "border-border hover:border-primary/50 hover:bg-muted/50"
-                                )}
-                              >
-                                <div className="flex items-center gap-3">
-                                  <div className={cn(
-                                    "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all",
+                            <div className="space-y-3 ml-12">
+                            {options.map((option: unknown, oIndex: number) => {
+                              // Handle both string and object formats
+                              const optionText = typeof option === 'object' && option !== null && 'text' in option ? (option as { text: string }).text : String(option);
+                              
+                              return (
+                                <button
+                                  key={oIndex}
+                                  onClick={() => setSelectedAnswers(prev => ({
+                                    ...prev,
+                                    [question.id]: oIndex
+                                  }))}
+                                  className={cn(
+                                    "w-full p-4 rounded-xl border text-left transition-all",
                                     selectedAnswers[question.id] === oIndex
-                                      ? "border-primary bg-primary"
-                                      : "border-muted-foreground"
-                                  )}>
-                                    {selectedAnswers[question.id] === oIndex && (
-                                      <div className="w-2 h-2 rounded-full bg-primary-foreground" />
-                                    )}
+                                      ? "border-primary bg-primary/5"
+                                      : "border-border hover:border-primary/50 hover:bg-muted/50"
+                                  )}
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <div className={cn(
+                                      "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all",
+                                      selectedAnswers[question.id] === oIndex
+                                        ? "border-primary bg-primary"
+                                        : "border-muted-foreground"
+                                    )}>
+                                      {selectedAnswers[question.id] === oIndex && (
+                                        <div className="w-2 h-2 rounded-full bg-primary-foreground" />
+                                      )}
+                                    </div>
+                                    <span>{optionText}</span>
                                   </div>
-                                  <span>{option}</span>
-                                </div>
-                              </button>
-                            ))}
+                                </button>
+                              );
+                            })}
                           </div>
                           
                           {/* Show correct answer indicator for preview */}
