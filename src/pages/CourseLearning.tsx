@@ -25,7 +25,10 @@ import {
   Volume2,
   VolumeX,
   Square,
-  Headphones
+  Headphones,
+  MessageCircle,
+  X,
+  Send
 } from "lucide-react";
 import { ContentBlock, jsonToBlocks, BlockRenderer } from "@/components/course-builder/BlockEditor";
 import { cn } from "@/lib/utils";
@@ -204,6 +207,13 @@ const CourseLearning = () => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const speechSynthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
 
+  // AI Chat state
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [isChatLoading, setIsChatLoading] = useState(false);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
+
   const currentLesson = lessons[currentLessonIndex];
   const completedCount = lessonProgress.filter(p => p.completed).length;
   const progressPercent = lessons.length > 0 ? (completedCount / lessons.length) * 100 : 0;
@@ -314,6 +324,49 @@ const CourseLearning = () => {
       window.speechSynthesis.cancel();
     };
   }, []);
+
+  // Scroll chat to bottom
+  useEffect(() => {
+    if (chatScrollRef.current) {
+      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+    }
+  }, [chatMessages]);
+
+  // AI Chat function
+  const sendChatMessage = async () => {
+    if (!chatInput.trim() || isChatLoading) return;
+
+    const userMessage = chatInput.trim();
+    setChatInput('');
+    setChatMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    setIsChatLoading(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('student-chat', {
+        body: {
+          messages: [
+            ...chatMessages,
+            { role: 'user', content: userMessage }
+          ]
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.content) {
+        setChatMessages(prev => [...prev, { role: 'assistant', content: data.content }]);
+      }
+    } catch (error: any) {
+      console.error('Chat error:', error);
+      toast.error('Ошибка отправки сообщения');
+      setChatMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: 'Извините, произошла ошибка. Попробуйте позже.' 
+      }]);
+    } finally {
+      setIsChatLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (courseId && user) {
@@ -1102,6 +1155,117 @@ const CourseLearning = () => {
           </div>
         </footer>
       </main>
+
+      {/* AI Assistant Button */}
+      <Button
+        onClick={() => setIsChatOpen(true)}
+        className={cn(
+          "fixed bottom-6 right-6 w-14 h-14 rounded-full shadow-lg z-40",
+          "bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70",
+          "transition-transform hover:scale-105",
+          isChatOpen && "hidden"
+        )}
+      >
+        <MessageCircle className="w-6 h-6" />
+      </Button>
+
+      {/* AI Chat Panel */}
+      {isChatOpen && (
+        <div className="fixed bottom-6 right-6 w-96 h-[500px] bg-card border border-border rounded-2xl shadow-2xl z-50 flex flex-col overflow-hidden animate-fade-in">
+          {/* Chat Header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-primary to-primary/60 flex items-center justify-center">
+                <Sparkles className="w-4 h-4 text-white" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-sm">ИИ-помощник</h3>
+                <p className="text-xs text-muted-foreground">Задайте вопрос по курсу</p>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setIsChatOpen(false)}
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+
+          {/* Chat Messages */}
+          <div 
+            ref={chatScrollRef}
+            className="flex-1 overflow-y-auto p-4 space-y-4"
+          >
+            {chatMessages.length === 0 && (
+              <div className="text-center py-8">
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                  <MessageCircle className="w-8 h-8 text-primary" />
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Привет! Я помогу разобраться с материалом курса. Задайте любой вопрос.
+                </p>
+              </div>
+            )}
+            
+            {chatMessages.map((msg, idx) => (
+              <div
+                key={idx}
+                className={cn(
+                  "flex",
+                  msg.role === 'user' ? "justify-end" : "justify-start"
+                )}
+              >
+                <div
+                  className={cn(
+                    "max-w-[80%] rounded-2xl px-4 py-2 text-sm",
+                    msg.role === 'user'
+                      ? "bg-primary text-primary-foreground rounded-br-md"
+                      : "bg-muted rounded-bl-md"
+                  )}
+                >
+                  <p className="whitespace-pre-wrap">{msg.content}</p>
+                </div>
+              </div>
+            ))}
+
+            {isChatLoading && (
+              <div className="flex justify-start">
+                <div className="bg-muted rounded-2xl rounded-bl-md px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span className="text-sm text-muted-foreground">Печатает...</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Chat Input */}
+          <div className="p-3 border-t border-border bg-background">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && sendChatMessage()}
+                placeholder="Напишите сообщение..."
+                className="flex-1 px-4 py-2 text-sm border border-border rounded-xl bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+                disabled={isChatLoading}
+              />
+              <Button
+                onClick={sendChatMessage}
+                disabled={!chatInput.trim() || isChatLoading}
+                size="icon"
+                className="rounded-xl"
+              >
+                <Send className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
