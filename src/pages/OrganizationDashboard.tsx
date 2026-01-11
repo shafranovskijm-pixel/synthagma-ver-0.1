@@ -679,12 +679,21 @@ export default function OrganizationDashboard() {
         status: selectedCourseId ? "active" : null
       };
       
+      // Check if student is already in the list
+      const existsInList = students.some(s => s.user_id === data.user_id) || 
+                           allProfiles.some(s => s.user_id === data.user_id);
+      
       if (!data.is_existing) {
+        // New student - add to lists
         setStudents(prev => [...prev, newStudent]);
         setAllProfiles(prev => [...prev, newStudent]);
         setStats(prev => ({ ...prev, totalStudents: prev.totalStudents + 1 }));
       } else if (data.enrollment_created && selectedCourseId) {
-        // Add enrollment entry for existing user
+        // Existing student enrolled in new course - add enrollment entry
+        setStudents(prev => [...prev, newStudent]);
+      } else if (!existsInList) {
+        // Existing student not in list - add them so they're visible
+        setAllProfiles(prev => [...prev, newStudent]);
         setStudents(prev => [...prev, newStudent]);
       }
 
