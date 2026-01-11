@@ -86,6 +86,8 @@ interface SortableLessonProps {
   onSave: () => void;
   onDelete: () => void;
   courseId: string | undefined;
+  courseTitle: string;
+  courseDescription: string;
 }
 
 function SortableLessonItem({
@@ -95,9 +97,12 @@ function SortableLessonItem({
   onUpdate,
   onSave,
   onDelete,
-  courseId
+  courseId,
+  courseTitle,
+  courseDescription
 }: SortableLessonProps) {
   const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const [isGeneratingContent, setIsGeneratingContent] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isSpeechPaused, setIsSpeechPaused] = useState(false);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
@@ -203,6 +208,63 @@ function SortableLessonItem({
     }
   }, [isPreviewMode]);
 
+  const handleGenerateContent = async () => {
+    setIsGeneratingContent(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-lesson-content", {
+        body: {
+          lessonTitle: lesson.title,
+          lessonType: lesson.type,
+          courseTitle,
+          courseDescription
+        }
+      });
+
+      if (error) {
+        throw new Error(error.message || "Ошибка генерации");
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || "Ошибка генерации контента");
+      }
+
+      if (lesson.type === "test") {
+        // For tests, we need to save questions to the database
+        const questions = data.questions || [];
+        if (questions.length > 0) {
+          // Save questions via TestQuestionEditor's mechanism
+          toast.success(`Сгенерировано ${questions.length} вопросов. Откройте редактор теста.`);
+          // Store questions in content field for TestQuestionEditor to pick up
+          onUpdate({
+            content: JSON.stringify({ generatedQuestions: questions })
+          });
+        }
+      } else {
+        // For text lessons, convert blocks
+        const blocks: ContentBlock[] = (data.blocks || []).map((b: any) => ({
+          id: crypto.randomUUID(),
+          type: b.type,
+          content: b.content
+        }));
+
+        if (blocks.length > 0) {
+          onUpdate({
+            blocks,
+            content: blocksToJson(blocks)
+          });
+          toast.success("Контент сгенерирован");
+        } else {
+          toast.error("AI не вернул контент");
+        }
+      }
+    } catch (error: any) {
+      console.error("Generate content error:", error);
+      toast.error(error.message || "Ошибка генерации контента");
+    } finally {
+      setIsGeneratingContent(false);
+    }
+  };
+
   return (
     <div
       ref={setNodeRef}
@@ -264,23 +326,35 @@ function SortableLessonItem({
         <div className="p-4 pt-0 border-t border-border">
           {lesson.type === "text" && (
             <div className="space-y-3">
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant={isPreviewMode ? "outline" : "default"}
+                    size="sm"
+                    className="rounded-lg text-xs"
+                    onClick={() => setIsPreviewMode(false)}
+                  >
+                    Редактор
+                  </Button>
+                  <Button
+                    variant={isPreviewMode ? "default" : "outline"}
+                    size="sm"
+                    className="rounded-lg text-xs gap-1"
+                    onClick={() => setIsPreviewMode(true)}
+                  >
+                    <Eye className="w-3 h-3" />
+                    Предпросмотр
+                  </Button>
+                </div>
                 <Button
-                  variant={isPreviewMode ? "outline" : "default"}
+                  variant="outline"
                   size="sm"
-                  className="rounded-lg text-xs"
-                  onClick={() => setIsPreviewMode(false)}
+                  className="rounded-lg text-xs gap-1 border-primary text-primary hover:bg-primary/10"
+                  onClick={handleGenerateContent}
+                  disabled={isGeneratingContent}
                 >
-                  Редактор
-                </Button>
-                <Button
-                  variant={isPreviewMode ? "default" : "outline"}
-                  size="sm"
-                  className="rounded-lg text-xs gap-1"
-                  onClick={() => setIsPreviewMode(true)}
-                >
-                  <Eye className="w-3 h-3" />
-                  Предпросмотр
+                  {isGeneratingContent ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                  {isGeneratingContent ? "Генерация..." : "Написать с AI"}
                 </Button>
               </div>
               {isPreviewMode ? (
@@ -387,10 +461,24 @@ function SortableLessonItem({
             </div>
           )}
           {lesson.type === "test" && (
-            <TestQuestionEditor
-              lessonId={lesson.id}
-              courseId={courseId}
-            />
+            <div className="space-y-3">
+              <div className="flex justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-lg text-xs gap-1 border-primary text-primary hover:bg-primary/10"
+                  onClick={handleGenerateContent}
+                  disabled={isGeneratingContent}
+                >
+                  {isGeneratingContent ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                  {isGeneratingContent ? "Генерация..." : "Сгенерировать вопросы с AI"}
+                </Button>
+              </div>
+              <TestQuestionEditor
+                lessonId={lesson.id}
+                courseId={courseId}
+              />
+            </div>
           )}
         </div>
       )}
@@ -986,6 +1074,8 @@ export default function CourseBuilder() {
                           onSave={() => saveSingleLesson(lesson, index)}
                           onDelete={() => deleteLesson(lesson.id)}
                           courseId={courseId}
+                          courseTitle={courseTitle}
+                          courseDescription={courseDescription}
                         />
                       ))}
                     </div>

@@ -1,0 +1,190 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const { lessonTitle, lessonType, courseTitle, courseDescription } = await req.json();
+
+    if (!lessonTitle?.trim()) {
+      return new Response(
+        JSON.stringify({ error: "Название урока обязательно" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) {
+      throw new Error("LOVABLE_API_KEY is not configured");
+    }
+
+    let systemPrompt = "";
+    let toolDefinition: any = null;
+
+    if (lessonType === "test") {
+      systemPrompt = `Ты - эксперт по созданию образовательных тестов. Создай тестовые вопросы для урока.
+
+Правила:
+1. Создай от 5 до 10 вопросов
+2. Каждый вопрос должен иметь 4 варианта ответа
+3. Только один ответ правильный
+4. Вопросы должны проверять понимание материала
+5. Вопросы должны быть разной сложности
+6. Избегай очевидных ответов`;
+
+      toolDefinition = {
+        type: "function",
+        function: {
+          name: "create_test_questions",
+          description: "Создает тестовые вопросы для урока",
+          parameters: {
+            type: "object",
+            properties: {
+              questions: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    question: { type: "string", description: "Текст вопроса" },
+                    options: {
+                      type: "array",
+                      items: { type: "string" },
+                      description: "4 варианта ответа"
+                    },
+                    correctAnswer: { 
+                      type: "number", 
+                      description: "Индекс правильного ответа (0-3)" 
+                    }
+                  },
+                  required: ["question", "options", "correctAnswer"],
+                  additionalProperties: false
+                }
+              }
+            },
+            required: ["questions"],
+            additionalProperties: false
+          }
+        }
+      };
+    } else {
+      systemPrompt = `Ты - эксперт по созданию образовательного контента. Создай подробный контент для урока.
+
+Правила:
+1. Контент должен быть структурированным и понятным
+2. Используй заголовки, списки, примеры
+3. Объясняй сложные концепции простым языком
+4. Добавляй практические примеры
+5. Контент должен быть достаточно подробным (минимум 500 слов)
+6. Структура: введение, основная часть с подразделами, заключение`;
+
+      toolDefinition = {
+        type: "function",
+        function: {
+          name: "create_lesson_content",
+          description: "Создает контент урока",
+          parameters: {
+            type: "object",
+            properties: {
+              blocks: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    type: { 
+                      type: "string", 
+                      enum: ["heading1", "heading2", "paragraph", "bulletList", "numberedList", "quote"],
+                      description: "Тип блока контента"
+                    },
+                    content: { type: "string", description: "Содержимое блока" }
+                  },
+                  required: ["type", "content"],
+                  additionalProperties: false
+                }
+              }
+            },
+            required: ["blocks"],
+            additionalProperties: false
+          }
+        }
+      };
+    }
+
+    const userPrompt = `Создай контент для урока:
+Название урока: ${lessonTitle}
+${courseTitle ? `Курс: ${courseTitle}` : ""}
+${courseDescription ? `Описание курса: ${courseDescription}` : ""}
+Тип: ${lessonType === "test" ? "тест с вопросами" : "текстовый урок"}`;
+
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-3-flash-preview",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt }
+        ],
+        tools: [toolDefinition],
+        tool_choice: { 
+          type: "function", 
+          function: { name: lessonType === "test" ? "create_test_questions" : "create_lesson_content" } 
+        }
+      }),
+    });
+
+    if (!response.ok) {
+      if (response.status === 429) {
+        return new Response(
+          JSON.stringify({ error: "Превышен лимит запросов. Попробуйте позже." }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      if (response.status === 402) {
+        return new Response(
+          JSON.stringify({ error: "Требуется пополнение баланса." }),
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      const errorText = await response.text();
+      console.error("AI gateway error:", response.status, errorText);
+      throw new Error("Ошибка AI сервиса");
+    }
+
+    const result = await response.json();
+    
+    const toolCall = result.choices?.[0]?.message?.tool_calls?.[0];
+    if (!toolCall) {
+      throw new Error("Неверный формат ответа AI");
+    }
+
+    const args = JSON.parse(toolCall.function.arguments);
+
+    if (lessonType === "test") {
+      return new Response(
+        JSON.stringify({ success: true, questions: args.questions || [] }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    } else {
+      return new Response(
+        JSON.stringify({ success: true, blocks: args.blocks || [] }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+  } catch (error) {
+    console.error("generate-lesson-content error:", error);
+    return new Response(
+      JSON.stringify({ error: error instanceof Error ? error.message : "Неизвестная ошибка" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+});
