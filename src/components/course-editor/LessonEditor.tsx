@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
+import DOMPurify from "dompurify";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -19,6 +21,69 @@ import { FileText, Video, HelpCircle, Plus, Trash2, Sparkles, Loader2 } from "lu
 import { BlockEditor, ContentBlock } from "@/components/course-builder/BlockEditor";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+
+// Video preview component for lesson editor
+function VideoPreview({ videoUrl }: { videoUrl: string }) {
+  const isIframeEmbed = (content: string): boolean => {
+    return content.trim().startsWith('<iframe') && content.includes('</iframe>');
+  };
+
+  const getEmbedFromContent = (content: string): { type: 'iframe' | 'url' | null; value: string | null } => {
+    if (!content) return { type: null, value: null };
+    
+    if (isIframeEmbed(content)) {
+      return { type: 'iframe', value: content };
+    }
+    
+    const ytMatch = content.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/);
+    if (ytMatch) return { type: 'url', value: `https://www.youtube.com/embed/${ytMatch[1]}` };
+    
+    const vimeoMatch = content.match(/vimeo\.com\/(\d+)/);
+    if (vimeoMatch) return { type: 'url', value: `https://player.vimeo.com/video/${vimeoMatch[1]}` };
+    
+    const rutubeMatch = content.match(/rutube\.ru\/video\/([a-zA-Z0-9]+)/);
+    if (rutubeMatch) return { type: 'url', value: `https://rutube.ru/play/embed/${rutubeMatch[1]}` };
+    
+    const vkMatch = content.match(/vk\.com\/video(-?\d+)_(\d+)/);
+    if (vkMatch) return { type: 'url', value: `https://vk.com/video_ext.php?oid=${vkMatch[1]}&id=${vkMatch[2]}` };
+    
+    return { type: null, value: null };
+  };
+
+  const embedResult = getEmbedFromContent(videoUrl);
+
+  if (embedResult.type === null) {
+    return (
+      <div className="aspect-video bg-muted rounded-xl flex items-center justify-center border border-border">
+        <div className="text-center">
+          <Video className="w-12 h-12 text-muted-foreground/30 mx-auto mb-2" />
+          <p className="text-sm text-muted-foreground">Превью недоступно</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="aspect-video bg-black rounded-xl overflow-hidden">
+      {embedResult.type === 'iframe' ? (
+        <div 
+          className="w-full h-full [&>iframe]:w-full [&>iframe]:h-full [&>iframe]:border-0"
+          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(embedResult.value || '', {
+            ALLOWED_TAGS: ['iframe'],
+            ALLOWED_ATTR: ['src', 'width', 'height', 'frameborder', 'allow', 'allowfullscreen', 'title', 'referrerpolicy'],
+          }) }}
+        />
+      ) : (
+        <iframe 
+          src={embedResult.value || ''} 
+          className="w-full h-full border-0" 
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+          allowFullScreen 
+        />
+      )}
+    </div>
+  );
+}
 
 interface Lesson {
   id: string;
@@ -333,18 +398,17 @@ export const LessonEditor = ({
             {type === "video" && (
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Ссылка на видео (YouTube, Vimeo)</Label>
-                  <Input
-                    placeholder="https://youtube.com/watch?v=..."
+                  <Label>Ссылка на видео или embed код</Label>
+                  <p className="text-xs text-muted-foreground">YouTube, Vimeo, Rutube, VK Video или вставьте &lt;iframe&gt; код</p>
+                  <Textarea
+                    placeholder="https://youtube.com/watch?v=... или <iframe>...</iframe>"
                     value={videoUrl}
                     onChange={(e) => setVideoUrl(e.target.value)}
-                    className="h-11"
+                    className="min-h-[100px] resize-none"
                   />
                 </div>
                 {videoUrl && (
-                  <div className="aspect-video bg-muted rounded-xl flex items-center justify-center border border-border">
-                    <Video className="w-16 h-16 text-muted-foreground/30" />
-                  </div>
+                  <VideoPreview videoUrl={videoUrl} />
                 )}
               </div>
             )}
