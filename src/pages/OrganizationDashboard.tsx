@@ -1777,7 +1777,7 @@ export default function OrganizationDashboard() {
                     <div
                       key={course.id}
                       className="bg-card rounded-2xl border border-border overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
-                      onClick={() => handleOpenCourseStudents(course)}
+                      onClick={() => navigate(`/course-preview/${course.id}`)}
                     >
                       <div className="h-32 bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
                         <BookOpen className="w-12 h-12 text-primary/50" />
@@ -1874,7 +1874,7 @@ export default function OrganizationDashboard() {
                         <tr
                           key={course.id}
                           className="border-b border-border last:border-0 hover:bg-secondary/50 transition-colors cursor-pointer"
-                          onClick={() => handleOpenCourseStudents(course)}
+                          onClick={() => navigate(`/course-preview/${course.id}`)}
                         >
                           <td className="px-6 py-4">
                             <div>
