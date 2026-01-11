@@ -48,6 +48,7 @@ interface CourseDocument {
 
 const DOCUMENT_TYPES = [
   { value: "material", label: "Учебный материал", icon: BookOpen },
+  { value: "presentation", label: "Презентация (PPTX)", icon: File },
   { value: "video", label: "Видео", icon: Video },
   { value: "link", label: "Ссылка", icon: LinkIcon },
   { value: "template", label: "Шаблон", icon: FileText },
