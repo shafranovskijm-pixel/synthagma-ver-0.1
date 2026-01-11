@@ -62,10 +62,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .single();
       
       if (data && !error) {
+        console.log('Fetched user role:', data.role);
         setUserRole(data.role as 'admin' | 'organization' | 'student');
+      } else if (error) {
+        console.error('Error fetching user role:', error);
+        // Default to student if no role found
+        setUserRole('student');
       }
     } catch (error) {
       console.error('Error fetching user role:', error);
+      setUserRole('student');
     }
   };
 

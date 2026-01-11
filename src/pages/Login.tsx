@@ -26,13 +26,16 @@ const Login = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    if (user && !loading && userRole) {
-      if (userRole === 'admin') {
-        navigate("/admin");
-      } else if (userRole === 'organization') {
-        navigate("/organization");
-      } else {
-        navigate("/student");
+    if (user && !loading) {
+      // Wait for userRole to be loaded before navigating
+      if (userRole) {
+        if (userRole === 'admin') {
+          navigate("/admin", { replace: true });
+        } else if (userRole === 'organization') {
+          navigate("/organization", { replace: true });
+        } else {
+          navigate("/student", { replace: true });
+        }
       }
     }
   }, [user, userRole, loading, navigate]);
