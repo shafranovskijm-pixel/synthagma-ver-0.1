@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { FileText, Video, HelpCircle, Plus, Trash2, Sparkles, Loader2 } from "lucide-react";
+import { FileText, Video, HelpCircle, Plus, Trash2, Sparkles, Loader2, Settings } from "lucide-react";
 import { BlockEditor, ContentBlock } from "@/components/course-builder/BlockEditor";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -112,6 +112,7 @@ interface Lesson {
   content: string | null;
   order_index: number;
   course_id?: string;
+  test_questions_count?: number;
 }
 
 interface TestQuestion {
@@ -131,6 +132,7 @@ interface LessonEditorProps {
     type: string; 
     content: string;
     questions?: TestQuestion[];
+    test_questions_count?: number;
   }) => void;
   existingQuestions?: TestQuestion[];
   courseId?: string;
@@ -155,6 +157,7 @@ export const LessonEditor = ({
   const [videoUrl, setVideoUrl] = useState("");
   const [questions, setQuestions] = useState<TestQuestion[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [testQuestionsCount, setTestQuestionsCount] = useState(5);
 
   // Parse content to blocks or use as video URL
   const parseContent = useCallback((content: string | null, lessonType: string) => {
@@ -214,12 +217,14 @@ export const LessonEditor = ({
       setType(lesson.type);
       parseContent(lesson.content, lesson.type);
       setQuestions(existingQuestions);
+      setTestQuestionsCount(lesson.test_questions_count || 5);
     } else {
       setTitle("");
       setType("text");
       setBlocks([]);
       setVideoUrl("");
       setQuestions([]);
+      setTestQuestionsCount(5);
     }
   }, [lesson, existingQuestions, isOpen, parseContent]);
 
@@ -333,6 +338,7 @@ export const LessonEditor = ({
       type,
       content,
       questions: type === "test" ? questions : undefined,
+      test_questions_count: type === "test" ? testQuestionsCount : undefined,
     });
   };
 
@@ -435,8 +441,36 @@ export const LessonEditor = ({
 
             {type === "test" && (
               <div className="space-y-4">
+                {/* Question bank settings */}
+                <div className="p-4 bg-muted/30 rounded-xl border border-border space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Settings className="w-4 h-4 text-muted-foreground" />
+                    <Label className="text-sm font-semibold">Настройки банка вопросов</Label>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="flex-1">
+                      <p className="text-xs text-muted-foreground mb-2">
+                        Система будет случайным образом выбирать вопросы из банка. При повторной попытке — новые вопросы.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs text-muted-foreground whitespace-nowrap">Вопросов в тесте:</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={50}
+                        value={testQuestionsCount}
+                        onChange={(e) => setTestQuestionsCount(Math.max(1, Math.min(50, parseInt(e.target.value) || 1)))}
+                        className="w-20 h-9"
+                      />
+                    </div>
+                  </div>
+                </div>
+                
                 <div className="flex items-center justify-between">
-                  <Label className="text-base font-semibold">Вопросы теста</Label>
+                  <Label className="text-base font-semibold">
+                    Банк вопросов ({questions.length})
+                  </Label>
                   <div className="flex items-center gap-2">
                     <Button
                       type="button"

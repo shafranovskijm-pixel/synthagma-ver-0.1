@@ -365,6 +365,7 @@ export type Database = {
           created_at: string
           id: string
           order_index: number
+          test_questions_count: number | null
           title: string
           type: string
           updated_at: string
@@ -375,6 +376,7 @@ export type Database = {
           created_at?: string
           id?: string
           order_index?: number
+          test_questions_count?: number | null
           title: string
           type?: string
           updated_at?: string
@@ -385,6 +387,7 @@ export type Database = {
           created_at?: string
           id?: string
           order_index?: number
+          test_questions_count?: number | null
           title?: string
           type?: string
           updated_at?: string
@@ -672,6 +675,7 @@ export type Database = {
           lesson_id: string
           max_score: number
           score: number
+          shown_question_ids: Json | null
           user_id: string
         }
         Insert: {
@@ -681,6 +685,7 @@ export type Database = {
           lesson_id: string
           max_score?: number
           score?: number
+          shown_question_ids?: Json | null
           user_id: string
         }
         Update: {
@@ -690,6 +695,7 @@ export type Database = {
           lesson_id?: string
           max_score?: number
           score?: number
+          shown_question_ids?: Json | null
           user_id?: string
         }
         Relationships: [
@@ -705,7 +711,9 @@ export type Database = {
       test_questions: {
         Row: {
           correct_answer: number
+          explanation: string | null
           id: string
+          is_bank_question: boolean
           lesson_id: string
           options: Json
           order_index: number
@@ -713,7 +721,9 @@ export type Database = {
         }
         Insert: {
           correct_answer?: number
+          explanation?: string | null
           id?: string
+          is_bank_question?: boolean
           lesson_id: string
           options?: Json
           order_index?: number
@@ -721,7 +731,9 @@ export type Database = {
         }
         Update: {
           correct_answer?: number
+          explanation?: string | null
           id?: string
+          is_bank_question?: boolean
           lesson_id?: string
           options?: Json
           order_index?: number

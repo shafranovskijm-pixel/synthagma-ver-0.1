@@ -173,6 +173,8 @@ interface TestQuestion {
   options: unknown;
   correct_answer: number;
   order_index: number;
+  explanation?: string;
+  is_bank_question?: boolean;
 }
 
 const CourseLearning = () => {
@@ -191,9 +193,12 @@ const CourseLearning = () => {
   
   // Test state
   const [testQuestions, setTestQuestions] = useState<TestQuestion[]>([]);
+  const [allBankQuestions, setAllBankQuestions] = useState<TestQuestion[]>([]);
+  const [usedQuestionIds, setUsedQuestionIds] = useState<string[]>([]);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [testSubmitted, setTestSubmitted] = useState(false);
   const [testScore, setTestScore] = useState<{ score: number; max: number } | null>(null);
+  const [testQuestionsCount, setTestQuestionsCount] = useState<number>(5);
 
   // Text-to-speech state
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -389,6 +394,17 @@ const CourseLearning = () => {
   };
 
   const fetchTestQuestions = async (lessonId: string) => {
+    // Get lesson settings for questions count
+    const { data: lessonData } = await supabase
+      .from('lessons')
+      .select('test_questions_count')
+      .eq('id', lessonId)
+      .single();
+    
+    const questionsCount = (lessonData as any)?.test_questions_count || 5;
+    setTestQuestionsCount(questionsCount);
+
+    // Get all questions for the bank
     const { data, error } = await supabase
       .from('test_questions')
       .select('*')
@@ -400,11 +416,10 @@ const CourseLearning = () => {
       return;
     }
 
-    setTestQuestions(data || []);
-    setAnswers({});
-    setTestSubmitted(false);
-    setTestScore(null);
+    const allQuestions = (data || []) as TestQuestion[];
+    setAllBankQuestions(allQuestions);
 
+    // Check for previous attempts
     const { data: attempts } = await supabase
       .from('test_attempts')
       .select('*')
@@ -414,11 +429,57 @@ const CourseLearning = () => {
       .limit(1);
 
     if (attempts && attempts.length > 0) {
+      const lastAttempt = attempts[0];
       setTestSubmitted(true);
-      setTestScore({ score: attempts[0].score, max: attempts[0].max_score });
-      const savedAnswers = attempts[0].answers as Record<string, number>;
+      setTestScore({ score: lastAttempt.score, max: lastAttempt.max_score });
+      const savedAnswers = lastAttempt.answers as Record<string, number>;
       setAnswers(savedAnswers || {});
+      
+      // Get used question IDs from all previous attempts
+      const { data: allAttempts } = await supabase
+        .from('test_attempts')
+        .select('shown_question_ids')
+        .eq('lesson_id', lessonId)
+        .eq('user_id', user!.id);
+      
+      const allUsedIds = new Set<string>();
+      allAttempts?.forEach(attempt => {
+        const ids = (attempt as any).shown_question_ids as string[] || [];
+        ids.forEach(id => allUsedIds.add(id));
+      });
+      setUsedQuestionIds(Array.from(allUsedIds));
+      
+      // Show the questions from the last attempt
+      const shownIds = (lastAttempt as any).shown_question_ids as string[] || [];
+      if (shownIds.length > 0) {
+        const shownQuestions = allQuestions.filter(q => shownIds.includes(q.id));
+        setTestQuestions(shownQuestions);
+      } else {
+        setTestQuestions(allQuestions);
+      }
+    } else {
+      // First attempt - select random questions from bank
+      selectRandomQuestions(allQuestions, questionsCount, []);
+      setUsedQuestionIds([]);
     }
+    
+    setAnswers({});
+  };
+
+  const selectRandomQuestions = (allQuestions: TestQuestion[], count: number, excludeIds: string[]) => {
+    // Filter out already used questions if possible
+    let availableQuestions = allQuestions.filter(q => !excludeIds.includes(q.id));
+    
+    // If not enough unused questions, use all questions
+    if (availableQuestions.length < count) {
+      availableQuestions = allQuestions;
+    }
+    
+    // Shuffle and select
+    const shuffled = [...availableQuestions].sort(() => Math.random() - 0.5);
+    const selected = shuffled.slice(0, Math.min(count, shuffled.length));
+    
+    setTestQuestions(selected);
   };
 
   const markLessonComplete = async () => {
@@ -516,6 +577,8 @@ const CourseLearning = () => {
 
     const maxScore = testQuestions.length;
 
+    const shownIds = testQuestions.map(q => q.id);
+    
     const { error } = await supabase
       .from('test_attempts')
       .insert({
@@ -523,7 +586,8 @@ const CourseLearning = () => {
         user_id: user.id,
         score,
         max_score: maxScore,
-        answers
+        answers,
+        shown_question_ids: shownIds
       });
 
     if (error) {
@@ -557,6 +621,11 @@ const CourseLearning = () => {
   };
 
   const retryTest = () => {
+    // Select new questions from bank, excluding previously used ones
+    const newUsedIds = [...usedQuestionIds, ...testQuestions.map(q => q.id)];
+    setUsedQuestionIds(newUsedIds);
+    selectRandomQuestions(allBankQuestions, testQuestionsCount, newUsedIds);
+    
     setAnswers({});
     setTestSubmitted(false);
     setTestScore(null);
@@ -932,41 +1001,61 @@ const CourseLearning = () => {
                   </div>
                 ))}
 
-                {testSubmitted && testQuestions.map((question, qIndex) => (
-                  <div key={question.id} className="bg-card rounded-2xl p-6 border border-border">
-                    <h3 className="font-semibold mb-4 flex items-center gap-2">
-                      <span className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary">
-                        {qIndex + 1}
-                      </span>
-                      {question.question}
-                    </h3>
-                    <div className="space-y-2">
-                      {(Array.isArray(question.options) ? question.options : []).map((option: unknown, oIndex: number) => {
-                        const isSelected = answers[question.id] === oIndex;
-                        const isCorrect = question.correct_answer === oIndex;
-                        
-                        return (
-                          <div 
-                            key={oIndex}
-                            className={cn(
-                              "flex items-center gap-3 p-4 rounded-xl border",
-                              isCorrect 
-                                ? "border-sigma-green bg-sigma-green/10" 
-                                : isSelected 
-                                  ? "border-destructive bg-destructive/10" 
-                                  : "border-border"
-                            )}
-                          >
-                            <span className={isCorrect ? "text-sigma-green" : isSelected ? "text-destructive" : ""}>
-                              {getOptionText(option)}
-                            </span>
-                            {isCorrect && <CheckCircle2 className="w-5 h-5 text-sigma-green ml-auto" />}
+                {testSubmitted && testQuestions.map((question, qIndex) => {
+                  const userAnswer = answers[question.id];
+                  const isAnswerCorrect = userAnswer === question.correct_answer;
+                  
+                  return (
+                    <div key={question.id} className="bg-card rounded-2xl p-6 border border-border">
+                      <h3 className="font-semibold mb-4 flex items-center gap-2">
+                        <span className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary">
+                          {qIndex + 1}
+                        </span>
+                        {question.question}
+                      </h3>
+                      <div className="space-y-2">
+                        {(Array.isArray(question.options) ? question.options : []).map((option: unknown, oIndex: number) => {
+                          const isSelected = answers[question.id] === oIndex;
+                          const isCorrect = question.correct_answer === oIndex;
+                          
+                          return (
+                            <div 
+                              key={oIndex}
+                              className={cn(
+                                "flex items-center gap-3 p-4 rounded-xl border",
+                                isCorrect 
+                                  ? "border-sigma-green bg-sigma-green/10" 
+                                  : isSelected 
+                                    ? "border-destructive bg-destructive/10" 
+                                    : "border-border"
+                              )}
+                            >
+                              <span className={isCorrect ? "text-sigma-green" : isSelected ? "text-destructive" : ""}>
+                                {getOptionText(option)}
+                              </span>
+                              {isCorrect && <CheckCircle2 className="w-5 h-5 text-sigma-green ml-auto" />}
+                            </div>
+                          );
+                        })}
+                      </div>
+                      
+                      {/* Show explanation for wrong answers */}
+                      {!isAnswerCorrect && question.explanation && (
+                        <div className="mt-4 p-4 rounded-xl bg-amber-500/10 border border-amber-500/30">
+                          <div className="flex items-start gap-3">
+                            <div className="w-6 h-6 rounded-full bg-amber-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                              <span className="text-amber-600 text-sm">💡</span>
+                            </div>
+                            <div>
+                              <p className="font-medium text-amber-700 dark:text-amber-400 mb-1">Пояснение:</p>
+                              <p className="text-sm text-foreground">{question.explanation}</p>
+                            </div>
                           </div>
-                        );
-                      })}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
