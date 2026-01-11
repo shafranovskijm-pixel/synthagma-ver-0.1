@@ -749,7 +749,47 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
             </div>
           </div>
 
-          <div className="flex justify-end pt-4 border-t border-border">
+          <div className="flex justify-between pt-4 border-t border-border">
+            <Button
+              variant="outline"
+              className="rounded-xl gap-2"
+              onClick={() => {
+                if (companyStudents.length === 0) return;
+                
+                const exportData: any[] = [];
+                companyStudents.forEach((student) => {
+                  if (student.enrollments.length === 0) {
+                    exportData.push({
+                      "ФИО": student.full_name,
+                      "Email": student.email,
+                      "Курс": "Не зачислен",
+                      "Прогресс": "",
+                      "Статус": "",
+                    });
+                  } else {
+                    student.enrollments.forEach((enrollment) => {
+                      exportData.push({
+                        "ФИО": student.full_name,
+                        "Email": student.email,
+                        "Курс": enrollment.course_title,
+                        "Прогресс": `${enrollment.progress}%`,
+                        "Статус": enrollment.status === "completed" ? "Завершён" : "Активный",
+                      });
+                    });
+                  }
+                });
+
+                const ws = XLSX.utils.json_to_sheet(exportData);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Ученики");
+                XLSX.writeFile(wb, `${selectedCompanyForStudents?.name || "company"}_students.xlsx`);
+                toast.success("Список учеников экспортирован");
+              }}
+              disabled={companyStudents.length === 0}
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              Экспорт в Excel
+            </Button>
             <Button
               variant="outline"
               className="rounded-xl"
