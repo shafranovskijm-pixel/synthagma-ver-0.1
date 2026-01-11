@@ -17,6 +17,12 @@ interface Course {
   title: string;
 }
 
+interface Company {
+  id: string;
+  name: string;
+  inn: string | null;
+}
+
 interface ImportResult {
   success: boolean;
   email: string;
@@ -28,12 +34,14 @@ interface ImportResult {
 interface ImportStudentsFormProps {
   organizationId: string | null;
   courses: Course[];
+  companies: Company[];
   onSuccess: () => void;
 }
 
-export default function ImportStudentsForm({ organizationId, courses, onSuccess }: ImportStudentsFormProps) {
+export default function ImportStudentsForm({ organizationId, courses, companies, onSuccess }: ImportStudentsFormProps) {
   const [file, setFile] = useState<File | null>(null);
   const [selectedCourseId, setSelectedCourseId] = useState<string>("");
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string>("");
   const [isImporting, setIsImporting] = useState(false);
   const [results, setResults] = useState<ImportResult[]>([]);
   const [showResults, setShowResults] = useState(false);
@@ -118,7 +126,8 @@ export default function ImportStudentsForm({ organizationId, courses, onSuccess 
               password,
               full_name: student.name,
               organization_id: organizationId,
-              course_id: selectedCourseId || null
+              course_id: selectedCourseId || null,
+              company_id: selectedCompanyId || null
             }
           });
 
@@ -284,6 +293,22 @@ export default function ImportStudentsForm({ organizationId, courses, onSuccess 
             </div>
           )}
         </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Компания (опционально)</Label>
+        <Select value={selectedCompanyId} onValueChange={setSelectedCompanyId}>
+          <SelectTrigger className="rounded-xl">
+            <SelectValue placeholder="Выберите компанию" />
+          </SelectTrigger>
+          <SelectContent>
+            {companies.map((company) => (
+              <SelectItem key={company.id} value={company.id}>
+                {company.name} {company.inn ? `(ИНН: ${company.inn})` : ""}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="space-y-2">
