@@ -25,6 +25,7 @@ interface TestQuestion {
   options: QuestionOption[];
   correct_answer: number;
   order_index: number;
+  explanation?: string;
   isNew?: boolean;
   isDeleted?: boolean;
 }
@@ -101,7 +102,8 @@ export function TestQuestionEditor({
           question: q.question,
           options: (q.options as unknown as QuestionOption[]) || [],
           correct_answer: q.correct_answer,
-          order_index: q.order_index
+          order_index: q.order_index,
+          explanation: (q as any).explanation || ''
         })));
       }
 
@@ -123,6 +125,7 @@ export function TestQuestionEditor({
       ],
       correct_answer: 0,
       order_index: questions.length,
+      explanation: "",
       isNew: true
     };
     setQuestions([...questions, newQuestion]);
@@ -231,7 +234,8 @@ export function TestQuestionEditor({
           question: q.question.trim(),
           options: q.options.filter(o => o.text.trim()) as unknown as Json,
           correct_answer: q.correct_answer,
-          order_index: i
+          order_index: i,
+          explanation: q.explanation || null
         };
 
         const { error } = await supabase
@@ -347,6 +351,19 @@ export function TestQuestionEditor({
                         Добавить вариант
                       </Button>
                     )}
+                  </div>
+                  
+                  {/* Explanation field */}
+                  <div className="mt-4 space-y-2">
+                    <Label className="text-xs text-muted-foreground">
+                      Пояснение (показывается при неправильном ответе):
+                    </Label>
+                    <textarea
+                      value={question.explanation || ''}
+                      onChange={(e) => updateQuestion(question.id, { explanation: e.target.value })}
+                      placeholder="Объясните, почему другие ответы неверны..."
+                      className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background resize-none min-h-[80px] focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    />
                   </div>
                 </div>
 

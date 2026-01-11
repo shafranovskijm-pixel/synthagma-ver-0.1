@@ -71,6 +71,7 @@ interface Lesson {
   content: string | null;
   order_index: number;
   course_id: string;
+  test_questions_count?: number | null;
 }
 
 interface TestQuestion {
@@ -265,6 +266,7 @@ const CourseEditor = () => {
     type: string;
     content: string;
     questions?: TestQuestion[];
+    test_questions_count?: number;
   }) => {
     if (!courseId) return;
 
@@ -276,6 +278,7 @@ const CourseEditor = () => {
           title: data.title,
           type: data.type,
           content: data.content || null,
+          test_questions_count: data.test_questions_count || null,
         })
         .eq("id", editingLesson.id);
 
@@ -321,6 +324,7 @@ const CourseEditor = () => {
           type: data.type,
           content: data.content || null,
           order_index: lessons.length,
+          test_questions_count: data.test_questions_count || null,
         })
         .select()
         .single();
