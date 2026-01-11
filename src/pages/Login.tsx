@@ -21,15 +21,21 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [demoLoading, setDemoLoading] = useState<string | null>(null);
   
-  const { signIn, user, loading } = useAuth();
+  const { signIn, user, userRole, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
-    if (user && !loading) {
-      navigate("/student");
+    if (user && !loading && userRole) {
+      if (userRole === 'admin') {
+        navigate("/admin");
+      } else if (userRole === 'organization') {
+        navigate("/organization");
+      } else {
+        navigate("/student");
+      }
     }
-  }, [user, loading, navigate]);
+  }, [user, userRole, loading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
