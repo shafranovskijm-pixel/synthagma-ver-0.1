@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.create-org-user]
 verify_jwt = false
+
+[functions.send-course-invitation]
+verify_jwt = false

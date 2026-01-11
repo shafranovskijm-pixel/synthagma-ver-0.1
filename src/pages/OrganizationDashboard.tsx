@@ -225,6 +225,11 @@ export default function OrganizationDashboard() {
   const [selectedStudentsToAdd, setSelectedStudentsToAdd] = useState<Set<string>>(new Set());
   const [isAddingStudentsToCourse, setIsAddingStudentsToCourse] = useState(false);
 
+  // Email invitation state
+  const [showInviteEmailDialog, setShowInviteEmailDialog] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [isSendingInvitation, setIsSendingInvitation] = useState(false);
+
   // Student course assignment dialog
   const [showStudentCoursesDialog, setShowStudentCoursesDialog] = useState(false);
   const [selectedStudentForCourses, setSelectedStudentForCourses] = useState<Student | null>(null);
@@ -839,6 +844,48 @@ export default function OrganizationDashboard() {
     } catch (error) {
       console.error("Error removing enrollment:", error);
       toast.error("Ошибка удаления");
+    }
+  };
+
+  // Send course invitation by email
+  const handleSendInvitation = async () => {
+    if (!selectedCourse || !inviteEmail.trim()) {
+      toast.error("Введите email получателя");
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(inviteEmail.trim())) {
+      toast.error("Введите корректный email адрес");
+      return;
+    }
+
+    setIsSendingInvitation(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-course-invitation", {
+        body: {
+          email: inviteEmail.trim(),
+          courseName: selectedCourse.title,
+          courseId: selectedCourse.id,
+          organizationName: organizationName,
+        }
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast.success(`Приглашение отправлено на ${inviteEmail}`);
+      setShowInviteEmailDialog(false);
+      setInviteEmail("");
+    } catch (error: any) {
+      console.error("Error sending invitation:", error);
+      if (error.message?.includes("RESEND_API_KEY")) {
+        toast.error("Для отправки email необходимо настроить RESEND_API_KEY");
+      } else {
+        toast.error(error.message || "Ошибка отправки приглашения");
+      }
+    } finally {
+      setIsSendingInvitation(false);
     }
   };
 
@@ -2219,6 +2266,38 @@ export default function OrganizationDashboard() {
             </div>
           ) : (
             <div className="space-y-6">
+              {/* Quick Actions */}
+              <div className="bg-secondary/30 rounded-xl p-4 space-y-4">
+                <h3 className="font-semibold flex items-center gap-2">
+                  <Link className="w-4 h-4" />
+                  Быстрые действия
+                </h3>
+                <div className="flex flex-wrap gap-3">
+                  <Button
+                    variant="outline"
+                    className="rounded-xl gap-2"
+                    onClick={() => {
+                      if (selectedCourse) {
+                        const url = `${window.location.origin}/course/${selectedCourse.id}`;
+                        navigator.clipboard.writeText(url);
+                        toast.success("Ссылка на курс скопирована");
+                      }
+                    }}
+                  >
+                    <Copy className="w-4 h-4" />
+                    Скопировать ссылку
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="rounded-xl gap-2"
+                    onClick={() => setShowInviteEmailDialog(true)}
+                  >
+                    <Send className="w-4 h-4" />
+                    Отправить приглашение
+                  </Button>
+                </div>
+              </div>
+
               <div>
                 <h3 className="font-semibold mb-3">Зачисленные ученики ({courseStudents.length})</h3>
                 {courseStudents.length === 0 ? (
@@ -2292,7 +2371,7 @@ export default function OrganizationDashboard() {
                           Добавление...
                         </>
                       ) : (
-                        `Добавить (${selectedStudentsToAdd.size})`
+                        `Зачислить (${selectedStudentsToAdd.size})`
                       )}
                     </Button>
                   </>
@@ -2300,6 +2379,52 @@ export default function OrganizationDashboard() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Invite by Email Dialog */}
+      <Dialog open={showInviteEmailDialog} onOpenChange={setShowInviteEmailDialog}>
+        <DialogContent className="rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-display">Отправить приглашение на курс</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Email получателя</Label>
+              <Input
+                type="email"
+                placeholder="student@example.com"
+                className="rounded-xl"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+              />
+            </div>
+            <div className="bg-secondary/30 rounded-xl p-3 text-sm">
+              <p className="text-muted-foreground">
+                Курс: <span className="font-medium text-foreground">{selectedCourse?.title}</span>
+              </p>
+              <p className="text-muted-foreground mt-1">
+                Получатель получит письмо со ссылкой на курс
+              </p>
+            </div>
+            <Button
+              className="w-full btn-gradient rounded-xl"
+              onClick={handleSendInvitation}
+              disabled={isSendingInvitation || !inviteEmail.trim()}
+            >
+              {isSendingInvitation ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Отправка...
+                </>
+              ) : (
+                <>
+                  <Send className="w-4 h-4 mr-2" />
+                  Отправить приглашение
+                </>
+              )}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 
