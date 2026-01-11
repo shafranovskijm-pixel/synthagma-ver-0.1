@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { RegistrationLinksManager } from "@/components/organization/RegistrationLinksManager";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +19,8 @@ import {
   Trash2,
   FileText,
   Clock,
-  TrendingUp
+  TrendingUp,
+  Link2
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -75,6 +77,7 @@ const OrganizationDashboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isCreateCourseOpen, setIsCreateCourseOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [organizationId, setOrganizationId] = useState<string | null>(null);
   
   // New course form
   const [newCourseTitle, setNewCourseTitle] = useState("");
@@ -83,7 +86,20 @@ const OrganizationDashboard = () => {
 
   useEffect(() => {
     fetchData();
+    fetchOrganizationId();
   }, []);
+
+  const fetchOrganizationId = async () => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('organization_id')
+      .eq('user_id', user?.id)
+      .single();
+    
+    if (data?.organization_id) {
+      setOrganizationId(data.organization_id);
+    }
+  };
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -368,6 +384,7 @@ const OrganizationDashboard = () => {
               <TabsList className="bg-secondary">
                 <TabsTrigger value="courses">Курсы</TabsTrigger>
                 <TabsTrigger value="students">Ученики</TabsTrigger>
+                <TabsTrigger value="links">Ссылки</TabsTrigger>
                 <TabsTrigger value="analytics">Аналитика</TabsTrigger>
               </TabsList>
 
@@ -533,6 +550,26 @@ const OrganizationDashboard = () => {
                       </Button>
                     </div>
                   ))}
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="links" className="space-y-6">
+              {organizationId ? (
+                <div className="feature-card">
+                  <RegistrationLinksManager organizationId={organizationId} />
+                </div>
+              ) : (
+                <div className="glass-card rounded-2xl p-12 text-center">
+                  <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6">
+                    <Link2 className="w-10 h-10 text-primary" />
+                  </div>
+                  <h3 className="font-display text-xl font-semibold mb-2">
+                    Организация не найдена
+                  </h3>
+                  <p className="text-muted-foreground max-w-md mx-auto">
+                    Для создания ссылок необходимо настроить организацию
+                  </p>
                 </div>
               )}
             </TabsContent>
