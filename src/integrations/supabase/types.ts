@@ -76,6 +76,50 @@ export type Database = {
         }
         Relationships: []
       }
+      company_documents: {
+        Row: {
+          company_id: string
+          file_path: string | null
+          file_size: number | null
+          file_url: string | null
+          id: string
+          name: string
+          type: string
+          uploaded_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          company_id: string
+          file_path?: string | null
+          file_size?: number | null
+          file_url?: string | null
+          id?: string
+          name: string
+          type: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          company_id?: string
+          file_path?: string | null
+          file_size?: number | null
+          file_url?: string | null
+          id?: string
+          name?: string
+          type?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_documents_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_categories: {
         Row: {
           color: string | null

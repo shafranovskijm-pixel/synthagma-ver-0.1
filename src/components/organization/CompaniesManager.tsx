@@ -35,6 +35,9 @@ import {
   TrendingUp,
   Calendar,
   ChevronRight,
+  Upload,
+  Download,
+  X,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -47,6 +50,17 @@ interface Company {
   inn: string | null;
   created_at: string;
   studentsCount?: number;
+}
+
+interface CompanyDocument {
+  id: string;
+  company_id: string;
+  type: 'contract' | 'invoice' | 'act' | 'other';
+  name: string;
+  file_url: string | null;
+  file_path: string | null;
+  file_size: number | null;
+  uploaded_at: string;
 }
 
 interface CompanyStudent {
@@ -125,10 +139,147 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
   // Company detail dialog
   const [showCompanyDetail, setShowCompanyDetail] = useState(false);
   const [selectedCompanyForDetail, setSelectedCompanyForDetail] = useState<Company | null>(null);
+  const [companyDocuments, setCompanyDocuments] = useState<CompanyDocument[]>([]);
+  const [isLoadingDocuments, setIsLoadingDocuments] = useState(false);
+  const [isUploadingDocument, setIsUploadingDocument] = useState<string | null>(null);
+  const [isDeletingDocument, setIsDeletingDocument] = useState<string | null>(null);
 
-  const handleOpenCompanyDetail = (company: Company) => {
+  const handleOpenCompanyDetail = async (company: Company) => {
     setSelectedCompanyForDetail(company);
     setShowCompanyDetail(true);
+    await fetchCompanyDocuments(company.id);
+  };
+
+  const fetchCompanyDocuments = async (companyId: string) => {
+    setIsLoadingDocuments(true);
+    try {
+      const { data, error } = await supabase
+        .from("company_documents")
+        .select("*")
+        .eq("company_id", companyId)
+        .order("uploaded_at", { ascending: false });
+
+      if (error) throw error;
+      setCompanyDocuments((data || []) as CompanyDocument[]);
+    } catch (error) {
+      console.error("Error fetching documents:", error);
+    } finally {
+      setIsLoadingDocuments(false);
+    }
+  };
+
+  const handleUploadDocument = async (type: 'contract' | 'invoice' | 'act', file: File) => {
+    if (!selectedCompanyForDetail) return;
+    
+    setIsUploadingDocument(type);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${type}_${Date.now()}.${fileExt}`;
+      const filePath = `${selectedCompanyForDetail.id}/${fileName}`;
+
+      // Upload to storage
+      const { error: uploadError } = await supabase.storage
+        .from("company-documents")
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from("company-documents")
+        .getPublicUrl(filePath);
+
+      // Save to database
+      const { error: dbError } = await supabase
+        .from("company_documents")
+        .insert({
+          company_id: selectedCompanyForDetail.id,
+          type,
+          name: file.name,
+          file_url: urlData.publicUrl,
+          file_path: filePath,
+          file_size: file.size,
+        });
+
+      if (dbError) throw dbError;
+
+      toast.success("Документ загружен");
+      await fetchCompanyDocuments(selectedCompanyForDetail.id);
+    } catch (error) {
+      console.error("Error uploading document:", error);
+      toast.error("Ошибка загрузки документа");
+    } finally {
+      setIsUploadingDocument(null);
+    }
+  };
+
+  const handleDeleteDocument = async (doc: CompanyDocument) => {
+    if (!selectedCompanyForDetail) return;
+    
+    setIsDeletingDocument(doc.id);
+    try {
+      // Delete from storage
+      if (doc.file_path) {
+        const { error: storageError } = await supabase.storage
+          .from("company-documents")
+          .remove([doc.file_path]);
+
+        if (storageError) {
+          console.error("Storage delete error:", storageError);
+        }
+      }
+
+      // Delete from database
+      const { error: dbError } = await supabase
+        .from("company_documents")
+        .delete()
+        .eq("id", doc.id);
+
+      if (dbError) throw dbError;
+
+      toast.success("Документ удалён");
+      await fetchCompanyDocuments(selectedCompanyForDetail.id);
+    } catch (error) {
+      console.error("Error deleting document:", error);
+      toast.error("Ошибка удаления документа");
+    } finally {
+      setIsDeletingDocument(null);
+    }
+  };
+
+  const handleDownloadDocument = async (doc: CompanyDocument) => {
+    if (!doc.file_path) return;
+
+    try {
+      const { data, error } = await supabase.storage
+        .from("company-documents")
+        .download(doc.file_path);
+
+      if (error) throw error;
+
+      const url = URL.createObjectURL(data);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = doc.name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error downloading document:", error);
+      toast.error("Ошибка скачивания документа");
+    }
+  };
+
+  const getDocumentByType = (type: 'contract' | 'invoice' | 'act') => {
+    return companyDocuments.find(doc => doc.type === type);
+  };
+
+  const formatFileSize = (bytes: number | null) => {
+    if (!bytes) return "";
+    if (bytes < 1024) return `${bytes} Б`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} КБ`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} МБ`;
   };
 
   const fetchCompanies = async () => {
@@ -998,65 +1149,244 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
 
               {/* Documents Tab */}
               <TabsContent value="documents" className="m-0 space-y-4">
-                <div className="space-y-3">
-                  <button
-                    className="w-full flex items-center gap-4 p-4 rounded-xl border border-border bg-card hover:bg-secondary/50 transition-all text-left group"
-                    onClick={() => toast.info("Функция в разработке")}
-                  >
-                    <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center">
-                      <FileText className="w-6 h-6 text-orange-500" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="font-medium">Договор</div>
-                      <div className="text-sm text-muted-foreground">Договор на оказание образовательных услуг</div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">Не загружен</span>
-                      <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                    </div>
-                  </button>
+                {isLoadingDocuments ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {/* Contract */}
+                    {(() => {
+                      const doc = getDocumentByType('contract');
+                      return (
+                        <div className="w-full flex items-center gap-4 p-4 rounded-xl border border-border bg-card">
+                          <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center">
+                            <FileText className="w-6 h-6 text-orange-500" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium">Договор</div>
+                            {doc ? (
+                              <div className="text-sm text-muted-foreground truncate">
+                                {doc.name} • {formatFileSize(doc.file_size)}
+                              </div>
+                            ) : (
+                              <div className="text-sm text-muted-foreground">
+                                Договор на оказание образовательных услуг
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {doc ? (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="rounded-lg"
+                                  onClick={() => handleDownloadDocument(doc)}
+                                >
+                                  <Download className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="rounded-lg text-destructive hover:text-destructive"
+                                  onClick={() => handleDeleteDocument(doc)}
+                                  disabled={isDeletingDocument === doc.id}
+                                >
+                                  {isDeletingDocument === doc.id ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <X className="w-4 h-4" />
+                                  )}
+                                </Button>
+                              </>
+                            ) : (
+                              <label className="cursor-pointer">
+                                <input
+                                  type="file"
+                                  className="hidden"
+                                  accept=".pdf,.doc,.docx"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) handleUploadDocument('contract', file);
+                                  }}
+                                  disabled={isUploadingDocument === 'contract'}
+                                />
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="rounded-lg gap-2 pointer-events-none"
+                                  disabled={isUploadingDocument === 'contract'}
+                                >
+                                  {isUploadingDocument === 'contract' ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <Upload className="w-4 h-4" />
+                                  )}
+                                  Загрузить
+                                </Button>
+                              </label>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
 
-                  <button
-                    className="w-full flex items-center gap-4 p-4 rounded-xl border border-border bg-card hover:bg-secondary/50 transition-all text-left group"
-                    onClick={() => toast.info("Функция в разработке")}
-                  >
-                    <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center">
-                      <Receipt className="w-6 h-6 text-blue-500" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="font-medium">Счёт</div>
-                      <div className="text-sm text-muted-foreground">Счёт на оплату обучения</div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">Не загружен</span>
-                      <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                    </div>
-                  </button>
+                    {/* Invoice */}
+                    {(() => {
+                      const doc = getDocumentByType('invoice');
+                      return (
+                        <div className="w-full flex items-center gap-4 p-4 rounded-xl border border-border bg-card">
+                          <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                            <Receipt className="w-6 h-6 text-blue-500" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium">Счёт</div>
+                            {doc ? (
+                              <div className="text-sm text-muted-foreground truncate">
+                                {doc.name} • {formatFileSize(doc.file_size)}
+                              </div>
+                            ) : (
+                              <div className="text-sm text-muted-foreground">
+                                Счёт на оплату обучения
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {doc ? (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="rounded-lg"
+                                  onClick={() => handleDownloadDocument(doc)}
+                                >
+                                  <Download className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="rounded-lg text-destructive hover:text-destructive"
+                                  onClick={() => handleDeleteDocument(doc)}
+                                  disabled={isDeletingDocument === doc.id}
+                                >
+                                  {isDeletingDocument === doc.id ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <X className="w-4 h-4" />
+                                  )}
+                                </Button>
+                              </>
+                            ) : (
+                              <label className="cursor-pointer">
+                                <input
+                                  type="file"
+                                  className="hidden"
+                                  accept=".pdf,.doc,.docx"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) handleUploadDocument('invoice', file);
+                                  }}
+                                  disabled={isUploadingDocument === 'invoice'}
+                                />
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="rounded-lg gap-2 pointer-events-none"
+                                  disabled={isUploadingDocument === 'invoice'}
+                                >
+                                  {isUploadingDocument === 'invoice' ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <Upload className="w-4 h-4" />
+                                  )}
+                                  Загрузить
+                                </Button>
+                              </label>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
 
-                  <button
-                    className="w-full flex items-center gap-4 p-4 rounded-xl border border-border bg-card hover:bg-secondary/50 transition-all text-left group"
-                    onClick={() => toast.info("Функция в разработке")}
-                  >
-                    <div className="w-12 h-12 rounded-xl bg-sigma-green/10 flex items-center justify-center">
-                      <FileCheck className="w-6 h-6 text-sigma-green" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="font-medium">Акт</div>
-                      <div className="text-sm text-muted-foreground">Акт выполненных работ</div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">Не загружен</span>
-                      <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                    </div>
-                  </button>
-                </div>
-
-                <div className="pt-4 border-t border-border">
-                  <Button variant="outline" className="w-full rounded-xl gap-2">
-                    <Plus className="w-4 h-4" />
-                    Загрузить документ
-                  </Button>
-                </div>
+                    {/* Act */}
+                    {(() => {
+                      const doc = getDocumentByType('act');
+                      return (
+                        <div className="w-full flex items-center gap-4 p-4 rounded-xl border border-border bg-card">
+                          <div className="w-12 h-12 rounded-xl bg-sigma-green/10 flex items-center justify-center">
+                            <FileCheck className="w-6 h-6 text-sigma-green" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium">Акт</div>
+                            {doc ? (
+                              <div className="text-sm text-muted-foreground truncate">
+                                {doc.name} • {formatFileSize(doc.file_size)}
+                              </div>
+                            ) : (
+                              <div className="text-sm text-muted-foreground">
+                                Акт выполненных работ
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {doc ? (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="rounded-lg"
+                                  onClick={() => handleDownloadDocument(doc)}
+                                >
+                                  <Download className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="rounded-lg text-destructive hover:text-destructive"
+                                  onClick={() => handleDeleteDocument(doc)}
+                                  disabled={isDeletingDocument === doc.id}
+                                >
+                                  {isDeletingDocument === doc.id ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <X className="w-4 h-4" />
+                                  )}
+                                </Button>
+                              </>
+                            ) : (
+                              <label className="cursor-pointer">
+                                <input
+                                  type="file"
+                                  className="hidden"
+                                  accept=".pdf,.doc,.docx"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) handleUploadDocument('act', file);
+                                  }}
+                                  disabled={isUploadingDocument === 'act'}
+                                />
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="rounded-lg gap-2 pointer-events-none"
+                                  disabled={isUploadingDocument === 'act'}
+                                >
+                                  {isUploadingDocument === 'act' ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <Upload className="w-4 h-4" />
+                                  )}
+                                  Загрузить
+                                </Button>
+                              </label>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
               </TabsContent>
 
               {/* Stats Tab */}
