@@ -104,7 +104,7 @@ const Login = () => {
         return;
       }
 
-      // If organization, create org and assign role
+      // If organization, create org and upgrade role using secure RPC
       if (accountType === "organization" && signUpData.user) {
         const { data: orgData } = await supabase
           .from("organizations")
@@ -121,23 +121,21 @@ const Login = () => {
             .update({ organization_id: orgData.id })
             .eq("user_id", signUpData.user.id);
 
-          await supabase
-            .from("user_roles")
-            .insert({
-              user_id: signUpData.user.id,
-              role: "organization",
-            });
+          // Use secure RPC function to upgrade role
+          await supabase.rpc('upgrade_to_organization_role', {
+            p_user_id: signUpData.user.id,
+            p_organization_id: orgData.id
+          });
         }
       }
 
-      // If admin, assign admin role
+      // For admin demo accounts, the admin role must be assigned via database seeding
+      // or by an existing admin using admin_update_user_role RPC
+      // Client-side admin role creation is intentionally blocked for security
       if (accountType === "admin" && signUpData.user) {
-        await supabase
-          .from("user_roles")
-          .insert({
-            user_id: signUpData.user.id,
-            role: "admin",
-          });
+        // Note: Admin role assignment requires existing admin privileges
+        // Demo admin accounts should be pre-seeded in the database
+        console.log("Admin demo account created - role must be assigned by existing admin or database seeding");
       }
 
       // Sign in with new account

@@ -116,10 +116,11 @@ export function UsersManager() {
 
   const handleRoleChange = async (userId: string, newRole: "admin" | "organization" | "student") => {
     try {
-      const { error } = await supabase
-        .from("user_roles")
-        .update({ role: newRole })
-        .eq("user_id", userId);
+      // Use secure RPC function for admin role management
+      const { error } = await supabase.rpc('admin_update_user_role', {
+        p_user_id: userId,
+        p_new_role: newRole
+      });
 
       if (error) throw error;
 
@@ -128,11 +129,16 @@ export function UsersManager() {
       );
 
       toast({ title: "Успешно", description: "Роль обновлена" });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating role:", error);
+      const errorMessage = error?.message?.includes("Cannot remove last admin") 
+        ? "Нельзя удалить последнего администратора"
+        : error?.message?.includes("Unauthorized") 
+          ? "Недостаточно прав для изменения роли"
+          : "Не удалось обновить роль";
       toast({
         title: "Ошибка",
-        description: "Не удалось обновить роль",
+        description: errorMessage,
         variant: "destructive",
       });
     }
