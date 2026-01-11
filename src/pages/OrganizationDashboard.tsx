@@ -2059,6 +2059,29 @@ export default function OrganizationDashboard() {
                       )}
                     </>
                   )}
+                  <Button
+                    variant="outline"
+                    className="rounded-xl gap-2"
+                    onClick={() => {
+                      import('xlsx').then(XLSX => {
+                        const exportData = filteredStudents.map(s => ({
+                          'ФИО': s.name,
+                          'Email': s.email,
+                          'Курс': s.course || 'Не зачислен',
+                          'Прогресс (%)': s.progress,
+                          'Статус': s.status === 'completed' ? 'Завершил' : s.status === 'active' ? 'Активный' : '—'
+                        }));
+                        const ws = XLSX.utils.json_to_sheet(exportData);
+                        const wb = XLSX.utils.book_new();
+                        XLSX.utils.book_append_sheet(wb, ws, 'Ученики');
+                        XLSX.writeFile(wb, `ученики_${new Date().toISOString().split('T')[0]}.xlsx`);
+                        toast.success('Список учеников экспортирован');
+                      });
+                    }}
+                  >
+                    <FileSpreadsheet className="w-4 h-4" />
+                    Экспорт
+                  </Button>
                   <Select value={studentStatusFilter} onValueChange={(v) => setStudentStatusFilter(v as any)}>
                     <SelectTrigger className="w-44 rounded-xl">
                       <Filter className="w-4 h-4 mr-2" />
@@ -2708,7 +2731,8 @@ export default function OrganizationDashboard() {
                   </h3>
                   <EnrollmentHistory 
                     courseId={selectedCourse.id} 
-                    organizationId={organizationId} 
+                    organizationId={organizationId}
+                    courseName={selectedCourse.title}
                   />
                 </div>
               )}
