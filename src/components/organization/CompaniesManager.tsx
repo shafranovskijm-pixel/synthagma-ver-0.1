@@ -271,8 +271,8 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
     }
   };
 
-  const getDocumentByType = (type: 'contract' | 'invoice' | 'act') => {
-    return companyDocuments.find(doc => doc.type === type);
+  const getDocumentsByType = (type: 'contract' | 'invoice' | 'act') => {
+    return companyDocuments.filter(doc => doc.type === type);
   };
 
   const formatFileSize = (bytes: number | null) => {
@@ -280,6 +280,16 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
     if (bytes < 1024) return `${bytes} Б`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} КБ`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} МБ`;
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("ru-RU", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
   };
 
   const fetchCompanies = async () => {
@@ -977,9 +987,9 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
         </div>
       )}
 
-      {/* Company Detail Dialog */}
+      {/* Company Detail Dialog - Full Screen */}
       <Dialog open={showCompanyDetail} onOpenChange={setShowCompanyDetail}>
-        <DialogContent className="rounded-2xl max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+        <DialogContent className="rounded-2xl w-[95vw] max-w-6xl h-[90vh] overflow-hidden flex flex-col p-0">
           {/* Header */}
           <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-6 border-b border-border">
             <div className="flex items-start justify-between">
@@ -1154,237 +1164,252 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
                     <Loader2 className="w-8 h-8 animate-spin text-primary" />
                   </div>
                 ) : (
-                  <div className="space-y-3">
-                    {/* Contract */}
-                    {(() => {
-                      const doc = getDocumentByType('contract');
-                      return (
-                        <div className="w-full flex items-center gap-4 p-4 rounded-xl border border-border bg-card">
-                          <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center">
-                            <FileText className="w-6 h-6 text-orange-500" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="font-medium">Договор</div>
-                            {doc ? (
-                              <div className="text-sm text-muted-foreground truncate">
-                                {doc.name} • {formatFileSize(doc.file_size)}
-                              </div>
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Contracts */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <FileText className="w-5 h-5 text-orange-500" />
+                          <h3 className="font-semibold">Договоры</h3>
+                          <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
+                            {getDocumentsByType('contract').length}
+                          </span>
+                        </div>
+                        <label className="cursor-pointer">
+                          <input
+                            type="file"
+                            className="hidden"
+                            accept=".pdf,.doc,.docx"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handleUploadDocument('contract', file);
+                              e.target.value = '';
+                            }}
+                            disabled={isUploadingDocument === 'contract'}
+                          />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="rounded-lg gap-2 pointer-events-none h-8"
+                            disabled={isUploadingDocument === 'contract'}
+                          >
+                            {isUploadingDocument === 'contract' ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
                             ) : (
-                              <div className="text-sm text-muted-foreground">
-                                Договор на оказание образовательных услуг
-                              </div>
+                              <Upload className="w-3 h-3" />
                             )}
+                          </Button>
+                        </label>
+                      </div>
+                      <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+                        {getDocumentsByType('contract').length === 0 ? (
+                          <div className="text-sm text-muted-foreground text-center py-8 border border-dashed border-border rounded-xl">
+                            Нет договоров
                           </div>
-                          <div className="flex items-center gap-2">
-                            {doc ? (
-                              <>
+                        ) : (
+                          getDocumentsByType('contract').map((doc) => (
+                            <div key={doc.id} className="flex items-center gap-2 p-3 rounded-xl border border-border bg-card hover:bg-secondary/30 transition-colors">
+                              <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center flex-shrink-0">
+                                <FileText className="w-4 h-4 text-orange-500" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="font-medium text-xs truncate">{doc.name}</div>
+                                <div className="text-xs text-muted-foreground">
+                                  {formatFileSize(doc.file_size)} • {formatDate(doc.uploaded_at)}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-0.5">
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="rounded-lg"
+                                  className="rounded-lg h-7 w-7"
                                   onClick={() => handleDownloadDocument(doc)}
                                 >
-                                  <Download className="w-4 h-4" />
+                                  <Download className="w-3 h-3" />
                                 </Button>
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="rounded-lg text-destructive hover:text-destructive"
+                                  className="rounded-lg h-7 w-7 text-destructive hover:text-destructive"
                                   onClick={() => handleDeleteDocument(doc)}
                                   disabled={isDeletingDocument === doc.id}
                                 >
                                   {isDeletingDocument === doc.id ? (
-                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    <Loader2 className="w-3 h-3 animate-spin" />
                                   ) : (
-                                    <X className="w-4 h-4" />
+                                    <X className="w-3 h-3" />
                                   )}
                                 </Button>
-                              </>
-                            ) : (
-                              <label className="cursor-pointer">
-                                <input
-                                  type="file"
-                                  className="hidden"
-                                  accept=".pdf,.doc,.docx"
-                                  onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) handleUploadDocument('contract', file);
-                                  }}
-                                  disabled={isUploadingDocument === 'contract'}
-                                />
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="rounded-lg gap-2 pointer-events-none"
-                                  disabled={isUploadingDocument === 'contract'}
-                                >
-                                  {isUploadingDocument === 'contract' ? (
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                  ) : (
-                                    <Upload className="w-4 h-4" />
-                                  )}
-                                  Загрузить
-                                </Button>
-                              </label>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })()}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
 
-                    {/* Invoice */}
-                    {(() => {
-                      const doc = getDocumentByType('invoice');
-                      return (
-                        <div className="w-full flex items-center gap-4 p-4 rounded-xl border border-border bg-card">
-                          <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center">
-                            <Receipt className="w-6 h-6 text-blue-500" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="font-medium">Счёт</div>
-                            {doc ? (
-                              <div className="text-sm text-muted-foreground truncate">
-                                {doc.name} • {formatFileSize(doc.file_size)}
-                              </div>
+                    {/* Invoices */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Receipt className="w-5 h-5 text-blue-500" />
+                          <h3 className="font-semibold">Счета</h3>
+                          <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
+                            {getDocumentsByType('invoice').length}
+                          </span>
+                        </div>
+                        <label className="cursor-pointer">
+                          <input
+                            type="file"
+                            className="hidden"
+                            accept=".pdf,.doc,.docx"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handleUploadDocument('invoice', file);
+                              e.target.value = '';
+                            }}
+                            disabled={isUploadingDocument === 'invoice'}
+                          />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="rounded-lg gap-2 pointer-events-none h-8"
+                            disabled={isUploadingDocument === 'invoice'}
+                          >
+                            {isUploadingDocument === 'invoice' ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
                             ) : (
-                              <div className="text-sm text-muted-foreground">
-                                Счёт на оплату обучения
-                              </div>
+                              <Upload className="w-3 h-3" />
                             )}
+                          </Button>
+                        </label>
+                      </div>
+                      <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+                        {getDocumentsByType('invoice').length === 0 ? (
+                          <div className="text-sm text-muted-foreground text-center py-8 border border-dashed border-border rounded-xl">
+                            Нет счетов
                           </div>
-                          <div className="flex items-center gap-2">
-                            {doc ? (
-                              <>
+                        ) : (
+                          getDocumentsByType('invoice').map((doc) => (
+                            <div key={doc.id} className="flex items-center gap-2 p-3 rounded-xl border border-border bg-card hover:bg-secondary/30 transition-colors">
+                              <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+                                <Receipt className="w-4 h-4 text-blue-500" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="font-medium text-xs truncate">{doc.name}</div>
+                                <div className="text-xs text-muted-foreground">
+                                  {formatFileSize(doc.file_size)} • {formatDate(doc.uploaded_at)}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-0.5">
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="rounded-lg"
+                                  className="rounded-lg h-7 w-7"
                                   onClick={() => handleDownloadDocument(doc)}
                                 >
-                                  <Download className="w-4 h-4" />
+                                  <Download className="w-3 h-3" />
                                 </Button>
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="rounded-lg text-destructive hover:text-destructive"
+                                  className="rounded-lg h-7 w-7 text-destructive hover:text-destructive"
                                   onClick={() => handleDeleteDocument(doc)}
                                   disabled={isDeletingDocument === doc.id}
                                 >
                                   {isDeletingDocument === doc.id ? (
-                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    <Loader2 className="w-3 h-3 animate-spin" />
                                   ) : (
-                                    <X className="w-4 h-4" />
+                                    <X className="w-3 h-3" />
                                   )}
                                 </Button>
-                              </>
-                            ) : (
-                              <label className="cursor-pointer">
-                                <input
-                                  type="file"
-                                  className="hidden"
-                                  accept=".pdf,.doc,.docx"
-                                  onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) handleUploadDocument('invoice', file);
-                                  }}
-                                  disabled={isUploadingDocument === 'invoice'}
-                                />
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="rounded-lg gap-2 pointer-events-none"
-                                  disabled={isUploadingDocument === 'invoice'}
-                                >
-                                  {isUploadingDocument === 'invoice' ? (
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                  ) : (
-                                    <Upload className="w-4 h-4" />
-                                  )}
-                                  Загрузить
-                                </Button>
-                              </label>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })()}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
 
-                    {/* Act */}
-                    {(() => {
-                      const doc = getDocumentByType('act');
-                      return (
-                        <div className="w-full flex items-center gap-4 p-4 rounded-xl border border-border bg-card">
-                          <div className="w-12 h-12 rounded-xl bg-sigma-green/10 flex items-center justify-center">
-                            <FileCheck className="w-6 h-6 text-sigma-green" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="font-medium">Акт</div>
-                            {doc ? (
-                              <div className="text-sm text-muted-foreground truncate">
-                                {doc.name} • {formatFileSize(doc.file_size)}
-                              </div>
+                    {/* Acts */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <FileCheck className="w-5 h-5 text-sigma-green" />
+                          <h3 className="font-semibold">Акты</h3>
+                          <span className="text-xs text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">
+                            {getDocumentsByType('act').length}
+                          </span>
+                        </div>
+                        <label className="cursor-pointer">
+                          <input
+                            type="file"
+                            className="hidden"
+                            accept=".pdf,.doc,.docx"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handleUploadDocument('act', file);
+                              e.target.value = '';
+                            }}
+                            disabled={isUploadingDocument === 'act'}
+                          />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="rounded-lg gap-2 pointer-events-none h-8"
+                            disabled={isUploadingDocument === 'act'}
+                          >
+                            {isUploadingDocument === 'act' ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
                             ) : (
-                              <div className="text-sm text-muted-foreground">
-                                Акт выполненных работ
-                              </div>
+                              <Upload className="w-3 h-3" />
                             )}
+                          </Button>
+                        </label>
+                      </div>
+                      <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+                        {getDocumentsByType('act').length === 0 ? (
+                          <div className="text-sm text-muted-foreground text-center py-8 border border-dashed border-border rounded-xl">
+                            Нет актов
                           </div>
-                          <div className="flex items-center gap-2">
-                            {doc ? (
-                              <>
+                        ) : (
+                          getDocumentsByType('act').map((doc) => (
+                            <div key={doc.id} className="flex items-center gap-2 p-3 rounded-xl border border-border bg-card hover:bg-secondary/30 transition-colors">
+                              <div className="w-8 h-8 rounded-lg bg-sigma-green/10 flex items-center justify-center flex-shrink-0">
+                                <FileCheck className="w-4 h-4 text-sigma-green" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="font-medium text-xs truncate">{doc.name}</div>
+                                <div className="text-xs text-muted-foreground">
+                                  {formatFileSize(doc.file_size)} • {formatDate(doc.uploaded_at)}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-0.5">
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="rounded-lg"
+                                  className="rounded-lg h-7 w-7"
                                   onClick={() => handleDownloadDocument(doc)}
                                 >
-                                  <Download className="w-4 h-4" />
+                                  <Download className="w-3 h-3" />
                                 </Button>
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="rounded-lg text-destructive hover:text-destructive"
+                                  className="rounded-lg h-7 w-7 text-destructive hover:text-destructive"
                                   onClick={() => handleDeleteDocument(doc)}
                                   disabled={isDeletingDocument === doc.id}
                                 >
                                   {isDeletingDocument === doc.id ? (
-                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    <Loader2 className="w-3 h-3 animate-spin" />
                                   ) : (
-                                    <X className="w-4 h-4" />
+                                    <X className="w-3 h-3" />
                                   )}
                                 </Button>
-                              </>
-                            ) : (
-                              <label className="cursor-pointer">
-                                <input
-                                  type="file"
-                                  className="hidden"
-                                  accept=".pdf,.doc,.docx"
-                                  onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) handleUploadDocument('act', file);
-                                  }}
-                                  disabled={isUploadingDocument === 'act'}
-                                />
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="rounded-lg gap-2 pointer-events-none"
-                                  disabled={isUploadingDocument === 'act'}
-                                >
-                                  {isUploadingDocument === 'act' ? (
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                  ) : (
-                                    <Upload className="w-4 h-4" />
-                                  )}
-                                  Загрузить
-                                </Button>
-                              </label>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })()}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
                   </div>
                 )}
               </TabsContent>
