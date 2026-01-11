@@ -117,7 +117,6 @@ const Login = () => {
             .insert({
               user_id: signUpData.user.id,
               role: "organization",
-              organization_id: orgData.id,
             });
         }
       }
