@@ -5,6 +5,7 @@ import { OrgDocumentsManager } from "@/components/organization/OrgDocumentsManag
 import { CourseDocumentsManager } from "@/components/organization/CourseDocumentsManager";
 import { StudentDocumentsManager } from "@/components/organization/StudentDocumentsManager";
 import { BulkDocumentUpload } from "@/components/organization/BulkDocumentUpload";
+import { EnrollmentHistory } from "@/components/organization/EnrollmentHistory";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -43,7 +44,8 @@ import {
   List,
   Filter,
   Tag,
-  Palette
+  Palette,
+  History
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
@@ -2696,6 +2698,20 @@ export default function OrganizationDashboard() {
                   </>
                 )}
               </div>
+
+              {/* Enrollment History */}
+              {selectedCourse && organizationId && (
+                <div>
+                  <h3 className="font-semibold mb-3 flex items-center gap-2">
+                    <History className="w-4 h-4" />
+                    История зачислений
+                  </h3>
+                  <EnrollmentHistory 
+                    courseId={selectedCourse.id} 
+                    organizationId={organizationId} 
+                  />
+                </div>
+              )}
             </div>
           )}
         </DialogContent>
