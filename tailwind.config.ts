@@ -14,8 +14,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        display: ['Manrope', 'system-ui', 'sans-serif'],
+        sans: ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
+        display: ['Space Grotesk', 'system-ui', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -69,6 +69,8 @@ export default {
           green: "hsl(var(--sigma-green))",
           orange: "hsl(var(--sigma-orange))",
           pink: "hsl(var(--sigma-pink))",
+          yellow: "hsl(var(--sigma-yellow))",
+          indigo: "hsl(var(--sigma-indigo))",
         },
       },
       borderRadius: {

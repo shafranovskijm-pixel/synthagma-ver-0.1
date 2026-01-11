@@ -28,15 +28,15 @@ export function SigmaLogo({
   variant = "default"
 }: SigmaLogoProps) {
   const iconColors = {
-    default: "from-primary via-accent to-sigma-purple",
+    default: "from-primary via-accent to-sigma-orange",
     white: "from-white/90 to-white",
-    gradient: "from-primary via-accent to-sigma-purple",
+    gradient: "from-primary via-accent to-sigma-orange",
   };
 
   const sigmaColors = {
-    default: "from-primary via-accent to-sigma-purple",
-    white: "from-primary via-accent to-sigma-purple",
-    gradient: "from-primary via-accent to-sigma-purple",
+    default: "from-primary via-accent to-sigma-orange",
+    white: "from-primary via-accent to-sigma-orange",
+    gradient: "from-primary via-accent to-sigma-orange",
   };
 
   const textColors = {
