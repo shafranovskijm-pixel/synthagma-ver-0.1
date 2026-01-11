@@ -48,6 +48,12 @@ interface Branding {
   showOrgName: boolean;
 }
 
+interface DashboardSettings {
+  showLibrary: boolean;
+  showAchievements: boolean;
+  showAiChat: boolean;
+}
+
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
@@ -67,6 +73,11 @@ export default function StudentDashboard() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [branding, setBranding] = useState<Branding | null>(null);
+  const [dashboardSettings, setDashboardSettings] = useState<DashboardSettings>({
+    showLibrary: true,
+    showAchievements: true,
+    showAiChat: true
+  });
   const [loading, setLoading] = useState(true);
   const [totalTimeSpent, setTotalTimeSpent] = useState(0);
   const [totalCompletedLessons, setTotalCompletedLessons] = useState(0);
@@ -95,7 +106,7 @@ export default function StudentDashboard() {
       // Load profile with organization
       const { data: profileData } = await supabase
         .from("profiles")
-        .select("full_name, organization_id, organizations(name, branding)")
+        .select("full_name, organization_id, organizations(name, branding, student_dashboard_settings)")
         .eq("user_id", user.id)
         .single();
 
@@ -116,6 +127,16 @@ export default function StudentDashboard() {
             secondaryColor: (b.secondaryColor as string) || '#8b5cf6',
             logoUrl: (b.logoUrl as string) || '',
             showOrgName: b.showOrgName !== false
+          });
+        }
+
+        // Load dashboard settings from organization
+        if (org?.student_dashboard_settings && typeof org.student_dashboard_settings === 'object') {
+          const s = org.student_dashboard_settings as Record<string, unknown>;
+          setDashboardSettings({
+            showLibrary: s.showLibrary !== false,
+            showAchievements: s.showAchievements !== false,
+            showAiChat: s.showAiChat !== false
           });
         }
       }
@@ -319,26 +340,32 @@ export default function StudentDashboard() {
               <BookOpen className="w-5 h-5" />
               Мои курсы
             </button>
-            <button
-              onClick={() => setActiveTab("chat")}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
-                activeTab === "chat"
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-secondary"
-              }`}
-            >
-              <MessageCircle className="w-5 h-5" />
-              ИИ-помощник
-              <span className="ml-auto w-2 h-2 rounded-full bg-sigma-green animate-pulse" />
-            </button>
-            <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors">
-              <Library className="w-5 h-5" />
-              Библиотека
-            </button>
-            <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors">
-              <Trophy className="w-5 h-5" />
-              Достижения
-            </button>
+            {dashboardSettings.showAiChat && (
+              <button
+                onClick={() => setActiveTab("chat")}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
+                  activeTab === "chat"
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-secondary"
+                }`}
+              >
+                <MessageCircle className="w-5 h-5" />
+                ИИ-помощник
+                <span className="ml-auto w-2 h-2 rounded-full bg-sigma-green animate-pulse" />
+              </button>
+            )}
+            {dashboardSettings.showLibrary && (
+              <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors">
+                <Library className="w-5 h-5" />
+                Библиотека
+              </button>
+            )}
+            {dashboardSettings.showAchievements && (
+              <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors">
+                <Trophy className="w-5 h-5" />
+                Достижения
+              </button>
+            )}
             <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors">
               <Settings className="w-5 h-5" />
               Настройки
