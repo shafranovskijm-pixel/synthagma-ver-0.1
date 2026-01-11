@@ -101,7 +101,7 @@ serve(async (req) => {
 
       userId = authData.user.id;
       
-      // Create profile with login
+      // Create profile with login and password
       const { error: profileError } = await supabaseAdmin
         .from("profiles")
         .insert({
@@ -110,6 +110,7 @@ serve(async (req) => {
           full_name,
           email: email?.toLowerCase() || null,
           login: generatedLogin,
+          generated_password: generatedPassword,
           organization_id,
           company_id: company_id || null
         });
