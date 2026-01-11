@@ -408,6 +408,7 @@ export type Database = {
           description: string | null
           file_size: number | null
           file_url: string | null
+          folder_id: string | null
           id: string
           name: string
           organization_id: string
@@ -419,6 +420,7 @@ export type Database = {
           description?: string | null
           file_size?: number | null
           file_url?: string | null
+          folder_id?: string | null
           id?: string
           name: string
           organization_id: string
@@ -430,6 +432,7 @@ export type Database = {
           description?: string | null
           file_size?: number | null
           file_url?: string | null
+          folder_id?: string | null
           id?: string
           name?: string
           organization_id?: string
@@ -438,10 +441,59 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "library_documents_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "library_folders"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "library_documents_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      library_folders: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          name: string
+          organization_id: string
+          parent_id: string | null
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          organization_id: string
+          parent_id?: string | null
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          organization_id?: string
+          parent_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "library_folders_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "library_folders_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "library_folders"
             referencedColumns: ["id"]
           },
         ]
