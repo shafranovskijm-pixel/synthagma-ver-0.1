@@ -8,6 +8,7 @@ import { BulkDocumentUpload } from "@/components/organization/BulkDocumentUpload
 import { EnrollmentHistory } from "@/components/organization/EnrollmentHistory";
 import { CourseTestReport } from "@/components/organization/CourseTestReport";
 import { CompaniesManager } from "@/components/organization/CompaniesManager";
+import { LibraryManager } from "@/components/organization/LibraryManager";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -172,7 +173,7 @@ interface Company {
 export default function OrganizationDashboard() {
   const navigate = useNavigate();
   const { signOut, user } = useAuth();
-  const [activeTab, setActiveTab] = useState<"courses" | "organizations" | "students" | "stats" | "links" | "documents" | "settings">("courses");
+  const [activeTab, setActiveTab] = useState<"courses" | "organizations" | "students" | "library" | "stats" | "links" | "documents" | "settings">("courses");
   const [searchQuery, setSearchQuery] = useState("");
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [showAddStudentDialog, setShowAddStudentDialog] = useState(false);
@@ -325,6 +326,13 @@ export default function OrganizationDashboard() {
     showAiChat: true
   });
   const [isSavingSettings, setIsSavingSettings] = useState(false);
+  
+  // Menu visibility settings
+  const [menuSettings, setMenuSettings] = useState({
+    showStats: false,
+    showLinks: false,
+    showDocuments: false
+  });
 
   // Load theme and settings on mount
   useEffect(() => {
@@ -345,6 +353,16 @@ export default function OrganizationDashboard() {
         setStudentDashboardSettings(JSON.parse(savedSettings));
       } catch (e) {
         console.error('Error loading settings:', e);
+      }
+    }
+
+    // Load menu settings
+    const savedMenuSettings = localStorage.getItem('orgMenuSettings');
+    if (savedMenuSettings) {
+      try {
+        setMenuSettings(JSON.parse(savedMenuSettings));
+      } catch (e) {
+        console.error('Error loading menu settings:', e);
       }
     }
   }, []);
@@ -1734,38 +1752,55 @@ export default function OrganizationDashboard() {
               Ученики
             </button>
             <button
-              onClick={() => setActiveTab("stats")}
+              onClick={() => setActiveTab("library")}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
-                activeTab === "stats"
+                activeTab === "library"
                   ? "bg-primary/10 text-primary"
                   : "text-muted-foreground hover:bg-secondary"
               }`}
             >
-              <BarChart3 className="w-5 h-5" />
-              Статистика
+              <Library className="w-5 h-5" />
+              Библиотека
             </button>
-            <button
-              onClick={() => setActiveTab("links")}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
-                activeTab === "links"
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-secondary"
-              }`}
-            >
-              <Link className="w-5 h-5" />
-              Ссылки регистрации
-            </button>
-            <button
-              onClick={() => setActiveTab("documents")}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
-                activeTab === "documents"
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-secondary"
-              }`}
-            >
-              <FileText className="w-5 h-5" />
-              Документы
-            </button>
+            {menuSettings.showStats && (
+              <button
+                onClick={() => setActiveTab("stats")}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
+                  activeTab === "stats"
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-secondary"
+                }`}
+              >
+                <BarChart3 className="w-5 h-5" />
+                Статистика
+              </button>
+            )}
+            {menuSettings.showLinks && (
+              <button
+                onClick={() => setActiveTab("links")}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
+                  activeTab === "links"
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-secondary"
+                }`}
+              >
+                <Link className="w-5 h-5" />
+                Ссылки регистрации
+              </button>
+            )}
+            {menuSettings.showDocuments && (
+              <button
+                onClick={() => setActiveTab("documents")}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
+                  activeTab === "documents"
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-secondary"
+                }`}
+              >
+                <FileText className="w-5 h-5" />
+                Документы
+              </button>
+            )}
             <button
               onClick={() => setActiveTab("settings")}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
@@ -1801,6 +1836,7 @@ export default function OrganizationDashboard() {
                 {activeTab === "courses" && "Управление курсами"}
                 {activeTab === "organizations" && "Компании"}
                 {activeTab === "students" && "Все ученики"}
+                {activeTab === "library" && "Библиотека материалов"}
                 {activeTab === "stats" && "Статистика обучения"}
                 {activeTab === "links" && "Ссылки для регистрации"}
                 {activeTab === "documents" && "Документооборот"}
@@ -2547,6 +2583,11 @@ export default function OrganizationDashboard() {
             </div>
           )}
 
+          {/* Library Tab */}
+          {activeTab === "library" && organizationId && (
+            <LibraryManager organizationId={organizationId} />
+          )}
+
           {/* Documents Tab */}
           {activeTab === "documents" && organizationId && (
             <div className="space-y-6">
@@ -2716,6 +2757,105 @@ export default function OrganizationDashboard() {
                         Сохранить настройки
                       </>
                     )}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Menu Items Settings */}
+              <div className="bg-card rounded-2xl border border-border p-6">
+                <h3 className="font-display font-semibold text-lg mb-4 flex items-center gap-2">
+                  <LayoutGrid className="w-5 h-5" />
+                  Разделы меню
+                </h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Включите или отключите дополнительные разделы в боковом меню
+                </p>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between py-3 border-b border-border">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
+                        <BarChart3 className="w-5 h-5 text-accent" />
+                      </div>
+                      <div>
+                        <p className="font-medium">Статистика</p>
+                        <p className="text-sm text-muted-foreground">Аналитика и отчёты по обучению</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setMenuSettings(prev => ({ ...prev, showStats: !prev.showStats }))}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        menuSettings.showStats ? 'bg-primary' : 'bg-muted'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          menuSettings.showStats ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between py-3 border-b border-border">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-sigma-green/10 flex items-center justify-center">
+                        <Link className="w-5 h-5 text-sigma-green" />
+                      </div>
+                      <div>
+                        <p className="font-medium">Ссылки регистрации</p>
+                        <p className="text-sm text-muted-foreground">Ссылки для самостоятельной регистрации учеников</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setMenuSettings(prev => ({ ...prev, showLinks: !prev.showLinks }))}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        menuSettings.showLinks ? 'bg-primary' : 'bg-muted'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          menuSettings.showLinks ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-sigma-orange/10 flex items-center justify-center">
+                        <FileText className="w-5 h-5 text-sigma-orange" />
+                      </div>
+                      <div>
+                        <p className="font-medium">Документы</p>
+                        <p className="text-sm text-muted-foreground">Документооборот организации</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setMenuSettings(prev => ({ ...prev, showDocuments: !prev.showDocuments }))}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        menuSettings.showDocuments ? 'bg-primary' : 'bg-muted'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          menuSettings.showDocuments ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+                <div className="mt-6 pt-4 border-t border-border">
+                  <Button
+                    className="btn-gradient rounded-xl gap-2"
+                    onClick={() => {
+                      try {
+                        localStorage.setItem('orgMenuSettings', JSON.stringify(menuSettings));
+                        toast.success('Настройки меню сохранены');
+                      } catch (error) {
+                        console.error('Error saving menu settings:', error);
+                        toast.error('Ошибка сохранения настроек');
+                      }
+                    }}
+                  >
+                    <Save className="w-4 h-4" />
+                    Сохранить настройки меню
                   </Button>
                 </div>
               </div>
