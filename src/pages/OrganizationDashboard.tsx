@@ -870,7 +870,25 @@ export default function OrganizationDashboard() {
 
     setIsAddingStudentsToCourse(true);
     try {
-      const enrollmentsToInsert = Array.from(selectedStudentsToAdd).map(userId => ({
+      const userIds = Array.from(selectedStudentsToAdd);
+      
+      // Check for existing enrollments
+      const { data: existingEnrollments } = await supabase
+        .from("enrollments")
+        .select("user_id")
+        .eq("course_id", selectedCourse.id)
+        .in("user_id", userIds);
+
+      const existingUserIds = new Set((existingEnrollments || []).map(e => e.user_id));
+      const newUserIds = userIds.filter(id => !existingUserIds.has(id));
+
+      if (newUserIds.length === 0) {
+        toast.info("Все выбранные ученики уже зачислены на этот курс");
+        setSelectedStudentsToAdd(new Set());
+        return;
+      }
+
+      const enrollmentsToInsert = newUserIds.map(userId => ({
         user_id: userId,
         course_id: selectedCourse.id,
         status: "active",
@@ -883,7 +901,7 @@ export default function OrganizationDashboard() {
 
       if (error) throw error;
 
-      toast.success(`Зачислено ${selectedStudentsToAdd.size} учеников`);
+      toast.success(`Зачислено ${newUserIds.length} учеников`);
       setSelectedStudentsToAdd(new Set());
       handleOpenCourseStudents(selectedCourse);
     } catch (error) {
