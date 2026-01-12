@@ -7,11 +7,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
@@ -20,8 +15,6 @@ import {
   Save,
   Loader2,
   RotateCcw,
-  Info,
-  ChevronDown,
 } from "lucide-react";
 
 interface ContractTemplateEditorProps {
@@ -131,7 +124,6 @@ export function ContractTemplateEditor({
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
-  const [showPlaceholders, setShowPlaceholders] = useState(false);
 
   useEffect(() => {
     loadTemplate();
@@ -257,50 +249,14 @@ export function ContractTemplateEditor({
         </div>
       </div>
 
-      {/* Placeholders Reference */}
-      <Collapsible open={showPlaceholders} onOpenChange={setShowPlaceholders}>
-        <CollapsibleTrigger asChild>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full justify-between rounded-xl bg-secondary/30 hover:bg-secondary/50"
-          >
-            <span className="flex items-center gap-2 text-sm">
-              <Info className="w-4 h-4" />
-              Доступные переменные для автоподстановки
-            </span>
-            <ChevronDown className={`w-4 h-4 transition-transform ${showPlaceholders ? "rotate-180" : ""}`} />
-          </Button>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="mt-2">
-          <div className="bg-secondary/20 rounded-xl p-4 border border-border">
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2 text-xs">
-              {PLACEHOLDERS.map((p) => (
-                <div
-                  key={p.key}
-                  className="flex items-start gap-2 p-2 bg-background rounded-lg"
-                >
-                  <code className="text-primary font-mono bg-primary/10 px-1.5 py-0.5 rounded shrink-0">
-                    {p.key}
-                  </code>
-                  <span className="text-muted-foreground">{p.label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
-
       {/* Template Editor */}
-      <div className="space-y-2">
-        <Textarea
-          id="contract-template"
-          value={template}
-          onChange={(e) => setTemplate(e.target.value)}
-          className="min-h-[500px] font-mono text-sm rounded-xl"
-          placeholder="Введите текст шаблона договора..."
-        />
-      </div>
+      <Textarea
+        id="contract-template"
+        value={template}
+        onChange={(e) => setTemplate(e.target.value)}
+        className="min-h-[500px] font-mono text-sm rounded-xl"
+        placeholder="Введите текст шаблона договора..."
+      />
 
       {/* Preview Dialog */}
       <Dialog open={showPreview} onOpenChange={setShowPreview}>
