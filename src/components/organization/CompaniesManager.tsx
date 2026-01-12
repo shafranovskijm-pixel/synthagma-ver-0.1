@@ -314,7 +314,11 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
     }
   };
 
-  const handleUploadDocument = async (type: 'contract' | 'invoice' | 'act', file: File) => {
+  const handleUploadDocument = async (
+    type: 'contract' | 'invoice' | 'act', 
+    file: File, 
+    validation?: { date: string; amount: string; serviceName: string }
+  ) => {
     if (!selectedCompanyForDetail) return;
     
     setIsUploadingDocument(type);
@@ -335,16 +339,22 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
         .from("company-documents")
         .getPublicUrl(filePath);
 
-      // Save to database
+      // Build insert object
+      const documentName = validation?.serviceName ? `${file.name} - ${validation.serviceName}` : file.name;
+      const amount = validation?.amount ? parseFloat(validation.amount) : null;
+      const contractDate = validation?.date && type === 'contract' ? validation.date : null;
+
       const { error: dbError } = await supabase
         .from("company_documents")
         .insert({
           company_id: selectedCompanyForDetail.id,
           type,
-          name: file.name,
+          name: documentName,
           file_url: urlData.publicUrl,
           file_path: filePath,
           file_size: file.size,
+          amount: amount,
+          contract_date: contractDate,
         });
 
       if (dbError) throw dbError;

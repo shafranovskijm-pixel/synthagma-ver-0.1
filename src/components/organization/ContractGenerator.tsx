@@ -237,29 +237,45 @@ export function ContractGenerator({
   <title>Договор №${contractNumber}</title>
   <style>
     @page { margin: 2cm; }
+    * { box-sizing: border-box; }
     body { 
       font-family: 'Times New Roman', Times, serif; 
       font-size: 12pt; 
       line-height: 1.5;
       color: #000;
+      margin: 0;
+      padding: 20px;
+      background: white;
     }
     .header { text-align: center; margin-bottom: 20px; }
     .title { font-size: 14pt; font-weight: bold; margin: 20px 0; text-align: center; }
     .parties { margin-bottom: 20px; text-align: justify; }
     .section { margin: 15px 0; }
     .section-title { font-weight: bold; margin-bottom: 10px; }
-    .item { margin-left: 20px; margin-bottom: 5px; }
-    .signatures { margin-top: 40px; display: flex; justify-content: space-between; }
-    .signature-block { width: 45%; }
-    .signature-title { font-weight: bold; margin-bottom: 10px; }
-    .signature-line { border-bottom: 1px solid #000; margin-top: 40px; }
+    .item { margin-left: 20px; margin-bottom: 5px; text-align: justify; }
     table { width: 100%; border-collapse: collapse; margin: 10px 0; }
     th, td { border: 1px solid #000; padding: 5px 8px; text-align: left; }
     th { background: #f0f0f0; }
-    .right { text-align: right; }
-    .center { text-align: center; }
     .requisites { font-size: 10pt; margin-top: 20px; }
     .requisites td { border: none; vertical-align: top; padding: 3px 10px; }
+    .signature-area {
+      position: relative;
+      min-height: 100px;
+      margin-top: 10px;
+    }
+    .signature-images {
+      position: relative;
+      height: 80px;
+      margin-bottom: 10px;
+    }
+    .signature-images img {
+      position: absolute;
+    }
+    .signature-line {
+      border-top: 1px solid #000;
+      padding-top: 5px;
+      margin-top: 60px;
+    }
   </style>
 </head>
 <body>
@@ -325,12 +341,17 @@ export function ContractGenerator({
           БИК: ${orgRequisites.bank_bik}<br>
           Р/с: ${orgRequisites.bank_account}<br>
           К/с: ${orgRequisites.bank_corr_account}<br><br>
-          ${orgRequisites.director_position}<br><br>
-          <div style="position: relative; height: 80px; margin-top: 10px;">
-            ${orgRequisites.signature_url ? `<img src="${orgRequisites.signature_url}" alt="Подпись" style="max-height: 60px; max-width: 150px; position: absolute; left: 0; top: 0;">` : ''}
-            ${orgRequisites.stamp_url ? `<img src="${orgRequisites.stamp_url}" alt="Печать" style="max-height: 80px; max-width: 80px; position: absolute; left: 80px; top: -10px; opacity: 0.9;">` : ''}
+          ${orgRequisites.director_position}<br>
+          
+          <div class="signature-area">
+            <div class="signature-images">
+              ${orgRequisites.signature_url ? `<img src="${orgRequisites.signature_url}" alt="Подпись" style="max-height: 60px; max-width: 150px; left: 0; top: 0;">` : ''}
+              ${orgRequisites.stamp_url ? `<img src="${orgRequisites.stamp_url}" alt="Печать" style="max-height: 90px; max-width: 90px; left: 70px; top: -15px; opacity: 0.9;">` : ''}
+            </div>
+            <div class="signature-line">
+              _______________ / ${orgRequisites.director_name} /
+            </div>
           </div>
-          _______________ / ${orgRequisites.director_name} /
         </td>
         <td style="width: 50%;">
           <strong>ЗАКАЗЧИК:</strong><br><br>
@@ -339,8 +360,13 @@ export function ContractGenerator({
           КПП: ${selectedCompany.kpp || '_______________'}<br>
           ОГРН: ${selectedCompany.ogrn || '_______________'}<br>
           Адрес: ${selectedCompany.address || '_______________'}<br><br><br><br><br><br>
-          ${selectedCompany.director || 'Генеральный директор'}<br><br>
-          _______________ / _________________ /
+          ${selectedCompany.director || 'Генеральный директор'}<br>
+          
+          <div class="signature-area">
+            <div class="signature-line" style="margin-top: 80px;">
+              _______________ / _________________ /
+            </div>
+          </div>
         </td>
       </tr>
     </table>

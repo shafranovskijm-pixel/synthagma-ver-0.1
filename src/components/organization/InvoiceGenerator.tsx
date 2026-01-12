@@ -308,62 +308,110 @@ export function InvoiceGenerator({
   <title>Счёт №${invoiceNumber}</title>
   <style>
     @page { margin: 1.5cm; }
+    * { box-sizing: border-box; }
     body { 
       font-family: 'Times New Roman', Times, serif; 
       font-size: 11pt; 
       line-height: 1.4;
       color: #000;
+      margin: 0;
+      padding: 20px;
+      background: white;
     }
-    .header { margin-bottom: 30px; }
-    .bank-details { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
-    .bank-details td, .bank-details th { border: 1px solid #000; padding: 4px 8px; font-size: 10pt; }
-    .bank-details .label { width: 80px; font-weight: normal; }
-    .title { font-size: 16pt; font-weight: bold; margin: 25px 0 15px 0; }
-    .info-row { margin-bottom: 8px; }
+    .header { margin-bottom: 20px; }
+    .bank-details { 
+      border-collapse: collapse; 
+      width: 100%; 
+      margin-bottom: 20px;
+      table-layout: fixed;
+    }
+    .bank-details td { 
+      border: 1px solid #000; 
+      padding: 6px 8px; 
+      font-size: 10pt;
+      vertical-align: top;
+    }
+    .bank-details .bank-cell { width: 50%; }
+    .bank-details .label-cell { width: 15%; text-align: right; }
+    .bank-details .value-cell { width: 35%; }
+    .title { 
+      font-size: 14pt; 
+      font-weight: bold; 
+      margin: 20px 0 15px 0;
+      text-align: center;
+    }
+    .info-row { margin-bottom: 8px; text-align: justify; }
     .info-label { font-weight: bold; }
-    .items-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-    .items-table th, .items-table td { border: 1px solid #000; padding: 6px 10px; }
-    .items-table th { background: #f5f5f5; font-weight: bold; text-align: center; }
-    .items-table .num { width: 40px; text-align: center; }
-    .items-table .qty { width: 60px; text-align: center; }
-    .items-table .unit { width: 50px; text-align: center; }
-    .items-table .price { width: 120px; text-align: right; }
-    .items-table .total { width: 120px; text-align: right; }
-    .total-row { font-weight: bold; }
-    .footer { margin-top: 30px; }
-    .signature-block { margin-top: 40px; position: relative; }
-    .signature-line { border-bottom: 1px solid #000; width: 200px; display: inline-block; margin-left: 20px; }
+    .items-table { 
+      width: 100%; 
+      border-collapse: collapse; 
+      margin: 20px 0;
+      table-layout: fixed;
+    }
+    .items-table th, .items-table td { 
+      border: 1px solid #000; 
+      padding: 8px 10px;
+      vertical-align: middle;
+    }
+    .items-table th { 
+      background: #f5f5f5; 
+      font-weight: bold; 
+      text-align: center;
+    }
+    .items-table .num { width: 8%; text-align: center; }
+    .items-table .name { width: 40%; text-align: left; }
+    .items-table .qty { width: 10%; text-align: center; }
+    .items-table .unit { width: 10%; text-align: center; }
+    .items-table .price { width: 16%; text-align: right; }
+    .items-table .total { width: 16%; text-align: right; }
+    .total-row td { font-weight: bold; }
+    .summary { margin-top: 20px; }
+    .footer { margin-top: 40px; }
+    .signature-wrapper { 
+      position: relative; 
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 80px;
+    }
+    .signature-images {
+      position: relative;
+      width: 200px;
+      height: 80px;
+    }
+    .signature-images img {
+      position: absolute;
+    }
+    .signature-line { 
+      border-bottom: 1px solid #000; 
+      width: 150px; 
+      display: inline-block;
+    }
   </style>
 </head>
 <body>
   <div class="header">
     <table class="bank-details">
       <tr>
-        <td rowspan="2" style="width: 50%;">
-          <div style="margin-bottom: 5px;">${orgRequisites.bank_name}</div>
-          <div style="font-size: 9pt;">Банк получателя</div>
+        <td rowspan="2" class="bank-cell">
+          <div style="margin-bottom: 5px; font-weight: bold;">${orgRequisites.bank_name || 'Банк не указан'}</div>
+          <div style="font-size: 9pt; color: #666;">Банк получателя</div>
         </td>
-        <td class="label">БИК</td>
-        <td>${orgRequisites.bank_bik}</td>
+        <td class="label-cell">БИК</td>
+        <td class="value-cell">${orgRequisites.bank_bik || '—'}</td>
       </tr>
       <tr>
-        <td class="label">К/с</td>
-        <td>${orgRequisites.bank_corr_account}</td>
+        <td class="label-cell">К/с</td>
+        <td class="value-cell">${orgRequisites.bank_corr_account || '—'}</td>
       </tr>
       <tr>
-        <td>
-          <div>ИНН ${orgRequisites.inn}</div>
-          <div>КПП ${orgRequisites.kpp}</div>
+        <td class="bank-cell">
+          <div>ИНН ${orgRequisites.inn || '—'} КПП ${orgRequisites.kpp || '—'}</div>
+          <div style="margin-top: 5px; font-weight: bold;">${orgRequisites.name || 'Организация не указана'}</div>
+          <div style="font-size: 9pt; color: #666;">Получатель</div>
         </td>
-        <td class="label">Р/с</td>
-        <td rowspan="2">${orgRequisites.bank_account}</td>
-      </tr>
-      <tr>
-        <td>
-          <div>${orgRequisites.name}</div>
-          <div style="font-size: 9pt;">Получатель</div>
-        </td>
-        <td></td>
+        <td class="label-cell">Р/с</td>
+        <td class="value-cell">${orgRequisites.bank_account || '—'}</td>
       </tr>
     </table>
   </div>
@@ -385,7 +433,7 @@ export function InvoiceGenerator({
     <thead>
       <tr>
         <th class="num">№</th>
-        <th>Наименование</th>
+        <th class="name">Наименование</th>
         <th class="qty">Кол-во</th>
         <th class="unit">Ед.</th>
         <th class="price">Цена</th>
@@ -395,7 +443,7 @@ export function InvoiceGenerator({
     <tbody>
       <tr>
         <td class="num">1</td>
-        <td>Образовательные услуги по программе «${selectedCourse.title}»${selectedCourse.duration ? ` (${selectedCourse.duration})` : ''}</td>
+        <td class="name">Образовательные услуги по программе «${selectedCourse.title}»${selectedCourse.duration ? ` (${selectedCourse.duration})` : ''}</td>
         <td class="qty">${studentsCount}</td>
         <td class="unit">чел.</td>
         <td class="price">${formatPrice(price)}</td>
@@ -404,34 +452,34 @@ export function InvoiceGenerator({
     </tbody>
     <tfoot>
       <tr class="total-row">
-        <td colspan="5" style="text-align: right;">Итого:</td>
+        <td colspan="5" style="text-align: right; border: none;">Итого:</td>
         <td class="total">${formatPrice(String(totalPrice))}</td>
       </tr>
       <tr class="total-row">
-        <td colspan="5" style="text-align: right;">Без НДС</td>
-        <td class="total">—</td>
+        <td colspan="5" style="text-align: right; border: none;">Без НДС</td>
+        <td class="total" style="border-top: none;">—</td>
       </tr>
       <tr class="total-row">
-        <td colspan="5" style="text-align: right;">Всего к оплате:</td>
-        <td class="total">${formatPrice(String(totalPrice))}</td>
+        <td colspan="5" style="text-align: right; border: none;">Всего к оплате:</td>
+        <td class="total" style="border-top: none;">${formatPrice(String(totalPrice))}</td>
       </tr>
     </tfoot>
   </table>
 
-  <div style="margin-top: 20px;">
+  <div class="summary">
     <strong>Всего наименований ${studentsCount}, на сумму ${formatPrice(String(totalPrice))} руб.</strong><br>
     <strong>${numberToWords(totalPrice)} рублей 00 копеек</strong>
   </div>
 
   <div class="footer">
-    <div class="signature-block">
-      <div style="position: relative; display: inline-block;">
-        ${orgRequisites.director_position}
-        <span class="signature-line"></span>
-        ${orgRequisites.signature_url ? `<img src="${orgRequisites.signature_url}" alt="Подпись" style="max-height: 50px; max-width: 120px; position: absolute; left: 120px; top: -15px;">` : ''}
-        ${orgRequisites.stamp_url ? `<img src="${orgRequisites.stamp_url}" alt="Печать" style="max-height: 70px; max-width: 70px; position: absolute; left: 200px; top: -20px; opacity: 0.85;">` : ''}
-        / ${orgRequisites.director_name} /
+    <div class="signature-wrapper">
+      <span>${orgRequisites.director_position}</span>
+      <div class="signature-images">
+        ${orgRequisites.signature_url ? `<img src="${orgRequisites.signature_url}" alt="Подпись" style="max-height: 50px; max-width: 120px; left: 0; top: 15px;">` : ''}
+        ${orgRequisites.stamp_url ? `<img src="${orgRequisites.stamp_url}" alt="Печать" style="max-height: 80px; max-width: 80px; left: 60px; top: 0; opacity: 0.85;">` : ''}
       </div>
+      <span class="signature-line"></span>
+      <span>/ ${orgRequisites.director_name} /</span>
     </div>
   </div>
 </body>
