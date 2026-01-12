@@ -1,5 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import ImportStudentsForm from "@/components/ImportStudentsForm";
+import { useSwipeGesture } from "@/hooks/useSwipeGesture";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useNavigate } from "react-router-dom";
 import { OrgDocumentsManager } from "@/components/organization/OrgDocumentsManager";
 import { CourseDocumentsManager } from "@/components/organization/CourseDocumentsManager";
@@ -120,6 +122,7 @@ export default function OrganizationDashboard() {
     signOut,
     user
   } = useAuth();
+  const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState<"courses" | "organizations" | "students" | "library" | "stats" | "links" | "documents" | "services" | "settings" | "frdo">("courses");
   const [searchQuery, setSearchQuery] = useState("");
   const [showImportDialog, setShowImportDialog] = useState(false);
@@ -351,7 +354,48 @@ export default function OrganizationDashboard() {
     showServices: true
   });
 
-  // Branding settings
+  // Swipe navigation for mobile tabs
+  const getVisibleTabs = useCallback(() => {
+    const baseTabs: Array<"courses" | "organizations" | "students" | "library" | "stats" | "links" | "documents" | "services" | "settings" | "frdo"> = [
+      "courses",
+      "organizations",
+      "students",
+    ];
+    if (menuSettings.showLibrary) baseTabs.push("library");
+    if (menuSettings.showStats) baseTabs.push("stats");
+    if (menuSettings.showLinks) baseTabs.push("links");
+    if (menuSettings.showDocuments) baseTabs.push("documents");
+    if (isFrdoEnabled) baseTabs.push("frdo");
+    if (menuSettings.showServices) baseTabs.push("services");
+    baseTabs.push("settings");
+    return baseTabs;
+  }, [menuSettings.showLibrary, menuSettings.showStats, menuSettings.showLinks, menuSettings.showDocuments, menuSettings.showServices, isFrdoEnabled]);
+
+  const handleSwipeLeft = useCallback(() => {
+    if (!isMobile) return;
+    const tabs = getVisibleTabs();
+    const currentIndex = tabs.indexOf(activeTab);
+    if (currentIndex < tabs.length - 1) {
+      setActiveTab(tabs[currentIndex + 1]);
+    }
+  }, [activeTab, getVisibleTabs, isMobile]);
+
+  const handleSwipeRight = useCallback(() => {
+    if (!isMobile) return;
+    const tabs = getVisibleTabs();
+    const currentIndex = tabs.indexOf(activeTab);
+    if (currentIndex > 0) {
+      setActiveTab(tabs[currentIndex - 1]);
+    }
+  }, [activeTab, getVisibleTabs, isMobile]);
+
+  const swipeRef = useSwipeGesture<HTMLDivElement>({
+    onSwipeLeft: handleSwipeLeft,
+    onSwipeRight: handleSwipeRight,
+    threshold: 50,
+    minSwipeDistance: 30,
+  });
+
   const [brandingSettings, setBrandingSettings] = useState({
     coverUrl: '',
     primaryColor: '#6366f1',
@@ -2371,7 +2415,7 @@ export default function OrganizationDashboard() {
       </aside>
 
       {/* Main content */}
-      <main className={`flex-1 overflow-auto lg:ml-64 ${isAdminView ? 'mt-10' : ''}`}>
+      <main ref={swipeRef} className={`flex-1 overflow-auto lg:ml-64 ${isAdminView ? 'mt-10' : ''}`}>
         {/* Header */}
         <header className="bg-card border-b border-border px-4 lg:px-8 py-4 lg:py-6">
           <div className="flex items-center justify-between">
