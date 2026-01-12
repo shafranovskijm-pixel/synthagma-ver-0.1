@@ -61,6 +61,8 @@ interface OrgRequisites {
   bank_bik: string;
   bank_account: string;
   bank_corr_account: string;
+  stamp_url?: string | null;
+  signature_url?: string | null;
 }
 
 interface ContractGeneratorProps {
@@ -318,6 +320,10 @@ export function ContractGenerator({
           Р/с: ${orgRequisites.bank_account}<br>
           К/с: ${orgRequisites.bank_corr_account}<br><br>
           ${orgRequisites.director_position}<br><br>
+          <div style="position: relative; height: 80px; margin-top: 10px;">
+            ${orgRequisites.signature_url ? `<img src="${orgRequisites.signature_url}" alt="Подпись" style="max-height: 60px; max-width: 150px; position: absolute; left: 0; top: 0;">` : ''}
+            ${orgRequisites.stamp_url ? `<img src="${orgRequisites.stamp_url}" alt="Печать" style="max-height: 80px; max-width: 80px; position: absolute; left: 80px; top: -10px; opacity: 0.9;">` : ''}
+          </div>
           _______________ / ${orgRequisites.director_name} /
         </td>
         <td style="width: 50%;">
