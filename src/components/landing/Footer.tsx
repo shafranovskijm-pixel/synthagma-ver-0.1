@@ -20,7 +20,7 @@ export function Footer() {
                   <span className="font-display font-bold text-2xl bg-gradient-to-br from-primary via-accent to-sigma-orange bg-clip-text text-transparent">Σ</span>
                 </div>
               </div>
-              <span className="font-display font-bold text-3xl text-white tracking-tight">СИНТАГМА</span>
+              <span className="font-display font-bold text-3xl bg-gradient-to-r from-amber-400 via-orange-400 to-yellow-500 bg-clip-text text-transparent tracking-tight drop-shadow-lg">СИНТАГМА</span>
             </div>
             <p className="text-background/70 max-w-md mb-8 leading-relaxed text-lg">
               Современная система дистанционного обучения и документооборота для организаций.
