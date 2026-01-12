@@ -1550,35 +1550,41 @@ ${html.replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>
               </div>
             </div>
 
-            {/* Stats Row */}
+            {/* Stats Row - Documents/Payment Stats */}
             <div className="grid grid-cols-4 gap-3 mt-5">
               <div className="bg-card/80 backdrop-blur rounded-xl p-3 border border-border">
                 <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-                  <Users className="w-3.5 h-3.5" />
-                  Ученики
+                  <FileText className="w-3.5 h-3.5" />
+                  Договоры
                 </div>
-                <div className="text-xl font-bold">{selectedCompanyForDetail?.studentsCount || 0}</div>
+                <div className="text-xl font-bold">{getDocumentStats().contracts}</div>
               </div>
               <div className="bg-card/80 backdrop-blur rounded-xl p-3 border border-border">
                 <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-                  <BookOpen className="w-3.5 h-3.5" />
-                  Курсов
+                  <Receipt className="w-3.5 h-3.5" />
+                  Счета
                 </div>
-                <div className="text-xl font-bold">—</div>
+                <div className="text-xl font-bold">{getDocumentStats().invoices}</div>
               </div>
               <div className="bg-card/80 backdrop-blur rounded-xl p-3 border border-border">
-                <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-                  <TrendingUp className="w-3.5 h-3.5" />
-                  Прогресс
+                <div className="flex items-center gap-2 text-green-500 text-xs mb-1">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Оплачено
                 </div>
-                <div className="text-xl font-bold">—%</div>
+                <div className="text-xl font-bold text-green-500">{getDocumentStats().paidInvoices}</div>
+                {getDocumentStats().paidAmount > 0 && (
+                  <div className="text-xs text-muted-foreground">{new Intl.NumberFormat('ru-RU').format(getDocumentStats().paidAmount)} ₽</div>
+                )}
               </div>
               <div className="bg-card/80 backdrop-blur rounded-xl p-3 border border-border">
-                <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-                  <GraduationCap className="w-3.5 h-3.5" />
-                  Завершили
+                <div className="flex items-center gap-2 text-amber-500 text-xs mb-1">
+                  <Clock className="w-3.5 h-3.5" />
+                  Не оплачено
                 </div>
-                <div className="text-xl font-bold">—</div>
+                <div className="text-xl font-bold text-amber-500">{getDocumentStats().unpaidInvoices}</div>
+                {getDocumentStats().unpaidAmount > 0 && (
+                  <div className="text-xs text-muted-foreground">{new Intl.NumberFormat('ru-RU').format(getDocumentStats().unpaidAmount)} ₽</div>
+                )}
               </div>
             </div>
           </div>
@@ -1946,6 +1952,20 @@ ${html.replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>
                         </span>
                       </div>
                       
+                      {/* Generate Invoice Button */}
+                      <Button
+                        variant="outline"
+                        className="w-full rounded-xl gap-2 border-dashed"
+                        onClick={() => {
+                          if (selectedCompanyForDetail) {
+                            handleOpenInvoiceGenerator(selectedCompanyForDetail);
+                          }
+                        }}
+                      >
+                        <Plus className="w-4 h-4" />
+                        Создать счёт
+                      </Button>
+                      
                       {/* Drag & Drop Zone */}
                       <DocumentDropZone
                         type="invoice"
@@ -1955,17 +1975,34 @@ ${html.replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>
 
                       <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
                         {getDocumentsByType('invoice').map((doc) => (
-                          <div key={doc.id} className="flex items-center gap-2 p-3 rounded-xl border border-border bg-card hover:bg-secondary/30 transition-colors">
-                            <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">
-                              <Receipt className="w-4 h-4 text-blue-500" />
+                          <div key={doc.id} className={`flex items-center gap-2 p-3 rounded-xl border transition-colors ${doc.is_paid ? 'border-green-500/30 bg-green-500/5' : 'border-border bg-card hover:bg-secondary/30'}`}>
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${doc.is_paid ? 'bg-green-500/10' : 'bg-blue-500/10'}`}>
+                              {doc.is_paid ? (
+                                <CheckCircle2 className="w-4 h-4 text-green-500" />
+                              ) : (
+                                <Receipt className="w-4 h-4 text-blue-500" />
+                              )}
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="font-medium text-xs truncate">{doc.name}</div>
-                              <div className="text-xs text-muted-foreground">
-                                {formatFileSize(doc.file_size)} • {formatDate(doc.uploaded_at)}
+                              <div className="text-xs text-muted-foreground flex items-center gap-2">
+                                {doc.amount && <span className="font-medium">{new Intl.NumberFormat('ru-RU').format(doc.amount)} ₽</span>}
+                                <span>• {formatDate(doc.uploaded_at)}</span>
+                                {doc.is_paid && doc.paid_at && (
+                                  <span className="text-green-600">• Оплачен {format(new Date(doc.paid_at), "dd.MM.yy", { locale: ru })}</span>
+                                )}
                               </div>
                             </div>
                             <div className="flex items-center gap-0.5">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className={`rounded-lg h-7 w-7 ${doc.is_paid ? 'text-green-500 hover:text-green-600' : 'text-muted-foreground hover:text-green-500'}`}
+                                onClick={() => handleTogglePaid(doc)}
+                                title={doc.is_paid ? "Отметить как неоплачено" : "Отметить как оплачено"}
+                              >
+                                {doc.is_paid ? <CheckCircle2 className="w-3 h-3" /> : <Banknote className="w-3 h-3" />}
+                              </Button>
                               <Button
                                 variant="ghost"
                                 size="icon"
@@ -2013,6 +2050,20 @@ ${html.replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>
                         </span>
                       </div>
                       
+                      {/* Generate Act Button */}
+                      <Button
+                        variant="outline"
+                        className="w-full rounded-xl gap-2 border-dashed"
+                        onClick={() => {
+                          if (selectedCompanyForDetail) {
+                            handleOpenActGenerator(selectedCompanyForDetail);
+                          }
+                        }}
+                      >
+                        <Plus className="w-4 h-4" />
+                        Создать акт
+                      </Button>
+                      
                       {/* Drag & Drop Zone */}
                       <DocumentDropZone
                         type="act"
@@ -2029,7 +2080,8 @@ ${html.replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>
                             <div className="flex-1 min-w-0">
                               <div className="font-medium text-xs truncate">{doc.name}</div>
                               <div className="text-xs text-muted-foreground">
-                                {formatFileSize(doc.file_size)} • {formatDate(doc.uploaded_at)}
+                                {doc.amount && <span className="font-medium mr-1">{new Intl.NumberFormat('ru-RU').format(doc.amount)} ₽ •</span>}
+                                {formatDate(doc.uploaded_at)}
                               </div>
                             </div>
                             <div className="flex items-center gap-0.5">
