@@ -809,8 +809,12 @@ export default function StudentDashboard() {
                     },
                   }}
                 >
-                  {courses.map((course) => {
-                    const isLocked = !isVideoIdentified;
+                {courses.map((course) => {
+                    // Skip video identification check for demo account
+                    const isDemoAccount = user?.email === "demo-student@lovable.dev" || 
+                                          user?.email?.includes("demo") ||
+                                          profile?.full_name?.toLowerCase().includes("demo");
+                    const isLocked = !isDemoAccount && !isVideoIdentified;
                     const effectiveStatus = isLocked ? "locked" : course.status;
                     
                     return (
