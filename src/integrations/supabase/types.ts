@@ -1632,6 +1632,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      award_achievement: {
+        Args: { p_achievement_code: string; p_user_id: string }
+        Returns: undefined
+      }
       create_organization: {
         Args: {
           p_contact_name?: string
