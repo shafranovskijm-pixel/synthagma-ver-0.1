@@ -1,15 +1,17 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
@@ -18,14 +20,9 @@ import {
   Save,
   Loader2,
   RotateCcw,
-  Copy,
   Info,
+  ChevronDown,
 } from "lucide-react";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 interface ContractTemplateEditorProps {
   organizationId: string;
@@ -134,7 +131,7 @@ export function ContractTemplateEditor({
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
-  const [activeTab, setActiveTab] = useState<"edit" | "placeholders">("edit");
+  const [showPlaceholders, setShowPlaceholders] = useState(false);
 
   useEffect(() => {
     loadTemplate();
@@ -166,7 +163,6 @@ export function ContractTemplateEditor({
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      // First get current branding
       const { data: orgData } = await supabase
         .from("organizations")
         .select("branding")
@@ -201,23 +197,6 @@ export function ContractTemplateEditor({
     setTemplate(DEFAULT_CONTRACT_TEMPLATE);
   };
 
-  const insertPlaceholder = (placeholder: string) => {
-    const textarea = document.getElementById("contract-template") as HTMLTextAreaElement;
-    if (textarea) {
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
-      const newText = template.substring(0, start) + placeholder + template.substring(end);
-      setTemplate(newText);
-      // Focus and set cursor position after placeholder
-      setTimeout(() => {
-        textarea.focus();
-        textarea.setSelectionRange(start + placeholder.length, start + placeholder.length);
-      }, 0);
-    } else {
-      setTemplate(template + placeholder);
-    }
-  };
-
   const getPreviewText = () => {
     let preview = template;
     PLACEHOLDERS.forEach((p) => {
@@ -238,7 +217,7 @@ export function ContractTemplateEditor({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <FileText className="w-5 h-5 text-primary" />
           <h3 className="font-semibold">Конструктор шаблона договора</h3>
@@ -278,75 +257,50 @@ export function ContractTemplateEditor({
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "edit" | "placeholders")}>
-        <TabsList className="grid w-full grid-cols-2 rounded-xl">
-          <TabsTrigger value="edit" className="rounded-xl">Редактор</TabsTrigger>
-          <TabsTrigger value="placeholders" className="rounded-xl">Переменные</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="edit" className="mt-4">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+      {/* Placeholders Reference */}
+      <Collapsible open={showPlaceholders} onOpenChange={setShowPlaceholders}>
+        <CollapsibleTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-between rounded-xl bg-secondary/30 hover:bg-secondary/50"
+          >
+            <span className="flex items-center gap-2 text-sm">
               <Info className="w-4 h-4" />
-              <span>Используйте переменные в формате {"{{переменная}}"} для автоподстановки данных</span>
-            </div>
-            <Textarea
-              id="contract-template"
-              value={template}
-              onChange={(e) => setTemplate(e.target.value)}
-              className="min-h-[500px] font-mono text-sm rounded-xl"
-              placeholder="Введите текст шаблона договора..."
-            />
-          </div>
-        </TabsContent>
-
-        <TabsContent value="placeholders" className="mt-4">
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Нажмите на переменную, чтобы вставить её в шаблон
-            </p>
-            <div className="grid gap-2">
+              Доступные переменные для автоподстановки
+            </span>
+            <ChevronDown className={`w-4 h-4 transition-transform ${showPlaceholders ? "rotate-180" : ""}`} />
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="mt-2">
+          <div className="bg-secondary/20 rounded-xl p-4 border border-border">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2 text-xs">
               {PLACEHOLDERS.map((p) => (
                 <div
                   key={p.key}
-                  className="flex items-center justify-between p-3 bg-secondary/30 rounded-xl hover:bg-secondary/50 cursor-pointer transition-colors"
-                  onClick={() => {
-                    insertPlaceholder(p.key);
-                    setActiveTab("edit");
-                  }}
+                  className="flex items-start gap-2 p-2 bg-background rounded-lg"
                 >
-                  <div className="flex-1">
-                    <p className="font-medium text-sm">{p.label}</p>
-                    <p className="text-xs text-muted-foreground">Пример: {p.example || "(пусто)"}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <code className="text-xs bg-background px-2 py-1 rounded-lg border">
-                      {p.key}
-                    </code>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigator.clipboard.writeText(p.key);
-                            toast.success("Скопировано");
-                          }}
-                        >
-                          <Copy className="w-4 h-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Копировать</TooltipContent>
-                    </Tooltip>
-                  </div>
+                  <code className="text-primary font-mono bg-primary/10 px-1.5 py-0.5 rounded shrink-0">
+                    {p.key}
+                  </code>
+                  <span className="text-muted-foreground">{p.label}</span>
                 </div>
               ))}
             </div>
           </div>
-        </TabsContent>
-      </Tabs>
+        </CollapsibleContent>
+      </Collapsible>
+
+      {/* Template Editor */}
+      <div className="space-y-2">
+        <Textarea
+          id="contract-template"
+          value={template}
+          onChange={(e) => setTemplate(e.target.value)}
+          className="min-h-[500px] font-mono text-sm rounded-xl"
+          placeholder="Введите текст шаблона договора..."
+        />
+      </div>
 
       {/* Preview Dialog */}
       <Dialog open={showPreview} onOpenChange={setShowPreview}>
