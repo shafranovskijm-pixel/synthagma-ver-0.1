@@ -2455,72 +2455,56 @@ export default function OrganizationDashboard() {
               <Library className="w-5 h-5" />
               Библиотека
             </button>
-
-            {/* Accordion for additional menu items */}
-            <Accordion type="single" collapsible className="w-full">
-              <AccordionItem value="more" className="border-0">
-                <AccordionTrigger className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-muted-foreground hover:bg-secondary hover:no-underline transition-colors [&[data-state=open]]:bg-secondary/50">
-                  <div className="flex items-center gap-3 flex-1">
-                    <BarChart3 className="w-5 h-5" />
-                    <span>Ещё</span>
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent className="pb-0 pt-1">
-                  <div className="space-y-1 pl-2">
-                    {menuSettings.showStats && (
-                      <button
-                        onClick={() => { setActiveTab("stats"); setIsMobileSidebarOpen(false); }}
-                        className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                          activeTab === "stats"
-                            ? "bg-primary/10 text-primary"
-                            : "text-muted-foreground hover:bg-secondary"
-                        }`}
-                      >
-                        <BarChart3 className="w-4 h-4" />
-                        Статистика
-                      </button>
-                    )}
-                    {menuSettings.showLinks && (
-                      <button
-                        onClick={() => { setActiveTab("links"); setIsMobileSidebarOpen(false); }}
-                        className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                          activeTab === "links"
-                            ? "bg-primary/10 text-primary"
-                            : "text-muted-foreground hover:bg-secondary"
-                        }`}
-                      >
-                        <Link className="w-4 h-4" />
-                        Ссылки регистрации
-                      </button>
-                    )}
-                    {menuSettings.showDocuments && (
-                      <button
-                        onClick={() => { setActiveTab("documents"); setIsMobileSidebarOpen(false); }}
-                        className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                          activeTab === "documents"
-                            ? "bg-primary/10 text-primary"
-                            : "text-muted-foreground hover:bg-secondary"
-                        }`}
-                      >
-                        <FileText className="w-4 h-4" />
-                        Документы
-                      </button>
-                    )}
-                    <button
-                      onClick={() => { setActiveTab("settings"); setIsMobileSidebarOpen(false); }}
-                      className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                        activeTab === "settings"
-                          ? "bg-primary/10 text-primary"
-                          : "text-muted-foreground hover:bg-secondary"
-                      }`}
-                    >
-                      <Settings className="w-4 h-4" />
-                      Настройки
-                    </button>
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
+            {menuSettings.showStats && (
+              <button
+                onClick={() => { setActiveTab("stats"); setIsMobileSidebarOpen(false); }}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
+                  activeTab === "stats"
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-secondary"
+                }`}
+              >
+                <BarChart3 className="w-5 h-5" />
+                Статистика
+              </button>
+            )}
+            {menuSettings.showLinks && (
+              <button
+                onClick={() => { setActiveTab("links"); setIsMobileSidebarOpen(false); }}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
+                  activeTab === "links"
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-secondary"
+                }`}
+              >
+                <Link className="w-5 h-5" />
+                Ссылки регистрации
+              </button>
+            )}
+            {menuSettings.showDocuments && (
+              <button
+                onClick={() => { setActiveTab("documents"); setIsMobileSidebarOpen(false); }}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
+                  activeTab === "documents"
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-secondary"
+                }`}
+              >
+                <FileText className="w-5 h-5" />
+                Документы
+              </button>
+            )}
+            <button
+              onClick={() => { setActiveTab("settings"); setIsMobileSidebarOpen(false); }}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
+                activeTab === "settings"
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-secondary"
+              }`}
+            >
+              <Settings className="w-5 h-5" />
+              Настройки
+            </button>
           </div>
         </nav>
 
@@ -3375,172 +3359,206 @@ export default function OrganizationDashboard() {
 
           {/* Settings Tab */}
           {activeTab === "settings" && (
-            <div className="max-w-2xl space-y-6">
-              {/* Theme Settings */}
-              <div className="bg-card rounded-2xl border border-border p-6">
-                <h3 className="font-display font-semibold text-lg mb-4 flex items-center gap-2">
-                  <Palette className="w-5 h-5" />
-                  Тема оформления
-                </h3>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Режим оформления</p>
-                    <p className="text-sm text-muted-foreground">Выберите светлую или тёмную тему</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant={!isDarkMode ? "default" : "outline"}
-                      className="rounded-xl gap-2"
-                      onClick={() => {
-                        setIsDarkMode(false);
-                        document.documentElement.classList.remove('dark');
-                        localStorage.setItem('theme', 'light');
-                      }}
-                    >
-                      <Sun className="w-4 h-4" />
-                      Светлая
-                    </Button>
-                    <Button
-                      variant={isDarkMode ? "default" : "outline"}
-                      className="rounded-xl gap-2"
-                      onClick={() => {
-                        setIsDarkMode(true);
-                        document.documentElement.classList.add('dark');
-                        localStorage.setItem('theme', 'dark');
-                      }}
-                    >
-                      <Moon className="w-4 h-4" />
-                      Тёмная
-                    </Button>
-                  </div>
-                </div>
-              </div>
+            <div className="max-w-2xl">
+              <Accordion type="multiple" className="space-y-4" defaultValue={["theme"]}>
+                {/* Theme Settings */}
+                <AccordionItem value="theme" className="bg-card rounded-2xl border border-border overflow-hidden">
+                  <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-secondary/30">
+                    <div className="flex items-center gap-3">
+                      <Palette className="w-5 h-5" />
+                      <span className="font-display font-semibold text-lg">Тема оформления</span>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="px-6 pb-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium">Режим оформления</p>
+                        <p className="text-sm text-muted-foreground">Выберите светлую или тёмную тему</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant={!isDarkMode ? "default" : "outline"}
+                          className="rounded-xl gap-2"
+                          onClick={() => {
+                            setIsDarkMode(false);
+                            document.documentElement.classList.remove('dark');
+                            localStorage.setItem('theme', 'light');
+                          }}
+                        >
+                          <Sun className="w-4 h-4" />
+                          Светлая
+                        </Button>
+                        <Button
+                          variant={isDarkMode ? "default" : "outline"}
+                          className="rounded-xl gap-2"
+                          onClick={() => {
+                            setIsDarkMode(true);
+                            document.documentElement.classList.add('dark');
+                            localStorage.setItem('theme', 'dark');
+                          }}
+                        >
+                          <Moon className="w-4 h-4" />
+                          Тёмная
+                        </Button>
+                      </div>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
 
-              {/* Menu Items Settings - Right after theme */}
-              <div className="bg-card rounded-2xl border border-border p-6">
-                <h3 className="font-display font-semibold text-lg mb-4 flex items-center gap-2">
-                  <LayoutGrid className="w-5 h-5" />
-                  Разделы меню
-                </h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Включите или отключите дополнительные разделы в боковом меню
-                </p>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between py-3 border-b border-border">
+                {/* Menu Items Settings */}
+                <AccordionItem value="menu" className="bg-card rounded-2xl border border-border overflow-hidden">
+                  <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-secondary/30">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
-                        <BarChart3 className="w-5 h-5 text-accent" />
-                      </div>
-                      <div>
-                        <p className="font-medium">Статистика</p>
-                        <p className="text-sm text-muted-foreground">Аналитика и отчёты по обучению</p>
-                      </div>
+                      <LayoutGrid className="w-5 h-5" />
+                      <span className="font-display font-semibold text-lg">Разделы меню</span>
                     </div>
-                    <button
-                      onClick={() => setMenuSettings(prev => ({ ...prev, showStats: !prev.showStats }))}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                        menuSettings.showStats ? 'bg-primary' : 'bg-muted'
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          menuSettings.showStats ? 'translate-x-6' : 'translate-x-1'
-                        }`}
-                      />
-                    </button>
-                  </div>
-                  <div className="flex items-center justify-between py-3 border-b border-border">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-sigma-green/10 flex items-center justify-center">
-                        <Link className="w-5 h-5 text-sigma-green" />
-                      </div>
-                      <div>
-                        <p className="font-medium">Ссылки регистрации</p>
-                        <p className="text-sm text-muted-foreground">Ссылки для самостоятельной регистрации учеников</p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => setMenuSettings(prev => ({ ...prev, showLinks: !prev.showLinks }))}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                        menuSettings.showLinks ? 'bg-primary' : 'bg-muted'
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          menuSettings.showLinks ? 'translate-x-6' : 'translate-x-1'
-                        }`}
-                      />
-                    </button>
-                  </div>
-                  <div className="flex items-center justify-between py-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-sigma-orange/10 flex items-center justify-center">
-                        <FileText className="w-5 h-5 text-sigma-orange" />
-                      </div>
-                      <div>
-                        <p className="font-medium">Документы</p>
-                        <p className="text-sm text-muted-foreground">Документооборот организации</p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => setMenuSettings(prev => ({ ...prev, showDocuments: !prev.showDocuments }))}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                        menuSettings.showDocuments ? 'bg-primary' : 'bg-muted'
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          menuSettings.showDocuments ? 'translate-x-6' : 'translate-x-1'
-                        }`}
-                      />
-                    </button>
-                  </div>
-                </div>
-                <div className="mt-6 pt-4 border-t border-border">
-                  <Button
-                    className="btn-gradient rounded-xl gap-2"
-                    onClick={() => {
-                      try {
-                        localStorage.setItem('orgMenuSettings', JSON.stringify(menuSettings));
-                        toast.success('Настройки меню сохранены');
-                      } catch (error) {
-                        console.error('Error saving menu settings:', error);
-                        toast.error('Ошибка сохранения настроек');
-                      }
-                    }}
-                  >
-                    <Save className="w-4 h-4" />
-                    Сохранить настройки меню
-                  </Button>
-                </div>
-              </div>
-
-              {/* Branding Settings */}
-              <div className="bg-card rounded-2xl border border-border p-6">
-                <h3 className="font-display font-semibold text-lg mb-4 flex items-center gap-2">
-                  <Image className="w-5 h-5" />
-                  Брендирование
-                </h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Настройте внешний вид кабинета с вашим фирменным стилем
-                </p>
-                
-                <div className="space-y-6">
-                  {/* Cover Image */}
-                  <div>
-                    <Label className="text-sm font-medium mb-2 block">Обложка организации</Label>
-                    <p className="text-sm text-muted-foreground mb-3">
-                      Изображение отображается в шапке личного кабинета (рекомендуется 1920×400 px)
+                  </AccordionTrigger>
+                  <AccordionContent className="px-6 pb-6">
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Включите или отключите дополнительные разделы в боковом меню
                     </p>
-                    <div className="relative">
-                      {brandingSettings.coverUrl ? (
-                        <div className="relative rounded-xl overflow-hidden border border-border">
-                          <img 
-                            src={brandingSettings.coverUrl} 
-                            alt="Обложка" 
-                            className="w-full h-32 object-cover"
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between py-3 border-b border-border">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
+                            <BarChart3 className="w-5 h-5 text-accent" />
+                          </div>
+                          <div>
+                            <p className="font-medium">Статистика</p>
+                            <p className="text-sm text-muted-foreground">Аналитика и отчёты по обучению</p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setMenuSettings(prev => ({ ...prev, showStats: !prev.showStats }))}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                            menuSettings.showStats ? 'bg-primary' : 'bg-muted'
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                              menuSettings.showStats ? 'translate-x-6' : 'translate-x-1'
+                            }`}
                           />
-                          <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                        </button>
+                      </div>
+                      <div className="flex items-center justify-between py-3 border-b border-border">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-sigma-green/10 flex items-center justify-center">
+                            <Link className="w-5 h-5 text-sigma-green" />
+                          </div>
+                          <div>
+                            <p className="font-medium">Ссылки регистрации</p>
+                            <p className="text-sm text-muted-foreground">Ссылки для самостоятельной регистрации учеников</p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setMenuSettings(prev => ({ ...prev, showLinks: !prev.showLinks }))}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                            menuSettings.showLinks ? 'bg-primary' : 'bg-muted'
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                              menuSettings.showLinks ? 'translate-x-6' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
+                      </div>
+                      <div className="flex items-center justify-between py-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-sigma-orange/10 flex items-center justify-center">
+                            <FileText className="w-5 h-5 text-sigma-orange" />
+                          </div>
+                          <div>
+                            <p className="font-medium">Документы</p>
+                            <p className="text-sm text-muted-foreground">Документооборот организации</p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setMenuSettings(prev => ({ ...prev, showDocuments: !prev.showDocuments }))}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                            menuSettings.showDocuments ? 'bg-primary' : 'bg-muted'
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                              menuSettings.showDocuments ? 'translate-x-6' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="mt-6 pt-4 border-t border-border">
+                      <Button
+                        className="btn-gradient rounded-xl gap-2"
+                        onClick={() => {
+                          try {
+                            localStorage.setItem('orgMenuSettings', JSON.stringify(menuSettings));
+                            toast.success('Настройки меню сохранены');
+                          } catch (error) {
+                            console.error('Error saving menu settings:', error);
+                            toast.error('Ошибка сохранения настроек');
+                          }
+                        }}
+                      >
+                        <Save className="w-4 h-4" />
+                        Сохранить настройки меню
+                      </Button>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+
+                {/* Branding Settings */}
+                <AccordionItem value="branding" className="bg-card rounded-2xl border border-border overflow-hidden">
+                  <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-secondary/30">
+                    <div className="flex items-center gap-3">
+                      <Image className="w-5 h-5" />
+                      <span className="font-display font-semibold text-lg">Брендирование</span>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="px-6 pb-6">
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Настройте внешний вид кабинета с вашим фирменным стилем
+                    </p>
+                    
+                    <div className="space-y-6">
+                      {/* Cover Image */}
+                      <div>
+                        <Label className="text-sm font-medium mb-2 block">Обложка организации</Label>
+                        <p className="text-sm text-muted-foreground mb-3">
+                          Изображение отображается в шапке личного кабинета (рекомендуется 1920×400 px)
+                        </p>
+                        <div className="relative">
+                          {brandingSettings.coverUrl ? (
+                            <div className="relative rounded-xl overflow-hidden border border-border">
+                              <img 
+                                src={brandingSettings.coverUrl} 
+                                alt="Обложка" 
+                                className="w-full h-32 object-cover"
+                              />
+                              <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                <label className="cursor-pointer">
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={handleCoverUpload}
+                                  />
+                                  <Button size="sm" variant="secondary" className="rounded-lg pointer-events-none">
+                                    Заменить
+                                  </Button>
+                                </label>
+                                <Button 
+                                  size="sm" 
+                                  variant="destructive" 
+                                  className="rounded-lg"
+                                  onClick={() => setBrandingSettings(prev => ({ ...prev, coverUrl: '' }))}
+                                >
+                                  Удалить
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
                             <label className="cursor-pointer">
                               <input
                                 type="file"
@@ -3548,294 +3566,349 @@ export default function OrganizationDashboard() {
                                 className="hidden"
                                 onChange={handleCoverUpload}
                               />
-                              <Button size="sm" variant="secondary" className="rounded-lg pointer-events-none">
-                                Заменить
-                              </Button>
+                              <div className="border-2 border-dashed border-border rounded-xl h-32 flex flex-col items-center justify-center gap-2 hover:border-primary/50 hover:bg-primary/5 transition-colors">
+                                {isUploadingCover ? (
+                                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                                ) : (
+                                  <>
+                                    <Upload className="w-6 h-6 text-muted-foreground" />
+                                    <span className="text-sm text-muted-foreground">Загрузить обложку</span>
+                                  </>
+                                )}
+                              </div>
                             </label>
-                            <Button 
-                              size="sm" 
-                              variant="destructive" 
-                              className="rounded-lg"
-                              onClick={() => setBrandingSettings(prev => ({ ...prev, coverUrl: '' }))}
-                            >
-                              Удалить
-                            </Button>
-                          </div>
+                          )}
                         </div>
-                      ) : (
-                        <label className="cursor-pointer">
-                          <input
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={handleCoverUpload}
-                          />
-                          <div className="border-2 border-dashed border-border rounded-xl h-32 flex flex-col items-center justify-center gap-2 hover:border-primary/50 hover:bg-primary/5 transition-colors">
-                            {isUploadingCover ? (
-                              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-                            ) : (
-                              <>
-                                <Upload className="w-6 h-6 text-muted-foreground" />
-                                <span className="text-sm text-muted-foreground">Загрузить обложку</span>
-                              </>
-                            )}
-                          </div>
-                        </label>
-                      )}
-                    </div>
-                  </div>
+                      </div>
 
-                  {/* Logo */}
-                  <div>
-                    <Label className="text-sm font-medium mb-2 block">Логотип организации</Label>
-                    <p className="text-sm text-muted-foreground mb-3">
-                      Отображается вместо стандартного логотипа (рекомендуется квадрат или прозрачный PNG)
-                    </p>
-                    <div className="flex items-start gap-4">
-                      {brandingSettings.logoUrl ? (
-                        <div className="relative">
-                          <img 
-                            src={brandingSettings.logoUrl} 
-                            alt="Логотип" 
-                            className="w-20 h-20 object-contain rounded-xl border border-border bg-background p-2"
-                          />
-                          <button
-                            onClick={() => setBrandingSettings(prev => ({ ...prev, logoUrl: '' }))}
-                            className="absolute -top-2 -right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center hover:bg-destructive/80"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
+                      {/* Logo */}
+                      <div>
+                        <Label className="text-sm font-medium mb-2 block">Логотип организации</Label>
+                        <p className="text-sm text-muted-foreground mb-3">
+                          Отображается вместо стандартного логотипа (рекомендуется квадрат или прозрачный PNG)
+                        </p>
+                        <div className="flex items-start gap-4">
+                          {brandingSettings.logoUrl ? (
+                            <div className="relative">
+                              <img 
+                                src={brandingSettings.logoUrl} 
+                                alt="Логотип" 
+                                className="w-20 h-20 object-contain rounded-xl border border-border bg-background p-2"
+                              />
+                              <button
+                                onClick={() => setBrandingSettings(prev => ({ ...prev, logoUrl: '' }))}
+                                className="absolute -top-2 -right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center hover:bg-destructive/80"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </div>
+                          ) : (
+                            <label className="cursor-pointer">
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={handleLogoUpload}
+                              />
+                              <div className="w-20 h-20 border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center gap-1 hover:border-primary/50 hover:bg-primary/5 transition-colors">
+                                {isUploadingLogo ? (
+                                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                                ) : (
+                                  <>
+                                    <Upload className="w-5 h-5 text-muted-foreground" />
+                                    <span className="text-xs text-muted-foreground">Логотип</span>
+                                  </>
+                                )}
+                              </div>
+                            </label>
+                          )}
+                          <div className="flex-1 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="font-medium text-sm">Показывать название</p>
+                                <p className="text-xs text-muted-foreground">Отображать название организации рядом с логотипом</p>
+                              </div>
+                              <button
+                                onClick={() => setBrandingSettings(prev => ({ ...prev, showOrgName: !prev.showOrgName }))}
+                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                                  brandingSettings.showOrgName ? 'bg-primary' : 'bg-muted'
+                                }`}
+                              >
+                                <span
+                                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                    brandingSettings.showOrgName ? 'translate-x-6' : 'translate-x-1'
+                                  }`}
+                                />
+                              </button>
+                            </div>
+                          </div>
                         </div>
-                      ) : (
-                        <label className="cursor-pointer">
-                          <input
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={handleLogoUpload}
-                          />
-                          <div className="w-20 h-20 border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center gap-1 hover:border-primary/50 hover:bg-primary/5 transition-colors">
-                            {isUploadingLogo ? (
-                              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-                            ) : (
-                              <>
-                                <Upload className="w-5 h-5 text-muted-foreground" />
-                                <span className="text-xs text-muted-foreground">Логотип</span>
-                              </>
-                            )}
-                          </div>
-                        </label>
-                      )}
-                      <div className="flex-1 space-y-3">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-medium text-sm">Показывать название</p>
-                            <p className="text-xs text-muted-foreground">Отображать название организации рядом с логотипом</p>
-                          </div>
-                          <button
-                            onClick={() => setBrandingSettings(prev => ({ ...prev, showOrgName: !prev.showOrgName }))}
-                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                              brandingSettings.showOrgName ? 'bg-primary' : 'bg-muted'
-                            }`}
-                          >
-                            <span
-                              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                                brandingSettings.showOrgName ? 'translate-x-6' : 'translate-x-1'
-                              }`}
+                      </div>
+
+                      {/* Colors */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-sm font-medium mb-2 block">Основной цвет</Label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="color"
+                              value={brandingSettings.primaryColor}
+                              onChange={(e) => setBrandingSettings(prev => ({ ...prev, primaryColor: e.target.value }))}
+                              className="w-10 h-10 rounded-lg cursor-pointer border border-border"
                             />
-                          </button>
+                            <Input
+                              value={brandingSettings.primaryColor}
+                              onChange={(e) => setBrandingSettings(prev => ({ ...prev, primaryColor: e.target.value }))}
+                              className="rounded-xl flex-1"
+                              placeholder="#6366f1"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium mb-2 block">Дополнительный цвет</Label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="color"
+                              value={brandingSettings.secondaryColor}
+                              onChange={(e) => setBrandingSettings(prev => ({ ...prev, secondaryColor: e.target.value }))}
+                              className="w-10 h-10 rounded-lg cursor-pointer border border-border"
+                            />
+                            <Input
+                              value={brandingSettings.secondaryColor}
+                              onChange={(e) => setBrandingSettings(prev => ({ ...prev, secondaryColor: e.target.value }))}
+                              className="rounded-xl flex-1"
+                              placeholder="#8b5cf6"
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Colors */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label className="text-sm font-medium mb-2 block">Основной цвет</Label>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="color"
-                          value={brandingSettings.primaryColor}
-                          onChange={(e) => setBrandingSettings(prev => ({ ...prev, primaryColor: e.target.value }))}
-                          className="w-10 h-10 rounded-lg cursor-pointer border border-border"
-                        />
-                        <Input
-                          value={brandingSettings.primaryColor}
-                          onChange={(e) => setBrandingSettings(prev => ({ ...prev, primaryColor: e.target.value }))}
-                          className="rounded-xl flex-1"
-                          placeholder="#6366f1"
-                        />
-                      </div>
+                    <div className="mt-6 pt-4 border-t border-border">
+                      <Button
+                        className="btn-gradient rounded-xl gap-2"
+                        onClick={handleSaveBranding}
+                        disabled={isSavingBranding}
+                      >
+                        {isSavingBranding ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Сохранение...
+                          </>
+                        ) : (
+                          <>
+                            <Save className="w-4 h-4" />
+                            Сохранить брендирование
+                          </>
+                        )}
+                      </Button>
                     </div>
-                    <div>
-                      <Label className="text-sm font-medium mb-2 block">Дополнительный цвет</Label>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="color"
-                          value={brandingSettings.secondaryColor}
-                          onChange={(e) => setBrandingSettings(prev => ({ ...prev, secondaryColor: e.target.value }))}
-                          className="w-10 h-10 rounded-lg cursor-pointer border border-border"
-                        />
-                        <Input
-                          value={brandingSettings.secondaryColor}
-                          onChange={(e) => setBrandingSettings(prev => ({ ...prev, secondaryColor: e.target.value }))}
-                          className="rounded-xl flex-1"
-                          placeholder="#8b5cf6"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                  </AccordionContent>
+                </AccordionItem>
 
-                <div className="mt-6 pt-4 border-t border-border">
-                  <Button
-                    className="btn-gradient rounded-xl gap-2"
-                    onClick={handleSaveBranding}
-                    disabled={isSavingBranding}
-                  >
-                    {isSavingBranding ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Сохранение...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="w-4 h-4" />
-                        Сохранить брендирование
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
+                {/* Document Auto-fill Settings */}
+                <AccordionItem value="documents" className="bg-card rounded-2xl border border-border overflow-hidden">
+                  <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-secondary/30">
+                    <div className="flex items-center gap-3">
+                      <FileCheck className="w-5 h-5" />
+                      <span className="font-display font-semibold text-lg">Автозаполнение документов</span>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="px-6 pb-6">
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Настройки для автоматического заполнения договоров, счетов и актов
+                    </p>
+                    
+                    <div className="space-y-4">
+                      <div className="bg-secondary/30 rounded-xl p-4">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                            <FileText className="w-5 h-5 text-primary" />
+                          </div>
+                          <div>
+                            <p className="font-medium">Договор на обучение</p>
+                            <p className="text-sm text-muted-foreground">Шаблон договора с автоподстановкой реквизитов</p>
+                          </div>
+                        </div>
+                        <Button
+                          variant="outline"
+                          className="rounded-xl gap-2 w-full"
+                          onClick={() => {
+                            setEditOrgName(organizationName);
+                            setShowOrgRequisitesDialog(true);
+                          }}
+                        >
+                          <Building2 className="w-4 h-4" />
+                          Заполнить реквизиты организации
+                        </Button>
+                      </div>
 
-              <div className="bg-card rounded-2xl border border-border p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-display font-semibold text-lg flex items-center gap-2">
-                    <Settings className="w-5 h-5" />
-                    Настройки личного кабинета ученика
-                  </h3>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="rounded-xl gap-2"
-                    onClick={handlePreviewStudentDashboard}
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                    Просмотр кабинета
-                  </Button>
-                </div>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Настройте, какие разделы будут отображаться в личном кабинете учеников
-                </p>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between py-3 border-b border-border">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                        <Library className="w-5 h-5 text-primary" />
+                      <div className="bg-secondary/30 rounded-xl p-4">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="w-10 h-10 rounded-xl bg-sigma-green/10 flex items-center justify-center">
+                            <Receipt className="w-5 h-5 text-sigma-green" />
+                          </div>
+                          <div>
+                            <p className="font-medium">Счёт на оплату</p>
+                            <p className="text-sm text-muted-foreground">Автоматическое формирование счетов</p>
+                          </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Для формирования счетов необходимо заполнить банковские реквизиты в разделе «Реквизиты организации»
+                        </p>
                       </div>
-                      <div>
-                        <p className="font-medium">Библиотека</p>
-                        <p className="text-sm text-muted-foreground">Раздел с дополнительными материалами</p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => setStudentDashboardSettings(prev => ({ ...prev, showLibrary: !prev.showLibrary }))}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                        studentDashboardSettings.showLibrary ? 'bg-primary' : 'bg-muted'
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          studentDashboardSettings.showLibrary ? 'translate-x-6' : 'translate-x-1'
-                        }`}
-                      />
-                    </button>
-                  </div>
-                  <div className="flex items-center justify-between py-3 border-b border-border">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-sigma-orange/10 flex items-center justify-center">
-                        <Trophy className="w-5 h-5 text-sigma-orange" />
-                      </div>
-                      <div>
-                        <p className="font-medium">Достижения</p>
-                        <p className="text-sm text-muted-foreground">Раздел с наградами и достижениями</p>
+
+                      <div className="bg-secondary/30 rounded-xl p-4">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="w-10 h-10 rounded-xl bg-sigma-orange/10 flex items-center justify-center">
+                            <FileCheck className="w-5 h-5 text-sigma-orange" />
+                          </div>
+                          <div>
+                            <p className="font-medium">Акт выполненных работ</p>
+                            <p className="text-sm text-muted-foreground">Автоматическое формирование актов</p>
+                          </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Акты формируются на основе реквизитов организации и данных об обучении
+                        </p>
                       </div>
                     </div>
-                    <button
-                      onClick={() => setStudentDashboardSettings(prev => ({ ...prev, showAchievements: !prev.showAchievements }))}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                        studentDashboardSettings.showAchievements ? 'bg-primary' : 'bg-muted'
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          studentDashboardSettings.showAchievements ? 'translate-x-6' : 'translate-x-1'
-                        }`}
-                      />
-                    </button>
-                  </div>
-                  <div className="flex items-center justify-between py-3">
+                  </AccordionContent>
+                </AccordionItem>
+
+                {/* Student Dashboard Settings */}
+                <AccordionItem value="student-dashboard" className="bg-card rounded-2xl border border-border overflow-hidden">
+                  <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-secondary/30">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-sigma-cyan/10 flex items-center justify-center">
-                        <MessageCircle className="w-5 h-5 text-sigma-cyan" />
+                      <Settings className="w-5 h-5" />
+                      <span className="font-display font-semibold text-lg">Кабинет ученика</span>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="px-6 pb-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <p className="text-sm text-muted-foreground">
+                        Настройте, какие разделы будут отображаться в личном кабинете учеников
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="rounded-xl gap-2"
+                        onClick={handlePreviewStudentDashboard}
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                        Просмотр
+                      </Button>
+                    </div>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between py-3 border-b border-border">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                            <Library className="w-5 h-5 text-primary" />
+                          </div>
+                          <div>
+                            <p className="font-medium">Библиотека</p>
+                            <p className="text-sm text-muted-foreground">Раздел с дополнительными материалами</p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setStudentDashboardSettings(prev => ({ ...prev, showLibrary: !prev.showLibrary }))}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                            studentDashboardSettings.showLibrary ? 'bg-primary' : 'bg-muted'
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                              studentDashboardSettings.showLibrary ? 'translate-x-6' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
                       </div>
-                      <div>
-                        <p className="font-medium">ИИ-помощник</p>
-                        <p className="text-sm text-muted-foreground">Чат с ИИ для помощи в обучении</p>
+                      <div className="flex items-center justify-between py-3 border-b border-border">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-sigma-orange/10 flex items-center justify-center">
+                            <Trophy className="w-5 h-5 text-sigma-orange" />
+                          </div>
+                          <div>
+                            <p className="font-medium">Достижения</p>
+                            <p className="text-sm text-muted-foreground">Раздел с наградами и достижениями</p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setStudentDashboardSettings(prev => ({ ...prev, showAchievements: !prev.showAchievements }))}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                            studentDashboardSettings.showAchievements ? 'bg-primary' : 'bg-muted'
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                              studentDashboardSettings.showAchievements ? 'translate-x-6' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
+                      </div>
+                      <div className="flex items-center justify-between py-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-sigma-cyan/10 flex items-center justify-center">
+                            <MessageCircle className="w-5 h-5 text-sigma-cyan" />
+                          </div>
+                          <div>
+                            <p className="font-medium">ИИ-помощник</p>
+                            <p className="text-sm text-muted-foreground">Чат с ИИ для помощи в обучении</p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setStudentDashboardSettings(prev => ({ ...prev, showAiChat: !prev.showAiChat }))}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                            studentDashboardSettings.showAiChat ? 'bg-primary' : 'bg-muted'
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                              studentDashboardSettings.showAiChat ? 'translate-x-6' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
                       </div>
                     </div>
-                    <button
-                      onClick={() => setStudentDashboardSettings(prev => ({ ...prev, showAiChat: !prev.showAiChat }))}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                        studentDashboardSettings.showAiChat ? 'bg-primary' : 'bg-muted'
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          studentDashboardSettings.showAiChat ? 'translate-x-6' : 'translate-x-1'
-                        }`}
-                      />
-                    </button>
-                  </div>
-                </div>
-                <div className="mt-6 pt-4 border-t border-border">
-                  <Button
-                    className="btn-gradient rounded-xl gap-2"
-                    onClick={async () => {
-                      if (!organizationId) return;
-                      setIsSavingSettings(true);
-                      try {
-                        const { error } = await supabase
-                          .from('organizations')
-                          .update({ student_dashboard_settings: studentDashboardSettings })
-                          .eq('id', organizationId);
-                        
-                        if (error) throw error;
-                        toast.success('Настройки сохранены');
-                      } catch (error) {
-                        console.error('Error saving settings:', error);
-                        toast.error('Ошибка сохранения настроек');
-                      } finally {
-                        setIsSavingSettings(false);
-                      }
-                    }}
-                    disabled={isSavingSettings}
-                  >
-                    {isSavingSettings ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Сохранение...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="w-4 h-4" />
-                        Сохранить настройки
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
+                    <div className="mt-6 pt-4 border-t border-border">
+                      <Button
+                        className="btn-gradient rounded-xl gap-2"
+                        onClick={async () => {
+                          if (!organizationId) return;
+                          setIsSavingSettings(true);
+                          try {
+                            const { error } = await supabase
+                              .from('organizations')
+                              .update({ student_dashboard_settings: studentDashboardSettings })
+                              .eq('id', organizationId);
+                            
+                            if (error) throw error;
+                            toast.success('Настройки сохранены');
+                          } catch (error) {
+                            console.error('Error saving settings:', error);
+                            toast.error('Ошибка сохранения настроек');
+                          } finally {
+                            setIsSavingSettings(false);
+                          }
+                        }}
+                        disabled={isSavingSettings}
+                      >
+                        {isSavingSettings ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Сохранение...
+                          </>
+                        ) : (
+                          <>
+                            <Save className="w-4 h-4" />
+                            Сохранить настройки
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             </div>
           )}
         </div>
