@@ -253,14 +253,69 @@ export function ContractTemplateEditor({
       }
 
       if (text.trim()) {
-        setTemplate(text.trim());
-        toast.success("Текст документа загружен. Нажмите «Добавить переменные» для автоматической разметки.");
+        // Automatically process with AI to add variables
+        toast.info("Загружаем и обрабатываем документ...");
+        
+        const { data, error } = await supabase.functions.invoke("process-contract-template", {
+          body: { text: text.trim(), placeholders: PLACEHOLDERS },
+        });
+
+        if (error) throw error;
+
+        if (data?.processedText) {
+          setTemplate(data.processedText);
+          toast.success("Документ загружен и переменные добавлены автоматически");
+        } else {
+          // Fallback to just loading text if AI fails
+          setTemplate(text.trim());
+          toast.success("Текст загружен. Нажмите «Добавить переменные» для разметки.");
+        }
       } else {
         toast.error("Не удалось извлечь текст из документа");
       }
     } catch (error) {
       console.error("Error processing file:", error);
-      toast.error("Ошибка обработки файла");
+      // Fallback: use regex patterns
+      const file2 = e.target.files?.[0];
+      if (file2) {
+        try {
+          let fallbackText = "";
+          if (fileName.endsWith(".pdf")) {
+            fallbackText = await extractTextFromPDF(file2);
+          } else {
+            fallbackText = await extractTextFromDOCX(file2);
+          }
+          
+          if (fallbackText.trim()) {
+            // Apply regex patterns as fallback
+            let processedText = fallbackText.trim();
+            const patterns = [
+              { regex: /ИНН:\s*(\d{10,12})/gi, replacement: "ИНН: {{org_inn}}" },
+              { regex: /КПП:\s*(\d{9})/gi, replacement: "КПП: {{org_kpp}}" },
+              { regex: /ОГРН:\s*(\d{13,15})/gi, replacement: "ОГРН: {{org_ogrn}}" },
+              { regex: /БИК:\s*(\d{9})/gi, replacement: "БИК: {{org_bank_bik}}" },
+              { regex: /Р\/с:\s*(\d{20})/gi, replacement: "Р/с: {{org_bank_account}}" },
+              { regex: /К\/с:\s*(\d{20})/gi, replacement: "К/с: {{org_bank_corr_account}}" },
+              { regex: /№\s*([\d\-\/]+)\s+от/gi, replacement: "№ {{contract_number}} от" },
+              { regex: /от\s*«?(\d{1,2})»?\s*([а-яё]+)\s*(\d{4})\s*г?\.?/gi, replacement: "от {{contract_date}}" },
+              { regex: /(\d+[\s,]*)+\s*руб/gi, replacement: "{{price}} руб" },
+              { regex: /Количество обучающихся:\s*\d+/gi, replacement: "Количество обучающихся: {{students_count}}" },
+              { regex: /Количество слушателей:\s*\d+/gi, replacement: "Количество слушателей: {{students_count}}" },
+            ];
+
+            patterns.forEach(({ regex, replacement }) => {
+              processedText = processedText.replace(regex, replacement);
+            });
+
+            setTemplate(processedText);
+            toast.success("Документ загружен с базовой разметкой переменных");
+          }
+        } catch (e2) {
+          toast.error("Ошибка обработки файла");
+        }
+      } else {
+        toast.error("Ошибка обработки файла");
+      }
     } finally {
       setIsProcessingFile(false);
       if (fileInputRef.current) {
