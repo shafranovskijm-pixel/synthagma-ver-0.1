@@ -234,20 +234,34 @@ export function StudentDetailCard({
     }
   };
 
-  const handlePreviewDoc = (doc: IdentityDocumentRecord | DocumentRecord) => {
+  const handlePreviewDoc = async (doc: IdentityDocumentRecord | DocumentRecord) => {
     if (!doc.file_url) return;
     const ext = doc.file_url.split('.').pop()?.toLowerCase() || '';
     const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext);
     
     if (isImage) {
-      setPreviewDoc({
-        url: doc.file_url,
-        name: doc.name,
-        type: 'image'
-      });
+      try {
+        // Fetch image as blob to bypass ad blockers
+        const response = await fetch(doc.file_url);
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        setPreviewDoc({
+          url: blobUrl,
+          name: doc.name,
+          type: 'image'
+        });
+      } catch (error) {
+        console.error("Preview error:", error);
+        // Fallback: try direct URL
+        setPreviewDoc({
+          url: doc.file_url,
+          name: doc.name,
+          type: 'image'
+        });
+      }
     } else {
-      // For PDF and other files, open in new tab (avoids Chrome blocking)
-      window.open(doc.file_url, '_blank');
+      // For PDF and other files, download instead of opening in new tab
+      handleDownloadDoc(doc.file_url, doc.name);
     }
   };
 
@@ -969,7 +983,12 @@ export function StudentDetailCard({
 
       {/* Preview Modal */}
       {previewDoc && (
-        <Dialog open={!!previewDoc} onOpenChange={() => setPreviewDoc(null)}>
+        <Dialog open={!!previewDoc} onOpenChange={(open) => {
+          if (!open && previewDoc?.url.startsWith('blob:')) {
+            URL.revokeObjectURL(previewDoc.url);
+          }
+          setPreviewDoc(null);
+        }}>
           <DialogContent className="max-w-4xl max-h-[90vh] p-0 overflow-hidden">
             <DialogHeader className="p-4 border-b border-border">
               <DialogTitle className="flex items-center justify-between">
