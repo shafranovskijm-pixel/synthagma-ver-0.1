@@ -472,6 +472,27 @@ export function FRDOManager({ organizationId }: FRDOManagerProps) {
     empty: students.filter(s => getFrdoStatus(s.user_id).status === "empty").length,
   };
 
+  // Missing fields statistics
+  const missingFieldsStats = (() => {
+    const fieldCounts: Record<string, number> = {};
+    for (const field of requiredFields) {
+      fieldCounts[field.label] = 0;
+    }
+    
+    for (const student of students) {
+      const { missingFields } = getFrdoStatus(student.user_id);
+      for (const field of missingFields) {
+        if (fieldCounts[field] !== undefined) {
+          fieldCounts[field]++;
+        }
+      }
+    }
+    
+    return Object.entries(fieldCounts)
+      .filter(([_, count]) => count > 0)
+      .sort((a, b) => b[1] - a[1]);
+  })();
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -537,6 +558,32 @@ export function FRDOManager({ organizationId }: FRDOManagerProps) {
           </div>
         </div>
       </div>
+
+      {/* Missing Data Widget */}
+      {missingFieldsStats.length > 0 && (
+        <div className="bg-card rounded-2xl border border-border p-6">
+          <h3 className="font-semibold mb-4 flex items-center gap-2">
+            <AlertCircle className="w-5 h-5 text-amber-500" />
+            Каких данных не хватает
+          </h3>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+            {missingFieldsStats.map(([field, count]) => (
+              <div
+                key={field}
+                className="flex items-center justify-between p-3 rounded-xl bg-amber-500/5 border border-amber-500/20"
+              >
+                <span className="text-sm font-medium">{field}</span>
+                <span className="text-sm font-bold text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-lg">
+                  {count}
+                </span>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground mt-3">
+            Количество учеников, у которых отсутствует данное поле
+          </p>
+        </div>
+      )}
 
       {/* Filters and Actions */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
