@@ -2380,7 +2380,7 @@ export default function OrganizationDashboard() {
                 <Menu className="w-6 h-6" />
               </button>
               <div>
-                {activeTab !== "organizations" && (
+                {activeTab !== "organizations" && activeTab !== "frdo" && (
                   <h1 className="font-display text-xl lg:text-2xl font-bold">
                     {activeTab === "courses" && "Управление курсами"}
                     {activeTab === "students" && "Все ученики"}
@@ -2390,10 +2390,9 @@ export default function OrganizationDashboard() {
                     {activeTab === "documents" && "Документооборот"}
                     {activeTab === "services" && "Услуги"}
                     {activeTab === "settings" && "Настройки"}
-                    {activeTab === "frdo" && "ФИС ФРДО"}
                   </h1>
                 )}
-                {activeTab !== "organizations" && (
+                {activeTab !== "organizations" && activeTab !== "frdo" && (
                   <p className="text-muted-foreground text-sm lg:text-base">{organizationName}</p>
                 )}
               </div>
@@ -2456,8 +2455,8 @@ export default function OrganizationDashboard() {
         </header>
 
         <div className="p-8">
-          {/* Stats cards - hidden for organizations, services and settings tabs */}
-          {activeTab !== "organizations" && activeTab !== "services" && activeTab !== "settings" && activeTab !== "students" && (
+          {/* Stats cards - hidden for organizations, services, settings, students, and frdo tabs */}
+          {activeTab !== "organizations" && activeTab !== "services" && activeTab !== "settings" && activeTab !== "students" && activeTab !== "frdo" && (
             <div className="grid grid-cols-4 gap-6 mb-8">
               <div className="bg-card rounded-2xl p-6 border border-border">
                 <div className="flex items-center gap-4">
