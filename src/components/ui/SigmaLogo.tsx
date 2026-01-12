@@ -29,7 +29,7 @@ export function SigmaLogo({
 }: SigmaLogoProps) {
   const iconColors = {
     default: "from-primary via-accent to-sigma-orange",
-    white: "from-white/90 to-white",
+    white: "from-white via-white/90 to-white/80",
     gradient: "from-primary via-accent to-sigma-orange",
   };
 
@@ -41,7 +41,7 @@ export function SigmaLogo({
 
   const textColors = {
     default: "text-foreground",
-    white: "text-white",
+    white: "text-white/90",
     gradient: "gradient-text",
   };
 
