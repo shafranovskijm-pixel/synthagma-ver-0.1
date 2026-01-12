@@ -5601,6 +5601,8 @@ export default function OrganizationDashboard() {
             bank_bik: requisites.bank_bik,
             bank_account: requisites.bank_account,
             bank_corr_account: requisites.bank_corr_account,
+            stamp_url: stampUrl,
+            signature_url: signatureUrl,
           }}
         />
       )}
