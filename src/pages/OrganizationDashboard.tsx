@@ -2205,8 +2205,8 @@ export default function OrganizationDashboard() {
       )}
       
       {/* Sidebar */}
-      <aside className={`w-64 bg-card border-r border-border flex flex-col ${isAdminView ? 'mt-10' : ''}`}>
-        <div className="p-6 border-b border-border">
+      <aside className={`fixed left-0 w-64 bg-card border-r border-border flex flex-col h-screen ${isAdminView ? 'top-10' : 'top-0'}`}>
+        <div className="p-6 border-b border-border flex-shrink-0">
           <SigmaLogo size="md" />
           <div className="mt-4 p-3 bg-secondary rounded-xl">
             <div className="font-semibold text-sm">{organizationName}</div>
@@ -2216,7 +2216,7 @@ export default function OrganizationDashboard() {
           </div>
         </div>
 
-        <nav className="flex-1 p-4">
+        <nav className="flex-1 p-4 overflow-y-auto">
           <div className="space-y-1">
             <button
               onClick={() => setActiveTab("courses")}
@@ -2326,7 +2326,7 @@ export default function OrganizationDashboard() {
           </div>
         </nav>
 
-        <div className="p-4 border-t border-border">
+        <div className="p-4 border-t border-border flex-shrink-0 bg-card">
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-destructive hover:bg-destructive/10 transition-colors"
@@ -2338,7 +2338,7 @@ export default function OrganizationDashboard() {
       </aside>
 
       {/* Main content */}
-      <main className={`flex-1 overflow-auto ${isAdminView ? 'mt-10' : ''}`}>
+      <main className={`flex-1 overflow-auto ml-64 ${isAdminView ? 'mt-10' : ''}`}>
         {/* Header */}
         <header className="bg-card border-b border-border px-8 py-6">
           <div className="flex items-center justify-between">
