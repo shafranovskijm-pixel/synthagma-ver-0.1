@@ -92,6 +92,7 @@ export default function StudentDashboard() {
   const [showVideoIdentification, setShowVideoIdentification] = useState(false);
   const [showConsentForm, setShowConsentForm] = useState(false);
   const [showDocumentsUpload, setShowDocumentsUpload] = useState(false);
+  const [documentsProgress, setDocumentsProgress] = useState({ completed: 0, total: 3 });
 
   useEffect(() => {
     // Check for preview mode
@@ -217,6 +218,26 @@ export default function StudentDashboard() {
         setCourses(coursesData);
         setTotalTimeSpent(totalTime);
         setTotalCompletedLessons(completedLessonsTotal);
+      }
+
+      // Load identity documents progress
+      if (profileData?.organization_id) {
+        const { data: identityDocs } = await supabase
+          .from("student_identity_documents")
+          .select("type")
+          .eq("user_id", user.id)
+          .eq("organization_id", profileData.organization_id);
+
+        if (identityDocs) {
+          const hasPassport = identityDocs.some(d => d.type === "passport" || d.type === "birth_certificate");
+          const hasSnils = identityDocs.some(d => d.type === "snils");
+          const hasEducation = identityDocs.some(d => d.type === "education_document" || d.type === "diploma" || d.type === "attestat");
+          
+          setDocumentsProgress({
+            completed: [hasPassport, hasSnils, hasEducation].filter(Boolean).length,
+            total: 3
+          });
+        }
       }
     } catch (error) {
       console.error("Error loading data:", error);
@@ -396,6 +417,16 @@ export default function StudentDashboard() {
             >
               <FileText className="w-5 h-5" />
               Мои документы
+              {documentsProgress.completed < documentsProgress.total ? (
+                <span className="ml-auto flex items-center gap-1.5">
+                  <span className="text-xs text-amber-600 font-medium">
+                    {documentsProgress.completed}/{documentsProgress.total}
+                  </span>
+                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                </span>
+              ) : (
+                <CheckCircle2 className="w-4 h-4 ml-auto text-green-500" />
+              )}
             </button>
             <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors">
               <Settings className="w-5 h-5" />
