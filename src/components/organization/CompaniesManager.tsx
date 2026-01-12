@@ -483,6 +483,10 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
         organization_id: organizationId,
         name: newCompanyName.trim(),
         inn: newCompanyInn.trim() || null,
+        kpp: dadataCompanyInfo?.kpp || null,
+        ogrn: dadataCompanyInfo?.ogrn || null,
+        address: dadataCompanyInfo?.address || null,
+        director: dadataCompanyInfo?.management || null,
       });
 
       if (error) throw error;
@@ -548,12 +552,22 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
 
     setIsSaving(true);
     try {
+      const updateData: Record<string, string | null> = {
+        name: editCompanyName.trim(),
+        inn: editCompanyInn.trim() || null,
+      };
+
+      // If we have DaData info, update all fields
+      if (dadataEditCompanyInfo) {
+        updateData.kpp = dadataEditCompanyInfo.kpp;
+        updateData.ogrn = dadataEditCompanyInfo.ogrn;
+        updateData.address = dadataEditCompanyInfo.address;
+        updateData.director = dadataEditCompanyInfo.management;
+      }
+
       const { error } = await supabase
         .from("companies")
-        .update({
-          name: editCompanyName.trim(),
-          inn: editCompanyInn.trim() || null,
-        })
+        .update(updateData)
         .eq("id", editingCompany.id);
 
       if (error) throw error;
@@ -561,6 +575,7 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
       toast.success("Компания обновлена");
       setShowEditDialog(false);
       setEditingCompany(null);
+      setDadataEditCompanyInfo(null);
       fetchCompanies();
     } catch (error) {
       console.error("Error saving company:", error);
