@@ -80,9 +80,9 @@ export function Pricing() {
           {plans.map((plan, index) => (
             <div
               key={plan.name}
-              className={`relative rounded-3xl p-8 animate-slide-up overflow-hidden ${
+            className={`relative rounded-3xl p-8 pt-10 animate-slide-up ${
                 plan.popular
-                  ? "bg-gradient-to-b from-primary/15 via-[hsl(185_100%_45%/0.1)] to-accent/10 border-2 border-primary/40 shadow-xl scale-105"
+                  ? "bg-gradient-to-b from-primary/15 via-[hsl(185_100%_45%/0.1)] to-accent/10 border-2 border-primary/40 shadow-xl scale-105 mt-4"
                   : "bg-card/80 backdrop-blur-sm border border-primary/20 hover:border-accent/40 transition-colors"
               }`}
               style={{ animationDelay: `${index * 100}ms` }}
