@@ -28,6 +28,8 @@ import {
   Users,
   Printer,
   Save,
+  Eye,
+  ArrowLeft,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -87,6 +89,10 @@ export function ContractGenerator({
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Preview mode
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewHtml, setPreviewHtml] = useState("");
 
   // Form state
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>("");
@@ -456,6 +462,101 @@ ${html.replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>
     }
   };
 
+  const handlePreview = () => {
+    if (!selectedCompany || !selectedCourseId || !price) {
+      toast.error("Заполните все обязательные поля");
+      return;
+    }
+    const html = generateContractHTML();
+    setPreviewHtml(html);
+    setShowPreview(true);
+  };
+
+  // Preview mode
+  if (showPreview) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-4xl rounded-2xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="font-display flex items-center gap-2">
+              <Eye className="w-5 h-5" />
+              Предпросмотр договора
+            </DialogTitle>
+            <DialogDescription>
+              Проверьте данные перед сохранением или печатью
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-hidden">
+            <div className="border rounded-lg overflow-hidden bg-white h-[60vh]">
+              <iframe
+                srcDoc={previewHtml}
+                className="w-full h-full border-0"
+                title="Предпросмотр договора"
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-4 border-t border-border">
+            <Button
+              variant="ghost"
+              className="rounded-xl gap-2"
+              onClick={() => setShowPreview(false)}
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Назад
+            </Button>
+            {onSave && (
+              <Button
+                variant="outline"
+                className="rounded-xl flex-1 gap-2"
+                onClick={handleSaveContract}
+                disabled={isSaving}
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Сохранение...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    Сохранить
+                  </>
+                )}
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              className="rounded-xl flex-1 gap-2"
+              onClick={handleDownloadDOC}
+            >
+              <Download className="w-4 h-4" />
+              Скачать DOC
+            </Button>
+            <Button
+              className="btn-gradient rounded-xl flex-1 gap-2"
+              onClick={handleGenerate}
+              disabled={isGenerating}
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Печать...
+                </>
+              ) : (
+                <>
+                  <Printer className="w-4 h-4" />
+                  Печать
+                </>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl rounded-2xl max-h-[90vh] overflow-auto">
@@ -624,6 +725,15 @@ ${html.replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>
 
             {/* Actions */}
             <div className="flex gap-3 pt-4 border-t border-border">
+              <Button
+                variant="outline"
+                className="rounded-xl flex-1 gap-2"
+                onClick={handlePreview}
+                disabled={!selectedCompany || !selectedCourseId || !price}
+              >
+                <Eye className="w-4 h-4" />
+                Предпросмотр
+              </Button>
               {onSave && (
                 <Button
                   variant="outline"
@@ -644,32 +754,6 @@ ${html.replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>
                   )}
                 </Button>
               )}
-              <Button
-                variant="outline"
-                className="rounded-xl flex-1 gap-2"
-                onClick={handleDownloadDOC}
-                disabled={!selectedCompany || !selectedCourseId || !price}
-              >
-                <Download className="w-4 h-4" />
-                Скачать DOC
-              </Button>
-              <Button
-                className="btn-gradient rounded-xl flex-1 gap-2"
-                onClick={handleGenerate}
-                disabled={isGenerating || !selectedCompany || !selectedCourseId || !price}
-              >
-                {isGenerating ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Генерация...
-                  </>
-                ) : (
-                  <>
-                    <Printer className="w-4 h-4" />
-                    Печать
-                  </>
-                )}
-              </Button>
             </div>
           </div>
         )}
