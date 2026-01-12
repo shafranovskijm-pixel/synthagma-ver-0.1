@@ -59,7 +59,8 @@ import {
   ExternalLink,
   ShoppingBag,
   Mail,
-  Key
+  Key,
+  Menu
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
@@ -240,8 +241,8 @@ export default function OrganizationDashboard() {
   const [isCreatingCredentials, setIsCreatingCredentials] = useState(false);
   const [isDeletingStudent, setIsDeletingStudent] = useState(false);
   const [isCreatingBulkCredentials, setIsCreatingBulkCredentials] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
-  // Registration links state
   const [registrationLinks, setRegistrationLinks] = useState<RegistrationLink[]>([]);
   const [isLoadingLinks, setIsLoadingLinks] = useState(false);
   const [showCreateLinkDialog, setShowCreateLinkDialog] = useState(false);
@@ -2204,10 +2205,26 @@ export default function OrganizationDashboard() {
         </div>
       )}
       
+      {/* Mobile Overlay */}
+      {isMobileSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setIsMobileSidebarOpen(false)}
+        />
+      )}
+      
       {/* Sidebar */}
-      <aside className={`fixed left-0 w-64 bg-card border-r border-border flex flex-col h-screen ${isAdminView ? 'top-10' : 'top-0'}`}>
+      <aside className={`fixed left-0 w-64 bg-card border-r border-border flex flex-col h-screen z-50 transition-transform duration-300 ${isAdminView ? 'top-10' : 'top-0'} ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
         <div className="p-6 border-b border-border flex-shrink-0">
-          <SigmaLogo size="md" />
+          <div className="flex items-center justify-between">
+            <SigmaLogo size="md" />
+            <button 
+              onClick={() => setIsMobileSidebarOpen(false)}
+              className="lg:hidden p-2 rounded-lg hover:bg-secondary"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
           <div className="mt-4 p-3 bg-secondary rounded-xl">
             <div className="font-semibold text-sm">{organizationName}</div>
             <div className="text-xs text-muted-foreground">
@@ -2219,7 +2236,7 @@ export default function OrganizationDashboard() {
         <nav className="flex-1 p-4 overflow-y-auto">
           <div className="space-y-1">
             <button
-              onClick={() => setActiveTab("courses")}
+              onClick={() => { setActiveTab("courses"); setIsMobileSidebarOpen(false); }}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
                 activeTab === "courses"
                   ? "bg-primary/10 text-primary"
@@ -2230,7 +2247,7 @@ export default function OrganizationDashboard() {
               Курсы
             </button>
             <button
-              onClick={() => setActiveTab("organizations")}
+              onClick={() => { setActiveTab("organizations"); setIsMobileSidebarOpen(false); }}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
                 activeTab === "organizations"
                   ? "bg-primary/10 text-primary"
@@ -2241,7 +2258,7 @@ export default function OrganizationDashboard() {
               Компании
             </button>
             <button
-              onClick={() => setActiveTab("students")}
+              onClick={() => { setActiveTab("students"); setIsMobileSidebarOpen(false); }}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
                 activeTab === "students"
                   ? "bg-primary/10 text-primary"
@@ -2252,7 +2269,7 @@ export default function OrganizationDashboard() {
               Ученики
             </button>
             <button
-              onClick={() => setActiveTab("library")}
+              onClick={() => { setActiveTab("library"); setIsMobileSidebarOpen(false); }}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
                 activeTab === "library"
                   ? "bg-primary/10 text-primary"
@@ -2264,7 +2281,7 @@ export default function OrganizationDashboard() {
             </button>
             {menuSettings.showStats && (
               <button
-                onClick={() => setActiveTab("stats")}
+                onClick={() => { setActiveTab("stats"); setIsMobileSidebarOpen(false); }}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
                   activeTab === "stats"
                     ? "bg-primary/10 text-primary"
@@ -2277,7 +2294,7 @@ export default function OrganizationDashboard() {
             )}
             {menuSettings.showLinks && (
               <button
-                onClick={() => setActiveTab("links")}
+                onClick={() => { setActiveTab("links"); setIsMobileSidebarOpen(false); }}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
                   activeTab === "links"
                     ? "bg-primary/10 text-primary"
@@ -2290,7 +2307,7 @@ export default function OrganizationDashboard() {
             )}
             {menuSettings.showDocuments && (
               <button
-                onClick={() => setActiveTab("documents")}
+                onClick={() => { setActiveTab("documents"); setIsMobileSidebarOpen(false); }}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
                   activeTab === "documents"
                     ? "bg-primary/10 text-primary"
@@ -2302,7 +2319,7 @@ export default function OrganizationDashboard() {
             </button>
             )}
             <button
-              onClick={() => setActiveTab("services")}
+              onClick={() => { setActiveTab("services"); setIsMobileSidebarOpen(false); }}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
                 activeTab === "services"
                   ? "bg-primary/10 text-primary"
@@ -2313,7 +2330,7 @@ export default function OrganizationDashboard() {
               Услуги
             </button>
             <button
-              onClick={() => setActiveTab("settings")}
+              onClick={() => { setActiveTab("settings"); setIsMobileSidebarOpen(false); }}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
                 activeTab === "settings"
                   ? "bg-primary/10 text-primary"
@@ -2338,25 +2355,33 @@ export default function OrganizationDashboard() {
       </aside>
 
       {/* Main content */}
-      <main className={`flex-1 overflow-auto ml-64 ${isAdminView ? 'mt-10' : ''}`}>
+      <main className={`flex-1 overflow-auto lg:ml-64 ${isAdminView ? 'mt-10' : ''}`}>
         {/* Header */}
-        <header className="bg-card border-b border-border px-8 py-6">
+        <header className="bg-card border-b border-border px-4 lg:px-8 py-4 lg:py-6">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="font-display text-2xl font-bold">
-                {activeTab === "courses" && "Управление курсами"}
-                {activeTab === "organizations" && "Компании"}
-                {activeTab === "students" && "Все ученики"}
-                {activeTab === "library" && "Библиотека материалов"}
-                {activeTab === "stats" && "Статистика обучения"}
-                {activeTab === "links" && "Ссылки для регистрации"}
-                {activeTab === "documents" && "Документооборот"}
-                {activeTab === "services" && "Услуги"}
-                {activeTab === "settings" && "Настройки"}
-              </h1>
-              <p className="text-muted-foreground">{organizationName}</p>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setIsMobileSidebarOpen(true)}
+                className="lg:hidden p-2 rounded-lg hover:bg-secondary"
+              >
+                <Menu className="w-6 h-6" />
+              </button>
+              <div>
+                <h1 className="font-display text-xl lg:text-2xl font-bold">
+                  {activeTab === "courses" && "Управление курсами"}
+                  {activeTab === "organizations" && "Компании"}
+                  {activeTab === "students" && "Все ученики"}
+                  {activeTab === "library" && "Библиотека материалов"}
+                  {activeTab === "stats" && "Статистика обучения"}
+                  {activeTab === "links" && "Ссылки для регистрации"}
+                  {activeTab === "documents" && "Документооборот"}
+                  {activeTab === "services" && "Услуги"}
+                  {activeTab === "settings" && "Настройки"}
+                </h1>
+                <p className="text-muted-foreground text-sm lg:text-base">{organizationName}</p>
+              </div>
             </div>
-            <div className="flex gap-3">
+            <div className="flex gap-3 flex-wrap">
               {activeTab === "links" && (
                 <Dialog open={showCreateLinkDialog} onOpenChange={setShowCreateLinkDialog}>
                   <DialogTrigger asChild>
