@@ -10,6 +10,7 @@ import { CourseTestReport } from "@/components/organization/CourseTestReport";
 import { CompaniesManager } from "@/components/organization/CompaniesManager";
 import { LibraryManager } from "@/components/organization/LibraryManager";
 import { ServicesManager } from "@/components/organization/ServicesManager";
+import { StampSignatureUploader } from "@/components/organization/StampSignatureUploader";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -391,6 +392,10 @@ export default function OrganizationDashboard() {
   const [showOrgRequisitesDialog, setShowOrgRequisitesDialog] = useState(false);
   const [editOrgName, setEditOrgName] = useState("");
   
+  // Stamp and signature state
+  const [stampUrl, setStampUrl] = useState<string | null>(null);
+  const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
+  
 
   // DaData search for organization requisites
   const handleSearchRequisitesByInn = async (inn: string) => {
@@ -526,7 +531,7 @@ export default function OrganizationDashboard() {
       try {
         const { data, error } = await supabase
           .from('organizations')
-          .select('inn, kpp, ogrn, legal_address, actual_address, director_name, director_position, bank_name, bank_bik, bank_account, bank_corr_account')
+          .select('inn, kpp, ogrn, legal_address, actual_address, director_name, director_position, bank_name, bank_bik, bank_account, bank_corr_account, stamp_url, signature_url')
           .eq('id', organizationId)
           .single();
         
@@ -546,6 +551,8 @@ export default function OrganizationDashboard() {
             bank_account: data.bank_account || '',
             bank_corr_account: data.bank_corr_account || ''
           });
+          setStampUrl(data.stamp_url || null);
+          setSignatureUrl(data.signature_url || null);
         }
       } catch (error) {
         console.error('Error loading requisites:', error);
@@ -3786,6 +3793,60 @@ export default function OrganizationDashboard() {
                         <p className="text-xs text-muted-foreground">
                           Акты формируются на основе реквизитов организации и данных об обучении
                         </p>
+                      </div>
+
+                      {/* Stamp and Signature Upload */}
+                      <div className="bg-secondary/30 rounded-xl p-4 mt-6">
+                        <h4 className="font-semibold mb-4 flex items-center gap-2">
+                          <Image className="w-5 h-5" />
+                          Печать и подпись для документов
+                        </h4>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Загрузите изображения печати и подписи для автоматической вставки в договоры, счета и акты
+                        </p>
+                        {organizationId && (
+                          <div className="grid md:grid-cols-2 gap-4">
+                            <StampSignatureUploader
+                              type="stamp"
+                              currentUrl={stampUrl}
+                              organizationId={organizationId}
+                              onUpload={async (url) => {
+                                setStampUrl(url);
+                                // Save to database
+                                await supabase
+                                  .from('organizations')
+                                  .update({ stamp_url: url })
+                                  .eq('id', organizationId);
+                              }}
+                              onRemove={async () => {
+                                setStampUrl(null);
+                                await supabase
+                                  .from('organizations')
+                                  .update({ stamp_url: null })
+                                  .eq('id', organizationId);
+                              }}
+                            />
+                            <StampSignatureUploader
+                              type="signature"
+                              currentUrl={signatureUrl}
+                              organizationId={organizationId}
+                              onUpload={async (url) => {
+                                setSignatureUrl(url);
+                                await supabase
+                                  .from('organizations')
+                                  .update({ signature_url: url })
+                                  .eq('id', organizationId);
+                              }}
+                              onRemove={async () => {
+                                setSignatureUrl(null);
+                                await supabase
+                                  .from('organizations')
+                                  .update({ signature_url: null })
+                                  .eq('id', organizationId);
+                              }}
+                            />
+                          </div>
+                        )}
                       </div>
                     </div>
                   </AccordionContent>

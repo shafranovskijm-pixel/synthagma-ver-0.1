@@ -60,6 +60,8 @@ export type Database = {
           name: string
           ogrn: string | null
           organization_id: string
+          signature_url: string | null
+          stamp_url: string | null
           updated_at: string
         }
         Insert: {
@@ -72,6 +74,8 @@ export type Database = {
           name: string
           ogrn?: string | null
           organization_id: string
+          signature_url?: string | null
+          stamp_url?: string | null
           updated_at?: string
         }
         Update: {
@@ -84,6 +88,8 @@ export type Database = {
           name?: string
           ogrn?: string | null
           organization_id?: string
+          signature_url?: string | null
+          stamp_url?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -727,6 +733,8 @@ export type Database = {
           notify_on_limit_exceeded: boolean
           ogrn: string | null
           phone: string | null
+          signature_url: string | null
+          stamp_url: string | null
           storage_limit_bytes: number
           student_dashboard_settings: Json | null
           updated_at: string
@@ -754,6 +762,8 @@ export type Database = {
           notify_on_limit_exceeded?: boolean
           ogrn?: string | null
           phone?: string | null
+          signature_url?: string | null
+          stamp_url?: string | null
           storage_limit_bytes?: number
           student_dashboard_settings?: Json | null
           updated_at?: string
@@ -781,6 +791,8 @@ export type Database = {
           notify_on_limit_exceeded?: boolean
           ogrn?: string | null
           phone?: string | null
+          signature_url?: string | null
+          stamp_url?: string | null
           storage_limit_bytes?: number
           student_dashboard_settings?: Json | null
           updated_at?: string

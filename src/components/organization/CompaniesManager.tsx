@@ -47,6 +47,7 @@ import * as XLSX from "xlsx";
 import { Progress } from "@/components/ui/progress";
 import { DocumentDropZone } from "./DocumentDropZone";
 import { ContractGenerator } from "./ContractGenerator";
+import { StampSignatureUploader } from "./StampSignatureUploader";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
@@ -73,6 +74,8 @@ interface Company {
   director: string | null;
   created_at: string;
   studentsCount?: number;
+  stamp_url?: string | null;
+  signature_url?: string | null;
 }
 
 interface CompanyDocument {
@@ -1895,10 +1898,67 @@ ${html.replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>
                         ))}
                       </div>
                     </div>
+                    
+                    {/* Stamp and Signature Section */}
+                    <div className="lg:col-span-3 bg-card border border-border rounded-xl p-4">
+                      <h3 className="font-semibold mb-4">Печать и подпись компании</h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Загрузите изображения для автоматической вставки в документы этой компании
+                      </p>
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <StampSignatureUploader
+                          type="stamp"
+                          currentUrl={selectedCompanyForDetail?.stamp_url || null}
+                          organizationId={organizationId}
+                          companyId={selectedCompanyForDetail?.id}
+                          onUpload={async (url) => {
+                            if (!selectedCompanyForDetail) return;
+                            await supabase
+                              .from('companies')
+                              .update({ stamp_url: url })
+                              .eq('id', selectedCompanyForDetail.id);
+                            setSelectedCompanyForDetail({ ...selectedCompanyForDetail, stamp_url: url });
+                            fetchCompanies();
+                          }}
+                          onRemove={async () => {
+                            if (!selectedCompanyForDetail) return;
+                            await supabase
+                              .from('companies')
+                              .update({ stamp_url: null })
+                              .eq('id', selectedCompanyForDetail.id);
+                            setSelectedCompanyForDetail({ ...selectedCompanyForDetail, stamp_url: null });
+                            fetchCompanies();
+                          }}
+                        />
+                        <StampSignatureUploader
+                          type="signature"
+                          currentUrl={selectedCompanyForDetail?.signature_url || null}
+                          organizationId={organizationId}
+                          companyId={selectedCompanyForDetail?.id}
+                          onUpload={async (url) => {
+                            if (!selectedCompanyForDetail) return;
+                            await supabase
+                              .from('companies')
+                              .update({ signature_url: url })
+                              .eq('id', selectedCompanyForDetail.id);
+                            setSelectedCompanyForDetail({ ...selectedCompanyForDetail, signature_url: url });
+                            fetchCompanies();
+                          }}
+                          onRemove={async () => {
+                            if (!selectedCompanyForDetail) return;
+                            await supabase
+                              .from('companies')
+                              .update({ signature_url: null })
+                              .eq('id', selectedCompanyForDetail.id);
+                            setSelectedCompanyForDetail({ ...selectedCompanyForDetail, signature_url: null });
+                            fetchCompanies();
+                          }}
+                        />
+                      </div>
+                    </div>
                   </div>
                 )}
               </TabsContent>
-
               {/* Stats Tab */}
               <TabsContent value="stats" className="m-0 space-y-6">
                 {/* Registration Chart */}
