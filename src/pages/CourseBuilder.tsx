@@ -159,7 +159,7 @@ const VideoPreviewInline = ({ content }: { content: string }) => {
   );
 };
 
-type LessonType = "text" | "video" | "image" | "test" | "audio";
+type LessonType = "text" | "video" | "image" | "test" | "audio" | "lesson";
 
 interface Lesson {
   id: string;
@@ -170,20 +170,22 @@ interface Lesson {
   blocks?: ContentBlock[];
 }
 
-const lessonIcons = {
+const lessonIcons: Record<LessonType, any> = {
   text: FileText,
   video: Video,
   image: Image,
   test: FileQuestion,
   audio: Headphones,
+  lesson: FileText,
 };
 
-const lessonColors = {
+const lessonColors: Record<LessonType, string> = {
   text: "text-primary bg-primary/10",
   video: "text-sigma-purple bg-sigma-purple/10",
   image: "text-sigma-cyan bg-sigma-cyan/10",
   test: "text-sigma-orange bg-sigma-orange/10",
   audio: "text-green-500 bg-green-500/10",
+  lesson: "text-primary bg-primary/10",
 };
 
 interface GeneratedQuestion {
@@ -241,7 +243,7 @@ function SortableLessonItem({
     zIndex: isDragging ? 1000 : 'auto',
   };
 
-  const Icon = lessonIcons[lesson.type];
+  const Icon = lessonIcons[lesson.type] || FileText;
 
   const extractTextFromBlocks = (blocks: ContentBlock[]): string => {
     return blocks
@@ -846,7 +848,8 @@ export default function CourseBuilder() {
       video: "видеоурок",
       image: "материал",
       test: "тест",
-      audio: "аудиолекция"
+      audio: "аудиолекция",
+      lesson: "урок"
     };
     const newLesson: Lesson = {
       id: crypto.randomUUID(),
