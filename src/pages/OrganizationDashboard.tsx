@@ -293,7 +293,9 @@ export default function OrganizationDashboard() {
   const [menuSettings, setMenuSettings] = useState({
     showStats: false,
     showLinks: false,
-    showDocuments: false
+    showDocuments: false,
+    showLibrary: true,
+    showServices: true
   });
 
   // Branding settings
@@ -2094,13 +2096,13 @@ export default function OrganizationDashboard() {
               <Users className="w-5 h-5" />
               Ученики
             </button>
-            <button onClick={() => {
+            {menuSettings.showLibrary && <button onClick={() => {
             setActiveTab("library");
             setIsMobileSidebarOpen(false);
           }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === "library" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary"}`}>
               <Library className="w-5 h-5" />
               Библиотека
-            </button>
+            </button>}
             {menuSettings.showStats && <button onClick={() => {
             setActiveTab("stats");
             setIsMobileSidebarOpen(false);
@@ -2122,13 +2124,13 @@ export default function OrganizationDashboard() {
               <FileText className="w-5 h-5" />
               Документы
             </button>}
-            <button onClick={() => {
+            {menuSettings.showServices && <button onClick={() => {
             setActiveTab("services");
             setIsMobileSidebarOpen(false);
           }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === "services" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary"}`}>
               <ShoppingBag className="w-5 h-5" />
               Услуги
-            </button>
+            </button>}
             <button onClick={() => {
             setActiveTab("settings");
             setIsMobileSidebarOpen(false);
@@ -2729,114 +2731,158 @@ export default function OrganizationDashboard() {
           {/* Settings Tab */}
           {activeTab === "settings" && <div className="max-w-2xl space-y-6">
               {/* Theme Settings */}
-              <div className="bg-card rounded-2xl border border-border p-6">
-                <h3 className="font-display font-semibold text-lg mb-4 flex items-center gap-2">
-                  <Palette className="w-5 h-5" />
-                  Тема оформления
-                </h3>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Режим оформления</p>
-                    <p className="text-sm text-muted-foreground">Выберите светлую или тёмную тему</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant={!isDarkMode ? "default" : "outline"} className="rounded-xl gap-2" onClick={() => {
-                  setIsDarkMode(false);
-                  document.documentElement.classList.remove('dark');
-                  localStorage.setItem('theme', 'light');
-                }}>
-                      <Sun className="w-4 h-4" />
-                      Светлая
-                    </Button>
-                    <Button variant={isDarkMode ? "default" : "outline"} className="rounded-xl gap-2" onClick={() => {
-                  setIsDarkMode(true);
-                  document.documentElement.classList.add('dark');
-                  localStorage.setItem('theme', 'dark');
-                }}>
-                      <Moon className="w-4 h-4" />
-                      Тёмная
-                    </Button>
+              <details className="bg-card rounded-2xl border border-border group" open>
+                <summary className="p-6 cursor-pointer list-none flex items-center justify-between">
+                  <h3 className="font-display font-semibold text-lg flex items-center gap-2">
+                    <Palette className="w-5 h-5" />
+                    Тема оформления
+                  </h3>
+                  <ChevronRight className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90" />
+                </summary>
+                <div className="px-6 pb-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">Режим оформления</p>
+                      <p className="text-sm text-muted-foreground">Выберите светлую или тёмную тему</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant={!isDarkMode ? "default" : "outline"} className="rounded-xl gap-2" onClick={() => {
+                    setIsDarkMode(false);
+                    document.documentElement.classList.remove('dark');
+                    localStorage.setItem('theme', 'light');
+                  }}>
+                        <Sun className="w-4 h-4" />
+                        Светлая
+                      </Button>
+                      <Button variant={isDarkMode ? "default" : "outline"} className="rounded-xl gap-2" onClick={() => {
+                    setIsDarkMode(true);
+                    document.documentElement.classList.add('dark');
+                    localStorage.setItem('theme', 'dark');
+                  }}>
+                        <Moon className="w-4 h-4" />
+                        Тёмная
+                      </Button>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </details>
 
-              {/* Menu Items Settings - Right after theme */}
-              <div className="bg-card rounded-2xl border border-border p-6">
-                <h3 className="font-display font-semibold text-lg mb-4 flex items-center gap-2">
-                  <LayoutGrid className="w-5 h-5" />
-                  Разделы меню
-                </h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Включите или отключите дополнительные разделы в боковом меню
-                </p>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between py-3 border-b border-border">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
-                        <BarChart3 className="w-5 h-5 text-accent" />
+              {/* Menu Items Settings */}
+              <details className="bg-card rounded-2xl border border-border group" open>
+                <summary className="p-6 cursor-pointer list-none flex items-center justify-between">
+                  <h3 className="font-display font-semibold text-lg flex items-center gap-2">
+                    <LayoutGrid className="w-5 h-5" />
+                    Разделы меню
+                  </h3>
+                  <ChevronRight className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90" />
+                </summary>
+                <div className="px-6 pb-6">
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Включите или отключите разделы в боковом меню
+                  </p>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between py-3 border-b border-border">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                          <Library className="w-5 h-5 text-primary" />
+                        </div>
+                        <div>
+                          <p className="font-medium">Библиотека</p>
+                          <p className="text-sm text-muted-foreground">Раздел с материалами для организации</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium">Статистика</p>
-                        <p className="text-sm text-muted-foreground">Аналитика и отчёты по обучению</p>
-                      </div>
+                      <button onClick={() => setMenuSettings(prev => ({
+                    ...prev,
+                    showLibrary: !prev.showLibrary
+                  }))} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${menuSettings.showLibrary ? 'bg-primary' : 'bg-muted'}`}>
+                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${menuSettings.showLibrary ? 'translate-x-6' : 'translate-x-1'}`} />
+                      </button>
                     </div>
-                    <button onClick={() => setMenuSettings(prev => ({
-                  ...prev,
-                  showStats: !prev.showStats
-                }))} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${menuSettings.showStats ? 'bg-primary' : 'bg-muted'}`}>
-                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${menuSettings.showStats ? 'translate-x-6' : 'translate-x-1'}`} />
-                    </button>
+                    <div className="flex items-center justify-between py-3 border-b border-border">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
+                          <BarChart3 className="w-5 h-5 text-accent" />
+                        </div>
+                        <div>
+                          <p className="font-medium">Статистика</p>
+                          <p className="text-sm text-muted-foreground">Аналитика и отчёты по обучению</p>
+                        </div>
+                      </div>
+                      <button onClick={() => setMenuSettings(prev => ({
+                    ...prev,
+                    showStats: !prev.showStats
+                  }))} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${menuSettings.showStats ? 'bg-primary' : 'bg-muted'}`}>
+                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${menuSettings.showStats ? 'translate-x-6' : 'translate-x-1'}`} />
+                      </button>
+                    </div>
+                    <div className="flex items-center justify-between py-3 border-b border-border">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-sigma-green/10 flex items-center justify-center">
+                          <Link className="w-5 h-5 text-sigma-green" />
+                        </div>
+                        <div>
+                          <p className="font-medium">Ссылки регистрации</p>
+                          <p className="text-sm text-muted-foreground">Ссылки для самостоятельной регистрации учеников</p>
+                        </div>
+                      </div>
+                      <button onClick={() => setMenuSettings(prev => ({
+                    ...prev,
+                    showLinks: !prev.showLinks
+                  }))} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${menuSettings.showLinks ? 'bg-primary' : 'bg-muted'}`}>
+                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${menuSettings.showLinks ? 'translate-x-6' : 'translate-x-1'}`} />
+                      </button>
+                    </div>
+                    <div className="flex items-center justify-between py-3 border-b border-border">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-sigma-orange/10 flex items-center justify-center">
+                          <FileText className="w-5 h-5 text-sigma-orange" />
+                        </div>
+                        <div>
+                          <p className="font-medium">Документы</p>
+                          <p className="text-sm text-muted-foreground">Документооборот организации</p>
+                        </div>
+                      </div>
+                      <button onClick={() => setMenuSettings(prev => ({
+                    ...prev,
+                    showDocuments: !prev.showDocuments
+                  }))} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${menuSettings.showDocuments ? 'bg-primary' : 'bg-muted'}`}>
+                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${menuSettings.showDocuments ? 'translate-x-6' : 'translate-x-1'}`} />
+                      </button>
+                    </div>
+                    <div className="flex items-center justify-between py-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-sigma-cyan/10 flex items-center justify-center">
+                          <ShoppingBag className="w-5 h-5 text-sigma-cyan" />
+                        </div>
+                        <div>
+                          <p className="font-medium">Услуги</p>
+                          <p className="text-sm text-muted-foreground">Дополнительные услуги для организации</p>
+                        </div>
+                      </div>
+                      <button onClick={() => setMenuSettings(prev => ({
+                    ...prev,
+                    showServices: !prev.showServices
+                  }))} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${menuSettings.showServices ? 'bg-primary' : 'bg-muted'}`}>
+                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${menuSettings.showServices ? 'translate-x-6' : 'translate-x-1'}`} />
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between py-3 border-b border-border">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-sigma-green/10 flex items-center justify-center">
-                        <Link className="w-5 h-5 text-sigma-green" />
-                      </div>
-                      <div>
-                        <p className="font-medium">Ссылки регистрации</p>
-                        <p className="text-sm text-muted-foreground">Ссылки для самостоятельной регистрации учеников</p>
-                      </div>
-                    </div>
-                    <button onClick={() => setMenuSettings(prev => ({
-                  ...prev,
-                  showLinks: !prev.showLinks
-                }))} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${menuSettings.showLinks ? 'bg-primary' : 'bg-muted'}`}>
-                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${menuSettings.showLinks ? 'translate-x-6' : 'translate-x-1'}`} />
-                    </button>
-                  </div>
-                  <div className="flex items-center justify-between py-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-sigma-orange/10 flex items-center justify-center">
-                        <FileText className="w-5 h-5 text-sigma-orange" />
-                      </div>
-                      <div>
-                        <p className="font-medium">Документы</p>
-                        <p className="text-sm text-muted-foreground">Документооборот организации</p>
-                      </div>
-                    </div>
-                    <button onClick={() => setMenuSettings(prev => ({
-                  ...prev,
-                  showDocuments: !prev.showDocuments
-                }))} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${menuSettings.showDocuments ? 'bg-primary' : 'bg-muted'}`}>
-                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${menuSettings.showDocuments ? 'translate-x-6' : 'translate-x-1'}`} />
-                    </button>
+                  <div className="mt-6 pt-4 border-t border-border">
+                    <Button className="btn-gradient rounded-xl gap-2" onClick={() => {
+                  try {
+                    localStorage.setItem('orgMenuSettings', JSON.stringify(menuSettings));
+                    toast.success('Настройки меню сохранены');
+                  } catch (error) {
+                    console.error('Error saving menu settings:', error);
+                    toast.error('Ошибка сохранения настроек');
+                  }
+                }}>
+                      <Save className="w-4 h-4" />
+                      Сохранить настройки меню
+                    </Button>
                   </div>
                 </div>
-                <div className="mt-6 pt-4 border-t border-border">
-                  <Button className="btn-gradient rounded-xl gap-2" onClick={() => {
-                try {
-                  localStorage.setItem('orgMenuSettings', JSON.stringify(menuSettings));
-                  toast.success('Настройки меню сохранены');
-                } catch (error) {
-                  console.error('Error saving menu settings:', error);
-                  toast.error('Ошибка сохранения настроек');
-                }
-              }}>
-                    <Save className="w-4 h-4" />
-                    Сохранить настройки меню
-                  </Button>
-                </div>
-              </div>
+              </details>
 
               {/* Branding Settings */}
               <div className="bg-card rounded-2xl border border-border p-6">
