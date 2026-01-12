@@ -58,15 +58,17 @@ const DOCUMENT_TYPES = [
 interface CourseDocumentsManagerProps {
   courseId: string;
   courseName: string;
-  isOpen: boolean;
-  onClose: () => void;
+  isOpen?: boolean;
+  onClose?: () => void;
+  embedded?: boolean;
 }
 
 export function CourseDocumentsManager({
   courseId,
   courseName,
-  isOpen,
-  onClose,
+  isOpen = true,
+  onClose = () => {},
+  embedded = false,
 }: CourseDocumentsManagerProps) {
   const [documents, setDocuments] = useState<CourseDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -236,211 +238,208 @@ export function CourseDocumentsManager({
     window.open(doc.file_url, '_blank');
   };
 
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl rounded-2xl max-h-[85vh] overflow-auto">
-        <DialogHeader>
-          <DialogTitle className="font-display flex items-center gap-2">
-            <BookOpen className="w-5 h-5 text-primary" />
-            Документы курса: {courseName}
-          </DialogTitle>
-          <DialogDescription>
-            Материалы и документы, доступные всем ученикам курса
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4">
-          <div className="flex justify-end">
-            <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-              <DialogTrigger asChild>
-                <Button className="btn-gradient rounded-xl gap-2">
-                  <Plus className="w-4 h-4" />
-                  Добавить документ
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="rounded-2xl">
-                <DialogHeader>
-                  <DialogTitle>Добавить документ к курсу</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <Label>Название *</Label>
-                    <Input
-                      placeholder="Введите название"
-                      value={docName}
-                      onChange={(e) => setDocName(e.target.value)}
-                      className="rounded-xl"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Тип</Label>
-                    <Select value={docType} onValueChange={setDocType}>
-                      <SelectTrigger className="rounded-xl">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {DOCUMENT_TYPES.map((type) => (
-                          <SelectItem key={type.value} value={type.value}>
-                            <div className="flex items-center gap-2">
-                              <type.icon className="w-4 h-4" />
-                              {type.label}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Описание</Label>
-                    <Textarea
-                      placeholder="Краткое описание документа"
-                      value={docDescription}
-                      onChange={(e) => setDocDescription(e.target.value)}
-                      className="rounded-xl"
-                      rows={2}
-                    />
-                  </div>
-
-                  {docType === "link" ? (
-                    <div className="space-y-2">
-                      <Label>URL ссылки</Label>
-                      <Input
-                        placeholder="https://..."
-                        value={linkUrl}
-                        onChange={(e) => setLinkUrl(e.target.value)}
-                        className="rounded-xl"
-                      />
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <Label>Файл</Label>
-                      <div className="border-2 border-dashed border-border rounded-xl p-4 text-center hover:border-primary/50 transition-colors">
-                        <input
-                          type="file"
-                          id="course-doc-upload"
-                          className="hidden"
-                          onChange={handleFileSelect}
-                        />
-                        <label htmlFor="course-doc-upload" className="cursor-pointer">
-                          {selectedFile ? (
-                            <div className="flex items-center justify-center gap-2 text-primary">
-                              <FileText className="w-5 h-5" />
-                              <span className="font-medium">{selectedFile.name}</span>
-                            </div>
-                          ) : (
-                            <div className="space-y-1">
-                              <Upload className="w-6 h-6 mx-auto text-muted-foreground" />
-                              <div className="text-sm text-muted-foreground">
-                                Нажмите для выбора файла
-                              </div>
-                            </div>
-                          )}
-                        </label>
-                      </div>
-                    </div>
-                  )}
-
-                  <Button
-                    className="w-full btn-gradient rounded-xl"
-                    onClick={handleAdd}
-                    disabled={isUploading || !docName.trim()}
-                  >
-                    {isUploading ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Загрузка...
-                      </>
-                    ) : (
-                      "Добавить"
-                    )}
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+  const content = (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        {!embedded && (
+          <div>
+            <h3 className="font-display text-lg font-semibold flex items-center gap-2">
+              <BookOpen className="w-5 h-5 text-primary" />
+              Документы курса
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              Материалы и документы, доступные всем ученикам курса
+            </p>
           </div>
-
-          {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            </div>
-          ) : documents.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>Нет документов</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {documents.map((doc) => {
-                const typeInfo = getDocTypeInfo(doc.type);
-                const TypeIcon = typeInfo.icon;
-                return (
-                  <div
-                    key={doc.id}
-                    className="flex items-center justify-between p-4 bg-secondary/30 rounded-xl"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <TypeIcon className="w-5 h-5 text-primary" />
-                      </div>
-                      <div>
-                        <p className="font-medium">{doc.name}</p>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <span>{typeInfo.label}</span>
-                          <span>•</span>
-                          <span>
-                            {format(new Date(doc.created_at), "d MMM yyyy", { locale: ru })}
-                          </span>
+        )}
+        <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+          <DialogTrigger asChild>
+            <Button className="btn-gradient rounded-xl gap-2">
+              <Plus className="w-4 h-4" />
+              Добавить документ
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="rounded-2xl">
+            <DialogHeader>
+              <DialogTitle>Добавить документ к курсу</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Название *</Label>
+                <Input
+                  placeholder="Введите название"
+                  value={docName}
+                  onChange={(e) => setDocName(e.target.value)}
+                  className="rounded-xl"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Тип</Label>
+                <Select value={docType} onValueChange={setDocType}>
+                  <SelectTrigger className="rounded-xl">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DOCUMENT_TYPES.map((type) => (
+                      <SelectItem key={type.value} value={type.value}>
+                        <div className="flex items-center gap-2">
+                          <type.icon className="w-4 h-4" />
+                          {type.label}
                         </div>
-                        {doc.description && (
-                          <p className="text-sm text-muted-foreground mt-1">{doc.description}</p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {doc.file_url && (
-                        <>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handlePreview(doc)}
-                            title="Просмотр"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                          {doc.type !== "link" && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => {
-                                const link = document.createElement("a");
-                                link.href = doc.file_url!;
-                                link.download = doc.name;
-                                link.click();
-                              }}
-                              title="Скачать"
-                            >
-                              <Download className="w-4 h-4" />
-                            </Button>
-                          )}
-                        </>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Описание</Label>
+                <Textarea
+                  placeholder="Краткое описание документа"
+                  value={docDescription}
+                  onChange={(e) => setDocDescription(e.target.value)}
+                  className="rounded-xl"
+                  rows={2}
+                />
+              </div>
+
+              {docType === "link" ? (
+                <div className="space-y-2">
+                  <Label>URL ссылки</Label>
+                  <Input
+                    placeholder="https://..."
+                    value={linkUrl}
+                    onChange={(e) => setLinkUrl(e.target.value)}
+                    className="rounded-xl"
+                  />
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label>Файл</Label>
+                  <div className="border-2 border-dashed border-border rounded-xl p-4 text-center hover:border-primary/50 transition-colors">
+                    <input
+                      type="file"
+                      id="course-doc-upload"
+                      className="hidden"
+                      onChange={handleFileSelect}
+                    />
+                    <label htmlFor="course-doc-upload" className="cursor-pointer">
+                      {selectedFile ? (
+                        <div className="flex items-center justify-center gap-2 text-primary">
+                          <FileText className="w-5 h-5" />
+                          <span className="font-medium">{selectedFile.name}</span>
+                        </div>
+                      ) : (
+                        <div className="space-y-1">
+                          <Upload className="w-6 h-6 mx-auto text-muted-foreground" />
+                          <div className="text-sm text-muted-foreground">
+                            Нажмите для выбора файла
+                          </div>
+                        </div>
                       )}
+                    </label>
+                  </div>
+                </div>
+              )}
+
+              <Button
+                className="w-full btn-gradient rounded-xl"
+                onClick={handleAdd}
+                disabled={isUploading || !docName.trim()}
+              >
+                {isUploading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Загрузка...
+                  </>
+                ) : (
+                  "Добавить"
+                )}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      ) : documents.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground">
+          <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
+          <p>Нет документов</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {documents.map((doc) => {
+            const typeInfo = getDocTypeInfo(doc.type);
+            const TypeIcon = typeInfo.icon;
+            return (
+              <div
+                key={doc.id}
+                className="flex items-center justify-between p-4 bg-secondary/30 rounded-xl"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <TypeIcon className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-medium">{doc.name}</p>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <span>{typeInfo.label}</span>
+                      <span>•</span>
+                      <span>
+                        {format(new Date(doc.created_at), "d MMM yyyy", { locale: ru })}
+                      </span>
+                    </div>
+                    {doc.description && (
+                      <p className="text-sm text-muted-foreground mt-1">{doc.description}</p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {doc.file_url && (
+                    <>
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleDelete(doc.id)}
-                        className="text-destructive hover:text-destructive"
-                        title="Удалить"
+                        onClick={() => handlePreview(doc)}
+                        title="Просмотр"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Eye className="w-4 h-4" />
                       </Button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                      {doc.type !== "link" && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            const link = document.createElement("a");
+                            link.href = doc.file_url!;
+                            link.download = doc.name;
+                            link.click();
+                          }}
+                          title="Скачать"
+                        >
+                          <Download className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleDelete(doc.id)}
+                    className="text-destructive hover:text-destructive"
+                    title="Удалить"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
         </div>
-      </DialogContent>
+      )}
 
       {/* Preview Dialog */}
       <Dialog open={showPreviewDialog} onOpenChange={setShowPreviewDialog}>
@@ -463,6 +462,27 @@ export function CourseDocumentsManager({
           </div>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+
+  if (embedded) {
+    return content;
+  }
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-3xl rounded-2xl max-h-[85vh] overflow-auto">
+        <DialogHeader>
+          <DialogTitle className="font-display flex items-center gap-2">
+            <BookOpen className="w-5 h-5 text-primary" />
+            Документы курса: {courseName}
+          </DialogTitle>
+          <DialogDescription>
+            Материалы и документы, доступные всем ученикам курса
+          </DialogDescription>
+        </DialogHeader>
+        {content}
+      </DialogContent>
     </Dialog>
   );
 }

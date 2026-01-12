@@ -800,10 +800,52 @@ export default function OrganizationDashboard() {
   }, [organizationId, activeTab]);
 
   // Load course students when course details modal opens
+  // Load course students when course details modal opens
   useEffect(() => {
-    if (showCourseDetailsModal && selectedCourseForDetails) {
-      handleOpenCourseStudents(selectedCourseForDetails);
-    }
+    const loadCourseStudentsData = async () => {
+      if (!showCourseDetailsModal || !selectedCourseForDetails) return;
+      
+      setIsLoadingCourseStudents(true);
+      try {
+        const { data: enrollments } = await supabase
+          .from("enrollments")
+          .select("id, user_id, progress, status")
+          .eq("course_id", selectedCourseForDetails.id);
+
+        const enrolledList: Student[] = [];
+        for (const enrollment of enrollments || []) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("id, user_id, full_name, email, login, generated_password")
+            .eq("user_id", enrollment.user_id)
+            .single();
+
+          if (profile) {
+            enrolledList.push({
+              id: profile.id,
+              user_id: profile.user_id,
+              enrollment_id: enrollment.id,
+              name: profile.full_name || "Без имени",
+              email: profile.email || "",
+              login: profile.login || null,
+              generated_password: profile.generated_password || null,
+              course: selectedCourseForDetails.title,
+              course_id: selectedCourseForDetails.id,
+              progress: enrollment.progress,
+              lastActivity: null,
+              status: enrollment.status
+            });
+          }
+        }
+        setCourseStudents(enrolledList);
+      } catch (error) {
+        console.error("Error loading course students:", error);
+      } finally {
+        setIsLoadingCourseStudents(false);
+      }
+    };
+
+    loadCourseStudentsData();
   }, [showCourseDetailsModal, selectedCourseForDetails?.id]);
 
   const handleLogout = async () => {
@@ -4101,8 +4143,7 @@ export default function OrganizationDashboard() {
                     <CourseDocumentsManager 
                       courseId={selectedCourseForDetails.id} 
                       courseName={selectedCourseForDetails.title}
-                      isOpen={true}
-                      onClose={() => {}}
+                      embedded={true}
                     />
                   </TabsContent>
 
