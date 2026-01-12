@@ -40,6 +40,9 @@ import {
   X,
   CalendarDays,
   Clock,
+  CheckCircle2,
+  XCircle,
+  Banknote,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -47,6 +50,8 @@ import * as XLSX from "xlsx";
 import { Progress } from "@/components/ui/progress";
 import { DocumentDropZone } from "./DocumentDropZone";
 import { ContractGenerator } from "./ContractGenerator";
+import { InvoiceGenerator } from "./InvoiceGenerator";
+import { ActGenerator } from "./ActGenerator";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
@@ -86,6 +91,10 @@ interface CompanyDocument {
   file_path: string | null;
   file_size: number | null;
   uploaded_at: string;
+  is_paid: boolean | null;
+  paid_at: string | null;
+  amount: number | null;
+  contract_number: string | null;
 }
 
 interface CompanyStudent {
@@ -216,6 +225,15 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
   // Contract generator
   const [showContractGenerator, setShowContractGenerator] = useState(false);
   const [selectedCompanyForContract, setSelectedCompanyForContract] = useState<Company | null>(null);
+  
+  // Invoice generator
+  const [showInvoiceGenerator, setShowInvoiceGenerator] = useState(false);
+  const [selectedCompanyForInvoice, setSelectedCompanyForInvoice] = useState<Company | null>(null);
+  
+  // Act generator
+  const [showActGenerator, setShowActGenerator] = useState(false);
+  const [selectedCompanyForAct, setSelectedCompanyForAct] = useState<Company | null>(null);
+  
   const [orgRequisites, setOrgRequisites] = useState({
     name: "",
     inn: "",
@@ -229,6 +247,8 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
     bank_bik: "",
     bank_account: "",
     bank_corr_account: "",
+    stamp_url: null as string | null,
+    signature_url: null as string | null,
   });
 
   const handleOpenCompanyDetail = async (company: Company) => {
@@ -470,7 +490,7 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
     try {
       const { data: orgData } = await supabase
         .from("organizations")
-        .select("inn, kpp, ogrn, legal_address, actual_address, director_name, director_position, bank_name, bank_bik, bank_account, bank_corr_account")
+        .select("inn, kpp, ogrn, legal_address, actual_address, director_name, director_position, bank_name, bank_bik, bank_account, bank_corr_account, stamp_url, signature_url")
         .eq("id", organizationId)
         .single();
 
@@ -494,11 +514,163 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
           bank_bik: orgData.bank_bik || "",
           bank_account: orgData.bank_account || "",
           bank_corr_account: orgData.bank_corr_account || "",
+          stamp_url: orgData.stamp_url || null,
+          signature_url: orgData.signature_url || null,
         });
       }
     } catch (error) {
       console.error("Error fetching org requisites:", error);
     }
+  };
+  
+  // Invoice/Act handlers
+  const handleOpenInvoiceGenerator = (company: Company) => {
+    setSelectedCompanyForInvoice(company);
+    setShowInvoiceGenerator(true);
+  };
+  
+  const handleOpenActGenerator = (company: Company) => {
+    setSelectedCompanyForAct(company);
+    setShowActGenerator(true);
+  };
+  
+  const handleSaveInvoice = async (html: string, invoiceNumber: string, companyName: string, amount: number) => {
+    if (!selectedCompanyForInvoice) return;
+
+    const docContent = `
+<!DOCTYPE html>
+<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head>
+<meta charset="utf-8">
+<title>Счёт ${invoiceNumber}</title>
+</head>
+<body>
+${html.replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>|<!DOCTYPE[^>]*>/gi, '')}
+</body>
+</html>`;
+
+    const blob = new Blob([docContent], { type: 'application/msword' });
+    const fileName = `invoice_${invoiceNumber}_${Date.now()}.doc`;
+    const filePath = `${selectedCompanyForInvoice.id}/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("company-documents")
+      .upload(filePath, blob);
+
+    if (uploadError) throw uploadError;
+
+    const { data: urlData } = supabase.storage
+      .from("company-documents")
+      .getPublicUrl(filePath);
+
+    const { error: dbError } = await supabase
+      .from("company_documents")
+      .insert({
+        company_id: selectedCompanyForInvoice.id,
+        type: 'invoice',
+        name: `Счёт_${invoiceNumber}_${companyName}.doc`,
+        file_url: urlData.publicUrl,
+        file_path: filePath,
+        file_size: blob.size,
+        amount: amount,
+        is_paid: false,
+      });
+
+    if (dbError) throw dbError;
+    await fetchCompanyDocuments(selectedCompanyForInvoice.id);
+  };
+  
+  const handleSaveAct = async (html: string, actNumber: string, companyName: string, amount: number) => {
+    if (!selectedCompanyForAct) return;
+
+    const docContent = `
+<!DOCTYPE html>
+<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head>
+<meta charset="utf-8">
+<title>Акт ${actNumber}</title>
+</head>
+<body>
+${html.replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>|<!DOCTYPE[^>]*>/gi, '')}
+</body>
+</html>`;
+
+    const blob = new Blob([docContent], { type: 'application/msword' });
+    const fileName = `act_${actNumber}_${Date.now()}.doc`;
+    const filePath = `${selectedCompanyForAct.id}/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("company-documents")
+      .upload(filePath, blob);
+
+    if (uploadError) throw uploadError;
+
+    const { data: urlData } = supabase.storage
+      .from("company-documents")
+      .getPublicUrl(filePath);
+
+    const { error: dbError } = await supabase
+      .from("company_documents")
+      .insert({
+        company_id: selectedCompanyForAct.id,
+        type: 'act',
+        name: `Акт_${actNumber}_${companyName}.doc`,
+        file_url: urlData.publicUrl,
+        file_path: filePath,
+        file_size: blob.size,
+        amount: amount,
+      });
+
+    if (dbError) throw dbError;
+    await fetchCompanyDocuments(selectedCompanyForAct.id);
+  };
+  
+  const handleTogglePaid = async (doc: CompanyDocument) => {
+    try {
+      const newPaidStatus = !doc.is_paid;
+      const { error } = await supabase
+        .from("company_documents")
+        .update({
+          is_paid: newPaidStatus,
+          paid_at: newPaidStatus ? new Date().toISOString() : null,
+        })
+        .eq("id", doc.id);
+
+      if (error) throw error;
+      
+      toast.success(newPaidStatus ? "Отмечено как оплачено" : "Отмечено как неоплачено");
+      if (selectedCompanyForDetail) {
+        await fetchCompanyDocuments(selectedCompanyForDetail.id);
+      }
+    } catch (error) {
+      console.error("Error toggling paid status:", error);
+      toast.error("Ошибка обновления статуса");
+    }
+  };
+  
+  // Stats calculations
+  const getDocumentStats = () => {
+    const contracts = companyDocuments.filter(d => d.type === 'contract');
+    const invoices = companyDocuments.filter(d => d.type === 'invoice');
+    const acts = companyDocuments.filter(d => d.type === 'act');
+    
+    const paidInvoices = invoices.filter(d => d.is_paid);
+    const unpaidInvoices = invoices.filter(d => !d.is_paid);
+    
+    const totalAmount = invoices.reduce((sum, d) => sum + (d.amount || 0), 0);
+    const paidAmount = paidInvoices.reduce((sum, d) => sum + (d.amount || 0), 0);
+    const unpaidAmount = unpaidInvoices.reduce((sum, d) => sum + (d.amount || 0), 0);
+    
+    return {
+      contracts: contracts.length,
+      invoices: invoices.length,
+      acts: acts.length,
+      paidInvoices: paidInvoices.length,
+      unpaidInvoices: unpaidInvoices.length,
+      totalAmount,
+      paidAmount,
+      unpaidAmount,
+    };
   };
 
   const handleOpenContractGenerator = (company: Company) => {
@@ -2947,6 +3119,32 @@ ${html.replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>
         orgRequisites={orgRequisites}
         preselectedCompany={selectedCompanyForContract}
         onSave={handleSaveContract}
+      />
+
+      {/* Invoice Generator */}
+      <InvoiceGenerator
+        organizationId={organizationId}
+        isOpen={showInvoiceGenerator}
+        onClose={() => {
+          setShowInvoiceGenerator(false);
+          setSelectedCompanyForInvoice(null);
+        }}
+        orgRequisites={orgRequisites}
+        preselectedCompany={selectedCompanyForInvoice}
+        onSave={handleSaveInvoice}
+      />
+
+      {/* Act Generator */}
+      <ActGenerator
+        organizationId={organizationId}
+        isOpen={showActGenerator}
+        onClose={() => {
+          setShowActGenerator(false);
+          setSelectedCompanyForAct(null);
+        }}
+        orgRequisites={orgRequisites}
+        preselectedCompany={selectedCompanyForAct}
+        onSave={handleSaveAct}
       />
     </div>
   );
