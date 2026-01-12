@@ -57,7 +57,8 @@ import {
   MessageCircle,
   Image,
   ExternalLink,
-  ShoppingBag
+  ShoppingBag,
+  Mail
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
@@ -233,6 +234,8 @@ export default function OrganizationDashboard() {
   const [studentCompanyId, setStudentCompanyId] = useState<string>("");
   const [isSavingStudentCompany, setIsSavingStudentCompany] = useState(false);
   const [isSendingCredentials, setIsSendingCredentials] = useState(false);
+  const [isSendingCredentialsEmail, setIsSendingCredentialsEmail] = useState(false);
+  const [isSendingBulkCredentials, setIsSendingBulkCredentials] = useState(false);
 
   // Registration links state
   const [registrationLinks, setRegistrationLinks] = useState<RegistrationLink[]>([]);
@@ -1602,6 +1605,106 @@ export default function OrganizationDashboard() {
     }
   };
 
+  // Send credentials via email to single student
+  const handleSendCredentialsEmail = async () => {
+    if (!selectedStudent) return;
+    
+    const student = selectedStudent.student;
+    if (!student.login || !student.generated_password) {
+      toast.error("У ученика нет логина для входа");
+      return;
+    }
+
+    if (!student.email) {
+      toast.error("У ученика не указан email");
+      return;
+    }
+
+    setIsSendingCredentialsEmail(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-credentials", {
+        body: {
+          email: student.email,
+          name: student.name,
+          login: student.login,
+          password: student.generated_password,
+          loginUrl: `${window.location.origin}/login`,
+          organizationName: organizationName
+        }
+      });
+
+      if (error) throw error;
+
+      toast.success(`Данные для входа отправлены на ${student.email}`);
+    } catch (error) {
+      console.error("Error sending credentials:", error);
+      toast.error("Ошибка отправки email. Проверьте настройки почтового сервиса.");
+    } finally {
+      setIsSendingCredentialsEmail(false);
+    }
+  };
+
+  // Send credentials via email to multiple students (bulk)
+  const handleBulkSendCredentials = async () => {
+    if (selectedStudentIds.size === 0) {
+      toast.error("Выберите учеников");
+      return;
+    }
+
+    // Get selected students with credentials
+    const studentsToSend = students.filter(
+      s => selectedStudentIds.has(s.user_id) && s.login && s.generated_password && s.email
+    );
+
+    if (studentsToSend.length === 0) {
+      toast.error("У выбранных учеников нет данных для отправки (логин, пароль или email)");
+      return;
+    }
+
+    setIsSendingBulkCredentials(true);
+    let successCount = 0;
+    let errorCount = 0;
+
+    try {
+      for (const student of studentsToSend) {
+        try {
+          const { error } = await supabase.functions.invoke("send-credentials", {
+            body: {
+              email: student.email,
+              name: student.name,
+              login: student.login!,
+              password: student.generated_password!,
+              loginUrl: `${window.location.origin}/login`,
+              organizationName: organizationName
+            }
+          });
+
+          if (error) {
+            errorCount++;
+            console.error(`Error sending to ${student.email}:`, error);
+          } else {
+            successCount++;
+          }
+        } catch (err) {
+          errorCount++;
+          console.error(`Error sending to ${student.email}:`, err);
+        }
+      }
+
+      if (successCount > 0) {
+        toast.success(`Отправлено: ${successCount} из ${studentsToSend.length}`);
+      }
+      if (errorCount > 0) {
+        toast.error(`Ошибки отправки: ${errorCount}`);
+      }
+    } catch (error) {
+      console.error("Error in bulk send:", error);
+      toast.error("Ошибка массовой отправки");
+    } finally {
+      setIsSendingBulkCredentials(false);
+    }
+  };
+
   // View student details
   const handleViewStudent = async (student: Student) => {
     setShowStudentDialog(true);
@@ -2442,6 +2545,19 @@ export default function OrganizationDashboard() {
                       <Button onClick={() => setShowEnrollDialog(true)} className="btn-gradient rounded-xl gap-2">
                         <GraduationCap className="w-4 h-4" />
                         Зачислить на курс ({selectedStudentIds.size})
+                      </Button>
+                      <Button 
+                        onClick={handleBulkSendCredentials} 
+                        variant="outline"
+                        className="rounded-xl gap-2"
+                        disabled={isSendingBulkCredentials}
+                      >
+                        {isSendingBulkCredentials ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Mail className="w-4 h-4" />
+                        )}
+                        Отправить данные на почту
                       </Button>
                       {getSelectedEnrollmentsCount() > 0 && (
                         <Button 
@@ -3886,19 +4002,33 @@ export default function OrganizationDashboard() {
                       <Send className="w-4 h-4" />
                       Отправить данные для входа
                     </h4>
-                    <Button
-                      variant="outline"
-                      className="w-full rounded-lg gap-2"
-                      onClick={handleSendCredentials}
-                      disabled={isSendingCredentials || !selectedStudent.student.email}
-                    >
-                      {isSendingCredentials ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Copy className="w-4 h-4" />
-                      )}
-                      {selectedStudent.student.email ? "Скопировать сообщение" : "Email не указан"}
-                    </Button>
+                    <div className="flex flex-col gap-2">
+                      <Button
+                        variant="outline"
+                        className="w-full rounded-lg gap-2"
+                        onClick={handleSendCredentials}
+                        disabled={isSendingCredentials}
+                      >
+                        {isSendingCredentials ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Copy className="w-4 h-4" />
+                        )}
+                        Скопировать сообщение
+                      </Button>
+                      <Button
+                        className="w-full rounded-lg gap-2 btn-gradient"
+                        onClick={handleSendCredentialsEmail}
+                        disabled={isSendingCredentialsEmail || !selectedStudent.student.email}
+                      >
+                        {isSendingCredentialsEmail ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Mail className="w-4 h-4" />
+                        )}
+                        {selectedStudent.student.email ? "Отправить на почту" : "Email не указан"}
+                      </Button>
+                    </div>
                   </div>
                 )}
               </div>
