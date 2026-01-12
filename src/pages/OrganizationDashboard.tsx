@@ -279,6 +279,10 @@ export default function OrganizationDashboard() {
   // Student filter state - default to not_enrolled
   const [studentStatusFilter, setStudentStatusFilter] = useState<"all" | "active" | "completed" | "not_enrolled">("not_enrolled");
   const [studentCourseFilter, setStudentCourseFilter] = useState<string>("all");
+  const [studentDocsFilter, setStudentDocsFilter] = useState<"all" | "complete" | "no_passport" | "no_snils" | "no_education" | "incomplete">("all");
+  
+  // Student documents by user_id for filtering
+  const [studentDocsByUser, setStudentDocsByUser] = useState<Map<string, string[]>>(new Map());
 
   // Refresh trigger for data reload
   const [refreshKey, setRefreshKey] = useState(0);
@@ -669,6 +673,7 @@ export default function OrganizationDashboard() {
             if (hasPassport && hasSnils && hasEducation) complete++;
           }
 
+          setStudentDocsByUser(docsByUser);
           setDocumentsStats({
             total: allProfilesData.length,
             withPassport,
@@ -2156,6 +2161,22 @@ export default function OrganizationDashboard() {
         if (s.course_id !== studentCourseFilter) return false;
       }
     }
+    
+    // Filter by documents status
+    if (studentDocsFilter !== "all") {
+      const userDocs = studentDocsByUser.get(s.user_id) || [];
+      const hasPassport = userDocs.some(t => t === "passport" || t === "birth_certificate");
+      const hasSnils = userDocs.includes("snils");
+      const hasEducation = userDocs.some(t => t === "education_document" || t === "diploma" || t === "attestat");
+      const isComplete = hasPassport && hasSnils && hasEducation;
+      
+      if (studentDocsFilter === "complete" && !isComplete) return false;
+      if (studentDocsFilter === "incomplete" && isComplete) return false;
+      if (studentDocsFilter === "no_passport" && hasPassport) return false;
+      if (studentDocsFilter === "no_snils" && hasSnils) return false;
+      if (studentDocsFilter === "no_education" && hasEducation) return false;
+    }
+    
     if (studentStatusFilter === "all") return true;
     if (studentStatusFilter === "active") return s.status === "active";
     if (studentStatusFilter === "completed") return s.status === "completed";
@@ -2729,6 +2750,20 @@ export default function OrganizationDashboard() {
                       <SelectItem value="active">Активные</SelectItem>
                       <SelectItem value="completed">Завершили</SelectItem>
                       <SelectItem value="not_enrolled">Не зачислены</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={studentDocsFilter} onValueChange={v => setStudentDocsFilter(v as any)}>
+                    <SelectTrigger className="w-48 rounded-xl">
+                      <FileCheck className="w-4 h-4 mr-2" />
+                      <SelectValue placeholder="Документы" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Все документы</SelectItem>
+                      <SelectItem value="complete">Все загружены</SelectItem>
+                      <SelectItem value="incomplete">Есть недостающие</SelectItem>
+                      <SelectItem value="no_passport">Нет паспорта</SelectItem>
+                      <SelectItem value="no_snils">Нет СНИЛС</SelectItem>
+                      <SelectItem value="no_education">Нет образования</SelectItem>
                     </SelectContent>
                   </Select>
                   <div className="relative">
