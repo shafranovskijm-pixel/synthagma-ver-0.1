@@ -5,13 +5,15 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { FileCheck, Shield, Loader2, Check, AlertCircle, Download } from "lucide-react";
+import { FileCheck, Shield, Loader2, Check, AlertCircle, Download, History } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
 
 interface StudentConsentFormProps {
   userId: string;
   userName: string;
   organizationId: string;
+  enrollmentId?: string;
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
   onConsent?: () => void;
@@ -22,6 +24,16 @@ interface Organization {
   inn: string | null;
   ogrn: string | null;
   legal_address: string | null;
+}
+
+interface ConsentRecord {
+  id: string;
+  consent_type: "individual" | "organization";
+  status: "pending" | "signed" | "rejected" | "expired";
+  full_name: string | null;
+  signed_at: string | null;
+  created_at: string;
+  expires_at: string | null;
 }
 
 const CONSENT_TEXT = `Настоящим, в соответствии с Федеральным законом от 27.07.2006 № 152-ФЗ «О персональных данных», я даю согласие на обработку моих персональных данных.
@@ -57,20 +69,23 @@ export function StudentConsentForm({
   userId,
   userName,
   organizationId,
+  enrollmentId,
   isOpen = false,
   onOpenChange,
   onConsent,
 }: StudentConsentFormProps) {
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const [hasAgreed, setHasAgreed] = useState(false);
-  const [consentGiven, setConsentGiven] = useState(false);
-  const [consentDate, setConsentDate] = useState<string | null>(null);
+  const [consentHistory, setConsentHistory] = useState<ConsentRecord[]>([]);
+  const [currentConsent, setCurrentConsent] = useState<ConsentRecord | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
 
   useEffect(() => {
     if (isOpen && organizationId) {
       loadOrganization();
-      checkConsentStatus();
+      loadConsentHistory();
     }
   }, [isOpen, organizationId, userId]);
 
@@ -90,14 +105,27 @@ export function StudentConsentForm({
     }
   };
 
-  const checkConsentStatus = async () => {
-    // Check if consent was already given (stored in profile metadata or separate table)
-    // For now, we'll use localStorage as a simple solution
-    const storedConsent = localStorage.getItem(`consent_${userId}`);
-    if (storedConsent) {
-      const parsed = JSON.parse(storedConsent);
-      setConsentGiven(true);
-      setConsentDate(parsed.date);
+  const loadConsentHistory = async () => {
+    setIsLoadingHistory(true);
+    try {
+      const { data, error } = await supabase
+        .from("student_consents")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("organization_id", organizationId)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        setConsentHistory(data as ConsentRecord[]);
+        const latest = data[0] as ConsentRecord;
+        setCurrentConsent(latest);
+      }
+    } catch (error) {
+      console.error("Error loading consent history:", error);
+    } finally {
+      setIsLoadingHistory(false);
     }
   };
 
@@ -109,18 +137,31 @@ export function StudentConsentForm({
 
     setIsLoading(true);
     try {
-      // Store consent (in a real app, this would be in the database)
-      const consentData = {
-        userId,
-        organizationId,
-        date: new Date().toISOString(),
-        agreed: true,
-      };
+      const now = new Date();
+      const expiresAt = new Date(now.getFullYear() + 1, now.getMonth(), now.getDate());
+
+      const { data, error } = await supabase
+        .from("student_consents")
+        .insert({
+          user_id: userId,
+          organization_id: organizationId,
+          enrollment_id: enrollmentId || null,
+          consent_type: "individual",
+          status: "signed",
+          full_name: userName,
+          signed_at: now.toISOString(),
+          expires_at: expiresAt.toISOString(),
+          ip_address: "", // Would need a service to get real IP
+          user_agent: navigator.userAgent,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setCurrentConsent(data as ConsentRecord);
+      setConsentHistory(prev => [data as ConsentRecord, ...prev]);
       
-      localStorage.setItem(`consent_${userId}`, JSON.stringify(consentData));
-      
-      setConsentGiven(true);
-      setConsentDate(consentData.date);
       toast.success("Согласие на обработку персональных данных принято");
       onConsent?.();
     } catch (error) {
@@ -141,6 +182,19 @@ export function StudentConsentForm({
     });
   };
 
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "signed":
+        return <Badge className="bg-green-500/10 text-green-600 border-green-500/20">Подписано</Badge>;
+      case "rejected":
+        return <Badge variant="destructive">Отклонено</Badge>;
+      case "expired":
+        return <Badge variant="secondary">Истекло</Badge>;
+      default:
+        return <Badge variant="outline">Ожидает подписания</Badge>;
+    }
+  };
+
   const handleDownload = () => {
     const fullText = `СОГЛАСИЕ НА ОБРАБОТКУ ПЕРСОНАЛЬНЫХ ДАННЫХ
 
@@ -148,7 +202,8 @@ export function StudentConsentForm({
 
 ${CONSENT_TEXT}
 
-Дата: ${formatDate(new Date().toISOString())}
+Дата подписания: ${currentConsent?.signed_at ? formatDate(currentConsent.signed_at) : formatDate(new Date().toISOString())}
+Действует до: ${currentConsent?.expires_at ? formatDate(currentConsent.expires_at) : "___"}
 
 _________________________ / ${userName} /
         (подпись)`;
@@ -164,6 +219,21 @@ _________________________ / ${userName} /
     URL.revokeObjectURL(url);
   };
 
+  if (isLoadingHistory) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-2xl rounded-2xl">
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  const isConsentValid = currentConsent?.status === "signed" && 
+    (!currentConsent.expires_at || new Date(currentConsent.expires_at) > new Date());
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] rounded-2xl">
@@ -177,16 +247,68 @@ _________________________ / ${userName} /
           </DialogDescription>
         </DialogHeader>
 
-        {consentGiven ? (
+        {/* History button */}
+        {consentHistory.length > 0 && !showHistory && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-fit gap-2"
+            onClick={() => setShowHistory(true)}
+          >
+            <History className="w-4 h-4" />
+            История согласий ({consentHistory.length})
+          </Button>
+        )}
+
+        {showHistory ? (
+          <div className="space-y-4">
+            <Button variant="ghost" size="sm" onClick={() => setShowHistory(false)}>
+              ← Назад
+            </Button>
+            <ScrollArea className="h-80">
+              <div className="space-y-3">
+                {consentHistory.map((record) => (
+                  <div key={record.id} className="p-4 rounded-xl bg-muted/50">
+                    <div className="flex items-center justify-between mb-2">
+                      {getStatusBadge(record.status)}
+                      <span className="text-xs text-muted-foreground">
+                        {record.consent_type === "individual" ? "Физ. лицо" : "Юр. лицо"}
+                      </span>
+                    </div>
+                    <p className="text-sm font-medium">{record.full_name}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Создано: {formatDate(record.created_at)}
+                    </p>
+                    {record.signed_at && (
+                      <p className="text-xs text-muted-foreground">
+                        Подписано: {formatDate(record.signed_at)}
+                      </p>
+                    )}
+                    {record.expires_at && (
+                      <p className="text-xs text-muted-foreground">
+                        Действует до: {formatDate(record.expires_at)}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
+        ) : isConsentValid ? (
           <div className="py-6 text-center space-y-4">
-            <div className="w-16 h-16 rounded-full bg-sigma-green/10 flex items-center justify-center mx-auto">
-              <Check className="w-8 h-8 text-sigma-green" />
+            <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center mx-auto">
+              <Check className="w-8 h-8 text-green-500" />
             </div>
             <div>
-              <h3 className="font-semibold text-lg text-sigma-green">Согласие получено</h3>
-              {consentDate && (
+              <h3 className="font-semibold text-lg text-green-500">Согласие действительно</h3>
+              {currentConsent?.signed_at && (
                 <p className="text-sm text-muted-foreground mt-1">
-                  Дата: {formatDate(consentDate)}
+                  Подписано: {formatDate(currentConsent.signed_at)}
+                </p>
+              )}
+              {currentConsent?.expires_at && (
+                <p className="text-sm text-muted-foreground">
+                  Действует до: {formatDate(currentConsent.expires_at)}
                 </p>
               )}
             </div>
@@ -197,6 +319,19 @@ _________________________ / ${userName} /
           </div>
         ) : (
           <div className="space-y-4">
+            {/* Expired consent warning */}
+            {currentConsent?.status === "expired" && (
+              <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-amber-600">Срок действия согласия истёк</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Необходимо подписать новое согласие для продолжения обучения.
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="bg-muted/50 rounded-xl p-4">
               <p className="text-sm">
                 <strong>{organization?.name || "Образовательная организация"}</strong>
