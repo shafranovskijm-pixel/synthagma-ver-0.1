@@ -989,6 +989,74 @@ export type Database = {
           },
         ]
       }
+      student_consents: {
+        Row: {
+          address: string | null
+          consent_type: string
+          created_at: string
+          email: string | null
+          enrollment_id: string | null
+          expires_at: string | null
+          full_name: string | null
+          id: string
+          ip_address: string | null
+          organization_id: string
+          passport_data: string | null
+          phone: string | null
+          signed_at: string | null
+          status: string
+          updated_at: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          consent_type: string
+          created_at?: string
+          email?: string | null
+          enrollment_id?: string | null
+          expires_at?: string | null
+          full_name?: string | null
+          id?: string
+          ip_address?: string | null
+          organization_id: string
+          passport_data?: string | null
+          phone?: string | null
+          signed_at?: string | null
+          status?: string
+          updated_at?: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          consent_type?: string
+          created_at?: string
+          email?: string | null
+          enrollment_id?: string | null
+          expires_at?: string | null
+          full_name?: string | null
+          id?: string
+          ip_address?: string | null
+          organization_id?: string
+          passport_data?: string | null
+          phone?: string | null
+          signed_at?: string | null
+          status?: string
+          updated_at?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_consents_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_documents: {
         Row: {
           created_at: string
@@ -1126,6 +1194,68 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      video_identifications: {
+        Row: {
+          created_at: string
+          device_info: Json | null
+          enrollment_id: string | null
+          id: string
+          ip_address: string | null
+          organization_id: string
+          photo_url: string | null
+          rejection_reason: string | null
+          status: string
+          updated_at: string
+          user_agent: string | null
+          user_id: string
+          verified_at: string | null
+          verified_by: string | null
+          video_url: string | null
+        }
+        Insert: {
+          created_at?: string
+          device_info?: Json | null
+          enrollment_id?: string | null
+          id?: string
+          ip_address?: string | null
+          organization_id: string
+          photo_url?: string | null
+          rejection_reason?: string | null
+          status?: string
+          updated_at?: string
+          user_agent?: string | null
+          user_id: string
+          verified_at?: string | null
+          verified_by?: string | null
+          video_url?: string | null
+        }
+        Update: {
+          created_at?: string
+          device_info?: Json | null
+          enrollment_id?: string | null
+          id?: string
+          ip_address?: string | null
+          organization_id?: string
+          photo_url?: string | null
+          rejection_reason?: string | null
+          status?: string
+          updated_at?: string
+          user_agent?: string | null
+          user_id?: string
+          verified_at?: string | null
+          verified_by?: string | null
+          video_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_identifications_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

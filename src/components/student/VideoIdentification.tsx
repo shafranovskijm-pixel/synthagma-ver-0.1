@@ -3,26 +3,35 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Video, Camera, CheckCircle2, AlertCircle, Loader2, RefreshCw, UserCheck, Shield } from "lucide-react";
+import { Video, Camera, CheckCircle2, AlertCircle, Loader2, RefreshCw, UserCheck, Shield, History } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface VideoIdentificationProps {
   userId: string;
   userName: string;
+  organizationId?: string;
+  enrollmentId?: string;
   onVerified?: () => void;
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
 }
 
-interface VerificationStatus {
-  isVerified: boolean;
-  verifiedAt: string | null;
-  photoUrl: string | null;
+interface VerificationRecord {
+  id: string;
+  status: "pending" | "verified" | "rejected" | "expired";
+  photo_url: string | null;
+  created_at: string;
+  verified_at: string | null;
+  rejection_reason: string | null;
 }
 
 export function VideoIdentification({
   userId,
   userName,
+  organizationId,
+  enrollmentId,
   onVerified,
   isOpen = false,
   onOpenChange,
@@ -33,41 +42,45 @@ export function VideoIdentification({
   const [isCapturing, setIsCapturing] = useState(false);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [verificationStatus, setVerificationStatus] = useState<VerificationStatus>({
-    isVerified: false,
-    verifiedAt: null,
-    photoUrl: null,
-  });
-  const [step, setStep] = useState<"intro" | "camera" | "confirm" | "success">("intro");
+  const [verificationHistory, setVerificationHistory] = useState<VerificationRecord[]>([]);
+  const [currentVerification, setCurrentVerification] = useState<VerificationRecord | null>(null);
+  const [step, setStep] = useState<"intro" | "camera" | "confirm" | "success" | "history">("intro");
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (isOpen) {
-      checkVerificationStatus();
+      loadVerificationHistory();
     }
     return () => {
       stopCamera();
     };
   }, [isOpen, userId]);
 
-  const checkVerificationStatus = async () => {
+  const loadVerificationHistory = async () => {
+    setIsLoading(true);
     try {
       const { data, error } = await supabase
-        .from("profiles")
-        .select("id, avatar_url, updated_at")
+        .from("video_identifications")
+        .select("*")
         .eq("user_id", userId)
-        .single();
+        .order("created_at", { ascending: false });
 
-      if (data?.avatar_url) {
-        setVerificationStatus({
-          isVerified: true,
-          verifiedAt: data.updated_at,
-          photoUrl: data.avatar_url,
-        });
-        setStep("success");
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        setVerificationHistory(data as VerificationRecord[]);
+        const latest = data[0] as VerificationRecord;
+        setCurrentVerification(latest);
+        
+        if (latest.status === "verified") {
+          setStep("success");
+        }
       }
     } catch (error) {
-      console.error("Error checking verification:", error);
+      console.error("Error loading verification history:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -158,21 +171,50 @@ export function VideoIdentification({
         .getPublicUrl(fileName);
 
       // Update profile
-      const { error: updateError } = await supabase
+      await supabase
         .from("profiles")
         .update({ avatar_url: urlData.publicUrl })
         .eq("user_id", userId);
 
-      if (updateError) throw updateError;
+      // Get organization_id from profile if not provided
+      let orgId = organizationId;
+      if (!orgId) {
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("organization_id")
+          .eq("user_id", userId)
+          .single();
+        orgId = profileData?.organization_id || "";
+      }
 
-      setVerificationStatus({
-        isVerified: true,
-        verifiedAt: new Date().toISOString(),
-        photoUrl: urlData.publicUrl,
-      });
+      // Create verification record in database
+      const { data: verificationData, error: verificationError } = await supabase
+        .from("video_identifications")
+        .insert({
+          user_id: userId,
+          organization_id: orgId,
+          enrollment_id: enrollmentId || null,
+          status: "pending",
+          photo_url: urlData.publicUrl,
+          ip_address: "", // Would need a service to get real IP
+          user_agent: navigator.userAgent,
+          device_info: {
+            platform: navigator.platform,
+            language: navigator.language,
+            screenWidth: window.screen.width,
+            screenHeight: window.screen.height,
+          },
+        })
+        .select()
+        .single();
+
+      if (verificationError) throw verificationError;
+
+      setCurrentVerification(verificationData as VerificationRecord);
+      setVerificationHistory(prev => [verificationData as VerificationRecord, ...prev]);
 
       setStep("success");
-      toast.success("Видеоидентификация пройдена успешно!");
+      toast.success("Фото для идентификации отправлено на проверку!");
       onVerified?.();
     } catch (error) {
       console.error("Upload error:", error);
@@ -199,6 +241,31 @@ export function VideoIdentification({
     });
   };
 
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "verified":
+        return <Badge className="bg-green-500/10 text-green-600 border-green-500/20">Подтверждено</Badge>;
+      case "rejected":
+        return <Badge variant="destructive">Отклонено</Badge>;
+      case "expired":
+        return <Badge variant="secondary">Истекло</Badge>;
+      default:
+        return <Badge variant="outline">На проверке</Badge>;
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <Dialog open={isOpen} onOpenChange={handleClose}>
+        <DialogContent className="max-w-lg rounded-2xl">
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-lg rounded-2xl">
@@ -213,8 +280,21 @@ export function VideoIdentification({
         </DialogHeader>
 
         <div className="py-4">
+          {/* History button */}
+          {verificationHistory.length > 0 && step !== "history" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mb-4 gap-2"
+              onClick={() => setStep("history")}
+            >
+              <History className="w-4 h-4" />
+              История идентификаций ({verificationHistory.length})
+            </Button>
+          )}
+
           {/* Progress indicator */}
-          {step !== "success" && (
+          {step !== "success" && step !== "history" && (
             <div className="flex items-center gap-2 mb-6">
               <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium ${
                 step === "intro" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
@@ -239,6 +319,43 @@ export function VideoIdentification({
             </div>
           )}
 
+          {/* History view */}
+          {step === "history" && (
+            <div className="space-y-4">
+              <Button variant="ghost" size="sm" onClick={() => setStep("intro")}>
+                ← Назад
+              </Button>
+              <ScrollArea className="h-80">
+                <div className="space-y-3">
+                  {verificationHistory.map((record) => (
+                    <div key={record.id} className="flex items-center gap-4 p-3 rounded-xl bg-muted/50">
+                      {record.photo_url && (
+                        <img
+                          src={record.photo_url}
+                          alt="Verification"
+                          className="w-16 h-16 rounded-lg object-cover"
+                        />
+                      )}
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          {getStatusBadge(record.status)}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {formatDate(record.created_at)}
+                        </p>
+                        {record.rejection_reason && (
+                          <p className="text-xs text-destructive mt-1">
+                            Причина: {record.rejection_reason}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </div>
+          )}
+
           {/* Step content */}
           {step === "intro" && (
             <div className="text-center space-y-4">
@@ -251,6 +368,22 @@ export function VideoIdentification({
                   В соответствии с требованиями законодательства РФ об образовании, необходимо подтвердить вашу личность для доступа к электронной информационно-образовательной среде (ЭИОС).
                 </p>
               </div>
+              
+              {/* Current status */}
+              {currentVerification && (
+                <div className="bg-muted/50 rounded-xl p-4 text-left">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-sm font-medium">Текущий статус:</span>
+                    {getStatusBadge(currentVerification.status)}
+                  </div>
+                  {currentVerification.status === "rejected" && currentVerification.rejection_reason && (
+                    <p className="text-sm text-destructive">
+                      Причина отклонения: {currentVerification.rejection_reason}
+                    </p>
+                  )}
+                </div>
+              )}
+
               <div className="bg-muted/50 rounded-xl p-4 text-left space-y-2">
                 <p className="text-sm font-medium">Как пройти идентификацию:</p>
                 <ul className="text-sm text-muted-foreground space-y-1">
@@ -267,7 +400,7 @@ export function VideoIdentification({
               )}
               <Button className="w-full btn-gradient rounded-xl gap-2" onClick={startCamera}>
                 <Camera className="w-4 h-4" />
-                Начать идентификацию
+                {currentVerification?.status === "rejected" ? "Повторить идентификацию" : "Начать идентификацию"}
               </Button>
             </div>
           )}
@@ -342,29 +475,52 @@ export function VideoIdentification({
 
           {step === "success" && (
             <div className="text-center space-y-4">
-              <div className="w-20 h-20 rounded-full bg-sigma-green/10 flex items-center justify-center mx-auto">
-                <UserCheck className="w-10 h-10 text-sigma-green" />
+              <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto ${
+                currentVerification?.status === "verified" 
+                  ? "bg-green-500/10" 
+                  : "bg-amber-500/10"
+              }`}>
+                <UserCheck className={`w-10 h-10 ${
+                  currentVerification?.status === "verified" 
+                    ? "text-green-500" 
+                    : "text-amber-500"
+                }`} />
               </div>
               <div>
-                <h3 className="font-semibold text-lg text-sigma-green mb-2">
-                  Идентификация пройдена!
+                <h3 className={`font-semibold text-lg mb-2 ${
+                  currentVerification?.status === "verified" 
+                    ? "text-green-500" 
+                    : "text-amber-500"
+                }`}>
+                  {currentVerification?.status === "verified" 
+                    ? "Идентификация подтверждена!" 
+                    : "Фото отправлено на проверку"}
                 </h3>
                 <p className="text-muted-foreground text-sm">
-                  Ваша личность подтверждена. Вы можете продолжить обучение.
+                  {currentVerification?.status === "verified" 
+                    ? "Ваша личность подтверждена. Вы можете продолжить обучение."
+                    : "Ожидайте подтверждения от организации. Обычно это занимает до 24 часов."}
                 </p>
               </div>
-              {verificationStatus.photoUrl && (
+              {currentVerification?.photo_url && (
                 <div className="flex justify-center">
                   <img
-                    src={verificationStatus.photoUrl}
+                    src={currentVerification.photo_url}
                     alt="Verification photo"
-                    className="w-24 h-24 rounded-full object-cover border-4 border-sigma-green/20"
+                    className={`w-24 h-24 rounded-full object-cover border-4 ${
+                      currentVerification.status === "verified" 
+                        ? "border-green-500/20" 
+                        : "border-amber-500/20"
+                    }`}
                   />
                 </div>
               )}
-              {verificationStatus.verifiedAt && (
+              <div className="flex items-center justify-center gap-2">
+                {getStatusBadge(currentVerification?.status || "pending")}
+              </div>
+              {currentVerification?.created_at && (
                 <p className="text-xs text-muted-foreground">
-                  Дата идентификации: {formatDate(verificationStatus.verifiedAt)}
+                  Дата отправки: {formatDate(currentVerification.created_at)}
                 </p>
               )}
               <Button className="w-full rounded-xl" onClick={handleClose}>
