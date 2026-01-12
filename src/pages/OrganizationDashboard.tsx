@@ -11,6 +11,7 @@ import { CompaniesManager } from "@/components/organization/CompaniesManager";
 import { LibraryManager } from "@/components/organization/LibraryManager";
 import { ServicesManager } from "@/components/organization/ServicesManager";
 import { StampSignatureUploader } from "@/components/organization/StampSignatureUploader";
+import { ContractGenerator } from "@/components/organization/ContractGenerator";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -396,6 +397,9 @@ export default function OrganizationDashboard() {
   const [stampUrl, setStampUrl] = useState<string | null>(null);
   const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
   
+  // Contract generator state
+  const [showContractGenerator, setShowContractGenerator] = useState(false);
+
 
   // DaData search for organization requisites
   const handleSearchRequisitesByInn = async (inn: string) => {
@@ -3749,20 +3753,26 @@ export default function OrganizationDashboard() {
                             <p className="text-sm text-muted-foreground">Шаблон договора с автоподстановкой реквизитов</p>
                           </div>
                         </div>
-                        <Button
-                          variant="outline"
-                          className="w-full rounded-xl gap-2"
-                          onClick={() => {
-                            setEditOrgName(organizationName);
-                            setShowOrgRequisitesDialog(true);
-                          }}
-                        >
-                          <Building2 className="w-4 h-4" />
-                          Заполнить реквизиты организации
-                        </Button>
-                        <p className="text-xs text-muted-foreground mt-2">
-                          Генерация договоров доступна в карточке компании в разделе "Компании"
-                        </p>
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <Button
+                            variant="outline"
+                            className="flex-1 rounded-xl gap-2"
+                            onClick={() => {
+                              setEditOrgName(organizationName);
+                              setShowOrgRequisitesDialog(true);
+                            }}
+                          >
+                            <Building2 className="w-4 h-4" />
+                            Заполнить реквизиты
+                          </Button>
+                          <Button
+                            className="flex-1 rounded-xl gap-2"
+                            onClick={() => setShowContractGenerator(true)}
+                          >
+                            <FileText className="w-4 h-4" />
+                            Создать договор
+                          </Button>
+                        </div>
                       </div>
 
                       <div className="bg-secondary/30 rounded-xl p-4">
@@ -5580,6 +5590,29 @@ export default function OrganizationDashboard() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Contract Generator */}
+      {organizationId && (
+        <ContractGenerator
+          organizationId={organizationId}
+          isOpen={showContractGenerator}
+          onClose={() => setShowContractGenerator(false)}
+          orgRequisites={{
+            name: organizationName,
+            inn: requisites.inn,
+            kpp: requisites.kpp,
+            ogrn: requisites.ogrn,
+            legal_address: requisites.legal_address,
+            actual_address: requisites.actual_address,
+            director_name: requisites.director_name,
+            director_position: requisites.director_position,
+            bank_name: requisites.bank_name,
+            bank_bik: requisites.bank_bik,
+            bank_account: requisites.bank_account,
+            bank_corr_account: requisites.bank_corr_account,
+          }}
+        />
+      )}
     </div>
   );
 }
