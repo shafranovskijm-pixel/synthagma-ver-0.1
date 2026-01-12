@@ -56,6 +56,7 @@ interface Organization {
   inn: string | null;
   contact_name: string | null;
   ai_enabled: boolean;
+  frdo_enabled?: boolean;
   created_at: string;
   storage_limit_bytes?: number;
   ai_tokens_limit?: number;
@@ -121,6 +122,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
   const [searchQuery, setSearchQuery] = useState("");
   const [settings, setSettings] = useState({
     ai_enabled: organization.ai_enabled,
+    frdo_enabled: organization.frdo_enabled ?? false,
     name: organization.name,
     email: organization.email,
     phone: organization.phone || "",
@@ -372,6 +374,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
           inn: settings.inn || null,
           contact_name: settings.contact_name || null,
           ai_enabled: aiEnabled,
+          frdo_enabled: settings.frdo_enabled,
           storage_limit_bytes: settings.storage_limit_bytes,
           ai_tokens_limit: settings.ai_tokens_limit,
           notify_on_limit_80: settings.notify_on_limit_80,
@@ -998,6 +1001,23 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                     checked={settings.ai_enabled}
                     onCheckedChange={(checked) => setSettings({ ...settings, ai_enabled: checked })}
                     disabled={shouldBlockAI}
+                  />
+                </div>
+
+                {/* FRDO Toggle */}
+                <div className="flex items-center justify-between p-4 bg-muted/50 rounded-xl">
+                  <div className="space-y-0.5">
+                    <Label className="text-base flex items-center gap-2">
+                      <FileText className="w-4 h-4" />
+                      ФИС ФРДО
+                    </Label>
+                    <p className="text-sm text-muted-foreground">
+                      Включить модуль для работы с федеральным реестром документов
+                    </p>
+                  </div>
+                  <Switch
+                    checked={settings.frdo_enabled}
+                    onCheckedChange={(checked) => setSettings({ ...settings, frdo_enabled: checked })}
                   />
                 </div>
               </div>

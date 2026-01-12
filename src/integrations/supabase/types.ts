@@ -859,6 +859,7 @@ export type Database = {
           director_name: string | null
           director_position: string | null
           email: string
+          frdo_enabled: boolean
           id: string
           inn: string | null
           kpp: string | null
@@ -888,6 +889,7 @@ export type Database = {
           director_name?: string | null
           director_position?: string | null
           email: string
+          frdo_enabled?: boolean
           id?: string
           inn?: string | null
           kpp?: string | null
@@ -917,6 +919,7 @@ export type Database = {
           director_name?: string | null
           director_position?: string | null
           email?: string
+          frdo_enabled?: boolean
           id?: string
           inn?: string | null
           kpp?: string | null
