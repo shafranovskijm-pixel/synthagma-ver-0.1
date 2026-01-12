@@ -290,6 +290,69 @@ export type Database = {
           },
         ]
       }
+      document_issuance_log: {
+        Row: {
+          created_at: string
+          document_name: string
+          document_type: string
+          enrollment_id: string | null
+          file_url: string | null
+          id: string
+          issued_at: string
+          organization_id: string
+          reg_number: string | null
+          send_method: string | null
+          send_number: string | null
+          user_id: string
+          user_name: string
+        }
+        Insert: {
+          created_at?: string
+          document_name: string
+          document_type: string
+          enrollment_id?: string | null
+          file_url?: string | null
+          id?: string
+          issued_at?: string
+          organization_id: string
+          reg_number?: string | null
+          send_method?: string | null
+          send_number?: string | null
+          user_id: string
+          user_name: string
+        }
+        Update: {
+          created_at?: string
+          document_name?: string
+          document_type?: string
+          enrollment_id?: string | null
+          file_url?: string | null
+          id?: string
+          issued_at?: string
+          organization_id?: string
+          reg_number?: string | null
+          send_method?: string | null
+          send_number?: string | null
+          user_id?: string
+          user_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_issuance_log_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_issuance_log_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       enrollment_history: {
         Row: {
           action: string
@@ -575,6 +638,50 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "org_documents_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      org_notifications: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean
+          message: string
+          organization_id: string
+          related_id: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message: string
+          organization_id: string
+          related_id?: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          organization_id?: string
+          related_id?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_notifications_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
