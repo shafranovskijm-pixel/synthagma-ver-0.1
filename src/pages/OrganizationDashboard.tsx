@@ -4063,6 +4063,68 @@ export default function OrganizationDashboard() {
                     </Button>
                   </div>
                 </div>
+                
+                {/* Course Statistics */}
+                <div className="grid grid-cols-3 gap-4 mt-4">
+                  {(() => {
+                    const totalStudents = courseStudents.length;
+                    const activeStudents = courseStudents.filter(s => s.status !== 'completed').length;
+                    const completedStudents = courseStudents.filter(s => s.status === 'completed').length;
+                    const avgProgress = totalStudents > 0 
+                      ? Math.round(courseStudents.reduce((sum, s) => sum + s.progress, 0) / totalStudents)
+                      : 0;
+                    const completionRate = totalStudents > 0 
+                      ? Math.round((completedStudents / totalStudents) * 100)
+                      : 0;
+                    
+                    return (
+                      <>
+                        <div className="bg-background/50 backdrop-blur-sm rounded-xl p-4 border border-border/50">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-lg bg-primary/10">
+                              <TrendingUp className="w-5 h-5 text-primary" />
+                            </div>
+                            <div>
+                              <div className="text-2xl font-bold">{avgProgress}%</div>
+                              <div className="text-xs text-muted-foreground">Средний прогресс</div>
+                            </div>
+                          </div>
+                          <Progress value={avgProgress} className="mt-3 h-1.5" />
+                        </div>
+                        
+                        <div className="bg-background/50 backdrop-blur-sm rounded-xl p-4 border border-border/50">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-lg bg-sigma-green/10">
+                              <Users className="w-5 h-5 text-sigma-green" />
+                            </div>
+                            <div>
+                              <div className="text-2xl font-bold">{activeStudents}</div>
+                              <div className="text-xs text-muted-foreground">Активных учеников</div>
+                            </div>
+                          </div>
+                          <div className="mt-3 text-xs text-muted-foreground">
+                            из {totalStudents} зачисленных
+                          </div>
+                        </div>
+                        
+                        <div className="bg-background/50 backdrop-blur-sm rounded-xl p-4 border border-border/50">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-lg bg-accent/10">
+                              <CheckCircle2 className="w-5 h-5 text-accent" />
+                            </div>
+                            <div>
+                              <div className="text-2xl font-bold">{completionRate}%</div>
+                              <div className="text-xs text-muted-foreground">Завершаемость</div>
+                            </div>
+                          </div>
+                          <div className="mt-3 text-xs text-muted-foreground">
+                            {completedStudents} из {totalStudents} завершили
+                          </div>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
               </div>
 
               <Tabs value={courseDetailsTab} onValueChange={(v) => setCourseDetailsTab(v as any)} className="flex-1 flex flex-col overflow-hidden">
