@@ -62,20 +62,19 @@ const RegisterOrganization = () => {
     setIsLoading(true);
     
     try {
-      // 1. Create organization first
-      const { data: orgData, error: orgError } = await supabase
-        .from('organizations')
-        .insert({
-          name: orgName,
-          email: email,
-          phone: phone || null,
-          inn: inn || null,
-          contact_name: contactName
-        })
-        .select()
-        .single();
+      // 1. Create organization using RPC function (bypasses RLS)
+      const { data: orgId, error: orgError } = await supabase
+        .rpc('create_organization', {
+          p_name: orgName,
+          p_email: email,
+          p_phone: phone || null,
+          p_inn: inn || null,
+          p_contact_name: contactName
+        });
 
       if (orgError) throw orgError;
+      
+      const orgData = { id: orgId };
 
       // 2. Sign up user
       const { data: authData, error: authError } = await supabase.auth.signUp({

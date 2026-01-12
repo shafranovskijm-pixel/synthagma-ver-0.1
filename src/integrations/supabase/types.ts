@@ -1057,6 +1057,16 @@ export type Database = {
         }
         Returns: undefined
       }
+      create_organization: {
+        Args: {
+          p_contact_name?: string
+          p_email: string
+          p_inn?: string
+          p_name: string
+          p_phone?: string
+        }
+        Returns: string
+      }
       current_organization_id: { Args: never; Returns: string }
       get_user_role: {
         Args: { _user_id: string }
