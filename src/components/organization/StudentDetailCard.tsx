@@ -25,6 +25,7 @@ import {
   XCircle,
   History,
   Download,
+  Bell,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -319,6 +320,65 @@ export function StudentDetailCard({
     return identityDocs.find(d => d.type === type);
   };
 
+  const getMissingDocuments = () => {
+    const requiredDocs = [
+      { type: "passport", label: "Паспорт или свидетельство о рождении" },
+      { type: "snils", label: "СНИЛС" },
+      { type: "education_document", label: "Документ об образовании" },
+    ];
+    
+    return requiredDocs.filter(doc => {
+      if (doc.type === "passport") {
+        return !identityDocs.some(d => d.type === "passport" || d.type === "birth_certificate");
+      }
+      if (doc.type === "education_document") {
+        return !identityDocs.some(d => d.type === "education_document" || d.type === "diploma" || d.type === "attestat");
+      }
+      return !identityDocs.some(d => d.type === doc.type);
+    });
+  };
+
+  const [isSendingReminder, setIsSendingReminder] = useState(false);
+
+  const handleSendDocumentsReminder = async () => {
+    if (!student) return;
+    
+    const missingDocs = getMissingDocuments();
+    if (missingDocs.length === 0) {
+      toast.info("Все обязательные документы уже загружены");
+      return;
+    }
+
+    setIsSendingReminder(true);
+    try {
+      // Get organization name
+      const { data: orgData } = await supabase
+        .from("organizations")
+        .select("name")
+        .eq("id", organizationId)
+        .single();
+
+      const response = await supabase.functions.invoke("send-documents-reminder", {
+        body: {
+          email: student.email,
+          studentName: student.name,
+          missingDocuments: missingDocs.map(d => d.label),
+          organizationName: orgData?.name || "",
+          loginUrl: window.location.origin + "/login",
+        },
+      });
+
+      if (response.error) throw response.error;
+
+      toast.success("Уведомление отправлено на " + student.email);
+    } catch (error) {
+      console.error("Error sending reminder:", error);
+      toast.error("Ошибка отправки уведомления");
+    } finally {
+      setIsSendingReminder(false);
+    }
+  };
+
   const handleVerifyIdentification = async (id: string, action: "verify" | "reject", reason?: string) => {
     try {
       const updates: Record<string, unknown> = {
@@ -450,10 +510,28 @@ export function StudentDetailCard({
 
                     {/* Document Checklist */}
                     <div className="bg-card rounded-2xl border border-border p-6">
-                      <h3 className="font-semibold mb-4 flex items-center gap-2">
-                        <CheckCircle2 className="w-5 h-5 text-primary" />
-                        Чек-лист документов
-                      </h3>
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-semibold flex items-center gap-2">
+                          <CheckCircle2 className="w-5 h-5 text-primary" />
+                          Чек-лист документов
+                        </h3>
+                        {getMissingDocuments().length > 0 && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="rounded-lg gap-2"
+                            onClick={handleSendDocumentsReminder}
+                            disabled={isSendingReminder}
+                          >
+                            {isSendingReminder ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Bell className="w-4 h-4" />
+                            )}
+                            Напомнить о документах
+                          </Button>
+                        )}
+                      </div>
                       <div className="grid grid-cols-3 gap-3">
                         {checklistItems.map((item) => {
                           const existingDoc = item.uploadType ? getIdentityDocByType(item.uploadType) : null;
