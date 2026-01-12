@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import DOMPurify from "dompurify";
 import { 
@@ -28,7 +30,9 @@ import {
   Headphones,
   MessageCircle,
   X,
-  Send
+  Send,
+  Menu,
+  List
 } from "lucide-react";
 import { ContentBlock, jsonToBlocks, BlockRenderer } from "@/components/course-builder/BlockEditor";
 import { cn } from "@/lib/utils";
@@ -184,6 +188,7 @@ const CourseLearning = () => {
   const { courseId } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const contentRef = useRef<HTMLDivElement>(null);
   
   const [course, setCourse] = useState<Course | null>(null);
@@ -193,6 +198,7 @@ const CourseLearning = () => {
   const [loading, setLoading] = useState(true);
   const [enrollmentId, setEnrollmentId] = useState<string | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   
   // Test state
   const [testQuestions, setTestQuestions] = useState<TestQuestion[]>([]);
@@ -738,101 +744,140 @@ const CourseLearning = () => {
     );
   }
 
+  // Sidebar content component for reuse
+  const SidebarContent = ({ onNavigate }: { onNavigate?: () => void }) => (
+    <>
+      <div className="p-4 border-b border-border">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={() => navigate('/student')}
+          className="mb-4 hover:bg-secondary"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Назад
+        </Button>
+        <h2 className="font-display font-bold text-lg line-clamp-2">{course.title}</h2>
+        <div className="mt-4">
+          <div className="flex justify-between text-sm text-muted-foreground mb-2">
+            <span>Прогресс</span>
+            <span className="font-medium">{completedCount}/{lessons.length}</span>
+          </div>
+          <Progress value={progressPercent} className="h-2" />
+        </div>
+      </div>
+      
+      <ScrollArea className="flex-1">
+        <div className="p-2 space-y-1">
+          {lessons.map((lesson, index) => {
+            const Icon = getLessonIcon(lesson.type);
+            const completed = isLessonCompleted(lesson.id);
+            const isCurrent = index === currentLessonIndex;
+            
+            return (
+              <button
+                key={lesson.id}
+                onClick={() => { goToLesson(index); onNavigate?.(); }}
+                className={cn(
+                  "w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all duration-200",
+                  isCurrent 
+                    ? "bg-primary/10 text-primary shadow-sm" 
+                    : "hover:bg-muted"
+                )}
+              >
+                {completed ? (
+                  <div className="w-8 h-8 rounded-full bg-sigma-green/10 flex items-center justify-center shrink-0">
+                    <CheckCircle2 className="w-5 h-5 text-sigma-green" />
+                  </div>
+                ) : (
+                  <div className={cn(
+                    "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
+                    isCurrent ? "bg-primary/10" : "bg-muted"
+                  )}>
+                    <Circle className={cn("w-5 h-5", isCurrent ? "text-primary" : "text-muted-foreground")} />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium line-clamp-2">{lesson.title}</div>
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                    <Icon className="w-3 h-3" />
+                    {lesson.type === 'text' && 'Текст'}
+                    {lesson.type === 'video' && 'Видео'}
+                    {lesson.type === 'test' && 'Тест'}
+                    {lesson.type === 'audio' && 'Аудио'}
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </ScrollArea>
+
+      {/* Sidebar footer with stats */}
+      <div className="p-4 border-t border-border">
+        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+          <div className="flex items-center gap-1">
+            <Clock className="w-4 h-4" />
+            <span>{lessons.length} уроков</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Trophy className="w-4 h-4 text-sigma-green" />
+            <span>{completedCount} пройдено</span>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+
   return (
     <div className="h-screen bg-background flex overflow-hidden">
-      {/* Sidebar */}
-      <aside className="w-80 bg-card border-r border-border flex flex-col h-screen sticky top-0 shrink-0">
-        <div className="p-4 border-b border-border">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={() => navigate('/student')}
-            className="mb-4 hover:bg-secondary"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Назад
-          </Button>
-          <h2 className="font-display font-bold text-lg line-clamp-2">{course.title}</h2>
-          <div className="mt-4">
-            <div className="flex justify-between text-sm text-muted-foreground mb-2">
-              <span>Прогресс</span>
-              <span className="font-medium">{completedCount}/{lessons.length}</span>
-            </div>
-            <Progress value={progressPercent} className="h-2" />
-          </div>
-        </div>
-        
-        <ScrollArea className="flex-1">
-          <div className="p-2 space-y-1">
-            {lessons.map((lesson, index) => {
-              const Icon = getLessonIcon(lesson.type);
-              const completed = isLessonCompleted(lesson.id);
-              const isCurrent = index === currentLessonIndex;
-              
-              return (
-                <button
-                  key={lesson.id}
-                  onClick={() => goToLesson(index)}
-                  className={cn(
-                    "w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all duration-200",
-                    isCurrent 
-                      ? "bg-primary/10 text-primary shadow-sm" 
-                      : "hover:bg-muted"
-                  )}
-                >
-                  {completed ? (
-                    <div className="w-8 h-8 rounded-full bg-sigma-green/10 flex items-center justify-center shrink-0">
-                      <CheckCircle2 className="w-5 h-5 text-sigma-green" />
-                    </div>
-                  ) : (
-                    <div className={cn(
-                      "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
-                      isCurrent ? "bg-primary/10" : "bg-muted"
-                    )}>
-                      <Circle className={cn("w-5 h-5", isCurrent ? "text-primary" : "text-muted-foreground")} />
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium line-clamp-2">{lesson.title}</div>
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                      <Icon className="w-3 h-3" />
-                      {lesson.type === 'text' && 'Текст'}
-                      {lesson.type === 'video' && 'Видео'}
-                      {lesson.type === 'test' && 'Тест'}
-                      {lesson.type === 'audio' && 'Аудио'}
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </ScrollArea>
+      {/* Desktop Sidebar */}
+      {!isMobile && (
+        <aside className="w-80 bg-card border-r border-border flex flex-col h-screen sticky top-0 shrink-0">
+          <SidebarContent />
+        </aside>
+      )}
 
-        {/* Sidebar footer with stats */}
-        <div className="p-4 border-t border-border">
-          <div className="flex items-center gap-3 text-sm text-muted-foreground">
-            <div className="flex items-center gap-1">
-              <Clock className="w-4 h-4" />
-              <span>{lessons.length} уроков</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Trophy className="w-4 h-4 text-sigma-green" />
-              <span>{completedCount} пройдено</span>
-            </div>
-          </div>
-        </div>
-      </aside>
+      {/* Mobile Sidebar Sheet */}
+      {isMobile && (
+        <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+          <SheetContent side="left" className="w-[85%] max-w-sm p-0 flex flex-col">
+            <SidebarContent onNavigate={() => setSidebarOpen(false)} />
+          </SheetContent>
+        </Sheet>
+      )}
 
       {/* Main content */}
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* Header */}
-        <header className="border-b border-border bg-card px-6 py-4 flex items-center justify-between shrink-0 sticky top-0 z-10">
-          <div className="flex items-center gap-4">
-            <SigmaLogo size="sm" />
-            <span className="text-muted-foreground">|</span>
-            <span className="font-medium truncate max-w-md">{currentLesson?.title}</span>
+        <header className={cn(
+          "border-b border-border bg-card flex items-center justify-between shrink-0 sticky top-0 z-10",
+          isMobile ? "px-3 py-3" : "px-6 py-4"
+        )}>
+          <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
+            {/* Mobile menu button */}
+            {isMobile && (
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={() => setSidebarOpen(true)}
+                className="shrink-0"
+              >
+                <List className="w-5 h-5" />
+              </Button>
+            )}
+            {!isMobile && (
+              <>
+                <SigmaLogo size="sm" />
+                <span className="text-muted-foreground">|</span>
+              </>
+            )}
+            <span className={cn(
+              "font-medium truncate",
+              isMobile ? "text-sm max-w-[140px]" : "max-w-md"
+            )}>{currentLesson?.title}</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 md:gap-2 shrink-0">
             {/* Text-to-speech button */}
             {(currentLesson?.type === 'text' || currentLesson?.type === 'test') && (
               <Button 
@@ -840,21 +885,19 @@ const CourseLearning = () => {
                 size="sm"
                 onClick={speakText}
                 className={cn(
-                  "rounded-lg gap-1",
-                  isSpeaking && "bg-primary text-primary-foreground"
+                  "rounded-lg",
+                  isSpeaking && "bg-primary text-primary-foreground",
+                  isMobile && "h-8 w-8 p-0"
                 )}
                 title={isSpeaking ? "Остановить озвучивание" : "Озвучить текст"}
               >
                 {isSpeaking ? (
-                  <>
-                    <Square className="w-4 h-4" />
-                    <span className="hidden sm:inline">Стоп</span>
-                  </>
+                  <Square className="w-4 h-4" />
                 ) : (
-                  <>
-                    <Volume2 className="w-4 h-4" />
-                    <span className="hidden sm:inline">Озвучить</span>
-                  </>
+                  <Volume2 className="w-4 h-4" />
+                )}
+                {!isMobile && (
+                  <span className="ml-1">{isSpeaking ? 'Стоп' : 'Озвучить'}</span>
                 )}
               </Button>
             )}
@@ -863,20 +906,23 @@ const CourseLearning = () => {
               size="sm"
               disabled={currentLessonIndex === 0}
               onClick={goToPrevLesson}
-              className="rounded-lg"
+              className={cn("rounded-lg", isMobile && "h-8 w-8 p-0")}
             >
               <ChevronLeft className="w-4 h-4" />
             </Button>
-            <div className="px-3 py-1 bg-secondary rounded-lg text-sm">
+            <div className={cn(
+              "bg-secondary rounded-lg text-sm",
+              isMobile ? "px-2 py-1" : "px-3 py-1"
+            )}>
               <span className="font-medium">{currentLessonIndex + 1}</span>
-              <span className="text-muted-foreground"> / {lessons.length}</span>
+              <span className="text-muted-foreground">/{lessons.length}</span>
             </div>
             <Button 
               variant="outline" 
               size="sm"
               disabled={currentLessonIndex === lessons.length - 1}
               onClick={goToNextLesson}
-              className="rounded-lg"
+              className={cn("rounded-lg", isMobile && "h-8 w-8 p-0")}
             >
               <ChevronRight className="w-4 h-4" />
             </Button>
@@ -887,20 +933,27 @@ const CourseLearning = () => {
         <ScrollArea className="flex-1" ref={contentRef}>
           <div 
             className={cn(
-              "max-w-4xl mx-auto p-8 transition-all duration-300",
+              "max-w-4xl mx-auto transition-all duration-300",
+              isMobile ? "p-4" : "p-8",
               isTransitioning ? "opacity-0 translate-y-4" : "opacity-100 translate-y-0"
             )}
           >
             {currentLesson?.type === 'text' && (
-              <div className="space-y-6 animate-fade-in">
+              <div className="space-y-4 md:space-y-6 animate-fade-in">
                 {/* Lesson header */}
-                <div className="flex items-center gap-3 pb-4 border-b border-border">
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                    <FileText className="w-5 h-5 text-primary" />
+                <div className="flex items-center gap-3 pb-3 md:pb-4 border-b border-border">
+                  <div className={cn(
+                    "rounded-xl bg-primary/10 flex items-center justify-center shrink-0",
+                    isMobile ? "w-8 h-8" : "w-10 h-10"
+                  )}>
+                    <FileText className={cn(isMobile ? "w-4 h-4" : "w-5 h-5", "text-primary")} />
                   </div>
-                  <div>
-                    <h1 className="font-display text-2xl font-bold">{currentLesson.title}</h1>
-                    <p className="text-sm text-muted-foreground">Урок {currentLessonIndex + 1}</p>
+                  <div className="min-w-0">
+                    <h1 className={cn(
+                      "font-display font-bold line-clamp-2",
+                      isMobile ? "text-lg" : "text-2xl"
+                    )}>{currentLesson.title}</h1>
+                    <p className="text-xs md:text-sm text-muted-foreground">Урок {currentLessonIndex + 1}</p>
                   </div>
                 </div>
 
@@ -921,15 +974,21 @@ const CourseLearning = () => {
             )}
 
             {currentLesson?.type === 'video' && (
-              <div className="space-y-6 animate-fade-in">
+              <div className="space-y-4 md:space-y-6 animate-fade-in">
                 {/* Video header */}
-                <div className="flex items-center gap-3 pb-4 border-b border-border">
-                  <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center">
-                    <Video className="w-5 h-5 text-red-500" />
+                <div className="flex items-center gap-3 pb-3 md:pb-4 border-b border-border">
+                  <div className={cn(
+                    "rounded-xl bg-red-500/10 flex items-center justify-center shrink-0",
+                    isMobile ? "w-8 h-8" : "w-10 h-10"
+                  )}>
+                    <Video className={cn(isMobile ? "w-4 h-4" : "w-5 h-5", "text-red-500")} />
                   </div>
-                  <div>
-                    <h1 className="font-display text-2xl font-bold">{currentLesson.title}</h1>
-                    <p className="text-sm text-muted-foreground">Видеоурок {currentLessonIndex + 1}</p>
+                  <div className="min-w-0">
+                    <h1 className={cn(
+                      "font-display font-bold line-clamp-2",
+                      isMobile ? "text-lg" : "text-2xl"
+                    )}>{currentLesson.title}</h1>
+                    <p className="text-xs md:text-sm text-muted-foreground">Видеоурок {currentLessonIndex + 1}</p>
                   </div>
                 </div>
 
@@ -947,19 +1006,28 @@ const CourseLearning = () => {
             )}
 
             {currentLesson?.type === 'audio' && (
-              <div className="space-y-6 animate-fade-in">
+              <div className="space-y-4 md:space-y-6 animate-fade-in">
                 {/* Audio header */}
-                <div className="flex items-center gap-3 pb-4 border-b border-border">
-                  <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center">
-                    <Headphones className="w-5 h-5 text-green-500" />
+                <div className="flex items-center gap-3 pb-3 md:pb-4 border-b border-border">
+                  <div className={cn(
+                    "rounded-xl bg-green-500/10 flex items-center justify-center shrink-0",
+                    isMobile ? "w-8 h-8" : "w-10 h-10"
+                  )}>
+                    <Headphones className={cn(isMobile ? "w-4 h-4" : "w-5 h-5", "text-green-500")} />
                   </div>
-                  <div>
-                    <h1 className="font-display text-2xl font-bold">{currentLesson.title}</h1>
-                    <p className="text-sm text-muted-foreground">Аудиолекция {currentLessonIndex + 1}</p>
+                  <div className="min-w-0">
+                    <h1 className={cn(
+                      "font-display font-bold line-clamp-2",
+                      isMobile ? "text-lg" : "text-2xl"
+                    )}>{currentLesson.title}</h1>
+                    <p className="text-xs md:text-sm text-muted-foreground">Аудиолекция {currentLessonIndex + 1}</p>
                   </div>
                 </div>
 
-                <div className="bg-card rounded-2xl border border-border p-6">
+                <div className={cn(
+                  "bg-card rounded-2xl border border-border",
+                  isMobile ? "p-4" : "p-6"
+                )}>
                   {currentLesson.content && currentLesson.content.startsWith('http') ? (
                     <audio controls className="w-full">
                       <source src={currentLesson.content} type="audio/mpeg" />
@@ -969,7 +1037,7 @@ const CourseLearning = () => {
                     </audio>
                   ) : (
                     <div className="text-center text-muted-foreground py-8">
-                      <Headphones className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                      <Headphones className={cn(isMobile ? "w-12 h-12" : "w-16 h-16", "mx-auto mb-4 opacity-50")} />
                       <p>Аудио не загружено</p>
                     </div>
                   )}
@@ -978,15 +1046,21 @@ const CourseLearning = () => {
             )}
 
             {currentLesson?.type === 'test' && (
-              <div className="space-y-6 animate-fade-in">
+              <div className="space-y-4 md:space-y-6 animate-fade-in">
                 {/* Test header */}
-                <div className="flex items-center gap-3 pb-4 border-b border-border">
-                  <div className="w-10 h-10 rounded-xl bg-sigma-purple/10 flex items-center justify-center">
-                    <ClipboardList className="w-5 h-5 text-sigma-purple" />
+                <div className="flex items-center gap-3 pb-3 md:pb-4 border-b border-border">
+                  <div className={cn(
+                    "rounded-xl bg-sigma-purple/10 flex items-center justify-center shrink-0",
+                    isMobile ? "w-8 h-8" : "w-10 h-10"
+                  )}>
+                    <ClipboardList className={cn(isMobile ? "w-4 h-4" : "w-5 h-5", "text-sigma-purple")} />
                   </div>
-                  <div>
-                    <h1 className="font-display text-2xl font-bold">{currentLesson.title}</h1>
-                    <p className="text-sm text-muted-foreground">Тестирование • {testQuestions.length} вопросов</p>
+                  <div className="min-w-0">
+                    <h1 className={cn(
+                      "font-display font-bold line-clamp-2",
+                      isMobile ? "text-lg" : "text-2xl"
+                    )}>{currentLesson.title}</h1>
+                    <p className="text-xs md:text-sm text-muted-foreground">Тестирование • {testQuestions.length} вопросов</p>
                   </div>
                 </div>
 
@@ -1131,41 +1205,47 @@ const CourseLearning = () => {
         </ScrollArea>
 
         {/* Footer */}
-        <footer className="border-t border-border bg-card px-6 py-4 flex justify-between items-center">
+        <footer className={cn(
+          "border-t border-border bg-card flex justify-between items-center shrink-0",
+          isMobile ? "px-3 py-3" : "px-6 py-4"
+        )}>
           <div className="text-sm text-muted-foreground">
             {isLessonCompleted(currentLesson?.id || '') && (
-              <span className="flex items-center gap-2 text-sigma-green font-medium">
+              <span className={cn(
+                "flex items-center gap-2 text-sigma-green font-medium",
+                isMobile && "text-xs"
+              )}>
                 <CheckCircle2 className="w-4 h-4" />
-                Урок завершён
+                {!isMobile && "Урок завершён"}
               </span>
             )}
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-2 md:gap-3">
             {currentLesson?.type === 'test' && !testSubmitted && (
               <Button 
                 onClick={submitTest}
                 disabled={Object.keys(answers).length !== testQuestions.length}
-                className="btn-gradient rounded-xl"
+                className={cn("btn-gradient rounded-xl", isMobile && "text-sm px-3")}
               >
-                Отправить ответы
+                {isMobile ? "Отправить" : "Отправить ответы"}
               </Button>
             )}
             {currentLesson?.type !== 'test' && !isLessonCompleted(currentLesson?.id || '') && (
-              <Button onClick={markLessonComplete} className="btn-gradient rounded-xl">
-                Завершить урок
-                <ChevronRight className="w-4 h-4 ml-2" />
+              <Button onClick={markLessonComplete} className={cn("btn-gradient rounded-xl", isMobile && "text-sm px-3")}>
+                {isMobile ? "Завершить" : "Завершить урок"}
+                <ChevronRight className="w-4 h-4 ml-1 md:ml-2" />
               </Button>
             )}
             {isLessonCompleted(currentLesson?.id || '') && currentLessonIndex < lessons.length - 1 && (
-              <Button onClick={goToNextLesson} className="btn-gradient rounded-xl">
-                Следующий урок
-                <ChevronRight className="w-4 h-4 ml-2" />
+              <Button onClick={goToNextLesson} className={cn("btn-gradient rounded-xl", isMobile && "text-sm px-3")}>
+                {isMobile ? "Далее" : "Следующий урок"}
+                <ChevronRight className="w-4 h-4 ml-1 md:ml-2" />
               </Button>
             )}
             {isLessonCompleted(currentLesson?.id || '') && currentLessonIndex === lessons.length - 1 && (
-              <Button onClick={() => navigate('/student')} className="btn-gradient rounded-xl">
-                <Trophy className="w-4 h-4 mr-2" />
-                Курс завершён!
+              <Button onClick={() => navigate('/student')} className={cn("btn-gradient rounded-xl", isMobile && "text-sm px-3")}>
+                <Trophy className="w-4 h-4 mr-1 md:mr-2" />
+                {isMobile ? "Готово!" : "Курс завершён!"}
               </Button>
             )}
           </div>
@@ -1176,18 +1256,26 @@ const CourseLearning = () => {
       <Button
         onClick={() => setIsChatOpen(true)}
         className={cn(
-          "fixed bottom-24 right-6 w-14 h-14 rounded-full shadow-lg z-40",
+          "fixed shadow-lg z-40",
           "bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70",
-          "transition-transform hover:scale-105",
+          "transition-transform hover:scale-105 rounded-full",
+          isMobile 
+            ? "bottom-20 right-4 w-12 h-12" 
+            : "bottom-24 right-6 w-14 h-14",
           isChatOpen && "hidden"
         )}
       >
-        <MessageCircle className="w-6 h-6" />
+        <MessageCircle className={cn(isMobile ? "w-5 h-5" : "w-6 h-6")} />
       </Button>
 
       {/* AI Chat Panel */}
       {isChatOpen && (
-        <div className="fixed bottom-24 right-6 w-96 h-[500px] bg-card border border-border rounded-2xl shadow-2xl z-50 flex flex-col overflow-hidden animate-fade-in">
+        <div className={cn(
+          "fixed bg-card border border-border shadow-2xl z-50 flex flex-col overflow-hidden animate-fade-in",
+          isMobile 
+            ? "inset-0 rounded-none" 
+            : "bottom-24 right-6 w-96 h-[500px] rounded-2xl"
+        )}>
           {/* Chat Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
             <div className="flex items-center gap-2">
@@ -1259,7 +1347,10 @@ const CourseLearning = () => {
           </div>
 
           {/* Chat Input */}
-          <div className="p-3 border-t border-border bg-background">
+          <div className={cn(
+            "border-t border-border bg-background",
+            isMobile ? "p-3 pb-safe" : "p-3"
+          )}>
             <div className="flex gap-2">
               <input
                 type="text"
