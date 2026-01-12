@@ -3517,9 +3517,20 @@ export default function OrganizationDashboard() {
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="px-6 pb-6">
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Настройте внешний вид кабинета с вашим фирменным стилем
-                    </p>
+                    <div className="flex items-center justify-between mb-4">
+                      <p className="text-sm text-muted-foreground">
+                        Настройте внешний вид кабинета с вашим фирменным стилем
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="rounded-xl gap-2"
+                        onClick={handlePreviewStudentDashboard}
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                        Предпросмотр
+                      </Button>
+                    </div>
                     
                     <div className="space-y-6">
                       {/* Cover Image */}
