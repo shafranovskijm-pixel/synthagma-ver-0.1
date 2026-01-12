@@ -66,6 +66,10 @@ interface Company {
   id: string;
   name: string;
   inn: string | null;
+  kpp: string | null;
+  ogrn: string | null;
+  address: string | null;
+  director: string | null;
   created_at: string;
   studentsCount?: number;
 }
@@ -1186,15 +1190,31 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
                 </div>
                 <div>
                   <h2 className="font-display text-xl font-bold">{selectedCompanyForDetail?.name}</h2>
-                  <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
+                  <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1 flex-wrap">
                     {selectedCompanyForDetail?.inn && (
                       <span>ИНН: {selectedCompanyForDetail.inn}</span>
+                    )}
+                    {selectedCompanyForDetail?.kpp && (
+                      <span>КПП: {selectedCompanyForDetail.kpp}</span>
+                    )}
+                    {selectedCompanyForDetail?.ogrn && (
+                      <span>ОГРН: {selectedCompanyForDetail.ogrn}</span>
                     )}
                     <span className="flex items-center gap-1">
                       <Calendar className="w-3 h-3" />
                       {selectedCompanyForDetail && new Date(selectedCompanyForDetail.created_at).toLocaleDateString("ru-RU")}
                     </span>
                   </div>
+                  {selectedCompanyForDetail?.director && (
+                    <div className="text-sm text-muted-foreground mt-1">
+                      <span className="text-foreground/70">Руководитель:</span> {selectedCompanyForDetail.director}
+                    </div>
+                  )}
+                  {selectedCompanyForDetail?.address && (
+                    <div className="text-xs text-muted-foreground mt-1 max-w-xl truncate" title={selectedCompanyForDetail.address}>
+                      <span className="text-foreground/70">Адрес:</span> {selectedCompanyForDetail.address}
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="flex gap-2">
