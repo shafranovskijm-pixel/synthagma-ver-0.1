@@ -301,6 +301,7 @@ export default function OrganizationDashboard() {
 
   // Student filter state - default to not_enrolled
   const [studentStatusFilter, setStudentStatusFilter] = useState<"all" | "active" | "completed" | "not_enrolled">("not_enrolled");
+  const [studentCourseFilter, setStudentCourseFilter] = useState<string>("all");
   
   // Refresh trigger for data reload
   const [refreshKey, setRefreshKey] = useState(0);
@@ -2159,6 +2160,18 @@ export default function OrganizationDashboard() {
 
     if (!matchesSearch) return false;
 
+    // Filter by course
+    if (studentCourseFilter !== "all") {
+      if (studentStatusFilter === "not_enrolled") {
+        // For "not_enrolled" status with a specific course, we want students not enrolled in THIS course
+        // but they might be enrolled in other courses or not enrolled at all
+        if (s.course_id === studentCourseFilter) return false;
+      } else {
+        // For other statuses, filter to only show students enrolled in this course
+        if (s.course_id !== studentCourseFilter) return false;
+      }
+    }
+
     if (studentStatusFilter === "all") return true;
     if (studentStatusFilter === "active") return s.status === "active";
     if (studentStatusFilter === "completed") return s.status === "completed";
@@ -2648,11 +2661,25 @@ export default function OrganizationDashboard() {
                             className="flex-1 rounded-xl gap-2"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleOpenCourseStudents(course);
+                              setStudentCourseFilter(course.id);
+                              setStudentStatusFilter("all");
+                              setActiveTab("students");
                             }}
                           >
                             <Users className="w-4 h-4" />
                             Ученики
+                          </Button>
+                          <Button
+                            className="flex-1 rounded-xl gap-2 btn-gradient"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setStudentCourseFilter(course.id);
+                              setStudentStatusFilter("not_enrolled");
+                              setActiveTab("students");
+                            }}
+                          >
+                            <Plus className="w-4 h-4" />
+                            Зачислить
                           </Button>
                           <Button
                             variant="outline"
@@ -2787,11 +2814,34 @@ export default function OrganizationDashboard() {
           {activeTab === "students" && (
             <div className="bg-card rounded-2xl border border-border">
               <div className="p-6 border-b border-border flex items-center justify-between flex-wrap gap-4">
-                <h2 className="font-display text-xl font-semibold">Все ученики</h2>
+                <div className="flex items-center gap-3">
+                  <h2 className="font-display text-xl font-semibold">
+                    {studentCourseFilter !== "all" 
+                      ? `Ученики: ${courses.find(c => c.id === studentCourseFilter)?.title || "Курс"}`
+                      : "Все ученики"
+                    }
+                  </h2>
+                  {studentCourseFilter !== "all" && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setStudentCourseFilter("all")}
+                      className="rounded-xl gap-1 text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="w-4 h-4" />
+                      Сбросить
+                    </Button>
+                  )}
+                </div>
                 <div className="flex items-center gap-3 flex-wrap">
                   {selectedStudentIds.size > 0 && (
                     <>
-                      <Button onClick={() => setShowEnrollDialog(true)} className="btn-gradient rounded-xl gap-2">
+                      <Button onClick={() => {
+                        if (studentCourseFilter !== "all") {
+                          setEnrollCourseId(studentCourseFilter);
+                        }
+                        setShowEnrollDialog(true);
+                      }} className="btn-gradient rounded-xl gap-2">
                         <GraduationCap className="w-4 h-4" />
                         Зачислить на курс ({selectedStudentIds.size})
                       </Button>
@@ -2858,6 +2908,18 @@ export default function OrganizationDashboard() {
                     <FileSpreadsheet className="w-4 h-4" />
                     Экспорт
                   </Button>
+                  <Select value={studentCourseFilter} onValueChange={(v) => setStudentCourseFilter(v)}>
+                    <SelectTrigger className="w-48 rounded-xl">
+                      <BookOpen className="w-4 h-4 mr-2" />
+                      <SelectValue placeholder="Курс" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Все курсы</SelectItem>
+                      {courses.map(course => (
+                        <SelectItem key={course.id} value={course.id}>{course.title}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <Select value={studentStatusFilter} onValueChange={(v) => setStudentStatusFilter(v as any)}>
                     <SelectTrigger className="w-44 rounded-xl">
                       <Filter className="w-4 h-4 mr-2" />
