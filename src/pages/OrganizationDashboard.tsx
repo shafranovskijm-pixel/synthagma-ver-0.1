@@ -293,6 +293,9 @@ export default function OrganizationDashboard() {
 
   // Student filter state - default to not_enrolled
   const [studentStatusFilter, setStudentStatusFilter] = useState<"all" | "active" | "completed" | "not_enrolled">("not_enrolled");
+  
+  // Refresh trigger for data reload
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Course documents state
   const [showCourseDocsDialog, setShowCourseDocsDialog] = useState(false);
@@ -712,7 +715,7 @@ export default function OrganizationDashboard() {
     };
 
     fetchData();
-  }, [user]);
+  }, [user, refreshKey]);
 
   // Fetch all organizations
   useEffect(() => {
@@ -939,6 +942,9 @@ export default function OrganizationDashboard() {
         setStudents(prev => [...prev, newStudent]);
       }
 
+      // Trigger data refresh to ensure student appears in list
+      setRefreshKey(prev => prev + 1);
+      
       setShowAddStudentDialog(false);
       setNewStudentName("");
       setNewStudentEmail("");
