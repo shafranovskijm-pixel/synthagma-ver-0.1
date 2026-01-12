@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { supabase } from "@/integrations/supabase/client";
 import {
   BookOpen,
@@ -440,10 +441,13 @@ export default function StudentDashboard() {
                 <CheckCircle2 className="w-4 h-4 ml-auto text-green-500" />
               )}
             </button>
-            <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors">
+            <div className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground">
               <Settings className="w-5 h-5" />
               Настройки
-            </button>
+              <div className="ml-auto">
+                <ThemeToggle />
+              </div>
+            </div>
           </div>
         </nav>
 
