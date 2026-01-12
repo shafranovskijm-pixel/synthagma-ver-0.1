@@ -10,6 +10,8 @@ import { CourseTestReport } from "@/components/organization/CourseTestReport";
 import { CompaniesManager } from "@/components/organization/CompaniesManager";
 import { LibraryManager } from "@/components/organization/LibraryManager";
 import { ServicesManager } from "@/components/organization/ServicesManager";
+import { ContractTemplateEditor } from "@/components/organization/ContractTemplateEditor";
+import { ConsentGenerator } from "@/components/organization/ConsentGenerator";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -2763,6 +2765,33 @@ export default function OrganizationDashboard() {
                         Тёмная
                       </Button>
                     </div>
+                  </div>
+                </div>
+              </details>
+
+              {/* Document Autofill Settings */}
+              <details className="bg-card rounded-2xl border border-border group">
+                <summary className="p-6 cursor-pointer list-none flex items-center justify-between">
+                  <h3 className="font-display font-semibold text-lg flex items-center gap-2">
+                    <FileText className="w-5 h-5" />
+                    Автозаполнение документов
+                  </h3>
+                  <ChevronRight className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90" />
+                </summary>
+                <div className="px-6 pb-6 space-y-6">
+                  <div>
+                    <h4 className="font-medium mb-2">Конструктор договора</h4>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Настройте шаблон договора с автоматической подстановкой данных
+                    </p>
+                    {organizationId && <ContractTemplateEditor organizationId={organizationId} organizationName={organizationName} />}
+                  </div>
+                  <div className="border-t border-border pt-6">
+                    <h4 className="font-medium mb-2">Согласие на обработку ПД</h4>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Генератор согласия на обработку персональных данных для учеников и организаций
+                    </p>
+                    {organizationId && <ConsentGenerator organizationId={organizationId} organizationName={organizationName} />}
                   </div>
                 </div>
               </details>
