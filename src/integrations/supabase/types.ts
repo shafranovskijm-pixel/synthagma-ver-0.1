@@ -166,6 +166,62 @@ export type Database = {
           },
         ]
       }
+      consent_documents: {
+        Row: {
+          address: string | null
+          company_address: string | null
+          company_director: string | null
+          company_inn: string | null
+          company_name: string | null
+          consent_type: string
+          content_html: string
+          created_at: string
+          created_by: string | null
+          full_name: string | null
+          id: string
+          organization_id: string
+          passport_data: string | null
+        }
+        Insert: {
+          address?: string | null
+          company_address?: string | null
+          company_director?: string | null
+          company_inn?: string | null
+          company_name?: string | null
+          consent_type: string
+          content_html: string
+          created_at?: string
+          created_by?: string | null
+          full_name?: string | null
+          id?: string
+          organization_id: string
+          passport_data?: string | null
+        }
+        Update: {
+          address?: string | null
+          company_address?: string | null
+          company_director?: string | null
+          company_inn?: string | null
+          company_name?: string | null
+          consent_type?: string
+          content_html?: string
+          created_at?: string
+          created_by?: string | null
+          full_name?: string | null
+          id?: string
+          organization_id?: string
+          passport_data?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consent_documents_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_categories: {
         Row: {
           color: string | null
