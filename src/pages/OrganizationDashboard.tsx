@@ -12,6 +12,7 @@ import { LibraryManager } from "@/components/organization/LibraryManager";
 import { ServicesManager } from "@/components/organization/ServicesManager";
 import { StampSignatureUploader } from "@/components/organization/StampSignatureUploader";
 import { ContractGenerator } from "@/components/organization/ContractGenerator";
+import { ContractTemplateEditor } from "@/components/organization/ContractTemplateEditor";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -3742,21 +3743,30 @@ export default function OrganizationDashboard() {
                       Настройки для автоматического заполнения договоров, счетов и актов
                     </p>
                     
-                    <div className="space-y-4">
-                      <div className="bg-secondary/30 rounded-xl p-4">
-                        <div className="flex items-center gap-3 mb-3">
-                          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                            <FileText className="w-5 h-5 text-primary" />
+                    <div className="space-y-6">
+                      {/* Contract Template Editor */}
+                      {organizationId && (
+                        <ContractTemplateEditor
+                          organizationId={organizationId}
+                          organizationName={organizationName}
+                        />
+                      )}
+
+                      {/* Quick Actions */}
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div className="bg-secondary/30 rounded-xl p-4">
+                          <div className="flex items-center gap-3 mb-3">
+                            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                              <Building2 className="w-5 h-5 text-primary" />
+                            </div>
+                            <div className="flex-1">
+                              <p className="font-medium">Реквизиты организации</p>
+                              <p className="text-sm text-muted-foreground">Для автоподстановки в документы</p>
+                            </div>
                           </div>
-                          <div className="flex-1">
-                            <p className="font-medium">Договор на обучение</p>
-                            <p className="text-sm text-muted-foreground">Шаблон договора с автоподстановкой реквизитов</p>
-                          </div>
-                        </div>
-                        <div className="flex flex-col sm:flex-row gap-2">
                           <Button
                             variant="outline"
-                            className="flex-1 rounded-xl gap-2"
+                            className="w-full rounded-xl gap-2"
                             onClick={() => {
                               setEditOrgName(organizationName);
                               setShowOrgRequisitesDialog(true);
@@ -3765,8 +3775,20 @@ export default function OrganizationDashboard() {
                             <Building2 className="w-4 h-4" />
                             Заполнить реквизиты
                           </Button>
+                        </div>
+
+                        <div className="bg-secondary/30 rounded-xl p-4">
+                          <div className="flex items-center gap-3 mb-3">
+                            <div className="w-10 h-10 rounded-xl bg-sigma-green/10 flex items-center justify-center">
+                              <FileText className="w-5 h-5 text-sigma-green" />
+                            </div>
+                            <div className="flex-1">
+                              <p className="font-medium">Создать договор</p>
+                              <p className="text-sm text-muted-foreground">На основе шаблона</p>
+                            </div>
+                          </div>
                           <Button
-                            className="flex-1 rounded-xl gap-2"
+                            className="w-full rounded-xl gap-2"
                             onClick={() => setShowContractGenerator(true)}
                           >
                             <FileText className="w-4 h-4" />
@@ -3775,38 +3797,8 @@ export default function OrganizationDashboard() {
                         </div>
                       </div>
 
-                      <div className="bg-secondary/30 rounded-xl p-4">
-                        <div className="flex items-center gap-3 mb-3">
-                          <div className="w-10 h-10 rounded-xl bg-sigma-green/10 flex items-center justify-center">
-                            <Receipt className="w-5 h-5 text-sigma-green" />
-                          </div>
-                          <div>
-                            <p className="font-medium">Счёт на оплату</p>
-                            <p className="text-sm text-muted-foreground">Автоматическое формирование счетов</p>
-                          </div>
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          Для формирования счетов необходимо заполнить банковские реквизиты в разделе «Реквизиты организации»
-                        </p>
-                      </div>
-
-                      <div className="bg-secondary/30 rounded-xl p-4">
-                        <div className="flex items-center gap-3 mb-3">
-                          <div className="w-10 h-10 rounded-xl bg-sigma-orange/10 flex items-center justify-center">
-                            <FileCheck className="w-5 h-5 text-sigma-orange" />
-                          </div>
-                          <div>
-                            <p className="font-medium">Акт выполненных работ</p>
-                            <p className="text-sm text-muted-foreground">Автоматическое формирование актов</p>
-                          </div>
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          Акты формируются на основе реквизитов организации и данных об обучении
-                        </p>
-                      </div>
-
                       {/* Stamp and Signature Upload */}
-                      <div className="bg-secondary/30 rounded-xl p-4 mt-6">
+                      <div className="bg-secondary/30 rounded-xl p-4">
                         <h4 className="font-semibold mb-4 flex items-center gap-2">
                           <Image className="w-5 h-5" />
                           Печать и подпись для документов
@@ -3822,7 +3814,6 @@ export default function OrganizationDashboard() {
                               organizationId={organizationId}
                               onUpload={async (url) => {
                                 setStampUrl(url);
-                                // Save to database
                                 await supabase
                                   .from('organizations')
                                   .update({ stamp_url: url })
