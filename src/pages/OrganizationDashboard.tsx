@@ -1,5 +1,7 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import ImportStudentsForm from "@/components/ImportStudentsForm";
+import { AnimatedTabContent } from "@/components/ui/AnimatedTabContent";
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useNavigate } from "react-router-dom";
@@ -371,11 +373,15 @@ export default function OrganizationDashboard() {
     return baseTabs;
   }, [menuSettings.showLibrary, menuSettings.showStats, menuSettings.showLinks, menuSettings.showDocuments, menuSettings.showServices, isFrdoEnabled]);
 
+  // Animation direction for tab transitions (1 = swipe left/go right, -1 = swipe right/go left)
+  const [swipeDirection, setSwipeDirection] = useState(0);
+
   const handleSwipeLeft = useCallback(() => {
     if (!isMobile) return;
     const tabs = getVisibleTabs();
     const currentIndex = tabs.indexOf(activeTab);
     if (currentIndex < tabs.length - 1) {
+      setSwipeDirection(1);
       setActiveTab(tabs[currentIndex + 1]);
     }
   }, [activeTab, getVisibleTabs, isMobile]);
@@ -385,6 +391,7 @@ export default function OrganizationDashboard() {
     const tabs = getVisibleTabs();
     const currentIndex = tabs.indexOf(activeTab);
     if (currentIndex > 0) {
+      setSwipeDirection(-1);
       setActiveTab(tabs[currentIndex - 1]);
     }
   }, [activeTab, getVisibleTabs, isMobile]);
@@ -395,6 +402,22 @@ export default function OrganizationDashboard() {
     threshold: 50,
     minSwipeDistance: 30,
   });
+
+  // Tab animation variants
+  const tabAnimationVariants = {
+    enter: (direction: number) => ({
+      x: direction > 0 ? 100 : -100,
+      opacity: 0,
+    }),
+    center: {
+      x: 0,
+      opacity: 1,
+    },
+    exit: (direction: number) => ({
+      x: direction > 0 ? -100 : 100,
+      opacity: 0,
+    }),
+  };
 
   const [brandingSettings, setBrandingSettings] = useState({
     coverUrl: '',
@@ -2503,7 +2526,8 @@ export default function OrganizationDashboard() {
           </div>
         </header>
 
-        <div className="p-4 lg:p-8">
+        <div className="p-4 lg:p-8 overflow-hidden">
+          <AnimatedTabContent tabKey={activeTab} direction={swipeDirection} isMobile={isMobile}>
           {/* Stats cards - hidden for organizations, services, settings, students, and frdo tabs */}
           {activeTab !== "organizations" && activeTab !== "services" && activeTab !== "settings" && activeTab !== "students" && activeTab !== "frdo" && (
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-6 mb-6 lg:mb-8">
@@ -3735,7 +3759,30 @@ export default function OrganizationDashboard() {
                 </div>
               </details>
             </div>}
+          </AnimatedTabContent>
         </div>
+
+        {/* Mobile Tab Indicator Dots */}
+        {isMobile && (
+          <div className="fixed bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-card/80 backdrop-blur-sm px-3 py-2 rounded-full border border-border shadow-lg z-40">
+            {getVisibleTabs().map((tab, index) => (
+              <button
+                key={tab}
+                onClick={() => {
+                  const currentIndex = getVisibleTabs().indexOf(activeTab);
+                  setSwipeDirection(index > currentIndex ? 1 : -1);
+                  setActiveTab(tab);
+                }}
+                className={`transition-all duration-200 rounded-full ${
+                  tab === activeTab 
+                    ? 'w-6 h-2 bg-primary' 
+                    : 'w-2 h-2 bg-muted-foreground/30 hover:bg-muted-foreground/50'
+                }`}
+                aria-label={`Перейти к вкладке ${tab}`}
+              />
+            ))}
+          </div>
+        )}
       </main>
 
       {/* Dialogs */}
