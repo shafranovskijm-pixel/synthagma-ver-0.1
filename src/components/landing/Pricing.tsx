@@ -22,7 +22,7 @@ const plans = [
   },
   {
     name: "Оптимальный",
-    price: "12 000",
+    price: "15 000",
     period: "₽/мес",
     description: "Полный функционал для организаций",
     icon: Star,
