@@ -995,16 +995,33 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
 
   const handleExport = () => {
     const exportData = companies.map((c) => ({
-      Название: c.name,
-      ИНН: c.inn || "",
+      "Название": c.name,
+      "ИНН": c.inn || "",
+      "КПП": c.kpp || "",
+      "ОГРН": c.ogrn || "",
+      "Руководитель": c.director || "",
+      "Адрес": c.address || "",
       "Кол-во учеников": c.studentsCount || 0,
-      "Дата создания": new Date(c.created_at).toLocaleDateString("ru-RU"),
+      "Дата добавления": new Date(c.created_at).toLocaleDateString("ru-RU"),
     }));
 
     const ws = XLSX.utils.json_to_sheet(exportData);
+    
+    // Set column widths
+    ws['!cols'] = [
+      { wch: 35 }, // Название
+      { wch: 12 }, // ИНН
+      { wch: 10 }, // КПП
+      { wch: 15 }, // ОГРН
+      { wch: 30 }, // Руководитель
+      { wch: 50 }, // Адрес
+      { wch: 15 }, // Кол-во учеников
+      { wch: 15 }, // Дата добавления
+    ];
+    
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Компании");
-    XLSX.writeFile(wb, "companies.xlsx");
+    XLSX.writeFile(wb, `companies_${new Date().toISOString().split('T')[0]}.xlsx`);
     toast.success("Список компаний экспортирован");
   };
 
