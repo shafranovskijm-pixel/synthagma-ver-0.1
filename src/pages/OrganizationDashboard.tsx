@@ -2240,8 +2240,8 @@ export default function OrganizationDashboard() {
         </header>
 
         <div className="p-8">
-          {/* Stats cards - hidden for organizations and services tabs */}
-          {activeTab !== "organizations" && activeTab !== "services" && (
+          {/* Stats cards - hidden for organizations, services and settings tabs */}
+          {activeTab !== "organizations" && activeTab !== "services" && activeTab !== "settings" && (
             <div className="grid grid-cols-4 gap-6 mb-8">
               <div className="bg-card rounded-2xl p-6 border border-border">
                 <div className="flex items-center gap-4">
@@ -3085,102 +3085,107 @@ export default function OrganizationDashboard() {
               </details>
 
               {/* Student Dashboard Settings - At the bottom */}
-              <div className="bg-card rounded-2xl border border-border p-6">
-                <div className="flex items-center justify-between mb-4">
+              <details className="bg-card rounded-2xl border border-border group">
+                <summary className="p-6 cursor-pointer list-none flex items-center justify-between">
                   <h3 className="font-display font-semibold text-lg flex items-center gap-2">
                     <Settings className="w-5 h-5" />
                     Настройки личного кабинета ученика
                   </h3>
-                  <Button variant="outline" size="sm" className="rounded-xl gap-2" onClick={handlePreviewStudentDashboard}>
-                    <ExternalLink className="w-4 h-4" />
-                    Просмотр кабинета
-                  </Button>
-                </div>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Настройте, какие разделы будут отображаться в личном кабинете учеников
-                </p>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between py-3 border-b border-border">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                        <Library className="w-5 h-5 text-primary" />
-                      </div>
-                      <div>
-                        <p className="font-medium">Библиотека</p>
-                        <p className="text-sm text-muted-foreground">Раздел с дополнительными материалами</p>
-                      </div>
-                    </div>
-                    <button onClick={() => setStudentDashboardSettings(prev => ({
-                  ...prev,
-                  showLibrary: !prev.showLibrary
-                }))} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${studentDashboardSettings.showLibrary ? 'bg-primary' : 'bg-muted'}`}>
-                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${studentDashboardSettings.showLibrary ? 'translate-x-6' : 'translate-x-1'}`} />
-                    </button>
+                  <ChevronRight className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90" />
+                </summary>
+                <div className="px-6 pb-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <p className="text-sm text-muted-foreground">
+                      Настройте, какие разделы будут отображаться в личном кабинете учеников
+                    </p>
+                    <Button variant="outline" size="sm" className="rounded-xl gap-2" onClick={handlePreviewStudentDashboard}>
+                      <ExternalLink className="w-4 h-4" />
+                      Просмотр кабинета
+                    </Button>
                   </div>
-                  <div className="flex items-center justify-between py-3 border-b border-border">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-sigma-orange/10 flex items-center justify-center">
-                        <Trophy className="w-5 h-5 text-sigma-orange" />
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between py-3 border-b border-border">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                          <Library className="w-5 h-5 text-primary" />
+                        </div>
+                        <div>
+                          <p className="font-medium">Библиотека</p>
+                          <p className="text-sm text-muted-foreground">Раздел с дополнительными материалами</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium">Достижения</p>
-                        <p className="text-sm text-muted-foreground">Раздел с наградами и достижениями</p>
-                      </div>
+                      <button onClick={() => setStudentDashboardSettings(prev => ({
+                    ...prev,
+                    showLibrary: !prev.showLibrary
+                  }))} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${studentDashboardSettings.showLibrary ? 'bg-primary' : 'bg-muted'}`}>
+                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${studentDashboardSettings.showLibrary ? 'translate-x-6' : 'translate-x-1'}`} />
+                      </button>
                     </div>
-                    <button onClick={() => setStudentDashboardSettings(prev => ({
-                  ...prev,
-                  showAchievements: !prev.showAchievements
-                }))} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${studentDashboardSettings.showAchievements ? 'bg-primary' : 'bg-muted'}`}>
-                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${studentDashboardSettings.showAchievements ? 'translate-x-6' : 'translate-x-1'}`} />
-                    </button>
+                    <div className="flex items-center justify-between py-3 border-b border-border">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-sigma-orange/10 flex items-center justify-center">
+                          <Trophy className="w-5 h-5 text-sigma-orange" />
+                        </div>
+                        <div>
+                          <p className="font-medium">Достижения</p>
+                          <p className="text-sm text-muted-foreground">Раздел с наградами и достижениями</p>
+                        </div>
+                      </div>
+                      <button onClick={() => setStudentDashboardSettings(prev => ({
+                    ...prev,
+                    showAchievements: !prev.showAchievements
+                  }))} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${studentDashboardSettings.showAchievements ? 'bg-primary' : 'bg-muted'}`}>
+                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${studentDashboardSettings.showAchievements ? 'translate-x-6' : 'translate-x-1'}`} />
+                      </button>
+                    </div>
+                    <div className="flex items-center justify-between py-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-sigma-cyan/10 flex items-center justify-center">
+                          <MessageCircle className="w-5 h-5 text-sigma-cyan" />
+                        </div>
+                        <div>
+                          <p className="font-medium">ИИ-помощник</p>
+                          <p className="text-sm text-muted-foreground">Чат с ИИ для помощи в обучении</p>
+                        </div>
+                      </div>
+                      <button onClick={() => setStudentDashboardSettings(prev => ({
+                    ...prev,
+                    showAiChat: !prev.showAiChat
+                  }))} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${studentDashboardSettings.showAiChat ? 'bg-primary' : 'bg-muted'}`}>
+                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${studentDashboardSettings.showAiChat ? 'translate-x-6' : 'translate-x-1'}`} />
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between py-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-sigma-cyan/10 flex items-center justify-center">
-                        <MessageCircle className="w-5 h-5 text-sigma-cyan" />
-                      </div>
-                      <div>
-                        <p className="font-medium">ИИ-помощник</p>
-                        <p className="text-sm text-muted-foreground">Чат с ИИ для помощи в обучении</p>
-                      </div>
-                    </div>
-                    <button onClick={() => setStudentDashboardSettings(prev => ({
-                  ...prev,
-                  showAiChat: !prev.showAiChat
-                }))} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${studentDashboardSettings.showAiChat ? 'bg-primary' : 'bg-muted'}`}>
-                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${studentDashboardSettings.showAiChat ? 'translate-x-6' : 'translate-x-1'}`} />
-                    </button>
+                  <div className="mt-6 pt-4 border-t border-border">
+                    <Button className="btn-gradient rounded-xl gap-2" onClick={async () => {
+                  if (!organizationId) return;
+                  setIsSavingSettings(true);
+                  try {
+                    const {
+                      error
+                    } = await supabase.from('organizations').update({
+                      student_dashboard_settings: studentDashboardSettings
+                    }).eq('id', organizationId);
+                    if (error) throw error;
+                    toast.success('Настройки сохранены');
+                  } catch (error) {
+                    console.error('Error saving settings:', error);
+                    toast.error('Ошибка сохранения настроек');
+                  } finally {
+                    setIsSavingSettings(false);
+                  }
+                }} disabled={isSavingSettings}>
+                      {isSavingSettings ? <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Сохранение...
+                        </> : <>
+                          <Save className="w-4 h-4" />
+                          Сохранить настройки
+                        </>}
+                    </Button>
                   </div>
                 </div>
-                <div className="mt-6 pt-4 border-t border-border">
-                  <Button className="btn-gradient rounded-xl gap-2" onClick={async () => {
-                if (!organizationId) return;
-                setIsSavingSettings(true);
-                try {
-                  const {
-                    error
-                  } = await supabase.from('organizations').update({
-                    student_dashboard_settings: studentDashboardSettings
-                  }).eq('id', organizationId);
-                  if (error) throw error;
-                  toast.success('Настройки сохранены');
-                } catch (error) {
-                  console.error('Error saving settings:', error);
-                  toast.error('Ошибка сохранения настроек');
-                } finally {
-                  setIsSavingSettings(false);
-                }
-              }} disabled={isSavingSettings}>
-                    {isSavingSettings ? <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Сохранение...
-                      </> : <>
-                        <Save className="w-4 h-4" />
-                        Сохранить настройки
-                      </>}
-                  </Button>
-                </div>
-              </div>
+              </details>
             </div>}
         </div>
       </main>
