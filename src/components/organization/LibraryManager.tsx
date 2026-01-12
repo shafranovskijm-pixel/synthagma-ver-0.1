@@ -390,6 +390,11 @@ export function LibraryManager({ organizationId }: LibraryManagerProps) {
   const currentTypeConfig = LIBRARY_TYPES.find(t => t.value === docType);
 
   const getPreviewUrl = (fileUrl: string) => {
+    const ext = fileUrl.split('.').pop()?.toLowerCase();
+    // RTF files work better with Google Docs Viewer
+    if (ext === 'rtf') {
+      return `https://docs.google.com/viewer?url=${encodeURIComponent(fileUrl)}&embedded=true`;
+    }
     return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl)}`;
   };
 
@@ -403,7 +408,7 @@ export function LibraryManager({ organizationId }: LibraryManagerProps) {
       return;
     }
     
-    if (['pptx', 'ppt', 'docx', 'doc', 'xlsx', 'xls'].includes(ext || '')) {
+    if (['pptx', 'ppt', 'docx', 'doc', 'xlsx', 'xls', 'rtf'].includes(ext || '')) {
       setPreviewDoc(doc);
       setShowPreviewDialog(true);
       return;
