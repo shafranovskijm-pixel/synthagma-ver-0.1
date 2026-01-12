@@ -30,6 +30,7 @@ import { Progress } from "@/components/ui/progress";
 import { VideoIdentification } from "@/components/student/VideoIdentification";
 import { StudentConsentForm } from "@/components/student/StudentConsentForm";
 import { StudentDocumentsUpload } from "@/components/student/StudentDocumentsUpload";
+import { AchievementsPanel } from "@/components/student/AchievementsPanel";
 
 interface Course {
   id: string;
@@ -93,6 +94,7 @@ export default function StudentDashboard() {
   const [showVideoIdentification, setShowVideoIdentification] = useState(false);
   const [showConsentForm, setShowConsentForm] = useState(false);
   const [showDocumentsUpload, setShowDocumentsUpload] = useState(false);
+  const [showAchievements, setShowAchievements] = useState(false);
   const [documentsProgress, setDocumentsProgress] = useState({ completed: 0, total: 3 });
   const [isVideoIdentified, setIsVideoIdentified] = useState(false);
 
@@ -405,7 +407,10 @@ export default function StudentDashboard() {
               </button>
             )}
             {dashboardSettings.showAchievements && (
-              <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors">
+              <button 
+                onClick={() => setShowAchievements(true)}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors"
+              >
                 <Trophy className="w-5 h-5" />
                 Достижения
               </button>
@@ -490,6 +495,15 @@ export default function StudentDashboard() {
           organizationId={profile.organization_id}
           isOpen={showDocumentsUpload}
           onOpenChange={setShowDocumentsUpload}
+        />
+      )}
+
+      {/* Achievements Panel */}
+      {user && (
+        <AchievementsPanel
+          userId={user.id}
+          isOpen={showAchievements}
+          onOpenChange={setShowAchievements}
         />
       )}
 
