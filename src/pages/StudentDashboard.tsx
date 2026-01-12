@@ -611,7 +611,10 @@ export default function StudentDashboard() {
                         }`}>
                           {effectiveStatus === "locked" && (
                             <div className="absolute inset-0 flex items-center justify-center flex-col gap-2">
-                              <Lock className="w-10 h-10 text-white/70" />
+                              <div className="relative">
+                                <Lock className="w-10 h-10 text-white/70 animate-pulse" />
+                                <div className="absolute inset-0 w-10 h-10 bg-white/30 rounded-full animate-ping" />
+                              </div>
                               <span className="text-white/70 text-sm font-medium">Пройдите идентификацию</span>
                             </div>
                           )}
