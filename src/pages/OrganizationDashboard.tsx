@@ -10,6 +10,7 @@ import { CourseTestReport } from "@/components/organization/CourseTestReport";
 import { CompaniesManager } from "@/components/organization/CompaniesManager";
 import { LibraryManager } from "@/components/organization/LibraryManager";
 import { ServicesManager } from "@/components/organization/ServicesManager";
+import { ContractGenerator } from "@/components/organization/ContractGenerator";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -390,6 +391,7 @@ export default function OrganizationDashboard() {
   const [isSearchingDadataRequisites, setIsSearchingDadataRequisites] = useState(false);
   const [showOrgRequisitesDialog, setShowOrgRequisitesDialog] = useState(false);
   const [editOrgName, setEditOrgName] = useState("");
+  const [showContractDialog, setShowContractDialog] = useState(false);
 
   // DaData search for organization requisites
   const handleSearchRequisitesByInn = async (inn: string) => {
@@ -3736,22 +3738,31 @@ export default function OrganizationDashboard() {
                           <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
                             <FileText className="w-5 h-5 text-primary" />
                           </div>
-                          <div>
+                          <div className="flex-1">
                             <p className="font-medium">Договор на обучение</p>
                             <p className="text-sm text-muted-foreground">Шаблон договора с автоподстановкой реквизитов</p>
                           </div>
                         </div>
-                        <Button
-                          variant="outline"
-                          className="rounded-xl gap-2 w-full"
-                          onClick={() => {
-                            setEditOrgName(organizationName);
-                            setShowOrgRequisitesDialog(true);
-                          }}
-                        >
-                          <Building2 className="w-4 h-4" />
-                          Заполнить реквизиты организации
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            className="rounded-xl gap-2 flex-1"
+                            onClick={() => {
+                              setEditOrgName(organizationName);
+                              setShowOrgRequisitesDialog(true);
+                            }}
+                          >
+                            <Building2 className="w-4 h-4" />
+                            Реквизиты
+                          </Button>
+                          <Button
+                            className="btn-gradient rounded-xl gap-2 flex-1"
+                            onClick={() => setShowContractDialog(true)}
+                          >
+                            <FileText className="w-4 h-4" />
+                            Создать договор
+                          </Button>
+                        </div>
                       </div>
 
                       <div className="bg-secondary/30 rounded-xl p-4">
@@ -5515,6 +5526,29 @@ export default function OrganizationDashboard() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Contract Generator */}
+      {organizationId && (
+        <ContractGenerator
+          organizationId={organizationId}
+          isOpen={showContractDialog}
+          onClose={() => setShowContractDialog(false)}
+          orgRequisites={{
+            name: organizationName,
+            inn: requisites.inn,
+            kpp: requisites.kpp,
+            ogrn: requisites.ogrn,
+            legal_address: requisites.legal_address,
+            actual_address: requisites.actual_address,
+            director_name: requisites.director_name,
+            director_position: requisites.director_position,
+            bank_name: requisites.bank_name,
+            bank_bik: requisites.bank_bik,
+            bank_account: requisites.bank_account,
+            bank_corr_account: requisites.bank_corr_account,
+          }}
+        />
+      )}
     </div>
   );
 }
