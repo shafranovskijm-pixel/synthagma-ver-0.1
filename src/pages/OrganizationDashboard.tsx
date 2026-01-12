@@ -2233,53 +2233,55 @@ export default function OrganizationDashboard() {
         </header>
 
         <div className="p-8">
-          {/* Stats cards */}
-          <div className="grid grid-cols-4 gap-6 mb-8">
-            <div className="bg-card rounded-2xl p-6 border border-border">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <Users className="w-6 h-6 text-primary" />
+          {/* Stats cards - hidden for organizations tab */}
+          {activeTab !== "organizations" && (
+            <div className="grid grid-cols-4 gap-6 mb-8">
+              <div className="bg-card rounded-2xl p-6 border border-border">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                    <Users className="w-6 h-6 text-primary" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold font-display">{stats.totalStudents}</div>
+                    <div className="text-muted-foreground text-sm">Учеников</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-2xl font-bold font-display">{stats.totalStudents}</div>
-                  <div className="text-muted-foreground text-sm">Учеников</div>
+              </div>
+              <div className="bg-card rounded-2xl p-6 border border-border">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
+                    <BookOpen className="w-6 h-6 text-accent" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold font-display">{stats.totalCourses}</div>
+                    <div className="text-muted-foreground text-sm">Курсов</div>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-card rounded-2xl p-6 border border-border">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-sigma-green/10 flex items-center justify-center">
+                    <CheckCircle2 className="w-6 h-6 text-sigma-green" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold font-display">{stats.completedCount}</div>
+                    <div className="text-muted-foreground text-sm">Завершили</div>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-card rounded-2xl p-6 border border-border">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-sigma-orange/10 flex items-center justify-center">
+                    <TrendingUp className="w-6 h-6 text-sigma-orange" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold font-display">{stats.averageProgress}%</div>
+                    <div className="text-muted-foreground text-sm">Ср. прогресс</div>
+                  </div>
                 </div>
               </div>
             </div>
-            <div className="bg-card rounded-2xl p-6 border border-border">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
-                  <BookOpen className="w-6 h-6 text-accent" />
-                </div>
-                <div>
-                  <div className="text-2xl font-bold font-display">{stats.totalCourses}</div>
-                  <div className="text-muted-foreground text-sm">Курсов</div>
-                </div>
-              </div>
-            </div>
-            <div className="bg-card rounded-2xl p-6 border border-border">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-sigma-green/10 flex items-center justify-center">
-                  <CheckCircle2 className="w-6 h-6 text-sigma-green" />
-                </div>
-                <div>
-                  <div className="text-2xl font-bold font-display">{stats.completedCount}</div>
-                  <div className="text-muted-foreground text-sm">Завершили</div>
-                </div>
-              </div>
-            </div>
-            <div className="bg-card rounded-2xl p-6 border border-border">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-sigma-orange/10 flex items-center justify-center">
-                  <TrendingUp className="w-6 h-6 text-sigma-orange" />
-                </div>
-                <div>
-                  <div className="text-2xl font-bold font-display">{stats.averageProgress}%</div>
-                  <div className="text-muted-foreground text-sm">Ср. прогресс</div>
-                </div>
-              </div>
-            </div>
-          </div>
+          )}
 
           {/* Courses Tab */}
           {activeTab === "courses" && <div className="space-y-6">
