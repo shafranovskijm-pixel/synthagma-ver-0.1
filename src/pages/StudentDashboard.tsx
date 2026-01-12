@@ -18,10 +18,15 @@ import {
   Sparkles,
   Loader2,
   Library,
-  Eye
+  Eye,
+  Shield,
+  Video,
+  FileCheck
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
+import { VideoIdentification } from "@/components/student/VideoIdentification";
+import { StudentConsentForm } from "@/components/student/StudentConsentForm";
 
 interface Course {
   id: string;
@@ -82,6 +87,8 @@ export default function StudentDashboard() {
   const [totalTimeSpent, setTotalTimeSpent] = useState(0);
   const [totalCompletedLessons, setTotalCompletedLessons] = useState(0);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const [showVideoIdentification, setShowVideoIdentification] = useState(false);
+  const [showConsentForm, setShowConsentForm] = useState(false);
 
   useEffect(() => {
     // Check for preview mode
@@ -366,6 +373,20 @@ export default function StudentDashboard() {
                 Достижения
               </button>
             )}
+            <button 
+              onClick={() => setShowVideoIdentification(true)}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors"
+            >
+              <Video className="w-5 h-5" />
+              Идентификация
+            </button>
+            <button 
+              onClick={() => setShowConsentForm(true)}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors"
+            >
+              <FileCheck className="w-5 h-5" />
+              Согласие на ПД
+            </button>
             <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors">
               <Settings className="w-5 h-5" />
               Настройки
@@ -383,6 +404,27 @@ export default function StudentDashboard() {
           </button>
         </div>
       </aside>
+
+      {/* Video Identification Dialog */}
+      {user && (
+        <VideoIdentification
+          userId={user.id}
+          userName={profile?.full_name || "Ученик"}
+          isOpen={showVideoIdentification}
+          onOpenChange={setShowVideoIdentification}
+        />
+      )}
+
+      {/* Consent Form Dialog */}
+      {user && profile?.organization_id && (
+        <StudentConsentForm
+          userId={user.id}
+          userName={profile?.full_name || "Ученик"}
+          organizationId={profile.organization_id}
+          isOpen={showConsentForm}
+          onOpenChange={setShowConsentForm}
+        />
+      )}
 
       {/* Main content */}
       <main className={`flex-1 overflow-auto ${isPreviewMode ? 'mt-10' : ''}`}>
