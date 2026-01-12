@@ -306,6 +306,11 @@ export default function OrganizationDashboard() {
   // Refresh trigger for data reload
   const [refreshKey, setRefreshKey] = useState(0);
 
+  // Course details modal state
+  const [showCourseDetailsModal, setShowCourseDetailsModal] = useState(false);
+  const [selectedCourseForDetails, setSelectedCourseForDetails] = useState<Course | null>(null);
+  const [courseDetailsTab, setCourseDetailsTab] = useState<"students" | "materials" | "history" | "tests">("students");
+
   // Course documents state
   const [showCourseDocsDialog, setShowCourseDocsDialog] = useState(false);
   const [selectedCourseForDocs, setSelectedCourseForDocs] = useState<Course | null>(null);
@@ -793,6 +798,13 @@ export default function OrganizationDashboard() {
 
     fetchLinks();
   }, [organizationId, activeTab]);
+
+  // Load course students when course details modal opens
+  useEffect(() => {
+    if (showCourseDetailsModal && selectedCourseForDetails) {
+      handleOpenCourseStudents(selectedCourseForDetails);
+    }
+  }, [showCourseDetailsModal, selectedCourseForDetails?.id]);
 
   const handleLogout = async () => {
     await signOut();
@@ -2618,7 +2630,11 @@ export default function OrganizationDashboard() {
                     <div
                       key={course.id}
                       className="bg-card rounded-2xl border border-border overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
-                      onClick={() => navigate(`/course-preview/${course.id}`)}
+                      onClick={() => {
+                        setSelectedCourseForDetails(course);
+                        setCourseDetailsTab("students");
+                        setShowCourseDetailsModal(true);
+                      }}
                     >
                       <div className="h-32 bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
                         <BookOpen className="w-12 h-12 text-primary/50" />
@@ -2645,67 +2661,15 @@ export default function OrganizationDashboard() {
                             {getCategoryById(course.category_id)?.name}
                           </span>
                         )}
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
                           <div className="flex items-center gap-1">
                             <Users className="w-4 h-4" />
-                            {course.studentsCount}
+                            {course.studentsCount} учеников
                           </div>
                           <div className="flex items-center gap-1">
                             <BookOpen className="w-4 h-4" />
                             {course.lessonsCount} уроков
                           </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            className="flex-1 rounded-xl gap-2"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setStudentCourseFilter(course.id);
-                              setStudentStatusFilter("all");
-                              setActiveTab("students");
-                            }}
-                          >
-                            <Users className="w-4 h-4" />
-                            Ученики
-                          </Button>
-                          <Button
-                            className="flex-1 rounded-xl gap-2 btn-gradient"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setStudentCourseFilter(course.id);
-                              setStudentStatusFilter("not_enrolled");
-                              setActiveTab("students");
-                            }}
-                          >
-                            <Plus className="w-4 h-4" />
-                            Зачислить
-                          </Button>
-                          <Button
-                            variant="outline"
-                            className="flex-1 rounded-xl gap-2"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedCourseForDocs(course);
-                              setShowCourseDocsDialog(true);
-                            }}
-                          >
-                            <FileText className="w-4 h-4" />
-                            Материалы
-                          </Button>
-                        </div>
-                        <div className="flex gap-2 mt-2">
-                          <Button
-                            variant="outline"
-                            className="flex-1 rounded-xl gap-2"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigate(`/course-builder/${course.id}`);
-                            }}
-                          >
-                            <Edit className="w-4 h-4" />
-                            Редактировать
-                          </Button>
                         </div>
                       </div>
                     </div>
@@ -2729,7 +2693,11 @@ export default function OrganizationDashboard() {
                         <tr
                           key={course.id}
                           className="border-b border-border last:border-0 hover:bg-secondary/50 transition-colors cursor-pointer"
-                          onClick={() => navigate(`/course-preview/${course.id}`)}
+                          onClick={() => {
+                            setSelectedCourseForDetails(course);
+                            setCourseDetailsTab("students");
+                            setShowCourseDetailsModal(true);
+                          }}
                         >
                           <td className="px-6 py-4">
                             <div>
@@ -4005,6 +3973,158 @@ export default function OrganizationDashboard() {
               )}
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Course Details Modal */}
+      <Dialog open={showCourseDetailsModal} onOpenChange={setShowCourseDetailsModal}>
+        <DialogContent className="max-w-5xl rounded-2xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+          {selectedCourseForDetails && (
+            <>
+              <div className="p-6 border-b border-border bg-gradient-to-br from-primary/10 to-accent/10">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <DialogTitle className="font-display text-2xl mb-2">{selectedCourseForDetails.title}</DialogTitle>
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <span className={`px-2 py-1 rounded-full text-xs ${
+                        selectedCourseForDetails.is_published
+                          ? 'bg-sigma-green/10 text-sigma-green'
+                          : 'bg-muted text-muted-foreground'
+                      }`}>
+                        {selectedCourseForDetails.is_published ? 'Опубликован' : 'Черновик'}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <Users className="w-4 h-4" />
+                        {selectedCourseForDetails.studentsCount} учеников
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <BookOpen className="w-4 h-4" />
+                        {selectedCourseForDetails.lessonsCount} уроков
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      className="rounded-xl gap-2"
+                      onClick={() => navigate(`/course-preview/${selectedCourseForDetails.id}`)}
+                    >
+                      <Eye className="w-4 h-4" />
+                      Просмотр
+                    </Button>
+                    <Button
+                      className="rounded-xl gap-2 btn-gradient"
+                      onClick={() => navigate(`/course-builder/${selectedCourseForDetails.id}`)}
+                    >
+                      <Edit className="w-4 h-4" />
+                      Редактировать
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              <Tabs value={courseDetailsTab} onValueChange={(v) => setCourseDetailsTab(v as any)} className="flex-1 flex flex-col overflow-hidden">
+                <div className="px-6 pt-4 border-b border-border">
+                  <TabsList className="bg-secondary/50 rounded-xl">
+                    <TabsTrigger value="students" className="rounded-lg gap-2">
+                      <Users className="w-4 h-4" />
+                      Ученики
+                    </TabsTrigger>
+                    <TabsTrigger value="materials" className="rounded-lg gap-2">
+                      <FileText className="w-4 h-4" />
+                      Материалы
+                    </TabsTrigger>
+                    <TabsTrigger value="history" className="rounded-lg gap-2">
+                      <History className="w-4 h-4" />
+                      История
+                    </TabsTrigger>
+                    <TabsTrigger value="tests" className="rounded-lg gap-2">
+                      <CheckSquare className="w-4 h-4" />
+                      Тесты
+                    </TabsTrigger>
+                  </TabsList>
+                </div>
+
+                <div className="flex-1 overflow-auto p-6">
+                  <TabsContent value="students" className="mt-0 h-full">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-semibold">Ученики курса</h3>
+                        <Button
+                          className="btn-gradient rounded-xl gap-2"
+                          onClick={() => {
+                            setStudentCourseFilter(selectedCourseForDetails.id);
+                            setStudentStatusFilter("not_enrolled");
+                            setActiveTab("students");
+                            setShowCourseDetailsModal(false);
+                          }}
+                        >
+                          <Plus className="w-4 h-4" />
+                          Зачислить ученика
+                        </Button>
+                      </div>
+                      
+                      {courseStudents.length === 0 ? (
+                        <div className="text-center py-12 text-muted-foreground">
+                          <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                          <p>Нет зачисленных учеников</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {courseStudents.map((student) => (
+                            <div key={student.id} className="flex items-center justify-between p-4 bg-secondary/50 rounded-xl">
+                              <div>
+                                <div className="font-medium">{student.name}</div>
+                                <div className="text-sm text-muted-foreground">{student.email}</div>
+                              </div>
+                              <div className="flex items-center gap-4">
+                                <div className="text-right">
+                                  <div className="text-sm font-medium">{student.progress}%</div>
+                                  <Progress value={student.progress} className="w-24 h-2" />
+                                </div>
+                                <span className={`px-2 py-1 rounded-full text-xs ${
+                                  student.status === 'completed' 
+                                    ? 'bg-sigma-green/10 text-sigma-green' 
+                                    : 'bg-primary/10 text-primary'
+                                }`}>
+                                  {student.status === 'completed' ? 'Завершил' : 'Активный'}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="materials" className="mt-0 h-full">
+                    <CourseDocumentsManager 
+                      courseId={selectedCourseForDetails.id} 
+                      courseName={selectedCourseForDetails.title}
+                      isOpen={true}
+                      onClose={() => {}}
+                    />
+                  </TabsContent>
+
+                  <TabsContent value="history" className="mt-0 h-full">
+                    <EnrollmentHistory 
+                      courseId={selectedCourseForDetails.id} 
+                      organizationId={organizationId || ""}
+                      courseName={selectedCourseForDetails.title}
+                    />
+                  </TabsContent>
+
+                  <TabsContent value="tests" className="mt-0 h-full">
+                    <CourseTestReport 
+                      courseId={selectedCourseForDetails.id} 
+                      courseName={selectedCourseForDetails.title}
+                      organizationId={organizationId || ""}
+                    />
+                  </TabsContent>
+                </div>
+              </Tabs>
+            </>
+          )}
         </DialogContent>
       </Dialog>
 
