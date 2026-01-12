@@ -1,10 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { Button } from "@/components/ui/button";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { PullToRefreshIndicator } from "@/components/ui/PullToRefreshIndicator";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
@@ -90,6 +93,7 @@ const initialMessages: ChatMessage[] = [
 export default function StudentDashboard() {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState<"courses" | "chat">("courses");
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [inputValue, setInputValue] = useState("");
@@ -397,6 +401,23 @@ export default function StudentDashboard() {
     }
   };
 
+  // Pull to refresh handler
+  const handleRefresh = useCallback(async () => {
+    await loadData();
+    toast.success("Данные обновлены");
+  }, []);
+
+  const { 
+    ref: pullToRefreshRef, 
+    pullDistance, 
+    isRefreshing, 
+    canRefresh 
+  } = usePullToRefresh<HTMLElement>({
+    onRefresh: handleRefresh,
+    threshold: 80,
+    maxPull: 120,
+  });
+
   const totalProgress = courses.length > 0
     ? Math.round(courses.reduce((acc, c) => acc + c.progress, 0) / courses.length)
     : 0;
@@ -649,7 +670,19 @@ export default function StudentDashboard() {
 
 
       {/* Main content */}
-      <main className={`flex-1 overflow-auto pt-14 md:pt-0 ${isPreviewMode ? 'md:mt-10' : ''}`}>
+      <main 
+        ref={isMobile ? pullToRefreshRef : undefined} 
+        className={`flex-1 overflow-auto pt-14 md:pt-0 relative ${isPreviewMode ? 'md:mt-10' : ''}`}
+      >
+        {/* Pull to Refresh Indicator */}
+        {isMobile && (
+          <PullToRefreshIndicator
+            pullDistance={pullDistance}
+            isRefreshing={isRefreshing}
+            canRefresh={canRefresh}
+            threshold={80}
+          />
+        )}
         {activeTab === "courses" && (
           <>
             {/* Cover Image / Header */}
