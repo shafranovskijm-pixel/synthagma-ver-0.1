@@ -58,7 +58,8 @@ import {
   Image,
   ExternalLink,
   ShoppingBag,
-  Mail
+  Mail,
+  Key
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
@@ -236,6 +237,8 @@ export default function OrganizationDashboard() {
   const [isSendingCredentials, setIsSendingCredentials] = useState(false);
   const [isSendingCredentialsEmail, setIsSendingCredentialsEmail] = useState(false);
   const [isSendingBulkCredentials, setIsSendingBulkCredentials] = useState(false);
+  const [isCreatingCredentials, setIsCreatingCredentials] = useState(false);
+  const [isDeletingStudent, setIsDeletingStudent] = useState(false);
 
   // Registration links state
   const [registrationLinks, setRegistrationLinks] = useState<RegistrationLink[]>([]);
@@ -1702,6 +1705,130 @@ export default function OrganizationDashboard() {
       toast.error("Ошибка массовой отправки");
     } finally {
       setIsSendingBulkCredentials(false);
+    }
+  };
+
+  // Generate login and password for student without credentials
+  const handleCreateStudentCredentials = async () => {
+    if (!selectedStudent) return;
+    
+    const student = selectedStudent.student;
+    if (student.login && student.generated_password) {
+      toast.info("У ученика уже есть логин и пароль");
+      return;
+    }
+
+    setIsCreatingCredentials(true);
+    try {
+      // Generate login from name
+      const nameParts = student.name.toLowerCase().split(/\s+/);
+      let baseLogin = nameParts.length >= 2 
+        ? nameParts[0].replace(/[^a-zа-яё]/gi, '').substring(0, 10) + '_' + nameParts[1].replace(/[^a-zа-яё]/gi, '').substring(0, 2)
+        : nameParts[0].replace(/[^a-zа-яё]/gi, '').substring(0, 12);
+      
+      // Transliterate Russian characters
+      const translit: Record<string, string> = {
+        'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'e',
+        'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
+        'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
+        'ф': 'f', 'х': 'h', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch',
+        'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya'
+      };
+      
+      baseLogin = baseLogin.split('').map(c => translit[c] || c).join('');
+      
+      // Add random suffix to ensure uniqueness
+      const randomSuffix = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+      const login = baseLogin + randomSuffix;
+      
+      // Generate password
+      const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+      let password = '';
+      for (let i = 0; i < 8; i++) {
+        password += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+
+      // Update profile with login and password
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          login,
+          generated_password: password
+        })
+        .eq("user_id", student.user_id);
+
+      if (error) throw error;
+
+      // Update local state
+      setSelectedStudent({
+        ...selectedStudent,
+        student: {
+          ...student,
+          login,
+          generated_password: password
+        }
+      });
+
+      // Update students list
+      setStudents(prev => prev.map(s => 
+        s.user_id === student.user_id 
+          ? { ...s, login, generated_password: password }
+          : s
+      ));
+      setAllProfiles(prev => prev.map(s => 
+        s.user_id === student.user_id 
+          ? { ...s, login, generated_password: password }
+          : s
+      ));
+
+      toast.success(`Логин и пароль созданы! Логин: ${login}, Пароль: ${password}`);
+    } catch (error) {
+      console.error("Error creating credentials:", error);
+      toast.error("Ошибка создания логина и пароля");
+    } finally {
+      setIsCreatingCredentials(false);
+    }
+  };
+
+  // Delete student completely (profile and all enrollments)
+  const handleDeleteStudentCompletely = async () => {
+    if (!selectedStudent) return;
+    
+    const student = selectedStudent.student;
+    
+    if (!confirm(`Вы уверены, что хотите полностью удалить ученика "${student.name}"? Это действие нельзя отменить.`)) {
+      return;
+    }
+
+    setIsDeletingStudent(true);
+    try {
+      // Delete all enrollments
+      await supabase
+        .from("enrollments")
+        .delete()
+        .eq("user_id", student.user_id);
+
+      // Delete profile
+      const { error } = await supabase
+        .from("profiles")
+        .delete()
+        .eq("user_id", student.user_id);
+
+      if (error) throw error;
+
+      // Update local state
+      setStudents(prev => prev.filter(s => s.user_id !== student.user_id));
+      setAllProfiles(prev => prev.filter(s => s.user_id !== student.user_id));
+      setStats(prev => ({ ...prev, totalStudents: Math.max(0, prev.totalStudents - 1) }));
+      
+      setShowStudentDialog(false);
+      setSelectedStudent(null);
+      toast.success("Ученик удалён");
+    } catch (error) {
+      console.error("Error deleting student:", error);
+      toast.error("Ошибка удаления ученика");
+    } finally {
+      setIsDeletingStudent(false);
     }
   };
 
@@ -3995,6 +4122,31 @@ export default function OrganizationDashboard() {
                   </div>
                 </div>
 
+                {/* Create credentials for students without login */}
+                {!selectedStudent.student.login && (
+                  <div className="bg-secondary/30 rounded-xl p-4">
+                    <h4 className="font-medium mb-3 flex items-center gap-2">
+                      <Key className="w-4 h-4" />
+                      Данные для входа
+                    </h4>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      У ученика нет логина и пароля для входа в систему
+                    </p>
+                    <Button
+                      className="w-full rounded-lg gap-2 btn-gradient"
+                      onClick={handleCreateStudentCredentials}
+                      disabled={isCreatingCredentials}
+                    >
+                      {isCreatingCredentials ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Key className="w-4 h-4" />
+                      )}
+                      Создать логин и пароль
+                    </Button>
+                  </div>
+                )}
+
                 {/* Send credentials */}
                 {selectedStudent.student.login && selectedStudent.student.generated_password && (
                   <div className="bg-secondary/30 rounded-xl p-4">
@@ -4031,6 +4183,30 @@ export default function OrganizationDashboard() {
                     </div>
                   </div>
                 )}
+
+                {/* Delete student */}
+                <div className="bg-destructive/10 rounded-xl p-4">
+                  <h4 className="font-medium mb-3 flex items-center gap-2 text-destructive">
+                    <Trash2 className="w-4 h-4" />
+                    Удалить ученика
+                  </h4>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Полностью удалить ученика из системы
+                  </p>
+                  <Button
+                    variant="destructive"
+                    className="w-full rounded-lg gap-2"
+                    onClick={handleDeleteStudentCompletely}
+                    disabled={isDeletingStudent}
+                  >
+                    {isDeletingStudent ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-4 h-4" />
+                    )}
+                    Удалить ученика
+                  </Button>
+                </div>
               </div>
 
               <div>
