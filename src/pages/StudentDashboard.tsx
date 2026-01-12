@@ -25,6 +25,11 @@ import {
   Video,
   FileCheck,
   FileText,
+  Menu,
+  X,
+  Sun,
+  Moon,
+  Monitor,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
@@ -32,7 +37,15 @@ import { VideoIdentification } from "@/components/student/VideoIdentification";
 import { StudentConsentForm } from "@/components/student/StudentConsentForm";
 import { StudentDocumentsUpload } from "@/components/student/StudentDocumentsUpload";
 import { AchievementsPanel } from "@/components/student/AchievementsPanel";
-import { StudentSettingsDialog } from "@/components/student/StudentSettingsDialog";
+import { useTheme } from "next-themes";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+
 interface Course {
   id: string;
   title: string;
@@ -96,9 +109,10 @@ export default function StudentDashboard() {
   const [showConsentForm, setShowConsentForm] = useState(false);
   const [showDocumentsUpload, setShowDocumentsUpload] = useState(false);
   const [showAchievements, setShowAchievements] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [documentsProgress, setDocumentsProgress] = useState({ completed: 0, total: 3 });
   const [isVideoIdentified, setIsVideoIdentified] = useState(false);
+  const { theme, setTheme } = useTheme();
 
   useEffect(() => {
     // Check for preview mode
@@ -402,6 +416,151 @@ export default function StudentDashboard() {
     );
   }
 
+  const SidebarContent = ({ onNavigate }: { onNavigate?: () => void }) => (
+    <>
+      <div className="p-6 border-b border-border">
+        {branding?.logoUrl ? (
+          <div className="flex items-center gap-3">
+            <img 
+              src={branding.logoUrl} 
+              alt="Логотип" 
+              className="w-10 h-10 object-contain rounded-lg"
+            />
+            {branding.showOrgName && profile?.organization_name && (
+              <span className="font-display font-bold text-lg truncate">
+                {profile.organization_name}
+              </span>
+            )}
+          </div>
+        ) : (
+          <SigmaLogo size="md" />
+        )}
+        <div className="mt-4 p-3 bg-secondary rounded-xl">
+          <div className="font-semibold text-sm">{profile?.full_name || "Ученик"}</div>
+          <div className="text-xs text-muted-foreground">{profile?.organization_name || "Организация"}</div>
+        </div>
+      </div>
+
+      <nav className="flex-1 p-4">
+        <div className="space-y-1">
+          <button
+            onClick={() => { setActiveTab("courses"); onNavigate?.(); }}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
+              activeTab === "courses"
+                ? "bg-primary/10 text-primary"
+                : "text-muted-foreground hover:bg-secondary"
+            }`}
+          >
+            <BookOpen className="w-5 h-5" />
+            Мои курсы
+          </button>
+          {dashboardSettings.showAiChat && (
+            <button
+              onClick={() => { setActiveTab("chat"); onNavigate?.(); }}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
+                activeTab === "chat"
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-secondary"
+              }`}
+            >
+              <MessageCircle className="w-5 h-5" />
+              ИИ-помощник
+              <span className="ml-auto w-2 h-2 rounded-full bg-sigma-green animate-pulse" />
+            </button>
+          )}
+          {dashboardSettings.showLibrary && (
+            <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors">
+              <Library className="w-5 h-5" />
+              Библиотека
+            </button>
+          )}
+          {dashboardSettings.showAchievements && (
+            <button 
+              onClick={() => { setShowAchievements(true); onNavigate?.(); }}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors"
+            >
+              <Trophy className="w-5 h-5" />
+              Достижения
+            </button>
+          )}
+          <button 
+            onClick={() => { setShowVideoIdentification(true); onNavigate?.(); }}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors"
+          >
+            <Video className="w-5 h-5" />
+            Идентификация
+          </button>
+          <button 
+            onClick={() => { setShowConsentForm(true); onNavigate?.(); }}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors"
+          >
+            <FileCheck className="w-5 h-5" />
+            Согласие на ПД
+          </button>
+          <button 
+            onClick={() => { setShowDocumentsUpload(true); onNavigate?.(); }}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors"
+          >
+            <FileText className="w-5 h-5" />
+            Мои документы
+            {documentsProgress.completed < documentsProgress.total ? (
+              <span className="ml-auto flex items-center gap-1.5">
+                <span className="text-xs text-amber-600 font-medium">
+                  {documentsProgress.completed}/{documentsProgress.total}
+                </span>
+                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+              </span>
+            ) : (
+              <CheckCircle2 className="w-4 h-4 ml-auto text-green-500" />
+            )}
+          </button>
+          
+          {/* Theme Settings Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors">
+                <Settings className="w-5 h-5" />
+                Настройки
+                <div className="ml-auto flex items-center gap-1">
+                  {theme === 'light' && <Sun className="w-4 h-4" />}
+                  {theme === 'dark' && <Moon className="w-4 h-4" />}
+                  {theme === 'system' && <Monitor className="w-4 h-4" />}
+                </div>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem onClick={() => setTheme('light')} className="gap-2">
+                <Sun className="w-4 h-4" />
+                Светлая тема
+                {theme === 'light' && <CheckCircle2 className="w-4 h-4 ml-auto text-primary" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setTheme('dark')} className="gap-2">
+                <Moon className="w-4 h-4" />
+                Тёмная тема
+                {theme === 'dark' && <CheckCircle2 className="w-4 h-4 ml-auto text-primary" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setTheme('system')} className="gap-2">
+                <Monitor className="w-4 h-4" />
+                Системная
+                {theme === 'system' && <CheckCircle2 className="w-4 h-4 ml-auto text-primary" />}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </nav>
+
+      <div className="p-4 border-t border-border">
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-destructive hover:bg-destructive/10 transition-colors"
+        >
+          <LogOut className="w-5 h-5" />
+          Выйти
+        </button>
+      </div>
+    </>
+  );
+
   return (
     <div className="min-h-screen bg-background flex">
       {/* Preview Mode Banner */}
@@ -420,127 +579,31 @@ export default function StudentDashboard() {
         </div>
       )}
 
-      {/* Sidebar */}
-      <aside className={`w-64 bg-card border-r border-border flex flex-col ${isPreviewMode ? 'mt-10' : ''}`}>
-        <div className="p-6 border-b border-border">
-          {/* Custom branding logo or default */}
-          {branding?.logoUrl ? (
-            <div className="flex items-center gap-3">
-              <img 
-                src={branding.logoUrl} 
-                alt="Логотип" 
-                className="w-10 h-10 object-contain rounded-lg"
-              />
-              {branding.showOrgName && profile?.organization_name && (
-                <span className="font-display font-bold text-lg truncate">
-                  {profile.organization_name}
-                </span>
-              )}
-            </div>
-          ) : (
-            <SigmaLogo size="md" />
-          )}
-          <div className="mt-4 p-3 bg-secondary rounded-xl">
-            <div className="font-semibold text-sm">{profile?.full_name || "Ученик"}</div>
-            <div className="text-xs text-muted-foreground">{profile?.organization_name || "Организация"}</div>
-          </div>
-        </div>
+      {/* Mobile Header */}
+      <div className="md:hidden fixed top-0 left-0 right-0 bg-card border-b border-border z-40 px-4 py-3 flex items-center justify-between">
+        <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+          <SheetTrigger asChild>
+            <Button variant="ghost" size="icon">
+              <Menu className="w-5 h-5" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="w-72 p-0 flex flex-col">
+            <SidebarContent onNavigate={() => setMobileMenuOpen(false)} />
+          </SheetContent>
+        </Sheet>
+        
+        {branding?.logoUrl ? (
+          <img src={branding.logoUrl} alt="Логотип" className="h-8 object-contain" />
+        ) : (
+          <SigmaLogo size="sm" />
+        )}
+        
+        <div className="w-10" /> {/* Spacer for centering */}
+      </div>
 
-        <nav className="flex-1 p-4">
-          <div className="space-y-1">
-            <button
-              onClick={() => setActiveTab("courses")}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
-                activeTab === "courses"
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-secondary"
-              }`}
-            >
-              <BookOpen className="w-5 h-5" />
-              Мои курсы
-            </button>
-            {dashboardSettings.showAiChat && (
-              <button
-                onClick={() => setActiveTab("chat")}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
-                  activeTab === "chat"
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-secondary"
-                }`}
-              >
-                <MessageCircle className="w-5 h-5" />
-                ИИ-помощник
-                <span className="ml-auto w-2 h-2 rounded-full bg-sigma-green animate-pulse" />
-              </button>
-            )}
-            {dashboardSettings.showLibrary && (
-              <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors">
-                <Library className="w-5 h-5" />
-                Библиотека
-              </button>
-            )}
-            {dashboardSettings.showAchievements && (
-              <button 
-                onClick={() => setShowAchievements(true)}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors"
-              >
-                <Trophy className="w-5 h-5" />
-                Достижения
-              </button>
-            )}
-            <button 
-              onClick={() => setShowVideoIdentification(true)}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors"
-            >
-              <Video className="w-5 h-5" />
-              Идентификация
-            </button>
-            <button 
-              onClick={() => setShowConsentForm(true)}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors"
-            >
-              <FileCheck className="w-5 h-5" />
-              Согласие на ПД
-            </button>
-            <button 
-              onClick={() => setShowDocumentsUpload(true)}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors"
-            >
-              <FileText className="w-5 h-5" />
-              Мои документы
-              {documentsProgress.completed < documentsProgress.total ? (
-                <span className="ml-auto flex items-center gap-1.5">
-                  <span className="text-xs text-amber-600 font-medium">
-                    {documentsProgress.completed}/{documentsProgress.total}
-                  </span>
-                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                </span>
-              ) : (
-                <CheckCircle2 className="w-4 h-4 ml-auto text-green-500" />
-              )}
-            </button>
-            <button 
-              onClick={() => setShowSettings(true)}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors"
-            >
-              <Settings className="w-5 h-5" />
-              Настройки
-              <div className="ml-auto">
-                <ThemeToggle />
-              </div>
-            </button>
-          </div>
-        </nav>
-
-        <div className="p-4 border-t border-border">
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-destructive hover:bg-destructive/10 transition-colors"
-          >
-            <LogOut className="w-5 h-5" />
-            Выйти
-          </button>
-        </div>
+      {/* Desktop Sidebar */}
+      <aside className={`hidden md:flex w-64 bg-card border-r border-border flex-col ${isPreviewMode ? 'mt-10' : ''}`}>
+        <SidebarContent />
       </aside>
 
       {/* Video Identification Dialog */}
@@ -583,17 +646,9 @@ export default function StudentDashboard() {
         />
       )}
 
-      {/* Settings Dialog */}
-      {user && (
-        <StudentSettingsDialog
-          userId={user.id}
-          isOpen={showSettings}
-          onOpenChange={setShowSettings}
-        />
-      )}
 
       {/* Main content */}
-      <main className={`flex-1 overflow-auto ${isPreviewMode ? 'mt-10' : ''}`}>
+      <main className={`flex-1 overflow-auto pt-14 md:pt-0 ${isPreviewMode ? 'md:mt-10' : ''}`}>
         {activeTab === "courses" && (
           <>
             {/* Cover Image / Header */}
