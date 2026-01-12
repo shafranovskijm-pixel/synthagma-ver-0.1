@@ -1025,11 +1025,17 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
     toast.success("Список компаний экспортирован");
   };
 
-  const filteredCompanies = companies.filter(
-    (c) =>
-      c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (c.inn && c.inn.includes(searchQuery))
-  );
+  const filteredCompanies = companies.filter((c) => {
+    const query = searchQuery.toLowerCase();
+    return (
+      c.name.toLowerCase().includes(query) ||
+      (c.inn && c.inn.includes(searchQuery)) ||
+      (c.ogrn && c.ogrn.includes(searchQuery)) ||
+      (c.kpp && c.kpp.includes(searchQuery)) ||
+      (c.director && c.director.toLowerCase().includes(query)) ||
+      (c.address && c.address.toLowerCase().includes(query))
+    );
+  });
 
   if (isLoading) {
     return (
@@ -1073,7 +1079,7 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
       <div className="relative max-w-md">
         <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
         <Input
-          placeholder="Поиск по названию или ИНН..."
+          placeholder="Поиск по названию, ИНН, ОГРН, руководителю..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="pl-10 rounded-xl"
