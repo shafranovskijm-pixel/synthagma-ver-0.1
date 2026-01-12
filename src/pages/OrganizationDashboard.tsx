@@ -376,25 +376,34 @@ export default function OrganizationDashboard() {
   // Animation direction for tab transitions (1 = swipe left/go right, -1 = swipe right/go left)
   const [swipeDirection, setSwipeDirection] = useState(0);
 
+  // Haptic feedback helper
+  const triggerHapticFeedback = useCallback(() => {
+    if ('vibrate' in navigator) {
+      navigator.vibrate(10); // Short 10ms vibration
+    }
+  }, []);
+
   const handleSwipeLeft = useCallback(() => {
     if (!isMobile) return;
     const tabs = getVisibleTabs();
     const currentIndex = tabs.indexOf(activeTab);
     if (currentIndex < tabs.length - 1) {
+      triggerHapticFeedback();
       setSwipeDirection(1);
       setActiveTab(tabs[currentIndex + 1]);
     }
-  }, [activeTab, getVisibleTabs, isMobile]);
+  }, [activeTab, getVisibleTabs, isMobile, triggerHapticFeedback]);
 
   const handleSwipeRight = useCallback(() => {
     if (!isMobile) return;
     const tabs = getVisibleTabs();
     const currentIndex = tabs.indexOf(activeTab);
     if (currentIndex > 0) {
+      triggerHapticFeedback();
       setSwipeDirection(-1);
       setActiveTab(tabs[currentIndex - 1]);
     }
-  }, [activeTab, getVisibleTabs, isMobile]);
+  }, [activeTab, getVisibleTabs, isMobile, triggerHapticFeedback]);
 
   const swipeRef = useSwipeGesture<HTMLDivElement>({
     onSwipeLeft: handleSwipeLeft,
@@ -3769,6 +3778,7 @@ export default function OrganizationDashboard() {
               <button
                 key={tab}
                 onClick={() => {
+                  triggerHapticFeedback();
                   const currentIndex = getVisibleTabs().indexOf(activeTab);
                   setSwipeDirection(index > currentIndex ? 1 : -1);
                   setActiveTab(tab);
