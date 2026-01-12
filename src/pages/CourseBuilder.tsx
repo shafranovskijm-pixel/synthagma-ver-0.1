@@ -442,7 +442,7 @@ function SortableLessonItem({
 
       {lesson.expanded && (
         <div className="p-4 pt-0 border-t border-border">
-          {lesson.type === "text" && (
+          {(lesson.type === "text" || lesson.type === "lesson") && (
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
                 <div className="flex items-center gap-2">
