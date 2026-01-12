@@ -127,6 +127,16 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  
+  // Global document stats
+  const [globalDocStats, setGlobalDocStats] = useState({
+    contracts: 0,
+    invoices: 0,
+    paidInvoices: 0,
+    unpaidInvoices: 0,
+    paidAmount: 0,
+    unpaidAmount: 0,
+  });
 
   // Create dialog
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -483,8 +493,57 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
     if (organizationId) {
       fetchCompanies();
       fetchOrgRequisites();
+      fetchGlobalDocStats();
     }
   }, [organizationId]);
+  
+  const fetchGlobalDocStats = async () => {
+    try {
+      // Get all company IDs for this organization
+      const { data: companyIds } = await supabase
+        .from("companies")
+        .select("id")
+        .eq("organization_id", organizationId);
+      
+      if (!companyIds || companyIds.length === 0) {
+        setGlobalDocStats({
+          contracts: 0,
+          invoices: 0,
+          paidInvoices: 0,
+          unpaidInvoices: 0,
+          paidAmount: 0,
+          unpaidAmount: 0,
+        });
+        return;
+      }
+      
+      const ids = companyIds.map(c => c.id);
+      
+      // Get all documents for these companies
+      const { data: docs } = await supabase
+        .from("company_documents")
+        .select("type, is_paid, amount")
+        .in("company_id", ids);
+      
+      if (docs) {
+        const contracts = docs.filter(d => d.type === 'contract').length;
+        const invoices = docs.filter(d => d.type === 'invoice');
+        const paidInvoices = invoices.filter(d => d.is_paid);
+        const unpaidInvoices = invoices.filter(d => !d.is_paid);
+        
+        setGlobalDocStats({
+          contracts,
+          invoices: invoices.length,
+          paidInvoices: paidInvoices.length,
+          unpaidInvoices: unpaidInvoices.length,
+          paidAmount: paidInvoices.reduce((sum, d) => sum + (d.amount || 0), 0),
+          unpaidAmount: unpaidInvoices.reduce((sum, d) => sum + (d.amount || 0), 0),
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching global doc stats:", error);
+    }
+  };
 
   const fetchOrgRequisites = async () => {
     try {
@@ -578,6 +637,7 @@ ${html.replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>
 
     if (dbError) throw dbError;
     await fetchCompanyDocuments(selectedCompanyForInvoice.id);
+    await fetchGlobalDocStats();
   };
   
   const handleSaveAct = async (html: string, actNumber: string, companyName: string, amount: number) => {
@@ -623,6 +683,7 @@ ${html.replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>
 
     if (dbError) throw dbError;
     await fetchCompanyDocuments(selectedCompanyForAct.id);
+    await fetchGlobalDocStats();
   };
   
   const handleTogglePaid = async (doc: CompanyDocument) => {
@@ -642,6 +703,7 @@ ${html.replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>
       if (selectedCompanyForDetail) {
         await fetchCompanyDocuments(selectedCompanyForDetail.id);
       }
+      await fetchGlobalDocStats();
     } catch (error) {
       console.error("Error toggling paid status:", error);
       toast.error("Ошибка обновления статуса");
@@ -1371,7 +1433,7 @@ ${html.replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <div className="bg-card border border-border rounded-xl p-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -1379,35 +1441,67 @@ ${html.replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>
             </div>
             <div>
               <div className="text-2xl font-bold">{companies.length}</div>
-              <div className="text-sm text-muted-foreground">Всего компаний</div>
-            </div>
-          </div>
-        </div>
-        <div className="bg-card border border-border rounded-xl p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-sigma-green/10 flex items-center justify-center">
-              <Users className="w-5 h-5 text-sigma-green" />
-            </div>
-            <div>
-              <div className="text-2xl font-bold">
-                {companies.reduce((sum, c) => sum + (c.studentsCount || 0), 0)}
-              </div>
-              <div className="text-sm text-muted-foreground">
-                Учеников в компаниях
-              </div>
+              <div className="text-sm text-muted-foreground">Компаний</div>
             </div>
           </div>
         </div>
         <div className="bg-card border border-border rounded-xl p-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center">
-              <Building2 className="w-5 h-5 text-orange-500" />
+              <FileText className="w-5 h-5 text-orange-500" />
             </div>
             <div>
-              <div className="text-2xl font-bold">
-                {companies.filter((c) => (c.studentsCount || 0) === 0).length}
+              <div className="text-2xl font-bold">{globalDocStats.contracts}</div>
+              <div className="text-sm text-muted-foreground">Договоров</div>
+            </div>
+          </div>
+        </div>
+        <div className="bg-card border border-border rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
+              <Receipt className="w-5 h-5 text-blue-500" />
+            </div>
+            <div>
+              <div className="text-2xl font-bold">{globalDocStats.invoices}</div>
+              <div className="text-sm text-muted-foreground">Счетов</div>
+            </div>
+          </div>
+        </div>
+        <div className="bg-card border border-border rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center">
+              <CheckCircle2 className="w-5 h-5 text-green-500" />
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-green-500">{globalDocStats.paidInvoices}</div>
+              <div className="text-sm text-muted-foreground">Оплачено</div>
+            </div>
+          </div>
+        </div>
+        <div className="bg-card border border-border rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
+              <Clock className="w-5 h-5 text-amber-500" />
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-amber-500">{globalDocStats.unpaidInvoices}</div>
+              <div className="text-sm text-muted-foreground">Не оплачено</div>
+            </div>
+          </div>
+        </div>
+        <div className="bg-card border border-border rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center">
+              <Banknote className="w-5 h-5 text-red-500" />
+            </div>
+            <div>
+              <div className="text-xl font-bold text-red-500">
+                {globalDocStats.unpaidAmount > 0 
+                  ? new Intl.NumberFormat('ru-RU', { notation: 'compact' }).format(globalDocStats.unpaidAmount)
+                  : 0
+                }
               </div>
-              <div className="text-sm text-muted-foreground">Без учеников</div>
+              <div className="text-sm text-muted-foreground">Сумма долга ₽</div>
             </div>
           </div>
         </div>
