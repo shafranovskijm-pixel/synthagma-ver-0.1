@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { FileCheck, Eye, Download, Loader2, User, Building2 } from "lucide-react";
+import { FileCheck, Eye, Download, Loader2, User, Building2, Search, CheckCircle2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface ConsentGeneratorProps {
@@ -21,6 +21,20 @@ interface Organization {
   legal_address: string | null;
   director_name: string | null;
   director_position: string | null;
+}
+
+interface DadataCompany {
+  name: string;
+  fullName: string;
+  shortName: string;
+  inn: string;
+  kpp: string;
+  ogrn: string;
+  address: string;
+  management: string;
+  status: string;
+  type: string;
+  opf: string;
 }
 
 const DEFAULT_CONSENT_TEMPLATE = `СОГЛАСИЕ НА ОБРАБОТКУ ПЕРСОНАЛЬНЫХ ДАННЫХ
@@ -77,6 +91,10 @@ export function ConsentGenerator({
   const [companyInn, setCompanyInn] = useState("");
   const [companyDirector, setCompanyDirector] = useState("");
   const [companyAddress, setCompanyAddress] = useState("");
+  
+  // DaData search state
+  const [isSearchingDadata, setIsSearchingDadata] = useState(false);
+  const [dadataCompanyInfo, setDadataCompanyInfo] = useState<DadataCompany | null>(null);
 
   useEffect(() => {
     loadOrganization();
@@ -94,6 +112,39 @@ export function ConsentGenerator({
       setOrganization(data);
     } catch (error) {
       console.error("Error loading organization:", error);
+    }
+  };
+
+  const handleSearchByInn = async () => {
+    if (companyInn.length < 10) {
+      toast.error("Введите корректный ИНН (10 или 12 цифр)");
+      return;
+    }
+
+    setIsSearchingDadata(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('dadata-company', {
+        body: { inn: companyInn }
+      });
+
+      if (error) throw error;
+
+      if (data.success && data.company) {
+        setDadataCompanyInfo(data.company);
+        setCompanyName(data.company.shortName || data.company.name);
+        setCompanyDirector(data.company.management || "");
+        setCompanyAddress(data.company.address || "");
+        toast.success("Данные компании найдены");
+      } else {
+        setDadataCompanyInfo(null);
+        toast.error(data.message || "Компания не найдена");
+      }
+    } catch (error) {
+      console.error("DaData search error:", error);
+      toast.error("Ошибка поиска по ИНН");
+      setDadataCompanyInfo(null);
+    } finally {
+      setIsSearchingDadata(false);
     }
   };
 
@@ -263,21 +314,47 @@ export function ConsentGenerator({
         </TabsContent>
 
         <TabsContent value="organization" className="space-y-4 pt-4">
+          {/* INN Search Section */}
+          <div className="bg-secondary/30 rounded-xl p-4 space-y-3">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <Building2 className="w-4 h-4" />
+              Автозаполнение по ИНН
+            </div>
+            <div className="flex gap-2">
+              <Input
+                placeholder="Введите ИНН организации"
+                value={companyInn}
+                onChange={(e) => setCompanyInn(e.target.value.replace(/\D/g, '').slice(0, 12))}
+                className="rounded-xl flex-1"
+              />
+              <Button
+                variant="outline"
+                className="rounded-xl gap-2"
+                onClick={handleSearchByInn}
+                disabled={isSearchingDadata || companyInn.length < 10}
+              >
+                {isSearchingDadata ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Search className="w-4 h-4" />
+                )}
+                Найти
+              </Button>
+            </div>
+            {dadataCompanyInfo && (
+              <div className="flex items-center gap-2 text-sm text-sigma-green">
+                <CheckCircle2 className="w-4 h-4" />
+                Найдено: {dadataCompanyInfo.shortName || dadataCompanyInfo.name}
+              </div>
+            )}
+          </div>
+
           <div className="space-y-2">
             <Label>Наименование организации</Label>
             <Input
               placeholder="ООО «Название»"
               value={companyName}
               onChange={(e) => setCompanyName(e.target.value)}
-              className="rounded-xl"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>ИНН организации</Label>
-            <Input
-              placeholder="1234567890"
-              value={companyInn}
-              onChange={(e) => setCompanyInn(e.target.value)}
               className="rounded-xl"
             />
           </div>
