@@ -20,7 +20,7 @@ import { BulkFRDOExport } from "@/components/organization/BulkFRDOExport";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
-import { GraduationCap, BookOpen, Users, BarChart3, Settings, LogOut, Plus, Upload, FileSpreadsheet, Search, Eye, TrendingUp, Clock, CheckCircle2, XCircle, Loader2, Edit, Trash2, FileText, Download, X, ChevronRight, Link, Copy, Building2, Save, Send, FileCheck, Receipt, CheckSquare, LayoutGrid, List, Filter, Tag, Palette, History, Moon, Sun, Library, Trophy, MessageCircle, Image, ExternalLink, ShoppingBag, Mail, Key, Menu } from "lucide-react";
+import { GraduationCap, BookOpen, Users, BarChart3, Settings, LogOut, Plus, Upload, FileSpreadsheet, Search, Eye, TrendingUp, Clock, CheckCircle2, XCircle, Loader2, Edit, Trash2, FileText, Download, X, ChevronRight, Link, Copy, Building2, Save, Send, FileCheck, Receipt, CheckSquare, LayoutGrid, List, Filter, Tag, Palette, History, Moon, Sun, Library, Trophy, MessageCircle, Image, ExternalLink, ShoppingBag, Mail, Key, Menu, AlertCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -286,6 +286,13 @@ export default function OrganizationDashboard() {
   
   // Student documents by user_id for filtering
   const [studentDocsByUser, setStudentDocsByUser] = useState<Map<string, string[]>>(new Map());
+
+  // FRDO data status by user_id
+  const [studentFrdoStatus, setStudentFrdoStatus] = useState<Map<string, { 
+    hasData: boolean; 
+    isComplete: boolean; 
+    missingFields: string[] 
+  }>>(new Map());
 
   // Refresh trigger for data reload
   const [refreshKey, setRefreshKey] = useState(0);
@@ -684,6 +691,52 @@ export default function OrganizationDashboard() {
             withEducation,
             complete
           });
+        }
+
+        // Fetch FRDO data status for all students
+        const userIds = allProfilesData.map(p => p.user_id);
+        if (userIds.length > 0) {
+          const { data: frdoData } = await supabase
+            .from("student_frdo_data")
+            .select("user_id, last_name, first_name, middle_name, birth_date, gender, snils, education_level")
+            .eq("organization_id", orgId)
+            .in("user_id", userIds);
+
+          const frdoStatusMap = new Map<string, { hasData: boolean; isComplete: boolean; missingFields: string[] }>();
+          
+          const requiredFields = [
+            { key: "last_name", label: "Фамилия" },
+            { key: "first_name", label: "Имя" },
+            { key: "birth_date", label: "Дата рождения" },
+            { key: "gender", label: "Пол" },
+            { key: "snils", label: "СНИЛС" },
+          ];
+
+          for (const profile of allProfilesData) {
+            const data = frdoData?.find(f => f.user_id === profile.user_id);
+            const missing: string[] = [];
+            
+            if (data) {
+              for (const field of requiredFields) {
+                if (!data[field.key as keyof typeof data]) {
+                  missing.push(field.label);
+                }
+              }
+              frdoStatusMap.set(profile.user_id, {
+                hasData: true,
+                isComplete: missing.length === 0,
+                missingFields: missing,
+              });
+            } else {
+              frdoStatusMap.set(profile.user_id, {
+                hasData: false,
+                isComplete: false,
+                missingFields: requiredFields.map(f => f.label),
+              });
+            }
+          }
+          
+          setStudentFrdoStatus(frdoStatusMap);
         }
 
         // Fetch categories
@@ -2796,6 +2849,7 @@ export default function OrganizationDashboard() {
                         </th>
                         <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Ученик</th>
                         <th className="text-left px-4 py-4 text-sm font-medium text-muted-foreground">Документы</th>
+                        <th className="text-left px-3 py-4 text-sm font-medium text-muted-foreground">ФРДО</th>
                         <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Курс</th>
                         <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Прогресс</th>
                         <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Статус</th>
@@ -2847,6 +2901,39 @@ export default function OrganizationDashboard() {
                                     <div className={`w-6 h-6 rounded flex items-center justify-center ${hasEducation ? 'bg-green-500/10' : 'bg-red-500/10'}`} title={hasEducation ? 'Документ об образовании загружен' : 'Нет документа об образовании'}>
                                       {hasEducation ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500" /> : <XCircle className="w-3.5 h-3.5 text-red-500" />}
                                     </div>
+                                  </div>
+                                );
+                              })()}
+                            </td>
+                            <td className="px-3 py-4">
+                              {(() => {
+                                const frdoStatus = studentFrdoStatus.get(student.user_id);
+                                if (!frdoStatus || !frdoStatus.hasData) {
+                                  return (
+                                    <div 
+                                      className="w-6 h-6 rounded flex items-center justify-center bg-muted" 
+                                      title="Данные ФРДО не заполнены"
+                                    >
+                                      <XCircle className="w-3.5 h-3.5 text-muted-foreground" />
+                                    </div>
+                                  );
+                                }
+                                if (frdoStatus.isComplete) {
+                                  return (
+                                    <div 
+                                      className="w-6 h-6 rounded flex items-center justify-center bg-green-500/10" 
+                                      title="Все данные ФРДО заполнены"
+                                    >
+                                      <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
+                                    </div>
+                                  );
+                                }
+                                return (
+                                  <div 
+                                    className="w-6 h-6 rounded flex items-center justify-center bg-amber-500/10" 
+                                    title={`Не заполнено: ${frdoStatus.missingFields.join(", ")}`}
+                                  >
+                                    <AlertCircle className="w-3.5 h-3.5 text-amber-500" />
                                   </div>
                                 );
                               })()}
