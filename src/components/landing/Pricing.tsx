@@ -1,6 +1,8 @@
 import { Check, Star, Crown, Zap, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { ScrollReveal, ScrollRevealGroup, scrollRevealItem } from "@/components/ui/ScrollReveal";
+import { motion } from "framer-motion";
 
 const plans = [
   {
@@ -58,7 +60,7 @@ export function Pricing() {
 
       <div className="container mx-auto px-6 relative z-10">
         {/* Section header */}
-        <div className="text-center mb-16">
+        <ScrollReveal className="text-center mb-16">
           <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-gradient-to-r from-accent/15 to-primary/10 border border-accent/30 mb-8 backdrop-blur-sm">
             <span className="hieroglyphic text-accent text-lg">𓆀</span>
             <span className="text-sm font-semibold text-foreground">Тарифы</span>
@@ -73,19 +75,19 @@ export function Pricing() {
           
           {/* Egyptian border decoration */}
           <div className="egyptian-border w-32 mx-auto mt-8 rounded-full" />
-        </div>
+        </ScrollReveal>
 
         {/* Pricing cards */}
-        <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-          {plans.map((plan, index) => (
-            <div
+        <ScrollRevealGroup className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto" staggerDelay={0.2}>
+          {plans.map((plan) => (
+            <motion.div
               key={plan.name}
-            className={`relative rounded-3xl p-8 pt-10 animate-slide-up transition-all duration-300 cursor-pointer ${
+              variants={scrollRevealItem}
+              className={`relative rounded-3xl p-8 pt-10 transition-all duration-300 cursor-pointer ${
                 plan.popular
                   ? "bg-gradient-to-b from-primary/15 via-[hsl(185_100%_45%/0.1)] to-accent/10 border-2 border-primary/40 shadow-xl scale-105 mt-4 hover:scale-110 hover:shadow-2xl hover:border-primary/60"
                   : "bg-card/80 backdrop-blur-sm border border-primary/20 hover:border-accent/40 hover:scale-105 hover:shadow-xl hover:bg-card/90"
               }`}
-              style={{ animationDelay: `${index * 100}ms` }}
             >
               {/* Hieroglyph watermark */}
               <span className="hieroglyphic absolute top-6 right-6 text-4xl text-accent/20">{plan.glyph}</span>
@@ -149,12 +151,12 @@ export function Pricing() {
               {plan.popular && (
                 <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-accent to-transparent" />
               )}
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </ScrollRevealGroup>
 
         {/* Trust indicators */}
-        <div className="mt-20 text-center">
+        <ScrollReveal delay={0.3} className="mt-20 text-center">
           <p className="text-muted-foreground mb-6">Нам доверяют образовательные организации по всей России</p>
           <div className="flex flex-wrap justify-center gap-8">
             {["Соответствие 273-ФЗ", "Защита данных", "Техподдержка 24/7", "99.9% SLA"].map((item, index) => (
@@ -172,7 +174,7 @@ export function Pricing() {
           <div className="greek-text text-center mt-8 text-primary/15 text-xs tracking-[0.5em]">
             ΠΙΣΤΙΣ • ΑΞΙΟΠΙΣΤΙΑ • ΠΟΙΟΤΗΤΑ
           </div>
-        </div>
+        </ScrollReveal>
       </div>
     </section>
   );

@@ -11,6 +11,8 @@ import {
   MessageCircle,
   Bell
 } from "lucide-react";
+import { ScrollReveal, ScrollRevealGroup, scrollRevealItem } from "@/components/ui/ScrollReveal";
+import { motion } from "framer-motion";
 
 const features = [
   {
@@ -75,7 +77,7 @@ export function Features() {
 
       <div className="container mx-auto px-6 relative">
         {/* Section header */}
-        <div className="text-center mb-20">
+        <ScrollReveal className="text-center mb-20">
           <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-gradient-to-r from-accent/15 to-primary/10 border border-accent/30 mb-8 backdrop-blur-sm">
             <span className="hieroglyphic text-accent text-lg">𓂀</span>
             <span className="text-sm font-semibold text-foreground">Возможности платформы</span>
@@ -90,15 +92,15 @@ export function Features() {
           
           {/* Egyptian border decoration */}
           <div className="egyptian-border w-32 mx-auto mt-8 rounded-full" />
-        </div>
+        </ScrollReveal>
 
         {/* Features grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-24">
+        <ScrollRevealGroup className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-24" staggerDelay={0.1}>
           {features.map((feature, index) => (
-            <div
+            <motion.div
               key={feature.title}
-              className="relative group bg-card/80 backdrop-blur-sm rounded-3xl p-8 border border-primary/10 hover:border-accent/40 shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-2 animate-slide-up overflow-hidden"
-              style={{ animationDelay: `${index * 100}ms` }}
+              variants={scrollRevealItem}
+              className="relative group bg-card/80 backdrop-blur-sm rounded-3xl p-8 border border-primary/10 hover:border-accent/40 shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-2 overflow-hidden"
             >
               {/* Hieroglyph watermark */}
               <span className="hieroglyphic absolute top-4 right-4 text-3xl text-accent/20 group-hover:text-accent/40 transition-colors">
@@ -119,9 +121,9 @@ export function Features() {
               
               {/* Gold bottom accent on hover */}
               <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-accent/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </ScrollRevealGroup>
 
         {/* Mobile App Section */}
         <div className="relative">
@@ -130,7 +132,7 @@ export function Features() {
           
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             {/* Content */}
-            <div className="order-2 lg:order-1">
+            <ScrollReveal direction="left" className="order-2 lg:order-1">
               <div className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full bg-gradient-to-r from-primary/15 to-accent/10 border border-primary/30 mb-6">
                 <Smartphone className="w-5 h-5 text-primary" />
                 <span className="text-sm font-semibold text-foreground">Мобильное приложение</span>
@@ -178,10 +180,10 @@ export function Features() {
                   </div>
                 </div>
               </div>
-            </div>
+            </ScrollReveal>
 
             {/* Phone mockup */}
-            <div className="order-1 lg:order-2 flex justify-center">
+            <ScrollReveal direction="right" className="order-1 lg:order-2 flex justify-center">
               <div className="relative">
                 {/* Glow effect - cold nitrogen */}
                 <div className="absolute inset-0 bg-gradient-to-br from-primary/30 via-[hsl(185_100%_45%/0.2)] to-accent/20 rounded-[3rem] blur-3xl scale-90" />
@@ -245,7 +247,7 @@ export function Features() {
                   </div>
                 </div>
               </div>
-            </div>
+            </ScrollReveal>
           </div>
           
           {/* Greek text decoration */}
