@@ -117,6 +117,20 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
   const [newCompanyName, setNewCompanyName] = useState("");
   const [newCompanyInn, setNewCompanyInn] = useState("");
   const [isCreating, setIsCreating] = useState(false);
+  const [isSearchingDadata, setIsSearchingDadata] = useState(false);
+  const [dadataCompanyInfo, setDadataCompanyInfo] = useState<{
+    name: string;
+    fullName: string;
+    shortName: string;
+    inn: string;
+    kpp: string | null;
+    ogrn: string | null;
+    address: string | null;
+    management: string | null;
+    status: string | null;
+    type: string | null;
+    opf: string | null;
+  } | null>(null);
 
   // Edit dialog
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -412,6 +426,37 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
     }
   }, [organizationId]);
 
+  const handleSearchByInn = async (inn: string) => {
+    if (inn.length < 10) {
+      setDadataCompanyInfo(null);
+      return;
+    }
+
+    setIsSearchingDadata(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('dadata-company', {
+        body: { inn }
+      });
+
+      if (error) throw error;
+
+      if (data.success && data.company) {
+        setDadataCompanyInfo(data.company);
+        setNewCompanyName(data.company.shortName || data.company.name);
+        toast.success("Компания найдена");
+      } else {
+        setDadataCompanyInfo(null);
+        toast.error(data.message || "Компания не найдена");
+      }
+    } catch (error) {
+      console.error("DaData search error:", error);
+      toast.error("Ошибка поиска по ИНН");
+      setDadataCompanyInfo(null);
+    } finally {
+      setIsSearchingDadata(false);
+    }
+  };
+
   const handleCreate = async () => {
     if (!newCompanyName.trim()) {
       toast.error("Введите название компании");
@@ -432,6 +477,7 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
       setShowCreateDialog(false);
       setNewCompanyName("");
       setNewCompanyInn("");
+      setDadataCompanyInfo(null);
       fetchCompanies();
     } catch (error) {
       console.error("Error creating company:", error);
@@ -1838,15 +1884,85 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
       </Dialog>
 
       {/* Create Dialog */}
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="rounded-2xl">
+      <Dialog open={showCreateDialog} onOpenChange={(open) => {
+        setShowCreateDialog(open);
+        if (!open) {
+          setNewCompanyName("");
+          setNewCompanyInn("");
+          setDadataCompanyInfo(null);
+        }
+      }}>
+        <DialogContent className="rounded-2xl max-w-lg">
           <DialogHeader>
             <DialogTitle className="font-display">Добавить компанию</DialogTitle>
             <DialogDescription>
-              Создайте новую компанию-клиента
+              Введите ИНН для автозаполнения данных компании
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>ИНН</Label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Введите ИНН для поиска"
+                  className="rounded-xl"
+                  value={newCompanyInn}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, '').slice(0, 12);
+                    setNewCompanyInn(value);
+                  }}
+                  maxLength={12}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="rounded-xl shrink-0"
+                  onClick={() => handleSearchByInn(newCompanyInn)}
+                  disabled={isSearchingDadata || newCompanyInn.length < 10}
+                >
+                  {isSearchingDadata ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Search className="w-4 h-4" />
+                  )}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">10 цифр для юрлица, 12 для ИП</p>
+            </div>
+
+            {dadataCompanyInfo && (
+              <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-xl space-y-2">
+                <div className="flex items-center gap-2 text-green-600">
+                  <Check className="w-4 h-4" />
+                  <span className="font-medium text-sm">Компания найдена</span>
+                </div>
+                <div className="space-y-1 text-sm">
+                  <p><span className="text-muted-foreground">Название:</span> {dadataCompanyInfo.shortName}</p>
+                  <p><span className="text-muted-foreground">ИНН:</span> {dadataCompanyInfo.inn}</p>
+                  {dadataCompanyInfo.kpp && (
+                    <p><span className="text-muted-foreground">КПП:</span> {dadataCompanyInfo.kpp}</p>
+                  )}
+                  {dadataCompanyInfo.ogrn && (
+                    <p><span className="text-muted-foreground">ОГРН:</span> {dadataCompanyInfo.ogrn}</p>
+                  )}
+                  {dadataCompanyInfo.management && (
+                    <p><span className="text-muted-foreground">Руководитель:</span> {dadataCompanyInfo.management}</p>
+                  )}
+                  {dadataCompanyInfo.address && (
+                    <p className="text-xs"><span className="text-muted-foreground">Адрес:</span> {dadataCompanyInfo.address}</p>
+                  )}
+                  {dadataCompanyInfo.status && (
+                    <p>
+                      <span className="text-muted-foreground">Статус:</span>{' '}
+                      <span className={dadataCompanyInfo.status === 'ACTIVE' ? 'text-green-600' : 'text-red-600'}>
+                        {dadataCompanyInfo.status === 'ACTIVE' ? 'Действующая' : dadataCompanyInfo.status}
+                      </span>
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label>Название компании *</Label>
               <Input
@@ -1856,15 +1972,7 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
                 onChange={(e) => setNewCompanyName(e.target.value)}
               />
             </div>
-            <div className="space-y-2">
-              <Label>ИНН (необязательно)</Label>
-              <Input
-                placeholder="1234567890"
-                className="rounded-xl"
-                value={newCompanyInn}
-                onChange={(e) => setNewCompanyInn(e.target.value)}
-              />
-            </div>
+
             <Button
               className="w-full btn-gradient rounded-xl"
               onClick={handleCreate}
