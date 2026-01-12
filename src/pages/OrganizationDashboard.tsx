@@ -2815,7 +2815,9 @@ export default function OrganizationDashboard() {
                       import('xlsx').then(XLSX => {
                         const exportData = filteredStudents.map(s => ({
                           'ФИО': s.name,
-                          'Email': s.email,
+                          'Email': s.email || '',
+                          'Логин': s.login || '',
+                          'Пароль': s.generated_password || '',
                           'Курс': s.course || 'Не зачислен',
                           'Прогресс (%)': s.progress,
                           'Статус': s.status === 'completed' ? 'Завершил' : s.status === 'active' ? 'Активный' : '—'
