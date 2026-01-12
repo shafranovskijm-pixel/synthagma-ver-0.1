@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -7,6 +7,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
@@ -15,7 +21,15 @@ import {
   Save,
   Loader2,
   RotateCcw,
+  Upload,
+  Sparkles,
+  FileUp,
 } from "lucide-react";
+import mammoth from "mammoth";
+import * as pdfjsLib from "pdfjs-dist";
+
+// Set worker path for PDF.js
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
 
 interface ContractTemplateEditorProps {
   organizationId: string;
@@ -88,31 +102,31 @@ _______________ / {{org_director_name}} /
 _______________ / _________________ /`;
 
 const PLACEHOLDERS = [
-  { key: "{{contract_number}}", label: "Номер договора", example: "2026-01-001" },
-  { key: "{{contract_date}}", label: "Дата договора", example: "«12» января 2026 г." },
-  { key: "{{org_name}}", label: "Название организации", example: "ООО «Учебный центр»" },
-  { key: "{{org_director_position}}", label: "Должность руководителя", example: "Генерального директора" },
-  { key: "{{org_director_name}}", label: "ФИО руководителя", example: "Иванова И.И." },
-  { key: "{{org_inn}}", label: "ИНН организации", example: "7700000000" },
-  { key: "{{org_kpp}}", label: "КПП организации", example: "770001001" },
-  { key: "{{org_ogrn}}", label: "ОГРН организации", example: "1027700000000" },
-  { key: "{{org_address}}", label: "Адрес организации", example: "г. Москва, ул. Примерная, д. 1" },
-  { key: "{{org_bank_name}}", label: "Название банка", example: "ПАО Сбербанк" },
-  { key: "{{org_bank_bik}}", label: "БИК банка", example: "044525225" },
-  { key: "{{org_bank_account}}", label: "Расчётный счёт", example: "40702810000000000000" },
-  { key: "{{org_bank_corr_account}}", label: "Корр. счёт", example: "30101810400000000225" },
-  { key: "{{company_name}}", label: "Название компании-заказчика", example: "ООО «Заказчик»" },
-  { key: "{{company_director}}", label: "Руководитель компании", example: "Генерального директора Петрова П.П." },
-  { key: "{{company_inn}}", label: "ИНН компании", example: "7700000001" },
-  { key: "{{company_kpp}}", label: "КПП компании", example: "770001002" },
-  { key: "{{company_ogrn}}", label: "ОГРН компании", example: "1027700000001" },
-  { key: "{{company_address}}", label: "Адрес компании", example: "г. Москва, ул. Заказная, д. 2" },
-  { key: "{{course_title}}", label: "Название курса", example: "Охрана труда" },
-  { key: "{{course_duration}}", label: "Длительность курса", example: " продолжительностью 40 часов" },
-  { key: "{{students_count}}", label: "Количество обучающихся", example: "10" },
-  { key: "{{price}}", label: "Цена за 1 человека", example: "5 000,00" },
-  { key: "{{total_price}}", label: "Общая сумма", example: "50 000,00" },
-  { key: "{{additional_terms}}", label: "Дополнительные условия", example: "" },
+  { key: "{{contract_number}}", label: "Номер договора", example: "2026-01-001", patterns: ["№", "номер договора", "договор №"] },
+  { key: "{{contract_date}}", label: "Дата договора", example: "«12» января 2026 г.", patterns: ["от «", "дата"] },
+  { key: "{{org_name}}", label: "Название организации", example: "ООО «Учебный центр»", patterns: ["исполнитель"] },
+  { key: "{{org_director_position}}", label: "Должность руководителя", example: "Генерального директора", patterns: ["в лице"] },
+  { key: "{{org_director_name}}", label: "ФИО руководителя", example: "Иванова И.И.", patterns: ["директора", "руководителя"] },
+  { key: "{{org_inn}}", label: "ИНН организации", example: "7700000000", patterns: ["инн:"] },
+  { key: "{{org_kpp}}", label: "КПП организации", example: "770001001", patterns: ["кпп:"] },
+  { key: "{{org_ogrn}}", label: "ОГРН организации", example: "1027700000000", patterns: ["огрн:"] },
+  { key: "{{org_address}}", label: "Адрес организации", example: "г. Москва, ул. Примерная, д. 1", patterns: ["адрес:"] },
+  { key: "{{org_bank_name}}", label: "Название банка", example: "ПАО Сбербанк", patterns: ["банк:"] },
+  { key: "{{org_bank_bik}}", label: "БИК банка", example: "044525225", patterns: ["бик:"] },
+  { key: "{{org_bank_account}}", label: "Расчётный счёт", example: "40702810000000000000", patterns: ["р/с:", "расч"] },
+  { key: "{{org_bank_corr_account}}", label: "Корр. счёт", example: "30101810400000000225", patterns: ["к/с:", "корр"] },
+  { key: "{{company_name}}", label: "Название компании-заказчика", example: "ООО «Заказчик»", patterns: ["заказчик"] },
+  { key: "{{company_director}}", label: "Руководитель компании", example: "Генерального директора Петрова П.П.", patterns: [] },
+  { key: "{{company_inn}}", label: "ИНН компании", example: "7700000001", patterns: [] },
+  { key: "{{company_kpp}}", label: "КПП компании", example: "770001002", patterns: [] },
+  { key: "{{company_ogrn}}", label: "ОГРН компании", example: "1027700000001", patterns: [] },
+  { key: "{{company_address}}", label: "Адрес компании", example: "г. Москва, ул. Заказная, д. 2", patterns: [] },
+  { key: "{{course_title}}", label: "Название курса", example: "Охрана труда", patterns: ["программе", "курс"] },
+  { key: "{{course_duration}}", label: "Длительность курса", example: " продолжительностью 40 часов", patterns: ["продолжительность", "часов"] },
+  { key: "{{students_count}}", label: "Количество обучающихся", example: "10", patterns: ["количество", "обучающихся", "слушателей"] },
+  { key: "{{price}}", label: "Цена за 1 человека", example: "5 000,00", patterns: ["стоимость", "цена"] },
+  { key: "{{total_price}}", label: "Общая сумма", example: "50 000,00", patterns: ["общая стоимость", "итого"] },
+  { key: "{{additional_terms}}", label: "Дополнительные условия", example: "", patterns: [] },
 ];
 
 export function ContractTemplateEditor({
@@ -124,6 +138,9 @@ export function ContractTemplateEditor({
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
+  const [isProcessingFile, setIsProcessingFile] = useState(false);
+  const [isAddingVariables, setIsAddingVariables] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadTemplate();
@@ -189,6 +206,115 @@ export function ContractTemplateEditor({
     setTemplate(DEFAULT_CONTRACT_TEMPLATE);
   };
 
+  const extractTextFromPDF = async (file: File): Promise<string> => {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    let text = "";
+    
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items
+        .map((item: any) => item.str)
+        .join(" ");
+      text += pageText + "\n";
+    }
+    
+    return text;
+  };
+
+  const extractTextFromDOCX = async (file: File): Promise<string> => {
+    const arrayBuffer = await file.arrayBuffer();
+    const result = await mammoth.extractRawText({ arrayBuffer });
+    return result.value;
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const fileName = file.name.toLowerCase();
+    const isPDF = fileName.endsWith(".pdf");
+    const isDOCX = fileName.endsWith(".docx") || fileName.endsWith(".doc");
+
+    if (!isPDF && !isDOCX) {
+      toast.error("Поддерживаются только PDF и DOC/DOCX файлы");
+      return;
+    }
+
+    setIsProcessingFile(true);
+    try {
+      let text = "";
+      
+      if (isPDF) {
+        text = await extractTextFromPDF(file);
+      } else if (isDOCX) {
+        text = await extractTextFromDOCX(file);
+      }
+
+      if (text.trim()) {
+        setTemplate(text.trim());
+        toast.success("Текст документа загружен. Нажмите «Добавить переменные» для автоматической разметки.");
+      } else {
+        toast.error("Не удалось извлечь текст из документа");
+      }
+    } catch (error) {
+      console.error("Error processing file:", error);
+      toast.error("Ошибка обработки файла");
+    } finally {
+      setIsProcessingFile(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const addVariablesToTemplate = async () => {
+    setIsAddingVariables(true);
+    try {
+      // Call edge function to use AI for variable detection
+      const { data, error } = await supabase.functions.invoke("process-contract-template", {
+        body: { text: template, placeholders: PLACEHOLDERS },
+      });
+
+      if (error) throw error;
+
+      if (data?.processedText) {
+        setTemplate(data.processedText);
+        toast.success("Переменные добавлены в шаблон");
+      } else {
+        toast.error("Не удалось добавить переменные");
+      }
+    } catch (error) {
+      console.error("Error adding variables:", error);
+      // Fallback: simple pattern matching
+      let processedText = template;
+      
+      // Replace common patterns with variables
+      const patterns = [
+        { regex: /ИНН:\s*\d{10,12}/gi, replacement: "ИНН: {{org_inn}}" },
+        { regex: /КПП:\s*\d{9}/gi, replacement: "КПП: {{org_kpp}}" },
+        { regex: /ОГРН:\s*\d{13,15}/gi, replacement: "ОГРН: {{org_ogrn}}" },
+        { regex: /БИК:\s*\d{9}/gi, replacement: "БИК: {{org_bank_bik}}" },
+        { regex: /Р\/с:\s*\d{20}/gi, replacement: "Р/с: {{org_bank_account}}" },
+        { regex: /К\/с:\s*\d{20}/gi, replacement: "К/с: {{org_bank_corr_account}}" },
+        { regex: /№\s*[\d\-\/]+\s+от/gi, replacement: "№ {{contract_number}} от" },
+        { regex: /от\s*«?\d{1,2}»?\s*[а-яё]+\s*\d{4}\s*г?\.?/gi, replacement: "от {{contract_date}}" },
+        { regex: /(\d+[\s,]*)+\s*руб/gi, replacement: "{{price}} руб" },
+        { regex: /Количество обучающихся:\s*\d+/gi, replacement: "Количество обучающихся: {{students_count}}" },
+      ];
+
+      patterns.forEach(({ regex, replacement }) => {
+        processedText = processedText.replace(regex, replacement);
+      });
+
+      setTemplate(processedText);
+      toast.success("Базовые переменные добавлены. Проверьте и дополните вручную.");
+    } finally {
+      setIsAddingVariables(false);
+    }
+  };
+
   const getPreviewText = () => {
     let preview = template;
     PLACEHOLDERS.forEach((p) => {
@@ -208,55 +334,102 @@ export function ContractTemplateEditor({
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-2">
-          <FileText className="w-5 h-5 text-primary" />
-          <h3 className="font-semibold">Конструктор шаблона договора</h3>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="rounded-xl gap-2"
-            onClick={() => setShowPreview(true)}
-          >
-            <Eye className="w-4 h-4" />
-            Предпросмотр
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="rounded-xl gap-2"
-            onClick={handleReset}
-          >
-            <RotateCcw className="w-4 h-4" />
-            Сбросить
-          </Button>
-          <Button
-            size="sm"
-            className="rounded-xl gap-2"
-            onClick={handleSave}
-            disabled={isSaving || !hasChanges}
-          >
-            {isSaving ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Save className="w-4 h-4" />
-            )}
-            Сохранить
-          </Button>
-        </div>
-      </div>
+    <Accordion type="single" collapsible className="w-full">
+      <AccordionItem value="contract-editor" className="border-none">
+        <AccordionTrigger className="hover:no-underline py-0">
+          <div className="flex items-center gap-2">
+            <FileText className="w-5 h-5 text-primary" />
+            <span className="font-semibold">Конструктор шаблона договора</span>
+          </div>
+        </AccordionTrigger>
+        <AccordionContent className="pt-4">
+          <div className="space-y-4">
+            {/* Upload and Actions */}
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-xl gap-2"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isProcessingFile}
+              >
+                {isProcessingFile ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Upload className="w-4 h-4" />
+                )}
+                Загрузить DOC/PDF
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-xl gap-2"
+                onClick={addVariablesToTemplate}
+                disabled={isAddingVariables}
+              >
+                {isAddingVariables ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Sparkles className="w-4 h-4" />
+                )}
+                Добавить переменные
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-xl gap-2"
+                onClick={() => setShowPreview(true)}
+              >
+                <Eye className="w-4 h-4" />
+                Предпросмотр
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-xl gap-2"
+                onClick={handleReset}
+              >
+                <RotateCcw className="w-4 h-4" />
+                Сбросить
+              </Button>
+              <Button
+                size="sm"
+                className="rounded-xl gap-2"
+                onClick={handleSave}
+                disabled={isSaving || !hasChanges}
+              >
+                {isSaving ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                Сохранить
+              </Button>
+            </div>
 
-      {/* Template Editor */}
-      <Textarea
-        id="contract-template"
-        value={template}
-        onChange={(e) => setTemplate(e.target.value)}
-        className="min-h-[500px] font-mono text-sm rounded-xl"
-        placeholder="Введите текст шаблона договора..."
-      />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.doc,.docx"
+              className="hidden"
+              onChange={handleFileUpload}
+            />
+
+            {/* Template Editor */}
+            <Textarea
+              id="contract-template"
+              value={template}
+              onChange={(e) => setTemplate(e.target.value)}
+              className="min-h-[400px] font-mono text-sm rounded-xl"
+              placeholder="Введите текст шаблона договора или загрузите файл..."
+            />
+
+            <p className="text-xs text-muted-foreground">
+              Загрузите существующий договор в формате DOC или PDF, затем нажмите «Добавить переменные» для автоматической разметки полей.
+            </p>
+          </div>
+        </AccordionContent>
+      </AccordionItem>
 
       {/* Preview Dialog */}
       <Dialog open={showPreview} onOpenChange={setShowPreview}>
@@ -311,6 +484,6 @@ export function ContractTemplateEditor({
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </Accordion>
   );
 }
