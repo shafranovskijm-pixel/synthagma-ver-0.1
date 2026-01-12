@@ -32,7 +32,7 @@ import { VideoIdentification } from "@/components/student/VideoIdentification";
 import { StudentConsentForm } from "@/components/student/StudentConsentForm";
 import { StudentDocumentsUpload } from "@/components/student/StudentDocumentsUpload";
 import { AchievementsPanel } from "@/components/student/AchievementsPanel";
-
+import { StudentSettingsDialog } from "@/components/student/StudentSettingsDialog";
 interface Course {
   id: string;
   title: string;
@@ -96,6 +96,7 @@ export default function StudentDashboard() {
   const [showConsentForm, setShowConsentForm] = useState(false);
   const [showDocumentsUpload, setShowDocumentsUpload] = useState(false);
   const [showAchievements, setShowAchievements] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [documentsProgress, setDocumentsProgress] = useState({ completed: 0, total: 3 });
   const [isVideoIdentified, setIsVideoIdentified] = useState(false);
 
@@ -518,13 +519,16 @@ export default function StudentDashboard() {
                 <CheckCircle2 className="w-4 h-4 ml-auto text-green-500" />
               )}
             </button>
-            <div className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground">
+            <button 
+              onClick={() => setShowSettings(true)}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors"
+            >
               <Settings className="w-5 h-5" />
               Настройки
               <div className="ml-auto">
                 <ThemeToggle />
               </div>
-            </div>
+            </button>
           </div>
         </nav>
 
@@ -576,6 +580,15 @@ export default function StudentDashboard() {
           userId={user.id}
           isOpen={showAchievements}
           onOpenChange={setShowAchievements}
+        />
+      )}
+
+      {/* Settings Dialog */}
+      {user && (
+        <StudentSettingsDialog
+          userId={user.id}
+          isOpen={showSettings}
+          onOpenChange={setShowSettings}
         />
       )}
 
