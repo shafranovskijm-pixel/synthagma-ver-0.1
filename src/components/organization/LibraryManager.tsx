@@ -72,7 +72,7 @@ interface LibraryFolder {
 }
 
 const LIBRARY_TYPES = [
-  { value: "document", label: "Документ (DOC, PDF)", icon: FileText, accept: ".doc,.docx,.pdf" },
+  { value: "document", label: "Документ (DOC, PDF, RTF)", icon: FileText, accept: ".doc,.docx,.pdf,.rtf" },
   { value: "presentation", label: "Презентация (PPTX)", icon: Presentation, accept: ".ppt,.pptx" },
   { value: "spreadsheet", label: "Таблица (XLSX)", icon: FileSpreadsheet, accept: ".xls,.xlsx" },
   { value: "other", label: "Прочее", icon: File, accept: "*" },
