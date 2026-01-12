@@ -2787,6 +2787,7 @@ export default function OrganizationDashboard() {
                           <input type="checkbox" checked={filteredStudents.length > 0 && filteredStudents.every(s => selectedStudentIds.has(s.enrollment_id || s.user_id))} onChange={() => toggleSelectAll(filteredStudents)} className="w-4 h-4 rounded border-border" />
                         </th>
                         <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Ученик</th>
+                        <th className="text-left px-4 py-4 text-sm font-medium text-muted-foreground">Документы</th>
                         <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Курс</th>
                         <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Прогресс</th>
                         <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Статус</th>
@@ -2820,6 +2821,27 @@ export default function OrganizationDashboard() {
                                     </div> : student.email}
                                 </div>
                               </div>
+                            </td>
+                            <td className="px-4 py-4">
+                              {(() => {
+                                const userDocs = studentDocsByUser.get(student.user_id) || [];
+                                const hasPassport = userDocs.some(t => t === "passport" || t === "birth_certificate");
+                                const hasSnils = userDocs.includes("snils");
+                                const hasEducation = userDocs.some(t => t === "education_document" || t === "diploma" || t === "attestat");
+                                return (
+                                  <div className="flex items-center gap-1">
+                                    <div className={`w-6 h-6 rounded flex items-center justify-center ${hasPassport ? 'bg-green-500/10' : 'bg-red-500/10'}`} title={hasPassport ? 'Паспорт загружен' : 'Нет паспорта'}>
+                                      {hasPassport ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500" /> : <XCircle className="w-3.5 h-3.5 text-red-500" />}
+                                    </div>
+                                    <div className={`w-6 h-6 rounded flex items-center justify-center ${hasSnils ? 'bg-green-500/10' : 'bg-red-500/10'}`} title={hasSnils ? 'СНИЛС загружен' : 'Нет СНИЛС'}>
+                                      {hasSnils ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500" /> : <XCircle className="w-3.5 h-3.5 text-red-500" />}
+                                    </div>
+                                    <div className={`w-6 h-6 rounded flex items-center justify-center ${hasEducation ? 'bg-green-500/10' : 'bg-red-500/10'}`} title={hasEducation ? 'Документ об образовании загружен' : 'Нет документа об образовании'}>
+                                      {hasEducation ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500" /> : <XCircle className="w-3.5 h-3.5 text-red-500" />}
+                                    </div>
+                                  </div>
+                                );
+                              })()}
                             </td>
                             <td className="px-6 py-4 text-sm">
                               {student.course || <span className="text-muted-foreground italic">Не зачислен</span>}
