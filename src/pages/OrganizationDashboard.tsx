@@ -1632,7 +1632,7 @@ export default function OrganizationDashboard() {
           name: student.name,
           login: student.login,
           password: student.generated_password,
-          loginUrl: `${window.location.origin}/login`,
+          loginUrl: `https://wpczgwxsriezaubncuom.lovableproject.com/login`,
           organizationName: organizationName
         }
       });
@@ -1678,7 +1678,7 @@ export default function OrganizationDashboard() {
               name: student.name,
               login: student.login!,
               password: student.generated_password!,
-              loginUrl: `${window.location.origin}/login`,
+              loginUrl: `https://wpczgwxsriezaubncuom.lovableproject.com/login`,
               organizationName: organizationName
             }
           });
