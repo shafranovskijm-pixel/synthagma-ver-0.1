@@ -382,6 +382,8 @@ export default function OrganizationDashboard() {
   });
   const [isSavingRequisites, setIsSavingRequisites] = useState(false);
   const [isSearchingDadataRequisites, setIsSearchingDadataRequisites] = useState(false);
+  const [showOrgRequisitesDialog, setShowOrgRequisitesDialog] = useState(false);
+  const [editOrgName, setEditOrgName] = useState("");
 
   // DaData search for organization requisites
   const handleSearchRequisitesByInn = async (inn: string) => {
@@ -2381,12 +2383,19 @@ export default function OrganizationDashboard() {
               <X className="w-5 h-5" />
             </button>
           </div>
-          <div className="mt-4 p-3 bg-secondary rounded-xl">
-            <div className="font-semibold text-sm">{organizationName}</div>
-            <div className="text-xs text-muted-foreground">
-              {isAdminView ? "Просмотр от имени" : "Организация"}
+          <button
+            onClick={() => {
+              setEditOrgName(organizationName);
+              setShowOrgRequisitesDialog(true);
+            }}
+            className="mt-4 p-3 bg-secondary rounded-xl w-full text-left hover:bg-secondary/80 transition-colors group"
+          >
+            <div className="font-semibold text-sm group-hover:text-primary transition-colors">{organizationName}</div>
+            <div className="text-xs text-muted-foreground flex items-center gap-1">
+              {isAdminView ? "Просмотр от имени" : "Нажмите для редактирования"}
+              <Edit className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
-          </div>
+          </button>
         </div>
 
         <nav className="flex-1 p-4 overflow-y-auto">
@@ -3672,222 +3681,6 @@ export default function OrganizationDashboard() {
                 </div>
               </div>
 
-              {/* Organization Requisites */}
-              <div className="bg-card rounded-2xl border border-border p-6">
-                <h3 className="font-display font-semibold text-lg mb-4 flex items-center gap-2">
-                  <Receipt className="w-5 h-5" />
-                  Реквизиты организации
-                </h3>
-                <p className="text-sm text-muted-foreground mb-6">
-                  Заполните реквизиты для автоматического формирования договоров, счетов и актов
-                </p>
-                
-                <div className="space-y-6">
-                  {/* Basic requisites */}
-                  <div>
-                    <h4 className="font-medium text-sm mb-3 text-muted-foreground uppercase tracking-wide">Основные данные</h4>
-                    <div className="grid md:grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <Label>ИНН</Label>
-                        <div className="flex gap-2">
-                          <Input
-                            placeholder="1234567890"
-                            className="rounded-xl"
-                            value={requisites.inn}
-                            onChange={(e) => {
-                              const value = e.target.value;
-                              setRequisites(prev => ({ ...prev, inn: value }));
-                              if (value.length >= 10) {
-                                handleSearchRequisitesByInn(value);
-                              }
-                            }}
-                          />
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="rounded-xl shrink-0"
-                            onClick={() => handleSearchRequisitesByInn(requisites.inn)}
-                            disabled={requisites.inn.length < 10 || isSearchingDadataRequisites}
-                          >
-                            {isSearchingDadataRequisites ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <Search className="w-4 h-4" />
-                            )}
-                          </Button>
-                        </div>
-                        <p className="text-xs text-muted-foreground">Введите ИНН для автозаполнения</p>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>КПП</Label>
-                        <Input
-                          placeholder="123456789"
-                          className="rounded-xl"
-                          value={requisites.kpp}
-                          onChange={(e) => setRequisites(prev => ({ ...prev, kpp: e.target.value }))}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>ОГРН</Label>
-                        <Input
-                          placeholder="1234567890123"
-                          className="rounded-xl"
-                          value={requisites.ogrn}
-                          onChange={(e) => setRequisites(prev => ({ ...prev, ogrn: e.target.value }))}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Addresses */}
-                  <div>
-                    <h4 className="font-medium text-sm mb-3 text-muted-foreground uppercase tracking-wide">Адреса</h4>
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label>Юридический адрес</Label>
-                        <Input
-                          placeholder="123456, г. Москва, ул. Примерная, д. 1, офис 100"
-                          className="rounded-xl"
-                          value={requisites.legal_address}
-                          onChange={(e) => setRequisites(prev => ({ ...prev, legal_address: e.target.value }))}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Фактический адрес</Label>
-                        <Input
-                          placeholder="123456, г. Москва, ул. Примерная, д. 1, офис 100"
-                          className="rounded-xl"
-                          value={requisites.actual_address}
-                          onChange={(e) => setRequisites(prev => ({ ...prev, actual_address: e.target.value }))}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Director */}
-                  <div>
-                    <h4 className="font-medium text-sm mb-3 text-muted-foreground uppercase tracking-wide">Руководитель</h4>
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>ФИО руководителя</Label>
-                        <Input
-                          placeholder="Иванов Иван Иванович"
-                          className="rounded-xl"
-                          value={requisites.director_name}
-                          onChange={(e) => setRequisites(prev => ({ ...prev, director_name: e.target.value }))}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Должность</Label>
-                        <Input
-                          placeholder="Генеральный директор"
-                          className="rounded-xl"
-                          value={requisites.director_position}
-                          onChange={(e) => setRequisites(prev => ({ ...prev, director_position: e.target.value }))}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Bank details */}
-                  <div>
-                    <h4 className="font-medium text-sm mb-3 text-muted-foreground uppercase tracking-wide">Банковские реквизиты</h4>
-                    <div className="space-y-4">
-                      <div className="grid md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label>Наименование банка</Label>
-                          <Input
-                            placeholder="ПАО Сбербанк"
-                            className="rounded-xl"
-                            value={requisites.bank_name}
-                            onChange={(e) => setRequisites(prev => ({ ...prev, bank_name: e.target.value }))}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>БИК</Label>
-                          <Input
-                            placeholder="044525225"
-                            className="rounded-xl"
-                            value={requisites.bank_bik}
-                            onChange={(e) => setRequisites(prev => ({ ...prev, bank_bik: e.target.value }))}
-                          />
-                        </div>
-                      </div>
-                      <div className="grid md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label>Расчётный счёт</Label>
-                          <Input
-                            placeholder="40702810123456789012"
-                            className="rounded-xl"
-                            value={requisites.bank_account}
-                            onChange={(e) => setRequisites(prev => ({ ...prev, bank_account: e.target.value }))}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Корр. счёт</Label>
-                          <Input
-                            placeholder="30101810400000000225"
-                            className="rounded-xl"
-                            value={requisites.bank_corr_account}
-                            onChange={(e) => setRequisites(prev => ({ ...prev, bank_corr_account: e.target.value }))}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-6 pt-4 border-t border-border">
-                  <Button
-                    className="btn-gradient rounded-xl gap-2"
-                    onClick={async () => {
-                      if (!organizationId) return;
-                      setIsSavingRequisites(true);
-                      try {
-                        const { error } = await supabase
-                          .from('organizations')
-                          .update({
-                            inn: requisites.inn || null,
-                            kpp: requisites.kpp || null,
-                            ogrn: requisites.ogrn || null,
-                            legal_address: requisites.legal_address || null,
-                            actual_address: requisites.actual_address || null,
-                            director_name: requisites.director_name || null,
-                            director_position: requisites.director_position || null,
-                            bank_name: requisites.bank_name || null,
-                            bank_bik: requisites.bank_bik || null,
-                            bank_account: requisites.bank_account || null,
-                            bank_corr_account: requisites.bank_corr_account || null
-                          })
-                          .eq('id', organizationId);
-                        
-                        if (error) throw error;
-                        toast.success('Реквизиты сохранены');
-                      } catch (error) {
-                        console.error('Error saving requisites:', error);
-                        toast.error('Ошибка сохранения реквизитов');
-                      } finally {
-                        setIsSavingRequisites(false);
-                      }
-                    }}
-                    disabled={isSavingRequisites}
-                  >
-                    {isSavingRequisites ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Сохранение...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="w-4 h-4" />
-                        Сохранить реквизиты
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-
-              {/* Student Dashboard Settings - At the bottom */}
               <div className="bg-card rounded-2xl border border-border p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-display font-semibold text-lg flex items-center gap-2">
@@ -5364,6 +5157,250 @@ export default function OrganizationDashboard() {
           onClose={() => setShowBulkUploadDialog(false)}
         />
       )}
+
+      {/* Organization Requisites Dialog */}
+      <Dialog open={showOrgRequisitesDialog} onOpenChange={setShowOrgRequisitesDialog}>
+        <DialogContent className="max-w-2xl rounded-2xl max-h-[90vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle className="font-display flex items-center gap-2">
+              <Building2 className="w-5 h-5" />
+              Реквизиты организации
+            </DialogTitle>
+            <DialogDescription>
+              Заполните реквизиты для автоматического формирования документов
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6 py-4">
+            {/* Organization Name */}
+            <div className="space-y-2">
+              <Label className="font-medium">Название организации</Label>
+              <Input
+                placeholder="ООО Название"
+                className="rounded-xl"
+                value={editOrgName}
+                onChange={(e) => setEditOrgName(e.target.value)}
+              />
+            </div>
+
+            {/* Basic requisites */}
+            <div>
+              <h4 className="font-medium text-sm mb-3 text-muted-foreground uppercase tracking-wide">Основные данные</h4>
+              <div className="grid md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>ИНН</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="1234567890"
+                      className="rounded-xl"
+                      value={requisites.inn}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setRequisites(prev => ({ ...prev, inn: value }));
+                        if (value.length >= 10) {
+                          handleSearchRequisitesByInn(value);
+                        }
+                      }}
+                    />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="rounded-xl shrink-0"
+                      onClick={() => handleSearchRequisitesByInn(requisites.inn)}
+                      disabled={requisites.inn.length < 10 || isSearchingDadataRequisites}
+                    >
+                      {isSearchingDadataRequisites ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Search className="w-4 h-4" />
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Введите ИНН для автозаполнения</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>КПП</Label>
+                  <Input
+                    placeholder="123456789"
+                    className="rounded-xl"
+                    value={requisites.kpp}
+                    onChange={(e) => setRequisites(prev => ({ ...prev, kpp: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>ОГРН</Label>
+                  <Input
+                    placeholder="1234567890123"
+                    className="rounded-xl"
+                    value={requisites.ogrn}
+                    onChange={(e) => setRequisites(prev => ({ ...prev, ogrn: e.target.value }))}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Addresses */}
+            <div>
+              <h4 className="font-medium text-sm mb-3 text-muted-foreground uppercase tracking-wide">Адреса</h4>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Юридический адрес</Label>
+                  <Input
+                    placeholder="123456, г. Москва, ул. Примерная, д. 1, офис 100"
+                    className="rounded-xl"
+                    value={requisites.legal_address}
+                    onChange={(e) => setRequisites(prev => ({ ...prev, legal_address: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Фактический адрес</Label>
+                  <Input
+                    placeholder="123456, г. Москва, ул. Примерная, д. 1, офис 100"
+                    className="rounded-xl"
+                    value={requisites.actual_address}
+                    onChange={(e) => setRequisites(prev => ({ ...prev, actual_address: e.target.value }))}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Director */}
+            <div>
+              <h4 className="font-medium text-sm mb-3 text-muted-foreground uppercase tracking-wide">Руководитель</h4>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>ФИО руководителя</Label>
+                  <Input
+                    placeholder="Иванов Иван Иванович"
+                    className="rounded-xl"
+                    value={requisites.director_name}
+                    onChange={(e) => setRequisites(prev => ({ ...prev, director_name: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Должность</Label>
+                  <Input
+                    placeholder="Генеральный директор"
+                    className="rounded-xl"
+                    value={requisites.director_position}
+                    onChange={(e) => setRequisites(prev => ({ ...prev, director_position: e.target.value }))}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Bank details */}
+            <div>
+              <h4 className="font-medium text-sm mb-3 text-muted-foreground uppercase tracking-wide">Банковские реквизиты</h4>
+              <div className="space-y-4">
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Наименование банка</Label>
+                    <Input
+                      placeholder="ПАО Сбербанк"
+                      className="rounded-xl"
+                      value={requisites.bank_name}
+                      onChange={(e) => setRequisites(prev => ({ ...prev, bank_name: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>БИК</Label>
+                    <Input
+                      placeholder="044525225"
+                      className="rounded-xl"
+                      value={requisites.bank_bik}
+                      onChange={(e) => setRequisites(prev => ({ ...prev, bank_bik: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Расчётный счёт</Label>
+                    <Input
+                      placeholder="40702810123456789012"
+                      className="rounded-xl"
+                      value={requisites.bank_account}
+                      onChange={(e) => setRequisites(prev => ({ ...prev, bank_account: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Корр. счёт</Label>
+                    <Input
+                      placeholder="30101810400000000225"
+                      className="rounded-xl"
+                      value={requisites.bank_corr_account}
+                      onChange={(e) => setRequisites(prev => ({ ...prev, bank_corr_account: e.target.value }))}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-border">
+            <Button
+              variant="outline"
+              className="rounded-xl"
+              onClick={() => setShowOrgRequisitesDialog(false)}
+            >
+              Отмена
+            </Button>
+            <Button
+              className="btn-gradient rounded-xl gap-2"
+              onClick={async () => {
+                if (!organizationId) return;
+                setIsSavingRequisites(true);
+                try {
+                  const { error } = await supabase
+                    .from('organizations')
+                    .update({
+                      name: editOrgName.trim() || organizationName,
+                      inn: requisites.inn || null,
+                      kpp: requisites.kpp || null,
+                      ogrn: requisites.ogrn || null,
+                      legal_address: requisites.legal_address || null,
+                      actual_address: requisites.actual_address || null,
+                      director_name: requisites.director_name || null,
+                      director_position: requisites.director_position || null,
+                      bank_name: requisites.bank_name || null,
+                      bank_bik: requisites.bank_bik || null,
+                      bank_account: requisites.bank_account || null,
+                      bank_corr_account: requisites.bank_corr_account || null
+                    })
+                    .eq('id', organizationId);
+                  
+                  if (error) throw error;
+                  
+                  if (editOrgName.trim() && editOrgName.trim() !== organizationName) {
+                    setOrganizationName(editOrgName.trim());
+                  }
+                  
+                  toast.success('Реквизиты сохранены');
+                  setShowOrgRequisitesDialog(false);
+                } catch (error) {
+                  console.error('Error saving requisites:', error);
+                  toast.error('Ошибка сохранения реквизитов');
+                } finally {
+                  setIsSavingRequisites(false);
+                }
+              }}
+              disabled={isSavingRequisites}
+            >
+              {isSavingRequisites ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Сохранение...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  Сохранить
+                </>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
