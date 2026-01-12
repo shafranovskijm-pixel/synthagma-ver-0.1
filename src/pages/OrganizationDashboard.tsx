@@ -18,6 +18,7 @@ import { ClassJournalExport } from "@/components/organization/ClassJournalExport
 import { DocumentIssuanceLog } from "@/components/organization/DocumentIssuanceLog";
 import { BulkFRDOExport } from "@/components/organization/BulkFRDOExport";
 import { FRDOManager } from "@/components/organization/FRDOManager";
+import { OrgRequisitesForm } from "@/components/organization/OrgRequisitesForm";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -3172,7 +3173,18 @@ export default function OrganizationDashboard() {
                   <ChevronRight className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90" />
                 </summary>
                 <div className="px-6 pb-6 space-y-6">
+                  {/* Organization Requisites with INN autofill */}
                   <div>
+                    <h4 className="font-medium mb-2 flex items-center gap-2">
+                      <Building2 className="w-4 h-4" />
+                      Реквизиты организации
+                    </h4>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Заполните реквизиты для автоподстановки в документы. Введите ИНН для автозаполнения данных.
+                    </p>
+                    {organizationId && <OrgRequisitesForm organizationId={organizationId} />}
+                  </div>
+                  <div className="border-t border-border pt-6">
                     <h4 className="font-medium mb-2">Конструктор договора</h4>
                     <p className="text-sm text-muted-foreground mb-4">
                       Настройте шаблон договора с автоматической подстановкой данных
