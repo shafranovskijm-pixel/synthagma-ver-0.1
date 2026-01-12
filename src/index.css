@@ -2,121 +2,134 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Egyptian+Hieroglyphs&display=swap');
 
 @layer base {
   :root {
-    /* Modern vibrant color scheme - Electric indigo + coral */
-    --background: 240 20% 99%;
-    --foreground: 240 10% 10%;
+    /* Cold Nitrogen & Ancient Egyptian Gold theme */
+    --background: 210 25% 98%;
+    --foreground: 220 20% 10%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 240 10% 10%;
+    --card: 210 30% 99%;
+    --card-foreground: 220 20% 10%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 10%;
+    --popover: 210 30% 99%;
+    --popover-foreground: 220 20% 10%;
 
-    /* Primary - Electric indigo */
-    --primary: 250 100% 65%;
-    --primary-foreground: 0 0% 100%;
+    /* Primary - Cold Nitrogen (icy cyan-blue) */
+    --primary: 195 100% 50%;
+    --primary-foreground: 220 30% 8%;
 
-    /* Secondary - Soft lavender */
-    --secondary: 250 30% 96%;
-    --secondary-foreground: 240 10% 10%;
+    /* Secondary - Frosted ice */
+    --secondary: 200 40% 96%;
+    --secondary-foreground: 220 20% 10%;
 
-    --muted: 240 15% 95%;
-    --muted-foreground: 240 5% 45%;
+    --muted: 210 20% 94%;
+    --muted-foreground: 220 10% 45%;
 
-    /* Accent - Vibrant coral/pink */
-    --accent: 340 95% 60%;
-    --accent-foreground: 0 0% 100%;
+    /* Accent - Ancient Egyptian Gold */
+    --accent: 43 90% 50%;
+    --accent-foreground: 220 30% 8%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 240 10% 90%;
-    --input: 240 10% 90%;
-    --ring: 250 100% 65%;
+    --border: 210 20% 90%;
+    --input: 210 20% 90%;
+    --ring: 195 100% 50%;
 
     --radius: 0.75rem;
 
-    /* Custom vibrant colors */
-    --sigma-blue: 220 100% 60%;
-    --sigma-blue-dark: 230 80% 30%;
-    --sigma-cyan: 175 95% 45%;
-    --sigma-purple: 270 100% 65%;
-    --sigma-green: 155 80% 45%;
+    /* Custom colors - Cold Nitrogen spectrum */
+    --sigma-blue: 200 100% 55%;
+    --sigma-blue-dark: 210 80% 25%;
+    --sigma-cyan: 185 100% 45%;
+    --sigma-purple: 220 80% 60%;
+    --sigma-green: 175 70% 45%;
     --sigma-orange: 30 100% 55%;
-    --sigma-pink: 340 95% 60%;
-    --sigma-yellow: 45 100% 55%;
-    --sigma-indigo: 250 100% 65%;
+    --sigma-pink: 340 80% 60%;
+    --sigma-yellow: 43 90% 50%;
+    --sigma-indigo: 230 90% 55%;
+    
+    /* Egyptian gold spectrum */
+    --egyptian-gold: 43 90% 50%;
+    --egyptian-gold-light: 45 85% 65%;
+    --egyptian-gold-dark: 38 85% 40%;
+    --pharaoh-bronze: 30 70% 40%;
+    
+    /* Nitrogen ice spectrum */
+    --nitrogen-ice: 195 100% 50%;
+    --nitrogen-frost: 190 80% 75%;
+    --nitrogen-deep: 200 90% 40%;
+    --nitrogen-glow: 185 100% 60%;
 
-    /* Gradients - More vibrant */
-    --gradient-hero: linear-gradient(135deg, hsl(250 100% 65%) 0%, hsl(340 95% 60%) 50%, hsl(30 100% 55%) 100%);
-    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(250 30% 98%) 100%);
-    --gradient-primary: linear-gradient(135deg, hsl(250 100% 65%) 0%, hsl(270 100% 60%) 100%);
-    --gradient-accent: linear-gradient(135deg, hsl(340 95% 60%) 0%, hsl(30 100% 55%) 100%);
-    --gradient-mesh: radial-gradient(at 40% 20%, hsl(250 100% 65% / 0.15) 0px, transparent 50%),
-                     radial-gradient(at 80% 0%, hsl(340 95% 60% / 0.1) 0px, transparent 50%),
-                     radial-gradient(at 0% 50%, hsl(175 95% 45% / 0.1) 0px, transparent 50%),
-                     radial-gradient(at 80% 50%, hsl(30 100% 55% / 0.1) 0px, transparent 50%);
+    /* Gradients - Cold Nitrogen & Gold */
+    --gradient-hero: linear-gradient(135deg, hsl(195 100% 50%) 0%, hsl(200 90% 40%) 40%, hsl(43 90% 50%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(210 30% 99%) 0%, hsl(200 40% 97%) 100%);
+    --gradient-primary: linear-gradient(135deg, hsl(195 100% 50%) 0%, hsl(185 100% 45%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(43 90% 50%) 0%, hsl(38 85% 40%) 100%);
+    --gradient-mesh: radial-gradient(at 40% 20%, hsl(195 100% 50% / 0.15) 0px, transparent 50%),
+                     radial-gradient(at 80% 0%, hsl(43 90% 50% / 0.1) 0px, transparent 50%),
+                     radial-gradient(at 0% 50%, hsl(185 100% 45% / 0.1) 0px, transparent 50%),
+                     radial-gradient(at 80% 50%, hsl(200 90% 40% / 0.08) 0px, transparent 50%);
+    --gradient-egyptian: linear-gradient(135deg, hsl(43 90% 50%) 0%, hsl(38 85% 40%) 50%, hsl(30 70% 40%) 100%);
 
-    /* Shadows - More dramatic */
+    /* Shadows */
     --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.04);
     --shadow-md: 0 4px 12px -2px rgb(0 0 0 / 0.08);
     --shadow-lg: 0 12px 24px -4px rgb(0 0 0 / 0.12);
     --shadow-xl: 0 24px 48px -8px rgb(0 0 0 / 0.15);
-    --shadow-glow: 0 0 60px -15px hsl(250 100% 65% / 0.5);
-    --shadow-glow-accent: 0 0 60px -15px hsl(340 95% 60% / 0.5);
+    --shadow-glow: 0 0 60px -15px hsl(195 100% 50% / 0.5);
+    --shadow-glow-accent: 0 0 60px -15px hsl(43 90% 50% / 0.5);
     --shadow-card: 0 4px 24px -4px rgb(0 0 0 / 0.06);
 
-    --sidebar-background: 250 30% 98%;
-    --sidebar-foreground: 240 10% 26%;
-    --sidebar-primary: 250 100% 65%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 250 30% 95%;
-    --sidebar-accent-foreground: 240 10% 10%;
-    --sidebar-border: 240 10% 90%;
-    --sidebar-ring: 250 100% 65%;
+    --sidebar-background: 200 40% 98%;
+    --sidebar-foreground: 220 20% 26%;
+    --sidebar-primary: 195 100% 50%;
+    --sidebar-primary-foreground: 220 30% 8%;
+    --sidebar-accent: 200 40% 95%;
+    --sidebar-accent-foreground: 220 20% 10%;
+    --sidebar-border: 210 20% 90%;
+    --sidebar-ring: 195 100% 50%;
   }
 
   .dark {
-    --background: 250 25% 6%;
-    --foreground: 0 0% 98%;
+    --background: 220 30% 6%;
+    --foreground: 200 20% 98%;
 
-    --card: 250 25% 10%;
-    --card-foreground: 0 0% 98%;
+    --card: 220 30% 10%;
+    --card-foreground: 200 20% 98%;
 
-    --popover: 250 25% 10%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 220 30% 10%;
+    --popover-foreground: 200 20% 98%;
 
-    --primary: 250 100% 70%;
-    --primary-foreground: 250 25% 6%;
+    --primary: 190 100% 60%;
+    --primary-foreground: 220 30% 6%;
 
-    --secondary: 250 25% 15%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary: 220 30% 15%;
+    --secondary-foreground: 200 20% 98%;
 
-    --muted: 250 25% 15%;
-    --muted-foreground: 240 10% 60%;
+    --muted: 220 30% 15%;
+    --muted-foreground: 210 15% 60%;
 
-    --accent: 340 95% 65%;
-    --accent-foreground: 250 25% 6%;
+    --accent: 43 85% 55%;
+    --accent-foreground: 220 30% 6%;
 
     --destructive: 0 63% 31%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 250 25% 18%;
-    --input: 250 25% 18%;
-    --ring: 250 100% 70%;
+    --border: 220 30% 18%;
+    --input: 220 30% 18%;
+    --ring: 190 100% 60%;
 
-    --sidebar-background: 250 25% 6%;
-    --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 250 100% 70%;
-    --sidebar-primary-foreground: 250 25% 6%;
-    --sidebar-accent: 250 25% 15%;
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 250 25% 18%;
-    --sidebar-ring: 250 100% 70%;
+    --sidebar-background: 220 30% 6%;
+    --sidebar-foreground: 200 20% 98%;
+    --sidebar-primary: 190 100% 60%;
+    --sidebar-primary-foreground: 220 30% 6%;
+    --sidebar-accent: 220 30% 15%;
+    --sidebar-accent-foreground: 200 20% 98%;
+    --sidebar-border: 220 30% 18%;
+    --sidebar-ring: 190 100% 60%;
   }
 }
 
@@ -127,11 +140,11 @@
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
-    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    font-family: 'Inter', system-ui, sans-serif;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Space Grotesk', system-ui, sans-serif;
+    font-family: 'Cinzel', serif;
   }
 }
 
@@ -144,6 +157,11 @@
   .gradient-text {
     @apply bg-clip-text text-transparent;
     background-image: var(--gradient-hero);
+  }
+  
+  .gradient-text-gold {
+    @apply bg-clip-text text-transparent;
+    background-image: var(--gradient-egyptian);
   }
 
   .gradient-border {
@@ -215,6 +233,35 @@
   .mesh-gradient {
     background: var(--gradient-mesh);
   }
+  
+  /* Egyptian hieroglyphs decorative text */
+  .hieroglyphic {
+    font-family: 'Noto Sans Egyptian Hieroglyphs', serif;
+    opacity: 0.15;
+    user-select: none;
+    pointer-events: none;
+  }
+  
+  /* Greek decorative text */
+  .greek-text {
+    font-family: serif;
+    opacity: 0.1;
+    user-select: none;
+    pointer-events: none;
+    letter-spacing: 0.2em;
+  }
+  
+  /* Egyptian border pattern */
+  .egyptian-border {
+    background-image: repeating-linear-gradient(
+      90deg,
+      hsl(var(--accent)) 0px,
+      hsl(var(--accent)) 8px,
+      transparent 8px,
+      transparent 16px
+    );
+    height: 4px;
+  }
 
   /* Prose styles for imported HTML content */
   .prose {
@@ -223,17 +270,17 @@
 
   .prose h1 {
     @apply text-2xl font-bold mt-6 mb-4 text-foreground;
-    font-family: 'Manrope', system-ui, sans-serif;
+    font-family: 'Cinzel', serif;
   }
 
   .prose h2 {
     @apply text-xl font-bold mt-5 mb-3 text-foreground;
-    font-family: 'Manrope', system-ui, sans-serif;
+    font-family: 'Cinzel', serif;
   }
 
   .prose h3 {
     @apply text-lg font-semibold mt-4 mb-2 text-foreground;
-    font-family: 'Manrope', system-ui, sans-serif;
+    font-family: 'Cinzel', serif;
   }
 
   .prose p {
@@ -318,6 +365,10 @@
   .animate-fade-in {
     animation: fade-in 0.6s ease-out forwards;
   }
+  
+  .animate-shimmer {
+    animation: shimmer 3s ease-in-out infinite;
+  }
 
   .delay-100 { animation-delay: 100ms; }
   .delay-200 { animation-delay: 200ms; }
@@ -356,4 +407,9 @@
 @keyframes fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+
+@keyframes shimmer {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.6; }
 }
