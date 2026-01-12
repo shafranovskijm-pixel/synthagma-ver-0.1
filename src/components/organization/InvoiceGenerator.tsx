@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Receipt, Download, Loader2, Printer, Save, FileText, ArrowRight } from "lucide-react";
+import { Receipt, Download, Loader2, Printer, Save, FileText, ArrowRight, Eye } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 
@@ -90,8 +90,9 @@ export function InvoiceGenerator({
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   
-  // Mode selection: null = choosing, 'contract' = based on contract, 'manual' = manual entry
-  const [mode, setMode] = useState<'choosing' | 'contract' | 'manual' | null>(null);
+  // Mode selection: null = choosing, 'contract' = based on contract, 'manual' = manual entry, 'preview' = preview mode
+  const [mode, setMode] = useState<'choosing' | 'contract' | 'manual' | 'preview' | null>(null);
+  const [previewHtml, setPreviewHtml] = useState<string>("");
 
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>("");
   const [selectedCourseId, setSelectedCourseId] = useState<string>("");
@@ -692,8 +693,52 @@ ${html.replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>
         )}
         <Button
           variant="outline"
-          onClick={handleDownloadDOC}
+          onClick={() => {
+            const html = generateInvoiceHTML();
+            setPreviewHtml(html);
+            setMode('preview');
+          }}
           disabled={!selectedCourseId || !price}
+          className="flex-1"
+        >
+          <Eye className="w-4 h-4 mr-2" />
+          Предпросмотр
+        </Button>
+        {onSave && (
+          <Button
+            onClick={handleSave}
+            disabled={isSaving || !selectedCourseId || !price}
+            className="flex-1"
+          >
+            {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+            Сохранить
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+
+  // Preview mode
+  const renderPreview = () => (
+    <div className="space-y-4">
+      <div className="border rounded-lg overflow-hidden bg-white" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+        <iframe
+          srcDoc={previewHtml}
+          className="w-full h-[400px] border-0"
+          title="Предпросмотр счёта"
+        />
+      </div>
+      <div className="flex gap-2 pt-2">
+        <Button
+          variant="ghost"
+          onClick={() => setMode(contracts.length > 0 && selectedContractId ? 'contract' : 'manual')}
+          className="px-3"
+        >
+          Назад
+        </Button>
+        <Button
+          variant="outline"
+          onClick={handleDownloadDOC}
           className="flex-1"
         >
           <Download className="w-4 h-4 mr-2" />
@@ -702,7 +747,7 @@ ${html.replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>
         <Button
           variant="outline"
           onClick={handleGenerate}
-          disabled={isGenerating || !selectedCourseId || !price}
+          disabled={isGenerating}
           className="flex-1"
         >
           {isGenerating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Printer className="w-4 h-4 mr-2" />}
@@ -711,7 +756,7 @@ ${html.replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>
         {onSave && (
           <Button
             onClick={handleSave}
-            disabled={isSaving || !selectedCourseId || !price}
+            disabled={isSaving}
             className="flex-1"
           >
             {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
@@ -730,9 +775,11 @@ ${html.replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>
             <Receipt className="w-5 h-5 text-blue-500" />
             Создание счёта
           </DialogTitle>
-          <DialogDescription>
+        <DialogDescription>
             {mode === 'choosing' || mode === null 
               ? "Выберите способ создания счёта" 
+              : mode === 'preview'
+              ? "Проверьте данные перед сохранением"
               : "Заполните данные для формирования счёта на оплату"}
           </DialogDescription>
         </DialogHeader>
@@ -745,6 +792,7 @@ ${html.replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>
           <>
             {(mode === 'choosing' || mode === null) && contracts.length > 0 && renderModeSelection()}
             {(mode === 'contract' || mode === 'manual') && renderForm()}
+            {mode === 'preview' && renderPreview()}
           </>
         )}
       </DialogContent>
