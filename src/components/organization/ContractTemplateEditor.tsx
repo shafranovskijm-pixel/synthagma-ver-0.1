@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -23,10 +22,10 @@ import {
   RotateCcw,
   Upload,
   Sparkles,
-  FileUp,
 } from "lucide-react";
 import mammoth from "mammoth";
 import * as pdfjsLib from "pdfjs-dist";
+import { HighlightedTemplateEditor } from "./HighlightedTemplateEditor";
 
 // Set worker path for PDF.js
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
@@ -525,12 +524,10 @@ export function ContractTemplateEditor({
               onChange={handleFileUpload}
             />
 
-            {/* Template Editor */}
-            <Textarea
-              id="contract-template"
+            {/* Template Editor with Syntax Highlighting */}
+            <HighlightedTemplateEditor
               value={template}
-              onChange={(e) => setTemplate(e.target.value)}
-              className="min-h-[400px] font-mono text-sm rounded-xl"
+              onChange={setTemplate}
               placeholder="Введите текст шаблона договора или загрузите файл..."
             />
 
