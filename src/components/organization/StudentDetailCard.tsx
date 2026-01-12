@@ -237,11 +237,18 @@ export function StudentDetailCard({
   const handlePreviewDoc = (doc: IdentityDocumentRecord | DocumentRecord) => {
     if (!doc.file_url) return;
     const ext = doc.file_url.split('.').pop()?.toLowerCase() || '';
-    setPreviewDoc({
-      url: doc.file_url,
-      name: doc.name,
-      type: ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext) ? 'image' : 'pdf'
-    });
+    const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext);
+    
+    if (isImage) {
+      setPreviewDoc({
+        url: doc.file_url,
+        name: doc.name,
+        type: 'image'
+      });
+    } else {
+      // For PDF and other files, open in new tab (avoids Chrome blocking)
+      window.open(doc.file_url, '_blank');
+    }
   };
 
   const handleDownloadDoc = async (url: string, name: string) => {
@@ -981,19 +988,11 @@ export function StudentDetailCard({
               </DialogTitle>
             </DialogHeader>
             <div className="flex items-center justify-center p-4 bg-muted/30 min-h-[60vh] max-h-[75vh] overflow-auto">
-              {previewDoc.type === 'image' ? (
-                <img
-                  src={previewDoc.url}
-                  alt={previewDoc.name}
-                  className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-lg"
-                />
-              ) : (
-                <iframe
-                  src={previewDoc.url}
-                  title={previewDoc.name}
-                  className="w-full h-[70vh] rounded-lg border-0"
-                />
-              )}
+              <img
+                src={previewDoc.url}
+                alt={previewDoc.name}
+                className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-lg"
+              />
             </div>
           </DialogContent>
         </Dialog>
