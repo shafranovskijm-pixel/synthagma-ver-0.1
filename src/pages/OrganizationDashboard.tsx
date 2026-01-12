@@ -258,6 +258,15 @@ export default function OrganizationDashboard() {
   // All profiles (students without enrollments)
   const [allProfiles, setAllProfiles] = useState<Student[]>([]);
 
+  // Documents stats
+  const [documentsStats, setDocumentsStats] = useState<{
+    total: number;
+    withPassport: number;
+    withSnils: number;
+    withEducation: number;
+    complete: number;
+  }>({ total: 0, withPassport: 0, withSnils: 0, withEducation: 0, complete: 0 });
+
   // Categories state
   const [categories, setCategories] = useState<CourseCategory[]>([]);
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>("all");
@@ -628,6 +637,46 @@ export default function OrganizationDashboard() {
           completedCount,
           averageProgress
         });
+
+        // Fetch documents stats
+        const { data: identityDocs } = await supabase
+          .from("student_identity_documents")
+          .select("user_id, type")
+          .eq("organization_id", orgId);
+
+        if (identityDocs && allProfilesData) {
+          const docsByUser = new Map<string, string[]>();
+          identityDocs.forEach(doc => {
+            const existing = docsByUser.get(doc.user_id) || [];
+            existing.push(doc.type);
+            docsByUser.set(doc.user_id, existing);
+          });
+
+          let withPassport = 0;
+          let withSnils = 0;
+          let withEducation = 0;
+          let complete = 0;
+
+          for (const profile of allProfilesData) {
+            const userDocs = docsByUser.get(profile.user_id) || [];
+            const hasPassport = userDocs.some(t => t === "passport" || t === "birth_certificate");
+            const hasSnils = userDocs.includes("snils");
+            const hasEducation = userDocs.some(t => t === "education_document" || t === "diploma" || t === "attestat");
+
+            if (hasPassport) withPassport++;
+            if (hasSnils) withSnils++;
+            if (hasEducation) withEducation++;
+            if (hasPassport && hasSnils && hasEducation) complete++;
+          }
+
+          setDocumentsStats({
+            total: allProfilesData.length,
+            withPassport,
+            withSnils,
+            withEducation,
+            complete
+          });
+        }
 
         // Fetch categories
         const {
@@ -2627,6 +2676,70 @@ export default function OrganizationDashboard() {
                     <Input placeholder="Поиск по имени или email..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10 w-64 rounded-xl" />
                   </div>
                 </div>
+              </div>
+
+              {/* Documents Stats Widget */}
+              <div className="p-4 border-b border-border bg-muted/30">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                  <div className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border">
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Users className="w-5 h-5 text-primary" />
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold">{documentsStats.total}</div>
+                      <div className="text-xs text-muted-foreground">Всего учеников</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${documentsStats.withPassport === documentsStats.total && documentsStats.total > 0 ? 'bg-green-500/10' : 'bg-amber-500/10'}`}>
+                      <FileText className={`w-5 h-5 ${documentsStats.withPassport === documentsStats.total && documentsStats.total > 0 ? 'text-green-500' : 'text-amber-500'}`} />
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold">{documentsStats.withPassport}<span className="text-sm text-muted-foreground font-normal">/{documentsStats.total}</span></div>
+                      <div className="text-xs text-muted-foreground">Паспорт</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${documentsStats.withSnils === documentsStats.total && documentsStats.total > 0 ? 'bg-green-500/10' : 'bg-amber-500/10'}`}>
+                      <FileText className={`w-5 h-5 ${documentsStats.withSnils === documentsStats.total && documentsStats.total > 0 ? 'text-green-500' : 'text-amber-500'}`} />
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold">{documentsStats.withSnils}<span className="text-sm text-muted-foreground font-normal">/{documentsStats.total}</span></div>
+                      <div className="text-xs text-muted-foreground">СНИЛС</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${documentsStats.withEducation === documentsStats.total && documentsStats.total > 0 ? 'bg-green-500/10' : 'bg-amber-500/10'}`}>
+                      <GraduationCap className={`w-5 h-5 ${documentsStats.withEducation === documentsStats.total && documentsStats.total > 0 ? 'text-green-500' : 'text-amber-500'}`} />
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold">{documentsStats.withEducation}<span className="text-sm text-muted-foreground font-normal">/{documentsStats.total}</span></div>
+                      <div className="text-xs text-muted-foreground">Образование</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${documentsStats.complete === documentsStats.total && documentsStats.total > 0 ? 'bg-green-500/10' : 'bg-primary/10'}`}>
+                      <CheckCircle2 className={`w-5 h-5 ${documentsStats.complete === documentsStats.total && documentsStats.total > 0 ? 'text-green-500' : 'text-primary'}`} />
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold">{documentsStats.complete}<span className="text-sm text-muted-foreground font-normal">/{documentsStats.total}</span></div>
+                      <div className="text-xs text-muted-foreground">Все документы</div>
+                    </div>
+                  </div>
+                </div>
+                {documentsStats.total > 0 && documentsStats.complete < documentsStats.total && (
+                  <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
+                    <span>Ожидаем документы от {documentsStats.total - documentsStats.complete} учеников</span>
+                    <span className="text-xs">•</span>
+                    <span className="text-amber-600">
+                      {documentsStats.total - documentsStats.withPassport > 0 && `Паспорт: ${documentsStats.total - documentsStats.withPassport}`}
+                      {documentsStats.total - documentsStats.withPassport > 0 && documentsStats.total - documentsStats.withSnils > 0 && ', '}
+                      {documentsStats.total - documentsStats.withSnils > 0 && `СНИЛС: ${documentsStats.total - documentsStats.withSnils}`}
+                      {(documentsStats.total - documentsStats.withPassport > 0 || documentsStats.total - documentsStats.withSnils > 0) && documentsStats.total - documentsStats.withEducation > 0 && ', '}
+                      {documentsStats.total - documentsStats.withEducation > 0 && `Образование: ${documentsStats.total - documentsStats.withEducation}`}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {isLoadingStudents ? <div className="flex items-center justify-center py-12">
