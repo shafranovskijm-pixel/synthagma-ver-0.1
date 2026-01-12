@@ -2397,15 +2397,16 @@ export default function OrganizationDashboard() {
                 )}
               </div>
             </div>
-            <div className="flex gap-3 flex-wrap">
+            <div className="flex gap-2 lg:gap-3 flex-wrap">
               {activeTab === "links" && <Dialog open={showCreateLinkDialog} onOpenChange={setShowCreateLinkDialog}>
                   <DialogTrigger asChild>
-                    <Button className="btn-gradient rounded-xl gap-2">
+                    <Button className="btn-gradient rounded-xl gap-2 text-xs lg:text-sm">
                       <Plus className="w-4 h-4" />
-                      Создать ссылку
+                      <span className="hidden sm:inline">Создать ссылку</span>
+                      <span className="sm:hidden">Создать</span>
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="rounded-2xl">
+                  <DialogContent className="rounded-2xl mx-4 max-w-[calc(100vw-2rem)] sm:max-w-lg">
                     <DialogHeader>
                       <DialogTitle className="font-display">Создать ссылку регистрации</DialogTitle>
                       <DialogDescription>
@@ -2431,23 +2432,27 @@ export default function OrganizationDashboard() {
                   </DialogContent>
                 </Dialog>}
               {activeTab === "students" && <>
-                  <Button variant="outline" className="rounded-xl gap-2" onClick={() => setShowImportDialog(true)}>
+                  <Button variant="outline" className="rounded-xl gap-2 text-xs lg:text-sm" onClick={() => setShowImportDialog(true)}>
                     <FileSpreadsheet className="w-4 h-4" />
-                    Импорт учеников
+                    <span className="hidden sm:inline">Импорт учеников</span>
+                    <span className="sm:hidden">Импорт</span>
                   </Button>
-                  <Button className="btn-gradient rounded-xl gap-2" onClick={() => setShowAddStudentDialog(true)}>
+                  <Button className="btn-gradient rounded-xl gap-2 text-xs lg:text-sm" onClick={() => setShowAddStudentDialog(true)}>
                     <Plus className="w-4 h-4" />
-                    Добавить ученика
+                    <span className="hidden sm:inline">Добавить ученика</span>
+                    <span className="sm:hidden">Добавить</span>
                   </Button>
                 </>}
               {activeTab === "courses" && <>
-                  <Button variant="outline" className="rounded-xl gap-2" onClick={() => navigate("/course-import")}>
+                  <Button variant="outline" className="rounded-xl gap-2 text-xs lg:text-sm" onClick={() => navigate("/course-import")}>
                     <Upload className="w-4 h-4" />
-                    Импорт курса
+                    <span className="hidden sm:inline">Импорт курса</span>
+                    <span className="sm:hidden">Импорт</span>
                   </Button>
-                  <Button className="btn-gradient rounded-xl gap-2" onClick={() => navigate("/course-builder")}>
+                  <Button className="btn-gradient rounded-xl gap-2 text-xs lg:text-sm" onClick={() => navigate("/course-builder")}>
                     <Plus className="w-4 h-4" />
-                    Создать курс
+                    <span className="hidden sm:inline">Создать курс</span>
+                    <span className="sm:hidden">Создать</span>
                   </Button>
                 </>}
             </div>
@@ -2566,53 +2571,55 @@ export default function OrganizationDashboard() {
           )}
 
           {/* Courses Tab */}
-          {activeTab === "courses" && <div className="space-y-6">
-              <div className="bg-card rounded-2xl border border-border p-4">
-                <div className="flex items-center justify-between flex-wrap gap-4">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <div className="relative">
+          {activeTab === "courses" && <div className="space-y-4 lg:space-y-6">
+              <div className="bg-card rounded-xl lg:rounded-2xl border border-border p-3 lg:p-4">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 lg:gap-4">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 lg:gap-3">
+                    <div className="relative flex-1 sm:flex-none">
                       <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                      <Input placeholder="Поиск курсов..." value={courseSearchQuery} onChange={e => setCourseSearchQuery(e.target.value)} className="pl-10 w-64 rounded-xl" />
+                      <Input placeholder="Поиск курсов..." value={courseSearchQuery} onChange={e => setCourseSearchQuery(e.target.value)} className="pl-10 w-full sm:w-48 lg:w-64 rounded-xl text-sm" />
                     </div>
-                    <Select value={courseFilter} onValueChange={v => setCourseFilter(v as any)}>
-                      <SelectTrigger className="w-40 rounded-xl">
-                        <Filter className="w-4 h-4 mr-2" />
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Все курсы</SelectItem>
-                        <SelectItem value="published">Опубликованные</SelectItem>
-                        <SelectItem value="draft">Черновики</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Select value={selectedCategoryFilter} onValueChange={setSelectedCategoryFilter}>
-                      <SelectTrigger className="w-48 rounded-xl">
-                        <Tag className="w-4 h-4 mr-2" />
-                        <SelectValue placeholder="Категория" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Все категории</SelectItem>
-                        <SelectItem value="none">Без категории</SelectItem>
-                        {categories.map(cat => <SelectItem key={cat.id} value={cat.id}>
-                            <div className="flex items-center gap-2">
-                              <div className="w-3 h-3 rounded-full" style={{
-                          backgroundColor: cat.color
-                        }} />
-                              {cat.name}
-                            </div>
-                          </SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    <Button variant="outline" size="sm" className="rounded-lg gap-1" onClick={() => setShowCategoryDialog(true)}>
-                      <Plus className="w-4 h-4" />
-                      Категория
-                    </Button>
+                    <div className="flex items-center gap-2 overflow-x-auto pb-1 lg:pb-0">
+                      <Select value={courseFilter} onValueChange={v => setCourseFilter(v as any)}>
+                        <SelectTrigger className="w-32 lg:w-40 rounded-xl text-xs lg:text-sm shrink-0">
+                          <Filter className="w-4 h-4 mr-1 lg:mr-2" />
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Все курсы</SelectItem>
+                          <SelectItem value="published">Опубликованные</SelectItem>
+                          <SelectItem value="draft">Черновики</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Select value={selectedCategoryFilter} onValueChange={setSelectedCategoryFilter}>
+                        <SelectTrigger className="w-36 lg:w-48 rounded-xl text-xs lg:text-sm shrink-0">
+                          <Tag className="w-4 h-4 mr-1 lg:mr-2" />
+                          <SelectValue placeholder="Категория" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Все категории</SelectItem>
+                          <SelectItem value="none">Без категории</SelectItem>
+                          {categories.map(cat => <SelectItem key={cat.id} value={cat.id}>
+                              <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 rounded-full" style={{
+                            backgroundColor: cat.color
+                          }} />
+                                {cat.name}
+                              </div>
+                            </SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <Button variant="outline" size="sm" className="rounded-lg gap-1 text-xs shrink-0" onClick={() => setShowCategoryDialog(true)}>
+                        <Plus className="w-4 h-4" />
+                        <span className="hidden sm:inline">Категория</span>
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Button variant={courseViewMode === "grid" ? "secondary" : "ghost"} size="icon" onClick={() => setCourseViewMode("grid")}>
+                  <div className="flex items-center gap-2 self-end lg:self-auto">
+                    <Button variant={courseViewMode === "grid" ? "secondary" : "ghost"} size="icon" className="h-8 w-8" onClick={() => setCourseViewMode("grid")}>
                       <LayoutGrid className="w-4 h-4" />
                     </Button>
-                    <Button variant={courseViewMode === "list" ? "secondary" : "ghost"} size="icon" onClick={() => setCourseViewMode("list")}>
+                    <Button variant={courseViewMode === "list" ? "secondary" : "ghost"} size="icon" className="h-8 w-8" onClick={() => setCourseViewMode("list")}>
                       <List className="w-4 h-4" />
                     </Button>
                   </div>
@@ -2624,7 +2631,7 @@ export default function OrganizationDashboard() {
                 </div> : filteredCourses.length === 0 ? <div className="text-center py-12 text-muted-foreground">
                   <BookOpen className="w-12 h-12 mx-auto mb-4 opacity-50" />
                   <p>Нет курсов</p>
-                </div> : courseViewMode === "grid" ? <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                </div> : courseViewMode === "grid" ? <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
                   {filteredCourses.map(course => <div key={course.id} className="bg-card rounded-2xl border border-border overflow-hidden hover:shadow-lg transition-shadow cursor-pointer" onClick={() => {
               setSelectedCourseForDetails(course);
               setCourseDetailsTab("students");
@@ -3072,53 +3079,55 @@ export default function OrganizationDashboard() {
             </div>}
 
           {/* Stats Tab */}
-          {activeTab === "stats" && organizationId && <div className="space-y-6">
+          {activeTab === "stats" && organizationId && <div className="space-y-4 lg:space-y-6">
               <Tabs defaultValue="overview" className="w-full">
-                <TabsList className="w-full justify-start bg-card border border-border rounded-xl p-1 h-auto flex-wrap">
-                  <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-primary/10 gap-2">
-                    <BarChart3 className="w-4 h-4" />
-                    Обзор
+                <TabsList className="w-full justify-start bg-card border border-border rounded-xl p-1 h-auto flex-wrap gap-1">
+                  <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-primary/10 gap-1 lg:gap-2 text-xs lg:text-sm px-2 lg:px-3">
+                    <BarChart3 className="w-3 h-3 lg:w-4 lg:h-4" />
+                    <span className="hidden sm:inline">Обзор</span>
                   </TabsTrigger>
-                  <TabsTrigger value="class-journal" className="rounded-lg data-[state=active]:bg-primary/10 gap-2">
-                    <Clock className="w-4 h-4" />
-                    Журнал занятий
+                  <TabsTrigger value="class-journal" className="rounded-lg data-[state=active]:bg-primary/10 gap-1 lg:gap-2 text-xs lg:text-sm px-2 lg:px-3">
+                    <Clock className="w-3 h-3 lg:w-4 lg:h-4" />
+                    <span className="hidden sm:inline">Журнал занятий</span>
+                    <span className="sm:hidden">Журнал</span>
                   </TabsTrigger>
-                  <TabsTrigger value="document-log" className="rounded-lg data-[state=active]:bg-primary/10 gap-2">
-                    <FileText className="w-4 h-4" />
-                    Журнал выдачи документов
+                  <TabsTrigger value="document-log" className="rounded-lg data-[state=active]:bg-primary/10 gap-1 lg:gap-2 text-xs lg:text-sm px-2 lg:px-3">
+                    <FileText className="w-3 h-3 lg:w-4 lg:h-4" />
+                    <span className="hidden sm:inline">Журнал документов</span>
+                    <span className="sm:hidden">Документы</span>
                   </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="overview" className="mt-6">
-                  <div className="bg-card rounded-2xl border border-border p-6">
-                    <h2 className="font-display text-xl font-semibold mb-6">Общая статистика</h2>
-                    <div className="grid md:grid-cols-2 gap-6">
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-center">
-                          <span className="text-muted-foreground">Всего учеников</span>
+                <TabsContent value="overview" className="mt-4 lg:mt-6">
+                  <div className="bg-card rounded-xl lg:rounded-2xl border border-border p-4 lg:p-6">
+                    <h2 className="font-display text-lg lg:text-xl font-semibold mb-4 lg:mb-6">Общая статистика</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
+                      <div className="space-y-3 lg:space-y-4">
+                        <div className="flex justify-between items-center py-2 border-b border-border/50">
+                          <span className="text-sm text-muted-foreground">Всего учеников</span>
                           <span className="font-bold">{stats.totalStudents}</span>
                         </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-muted-foreground">Всего курсов</span>
+                        <div className="flex justify-between items-center py-2 border-b border-border/50">
+                          <span className="text-sm text-muted-foreground">Всего курсов</span>
                           <span className="font-bold">{stats.totalCourses}</span>
                         </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-muted-foreground">Завершили обучение</span>
+                        <div className="flex justify-between items-center py-2 border-b border-border/50">
+                          <span className="text-sm text-muted-foreground">Завершили обучение</span>
                           <span className="font-bold text-sigma-green">{stats.completedCount}</span>
                         </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-muted-foreground">Средний прогресс</span>
+                        <div className="flex justify-between items-center py-2">
+                          <span className="text-sm text-muted-foreground">Средний прогресс</span>
                           <span className="font-bold">{stats.averageProgress}%</span>
                         </div>
                       </div>
-                      <div className="flex items-center justify-center">
-                        <div className="relative w-40 h-40">
-                          <svg className="w-40 h-40 transform -rotate-90">
-                            <circle cx="80" cy="80" r="70" fill="none" stroke="hsl(var(--border))" strokeWidth="12" />
-                            <circle cx="80" cy="80" r="70" fill="none" stroke="hsl(var(--primary))" strokeWidth="12" strokeDasharray={`${stats.averageProgress * 4.4} 440`} strokeLinecap="round" />
+                      <div className="flex items-center justify-center py-4">
+                        <div className="relative w-32 h-32 lg:w-40 lg:h-40">
+                          <svg className="w-32 h-32 lg:w-40 lg:h-40 transform -rotate-90">
+                            <circle cx="50%" cy="50%" r="45%" fill="none" stroke="hsl(var(--border))" strokeWidth="12" />
+                            <circle cx="50%" cy="50%" r="45%" fill="none" stroke="hsl(var(--primary))" strokeWidth="12" strokeDasharray={`${stats.averageProgress * 2.83} 283`} strokeLinecap="round" />
                           </svg>
                           <div className="absolute inset-0 flex items-center justify-center">
-                            <span className="text-4xl font-bold font-display">{stats.averageProgress}%</span>
+                            <span className="text-2xl lg:text-4xl font-bold font-display">{stats.averageProgress}%</span>
                           </div>
                         </div>
                       </div>
@@ -3126,22 +3135,22 @@ export default function OrganizationDashboard() {
                   </div>
                 </TabsContent>
 
-                <TabsContent value="class-journal" className="mt-6">
+                <TabsContent value="class-journal" className="mt-4 lg:mt-6">
                   <ClassJournalExport organizationId={organizationId} />
                 </TabsContent>
 
-                <TabsContent value="document-log" className="mt-6">
+                <TabsContent value="document-log" className="mt-4 lg:mt-6">
                   <DocumentIssuanceLog organizationId={organizationId} />
                 </TabsContent>
               </Tabs>
             </div>}
 
           {/* Links Tab */}
-          {activeTab === "links" && <div className="bg-card rounded-2xl border border-border">
-              <div className="p-6 border-b border-border">
-                <h2 className="font-display text-xl font-semibold">Ссылки для регистрации учеников</h2>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Ученики, зарегистрировавшиеся по этим ссылкам, автоматически привяжутся к вашей организации
+          {activeTab === "links" && <div className="bg-card rounded-xl lg:rounded-2xl border border-border">
+              <div className="p-4 lg:p-6 border-b border-border">
+                <h2 className="font-display text-lg lg:text-xl font-semibold">Ссылки для регистрации</h2>
+                <p className="text-xs lg:text-sm text-muted-foreground mt-1">
+                  Ученики автоматически привяжутся к вашей организации
                 </p>
               </div>
 
@@ -3154,58 +3163,89 @@ export default function OrganizationDashboard() {
                     <Plus className="w-4 h-4" />
                     Создать первую ссылку
                   </Button>
-                </div> : <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-border">
-                        <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Компания</th>
-                        <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">ИНН</th>
-                        <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Использований</th>
-                        <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Создана</th>
-                        <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Действия</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {registrationLinks.map(link => <tr key={link.id} className="border-b border-border last:border-0 hover:bg-secondary/50 transition-colors">
-                          <td className="px-6 py-4 font-medium">{link.name || "—"}</td>
-                          <td className="px-6 py-4 text-sm">{link.inn || "—"}</td>
-                          <td className="px-6 py-4">
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
-                              {link.used_count}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-sm text-muted-foreground">
-                            {new Date(link.created_at).toLocaleDateString()}
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="flex gap-2">
-                              <Button variant="outline" size="sm" className="rounded-lg gap-1" onClick={() => copyLinkToClipboard(link.token)}>
-                                <Copy className="w-4 h-4" />
-                                Копировать
-                              </Button>
-                              <Button variant="outline" size="sm" className="rounded-lg text-destructive hover:text-destructive" onClick={() => handleDeleteLink(link.id)}>
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>)}
-                    </tbody>
-                  </table>
-                </div>}
+                </div> : <>
+                  {/* Mobile view - cards */}
+                  <div className="lg:hidden divide-y divide-border">
+                    {registrationLinks.map(link => (
+                      <div key={link.id} className="p-4 space-y-2">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <div className="font-medium">{link.name || "Без названия"}</div>
+                            {link.inn && <div className="text-xs text-muted-foreground">ИНН: {link.inn}</div>}
+                          </div>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
+                            {link.used_count} исп.
+                          </span>
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Создана: {new Date(link.created_at).toLocaleDateString()}
+                        </div>
+                        <div className="flex gap-2 pt-1">
+                          <Button variant="outline" size="sm" className="rounded-lg gap-1 flex-1 text-xs" onClick={() => copyLinkToClipboard(link.token)}>
+                            <Copy className="w-3 h-3" />
+                            Копировать
+                          </Button>
+                          <Button variant="outline" size="sm" className="rounded-lg text-destructive hover:text-destructive" onClick={() => handleDeleteLink(link.id)}>
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Desktop view - table */}
+                  <div className="hidden lg:block overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-border">
+                          <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Компания</th>
+                          <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">ИНН</th>
+                          <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Использований</th>
+                          <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Создана</th>
+                          <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Действия</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {registrationLinks.map(link => <tr key={link.id} className="border-b border-border last:border-0 hover:bg-secondary/50 transition-colors">
+                            <td className="px-6 py-4 font-medium">{link.name || "—"}</td>
+                            <td className="px-6 py-4 text-sm">{link.inn || "—"}</td>
+                            <td className="px-6 py-4">
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
+                                {link.used_count}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-sm text-muted-foreground">
+                              {new Date(link.created_at).toLocaleDateString()}
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex gap-2">
+                                <Button variant="outline" size="sm" className="rounded-lg gap-1" onClick={() => copyLinkToClipboard(link.token)}>
+                                  <Copy className="w-4 h-4" />
+                                  Копировать
+                                </Button>
+                                <Button variant="outline" size="sm" className="rounded-lg text-destructive hover:text-destructive" onClick={() => handleDeleteLink(link.id)}>
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>)}
+                      </tbody>
+                    </table>
+                  </div>
+                </>}
             </div>}
 
           {/* Library Tab */}
           {activeTab === "library" && organizationId && <LibraryManager organizationId={organizationId} />}
 
           {/* Documents Tab */}
-          {activeTab === "documents" && organizationId && <div className="space-y-6">
+          {activeTab === "documents" && organizationId && <div className="space-y-4 lg:space-y-6">
               <div className="flex justify-end">
-                <Button variant="outline" className="rounded-xl gap-2" onClick={() => setShowBulkUploadDialog(true)}>
+                <Button variant="outline" className="rounded-xl gap-2 text-xs lg:text-sm" onClick={() => setShowBulkUploadDialog(true)}>
                   <Users className="w-4 h-4" />
-                  Массовая загрузка ученикам
+                  <span className="hidden sm:inline">Массовая загрузка ученикам</span>
+                  <span className="sm:hidden">Массовая загрузка</span>
                 </Button>
               </div>
-              <OrgDocumentsManager organizationId={organizationId} />
             </div>}
 
           {/* FRDO Tab */}
@@ -3215,24 +3255,24 @@ export default function OrganizationDashboard() {
           {activeTab === "services" && organizationId && <ServicesManager organizationId={organizationId} />}
 
           {/* Settings Tab */}
-          {activeTab === "settings" && <div className="max-w-2xl space-y-6">
+          {activeTab === "settings" && <div className="max-w-2xl space-y-4 lg:space-y-6">
               {/* Theme Settings */}
-              <details className="bg-card rounded-2xl border border-border group">
-                <summary className="p-6 cursor-pointer list-none flex items-center justify-between">
-                  <h3 className="font-display font-semibold text-lg flex items-center gap-2">
-                    <Palette className="w-5 h-5" />
+              <details className="bg-card rounded-xl lg:rounded-2xl border border-border group">
+                <summary className="p-4 lg:p-6 cursor-pointer list-none flex items-center justify-between">
+                  <h3 className="font-display font-semibold text-base lg:text-lg flex items-center gap-2">
+                    <Palette className="w-4 h-4 lg:w-5 lg:h-5" />
                     Тема оформления
                   </h3>
                   <ChevronRight className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90" />
                 </summary>
-                <div className="px-6 pb-6">
-                  <div className="flex items-center justify-between">
+                <div className="px-4 lg:px-6 pb-4 lg:pb-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
-                      <p className="font-medium">Режим оформления</p>
-                      <p className="text-sm text-muted-foreground">Выберите светлую или тёмную тему</p>
+                      <p className="font-medium text-sm lg:text-base">Режим оформления</p>
+                      <p className="text-xs lg:text-sm text-muted-foreground">Выберите светлую или тёмную тему</p>
                     </div>
                     <div className="flex gap-2">
-                      <Button variant={!isDarkMode ? "default" : "outline"} className="rounded-xl gap-2" onClick={() => {
+                      <Button variant={!isDarkMode ? "default" : "outline"} className="rounded-xl gap-2 text-xs lg:text-sm flex-1 sm:flex-none" size="sm" onClick={() => {
                     setIsDarkMode(false);
                     document.documentElement.classList.remove('dark');
                     localStorage.setItem('theme', 'light');
@@ -3240,7 +3280,7 @@ export default function OrganizationDashboard() {
                         <Sun className="w-4 h-4" />
                         Светлая
                       </Button>
-                      <Button variant={isDarkMode ? "default" : "outline"} className="rounded-xl gap-2" onClick={() => {
+                      <Button variant={isDarkMode ? "default" : "outline"} className="rounded-xl gap-2 text-xs lg:text-sm flex-1 sm:flex-none" size="sm" onClick={() => {
                     setIsDarkMode(true);
                     document.documentElement.classList.add('dark');
                     localStorage.setItem('theme', 'dark');
@@ -3254,37 +3294,37 @@ export default function OrganizationDashboard() {
               </details>
 
               {/* Document Autofill Settings */}
-              <details className="bg-card rounded-2xl border border-border group">
-                <summary className="p-6 cursor-pointer list-none flex items-center justify-between">
-                  <h3 className="font-display font-semibold text-lg flex items-center gap-2">
-                    <FileText className="w-5 h-5" />
+              <details className="bg-card rounded-xl lg:rounded-2xl border border-border group">
+                <summary className="p-4 lg:p-6 cursor-pointer list-none flex items-center justify-between">
+                  <h3 className="font-display font-semibold text-base lg:text-lg flex items-center gap-2">
+                    <FileText className="w-4 h-4 lg:w-5 lg:h-5" />
                     Автозаполнение документов
                   </h3>
                   <ChevronRight className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90" />
                 </summary>
-                <div className="px-6 pb-6 space-y-6">
+                <div className="px-4 lg:px-6 pb-4 lg:pb-6 space-y-4 lg:space-y-6">
                   {/* Organization Requisites with INN autofill */}
                   <div>
-                    <h4 className="font-medium mb-2 flex items-center gap-2">
+                    <h4 className="font-medium mb-2 flex items-center gap-2 text-sm lg:text-base">
                       <Building2 className="w-4 h-4" />
                       Реквизиты организации
                     </h4>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Заполните реквизиты для автоподстановки в документы. Введите ИНН для автозаполнения данных.
+                    <p className="text-xs lg:text-sm text-muted-foreground mb-3 lg:mb-4">
+                      Введите ИНН для автозаполнения данных
                     </p>
                     {organizationId && <OrgRequisitesForm organizationId={organizationId} />}
                   </div>
-                  <div className="border-t border-border pt-6">
-                    <h4 className="font-medium mb-2">Конструктор договора</h4>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Настройте шаблон договора с автоматической подстановкой данных
+                  <div className="border-t border-border pt-4 lg:pt-6">
+                    <h4 className="font-medium mb-2 text-sm lg:text-base">Конструктор договора</h4>
+                    <p className="text-xs lg:text-sm text-muted-foreground mb-3 lg:mb-4">
+                      Настройте шаблон договора
                     </p>
                     {organizationId && <ContractTemplateEditor organizationId={organizationId} organizationName={organizationName} />}
                   </div>
-                  <div className="border-t border-border pt-6">
-                    <h4 className="font-medium mb-2">Согласие на обработку ПД</h4>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Генератор согласия на обработку персональных данных для учеников и организаций
+                  <div className="border-t border-border pt-4 lg:pt-6">
+                    <h4 className="font-medium mb-2 text-sm lg:text-base">Согласие на обработку ПД</h4>
+                    <p className="text-xs lg:text-sm text-muted-foreground mb-3 lg:mb-4">
+                      Генератор согласия на обработку персональных данных
                     </p>
                     {organizationId && <ConsentGenerator organizationId={organizationId} organizationName={organizationName} />}
                   </div>
@@ -3292,107 +3332,107 @@ export default function OrganizationDashboard() {
               </details>
 
               {/* Menu Items Settings */}
-              <details className="bg-card rounded-2xl border border-border group">
-                <summary className="p-6 cursor-pointer list-none flex items-center justify-between">
-                  <h3 className="font-display font-semibold text-lg flex items-center gap-2">
-                    <LayoutGrid className="w-5 h-5" />
+              <details className="bg-card rounded-xl lg:rounded-2xl border border-border group">
+                <summary className="p-4 lg:p-6 cursor-pointer list-none flex items-center justify-between">
+                  <h3 className="font-display font-semibold text-base lg:text-lg flex items-center gap-2">
+                    <LayoutGrid className="w-4 h-4 lg:w-5 lg:h-5" />
                     Разделы меню
                   </h3>
                   <ChevronRight className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90" />
                 </summary>
-                <div className="px-6 pb-6">
-                  <p className="text-sm text-muted-foreground mb-4">
+                <div className="px-4 lg:px-6 pb-4 lg:pb-6">
+                  <p className="text-xs lg:text-sm text-muted-foreground mb-3 lg:mb-4">
                     Включите или отключите разделы в боковом меню
                   </p>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between py-3 border-b border-border">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                          <Library className="w-5 h-5 text-primary" />
+                  <div className="space-y-3 lg:space-y-4">
+                    <div className="flex items-center justify-between py-2 lg:py-3 border-b border-border">
+                      <div className="flex items-center gap-2 lg:gap-3">
+                        <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-lg lg:rounded-xl bg-primary/10 flex items-center justify-center">
+                          <Library className="w-4 h-4 lg:w-5 lg:h-5 text-primary" />
                         </div>
                         <div>
-                          <p className="font-medium">Библиотека</p>
-                          <p className="text-sm text-muted-foreground">Раздел с материалами для организации</p>
+                          <p className="font-medium text-sm lg:text-base">Библиотека</p>
+                          <p className="text-xs lg:text-sm text-muted-foreground hidden sm:block">Раздел с материалами</p>
                         </div>
                       </div>
                       <button onClick={() => setMenuSettings(prev => ({
                     ...prev,
                     showLibrary: !prev.showLibrary
-                  }))} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${menuSettings.showLibrary ? 'bg-primary' : 'bg-muted'}`}>
+                  }))} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ${menuSettings.showLibrary ? 'bg-primary' : 'bg-muted'}`}>
                         <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${menuSettings.showLibrary ? 'translate-x-6' : 'translate-x-1'}`} />
                       </button>
                     </div>
-                    <div className="flex items-center justify-between py-3 border-b border-border">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
-                          <BarChart3 className="w-5 h-5 text-accent" />
+                    <div className="flex items-center justify-between py-2 lg:py-3 border-b border-border">
+                      <div className="flex items-center gap-2 lg:gap-3">
+                        <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-lg lg:rounded-xl bg-accent/10 flex items-center justify-center">
+                          <BarChart3 className="w-4 h-4 lg:w-5 lg:h-5 text-accent" />
                         </div>
                         <div>
-                          <p className="font-medium">Статистика</p>
-                          <p className="text-sm text-muted-foreground">Аналитика и отчёты по обучению</p>
+                          <p className="font-medium text-sm lg:text-base">Статистика</p>
+                          <p className="text-xs lg:text-sm text-muted-foreground hidden sm:block">Аналитика и отчёты</p>
                         </div>
                       </div>
                       <button onClick={() => setMenuSettings(prev => ({
                     ...prev,
                     showStats: !prev.showStats
-                  }))} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${menuSettings.showStats ? 'bg-primary' : 'bg-muted'}`}>
+                  }))} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ${menuSettings.showStats ? 'bg-primary' : 'bg-muted'}`}>
                         <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${menuSettings.showStats ? 'translate-x-6' : 'translate-x-1'}`} />
                       </button>
                     </div>
-                    <div className="flex items-center justify-between py-3 border-b border-border">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-sigma-green/10 flex items-center justify-center">
-                          <Link className="w-5 h-5 text-sigma-green" />
+                    <div className="flex items-center justify-between py-2 lg:py-3 border-b border-border">
+                      <div className="flex items-center gap-2 lg:gap-3">
+                        <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-lg lg:rounded-xl bg-sigma-green/10 flex items-center justify-center">
+                          <Link className="w-4 h-4 lg:w-5 lg:h-5 text-sigma-green" />
                         </div>
                         <div>
-                          <p className="font-medium">Ссылки регистрации</p>
-                          <p className="text-sm text-muted-foreground">Ссылки для самостоятельной регистрации учеников</p>
+                          <p className="font-medium text-sm lg:text-base">Ссылки регистрации</p>
+                          <p className="text-xs lg:text-sm text-muted-foreground hidden sm:block">Самостоятельная регистрация</p>
                         </div>
                       </div>
                       <button onClick={() => setMenuSettings(prev => ({
                     ...prev,
                     showLinks: !prev.showLinks
-                  }))} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${menuSettings.showLinks ? 'bg-primary' : 'bg-muted'}`}>
+                  }))} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ${menuSettings.showLinks ? 'bg-primary' : 'bg-muted'}`}>
                         <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${menuSettings.showLinks ? 'translate-x-6' : 'translate-x-1'}`} />
                       </button>
                     </div>
-                    <div className="flex items-center justify-between py-3 border-b border-border">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-sigma-orange/10 flex items-center justify-center">
-                          <FileText className="w-5 h-5 text-sigma-orange" />
+                    <div className="flex items-center justify-between py-2 lg:py-3 border-b border-border">
+                      <div className="flex items-center gap-2 lg:gap-3">
+                        <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-lg lg:rounded-xl bg-sigma-orange/10 flex items-center justify-center">
+                          <FileText className="w-4 h-4 lg:w-5 lg:h-5 text-sigma-orange" />
                         </div>
                         <div>
-                          <p className="font-medium">Документы</p>
-                          <p className="text-sm text-muted-foreground">Документооборот организации</p>
+                          <p className="font-medium text-sm lg:text-base">Документы</p>
+                          <p className="text-xs lg:text-sm text-muted-foreground hidden sm:block">Документооборот</p>
                         </div>
                       </div>
                       <button onClick={() => setMenuSettings(prev => ({
                     ...prev,
                     showDocuments: !prev.showDocuments
-                  }))} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${menuSettings.showDocuments ? 'bg-primary' : 'bg-muted'}`}>
+                  }))} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ${menuSettings.showDocuments ? 'bg-primary' : 'bg-muted'}`}>
                         <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${menuSettings.showDocuments ? 'translate-x-6' : 'translate-x-1'}`} />
                       </button>
                     </div>
-                    <div className="flex items-center justify-between py-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-sigma-cyan/10 flex items-center justify-center">
-                          <ShoppingBag className="w-5 h-5 text-sigma-cyan" />
+                    <div className="flex items-center justify-between py-2 lg:py-3">
+                      <div className="flex items-center gap-2 lg:gap-3">
+                        <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-lg lg:rounded-xl bg-sigma-cyan/10 flex items-center justify-center">
+                          <ShoppingBag className="w-4 h-4 lg:w-5 lg:h-5 text-sigma-cyan" />
                         </div>
                         <div>
-                          <p className="font-medium">Услуги</p>
-                          <p className="text-sm text-muted-foreground">Дополнительные услуги для организации</p>
+                          <p className="font-medium text-sm lg:text-base">Услуги</p>
+                          <p className="text-xs lg:text-sm text-muted-foreground hidden sm:block">Дополнительные услуги</p>
                         </div>
                       </div>
                       <button onClick={() => setMenuSettings(prev => ({
                     ...prev,
                     showServices: !prev.showServices
-                  }))} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${menuSettings.showServices ? 'bg-primary' : 'bg-muted'}`}>
+                  }))} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ${menuSettings.showServices ? 'bg-primary' : 'bg-muted'}`}>
                         <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${menuSettings.showServices ? 'translate-x-6' : 'translate-x-1'}`} />
                       </button>
                     </div>
                   </div>
-                  <div className="mt-6 pt-4 border-t border-border">
-                    <Button className="btn-gradient rounded-xl gap-2" onClick={() => {
+                  <div className="mt-4 lg:mt-6 pt-3 lg:pt-4 border-t border-border">
+                    <Button className="btn-gradient rounded-xl gap-2 w-full sm:w-auto text-sm" onClick={() => {
                   try {
                     localStorage.setItem('orgMenuSettings', JSON.stringify(menuSettings));
                     toast.success('Настройки меню сохранены');
