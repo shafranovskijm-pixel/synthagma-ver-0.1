@@ -52,7 +52,7 @@ export function CTA() {
             <Link to="/register-organization">
               <Button
                 size="lg"
-                className="bg-white text-slate-900 hover:bg-white/95 rounded-2xl px-10 h-16 text-lg font-bold gap-3 shadow-2xl group border-2 border-white"
+                className="bg-white text-slate-900 hover:bg-amber-50 rounded-2xl px-10 h-16 text-lg font-bold gap-3 shadow-2xl group border-2 border-white transition-all duration-300 hover:shadow-[0_0_30px_rgba(251,191,36,0.6),0_0_60px_rgba(251,191,36,0.3)]"
               >
                 <span className="text-slate-900">Попробовать бесплатно</span>
                 <ArrowRight className="w-5 h-5 text-slate-900 group-hover:translate-x-1 transition-transform" />
