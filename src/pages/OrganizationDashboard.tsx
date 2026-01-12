@@ -365,6 +365,22 @@ export default function OrganizationDashboard() {
   });
   const [isUploadingCover, setIsUploadingCover] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+
+  // Organization requisites
+  const [requisites, setRequisites] = useState({
+    inn: '',
+    kpp: '',
+    ogrn: '',
+    legal_address: '',
+    actual_address: '',
+    director_name: '',
+    director_position: 'Генеральный директор',
+    bank_name: '',
+    bank_bik: '',
+    bank_account: '',
+    bank_corr_account: ''
+  });
+  const [isSavingRequisites, setIsSavingRequisites] = useState(false);
   const [isSavingBranding, setIsSavingBranding] = useState(false);
 
   // Load theme and settings on mount
@@ -450,6 +466,43 @@ export default function OrganizationDashboard() {
     };
     
     loadBranding();
+  }, [organizationId]);
+
+  // Load organization requisites
+  useEffect(() => {
+    const loadRequisites = async () => {
+      if (!organizationId) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('organizations')
+          .select('inn, kpp, ogrn, legal_address, actual_address, director_name, director_position, bank_name, bank_bik, bank_account, bank_corr_account')
+          .eq('id', organizationId)
+          .single();
+        
+        if (error) throw error;
+        
+        if (data) {
+          setRequisites({
+            inn: data.inn || '',
+            kpp: data.kpp || '',
+            ogrn: data.ogrn || '',
+            legal_address: data.legal_address || '',
+            actual_address: data.actual_address || '',
+            director_name: data.director_name || '',
+            director_position: data.director_position || 'Генеральный директор',
+            bank_name: data.bank_name || '',
+            bank_bik: data.bank_bik || '',
+            bank_account: data.bank_account || '',
+            bank_corr_account: data.bank_corr_account || ''
+          });
+        }
+      } catch (error) {
+        console.error('Error loading requisites:', error);
+      }
+    };
+    
+    loadRequisites();
   }, [organizationId]);
 
   // Handle cover image upload
@@ -3577,6 +3630,199 @@ export default function OrganizationDashboard() {
                       <>
                         <Save className="w-4 h-4" />
                         Сохранить брендирование
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Organization Requisites */}
+              <div className="bg-card rounded-2xl border border-border p-6">
+                <h3 className="font-display font-semibold text-lg mb-4 flex items-center gap-2">
+                  <Receipt className="w-5 h-5" />
+                  Реквизиты организации
+                </h3>
+                <p className="text-sm text-muted-foreground mb-6">
+                  Заполните реквизиты для автоматического формирования договоров, счетов и актов
+                </p>
+                
+                <div className="space-y-6">
+                  {/* Basic requisites */}
+                  <div>
+                    <h4 className="font-medium text-sm mb-3 text-muted-foreground uppercase tracking-wide">Основные данные</h4>
+                    <div className="grid md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label>ИНН</Label>
+                        <Input
+                          placeholder="1234567890"
+                          className="rounded-xl"
+                          value={requisites.inn}
+                          onChange={(e) => setRequisites(prev => ({ ...prev, inn: e.target.value }))}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>КПП</Label>
+                        <Input
+                          placeholder="123456789"
+                          className="rounded-xl"
+                          value={requisites.kpp}
+                          onChange={(e) => setRequisites(prev => ({ ...prev, kpp: e.target.value }))}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>ОГРН</Label>
+                        <Input
+                          placeholder="1234567890123"
+                          className="rounded-xl"
+                          value={requisites.ogrn}
+                          onChange={(e) => setRequisites(prev => ({ ...prev, ogrn: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Addresses */}
+                  <div>
+                    <h4 className="font-medium text-sm mb-3 text-muted-foreground uppercase tracking-wide">Адреса</h4>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Юридический адрес</Label>
+                        <Input
+                          placeholder="123456, г. Москва, ул. Примерная, д. 1, офис 100"
+                          className="rounded-xl"
+                          value={requisites.legal_address}
+                          onChange={(e) => setRequisites(prev => ({ ...prev, legal_address: e.target.value }))}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Фактический адрес</Label>
+                        <Input
+                          placeholder="123456, г. Москва, ул. Примерная, д. 1, офис 100"
+                          className="rounded-xl"
+                          value={requisites.actual_address}
+                          onChange={(e) => setRequisites(prev => ({ ...prev, actual_address: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Director */}
+                  <div>
+                    <h4 className="font-medium text-sm mb-3 text-muted-foreground uppercase tracking-wide">Руководитель</h4>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>ФИО руководителя</Label>
+                        <Input
+                          placeholder="Иванов Иван Иванович"
+                          className="rounded-xl"
+                          value={requisites.director_name}
+                          onChange={(e) => setRequisites(prev => ({ ...prev, director_name: e.target.value }))}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Должность</Label>
+                        <Input
+                          placeholder="Генеральный директор"
+                          className="rounded-xl"
+                          value={requisites.director_position}
+                          onChange={(e) => setRequisites(prev => ({ ...prev, director_position: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Bank details */}
+                  <div>
+                    <h4 className="font-medium text-sm mb-3 text-muted-foreground uppercase tracking-wide">Банковские реквизиты</h4>
+                    <div className="space-y-4">
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Наименование банка</Label>
+                          <Input
+                            placeholder="ПАО Сбербанк"
+                            className="rounded-xl"
+                            value={requisites.bank_name}
+                            onChange={(e) => setRequisites(prev => ({ ...prev, bank_name: e.target.value }))}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>БИК</Label>
+                          <Input
+                            placeholder="044525225"
+                            className="rounded-xl"
+                            value={requisites.bank_bik}
+                            onChange={(e) => setRequisites(prev => ({ ...prev, bank_bik: e.target.value }))}
+                          />
+                        </div>
+                      </div>
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Расчётный счёт</Label>
+                          <Input
+                            placeholder="40702810123456789012"
+                            className="rounded-xl"
+                            value={requisites.bank_account}
+                            onChange={(e) => setRequisites(prev => ({ ...prev, bank_account: e.target.value }))}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Корр. счёт</Label>
+                          <Input
+                            placeholder="30101810400000000225"
+                            className="rounded-xl"
+                            value={requisites.bank_corr_account}
+                            onChange={(e) => setRequisites(prev => ({ ...prev, bank_corr_account: e.target.value }))}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6 pt-4 border-t border-border">
+                  <Button
+                    className="btn-gradient rounded-xl gap-2"
+                    onClick={async () => {
+                      if (!organizationId) return;
+                      setIsSavingRequisites(true);
+                      try {
+                        const { error } = await supabase
+                          .from('organizations')
+                          .update({
+                            inn: requisites.inn || null,
+                            kpp: requisites.kpp || null,
+                            ogrn: requisites.ogrn || null,
+                            legal_address: requisites.legal_address || null,
+                            actual_address: requisites.actual_address || null,
+                            director_name: requisites.director_name || null,
+                            director_position: requisites.director_position || null,
+                            bank_name: requisites.bank_name || null,
+                            bank_bik: requisites.bank_bik || null,
+                            bank_account: requisites.bank_account || null,
+                            bank_corr_account: requisites.bank_corr_account || null
+                          })
+                          .eq('id', organizationId);
+                        
+                        if (error) throw error;
+                        toast.success('Реквизиты сохранены');
+                      } catch (error) {
+                        console.error('Error saving requisites:', error);
+                        toast.error('Ошибка сохранения реквизитов');
+                      } finally {
+                        setIsSavingRequisites(false);
+                      }
+                    }}
+                    disabled={isSavingRequisites}
+                  >
+                    {isSavingRequisites ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Сохранение...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4" />
+                        Сохранить реквизиты
                       </>
                     )}
                   </Button>
