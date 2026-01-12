@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.send-course-invitation]
 verify_jwt = false
+
+[functions.dadata-company]
+verify_jwt = false
