@@ -93,6 +93,7 @@ export default function StudentDashboard() {
   const [showConsentForm, setShowConsentForm] = useState(false);
   const [showDocumentsUpload, setShowDocumentsUpload] = useState(false);
   const [documentsProgress, setDocumentsProgress] = useState({ completed: 0, total: 3 });
+  const [isVideoIdentified, setIsVideoIdentified] = useState(false);
 
   useEffect(() => {
     // Check for preview mode
@@ -238,6 +239,17 @@ export default function StudentDashboard() {
             total: 3
           });
         }
+
+        // Check video identification status
+        const { data: videoId } = await supabase
+          .from("video_identifications")
+          .select("status")
+          .eq("user_id", user.id)
+          .eq("organization_id", profileData.organization_id)
+          .eq("status", "approved")
+          .maybeSingle();
+
+        setIsVideoIdentified(!!videoId);
       }
     } catch (error) {
       console.error("Error loading data:", error);
@@ -574,81 +586,95 @@ export default function StudentDashboard() {
                 </div>
               ) : (
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {courses.map((course) => (
-                    <div
-                      key={course.id}
-                      className={`bg-card rounded-2xl border border-border overflow-hidden hover-lift group cursor-pointer ${
-                        course.status === "locked" ? "opacity-60" : ""
-                      }`}
-                    >
-                      <div className={`h-32 relative ${
-                        course.status === "completed"
-                          ? "bg-gradient-to-br from-sigma-green to-accent"
-                          : course.status === "locked"
-                          ? "bg-gradient-to-br from-muted to-secondary"
-                          : "bg-gradient-to-br from-primary via-accent to-sigma-purple"
-                      }`}>
-                        {course.status === "locked" && (
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <Lock className="w-10 h-10 text-white/50" />
-                          </div>
-                        )}
-                        {course.status === "completed" && (
-                          <div className="absolute top-4 right-4 bg-white/20 rounded-full p-2">
-                            <CheckCircle2 className="w-6 h-6 text-white" />
-                          </div>
-                        )}
-                      </div>
-                      <div className="p-6">
-                        <h3 className="font-display font-semibold text-lg mb-2">{course.title}</h3>
-                        <div className="flex items-center gap-3 text-sm text-muted-foreground mb-4">
-                          <div className="flex items-center gap-1">
-                            <BookOpen className="w-4 h-4" />
-                            {course.completedLessons}/{course.totalLessons}
-                          </div>
-                          {course.duration && (
-                            <div className="flex items-center gap-1">
-                              <Clock className="w-4 h-4" />
-                              {course.duration}
+                  {courses.map((course) => {
+                    const isLocked = !isVideoIdentified;
+                    const effectiveStatus = isLocked ? "locked" : course.status;
+                    
+                    return (
+                      <div
+                        key={course.id}
+                        className={`bg-card rounded-2xl border border-border overflow-hidden hover-lift group cursor-pointer ${
+                          effectiveStatus === "locked" ? "opacity-60" : ""
+                        }`}
+                        onClick={() => {
+                          if (isLocked) {
+                            setShowVideoIdentification(true);
+                          }
+                        }}
+                      >
+                        <div className={`h-32 relative ${
+                          effectiveStatus === "completed"
+                            ? "bg-gradient-to-br from-sigma-green to-accent"
+                            : effectiveStatus === "locked"
+                            ? "bg-gradient-to-br from-muted to-secondary"
+                            : "bg-gradient-to-br from-primary via-accent to-sigma-purple"
+                        }`}>
+                          {effectiveStatus === "locked" && (
+                            <div className="absolute inset-0 flex items-center justify-center flex-col gap-2">
+                              <Lock className="w-10 h-10 text-white/70" />
+                              <span className="text-white/70 text-sm font-medium">Пройдите идентификацию</span>
+                            </div>
+                          )}
+                          {effectiveStatus === "completed" && (
+                            <div className="absolute top-4 right-4 bg-white/20 rounded-full p-2">
+                              <CheckCircle2 className="w-6 h-6 text-white" />
                             </div>
                           )}
                         </div>
-                        <div className="mb-4">
-                          <div className="flex justify-between text-sm mb-1">
-                            <span className="text-muted-foreground">Прогресс</span>
-                            <span className="font-medium">{course.progress}%</span>
+                        <div className="p-6">
+                          <h3 className="font-display font-semibold text-lg mb-2">{course.title}</h3>
+                          <div className="flex items-center gap-3 text-sm text-muted-foreground mb-4">
+                            <div className="flex items-center gap-1">
+                              <BookOpen className="w-4 h-4" />
+                              {course.completedLessons}/{course.totalLessons}
+                            </div>
+                            {course.duration && (
+                              <div className="flex items-center gap-1">
+                                <Clock className="w-4 h-4" />
+                                {course.duration}
+                              </div>
+                            )}
                           </div>
-                          <Progress value={course.progress} className="h-2" />
-                        </div>
-                        <Button
-                          className={`w-full rounded-xl gap-2 ${
-                            course.status === "locked"
-                              ? ""
-                              : course.status === "completed"
-                              ? ""
-                              : "btn-gradient"
-                          }`}
-                          variant={course.status === "locked" || course.status === "completed" ? "outline" : "default"}
-                          disabled={course.status === "locked"}
-                          onClick={() => {
-                            if (course.status !== "locked") {
-                              navigate(`/course/${course.id}/learn`);
+                          <div className="mb-4">
+                            <div className="flex justify-between text-sm mb-1">
+                              <span className="text-muted-foreground">Прогресс</span>
+                              <span className="font-medium">{course.progress}%</span>
+                            </div>
+                            <Progress value={course.progress} className="h-2" />
+                          </div>
+                          <Button
+                            className={`w-full rounded-xl gap-2 ${
+                              effectiveStatus === "locked"
+                                ? ""
+                                : effectiveStatus === "completed"
+                                ? ""
+                                : "btn-gradient"
+                            }`}
+                            variant={effectiveStatus === "locked" || effectiveStatus === "completed" ? "outline" : "default"}
+                            disabled={effectiveStatus === "locked"}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (isLocked) {
+                                setShowVideoIdentification(true);
+                              } else if (effectiveStatus !== "locked") {
+                                navigate(`/course/${course.id}/learn`);
+                              }
+                            }}
+                          >
+                            {effectiveStatus === "locked" && <Lock className="w-4 h-4" />}
+                            {effectiveStatus === "completed" && <CheckCircle2 className="w-4 h-4" />}
+                            {effectiveStatus === "in_progress" && <Play className="w-4 h-4" />}
+                            {effectiveStatus === "locked"
+                              ? "Пройти идентификацию"
+                              : effectiveStatus === "completed"
+                              ? "Повторить"
+                              : "Продолжить"
                             }
-                          }}
-                        >
-                          {course.status === "locked" && <Lock className="w-4 h-4" />}
-                          {course.status === "completed" && <CheckCircle2 className="w-4 h-4" />}
-                          {course.status === "in_progress" && <Play className="w-4 h-4" />}
-                          {course.status === "locked"
-                            ? "Недоступен"
-                            : course.status === "completed"
-                            ? "Повторить"
-                            : "Продолжить"
-                          }
-                        </Button>
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
