@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -678,7 +679,10 @@ export default function StudentDashboard() {
 
             <div className="p-8">
               {/* Progress overview */}
-              <div 
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, ease: "easeOut" }}
                 className={`rounded-2xl p-6 mb-8 text-white ${!branding ? 'bg-gradient-to-r from-primary via-accent to-sigma-purple' : ''}`}
                 style={branding ? {
                   background: `linear-gradient(135deg, ${branding.primaryColor}, ${branding.secondaryColor})`
@@ -709,15 +713,17 @@ export default function StudentDashboard() {
                         stroke="rgba(255,255,255,0.2)"
                         strokeWidth="12"
                       />
-                      <circle
+                      <motion.circle
                         cx="64"
                         cy="64"
                         r="56"
                         fill="none"
                         stroke="white"
                         strokeWidth="12"
-                        strokeDasharray={`${totalProgress * 3.52} 352`}
                         strokeLinecap="round"
+                        initial={{ strokeDasharray: "0 352" }}
+                        animate={{ strokeDasharray: `${totalProgress * 3.52} 352` }}
+                        transition={{ duration: 1, delay: 0.5, ease: "easeOut" }}
                       />
                     </svg>
                     <div className="absolute inset-0 flex items-center justify-center">
@@ -725,13 +731,25 @@ export default function StudentDashboard() {
                     </div>
                   </div>
                 </div>
-              </div>
+              </motion.div>
 
               {/* Courses */}
-              <h2 className="font-display text-xl font-semibold mb-4">Мои курсы</h2>
+              <motion.h2 
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.4, delay: 0.2 }}
+                className="font-display text-xl font-semibold mb-4"
+              >
+                Мои курсы
+              </motion.h2>
               
               {courses.length === 0 ? (
-                <div className="glass-card rounded-2xl p-12 text-center">
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.4, delay: 0.3 }}
+                  className="glass-card rounded-2xl p-12 text-center"
+                >
                   <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6">
                     <BookOpen className="w-10 h-10 text-primary" />
                   </div>
@@ -741,16 +759,35 @@ export default function StudentDashboard() {
                   <p className="text-muted-foreground max-w-md mx-auto">
                     Свяжитесь с вашей организацией для получения доступа к курсам.
                   </p>
-                </div>
+                </motion.div>
               ) : (
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <motion.div 
+                  className="grid md:grid-cols-2 lg:grid-cols-3 gap-6"
+                  initial="hidden"
+                  animate="visible"
+                  variants={{
+                    hidden: { opacity: 0 },
+                    visible: {
+                      opacity: 1,
+                      transition: {
+                        staggerChildren: 0.1,
+                        delayChildren: 0.3,
+                      },
+                    },
+                  }}
+                >
                   {courses.map((course) => {
                     const isLocked = !isVideoIdentified;
                     const effectiveStatus = isLocked ? "locked" : course.status;
                     
                     return (
-                      <div
+                      <motion.div
                         key={course.id}
+                        variants={{
+                          hidden: { opacity: 0, y: 20 },
+                          visible: { opacity: 1, y: 0 },
+                        }}
+                        transition={{ duration: 0.4, ease: "easeOut" }}
                         className={`bg-card rounded-2xl border border-border overflow-hidden hover-lift group cursor-pointer ${
                           effectiveStatus === "locked" ? "opacity-60" : ""
                         }`}
@@ -833,10 +870,10 @@ export default function StudentDashboard() {
                             }
                           </Button>
                         </div>
-                      </div>
+                      </motion.div>
                     );
                   })}
-                </div>
+                </motion.div>
               )}
             </div>
           </>
