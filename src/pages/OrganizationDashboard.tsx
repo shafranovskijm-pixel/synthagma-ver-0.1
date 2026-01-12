@@ -2367,7 +2367,7 @@ export default function OrganizationDashboard() {
 
         <div className="p-8">
           {/* Stats cards - hidden for organizations, services and settings tabs */}
-          {activeTab !== "organizations" && activeTab !== "services" && activeTab !== "settings" && (
+          {activeTab !== "organizations" && activeTab !== "services" && activeTab !== "settings" && activeTab !== "students" && (
             <div className="grid grid-cols-4 gap-6 mb-8">
               <div className="bg-card rounded-2xl p-6 border border-border">
                 <div className="flex items-center gap-4">
@@ -2410,6 +2410,66 @@ export default function OrganizationDashboard() {
                   <div>
                     <div className="text-2xl font-bold font-display">{stats.averageProgress}%</div>
                     <div className="text-muted-foreground text-sm">Ср. прогресс</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {activeTab === "students" && (
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+              <div className="bg-card rounded-2xl p-4 border border-border">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Users className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold">{documentsStats.total}</div>
+                    <div className="text-xs text-muted-foreground">Всего учеников</div>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-card rounded-2xl p-4 border border-border">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${documentsStats.withPassport === documentsStats.total && documentsStats.total > 0 ? 'bg-green-500/10' : 'bg-amber-500/10'}`}>
+                    <FileText className={`w-5 h-5 ${documentsStats.withPassport === documentsStats.total && documentsStats.total > 0 ? 'text-green-500' : 'text-amber-500'}`} />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold">{documentsStats.withPassport}<span className="text-sm text-muted-foreground font-normal">/{documentsStats.total}</span></div>
+                    <div className="text-xs text-muted-foreground">Паспорт</div>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-card rounded-2xl p-4 border border-border">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${documentsStats.withSnils === documentsStats.total && documentsStats.total > 0 ? 'bg-green-500/10' : 'bg-amber-500/10'}`}>
+                    <FileText className={`w-5 h-5 ${documentsStats.withSnils === documentsStats.total && documentsStats.total > 0 ? 'text-green-500' : 'text-amber-500'}`} />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold">{documentsStats.withSnils}<span className="text-sm text-muted-foreground font-normal">/{documentsStats.total}</span></div>
+                    <div className="text-xs text-muted-foreground">СНИЛС</div>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-card rounded-2xl p-4 border border-border">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${documentsStats.withEducation === documentsStats.total && documentsStats.total > 0 ? 'bg-green-500/10' : 'bg-amber-500/10'}`}>
+                    <GraduationCap className={`w-5 h-5 ${documentsStats.withEducation === documentsStats.total && documentsStats.total > 0 ? 'text-green-500' : 'text-amber-500'}`} />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold">{documentsStats.withEducation}<span className="text-sm text-muted-foreground font-normal">/{documentsStats.total}</span></div>
+                    <div className="text-xs text-muted-foreground">Образование</div>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-card rounded-2xl p-4 border border-border">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${documentsStats.complete === documentsStats.total && documentsStats.total > 0 ? 'bg-green-500/10' : 'bg-primary/10'}`}>
+                    <CheckCircle2 className={`w-5 h-5 ${documentsStats.complete === documentsStats.total && documentsStats.total > 0 ? 'text-green-500' : 'text-primary'}`} />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold">{documentsStats.complete}<span className="text-sm text-muted-foreground font-normal">/{documentsStats.total}</span></div>
+                    <div className="text-xs text-muted-foreground">Все документы</div>
                   </div>
                 </div>
               </div>
@@ -2678,69 +2738,6 @@ export default function OrganizationDashboard() {
                 </div>
               </div>
 
-              {/* Documents Stats Widget */}
-              <div className="p-4 border-b border-border bg-muted/30">
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                  <div className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border">
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <Users className="w-5 h-5 text-primary" />
-                    </div>
-                    <div>
-                      <div className="text-2xl font-bold">{documentsStats.total}</div>
-                      <div className="text-xs text-muted-foreground">Всего учеников</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${documentsStats.withPassport === documentsStats.total && documentsStats.total > 0 ? 'bg-green-500/10' : 'bg-amber-500/10'}`}>
-                      <FileText className={`w-5 h-5 ${documentsStats.withPassport === documentsStats.total && documentsStats.total > 0 ? 'text-green-500' : 'text-amber-500'}`} />
-                    </div>
-                    <div>
-                      <div className="text-2xl font-bold">{documentsStats.withPassport}<span className="text-sm text-muted-foreground font-normal">/{documentsStats.total}</span></div>
-                      <div className="text-xs text-muted-foreground">Паспорт</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${documentsStats.withSnils === documentsStats.total && documentsStats.total > 0 ? 'bg-green-500/10' : 'bg-amber-500/10'}`}>
-                      <FileText className={`w-5 h-5 ${documentsStats.withSnils === documentsStats.total && documentsStats.total > 0 ? 'text-green-500' : 'text-amber-500'}`} />
-                    </div>
-                    <div>
-                      <div className="text-2xl font-bold">{documentsStats.withSnils}<span className="text-sm text-muted-foreground font-normal">/{documentsStats.total}</span></div>
-                      <div className="text-xs text-muted-foreground">СНИЛС</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${documentsStats.withEducation === documentsStats.total && documentsStats.total > 0 ? 'bg-green-500/10' : 'bg-amber-500/10'}`}>
-                      <GraduationCap className={`w-5 h-5 ${documentsStats.withEducation === documentsStats.total && documentsStats.total > 0 ? 'text-green-500' : 'text-amber-500'}`} />
-                    </div>
-                    <div>
-                      <div className="text-2xl font-bold">{documentsStats.withEducation}<span className="text-sm text-muted-foreground font-normal">/{documentsStats.total}</span></div>
-                      <div className="text-xs text-muted-foreground">Образование</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${documentsStats.complete === documentsStats.total && documentsStats.total > 0 ? 'bg-green-500/10' : 'bg-primary/10'}`}>
-                      <CheckCircle2 className={`w-5 h-5 ${documentsStats.complete === documentsStats.total && documentsStats.total > 0 ? 'text-green-500' : 'text-primary'}`} />
-                    </div>
-                    <div>
-                      <div className="text-2xl font-bold">{documentsStats.complete}<span className="text-sm text-muted-foreground font-normal">/{documentsStats.total}</span></div>
-                      <div className="text-xs text-muted-foreground">Все документы</div>
-                    </div>
-                  </div>
-                </div>
-                {documentsStats.total > 0 && documentsStats.complete < documentsStats.total && (
-                  <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
-                    <span>Ожидаем документы от {documentsStats.total - documentsStats.complete} учеников</span>
-                    <span className="text-xs">•</span>
-                    <span className="text-amber-600">
-                      {documentsStats.total - documentsStats.withPassport > 0 && `Паспорт: ${documentsStats.total - documentsStats.withPassport}`}
-                      {documentsStats.total - documentsStats.withPassport > 0 && documentsStats.total - documentsStats.withSnils > 0 && ', '}
-                      {documentsStats.total - documentsStats.withSnils > 0 && `СНИЛС: ${documentsStats.total - documentsStats.withSnils}`}
-                      {(documentsStats.total - documentsStats.withPassport > 0 || documentsStats.total - documentsStats.withSnils > 0) && documentsStats.total - documentsStats.withEducation > 0 && ', '}
-                      {documentsStats.total - documentsStats.withEducation > 0 && `Образование: ${documentsStats.total - documentsStats.withEducation}`}
-                    </span>
-                  </div>
-                )}
-              </div>
 
               {isLoadingStudents ? <div className="flex items-center justify-center py-12">
                   <Loader2 className="w-8 h-8 animate-spin text-primary" />
