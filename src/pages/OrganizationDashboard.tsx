@@ -17,6 +17,7 @@ import { StudentDetailCard } from "@/components/organization/StudentDetailCard";
 import { ClassJournalExport } from "@/components/organization/ClassJournalExport";
 import { DocumentIssuanceLog } from "@/components/organization/DocumentIssuanceLog";
 import { BulkFRDOExport } from "@/components/organization/BulkFRDOExport";
+import { FRDOManager } from "@/components/organization/FRDOManager";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -118,7 +119,7 @@ export default function OrganizationDashboard() {
     signOut,
     user
   } = useAuth();
-  const [activeTab, setActiveTab] = useState<"courses" | "organizations" | "students" | "library" | "stats" | "links" | "documents" | "services" | "settings">("courses");
+  const [activeTab, setActiveTab] = useState<"courses" | "organizations" | "students" | "library" | "stats" | "links" | "documents" | "services" | "settings" | "frdo">("courses");
   const [searchQuery, setSearchQuery] = useState("");
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [showAddStudentDialog, setShowAddStudentDialog] = useState(false);
@@ -134,6 +135,7 @@ export default function OrganizationDashboard() {
   const [isLoadingStudents, setIsLoadingStudents] = useState(true);
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [organizationName, setOrganizationName] = useState("Организация");
+  const [isFrdoEnabled, setIsFrdoEnabled] = useState(false);
   const [selectedExistingStudentId, setSelectedExistingStudentId] = useState<string>("");
   const [isEnrollingExisting, setIsEnrollingExisting] = useState(false);
   const [noLoginStudent, setNoLoginStudent] = useState(false);
@@ -560,9 +562,10 @@ export default function OrganizationDashboard() {
           orgId = profile.organization_id;
           const {
             data: orgData
-          } = await supabase.from("organizations").select("name").eq("id", orgId).single();
+          } = await supabase.from("organizations").select("name, frdo_enabled").eq("id", orgId).single();
           if (orgData) {
             setOrganizationName(orgData.name);
+            setIsFrdoEnabled(orgData.frdo_enabled || false);
           }
         }
         setOrganizationId(orgId);
@@ -2334,6 +2337,13 @@ export default function OrganizationDashboard() {
               <FileText className="w-5 h-5" />
               Документы
             </button>}
+            {isFrdoEnabled && <button onClick={() => {
+            setActiveTab("frdo");
+            setIsMobileSidebarOpen(false);
+          }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === "frdo" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary"}`}>
+              <FileSpreadsheet className="w-5 h-5" />
+              ФИС ФРДО
+            </button>}
             <button onClick={() => {
             setActiveTab("settings");
             setIsMobileSidebarOpen(false);
@@ -2379,6 +2389,7 @@ export default function OrganizationDashboard() {
                     {activeTab === "documents" && "Документооборот"}
                     {activeTab === "services" && "Услуги"}
                     {activeTab === "settings" && "Настройки"}
+                    {activeTab === "frdo" && "ФИС ФРДО"}
                   </h1>
                 )}
                 {activeTab !== "organizations" && (
@@ -3105,6 +3116,9 @@ export default function OrganizationDashboard() {
               </div>
               <OrgDocumentsManager organizationId={organizationId} />
             </div>}
+
+          {/* FRDO Tab */}
+          {activeTab === "frdo" && organizationId && <FRDOManager organizationId={organizationId} />}
 
           {/* Services Tab */}
           {activeTab === "services" && organizationId && <ServicesManager organizationId={organizationId} />}
