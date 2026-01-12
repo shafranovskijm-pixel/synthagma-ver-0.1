@@ -2454,51 +2454,51 @@ export default function OrganizationDashboard() {
           </div>
         </header>
 
-        <div className="p-8">
+        <div className="p-4 lg:p-8">
           {/* Stats cards - hidden for organizations, services, settings, students, and frdo tabs */}
           {activeTab !== "organizations" && activeTab !== "services" && activeTab !== "settings" && activeTab !== "students" && activeTab !== "frdo" && (
-            <div className="grid grid-cols-4 gap-6 mb-8">
-              <div className="bg-card rounded-2xl p-6 border border-border">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                    <Users className="w-6 h-6 text-primary" />
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-6 mb-6 lg:mb-8">
+              <div className="bg-card rounded-xl lg:rounded-2xl p-4 lg:p-6 border border-border">
+                <div className="flex items-center gap-3 lg:gap-4">
+                  <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-lg lg:rounded-xl bg-primary/10 flex items-center justify-center">
+                    <Users className="w-5 h-5 lg:w-6 lg:h-6 text-primary" />
                   </div>
                   <div>
-                    <div className="text-2xl font-bold font-display">{stats.totalStudents}</div>
-                    <div className="text-muted-foreground text-sm">Учеников</div>
+                    <div className="text-xl lg:text-2xl font-bold font-display">{stats.totalStudents}</div>
+                    <div className="text-muted-foreground text-xs lg:text-sm">Учеников</div>
                   </div>
                 </div>
               </div>
-              <div className="bg-card rounded-2xl p-6 border border-border">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
-                    <BookOpen className="w-6 h-6 text-accent" />
+              <div className="bg-card rounded-xl lg:rounded-2xl p-4 lg:p-6 border border-border">
+                <div className="flex items-center gap-3 lg:gap-4">
+                  <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-lg lg:rounded-xl bg-accent/10 flex items-center justify-center">
+                    <BookOpen className="w-5 h-5 lg:w-6 lg:h-6 text-accent" />
                   </div>
                   <div>
-                    <div className="text-2xl font-bold font-display">{stats.totalCourses}</div>
-                    <div className="text-muted-foreground text-sm">Курсов</div>
+                    <div className="text-xl lg:text-2xl font-bold font-display">{stats.totalCourses}</div>
+                    <div className="text-muted-foreground text-xs lg:text-sm">Курсов</div>
                   </div>
                 </div>
               </div>
-              <div className="bg-card rounded-2xl p-6 border border-border">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-sigma-green/10 flex items-center justify-center">
-                    <CheckCircle2 className="w-6 h-6 text-sigma-green" />
+              <div className="bg-card rounded-xl lg:rounded-2xl p-4 lg:p-6 border border-border">
+                <div className="flex items-center gap-3 lg:gap-4">
+                  <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-lg lg:rounded-xl bg-sigma-green/10 flex items-center justify-center">
+                    <CheckCircle2 className="w-5 h-5 lg:w-6 lg:h-6 text-sigma-green" />
                   </div>
                   <div>
-                    <div className="text-2xl font-bold font-display">{stats.completedCount}</div>
-                    <div className="text-muted-foreground text-sm">Завершили</div>
+                    <div className="text-xl lg:text-2xl font-bold font-display">{stats.completedCount}</div>
+                    <div className="text-muted-foreground text-xs lg:text-sm">Завершили</div>
                   </div>
                 </div>
               </div>
-              <div className="bg-card rounded-2xl p-6 border border-border">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-sigma-orange/10 flex items-center justify-center">
-                    <TrendingUp className="w-6 h-6 text-sigma-orange" />
+              <div className="bg-card rounded-xl lg:rounded-2xl p-4 lg:p-6 border border-border">
+                <div className="flex items-center gap-3 lg:gap-4">
+                  <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-lg lg:rounded-xl bg-sigma-orange/10 flex items-center justify-center">
+                    <TrendingUp className="w-5 h-5 lg:w-6 lg:h-6 text-sigma-orange" />
                   </div>
                   <div>
-                    <div className="text-2xl font-bold font-display">{stats.averageProgress}%</div>
-                    <div className="text-muted-foreground text-sm">Ср. прогресс</div>
+                    <div className="text-xl lg:text-2xl font-bold font-display">{stats.averageProgress}%</div>
+                    <div className="text-muted-foreground text-xs lg:text-sm">Ср. прогресс</div>
                   </div>
                 </div>
               </div>
@@ -2506,59 +2506,59 @@ export default function OrganizationDashboard() {
           )}
           
           {activeTab === "students" && (
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-              <div className="bg-card rounded-2xl p-4 border border-border">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Users className="w-5 h-5 text-primary" />
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-4 mb-6 lg:mb-8">
+              <div className="bg-card rounded-xl lg:rounded-2xl p-3 lg:p-4 border border-border">
+                <div className="flex items-center gap-2 lg:gap-3">
+                  <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Users className="w-4 h-4 lg:w-5 lg:h-5 text-primary" />
                   </div>
                   <div>
-                    <div className="text-2xl font-bold">{documentsStats.total}</div>
-                    <div className="text-xs text-muted-foreground">Всего учеников</div>
+                    <div className="text-lg lg:text-2xl font-bold">{documentsStats.total}</div>
+                    <div className="text-[10px] lg:text-xs text-muted-foreground">Всего</div>
                   </div>
                 </div>
               </div>
-              <div className="bg-card rounded-2xl p-4 border border-border">
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${documentsStats.withPassport === documentsStats.total && documentsStats.total > 0 ? 'bg-green-500/10' : 'bg-amber-500/10'}`}>
-                    <FileText className={`w-5 h-5 ${documentsStats.withPassport === documentsStats.total && documentsStats.total > 0 ? 'text-green-500' : 'text-amber-500'}`} />
+              <div className="bg-card rounded-xl lg:rounded-2xl p-3 lg:p-4 border border-border">
+                <div className="flex items-center gap-2 lg:gap-3">
+                  <div className={`w-8 h-8 lg:w-10 lg:h-10 rounded-lg flex items-center justify-center ${documentsStats.withPassport === documentsStats.total && documentsStats.total > 0 ? 'bg-green-500/10' : 'bg-amber-500/10'}`}>
+                    <FileText className={`w-4 h-4 lg:w-5 lg:h-5 ${documentsStats.withPassport === documentsStats.total && documentsStats.total > 0 ? 'text-green-500' : 'text-amber-500'}`} />
                   </div>
                   <div>
-                    <div className="text-2xl font-bold">{documentsStats.withPassport}<span className="text-sm text-muted-foreground font-normal">/{documentsStats.total}</span></div>
-                    <div className="text-xs text-muted-foreground">Паспорт</div>
+                    <div className="text-lg lg:text-2xl font-bold">{documentsStats.withPassport}<span className="text-xs lg:text-sm text-muted-foreground font-normal">/{documentsStats.total}</span></div>
+                    <div className="text-[10px] lg:text-xs text-muted-foreground">Паспорт</div>
                   </div>
                 </div>
               </div>
-              <div className="bg-card rounded-2xl p-4 border border-border">
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${documentsStats.withSnils === documentsStats.total && documentsStats.total > 0 ? 'bg-green-500/10' : 'bg-amber-500/10'}`}>
-                    <FileText className={`w-5 h-5 ${documentsStats.withSnils === documentsStats.total && documentsStats.total > 0 ? 'text-green-500' : 'text-amber-500'}`} />
+              <div className="bg-card rounded-xl lg:rounded-2xl p-3 lg:p-4 border border-border">
+                <div className="flex items-center gap-2 lg:gap-3">
+                  <div className={`w-8 h-8 lg:w-10 lg:h-10 rounded-lg flex items-center justify-center ${documentsStats.withSnils === documentsStats.total && documentsStats.total > 0 ? 'bg-green-500/10' : 'bg-amber-500/10'}`}>
+                    <FileText className={`w-4 h-4 lg:w-5 lg:h-5 ${documentsStats.withSnils === documentsStats.total && documentsStats.total > 0 ? 'text-green-500' : 'text-amber-500'}`} />
                   </div>
                   <div>
-                    <div className="text-2xl font-bold">{documentsStats.withSnils}<span className="text-sm text-muted-foreground font-normal">/{documentsStats.total}</span></div>
-                    <div className="text-xs text-muted-foreground">СНИЛС</div>
+                    <div className="text-lg lg:text-2xl font-bold">{documentsStats.withSnils}<span className="text-xs lg:text-sm text-muted-foreground font-normal">/{documentsStats.total}</span></div>
+                    <div className="text-[10px] lg:text-xs text-muted-foreground">СНИЛС</div>
                   </div>
                 </div>
               </div>
-              <div className="bg-card rounded-2xl p-4 border border-border">
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${documentsStats.withEducation === documentsStats.total && documentsStats.total > 0 ? 'bg-green-500/10' : 'bg-amber-500/10'}`}>
-                    <GraduationCap className={`w-5 h-5 ${documentsStats.withEducation === documentsStats.total && documentsStats.total > 0 ? 'text-green-500' : 'text-amber-500'}`} />
+              <div className="bg-card rounded-xl lg:rounded-2xl p-3 lg:p-4 border border-border">
+                <div className="flex items-center gap-2 lg:gap-3">
+                  <div className={`w-8 h-8 lg:w-10 lg:h-10 rounded-lg flex items-center justify-center ${documentsStats.withEducation === documentsStats.total && documentsStats.total > 0 ? 'bg-green-500/10' : 'bg-amber-500/10'}`}>
+                    <GraduationCap className={`w-4 h-4 lg:w-5 lg:h-5 ${documentsStats.withEducation === documentsStats.total && documentsStats.total > 0 ? 'text-green-500' : 'text-amber-500'}`} />
                   </div>
                   <div>
-                    <div className="text-2xl font-bold">{documentsStats.withEducation}<span className="text-sm text-muted-foreground font-normal">/{documentsStats.total}</span></div>
-                    <div className="text-xs text-muted-foreground">Образование</div>
+                    <div className="text-lg lg:text-2xl font-bold">{documentsStats.withEducation}<span className="text-xs lg:text-sm text-muted-foreground font-normal">/{documentsStats.total}</span></div>
+                    <div className="text-[10px] lg:text-xs text-muted-foreground">Образование</div>
                   </div>
                 </div>
               </div>
-              <div className="bg-card rounded-2xl p-4 border border-border">
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${documentsStats.complete === documentsStats.total && documentsStats.total > 0 ? 'bg-green-500/10' : 'bg-primary/10'}`}>
-                    <CheckCircle2 className={`w-5 h-5 ${documentsStats.complete === documentsStats.total && documentsStats.total > 0 ? 'text-green-500' : 'text-primary'}`} />
+              <div className="col-span-2 lg:col-span-1 bg-card rounded-xl lg:rounded-2xl p-3 lg:p-4 border border-border">
+                <div className="flex items-center gap-2 lg:gap-3">
+                  <div className={`w-8 h-8 lg:w-10 lg:h-10 rounded-lg flex items-center justify-center ${documentsStats.complete === documentsStats.total && documentsStats.total > 0 ? 'bg-green-500/10' : 'bg-primary/10'}`}>
+                    <CheckCircle2 className={`w-4 h-4 lg:w-5 lg:h-5 ${documentsStats.complete === documentsStats.total && documentsStats.total > 0 ? 'text-green-500' : 'text-primary'}`} />
                   </div>
                   <div>
-                    <div className="text-2xl font-bold">{documentsStats.complete}<span className="text-sm text-muted-foreground font-normal">/{documentsStats.total}</span></div>
-                    <div className="text-xs text-muted-foreground">Все документы</div>
+                    <div className="text-lg lg:text-2xl font-bold">{documentsStats.complete}<span className="text-xs lg:text-sm text-muted-foreground font-normal">/{documentsStats.total}</span></div>
+                    <div className="text-[10px] lg:text-xs text-muted-foreground">Все документы</div>
                   </div>
                 </div>
               </div>
@@ -2733,55 +2733,67 @@ export default function OrganizationDashboard() {
           {activeTab === "organizations" && organizationId && <CompaniesManager organizationId={organizationId} />}
 
           {/* Students Tab */}
-          {activeTab === "students" && <div className="bg-card rounded-2xl border border-border">
-              <div className="p-6 border-b border-border flex items-center justify-between flex-wrap gap-4">
-                <div className="flex items-center gap-3">
-                  <h2 className="font-display text-xl font-semibold">
-                    {studentCourseFilter !== "all" ? `Ученики: ${courses.find(c => c.id === studentCourseFilter)?.title || "Курс"}` : "Все ученики"}
-                  </h2>
-                  {studentCourseFilter !== "all" && <Button variant="ghost" size="sm" onClick={() => setStudentCourseFilter("all")} className="rounded-xl gap-1 text-muted-foreground hover:text-foreground">
-                      <X className="w-4 h-4" />
-                      Сбросить
-                    </Button>}
+          {activeTab === "students" && <div className="bg-card rounded-xl lg:rounded-2xl border border-border">
+              <div className="p-4 lg:p-6 border-b border-border space-y-4">
+                <div className="flex items-center justify-between flex-wrap gap-3">
+                  <div className="flex items-center gap-2 lg:gap-3">
+                    <h2 className="font-display text-lg lg:text-xl font-semibold">
+                      {studentCourseFilter !== "all" ? `Ученики: ${courses.find(c => c.id === studentCourseFilter)?.title || "Курс"}` : "Все ученики"}
+                    </h2>
+                    {studentCourseFilter !== "all" && <Button variant="ghost" size="sm" onClick={() => setStudentCourseFilter("all")} className="rounded-xl gap-1 text-muted-foreground hover:text-foreground">
+                        <X className="w-4 h-4" />
+                        <span className="hidden sm:inline">Сбросить</span>
+                      </Button>}
+                  </div>
                 </div>
-                <div className="flex items-center gap-3 flex-wrap">
+                
+                {/* Mobile: Search first */}
+                <div className="lg:hidden">
+                  <div className="relative">
+                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <Input placeholder="Поиск..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10 w-full rounded-xl" />
+                  </div>
+                </div>
+                
+                {/* Filters - scrollable on mobile */}
+                <div className="flex items-center gap-2 lg:gap-3 overflow-x-auto pb-2 -mx-4 px-4 lg:mx-0 lg:px-0 lg:overflow-visible lg:flex-wrap">
                   {selectedStudentIds.size > 0 && <>
                       <Button onClick={() => {
                   if (studentCourseFilter !== "all") {
                     setEnrollCourseId(studentCourseFilter);
                   }
                   setShowEnrollDialog(true);
-                }} className="btn-gradient rounded-xl gap-2">
+                }} className="btn-gradient rounded-xl gap-2 shrink-0 text-xs lg:text-sm">
                         <GraduationCap className="w-4 h-4" />
-                        Зачислить на курс ({selectedStudentIds.size})
+                        <span className="hidden sm:inline">Зачислить</span> ({selectedStudentIds.size})
                       </Button>
-                      <Button onClick={handleBulkCreateCredentials} variant="outline" className="rounded-xl gap-2" disabled={isCreatingBulkCredentials}>
+                      <Button onClick={handleBulkCreateCredentials} variant="outline" className="rounded-xl gap-2 shrink-0 text-xs lg:text-sm" disabled={isCreatingBulkCredentials}>
                         {isCreatingBulkCredentials ? <Loader2 className="w-4 h-4 animate-spin" /> : <Key className="w-4 h-4" />}
-                        Создать логины
+                        <span className="hidden sm:inline">Логины</span>
                       </Button>
-                      <Button onClick={handleBulkSendCredentials} variant="outline" className="rounded-xl gap-2" disabled={isSendingBulkCredentials}>
+                      <Button onClick={handleBulkSendCredentials} variant="outline" className="rounded-xl gap-2 shrink-0 text-xs lg:text-sm" disabled={isSendingBulkCredentials}>
                         {isSendingBulkCredentials ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
-                        Отправить на почту
+                        <span className="hidden sm:inline">На почту</span>
                       </Button>
-                      {getSelectedEnrollmentsCount() > 0 && <Button onClick={() => setShowUnenrollConfirm(true)} variant="outline" className="rounded-xl gap-2 text-destructive hover:text-destructive hover:bg-destructive/10">
+                      {getSelectedEnrollmentsCount() > 0 && <Button onClick={() => setShowUnenrollConfirm(true)} variant="outline" className="rounded-xl gap-2 text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0 text-xs lg:text-sm">
                           <XCircle className="w-4 h-4" />
-                          Отчислить ({getSelectedEnrollmentsCount()})
+                          <span className="hidden sm:inline">Отчислить</span> ({getSelectedEnrollmentsCount()})
                         </Button>}
-                      <Button onClick={() => setShowBulkFRDOExport(true)} variant="outline" className="rounded-xl gap-2">
+                      <Button onClick={() => setShowBulkFRDOExport(true)} variant="outline" className="rounded-xl gap-2 shrink-0 text-xs lg:text-sm">
                         <FileSpreadsheet className="w-4 h-4" />
-                        ФИС ФРДО ({selectedStudentIds.size})
+                        <span className="hidden sm:inline">ФРДО</span> ({selectedStudentIds.size})
                       </Button>
                     </>}
                   <Button 
                     variant="outline" 
-                    className="rounded-xl gap-2" 
+                    className="rounded-xl gap-2 shrink-0 text-xs lg:text-sm" 
                     onClick={handleBulkSendDocReminders}
                     disabled={isSendingBulkDocReminders}
                   >
                     {isSendingBulkDocReminders ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
-                    Напомнить о документах
+                    <span className="hidden sm:inline">Напомнить</span>
                   </Button>
-                  <Button variant="outline" className="rounded-xl gap-2" onClick={() => {
+                  <Button variant="outline" className="rounded-xl gap-2 shrink-0 text-xs lg:text-sm" onClick={() => {
                 import('xlsx').then(XLSX => {
                   const exportData = filteredStudents.map(s => ({
                     'ФИО': s.name,
@@ -2800,11 +2812,11 @@ export default function OrganizationDashboard() {
                 });
               }}>
                     <FileSpreadsheet className="w-4 h-4" />
-                    Экспорт
+                    <span className="hidden sm:inline">Экспорт</span>
                   </Button>
                   <Select value={studentCourseFilter} onValueChange={v => setStudentCourseFilter(v)}>
-                    <SelectTrigger className="w-48 rounded-xl">
-                      <BookOpen className="w-4 h-4 mr-2" />
+                    <SelectTrigger className="w-32 lg:w-48 rounded-xl shrink-0 text-xs lg:text-sm">
+                      <BookOpen className="w-4 h-4 mr-1 lg:mr-2" />
                       <SelectValue placeholder="Курс" />
                     </SelectTrigger>
                     <SelectContent>
@@ -2813,32 +2825,33 @@ export default function OrganizationDashboard() {
                     </SelectContent>
                   </Select>
                   <Select value={studentStatusFilter} onValueChange={v => setStudentStatusFilter(v as any)}>
-                    <SelectTrigger className="w-44 rounded-xl">
-                      <Filter className="w-4 h-4 mr-2" />
+                    <SelectTrigger className="w-28 lg:w-44 rounded-xl shrink-0 text-xs lg:text-sm">
+                      <Filter className="w-4 h-4 mr-1 lg:mr-2" />
                       <SelectValue placeholder="Статус" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Все статусы</SelectItem>
+                      <SelectItem value="all">Все</SelectItem>
                       <SelectItem value="active">Активные</SelectItem>
                       <SelectItem value="completed">Завершили</SelectItem>
                       <SelectItem value="not_enrolled">Не зачислены</SelectItem>
                     </SelectContent>
                   </Select>
                   <Select value={studentDocsFilter} onValueChange={v => setStudentDocsFilter(v as any)}>
-                    <SelectTrigger className="w-48 rounded-xl">
-                      <FileCheck className="w-4 h-4 mr-2" />
+                    <SelectTrigger className="w-32 lg:w-48 rounded-xl shrink-0 text-xs lg:text-sm">
+                      <FileCheck className="w-4 h-4 mr-1 lg:mr-2" />
                       <SelectValue placeholder="Документы" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Все документы</SelectItem>
+                      <SelectItem value="all">Все</SelectItem>
                       <SelectItem value="complete">Все загружены</SelectItem>
-                      <SelectItem value="incomplete">Есть недостающие</SelectItem>
+                      <SelectItem value="incomplete">Недостающие</SelectItem>
                       <SelectItem value="no_passport">Нет паспорта</SelectItem>
                       <SelectItem value="no_snils">Нет СНИЛС</SelectItem>
                       <SelectItem value="no_education">Нет образования</SelectItem>
                     </SelectContent>
                   </Select>
-                  <div className="relative">
+                  {/* Desktop search */}
+                  <div className="relative hidden lg:block">
                     <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                     <Input placeholder="Поиск по имени или email..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10 w-64 rounded-xl" />
                   </div>
@@ -2851,133 +2864,211 @@ export default function OrganizationDashboard() {
                 </div> : filteredStudents.length === 0 ? <div className="text-center py-12 text-muted-foreground">
                   <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
                   <p>Нет учеников</p>
-                </div> : <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-border">
-                        <th className="text-left px-4 py-4 text-sm font-medium text-muted-foreground w-12">
-                          <input type="checkbox" checked={filteredStudents.length > 0 && filteredStudents.every(s => selectedStudentIds.has(s.enrollment_id || s.user_id))} onChange={() => toggleSelectAll(filteredStudents)} className="w-4 h-4 rounded border-border" />
-                        </th>
-                        <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Ученик</th>
-                        <th className="text-left px-4 py-4 text-sm font-medium text-muted-foreground">Документы</th>
-                        <th className="text-left px-3 py-4 text-sm font-medium text-muted-foreground">ФРДО</th>
-                        <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Курс</th>
-                        <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Прогресс</th>
-                        <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Статус</th>
-                        <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Действия</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredStudents.map(student => {
-                  const uniqueId = student.enrollment_id || student.user_id;
-                  const isSelected = selectedStudentIds.has(uniqueId);
-                  return <tr key={uniqueId} className={`border-b border-border last:border-0 hover:bg-secondary/50 transition-colors cursor-pointer ${isSelected ? 'bg-primary/5' : ''}`} onClick={() => handleViewStudent(student)}>
-                            <td className="px-4 py-4" onClick={e => e.stopPropagation()}>
-                              <input type="checkbox" checked={isSelected} onChange={() => toggleStudentSelection(uniqueId)} className="w-4 h-4 rounded border-border" />
-                            </td>
-                            <td className="px-6 py-4">
-                              <div>
-                                <div className="font-medium">{student.name}</div>
-                                <div className="text-sm text-muted-foreground">
-                                  {student.login ? <div className="flex flex-col gap-0.5">
-                                      <span className="inline-flex items-center gap-2">
-                                        <span className="bg-primary/10 text-primary px-1.5 py-0.5 rounded text-xs font-mono">{student.login}</span>
-                                        {student.generated_password && <span className="bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs font-mono">{student.generated_password}</span>}
-                                        {student.login && student.generated_password && <button onClick={e => {
-                                e.stopPropagation();
-                                handleCopyCredentials(student.login!, student.generated_password!);
-                              }} className="p-1 hover:bg-muted rounded transition-colors" title="Копировать логин и пароль">
-                                            <Copy className="w-3 h-3 text-muted-foreground" />
-                                          </button>}
-                                      </span>
-                                      {student.email && <span className="text-muted-foreground/50 text-xs">{student.email}</span>}
-                                    </div> : student.email}
+                </div> : <>
+                  {/* Mobile view - cards */}
+                  <div className="lg:hidden divide-y divide-border">
+                    {filteredStudents.map(student => {
+                      const uniqueId = student.enrollment_id || student.user_id;
+                      const isSelected = selectedStudentIds.has(uniqueId);
+                      const userDocs = studentDocsByUser.get(student.user_id) || [];
+                      const hasPassport = userDocs.some(t => t === "passport" || t === "birth_certificate");
+                      const hasSnils = userDocs.includes("snils");
+                      const hasEducation = userDocs.some(t => t === "education_document" || t === "diploma" || t === "attestat");
+                      
+                      return (
+                        <div 
+                          key={uniqueId} 
+                          className={`p-4 ${isSelected ? 'bg-primary/5' : ''}`}
+                          onClick={() => handleViewStudent(student)}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div onClick={e => e.stopPropagation()}>
+                              <input 
+                                type="checkbox" 
+                                checked={isSelected} 
+                                onChange={() => toggleStudentSelection(uniqueId)} 
+                                className="w-4 h-4 rounded border-border mt-1" 
+                              />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0">
+                                  <div className="font-medium truncate">{student.name}</div>
+                                  {student.login && (
+                                    <div className="flex items-center gap-1 mt-1">
+                                      <span className="bg-primary/10 text-primary px-1.5 py-0.5 rounded text-xs font-mono">{student.login}</span>
+                                      {student.generated_password && (
+                                        <button 
+                                          onClick={e => {
+                                            e.stopPropagation();
+                                            handleCopyCredentials(student.login!, student.generated_password!);
+                                          }} 
+                                          className="p-1 hover:bg-muted rounded transition-colors"
+                                        >
+                                          <Copy className="w-3 h-3 text-muted-foreground" />
+                                        </button>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                                <span className={`shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${student.status === 'completed' ? 'bg-sigma-green/10 text-sigma-green' : student.status === 'active' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                                  {student.status === 'completed' ? 'Завершил' : student.status === 'active' ? 'Активный' : '—'}
+                                </span>
+                              </div>
+                              
+                              <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                                <span className="truncate">{student.course || 'Не зачислен'}</span>
+                                <span className="shrink-0">{student.progress}%</span>
+                              </div>
+                              
+                              <div className="flex items-center gap-1 mt-2">
+                                <div className={`w-5 h-5 rounded flex items-center justify-center ${hasPassport ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
+                                  {hasPassport ? <CheckCircle2 className="w-3 h-3 text-green-500" /> : <XCircle className="w-3 h-3 text-red-500" />}
+                                </div>
+                                <div className={`w-5 h-5 rounded flex items-center justify-center ${hasSnils ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
+                                  {hasSnils ? <CheckCircle2 className="w-3 h-3 text-green-500" /> : <XCircle className="w-3 h-3 text-red-500" />}
+                                </div>
+                                <div className={`w-5 h-5 rounded flex items-center justify-center ${hasEducation ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
+                                  {hasEducation ? <CheckCircle2 className="w-3 h-3 text-green-500" /> : <XCircle className="w-3 h-3 text-red-500" />}
                                 </div>
                               </div>
-                            </td>
-                            <td className="px-4 py-4">
-                              {(() => {
-                                const userDocs = studentDocsByUser.get(student.user_id) || [];
-                                const hasPassport = userDocs.some(t => t === "passport" || t === "birth_certificate");
-                                const hasSnils = userDocs.includes("snils");
-                                const hasEducation = userDocs.some(t => t === "education_document" || t === "diploma" || t === "attestat");
-                                return (
-                                  <div className="flex items-center gap-1">
-                                    <div className={`w-6 h-6 rounded flex items-center justify-center ${hasPassport ? 'bg-green-500/10' : 'bg-red-500/10'}`} title={hasPassport ? 'Паспорт загружен' : 'Нет паспорта'}>
-                                      {hasPassport ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500" /> : <XCircle className="w-3.5 h-3.5 text-red-500" />}
-                                    </div>
-                                    <div className={`w-6 h-6 rounded flex items-center justify-center ${hasSnils ? 'bg-green-500/10' : 'bg-red-500/10'}`} title={hasSnils ? 'СНИЛС загружен' : 'Нет СНИЛС'}>
-                                      {hasSnils ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500" /> : <XCircle className="w-3.5 h-3.5 text-red-500" />}
-                                    </div>
-                                    <div className={`w-6 h-6 rounded flex items-center justify-center ${hasEducation ? 'bg-green-500/10' : 'bg-red-500/10'}`} title={hasEducation ? 'Документ об образовании загружен' : 'Нет документа об образовании'}>
-                                      {hasEducation ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500" /> : <XCircle className="w-3.5 h-3.5 text-red-500" />}
-                                    </div>
+                            </div>
+                            <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  
+                  {/* Desktop view - table */}
+                  <div className="hidden lg:block overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-border">
+                          <th className="text-left px-4 py-4 text-sm font-medium text-muted-foreground w-12">
+                            <input type="checkbox" checked={filteredStudents.length > 0 && filteredStudents.every(s => selectedStudentIds.has(s.enrollment_id || s.user_id))} onChange={() => toggleSelectAll(filteredStudents)} className="w-4 h-4 rounded border-border" />
+                          </th>
+                          <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Ученик</th>
+                          <th className="text-left px-4 py-4 text-sm font-medium text-muted-foreground">Документы</th>
+                          <th className="text-left px-3 py-4 text-sm font-medium text-muted-foreground">ФРДО</th>
+                          <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Курс</th>
+                          <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Прогресс</th>
+                          <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Статус</th>
+                          <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Действия</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredStudents.map(student => {
+                    const uniqueId = student.enrollment_id || student.user_id;
+                    const isSelected = selectedStudentIds.has(uniqueId);
+                    return <tr key={uniqueId} className={`border-b border-border last:border-0 hover:bg-secondary/50 transition-colors cursor-pointer ${isSelected ? 'bg-primary/5' : ''}`} onClick={() => handleViewStudent(student)}>
+                              <td className="px-4 py-4" onClick={e => e.stopPropagation()}>
+                                <input type="checkbox" checked={isSelected} onChange={() => toggleStudentSelection(uniqueId)} className="w-4 h-4 rounded border-border" />
+                              </td>
+                              <td className="px-6 py-4">
+                                <div>
+                                  <div className="font-medium">{student.name}</div>
+                                  <div className="text-sm text-muted-foreground">
+                                    {student.login ? <div className="flex flex-col gap-0.5">
+                                        <span className="inline-flex items-center gap-2">
+                                          <span className="bg-primary/10 text-primary px-1.5 py-0.5 rounded text-xs font-mono">{student.login}</span>
+                                          {student.generated_password && <span className="bg-muted text-muted-foreground px-1.5 py-0.5 rounded text-xs font-mono">{student.generated_password}</span>}
+                                          {student.login && student.generated_password && <button onClick={e => {
+                                  e.stopPropagation();
+                                  handleCopyCredentials(student.login!, student.generated_password!);
+                                }} className="p-1 hover:bg-muted rounded transition-colors" title="Копировать логин и пароль">
+                                              <Copy className="w-3 h-3 text-muted-foreground" />
+                                            </button>}
+                                        </span>
+                                        {student.email && <span className="text-muted-foreground/50 text-xs">{student.email}</span>}
+                                      </div> : student.email}
                                   </div>
-                                );
-                              })()}
-                            </td>
-                            <td className="px-3 py-4">
-                              {(() => {
-                                const frdoStatus = studentFrdoStatus.get(student.user_id);
-                                if (!frdoStatus || !frdoStatus.hasData) {
+                                </div>
+                              </td>
+                              <td className="px-4 py-4">
+                                {(() => {
+                                  const userDocs = studentDocsByUser.get(student.user_id) || [];
+                                  const hasPassport = userDocs.some(t => t === "passport" || t === "birth_certificate");
+                                  const hasSnils = userDocs.includes("snils");
+                                  const hasEducation = userDocs.some(t => t === "education_document" || t === "diploma" || t === "attestat");
                                   return (
-                                    <div 
-                                      className="w-6 h-6 rounded flex items-center justify-center bg-muted" 
-                                      title="Данные ФРДО не заполнены"
-                                    >
-                                      <XCircle className="w-3.5 h-3.5 text-muted-foreground" />
+                                    <div className="flex items-center gap-1">
+                                      <div className={`w-6 h-6 rounded flex items-center justify-center ${hasPassport ? 'bg-green-500/10' : 'bg-red-500/10'}`} title={hasPassport ? 'Паспорт загружен' : 'Нет паспорта'}>
+                                        {hasPassport ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500" /> : <XCircle className="w-3.5 h-3.5 text-red-500" />}
+                                      </div>
+                                      <div className={`w-6 h-6 rounded flex items-center justify-center ${hasSnils ? 'bg-green-500/10' : 'bg-red-500/10'}`} title={hasSnils ? 'СНИЛС загружен' : 'Нет СНИЛС'}>
+                                        {hasSnils ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500" /> : <XCircle className="w-3.5 h-3.5 text-red-500" />}
+                                      </div>
+                                      <div className={`w-6 h-6 rounded flex items-center justify-center ${hasEducation ? 'bg-green-500/10' : 'bg-red-500/10'}`} title={hasEducation ? 'Документ об образовании загружен' : 'Нет документа об образовании'}>
+                                        {hasEducation ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500" /> : <XCircle className="w-3.5 h-3.5 text-red-500" />}
+                                      </div>
                                     </div>
                                   );
-                                }
-                                if (frdoStatus.isComplete) {
+                                })()}
+                              </td>
+                              <td className="px-3 py-4">
+                                {(() => {
+                                  const frdoStatus = studentFrdoStatus.get(student.user_id);
+                                  if (!frdoStatus || !frdoStatus.hasData) {
+                                    return (
+                                      <div 
+                                        className="w-6 h-6 rounded flex items-center justify-center bg-muted" 
+                                        title="Данные ФРДО не заполнены"
+                                      >
+                                        <XCircle className="w-3.5 h-3.5 text-muted-foreground" />
+                                      </div>
+                                    );
+                                  }
+                                  if (frdoStatus.isComplete) {
+                                    return (
+                                      <div 
+                                        className="w-6 h-6 rounded flex items-center justify-center bg-green-500/10" 
+                                        title="Все данные ФРДО заполнены"
+                                      >
+                                        <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
+                                      </div>
+                                    );
+                                  }
                                   return (
                                     <div 
-                                      className="w-6 h-6 rounded flex items-center justify-center bg-green-500/10" 
-                                      title="Все данные ФРДО заполнены"
+                                      className="w-6 h-6 rounded flex items-center justify-center bg-amber-500/10" 
+                                      title={`Не заполнено: ${frdoStatus.missingFields.join(", ")}`}
                                     >
-                                      <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
+                                      <AlertCircle className="w-3.5 h-3.5 text-amber-500" />
                                     </div>
                                   );
-                                }
-                                return (
-                                  <div 
-                                    className="w-6 h-6 rounded flex items-center justify-center bg-amber-500/10" 
-                                    title={`Не заполнено: ${frdoStatus.missingFields.join(", ")}`}
-                                  >
-                                    <AlertCircle className="w-3.5 h-3.5 text-amber-500" />
-                                  </div>
-                                );
-                              })()}
-                            </td>
-                            <td className="px-6 py-4 text-sm">
-                              {student.course || <span className="text-muted-foreground italic">Не зачислен</span>}
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className="flex items-center gap-3">
-                                <Progress value={student.progress} className="w-20 h-2" />
-                                <span className="text-sm font-medium">{student.progress}%</span>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4">
-                              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${student.status === 'completed' ? 'bg-sigma-green/10 text-sigma-green' : student.status === 'active' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
-                                {student.status === 'completed' ? 'Завершил' : student.status === 'active' ? 'Активный' : '—'}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4" onClick={e => e.stopPropagation()}>
-                              <div className="flex gap-2">
-                                {student.login && student.generated_password && <Button variant="outline" size="sm" className="rounded-lg gap-1" onClick={() => handleCopyCredentials(student.login!, student.generated_password!)} title="Копировать логин и пароль">
-                                    <Copy className="w-4 h-4" />
-                                  </Button>}
-                                <Button variant="outline" size="sm" className="rounded-lg text-destructive hover:text-destructive" onClick={() => handleDeleteStudent(student.enrollment_id)} disabled={!student.enrollment_id} title="Отчислить с курса">
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            </td>
-                          </tr>;
-                })}
-                    </tbody>
-                  </table>
-                </div>}
+                                })()}
+                              </td>
+                              <td className="px-6 py-4 text-sm">
+                                {student.course || <span className="text-muted-foreground italic">Не зачислен</span>}
+                              </td>
+                              <td className="px-6 py-4">
+                                <div className="flex items-center gap-3">
+                                  <Progress value={student.progress} className="w-20 h-2" />
+                                  <span className="text-sm font-medium">{student.progress}%</span>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4">
+                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${student.status === 'completed' ? 'bg-sigma-green/10 text-sigma-green' : student.status === 'active' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                                  {student.status === 'completed' ? 'Завершил' : student.status === 'active' ? 'Активный' : '—'}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4" onClick={e => e.stopPropagation()}>
+                                <div className="flex gap-2">
+                                  {student.login && student.generated_password && <Button variant="outline" size="sm" className="rounded-lg gap-1" onClick={() => handleCopyCredentials(student.login!, student.generated_password!)} title="Копировать логин и пароль">
+                                      <Copy className="w-4 h-4" />
+                                    </Button>}
+                                  <Button variant="outline" size="sm" className="rounded-lg text-destructive hover:text-destructive" onClick={() => handleDeleteStudent(student.enrollment_id)} disabled={!student.enrollment_id} title="Отчислить с курса">
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>;
+                  })}
+                      </tbody>
+                    </table>
+                  </div>
+                </>}
             </div>}
 
           {/* Stats Tab */}
