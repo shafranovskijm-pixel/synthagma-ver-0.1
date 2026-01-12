@@ -65,6 +65,20 @@ interface ConsentRecord {
   created_at: string;
 }
 
+interface GeneratedConsentRecord {
+  id: string;
+  consent_type: string;
+  full_name: string | null;
+  passport_data: string | null;
+  address: string | null;
+  company_name: string | null;
+  company_inn: string | null;
+  company_director: string | null;
+  company_address: string | null;
+  content_html: string;
+  created_at: string;
+}
+
 interface VerificationRecord {
   id: string;
   status: string;
@@ -100,6 +114,7 @@ export function StudentDetailCard({
 }: StudentDetailCardProps) {
   const [activeTab, setActiveTab] = useState("profile");
   const [consents, setConsents] = useState<ConsentRecord[]>([]);
+  const [generatedConsents, setGeneratedConsents] = useState<GeneratedConsentRecord[]>([]);
   const [verifications, setVerifications] = useState<VerificationRecord[]>([]);
   const [documents, setDocuments] = useState<DocumentRecord[]>([]);
   const [identityDocs, setIdentityDocs] = useState<IdentityDocumentRecord[]>([]);
@@ -111,6 +126,7 @@ export function StudentDetailCard({
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [isFRDODialogOpen, setIsFRDODialogOpen] = useState(false);
   const [selectedEnrollmentForFRDO, setSelectedEnrollmentForFRDO] = useState<typeof enrollments[0] | null>(null);
+  const [viewConsentDialog, setViewConsentDialog] = useState<GeneratedConsentRecord | null>(null);
 
   useEffect(() => {
     if (isOpen && student) {
@@ -123,11 +139,17 @@ export function StudentDetailCard({
     setIsLoading(true);
 
     try {
-      const [consentsRes, verificationsRes, documentsRes, identityDocsRes] = await Promise.all([
+      const [consentsRes, generatedConsentsRes, verificationsRes, documentsRes, identityDocsRes] = await Promise.all([
         supabase
           .from("student_consents")
           .select("*")
           .eq("user_id", student.user_id)
+          .eq("organization_id", organizationId)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("consent_documents")
+          .select("*")
+          .eq("student_user_id", student.user_id)
           .eq("organization_id", organizationId)
           .order("created_at", { ascending: false }),
         supabase
@@ -149,6 +171,7 @@ export function StudentDetailCard({
       ]);
 
       if (consentsRes.data) setConsents(consentsRes.data as ConsentRecord[]);
+      if (generatedConsentsRes.data) setGeneratedConsents(generatedConsentsRes.data as GeneratedConsentRecord[]);
       if (verificationsRes.data) setVerifications(verificationsRes.data as VerificationRecord[]);
       if (documentsRes.data) setDocuments(documentsRes.data as DocumentRecord[]);
       if (identityDocsRes.data) setIdentityDocs(identityDocsRes.data as IdentityDocumentRecord[]);
@@ -713,6 +736,59 @@ export function StudentDetailCard({
                         </div>
                       )}
                     </div>
+
+                    {/* Generated Consents */}
+                    <div className="bg-card rounded-2xl border border-border p-6">
+                      <h3 className="font-semibold mb-4 flex items-center gap-2">
+                        <FileText className="w-5 h-5 text-primary" />
+                        Сгенерированные согласия ({generatedConsents.length})
+                      </h3>
+                      {generatedConsents.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                          <p>Нет сгенерированных согласий для этого ученика</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {generatedConsents.map((consent) => (
+                            <div
+                              key={consent.id}
+                              className="flex items-center justify-between p-4 rounded-xl bg-muted/50 hover:bg-muted transition-colors"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                                  {consent.consent_type === "individual" ? (
+                                    <User className="w-5 h-5 text-primary" />
+                                  ) : (
+                                    <Building2 className="w-5 h-5 text-primary" />
+                                  )}
+                                </div>
+                                <div>
+                                  <div className="font-medium">
+                                    {consent.consent_type === "individual" ? "Для физ. лица" : "Для организации"}
+                                  </div>
+                                  <div className="text-sm text-muted-foreground">
+                                    {consent.full_name || consent.company_name || "—"}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {formatDate(consent.created_at)}
+                                  </div>
+                                </div>
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="rounded-lg gap-2"
+                                onClick={() => setViewConsentDialog(consent)}
+                              >
+                                <Eye className="w-4 h-4" />
+                                Просмотр
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </TabsContent>
 
                   {/* Identification Tab */}
@@ -1071,6 +1147,59 @@ export function StudentDetailCard({
                 />
               ) : null}
             </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* View Generated Consent Dialog */}
+      {viewConsentDialog && (
+        <Dialog open={!!viewConsentDialog} onOpenChange={(open) => !open && setViewConsentDialog(null)}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden">
+            <DialogHeader>
+              <DialogTitle className="flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  {viewConsentDialog.consent_type === "individual" ? (
+                    <User className="w-5 h-5 text-primary" />
+                  ) : (
+                    <Building2 className="w-5 h-5 text-primary" />
+                  )}
+                  Согласие: {viewConsentDialog.full_name || viewConsentDialog.company_name || "—"}
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => {
+                    const printWindow = window.open("", "_blank");
+                    if (printWindow) {
+                      printWindow.document.write(`
+                        <!DOCTYPE html>
+                        <html>
+                          <head>
+                            <title>Согласие на обработку ПД</title>
+                            <style>
+                              body { font-family: 'Times New Roman', serif; padding: 40px; max-width: 800px; margin: 0 auto; }
+                              @media print { body { padding: 20px; } }
+                            </style>
+                          </head>
+                          <body>${viewConsentDialog.content_html}</body>
+                        </html>
+                      `);
+                      printWindow.document.close();
+                      printWindow.print();
+                    }
+                  }}
+                >
+                  Печать
+                </Button>
+              </DialogTitle>
+            </DialogHeader>
+            <ScrollArea className="max-h-[70vh]">
+              <div
+                className="p-6 prose prose-sm max-w-none"
+                dangerouslySetInnerHTML={{ __html: viewConsentDialog.content_html }}
+              />
+            </ScrollArea>
           </DialogContent>
         </Dialog>
       )}
