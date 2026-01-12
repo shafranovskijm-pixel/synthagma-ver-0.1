@@ -705,51 +705,81 @@ export type Database = {
       }
       organizations: {
         Row: {
+          actual_address: string | null
           ai_enabled: boolean
           ai_tokens_limit: number
+          bank_account: string | null
+          bank_bik: string | null
+          bank_corr_account: string | null
+          bank_name: string | null
           branding: Json | null
           contact_name: string | null
           created_at: string
+          director_name: string | null
+          director_position: string | null
           email: string
           id: string
           inn: string | null
+          kpp: string | null
+          legal_address: string | null
           name: string
           notify_on_limit_80: boolean
           notify_on_limit_exceeded: boolean
+          ogrn: string | null
           phone: string | null
           storage_limit_bytes: number
           student_dashboard_settings: Json | null
           updated_at: string
         }
         Insert: {
+          actual_address?: string | null
           ai_enabled?: boolean
           ai_tokens_limit?: number
+          bank_account?: string | null
+          bank_bik?: string | null
+          bank_corr_account?: string | null
+          bank_name?: string | null
           branding?: Json | null
           contact_name?: string | null
           created_at?: string
+          director_name?: string | null
+          director_position?: string | null
           email: string
           id?: string
           inn?: string | null
+          kpp?: string | null
+          legal_address?: string | null
           name: string
           notify_on_limit_80?: boolean
           notify_on_limit_exceeded?: boolean
+          ogrn?: string | null
           phone?: string | null
           storage_limit_bytes?: number
           student_dashboard_settings?: Json | null
           updated_at?: string
         }
         Update: {
+          actual_address?: string | null
           ai_enabled?: boolean
           ai_tokens_limit?: number
+          bank_account?: string | null
+          bank_bik?: string | null
+          bank_corr_account?: string | null
+          bank_name?: string | null
           branding?: Json | null
           contact_name?: string | null
           created_at?: string
+          director_name?: string | null
+          director_position?: string | null
           email?: string
           id?: string
           inn?: string | null
+          kpp?: string | null
+          legal_address?: string | null
           name?: string
           notify_on_limit_80?: boolean
           notify_on_limit_exceeded?: boolean
+          ogrn?: string | null
           phone?: string | null
           storage_limit_bytes?: number
           student_dashboard_settings?: Json | null
