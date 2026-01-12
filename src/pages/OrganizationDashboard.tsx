@@ -2945,135 +2945,144 @@ export default function OrganizationDashboard() {
               </details>
 
               {/* Branding Settings */}
-              <div className="bg-card rounded-2xl border border-border p-6">
-                <h3 className="font-display font-semibold text-lg mb-4 flex items-center gap-2">
-                  <Image className="w-5 h-5" />
-                  Брендирование
-                </h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Настройте внешний вид кабинета с вашим фирменным стилем
-                </p>
-                
-                <div className="space-y-6">
-                  {/* Cover Image */}
-                  <div>
-                    <Label className="text-sm font-medium mb-2 block">Обложка организации</Label>
-                    <p className="text-sm text-muted-foreground mb-3">
-                      Изображение отображается в шапке личного кабинета (рекомендуется 1920×400 px)
-                    </p>
-                    <div className="relative">
-                      {brandingSettings.coverUrl ? <div className="relative rounded-xl overflow-hidden border border-border">
-                          <img src={brandingSettings.coverUrl} alt="Обложка" className="w-full h-32 object-cover" />
-                          <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                            <label className="cursor-pointer">
-                              <input type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
-                              <Button size="sm" variant="secondary" className="rounded-lg pointer-events-none">
-                                Заменить
+              <details className="bg-card rounded-2xl border border-border group">
+                <summary className="p-6 cursor-pointer list-none flex items-center justify-between">
+                  <h3 className="font-display font-semibold text-lg flex items-center gap-2">
+                    <Image className="w-5 h-5" />
+                    Брендирование
+                  </h3>
+                  <ChevronRight className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90" />
+                </summary>
+                <div className="px-6 pb-6">
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Настройте внешний вид кабинета с вашим фирменным стилем
+                  </p>
+                  
+                  <div className="space-y-6">
+                    {/* Cover Image */}
+                    <div>
+                      <Label className="text-sm font-medium mb-2 block">Обложка организации</Label>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        Изображение отображается в шапке личного кабинета (рекомендуется 1920×400 px)
+                      </p>
+                      <div className="relative">
+                        {brandingSettings.coverUrl ? <div className="relative rounded-xl overflow-hidden border border-border">
+                            <img src={brandingSettings.coverUrl} alt="Обложка" className="w-full h-32 object-cover" />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                              <label className="cursor-pointer">
+                                <input type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
+                                <Button size="sm" variant="secondary" className="rounded-lg pointer-events-none">
+                                  Заменить
+                                </Button>
+                              </label>
+                              <Button size="sm" variant="destructive" className="rounded-lg" onClick={() => setBrandingSettings(prev => ({
+                          ...prev,
+                          coverUrl: ''
+                        }))}>
+                                Удалить
                               </Button>
-                            </label>
-                            <Button size="sm" variant="destructive" className="rounded-lg" onClick={() => setBrandingSettings(prev => ({
-                        ...prev,
-                        coverUrl: ''
-                      }))}>
-                              Удалить
-                            </Button>
-                          </div>
-                        </div> : <label className="cursor-pointer">
-                          <input type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
-                          <div className="border-2 border-dashed border-border rounded-xl h-32 flex flex-col items-center justify-center gap-2 hover:border-primary/50 hover:bg-primary/5 transition-colors">
-                            {isUploadingCover ? <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /> : <>
-                                <Upload className="w-6 h-6 text-muted-foreground" />
-                                <span className="text-sm text-muted-foreground">Загрузить обложку</span>
-                              </>}
-                          </div>
-                        </label>}
+                            </div>
+                          </div> : <label className="cursor-pointer">
+                            <input type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
+                            <div className="border-2 border-dashed border-border rounded-xl h-32 flex flex-col items-center justify-center gap-2 hover:border-primary/50 hover:bg-primary/5 transition-colors">
+                              {isUploadingCover ? <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /> : <>
+                                  <Upload className="w-6 h-6 text-muted-foreground" />
+                                  <span className="text-sm text-muted-foreground">Загрузить обложку</span>
+                                </>}
+                            </div>
+                          </label>}
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Logo */}
-                  <div>
-                    <Label className="text-sm font-medium mb-2 block">Логотип организации</Label>
-                    <p className="text-sm text-muted-foreground mb-3">
-                      Отображается вместо стандартного логотипа (рекомендуется квадрат или прозрачный PNG)
-                    </p>
-                    <div className="flex items-start gap-4">
-                      {brandingSettings.logoUrl ? <div className="relative">
-                          <img src={brandingSettings.logoUrl} alt="Логотип" className="w-20 h-20 object-contain rounded-xl border border-border bg-background p-2" />
-                          <button onClick={() => setBrandingSettings(prev => ({
-                      ...prev,
-                      logoUrl: ''
-                    }))} className="absolute -top-2 -right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center hover:bg-destructive/80">
-                            <X className="w-3 h-3" />
-                          </button>
-                        </div> : <label className="cursor-pointer">
-                          <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
-                          <div className="w-20 h-20 border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center gap-1 hover:border-primary/50 hover:bg-primary/5 transition-colors">
-                            {isUploadingLogo ? <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /> : <>
-                                <Upload className="w-5 h-5 text-muted-foreground" />
-                                <span className="text-xs text-muted-foreground">Логотип</span>
-                              </>}
-                          </div>
-                        </label>}
-                      <div className="flex-1 space-y-3">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-medium text-sm">Показывать название</p>
-                            <p className="text-xs text-muted-foreground">Отображать название организации рядом с логотипом</p>
-                          </div>
-                          <button onClick={() => setBrandingSettings(prev => ({
+                    {/* Logo */}
+                    <div>
+                      <Label className="text-sm font-medium mb-2 block">Логотип организации</Label>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        Отображается вместо стандартного логотипа (рекомендуется квадрат или прозрачный PNG)
+                      </p>
+                      <div className="flex items-start gap-4">
+                        {brandingSettings.logoUrl ? <div className="relative">
+                            <img src={brandingSettings.logoUrl} alt="Логотип" className="w-20 h-20 object-contain rounded-xl border border-border bg-background p-2" />
+                            <button onClick={() => setBrandingSettings(prev => ({
                         ...prev,
-                        showOrgName: !prev.showOrgName
-                      }))} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${brandingSettings.showOrgName ? 'bg-primary' : 'bg-muted'}`}>
-                            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${brandingSettings.showOrgName ? 'translate-x-6' : 'translate-x-1'}`} />
-                          </button>
+                        logoUrl: ''
+                      }))} className="absolute -top-2 -right-2 w-6 h-6 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center hover:bg-destructive/80">
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div> : <label className="cursor-pointer">
+                            <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
+                            <div className="w-20 h-20 border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center gap-1 hover:border-primary/50 hover:bg-primary/5 transition-colors">
+                              {isUploadingLogo ? <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /> : <>
+                                  <Upload className="w-5 h-5 text-muted-foreground" />
+                                  <span className="text-xs text-muted-foreground">Логотип</span>
+                                </>}
+                            </div>
+                          </label>}
+                        <div className="flex-1 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-medium text-sm">Показывать название</p>
+                              <p className="text-xs text-muted-foreground">Отображать название организации рядом с логотипом</p>
+                            </div>
+                            <button onClick={() => setBrandingSettings(prev => ({
+                          ...prev,
+                          showOrgName: !prev.showOrgName
+                        }))} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${brandingSettings.showOrgName ? 'bg-primary' : 'bg-muted'}`}>
+                              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${brandingSettings.showOrgName ? 'translate-x-6' : 'translate-x-1'}`} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Colors */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-sm font-medium mb-2 block">Основной цвет</Label>
+                        <div className="flex items-center gap-2">
+                          <input type="color" value={brandingSettings.primaryColor} onChange={e => setBrandingSettings(prev => ({
+                        ...prev,
+                        primaryColor: e.target.value
+                      }))} className="w-10 h-10 rounded-lg cursor-pointer border border-border" />
+                          <Input value={brandingSettings.primaryColor} onChange={e => setBrandingSettings(prev => ({
+                        ...prev,
+                        primaryColor: e.target.value
+                      }))} className="rounded-xl flex-1" placeholder="#6366f1" />
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium mb-2 block">Дополнительный цвет</Label>
+                        <div className="flex items-center gap-2">
+                          <input type="color" value={brandingSettings.secondaryColor} onChange={e => setBrandingSettings(prev => ({
+                        ...prev,
+                        secondaryColor: e.target.value
+                      }))} className="w-10 h-10 rounded-lg cursor-pointer border border-border" />
+                          <Input value={brandingSettings.secondaryColor} onChange={e => setBrandingSettings(prev => ({
+                        ...prev,
+                        secondaryColor: e.target.value
+                      }))} className="rounded-xl flex-1" placeholder="#8b5cf6" />
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  {/* Colors */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label className="text-sm font-medium mb-2 block">Основной цвет</Label>
-                      <div className="flex items-center gap-2">
-                        <input type="color" value={brandingSettings.primaryColor} onChange={e => setBrandingSettings(prev => ({
-                      ...prev,
-                      primaryColor: e.target.value
-                    }))} className="w-10 h-10 rounded-lg cursor-pointer border border-border" />
-                        <Input value={brandingSettings.primaryColor} onChange={e => setBrandingSettings(prev => ({
-                      ...prev,
-                      primaryColor: e.target.value
-                    }))} className="rounded-xl flex-1" placeholder="#6366f1" />
-                      </div>
-                    </div>
-                    <div>
-                      <Label className="text-sm font-medium mb-2 block">Дополнительный цвет</Label>
-                      <div className="flex items-center gap-2">
-                        <input type="color" value={brandingSettings.secondaryColor} onChange={e => setBrandingSettings(prev => ({
-                      ...prev,
-                      secondaryColor: e.target.value
-                    }))} className="w-10 h-10 rounded-lg cursor-pointer border border-border" />
-                        <Input value={brandingSettings.secondaryColor} onChange={e => setBrandingSettings(prev => ({
-                      ...prev,
-                      secondaryColor: e.target.value
-                    }))} className="rounded-xl flex-1" placeholder="#8b5cf6" />
-                      </div>
-                    </div>
+                  <div className="mt-6 pt-4 border-t border-border flex gap-3">
+                    <Button className="btn-gradient rounded-xl gap-2" onClick={handleSaveBranding} disabled={isSavingBranding}>
+                      {isSavingBranding ? <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Сохранение...
+                        </> : <>
+                          <Save className="w-4 h-4" />
+                          Сохранить брендирование
+                        </>}
+                    </Button>
+                    <Button variant="outline" className="rounded-xl gap-2" onClick={handlePreviewStudentDashboard}>
+                      <Eye className="w-4 h-4" />
+                      Предпросмотр
+                    </Button>
                   </div>
                 </div>
-
-                <div className="mt-6 pt-4 border-t border-border">
-                  <Button className="btn-gradient rounded-xl gap-2" onClick={handleSaveBranding} disabled={isSavingBranding}>
-                    {isSavingBranding ? <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Сохранение...
-                      </> : <>
-                        <Save className="w-4 h-4" />
-                        Сохранить брендирование
-                      </>}
-                  </Button>
-                </div>
-              </div>
+              </details>
 
               {/* Student Dashboard Settings - At the bottom */}
               <div className="bg-card rounded-2xl border border-border p-6">
