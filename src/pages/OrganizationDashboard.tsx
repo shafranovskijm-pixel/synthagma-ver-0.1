@@ -381,6 +381,42 @@ export default function OrganizationDashboard() {
     bank_corr_account: ''
   });
   const [isSavingRequisites, setIsSavingRequisites] = useState(false);
+  const [isSearchingDadataRequisites, setIsSearchingDadataRequisites] = useState(false);
+
+  // DaData search for organization requisites
+  const handleSearchRequisitesByInn = async (inn: string) => {
+    if (inn.length < 10) return;
+
+    setIsSearchingDadataRequisites(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('dadata-company', {
+        body: { inn }
+      });
+
+      if (error) throw error;
+
+      if (data.success && data.company) {
+        const company = data.company;
+        setRequisites(prev => ({
+          ...prev,
+          inn: inn,
+          kpp: company.kpp || prev.kpp,
+          ogrn: company.ogrn || prev.ogrn,
+          legal_address: company.address || prev.legal_address,
+          actual_address: company.address || prev.actual_address,
+          director_name: company.management || prev.director_name,
+        }));
+        toast.success("Данные компании загружены");
+      } else {
+        toast.error(data.message || "Компания не найдена");
+      }
+    } catch (error) {
+      console.error("DaData search error:", error);
+      toast.error("Ошибка поиска по ИНН");
+    } finally {
+      setIsSearchingDadataRequisites(false);
+    }
+  };
   const [isSavingBranding, setIsSavingBranding] = useState(false);
 
   // Load theme and settings on mount
@@ -3653,12 +3689,34 @@ export default function OrganizationDashboard() {
                     <div className="grid md:grid-cols-3 gap-4">
                       <div className="space-y-2">
                         <Label>ИНН</Label>
-                        <Input
-                          placeholder="1234567890"
-                          className="rounded-xl"
-                          value={requisites.inn}
-                          onChange={(e) => setRequisites(prev => ({ ...prev, inn: e.target.value }))}
-                        />
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="1234567890"
+                            className="rounded-xl"
+                            value={requisites.inn}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              setRequisites(prev => ({ ...prev, inn: value }));
+                              if (value.length >= 10) {
+                                handleSearchRequisitesByInn(value);
+                              }
+                            }}
+                          />
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="rounded-xl shrink-0"
+                            onClick={() => handleSearchRequisitesByInn(requisites.inn)}
+                            disabled={requisites.inn.length < 10 || isSearchingDadataRequisites}
+                          >
+                            {isSearchingDadataRequisites ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Search className="w-4 h-4" />
+                            )}
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground">Введите ИНН для автозаполнения</p>
                       </div>
                       <div className="space-y-2">
                         <Label>КПП</Label>
