@@ -4,23 +4,6 @@ import { Link } from "react-router-dom";
 
 const plans = [
   {
-    name: "Стартовый",
-    price: "3 000",
-    period: "₽/мес",
-    description: "Идеально для начала работы с платформой",
-    icon: Zap,
-    popular: false,
-    glyph: "𓂀",
-    features: [
-      "До 50 учеников",
-      "До 5 курсов",
-      "Базовая аналитика",
-      "Email поддержка",
-      "Ссылки для регистрации",
-    ],
-    cta: "Начать бесплатно",
-  },
-  {
     name: "Оптимальный",
     price: "15 000",
     period: "₽/мес",
@@ -29,8 +12,8 @@ const plans = [
     popular: true,
     glyph: "𓃀",
     features: [
-      "Всё из тарифа «Стартовый»",
       "Неограниченное число учеников",
+      "Неограниченное число курсов",
       "Документооборот организации",
       "Мобильное приложение",
       "Расширенная аналитика",
@@ -40,7 +23,7 @@ const plans = [
   },
   {
     name: "Максимальный",
-    price: "25 000",
+    price: "35 000",
     period: "₽/мес",
     description: "Полный функционал для крупных организаций",
     icon: Crown,
@@ -93,7 +76,7 @@ export function Pricing() {
         </div>
 
         {/* Pricing cards */}
-        <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+        <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
           {plans.map((plan, index) => (
             <div
               key={plan.name}
