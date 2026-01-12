@@ -104,6 +104,7 @@ export function StudentDetailCard({
   const [uploadingType, setUploadingType] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedDocType, setSelectedDocType] = useState<string | null>(null);
+  const [previewDoc, setPreviewDoc] = useState<{ url: string; name: string; type: string } | null>(null);
 
   useEffect(() => {
     if (isOpen && student) {
@@ -230,6 +231,33 @@ export function StudentDetailCard({
     } catch (error) {
       console.error("Error deleting document:", error);
       toast.error("Ошибка удаления документа");
+    }
+  };
+
+  const handlePreviewDoc = (doc: IdentityDocumentRecord | DocumentRecord) => {
+    if (!doc.file_url) return;
+    const ext = doc.file_url.split('.').pop()?.toLowerCase() || '';
+    setPreviewDoc({
+      url: doc.file_url,
+      name: doc.name,
+      type: ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext) ? 'image' : 'pdf'
+    });
+  };
+
+  const handleDownloadDoc = async (url: string, name: string) => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+    } catch (error) {
+      console.error("Download error:", error);
+      window.open(url, '_blank');
     }
   };
 
@@ -561,25 +589,36 @@ export function StudentDetailCard({
                                   {item.uploadable && (
                                     <div className="mt-2 flex gap-1">
                                       {existingDoc ? (
-                                        <>
+                                        <div className="flex flex-wrap gap-1">
                                           <Button
                                             size="sm"
                                             variant="ghost"
                                             className="h-7 px-2 text-xs"
-                                            onClick={() => existingDoc.file_url && window.open(existingDoc.file_url, '_blank')}
+                                            onClick={() => handlePreviewDoc(existingDoc)}
+                                            title="Предпросмотр"
                                           >
                                             <Eye className="w-3 h-3 mr-1" />
-                                            Открыть
+                                            Просмотр
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            className="h-7 px-2 text-xs"
+                                            onClick={() => existingDoc.file_url && handleDownloadDoc(existingDoc.file_url, existingDoc.name)}
+                                            title="Скачать"
+                                          >
+                                            <Download className="w-3 h-3" />
                                           </Button>
                                           <Button
                                             size="sm"
                                             variant="ghost"
                                             className="h-7 px-2 text-xs text-destructive hover:text-destructive"
                                             onClick={() => handleDeleteIdentityDoc(existingDoc)}
+                                            title="Удалить"
                                           >
                                             <Trash2 className="w-3 h-3" />
                                           </Button>
-                                        </>
+                                        </div>
                                       ) : (
                                         <Button
                                           size="sm"
@@ -795,10 +834,78 @@ export function StudentDetailCard({
 
                   {/* Documents Tab */}
                   <TabsContent value="documents" className="m-0 space-y-4">
+                    {/* Identity Documents */}
+                    <div className="bg-card rounded-2xl border border-border p-6">
+                      <h3 className="font-semibold mb-4 flex items-center gap-2">
+                        <User className="w-5 h-5 text-primary" />
+                        Документы личности
+                      </h3>
+                      {identityDocs.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">
+                          <User className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                          <p>Нет загруженных документов личности</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {identityDocs.map((d) => (
+                            <div key={d.id} className="flex items-center justify-between p-3 rounded-xl bg-muted/50">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                                  {d.type === 'passport' || d.type === 'birth_certificate' ? (
+                                    <User className="w-5 h-5 text-primary" />
+                                  ) : d.type === 'snils' ? (
+                                    <Shield className="w-5 h-5 text-primary" />
+                                  ) : (
+                                    <GraduationCap className="w-5 h-5 text-primary" />
+                                  )}
+                                </div>
+                                <div>
+                                  <div className="font-medium">{d.name}</div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {formatDate(d.created_at)}
+                                  </div>
+                                </div>
+                              </div>
+                              {d.file_url && (
+                                <div className="flex gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handlePreviewDoc(d)}
+                                    title="Предпросмотр"
+                                  >
+                                    <Eye className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleDownloadDoc(d.file_url!, d.name)}
+                                    title="Скачать"
+                                  >
+                                    <Download className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="text-destructive hover:text-destructive"
+                                    onClick={() => handleDeleteIdentityDoc(d)}
+                                    title="Удалить"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Course Documents */}
                     <div className="bg-card rounded-2xl border border-border p-6">
                       <h3 className="font-semibold mb-4 flex items-center gap-2">
                         <FileText className="w-5 h-5 text-primary" />
-                        Документы слушателя
+                        Документы курсов
                       </h3>
                       {documents.length === 0 ? (
                         <div className="text-center py-8 text-muted-foreground">
@@ -821,11 +928,24 @@ export function StudentDetailCard({
                                 </div>
                               </div>
                               {d.file_url && (
-                                <Button variant="ghost" size="icon" asChild>
-                                  <a href={d.file_url} target="_blank" rel="noopener noreferrer">
+                                <div className="flex gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handlePreviewDoc(d)}
+                                    title="Предпросмотр"
+                                  >
+                                    <Eye className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleDownloadDoc(d.file_url!, d.name)}
+                                    title="Скачать"
+                                  >
                                     <Download className="w-4 h-4" />
-                                  </a>
-                                </Button>
+                                  </Button>
+                                </div>
                               )}
                             </div>
                           ))}
@@ -839,6 +959,45 @@ export function StudentDetailCard({
           </ScrollArea>
         </Tabs>
       </DialogContent>
+
+      {/* Preview Modal */}
+      {previewDoc && (
+        <Dialog open={!!previewDoc} onOpenChange={() => setPreviewDoc(null)}>
+          <DialogContent className="max-w-4xl max-h-[90vh] p-0 overflow-hidden">
+            <DialogHeader className="p-4 border-b border-border">
+              <DialogTitle className="flex items-center justify-between">
+                <span className="font-medium truncate">{previewDoc.name}</span>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-2"
+                    onClick={() => handleDownloadDoc(previewDoc.url, previewDoc.name)}
+                  >
+                    <Download className="w-4 h-4" />
+                    Скачать
+                  </Button>
+                </div>
+              </DialogTitle>
+            </DialogHeader>
+            <div className="flex items-center justify-center p-4 bg-muted/30 min-h-[60vh] max-h-[75vh] overflow-auto">
+              {previewDoc.type === 'image' ? (
+                <img
+                  src={previewDoc.url}
+                  alt={previewDoc.name}
+                  className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-lg"
+                />
+              ) : (
+                <iframe
+                  src={previewDoc.url}
+                  title={previewDoc.name}
+                  className="w-full h-[70vh] rounded-lg border-0"
+                />
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </Dialog>
   );
 }
