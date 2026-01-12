@@ -1515,29 +1515,30 @@ ${html.replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-display font-bold">Компании</h2>
-          <p className="text-muted-foreground">
-            Управление компаниями-клиентами организации
+          <h2 className="text-xl sm:text-2xl font-display font-bold">Компании</h2>
+          <p className="text-sm text-muted-foreground">
+            Управление компаниями-клиентами
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-2 sm:gap-3">
           <Button
             variant="outline"
-            className="rounded-xl gap-2"
+            className="rounded-xl gap-2 flex-1 sm:flex-none text-xs sm:text-sm"
             onClick={handleExport}
             disabled={companies.length === 0}
           >
             <FileSpreadsheet className="w-4 h-4" />
-            Экспорт
+            <span className="hidden sm:inline">Экспорт</span>
           </Button>
           <Button
-            className="btn-gradient rounded-xl gap-2"
+            className="btn-gradient rounded-xl gap-2 flex-1 sm:flex-none text-xs sm:text-sm"
             onClick={() => setShowCreateDialog(true)}
           >
             <Plus className="w-4 h-4" />
-            Добавить компанию
+            <span className="sm:hidden">Добавить</span>
+            <span className="hidden sm:inline">Добавить компанию</span>
           </Button>
         </div>
       </div>
