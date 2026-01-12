@@ -593,8 +593,24 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
     setShowActGenerator(true);
   };
   
-  const handleSaveInvoice = async (html: string, invoiceNumber: string, companyName: string, amount: number) => {
+  const handleSaveInvoice = async (html: string, invoiceNumber: string, companyName: string, amount: number, contractId?: string) => {
     if (!selectedCompanyForInvoice) return;
+
+    // Transliterate function to convert Cyrillic to Latin
+    const transliterate = (text: string): string => {
+      const cyrillicToLatin: { [key: string]: string } = {
+        'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo', 'ж': 'zh',
+        'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm', 'н': 'n', 'о': 'o',
+        'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u', 'ф': 'f', 'х': 'kh', 'ц': 'ts',
+        'ч': 'ch', 'ш': 'sh', 'щ': 'shch', 'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu',
+        'я': 'ya', 'А': 'A', 'Б': 'B', 'В': 'V', 'Г': 'G', 'Д': 'D', 'Е': 'E', 'Ё': 'Yo',
+        'Ж': 'Zh', 'З': 'Z', 'И': 'I', 'Й': 'Y', 'К': 'K', 'Л': 'L', 'М': 'M', 'Н': 'N',
+        'О': 'O', 'П': 'P', 'Р': 'R', 'С': 'S', 'Т': 'T', 'У': 'U', 'Ф': 'F', 'Х': 'Kh',
+        'Ц': 'Ts', 'Ч': 'Ch', 'Ш': 'Sh', 'Щ': 'Shch', 'Ъ': '', 'Ы': 'Y', 'Ь': '', 'Э': 'E',
+        'Ю': 'Yu', 'Я': 'Ya', ' ': '_', '-': '-'
+      };
+      return text.split('').map(char => cyrillicToLatin[char] || char).join('').replace(/[^a-zA-Z0-9_\-\.]/g, '');
+    };
 
     const docContent = `
 <!DOCTYPE html>
@@ -609,7 +625,8 @@ ${html.replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>
 </html>`;
 
     const blob = new Blob([docContent], { type: 'application/msword' });
-    const fileName = `invoice_${invoiceNumber}_${Date.now()}.doc`;
+    const safeInvoiceNumber = transliterate(invoiceNumber);
+    const fileName = `invoice_${safeInvoiceNumber}_${Date.now()}.doc`;
     const filePath = `${selectedCompanyForInvoice.id}/${fileName}`;
 
     const { error: uploadError } = await supabase.storage
@@ -633,6 +650,7 @@ ${html.replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>
         file_size: blob.size,
         amount: amount,
         is_paid: false,
+        contract_number: contractId ? invoiceNumber : null,
       });
 
     if (dbError) throw dbError;

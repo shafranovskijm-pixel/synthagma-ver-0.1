@@ -38,6 +38,13 @@ interface Course {
   duration: string | null;
 }
 
+interface Contract {
+  id: string;
+  name: string;
+  contract_number: string | null;
+  uploaded_at: string;
+}
+
 interface OrgRequisites {
   name: string;
   inn: string;
@@ -61,7 +68,7 @@ interface InvoiceGeneratorProps {
   onClose: () => void;
   orgRequisites: OrgRequisites;
   preselectedCompany?: Company | null;
-  onSave?: (html: string, invoiceNumber: string, companyName: string, amount: number) => Promise<void>;
+  onSave?: (html: string, invoiceNumber: string, companyName: string, amount: number, contractId?: string) => Promise<void>;
 }
 
 export function InvoiceGenerator({
@@ -74,12 +81,14 @@ export function InvoiceGenerator({
 }: InvoiceGeneratorProps) {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
+  const [contracts, setContracts] = useState<Contract[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>("");
   const [selectedCourseId, setSelectedCourseId] = useState<string>("");
+  const [selectedContractId, setSelectedContractId] = useState<string>("");
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [invoiceDate, setInvoiceDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [studentsCount, setStudentsCount] = useState("1");
@@ -97,6 +106,8 @@ export function InvoiceGenerator({
 
       setIsLoading(true);
       try {
+        const companyId = preselectedCompany?.id || selectedCompanyId;
+        
         const [companiesRes, coursesRes] = await Promise.all([
           supabase
             .from("companies")
@@ -117,8 +128,20 @@ export function InvoiceGenerator({
         setCompanies(companiesRes.data || []);
         setCourses(coursesRes.data || []);
 
+        // Fetch contracts for the selected company
+        if (companyId) {
+          const { data: contractsData } = await supabase
+            .from("company_documents")
+            .select("id, name, contract_number, uploaded_at")
+            .eq("company_id", companyId)
+            .eq("type", "contract")
+            .order("uploaded_at", { ascending: false });
+          
+          setContracts(contractsData || []);
+        }
+
         const today = new Date();
-        const invoiceNum = `СЧ-${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`;
+        const invoiceNum = `SCH-${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`;
         setInvoiceNumber(invoiceNum);
       } catch (error) {
         console.error("Error loading data:", error);
@@ -129,10 +152,27 @@ export function InvoiceGenerator({
     };
 
     loadData();
-  }, [organizationId, isOpen]);
+  }, [organizationId, isOpen, preselectedCompany?.id, selectedCompanyId]);
 
   const selectedCompany = preselectedCompany || companies.find((c) => c.id === selectedCompanyId);
   const selectedCourse = courses.find((c) => c.id === selectedCourseId);
+  const selectedContract = contracts.find((c) => c.id === selectedContractId);
+
+  // Extract contract number and date from selected contract
+  const getContractInfo = () => {
+    if (!selectedContract) return null;
+    
+    // Try to extract date from contract name (e.g. "Договор №1 от 15.01.2026.pdf")
+    const dateMatch = selectedContract.name.match(/от\s+(\d{1,2}[.\-\/]\d{1,2}[.\-\/]\d{2,4})/i);
+    let contractDate = dateMatch ? dateMatch[1] : format(new Date(selectedContract.uploaded_at), "dd.MM.yyyy");
+    
+    // Get contract number
+    const contractNum = selectedContract.contract_number || 
+      selectedContract.name.match(/№?\s*(\d+[-\/]?\d*)/)?.[1] || 
+      "б/н";
+    
+    return { number: contractNum, date: contractDate };
+  };
 
   const formatPrice = (value: string) => {
     const num = parseFloat(value);
@@ -321,6 +361,14 @@ export function InvoiceGenerator({
     </tfoot>
   </table>
 
+  ${(() => {
+    const contractInfo = getContractInfo();
+    return contractInfo ? `
+  <div class="info-row" style="margin-top: 15px;">
+    <span class="info-label">Основание:</span> Договор №${contractInfo.number} от ${contractInfo.date}
+  </div>` : '';
+  })()}
+
   <div style="margin-top: 20px;">
     <strong>Всего наименований ${studentsCount}, на сумму ${formatPrice(String(totalPrice))} руб.</strong><br>
     <strong>${numberToWords(totalPrice)} рублей 00 копеек</strong>
@@ -421,7 +469,7 @@ ${html.replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>
     try {
       const html = generateInvoiceHTML();
       const totalPrice = parseFloat(price) * parseInt(studentsCount);
-      await onSave(html, invoiceNumber, selectedCompany.name, totalPrice);
+      await onSave(html, invoiceNumber, selectedCompany.name, totalPrice, selectedContractId || undefined);
       toast.success("Счёт сохранён");
       onClose();
     } catch (error) {
@@ -502,6 +550,24 @@ ${html.replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>
                 </SelectContent>
               </Select>
             </div>
+
+            {contracts.length > 0 && (
+              <div className="space-y-2">
+                <Label>Договор-основание</Label>
+                <Select value={selectedContractId} onValueChange={setSelectedContractId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Выберите договор (опционально)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {contracts.map((contract) => (
+                      <SelectItem key={contract.id} value={contract.id}>
+                        {contract.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
