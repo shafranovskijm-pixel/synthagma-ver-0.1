@@ -356,8 +356,8 @@ const Login = () => {
 
           <p className="text-center text-muted-foreground mt-8">
             Нет аккаунта?{" "}
-            <Link to="/register" className="text-primary hover:underline font-medium">
-              Зарегистрироваться
+            <Link to="/register-organization" className="text-primary hover:underline font-medium">
+              Зарегистрировать организацию
             </Link>
           </p>
         </div>

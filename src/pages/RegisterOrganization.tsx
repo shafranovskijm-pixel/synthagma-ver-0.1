@@ -19,7 +19,7 @@ const RegisterOrganization = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   
-  const { user, loading } = useAuth();
+  const { user, loading, refreshUserRole } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -112,13 +112,19 @@ const RegisterOrganization = () => {
           console.error("Role upgrade error:", roleError);
           // Don't throw - user is created, just role upgrade failed
         }
+        
+        // Wait a bit for role to be set, then refresh
+        await new Promise(resolve => setTimeout(resolve, 500));
+        await refreshUserRole();
       }
 
       toast({
         title: "Успешно!",
         description: "Организация зарегистрирована. Добро пожаловать!",
       });
-      navigate("/organization");
+      
+      // Force reload to get fresh auth state
+      window.location.href = "/organization";
       
     } catch (error: any) {
       let errorMessage = error.message;
@@ -316,12 +322,6 @@ const RegisterOrganization = () => {
             </Link>
           </p>
           
-          <p className="text-center text-muted-foreground mt-4">
-            Хотите зарегистрироваться как ученик?{" "}
-            <Link to="/register" className="text-primary hover:underline font-medium">
-              Регистрация ученика
-            </Link>
-          </p>
         </div>
       </div>
     </div>
