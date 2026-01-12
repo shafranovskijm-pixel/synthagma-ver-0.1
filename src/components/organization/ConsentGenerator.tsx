@@ -5,8 +5,9 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { FileCheck, Eye, Download, Loader2, User, Building2, Search, CheckCircle2 } from "lucide-react";
+import { FileCheck, Eye, Download, Loader2, User, Building2, Search, CheckCircle2, Save, History, Trash2, FileText } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ConsentGeneratorProps {
   organizationId: string;
@@ -35,6 +36,20 @@ interface DadataCompany {
   status: string;
   type: string;
   opf: string;
+}
+
+interface SavedConsent {
+  id: string;
+  consent_type: "individual" | "organization";
+  full_name: string | null;
+  passport_data: string | null;
+  address: string | null;
+  company_name: string | null;
+  company_inn: string | null;
+  company_director: string | null;
+  company_address: string | null;
+  content_html: string;
+  created_at: string;
 }
 
 const DEFAULT_CONSENT_TEMPLATE = `СОГЛАСИЕ НА ОБРАБОТКУ ПЕРСОНАЛЬНЫХ ДАННЫХ
@@ -77,9 +92,16 @@ export function ConsentGenerator({
   onGenerated,
 }: ConsentGeneratorProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [showPreview, setShowPreview] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [consentType, setConsentType] = useState<"individual" | "organization">("individual");
+  
+  // Saved consents
+  const [savedConsents, setSavedConsents] = useState<SavedConsent[]>([]);
+  const [isLoadingConsents, setIsLoadingConsents] = useState(false);
+  const [selectedConsent, setSelectedConsent] = useState<SavedConsent | null>(null);
   
   // Individual fields
   const [fullName, setFullName] = useState("");
@@ -98,7 +120,26 @@ export function ConsentGenerator({
 
   useEffect(() => {
     loadOrganization();
+    loadSavedConsents();
   }, [organizationId]);
+
+  const loadSavedConsents = async () => {
+    setIsLoadingConsents(true);
+    try {
+      const { data, error } = await supabase
+        .from("consent_documents")
+        .select("*")
+        .eq("organization_id", organizationId)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setSavedConsents((data || []) as SavedConsent[]);
+    } catch (error) {
+      console.error("Error loading consents:", error);
+    } finally {
+      setIsLoadingConsents(false);
+    }
+  };
 
   const loadOrganization = async () => {
     try {
@@ -256,7 +297,7 @@ export function ConsentGenerator({
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     
-    toast.success("Согласие сохранено");
+    toast.success("Согласие скачано");
   };
 
   const handlePrint = () => {
@@ -267,6 +308,88 @@ export function ConsentGenerator({
       printWindow.document.close();
       printWindow.print();
     }
+  };
+
+  const handleSaveToDatabase = async () => {
+    const html = generateConsentHTML();
+    
+    setIsSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      const insertData = {
+        organization_id: organizationId,
+        consent_type: consentType,
+        full_name: consentType === "individual" ? fullName || null : null,
+        passport_data: consentType === "individual" ? passportData || null : null,
+        address: consentType === "individual" ? address || null : null,
+        company_name: consentType === "organization" ? companyName || null : null,
+        company_inn: consentType === "organization" ? companyInn || null : null,
+        company_director: consentType === "organization" ? companyDirector || null : null,
+        company_address: consentType === "organization" ? companyAddress || null : null,
+        content_html: html,
+        created_by: user?.id || null,
+      };
+
+      const { error } = await supabase
+        .from("consent_documents")
+        .insert(insertData);
+
+      if (error) throw error;
+
+      toast.success("Согласие сохранено в базу данных");
+      loadSavedConsents();
+      
+      // Clear form after saving
+      if (consentType === "individual") {
+        setFullName("");
+        setPassportData("");
+        setAddress("");
+      } else {
+        setCompanyName("");
+        setCompanyInn("");
+        setCompanyDirector("");
+        setCompanyAddress("");
+        setDadataCompanyInfo(null);
+      }
+    } catch (error) {
+      console.error("Error saving consent:", error);
+      toast.error("Ошибка сохранения согласия");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteConsent = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from("consent_documents")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+
+      toast.success("Согласие удалено");
+      loadSavedConsents();
+      setSelectedConsent(null);
+    } catch (error) {
+      console.error("Error deleting consent:", error);
+      toast.error("Ошибка удаления согласия");
+    }
+  };
+
+  const handleViewSavedConsent = (consent: SavedConsent) => {
+    setSelectedConsent(consent);
+  };
+
+  const formatConsentDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("ru-RU", {
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
   return (
@@ -379,7 +502,7 @@ export function ConsentGenerator({
         </TabsContent>
       </Tabs>
 
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap">
         <Button
           variant="outline"
           className="rounded-xl gap-2 flex-1"
@@ -389,13 +512,96 @@ export function ConsentGenerator({
           Предпросмотр
         </Button>
         <Button
-          className="btn-gradient rounded-xl gap-2 flex-1"
+          variant="outline"
+          className="rounded-xl gap-2 flex-1"
           onClick={handleDownload}
         >
           <Download className="w-4 h-4" />
           Скачать
         </Button>
+        <Button
+          className="btn-gradient rounded-xl gap-2 flex-1"
+          onClick={handleSaveToDatabase}
+          disabled={isSaving}
+        >
+          {isSaving ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Save className="w-4 h-4" />
+          )}
+          Сохранить
+        </Button>
       </div>
+
+      {/* Saved Consents History */}
+      {savedConsents.length > 0 && (
+        <div className="border-t border-border pt-4">
+          <Button
+            variant="ghost"
+            className="w-full justify-between rounded-xl"
+            onClick={() => setShowHistory(!showHistory)}
+          >
+            <span className="flex items-center gap-2">
+              <History className="w-4 h-4" />
+              Сохранённые согласия ({savedConsents.length})
+            </span>
+            <span className={`transition-transform ${showHistory ? "rotate-180" : ""}`}>▼</span>
+          </Button>
+          
+          {showHistory && (
+            <ScrollArea className="h-[200px] mt-2 rounded-xl border border-border">
+              <div className="p-2 space-y-2">
+                {savedConsents.map((consent) => (
+                  <div
+                    key={consent.id}
+                    className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                        consent.consent_type === "individual" ? "bg-primary/10" : "bg-accent/10"
+                      }`}>
+                        {consent.consent_type === "individual" ? (
+                          <User className="w-4 h-4 text-primary" />
+                        ) : (
+                          <Building2 className="w-4 h-4 text-accent" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">
+                          {consent.consent_type === "individual" 
+                            ? consent.full_name || "Физ. лицо"
+                            : consent.company_name || "Организация"}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatConsentDate(consent.created_at)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={() => handleViewSavedConsent(consent)}
+                      >
+                        <Eye className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                        onClick={() => handleDeleteConsent(consent.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          )}
+        </div>
+      )}
 
       {/* Preview Dialog */}
       <Dialog open={showPreview} onOpenChange={setShowPreview}>
@@ -422,6 +628,63 @@ export function ConsentGenerator({
               Печать
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Saved Consent Dialog */}
+      <Dialog open={!!selectedConsent} onOpenChange={(open) => !open && setSelectedConsent(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-display flex items-center gap-2">
+              <FileText className="w-5 h-5" />
+              Сохранённое согласие
+              {selectedConsent && (
+                <span className="text-sm font-normal text-muted-foreground ml-2">
+                  от {formatConsentDate(selectedConsent.created_at)}
+                </span>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedConsent && (
+            <>
+              <div className="bg-white p-8 rounded-xl border">
+                <div
+                  className="prose prose-sm max-w-none"
+                  style={{ fontFamily: "'Times New Roman', serif" }}
+                  dangerouslySetInnerHTML={{ __html: selectedConsent.content_html }}
+                />
+              </div>
+              <div className="flex justify-between gap-2 pt-4">
+                <Button
+                  variant="destructive"
+                  onClick={() => handleDeleteConsent(selectedConsent.id)}
+                  className="rounded-xl gap-2"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Удалить
+                </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setSelectedConsent(null)} className="rounded-xl">
+                    Закрыть
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      const printWindow = window.open("", "_blank");
+                      if (printWindow && selectedConsent) {
+                        printWindow.document.write(selectedConsent.content_html);
+                        printWindow.document.close();
+                        printWindow.print();
+                      }
+                    }}
+                    className="btn-gradient rounded-xl gap-2"
+                  >
+                    <Download className="w-4 h-4" />
+                    Печать
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </div>
