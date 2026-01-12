@@ -140,8 +140,8 @@ export function Hero() {
                 </span>
               </Button>
             </Link>
-            <Button size="lg" variant="outline" className="rounded-2xl px-10 h-16 text-lg gap-3 border-2 border-accent/40 group hover:bg-accent/10 hover:border-accent transition-all">
-              <Play className="w-5 h-5 group-hover:scale-110 transition-transform text-accent" />
+            <Button size="lg" variant="outline" className="rounded-2xl px-10 h-16 text-lg gap-3 border-2 border-primary/40 text-foreground group hover:bg-primary/10 hover:border-primary hover:text-foreground transition-all">
+              <Play className="w-5 h-5 group-hover:scale-110 transition-transform text-primary" />
               Смотреть демо
             </Button>
           </div>
