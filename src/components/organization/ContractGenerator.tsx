@@ -71,7 +71,7 @@ interface ContractGeneratorProps {
   onClose: () => void;
   orgRequisites: OrgRequisites;
   preselectedCompany?: Company | null;
-  onSave?: (html: string, contractNumber: string, companyName: string) => Promise<void>;
+  onSave?: (html: string, contractNumber: string, companyName: string, courseId: string, amount: number, studentsCount: number, contractDate: string) => Promise<void>;
 }
 
 export function ContractGenerator({
@@ -444,7 +444,8 @@ ${html.replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>
     setIsSaving(true);
     try {
       const html = generateContractHTML();
-      await onSave(html, contractNumber, selectedCompany.name);
+      const totalAmount = parseFloat(price) * parseInt(studentsCount);
+      await onSave(html, contractNumber, selectedCompany.name, selectedCourseId, totalAmount, parseInt(studentsCount), contractDate);
       toast.success("Договор сохранён");
       onClose();
     } catch (error) {

@@ -98,7 +98,9 @@ export type Database = {
         Row: {
           amount: number | null
           company_id: string
+          contract_date: string | null
           contract_number: string | null
+          course_id: string | null
           file_path: string | null
           file_size: number | null
           file_url: string | null
@@ -106,6 +108,7 @@ export type Database = {
           is_paid: boolean | null
           name: string
           paid_at: string | null
+          students_count: number | null
           type: string
           uploaded_at: string
           uploaded_by: string | null
@@ -113,7 +116,9 @@ export type Database = {
         Insert: {
           amount?: number | null
           company_id: string
+          contract_date?: string | null
           contract_number?: string | null
+          course_id?: string | null
           file_path?: string | null
           file_size?: number | null
           file_url?: string | null
@@ -121,6 +126,7 @@ export type Database = {
           is_paid?: boolean | null
           name: string
           paid_at?: string | null
+          students_count?: number | null
           type: string
           uploaded_at?: string
           uploaded_by?: string | null
@@ -128,7 +134,9 @@ export type Database = {
         Update: {
           amount?: number | null
           company_id?: string
+          contract_date?: string | null
           contract_number?: string | null
+          course_id?: string | null
           file_path?: string | null
           file_size?: number | null
           file_url?: string | null
@@ -136,6 +144,7 @@ export type Database = {
           is_paid?: boolean | null
           name?: string
           paid_at?: string | null
+          students_count?: number | null
           type?: string
           uploaded_at?: string
           uploaded_by?: string | null
@@ -146,6 +155,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_documents_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
             referencedColumns: ["id"]
           },
         ]

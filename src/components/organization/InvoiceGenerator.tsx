@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Receipt, Download, Loader2, Printer, Save } from "lucide-react";
+import { Receipt, Download, Loader2, Printer, Save, FileText, ArrowRight } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 
@@ -43,6 +43,10 @@ interface Contract {
   name: string;
   contract_number: string | null;
   uploaded_at: string;
+  amount: number | null;
+  students_count: number | null;
+  contract_date: string | null;
+  course_id: string | null;
 }
 
 interface OrgRequisites {
@@ -85,6 +89,9 @@ export function InvoiceGenerator({
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Mode selection: null = choosing, 'contract' = based on contract, 'manual' = manual entry
+  const [mode, setMode] = useState<'choosing' | 'contract' | 'manual' | null>(null);
 
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>("");
   const [selectedCourseId, setSelectedCourseId] = useState<string>("");
@@ -99,6 +106,16 @@ export function InvoiceGenerator({
       setSelectedCompanyId(preselectedCompany.id);
     }
   }, [preselectedCompany, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setMode(null);
+      setSelectedContractId("");
+      setSelectedCourseId("");
+      setPrice("");
+      setStudentsCount("1");
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -132,12 +149,19 @@ export function InvoiceGenerator({
         if (companyId) {
           const { data: contractsData } = await supabase
             .from("company_documents")
-            .select("id, name, contract_number, uploaded_at")
+            .select("id, name, contract_number, uploaded_at, amount, students_count, contract_date, course_id")
             .eq("company_id", companyId)
             .eq("type", "contract")
             .order("uploaded_at", { ascending: false });
           
           setContracts(contractsData || []);
+          
+          // If no contracts, go directly to manual mode
+          if (!contractsData || contractsData.length === 0) {
+            setMode('manual');
+          }
+        } else {
+          setMode('manual');
         }
 
         const today = new Date();
@@ -154,6 +178,27 @@ export function InvoiceGenerator({
     loadData();
   }, [organizationId, isOpen, preselectedCompany?.id, selectedCompanyId]);
 
+  // When contract is selected, load its data
+  useEffect(() => {
+    if (selectedContractId && mode === 'contract') {
+      const contract = contracts.find(c => c.id === selectedContractId);
+      if (contract) {
+        if (contract.course_id) {
+          setSelectedCourseId(contract.course_id);
+        }
+        if (contract.amount) {
+          // Calculate price per student
+          const studCount = contract.students_count || 1;
+          const pricePerStudent = contract.amount / studCount;
+          setPrice(String(pricePerStudent));
+        }
+        if (contract.students_count) {
+          setStudentsCount(String(contract.students_count));
+        }
+      }
+    }
+  }, [selectedContractId, mode, contracts]);
+
   const selectedCompany = preselectedCompany || companies.find((c) => c.id === selectedCompanyId);
   const selectedCourse = courses.find((c) => c.id === selectedCourseId);
   const selectedContract = contracts.find((c) => c.id === selectedContractId);
@@ -162,9 +207,15 @@ export function InvoiceGenerator({
   const getContractInfo = () => {
     if (!selectedContract) return null;
     
-    // Try to extract date from contract name (e.g. "Договор №1 от 15.01.2026.pdf")
-    const dateMatch = selectedContract.name.match(/от\s+(\d{1,2}[.\-\/]\d{1,2}[.\-\/]\d{2,4})/i);
-    let contractDate = dateMatch ? dateMatch[1] : format(new Date(selectedContract.uploaded_at), "dd.MM.yyyy");
+    // Use contract_date if available, otherwise parse from name or use uploaded_at
+    let contractDate = selectedContract.contract_date 
+      ? format(new Date(selectedContract.contract_date), "dd.MM.yyyy")
+      : null;
+    
+    if (!contractDate) {
+      const dateMatch = selectedContract.name.match(/от\s+(\d{1,2}[.\-\/]\d{1,2}[.\-\/]\d{2,4})/i);
+      contractDate = dateMatch ? dateMatch[1] : format(new Date(selectedContract.uploaded_at), "dd.MM.yyyy");
+    }
     
     // Get contract number
     const contractNum = selectedContract.contract_number || 
@@ -246,6 +297,7 @@ export function InvoiceGenerator({
     const priceNum = parseFloat(price) || 0;
     const totalPrice = priceNum * parseInt(studentsCount);
     const dateFormatted = format(new Date(invoiceDate), "d MMMM yyyy г.", { locale: ru });
+    const contractInfo = getContractInfo();
 
     return `
 <!DOCTYPE html>
@@ -323,6 +375,10 @@ export function InvoiceGenerator({
   <div class="info-row">
     <span class="info-label">Покупатель:</span> ${selectedCompany.name}${selectedCompany.inn ? `, ИНН ${selectedCompany.inn}` : ''}${selectedCompany.kpp ? `, КПП ${selectedCompany.kpp}` : ''}${selectedCompany.address ? `, ${selectedCompany.address}` : ''}
   </div>
+  ${contractInfo ? `
+  <div class="info-row">
+    <span class="info-label">Основание:</span> Договор №${contractInfo.number} от ${contractInfo.date}
+  </div>` : ''}
 
   <table class="items-table">
     <thead>
@@ -360,14 +416,6 @@ export function InvoiceGenerator({
       </tr>
     </tfoot>
   </table>
-
-  ${(() => {
-    const contractInfo = getContractInfo();
-    return contractInfo ? `
-  <div class="info-row" style="margin-top: 15px;">
-    <span class="info-label">Основание:</span> Договор №${contractInfo.number} от ${contractInfo.date}
-  </div>` : '';
-  })()}
 
   <div style="margin-top: 20px;">
     <strong>Всего наименований ${studentsCount}, на сумму ${formatPrice(String(totalPrice))} руб.</strong><br>
@@ -480,6 +528,200 @@ ${html.replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>
     }
   };
 
+  // Mode selection screen
+  const renderModeSelection = () => (
+    <div className="space-y-4 py-4">
+      <p className="text-center text-muted-foreground">
+        Как вы хотите создать счёт?
+      </p>
+      <div className="grid gap-3">
+        <Button
+          variant="outline"
+          className="h-auto py-4 px-4 justify-start gap-4"
+          onClick={() => setMode('contract')}
+        >
+          <FileText className="w-8 h-8 text-primary" />
+          <div className="text-left">
+            <p className="font-medium">На основании договора</p>
+            <p className="text-sm text-muted-foreground">
+              Данные будут загружены из выбранного договора
+            </p>
+          </div>
+          <ArrowRight className="w-5 h-5 ml-auto text-muted-foreground" />
+        </Button>
+        <Button
+          variant="outline"
+          className="h-auto py-4 px-4 justify-start gap-4"
+          onClick={() => setMode('manual')}
+        >
+          <Receipt className="w-8 h-8 text-primary" />
+          <div className="text-left">
+            <p className="font-medium">Ввести вручную</p>
+            <p className="text-sm text-muted-foreground">
+              Заполнить все данные самостоятельно
+            </p>
+          </div>
+          <ArrowRight className="w-5 h-5 ml-auto text-muted-foreground" />
+        </Button>
+      </div>
+    </div>
+  );
+
+  // Main form
+  const renderForm = () => (
+    <div className="space-y-4">
+      {mode === 'contract' && (
+        <div className="space-y-2">
+          <Label>Договор-основание</Label>
+          <Select value={selectedContractId} onValueChange={setSelectedContractId}>
+            <SelectTrigger>
+              <SelectValue placeholder="Выберите договор" />
+            </SelectTrigger>
+            <SelectContent>
+              {contracts.map((contract) => (
+                <SelectItem key={contract.id} value={contract.id}>
+                  {contract.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {selectedContract && (
+            <p className="text-xs text-muted-foreground">
+              Данные из договора подгружены автоматически
+            </p>
+          )}
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Номер счёта</Label>
+          <Input
+            value={invoiceNumber}
+            onChange={(e) => setInvoiceNumber(e.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Дата</Label>
+          <Input
+            type="date"
+            value={invoiceDate}
+            onChange={(e) => setInvoiceDate(e.target.value)}
+          />
+        </div>
+      </div>
+
+      {!preselectedCompany && (
+        <div className="space-y-2">
+          <Label>Компания-заказчик</Label>
+          <Select value={selectedCompanyId} onValueChange={setSelectedCompanyId}>
+            <SelectTrigger>
+              <SelectValue placeholder="Выберите компанию" />
+            </SelectTrigger>
+            <SelectContent>
+              {companies.map((company) => (
+                <SelectItem key={company.id} value={company.id}>
+                  {company.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      <div className="space-y-2">
+        <Label>Курс</Label>
+        <Select value={selectedCourseId} onValueChange={setSelectedCourseId}>
+          <SelectTrigger>
+            <SelectValue placeholder="Выберите курс" />
+          </SelectTrigger>
+          <SelectContent>
+            {courses.map((course) => (
+              <SelectItem key={course.id} value={course.id}>
+                {course.title}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Кол-во учеников</Label>
+          <Input
+            type="number"
+            min="1"
+            value={studentsCount}
+            onChange={(e) => setStudentsCount(e.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Цена за 1 ученика (₽)</Label>
+          <Input
+            type="number"
+            min="0"
+            step="0.01"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            placeholder="0.00"
+          />
+        </div>
+      </div>
+
+      {price && studentsCount && (
+        <div className="bg-secondary/50 rounded-lg p-3 text-center">
+          <span className="text-sm text-muted-foreground">Итого: </span>
+          <span className="font-bold text-lg">
+            {formatPrice(String(parseFloat(price || "0") * parseInt(studentsCount || "1")))} ₽
+          </span>
+        </div>
+      )}
+
+      <div className="flex gap-2 pt-4">
+        {mode === 'contract' && (
+          <Button
+            variant="ghost"
+            onClick={() => {
+              setMode('choosing');
+              setSelectedContractId("");
+            }}
+            className="px-3"
+          >
+            Назад
+          </Button>
+        )}
+        <Button
+          variant="outline"
+          onClick={handleDownloadDOC}
+          disabled={!selectedCourseId || !price}
+          className="flex-1"
+        >
+          <Download className="w-4 h-4 mr-2" />
+          Скачать DOC
+        </Button>
+        <Button
+          variant="outline"
+          onClick={handleGenerate}
+          disabled={isGenerating || !selectedCourseId || !price}
+          className="flex-1"
+        >
+          {isGenerating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Printer className="w-4 h-4 mr-2" />}
+          Печать
+        </Button>
+        {onSave && (
+          <Button
+            onClick={handleSave}
+            disabled={isSaving || !selectedCourseId || !price}
+            className="flex-1"
+          >
+            {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+            Сохранить
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-lg">
@@ -489,7 +731,9 @@ ${html.replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>
             Создание счёта
           </DialogTitle>
           <DialogDescription>
-            Заполните данные для формирования счёта на оплату
+            {mode === 'choosing' || mode === null 
+              ? "Выберите способ создания счёта" 
+              : "Заполните данные для формирования счёта на оплату"}
           </DialogDescription>
         </DialogHeader>
 
@@ -498,140 +742,10 @@ ${html.replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>
             <Loader2 className="w-6 h-6 animate-spin" />
           </div>
         ) : (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Номер счёта</Label>
-                <Input
-                  value={invoiceNumber}
-                  onChange={(e) => setInvoiceNumber(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Дата</Label>
-                <Input
-                  type="date"
-                  value={invoiceDate}
-                  onChange={(e) => setInvoiceDate(e.target.value)}
-                />
-              </div>
-            </div>
-
-            {!preselectedCompany && (
-              <div className="space-y-2">
-                <Label>Компания-заказчик</Label>
-                <Select value={selectedCompanyId} onValueChange={setSelectedCompanyId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Выберите компанию" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {companies.map((company) => (
-                      <SelectItem key={company.id} value={company.id}>
-                        {company.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <Label>Курс</Label>
-              <Select value={selectedCourseId} onValueChange={setSelectedCourseId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Выберите курс" />
-                </SelectTrigger>
-                <SelectContent>
-                  {courses.map((course) => (
-                    <SelectItem key={course.id} value={course.id}>
-                      {course.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {contracts.length > 0 && (
-              <div className="space-y-2">
-                <Label>Договор-основание</Label>
-                <Select value={selectedContractId} onValueChange={setSelectedContractId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Выберите договор (опционально)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {contracts.map((contract) => (
-                      <SelectItem key={contract.id} value={contract.id}>
-                        {contract.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Кол-во учеников</Label>
-                <Input
-                  type="number"
-                  min="1"
-                  value={studentsCount}
-                  onChange={(e) => setStudentsCount(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Цена за 1 ученика (₽)</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  placeholder="0.00"
-                />
-              </div>
-            </div>
-
-            {price && studentsCount && (
-              <div className="bg-secondary/50 rounded-lg p-3 text-center">
-                <span className="text-sm text-muted-foreground">Итого: </span>
-                <span className="font-bold text-lg">
-                  {formatPrice(String(parseFloat(price || "0") * parseInt(studentsCount || "1")))} ₽
-                </span>
-              </div>
-            )}
-
-            <div className="flex gap-2 pt-4">
-              <Button
-                variant="outline"
-                onClick={handleDownloadDOC}
-                disabled={!selectedCourseId || !price}
-                className="flex-1"
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Скачать DOC
-              </Button>
-              <Button
-                variant="outline"
-                onClick={handleGenerate}
-                disabled={isGenerating || !selectedCourseId || !price}
-                className="flex-1"
-              >
-                {isGenerating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Printer className="w-4 h-4 mr-2" />}
-                Печать
-              </Button>
-              {onSave && (
-                <Button
-                  onClick={handleSave}
-                  disabled={isSaving || !selectedCourseId || !price}
-                  className="flex-1"
-                >
-                  {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-                  Сохранить
-                </Button>
-              )}
-            </div>
-          </div>
+          <>
+            {(mode === 'choosing' || mode === null) && contracts.length > 0 && renderModeSelection()}
+            {(mode === 'contract' || mode === 'manual') && renderForm()}
+          </>
         )}
       </DialogContent>
     </Dialog>
