@@ -33,11 +33,11 @@ export function Footer() {
                 </div>
                 <span>support@sintagma.ru</span>
               </a>
-              <a href="tel:88001234567" className="flex items-center gap-3 hover:text-background transition-colors group">
+              <a href="tel:89147213424" className="flex items-center gap-3 hover:text-background transition-colors group">
                 <div className="w-10 h-10 rounded-xl bg-background/10 flex items-center justify-center group-hover:bg-background/20 transition-colors">
                   <Phone className="w-5 h-5" />
                 </div>
-                <span>8 (800) 123-45-67</span>
+                <span>8 (914) 721-34-24</span>
               </a>
             </div>
           </div>
