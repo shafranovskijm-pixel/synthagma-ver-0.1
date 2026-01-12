@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 import { supabase } from "@/integrations/supabase/client";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Button } from "@/components/ui/button";
@@ -719,6 +720,34 @@ const CourseLearning = () => {
     return lessonProgress.some(p => p.lesson_id === lessonId && p.completed);
   };
 
+  // Swipe gesture handlers with haptic feedback
+  const triggerHapticFeedback = useCallback(() => {
+    if (navigator.vibrate) {
+      navigator.vibrate(10);
+    }
+  }, []);
+
+  const handleSwipeLeft = useCallback(() => {
+    if (currentLessonIndex < lessons.length - 1) {
+      triggerHapticFeedback();
+      goToNextLesson();
+    }
+  }, [currentLessonIndex, lessons.length, triggerHapticFeedback]);
+
+  const handleSwipeRight = useCallback(() => {
+    if (currentLessonIndex > 0) {
+      triggerHapticFeedback();
+      goToPrevLesson();
+    }
+  }, [currentLessonIndex, triggerHapticFeedback]);
+
+  const swipeRef = useSwipeGesture<HTMLDivElement>({
+    onSwipeLeft: isMobile ? handleSwipeLeft : undefined,
+    onSwipeRight: isMobile ? handleSwipeRight : undefined,
+    threshold: 60,
+    minSwipeDistance: 40,
+  });
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -929,11 +958,12 @@ const CourseLearning = () => {
           </div>
         </header>
 
-        {/* Lesson content with animation */}
+        {/* Lesson content with animation and swipe gestures */}
         <ScrollArea className="flex-1" ref={contentRef}>
           <div 
+            ref={swipeRef}
             className={cn(
-              "max-w-4xl mx-auto transition-all duration-300",
+              "max-w-4xl mx-auto transition-all duration-300 min-h-full",
               isMobile ? "p-4" : "p-8",
               isTransitioning ? "opacity-0 translate-y-4" : "opacity-100 translate-y-0"
             )}
