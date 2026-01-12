@@ -110,8 +110,19 @@ export default function StudentDashboard() {
   useEffect(() => {
     if (user) {
       loadData();
+      // Track user visit for return achievements
+      trackUserVisit();
     }
   }, [user]);
+
+  const trackUserVisit = async () => {
+    if (!user) return;
+    try {
+      await supabase.rpc('track_user_visit', { p_user_id: user.id });
+    } catch (error) {
+      console.error("Error tracking visit:", error);
+    }
+  };
 
   const loadData = async () => {
     if (!user) return;

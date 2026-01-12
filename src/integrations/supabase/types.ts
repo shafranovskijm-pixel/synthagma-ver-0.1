@@ -1050,6 +1050,7 @@ export type Database = {
           full_name: string | null
           generated_password: string | null
           id: string
+          last_visit_at: string | null
           login: string | null
           organization_id: string | null
           updated_at: string
@@ -1063,6 +1064,7 @@ export type Database = {
           full_name?: string | null
           generated_password?: string | null
           id?: string
+          last_visit_at?: string | null
           login?: string | null
           organization_id?: string | null
           updated_at?: string
@@ -1076,6 +1078,7 @@ export type Database = {
           full_name?: string | null
           generated_password?: string | null
           id?: string
+          last_visit_at?: string | null
           login?: string | null
           organization_id?: string | null
           updated_at?: string
@@ -1658,6 +1661,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      track_user_visit: { Args: { p_user_id: string }; Returns: undefined }
       upgrade_to_organization_role: {
         Args: { p_organization_id: string; p_user_id: string }
         Returns: undefined
