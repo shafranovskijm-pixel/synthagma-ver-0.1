@@ -7,6 +7,7 @@ const testimonials = [
     company: "ООО «Профессионал»",
     content: "Платформа помогла нам полностью автоматизировать обучение сотрудников. Особенно впечатлила функция ИИ-генерации курсов.",
     rating: 5,
+    glyph: "𓂀",
   },
   {
     name: "Елена Смирнова",
@@ -14,6 +15,7 @@ const testimonials = [
     company: "ПАО «ТехноГрупп»",
     content: "Выгрузка в ФИС ФРДО экономит нам десятки часов работы ежемесячно. Рекомендую всем, кто работает с документооборотом.",
     rating: 5,
+    glyph: "𓃀",
   },
   {
     name: "Дмитрий Козлов",
@@ -21,28 +23,41 @@ const testimonials = [
     company: "Автошкола «Стандарт»",
     content: "Перешли на Синтагму с другой платформы — разница колоссальная. Ученики в восторге от ИИ-помощника.",
     rating: 5,
+    glyph: "𓅀",
   },
 ];
 
 export function Testimonials() {
   return (
-    <section className="py-32 bg-gradient-to-b from-secondary/30 to-background relative overflow-hidden">
-      {/* Background */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-primary/5 rounded-full blur-3xl" />
+    <section className="py-32 relative overflow-hidden bg-gradient-to-b from-background via-secondary/30 to-background">
+      {/* Decorative elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <span className="hieroglyphic absolute top-16 left-12 text-5xl text-accent/20 animate-pulse-soft">𓉀</span>
+        <span className="hieroglyphic absolute top-1/2 right-16 text-4xl text-primary/15 animate-pulse-soft delay-200">𓊀</span>
+        <span className="hieroglyphic absolute bottom-24 left-1/4 text-6xl text-accent/15 animate-pulse-soft delay-300">𓈀</span>
+        <span className="greek-text absolute bottom-1/3 left-8 text-sm text-primary/20 rotate-90">ΜΑΡΤΥΡΙΑ</span>
+      </div>
+      
+      {/* Cold nitrogen gradient orb */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-gradient-to-br from-primary/10 via-[hsl(185_100%_45%/0.08)] to-transparent rounded-full blur-3xl" />
 
       <div className="container mx-auto px-6 relative z-10">
         {/* Section header */}
         <div className="text-center mb-16">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-sigma-green/10 border border-sigma-green/20 mb-6">
-            <Star className="w-4 h-4 text-sigma-green fill-sigma-green" />
-            <span className="text-sm font-medium text-sigma-green">Отзывы клиентов</span>
+          <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-gradient-to-r from-accent/15 to-primary/10 border border-accent/30 mb-8 backdrop-blur-sm">
+            <Star className="w-5 h-5 text-accent fill-accent" />
+            <span className="text-sm font-semibold text-foreground">Отзывы клиентов</span>
+            <span className="hieroglyphic text-accent text-lg">𓇀</span>
           </div>
           <h2 className="font-display text-4xl md:text-5xl font-bold mb-4">
-            Что говорят <span className="gradient-text">наши клиенты</span>
+            Что говорят <span className="gradient-text-gold">наши клиенты</span>
           </h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
             Более 10 организаций уже получили лицензию с нашей платформой
           </p>
+          
+          {/* Egyptian border decoration */}
+          <div className="egyptian-border w-32 mx-auto mt-8 rounded-full" />
         </div>
 
         {/* Testimonials grid */}
@@ -50,16 +65,23 @@ export function Testimonials() {
           {testimonials.map((testimonial, index) => (
             <div
               key={testimonial.name}
-              className="glass-card rounded-3xl p-8 hover-lift animate-slide-up"
+              className="relative bg-card/80 backdrop-blur-sm rounded-3xl p-8 border border-primary/20 hover:border-accent/40 shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-2 animate-slide-up overflow-hidden group"
               style={{ animationDelay: `${index * 100}ms` }}
             >
-              {/* Quote icon */}
-              <Quote className="w-10 h-10 text-primary/20 mb-4" />
+              {/* Hieroglyph watermark */}
+              <span className="hieroglyphic absolute top-4 right-4 text-4xl text-accent/20 group-hover:text-accent/40 transition-colors">
+                {testimonial.glyph}
+              </span>
+              
+              {/* Quote icon with gradient */}
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary/20 to-accent/10 flex items-center justify-center mb-4">
+                <Quote className="w-6 h-6 text-primary" />
+              </div>
 
-              {/* Rating */}
+              {/* Rating - gold stars */}
               <div className="flex gap-1 mb-4">
                 {Array.from({ length: testimonial.rating }).map((_, i) => (
-                  <Star key={i} className="w-5 h-5 text-sigma-orange fill-sigma-orange" />
+                  <Star key={i} className="w-5 h-5 text-accent fill-accent" />
                 ))}
               </div>
 
@@ -70,8 +92,8 @@ export function Testimonials() {
 
               {/* Author */}
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-                  <span className="text-white font-bold text-lg">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary via-[hsl(185_100%_45%)] to-accent flex items-center justify-center sigma-glow">
+                  <span className="text-foreground font-bold text-lg">
                     {testimonial.name.charAt(0)}
                   </span>
                 </div>
@@ -81,8 +103,16 @@ export function Testimonials() {
                   <div className="text-sm text-primary">{testimonial.company}</div>
                 </div>
               </div>
+              
+              {/* Gold bottom accent on hover */}
+              <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-accent/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
           ))}
+        </div>
+        
+        {/* Greek text decoration */}
+        <div className="greek-text text-center mt-12 text-primary/15 text-xs tracking-[0.5em]">
+          ΔΟΞΑ • ΕΠΙΤΥΧΙΑ • ΑΡΙΣΤΕΙΑ
         </div>
       </div>
     </section>
