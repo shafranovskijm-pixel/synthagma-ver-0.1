@@ -27,6 +27,7 @@ import {
   Calendar,
   Users,
   Printer,
+  Save,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -67,6 +68,8 @@ interface ContractGeneratorProps {
   isOpen: boolean;
   onClose: () => void;
   orgRequisites: OrgRequisites;
+  preselectedCompany?: Company | null;
+  onSave?: (html: string, contractNumber: string, companyName: string) => Promise<void>;
 }
 
 export function ContractGenerator({
@@ -74,11 +77,14 @@ export function ContractGenerator({
   isOpen,
   onClose,
   orgRequisites,
+  preselectedCompany,
+  onSave,
 }: ContractGeneratorProps) {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Form state
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>("");
@@ -88,6 +94,13 @@ export function ContractGenerator({
   const [studentsCount, setStudentsCount] = useState("1");
   const [price, setPrice] = useState("");
   const [additionalTerms, setAdditionalTerms] = useState("");
+
+  // Set preselected company when opened
+  useEffect(() => {
+    if (preselectedCompany && isOpen) {
+      setSelectedCompanyId(preselectedCompany.id);
+    }
+  }, [preselectedCompany, isOpen]);
 
   // Load companies and courses
   useEffect(() => {
@@ -131,7 +144,7 @@ export function ContractGenerator({
     loadData();
   }, [organizationId, isOpen]);
 
-  const selectedCompany = companies.find((c) => c.id === selectedCompanyId);
+  const selectedCompany = preselectedCompany || companies.find((c) => c.id === selectedCompanyId);
   const selectedCourse = courses.find((c) => c.id === selectedCourseId);
 
   const formatPrice = (value: string) => {
@@ -362,24 +375,78 @@ export function ContractGenerator({
     }
   };
 
-  const handleDownloadHTML = () => {
-    if (!selectedCompanyId || !selectedCourseId) {
+  const handleDownloadDOC = () => {
+    if (!selectedCompany || !selectedCourseId) {
       toast.error("Заполните все обязательные поля");
       return;
     }
 
     const html = generateContractHTML();
-    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    
+    // Create DOC-compatible HTML with proper headers
+    const docContent = `
+<!DOCTYPE html>
+<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head>
+<meta charset="utf-8">
+<meta name="ProgId" content="Word.Document">
+<meta name="Generator" content="Microsoft Word 15">
+<title>Договор ${contractNumber}</title>
+<!--[if gte mso 9]>
+<xml>
+<w:WordDocument>
+<w:View>Print</w:View>
+<w:Zoom>100</w:Zoom>
+<w:DoNotOptimizeForBrowser/>
+</w:WordDocument>
+</xml>
+<![endif]-->
+<style>
+@page { size: A4; margin: 2cm; }
+body { font-family: 'Times New Roman', Times, serif; font-size: 14pt; line-height: 1.5; }
+</style>
+</head>
+<body>
+${html.replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>|<!DOCTYPE[^>]*>/gi, '')}
+</body>
+</html>`;
+    
+    const blob = new Blob([docContent], { type: 'application/msword' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `Договор_${contractNumber}_${selectedCompany?.name || 'компания'}.html`;
+    link.download = `Договор_${contractNumber}_${selectedCompany?.name || 'компания'}.doc`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
     
-    toast.success("Договор скачан");
+    toast.success("Договор скачан в формате DOC");
+  };
+
+  const handleSaveContract = async () => {
+    if (!selectedCompany || !selectedCourseId || !price) {
+      toast.error("Заполните все обязательные поля");
+      return;
+    }
+
+    if (!onSave) {
+      toast.error("Сохранение недоступно");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const html = generateContractHTML();
+      await onSave(html, contractNumber, selectedCompany.name);
+      toast.success("Договор сохранён");
+      onClose();
+    } catch (error) {
+      console.error("Error saving contract:", error);
+      toast.error("Ошибка сохранения договора");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -423,30 +490,45 @@ export function ContractGenerator({
               </div>
             </div>
 
-            {/* Company Selection */}
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <Building2 className="w-4 h-4" />
-                Компания-заказчик *
-              </Label>
-              <Select value={selectedCompanyId} onValueChange={setSelectedCompanyId}>
-                <SelectTrigger className="rounded-xl">
-                  <SelectValue placeholder="Выберите компанию" />
-                </SelectTrigger>
-                <SelectContent>
-                  {companies.map((company) => (
-                    <SelectItem key={company.id} value={company.id}>
-                      {company.name} {company.inn ? `(ИНН: ${company.inn})` : ''}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {companies.length === 0 && (
-                <p className="text-sm text-muted-foreground">
-                  Нет компаний. Добавьте компанию в разделе "Компании".
-                </p>
-              )}
-            </div>
+            {/* Company Selection - show only if not preselected */}
+            {preselectedCompany ? (
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Building2 className="w-4 h-4" />
+                  Компания-заказчик
+                </Label>
+                <div className="bg-secondary/50 rounded-xl p-3">
+                  <p className="font-medium">{preselectedCompany.name}</p>
+                  {preselectedCompany.inn && (
+                    <p className="text-sm text-muted-foreground">ИНН: {preselectedCompany.inn}</p>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Building2 className="w-4 h-4" />
+                  Компания-заказчик *
+                </Label>
+                <Select value={selectedCompanyId} onValueChange={setSelectedCompanyId}>
+                  <SelectTrigger className="rounded-xl">
+                    <SelectValue placeholder="Выберите компанию" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {companies.map((company) => (
+                      <SelectItem key={company.id} value={company.id}>
+                        {company.name} {company.inn ? `(ИНН: ${company.inn})` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {companies.length === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    Нет компаний. Добавьте компанию в разделе "Компании".
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Course Selection */}
             <div className="space-y-2">
@@ -535,19 +617,39 @@ export function ContractGenerator({
 
             {/* Actions */}
             <div className="flex gap-3 pt-4 border-t border-border">
+              {onSave && (
+                <Button
+                  variant="outline"
+                  className="rounded-xl flex-1 gap-2"
+                  onClick={handleSaveContract}
+                  disabled={isSaving || !selectedCompany || !selectedCourseId || !price}
+                >
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Сохранение...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      Сохранить
+                    </>
+                  )}
+                </Button>
+              )}
               <Button
                 variant="outline"
                 className="rounded-xl flex-1 gap-2"
-                onClick={handleDownloadHTML}
-                disabled={!selectedCompanyId || !selectedCourseId || !price}
+                onClick={handleDownloadDOC}
+                disabled={!selectedCompany || !selectedCourseId || !price}
               >
                 <Download className="w-4 h-4" />
-                Скачать HTML
+                Скачать DOC
               </Button>
               <Button
                 className="btn-gradient rounded-xl flex-1 gap-2"
                 onClick={handleGenerate}
-                disabled={isGenerating || !selectedCompanyId || !selectedCourseId || !price}
+                disabled={isGenerating || !selectedCompany || !selectedCourseId || !price}
               >
                 {isGenerating ? (
                   <>
@@ -557,7 +659,7 @@ export function ContractGenerator({
                 ) : (
                   <>
                     <Printer className="w-4 h-4" />
-                    Печать договора
+                    Печать
                   </>
                 )}
               </Button>

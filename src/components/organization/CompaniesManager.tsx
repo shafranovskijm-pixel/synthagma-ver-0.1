@@ -46,6 +46,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import * as XLSX from "xlsx";
 import { Progress } from "@/components/ui/progress";
 import { DocumentDropZone } from "./DocumentDropZone";
+import { ContractGenerator } from "./ContractGenerator";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
@@ -209,6 +210,24 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
   const [isLoadingLinkStudents, setIsLoadingLinkStudents] = useState(false);
   const [dateFilter, setDateFilter] = useState<{ from: Date | undefined; to: Date | undefined }>({ from: undefined, to: undefined });
   const [linkStudentSearchQuery, setLinkStudentSearchQuery] = useState("");
+
+  // Contract generator
+  const [showContractGenerator, setShowContractGenerator] = useState(false);
+  const [selectedCompanyForContract, setSelectedCompanyForContract] = useState<Company | null>(null);
+  const [orgRequisites, setOrgRequisites] = useState({
+    name: "",
+    inn: "",
+    kpp: "",
+    ogrn: "",
+    legal_address: "",
+    actual_address: "",
+    director_name: "",
+    director_position: "",
+    bank_name: "",
+    bank_bik: "",
+    bank_account: "",
+    bank_corr_account: "",
+  });
 
   const handleOpenCompanyDetail = async (company: Company) => {
     setSelectedCompanyForDetail(company);
@@ -441,8 +460,99 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
   useEffect(() => {
     if (organizationId) {
       fetchCompanies();
+      fetchOrgRequisites();
     }
   }, [organizationId]);
+
+  const fetchOrgRequisites = async () => {
+    try {
+      const { data: orgData } = await supabase
+        .from("organizations")
+        .select("inn, kpp, ogrn, legal_address, actual_address, director_name, director_position, bank_name, bank_bik, bank_account, bank_corr_account")
+        .eq("id", organizationId)
+        .single();
+
+      const { data: nameData } = await supabase
+        .from("organizations")
+        .select("name")
+        .eq("id", organizationId)
+        .single();
+
+      if (orgData && nameData) {
+        setOrgRequisites({
+          name: nameData.name || "",
+          inn: orgData.inn || "",
+          kpp: orgData.kpp || "",
+          ogrn: orgData.ogrn || "",
+          legal_address: orgData.legal_address || "",
+          actual_address: orgData.actual_address || "",
+          director_name: orgData.director_name || "",
+          director_position: orgData.director_position || "",
+          bank_name: orgData.bank_name || "",
+          bank_bik: orgData.bank_bik || "",
+          bank_account: orgData.bank_account || "",
+          bank_corr_account: orgData.bank_corr_account || "",
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching org requisites:", error);
+    }
+  };
+
+  const handleOpenContractGenerator = (company: Company) => {
+    setSelectedCompanyForContract(company);
+    setShowContractGenerator(true);
+  };
+
+  const handleSaveContract = async (html: string, contractNumber: string, companyName: string) => {
+    if (!selectedCompanyForContract) return;
+
+    // Create DOC file and upload
+    const docContent = `
+<!DOCTYPE html>
+<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head>
+<meta charset="utf-8">
+<title>Договор ${contractNumber}</title>
+</head>
+<body>
+${html.replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>|<!DOCTYPE[^>]*>/gi, '')}
+</body>
+</html>`;
+
+    const blob = new Blob([docContent], { type: 'application/msword' });
+    const fileName = `contract_${contractNumber}_${Date.now()}.doc`;
+    const filePath = `${selectedCompanyForContract.id}/${fileName}`;
+
+    // Upload to storage
+    const { error: uploadError } = await supabase.storage
+      .from("company-documents")
+      .upload(filePath, blob);
+
+    if (uploadError) throw uploadError;
+
+    // Get public URL
+    const { data: urlData } = supabase.storage
+      .from("company-documents")
+      .getPublicUrl(filePath);
+
+    // Save to database
+    const { error: dbError } = await supabase
+      .from("company_documents")
+      .insert({
+        company_id: selectedCompanyForContract.id,
+        type: 'contract',
+        name: `Договор_${contractNumber}_${companyName}.doc`,
+        file_url: urlData.publicUrl,
+        file_path: filePath,
+        file_size: blob.size,
+      });
+
+    if (dbError) throw dbError;
+
+    // Refresh documents
+    await fetchCompanyDocuments(selectedCompanyForContract.id);
+  };
 
   const handleSearchByInn = async (inn: string) => {
     if (inn.length < 10) {
@@ -1581,6 +1691,20 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
                         </span>
                       </div>
                       
+                      {/* Generate Contract Button */}
+                      <Button
+                        variant="outline"
+                        className="w-full rounded-xl gap-2 border-dashed"
+                        onClick={() => {
+                          if (selectedCompanyForDetail) {
+                            handleOpenContractGenerator(selectedCompanyForDetail);
+                          }
+                        }}
+                      >
+                        <Plus className="w-4 h-4" />
+                        Создать договор
+                      </Button>
+
                       {/* Drag & Drop Zone */}
                       <DocumentDropZone
                         type="contract"
@@ -2810,6 +2934,19 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Contract Generator */}
+      <ContractGenerator
+        organizationId={organizationId}
+        isOpen={showContractGenerator}
+        onClose={() => {
+          setShowContractGenerator(false);
+          setSelectedCompanyForContract(null);
+        }}
+        orgRequisites={orgRequisites}
+        preselectedCompany={selectedCompanyForContract}
+        onSave={handleSaveContract}
+      />
     </div>
   );
 }
