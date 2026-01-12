@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { ArrowRight, Play, Sparkles, CheckCircle2, GraduationCap, FileCheck, Building2, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -60,6 +61,7 @@ export function Hero() {
             </a>
           </div>
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             <Link to="/login">
               <Button variant="ghost" className="font-medium hover:text-primary">
                 Войти
