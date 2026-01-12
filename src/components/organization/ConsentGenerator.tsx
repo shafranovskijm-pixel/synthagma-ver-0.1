@@ -5,9 +5,10 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { FileCheck, Eye, Download, Loader2, User, Building2, Search, CheckCircle2, Save, History, Trash2, FileText } from "lucide-react";
+import { FileCheck, Eye, Download, Loader2, User, Building2, Search, CheckCircle2, Save, History, Trash2, FileText, UserCheck } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface ConsentGeneratorProps {
   organizationId: string;
@@ -50,6 +51,14 @@ interface SavedConsent {
   company_address: string | null;
   content_html: string;
   created_at: string;
+  student_user_id: string | null;
+  student_name?: string | null;
+}
+
+interface Student {
+  user_id: string;
+  full_name: string;
+  email: string;
 }
 
 const DEFAULT_CONSENT_TEMPLATE = `СОГЛАСИЕ НА ОБРАБОТКУ ПЕРСОНАЛЬНЫХ ДАННЫХ
@@ -103,6 +112,11 @@ export function ConsentGenerator({
   const [isLoadingConsents, setIsLoadingConsents] = useState(false);
   const [selectedConsent, setSelectedConsent] = useState<SavedConsent | null>(null);
   
+  // Students
+  const [students, setStudents] = useState<Student[]>([]);
+  const [selectedStudentId, setSelectedStudentId] = useState<string>("");
+  const [studentSearchQuery, setStudentSearchQuery] = useState("");
+  
   // Individual fields
   const [fullName, setFullName] = useState("");
   const [passportData, setPassportData] = useState("");
@@ -121,6 +135,7 @@ export function ConsentGenerator({
   useEffect(() => {
     loadOrganization();
     loadSavedConsents();
+    loadStudents();
   }, [organizationId]);
 
   const loadSavedConsents = async () => {
@@ -133,11 +148,50 @@ export function ConsentGenerator({
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setSavedConsents((data || []) as SavedConsent[]);
+      
+      // Load student names for consents with student_user_id
+      const consentsWithStudents = await Promise.all(
+        (data || []).map(async (consent: any) => {
+          if (consent.student_user_id) {
+            const { data: profile } = await supabase
+              .from("profiles")
+              .select("full_name")
+              .eq("user_id", consent.student_user_id)
+              .single();
+            return { ...consent, student_name: profile?.full_name || null };
+          }
+          return consent;
+        })
+      );
+      
+      setSavedConsents(consentsWithStudents as SavedConsent[]);
     } catch (error) {
       console.error("Error loading consents:", error);
     } finally {
       setIsLoadingConsents(false);
+    }
+  };
+
+  const loadStudents = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("user_id, full_name, email")
+        .eq("organization_id", organizationId)
+        .order("full_name");
+
+      if (error) throw error;
+      setStudents((data || []) as Student[]);
+    } catch (error) {
+      console.error("Error loading students:", error);
+    }
+  };
+
+  const handleStudentSelect = (studentId: string) => {
+    setSelectedStudentId(studentId);
+    const student = students.find(s => s.user_id === studentId);
+    if (student && consentType === "individual") {
+      setFullName(student.full_name || "");
     }
   };
 
@@ -329,6 +383,7 @@ export function ConsentGenerator({
         company_address: consentType === "organization" ? companyAddress || null : null,
         content_html: html,
         created_by: user?.id || null,
+        student_user_id: selectedStudentId || null,
       };
 
       const { error } = await supabase
@@ -341,6 +396,7 @@ export function ConsentGenerator({
       loadSavedConsents();
       
       // Clear form after saving
+      setSelectedStudentId("");
       if (consentType === "individual") {
         setFullName("");
         setPassportData("");
@@ -407,6 +463,64 @@ export function ConsentGenerator({
         </TabsList>
 
         <TabsContent value="individual" className="space-y-4 pt-4">
+          {/* Student Selection */}
+          <div className="bg-secondary/30 rounded-xl p-4 space-y-3">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <UserCheck className="w-4 h-4" />
+              Привязать к ученику (необязательно)
+            </div>
+            <Select value={selectedStudentId} onValueChange={handleStudentSelect}>
+              <SelectTrigger className="rounded-xl">
+                <SelectValue placeholder="Выберите ученика для привязки" />
+              </SelectTrigger>
+              <SelectContent>
+                <div className="p-2">
+                  <Input
+                    placeholder="Поиск ученика..."
+                    value={studentSearchQuery}
+                    onChange={(e) => setStudentSearchQuery(e.target.value)}
+                    className="rounded-lg mb-2"
+                  />
+                </div>
+                {students
+                  .filter(s => 
+                    s.full_name?.toLowerCase().includes(studentSearchQuery.toLowerCase()) ||
+                    s.email?.toLowerCase().includes(studentSearchQuery.toLowerCase())
+                  )
+                  .slice(0, 50)
+                  .map((student) => (
+                    <SelectItem key={student.user_id} value={student.user_id}>
+                      <div className="flex flex-col">
+                        <span>{student.full_name || "Без имени"}</span>
+                        <span className="text-xs text-muted-foreground">{student.email}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                {students.length === 0 && (
+                  <div className="p-2 text-sm text-muted-foreground text-center">
+                    Нет учеников
+                  </div>
+                )}
+              </SelectContent>
+            </Select>
+            {selectedStudentId && (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm text-sigma-green">
+                  <CheckCircle2 className="w-4 h-4" />
+                  Выбран: {students.find(s => s.user_id === selectedStudentId)?.full_name}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedStudentId("")}
+                  className="text-xs"
+                >
+                  Отвязать
+                </Button>
+              </div>
+            )}
+          </div>
+
           <div className="space-y-2">
             <Label>ФИО полностью</Label>
             <Input
@@ -572,9 +686,15 @@ export function ConsentGenerator({
                             ? consent.full_name || "Физ. лицо"
                             : consent.company_name || "Организация"}
                         </p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatConsentDate(consent.created_at)}
-                        </p>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <span>{formatConsentDate(consent.created_at)}</span>
+                          {consent.student_name && (
+                            <span className="flex items-center gap-1 text-primary">
+                              <UserCheck className="w-3 h-3" />
+                              {consent.student_name}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-1">

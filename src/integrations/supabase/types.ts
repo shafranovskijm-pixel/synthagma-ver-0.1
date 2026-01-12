@@ -181,6 +181,7 @@ export type Database = {
           id: string
           organization_id: string
           passport_data: string | null
+          student_user_id: string | null
         }
         Insert: {
           address?: string | null
@@ -196,6 +197,7 @@ export type Database = {
           id?: string
           organization_id: string
           passport_data?: string | null
+          student_user_id?: string | null
         }
         Update: {
           address?: string | null
@@ -211,6 +213,7 @@ export type Database = {
           id?: string
           organization_id?: string
           passport_data?: string | null
+          student_user_id?: string | null
         }
         Relationships: [
           {
