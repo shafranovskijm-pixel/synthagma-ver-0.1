@@ -21,12 +21,14 @@ import {
   Eye,
   Shield,
   Video,
-  FileCheck
+  FileCheck,
+  FileText,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { VideoIdentification } from "@/components/student/VideoIdentification";
 import { StudentConsentForm } from "@/components/student/StudentConsentForm";
+import { StudentDocumentsUpload } from "@/components/student/StudentDocumentsUpload";
 
 interface Course {
   id: string;
@@ -89,6 +91,7 @@ export default function StudentDashboard() {
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [showVideoIdentification, setShowVideoIdentification] = useState(false);
   const [showConsentForm, setShowConsentForm] = useState(false);
+  const [showDocumentsUpload, setShowDocumentsUpload] = useState(false);
 
   useEffect(() => {
     // Check for preview mode
@@ -387,6 +390,13 @@ export default function StudentDashboard() {
               <FileCheck className="w-5 h-5" />
               Согласие на ПД
             </button>
+            <button 
+              onClick={() => setShowDocumentsUpload(true)}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors"
+            >
+              <FileText className="w-5 h-5" />
+              Мои документы
+            </button>
             <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors">
               <Settings className="w-5 h-5" />
               Настройки
@@ -423,6 +433,16 @@ export default function StudentDashboard() {
           organizationId={profile.organization_id}
           isOpen={showConsentForm}
           onOpenChange={setShowConsentForm}
+        />
+      )}
+
+      {/* Documents Upload Dialog */}
+      {user && profile?.organization_id && (
+        <StudentDocumentsUpload
+          userId={user.id}
+          organizationId={profile.organization_id}
+          isOpen={showDocumentsUpload}
+          onOpenChange={setShowDocumentsUpload}
         />
       )}
 
