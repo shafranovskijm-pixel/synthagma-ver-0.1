@@ -176,6 +176,26 @@ export default function OrganizationDashboard() {
   const [showStudentDialog, setShowStudentDialog] = useState(false);
   const [isLoadingStudentDetails, setIsLoadingStudentDetails] = useState(false);
   const [testQuestions, setTestQuestions] = useState<Record<string, TestQuestion[]>>({});
+  
+  // StudentDetailCard state
+  const [showStudentDetailCard, setShowStudentDetailCard] = useState(false);
+  const [studentDetailCardData, setStudentDetailCardData] = useState<{
+    id: string;
+    user_id: string;
+    name: string;
+    email: string;
+    login?: string | null;
+    company_name?: string | null;
+  } | null>(null);
+  const [studentDetailCardEnrollments, setStudentDetailCardEnrollments] = useState<{
+    id: string;
+    course_title: string;
+    progress: number;
+    status: string;
+    started_at: string;
+    completed_at?: string | null;
+    time_spent: number;
+  }[]>([]);
   const [studentCompanyId, setStudentCompanyId] = useState<string>("");
   const [isSavingStudentCompany, setIsSavingStudentCompany] = useState(false);
   const [isSendingCredentials, setIsSendingCredentials] = useState(false);
@@ -1829,78 +1849,37 @@ export default function OrganizationDashboard() {
     }
   };
 
-  // View student details
+  // View student details with StudentDetailCard
   const handleViewStudent = async (student: Student) => {
-    setShowStudentDialog(true);
-    setIsLoadingStudentDetails(true);
-    try {
-      let docs: any[] = [];
-      if (student.enrollment_id) {
-        const {
-          data
-        } = await supabase.from("student_documents").select("*").eq("enrollment_id", student.enrollment_id);
-        docs = data || [];
-      }
-      const {
-        data: attempts
-      } = await supabase.from("test_attempts").select("*").eq("user_id", student.user_id).order("completed_at", {
-        ascending: false
-      });
-      const lessonIds = [...new Set((attempts || []).map(a => a.lesson_id))];
-      const testAttemptsWithTitles: TestAttempt[] = [];
-      for (const attempt of attempts || []) {
-        const {
-          data: lesson
-        } = await supabase.from("lessons").select("title, course_id").eq("id", attempt.lesson_id).single();
-        if (lesson) {
-          const {
-            data: course
-          } = await supabase.from("courses").select("organization_id").eq("id", lesson.course_id).single();
-          if (course?.organization_id === organizationId) {
-            testAttemptsWithTitles.push({
-              id: attempt.id,
-              lesson_id: attempt.lesson_id,
-              lesson_title: lesson.title,
-              score: attempt.score,
-              max_score: attempt.max_score,
-              completed_at: attempt.completed_at,
-              answers: attempt.answers as Record<string, number>
-            });
-          }
-        }
-      }
-      const questionsMap: Record<string, TestQuestion[]> = {};
-      for (const lessonId of lessonIds) {
-        const {
-          data: questions
-        } = await supabase.from("test_questions").select("*").eq("lesson_id", lessonId).order("order_index");
-        if (questions) {
-          questionsMap[lessonId] = questions.map(q => ({
-            id: q.id,
-            question: q.question,
-            options: q.options as string[],
-            correct_answer: q.correct_answer,
-            order_index: q.order_index
-          }));
-        }
-      }
-      setTestQuestions(questionsMap);
-      setSelectedStudent({
-        student,
-        documents: (docs || []).map(d => ({
-          id: d.id,
-          type: d.type,
-          name: d.name,
-          file_url: d.file_url
-        })),
-        testAttempts: testAttemptsWithTitles
-      });
-    } catch (error) {
-      console.error("Error fetching student details:", error);
-      toast.error("Ошибка загрузки данных ученика");
-    } finally {
-      setIsLoadingStudentDetails(false);
-    }
+    // Find company name if student has company_id
+    let companyName: string | null = null;
+    
+    // Get all enrollments for this student
+    const { data: enrollmentsData } = await supabase
+      .from("enrollments")
+      .select("id, course_id, progress, status, started_at, completed_at, time_spent, courses(title)")
+      .eq("user_id", student.user_id);
+    
+    const enrollments = (enrollmentsData || []).map((e: any) => ({
+      id: e.id,
+      course_title: e.courses?.title || "Неизвестный курс",
+      progress: e.progress || 0,
+      status: e.status || "active",
+      started_at: e.started_at,
+      completed_at: e.completed_at,
+      time_spent: e.time_spent || 0,
+    }));
+
+    setStudentDetailCardData({
+      id: student.id,
+      user_id: student.user_id,
+      name: student.name,
+      email: student.email,
+      login: student.login,
+      company_name: companyName,
+    });
+    setStudentDetailCardEnrollments(enrollments);
+    setShowStudentDetailCard(true);
   };
 
   // Company management
@@ -4081,5 +4060,16 @@ export default function OrganizationDashboard() {
 
       {/* Bulk Document Upload */}
       {organizationId && <BulkDocumentUpload organizationId={organizationId} isOpen={showBulkUploadDialog} onClose={() => setShowBulkUploadDialog(false)} />}
+
+      {/* Student Detail Card */}
+      {organizationId && (
+        <StudentDetailCard
+          isOpen={showStudentDetailCard}
+          onOpenChange={setShowStudentDetailCard}
+          student={studentDetailCardData}
+          organizationId={organizationId}
+          enrollments={studentDetailCardEnrollments}
+        />
+      )}
     </div>;
 }
