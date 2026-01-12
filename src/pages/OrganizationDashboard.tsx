@@ -2157,18 +2157,21 @@ export default function OrganizationDashboard() {
                 <Menu className="w-6 h-6" />
               </button>
               <div>
-                <h1 className="font-display text-xl lg:text-2xl font-bold">
-                  {activeTab === "courses" && "Управление курсами"}
-                  {activeTab === "organizations" && "Компании"}
-                  {activeTab === "students" && "Все ученики"}
-                  {activeTab === "library" && "Библиотека материалов"}
-                  {activeTab === "stats" && "Статистика обучения"}
-                  {activeTab === "links" && "Ссылки для регистрации"}
-                  {activeTab === "documents" && "Документооборот"}
-                  {activeTab === "services" && "Услуги"}
-                  {activeTab === "settings" && "Настройки"}
-                </h1>
-                <p className="text-muted-foreground text-sm lg:text-base">{organizationName}</p>
+                {activeTab !== "organizations" && (
+                  <h1 className="font-display text-xl lg:text-2xl font-bold">
+                    {activeTab === "courses" && "Управление курсами"}
+                    {activeTab === "students" && "Все ученики"}
+                    {activeTab === "library" && "Библиотека материалов"}
+                    {activeTab === "stats" && "Статистика обучения"}
+                    {activeTab === "links" && "Ссылки для регистрации"}
+                    {activeTab === "documents" && "Документооборот"}
+                    {activeTab === "services" && "Услуги"}
+                    {activeTab === "settings" && "Настройки"}
+                  </h1>
+                )}
+                {activeTab !== "organizations" && (
+                  <p className="text-muted-foreground text-sm lg:text-base">{organizationName}</p>
+                )}
               </div>
             </div>
             <div className="flex gap-3 flex-wrap">
@@ -2204,10 +2207,6 @@ export default function OrganizationDashboard() {
                     </div>
                   </DialogContent>
                 </Dialog>}
-              {activeTab === "organizations" && <Button className="btn-gradient rounded-xl gap-2" onClick={() => setShowAddCompanyDialog(true)}>
-                  <Plus className="w-4 h-4" />
-                  Добавить компанию
-                </Button>}
               {activeTab === "students" && <>
                   <Button variant="outline" className="rounded-xl gap-2" onClick={() => setShowImportDialog(true)}>
                     <FileSpreadsheet className="w-4 h-4" />
