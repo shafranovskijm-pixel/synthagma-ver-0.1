@@ -138,6 +138,20 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
   const [editCompanyName, setEditCompanyName] = useState("");
   const [editCompanyInn, setEditCompanyInn] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [isSearchingDadataEdit, setIsSearchingDadataEdit] = useState(false);
+  const [dadataEditCompanyInfo, setDadataEditCompanyInfo] = useState<{
+    name: string;
+    fullName: string;
+    shortName: string;
+    inn: string;
+    kpp: string | null;
+    ogrn: string | null;
+    address: string | null;
+    management: string | null;
+    status: string | null;
+    type: string | null;
+    opf: string | null;
+  } | null>(null);
 
   // Delete confirm
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -487,10 +501,42 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
     }
   };
 
+  const handleSearchByInnEdit = async (inn: string) => {
+    if (inn.length < 10) {
+      setDadataEditCompanyInfo(null);
+      return;
+    }
+
+    setIsSearchingDadataEdit(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('dadata-company', {
+        body: { inn }
+      });
+
+      if (error) throw error;
+
+      if (data.success && data.company) {
+        setDadataEditCompanyInfo(data.company);
+        setEditCompanyName(data.company.shortName || data.company.name);
+        toast.success("Компания найдена");
+      } else {
+        setDadataEditCompanyInfo(null);
+        toast.error(data.message || "Компания не найдена");
+      }
+    } catch (error) {
+      console.error("DaData search error:", error);
+      toast.error("Ошибка поиска по ИНН");
+      setDadataEditCompanyInfo(null);
+    } finally {
+      setIsSearchingDadataEdit(false);
+    }
+  };
+
   const handleEdit = (company: Company) => {
     setEditingCompany(company);
     setEditCompanyName(company.name);
     setEditCompanyInn(company.inn || "");
+    setDadataEditCompanyInfo(null);
     setShowEditDialog(true);
   };
 
@@ -1992,15 +2038,83 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
       </Dialog>
 
       {/* Edit Dialog */}
-      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="rounded-2xl">
+      <Dialog open={showEditDialog} onOpenChange={(open) => {
+        setShowEditDialog(open);
+        if (!open) {
+          setDadataEditCompanyInfo(null);
+        }
+      }}>
+        <DialogContent className="rounded-2xl max-w-lg">
           <DialogHeader>
             <DialogTitle className="font-display">
               Редактировать компанию
             </DialogTitle>
-            <DialogDescription>Измените данные компании</DialogDescription>
+            <DialogDescription>Измените данные компании или найдите по ИНН</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>ИНН</Label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Введите ИНН для поиска"
+                  className="rounded-xl"
+                  value={editCompanyInn}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, '').slice(0, 12);
+                    setEditCompanyInn(value);
+                  }}
+                  maxLength={12}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="rounded-xl shrink-0"
+                  onClick={() => handleSearchByInnEdit(editCompanyInn)}
+                  disabled={isSearchingDadataEdit || editCompanyInn.length < 10}
+                >
+                  {isSearchingDadataEdit ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Search className="w-4 h-4" />
+                  )}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">10 цифр для юрлица, 12 для ИП</p>
+            </div>
+
+            {dadataEditCompanyInfo && (
+              <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-xl space-y-2">
+                <div className="flex items-center gap-2 text-green-600">
+                  <Check className="w-4 h-4" />
+                  <span className="font-medium text-sm">Компания найдена</span>
+                </div>
+                <div className="space-y-1 text-sm">
+                  <p><span className="text-muted-foreground">Название:</span> {dadataEditCompanyInfo.shortName}</p>
+                  <p><span className="text-muted-foreground">ИНН:</span> {dadataEditCompanyInfo.inn}</p>
+                  {dadataEditCompanyInfo.kpp && (
+                    <p><span className="text-muted-foreground">КПП:</span> {dadataEditCompanyInfo.kpp}</p>
+                  )}
+                  {dadataEditCompanyInfo.ogrn && (
+                    <p><span className="text-muted-foreground">ОГРН:</span> {dadataEditCompanyInfo.ogrn}</p>
+                  )}
+                  {dadataEditCompanyInfo.management && (
+                    <p><span className="text-muted-foreground">Руководитель:</span> {dadataEditCompanyInfo.management}</p>
+                  )}
+                  {dadataEditCompanyInfo.address && (
+                    <p className="text-xs"><span className="text-muted-foreground">Адрес:</span> {dadataEditCompanyInfo.address}</p>
+                  )}
+                  {dadataEditCompanyInfo.status && (
+                    <p>
+                      <span className="text-muted-foreground">Статус:</span>{' '}
+                      <span className={dadataEditCompanyInfo.status === 'ACTIVE' ? 'text-green-600' : 'text-red-600'}>
+                        {dadataEditCompanyInfo.status === 'ACTIVE' ? 'Действующая' : dadataEditCompanyInfo.status}
+                      </span>
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label>Название компании *</Label>
               <Input
@@ -2010,15 +2124,7 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
                 onChange={(e) => setEditCompanyName(e.target.value)}
               />
             </div>
-            <div className="space-y-2">
-              <Label>ИНН (необязательно)</Label>
-              <Input
-                placeholder="1234567890"
-                className="rounded-xl"
-                value={editCompanyInn}
-                onChange={(e) => setEditCompanyInn(e.target.value)}
-              />
-            </div>
+
             <Button
               className="w-full btn-gradient rounded-xl"
               onClick={handleSave}
