@@ -51,26 +51,38 @@ export type Database = {
       }
       companies: {
         Row: {
+          address: string | null
           created_at: string
+          director: string | null
           id: string
           inn: string | null
+          kpp: string | null
           name: string
+          ogrn: string | null
           organization_id: string
           updated_at: string
         }
         Insert: {
+          address?: string | null
           created_at?: string
+          director?: string | null
           id?: string
           inn?: string | null
+          kpp?: string | null
           name: string
+          ogrn?: string | null
           organization_id: string
           updated_at?: string
         }
         Update: {
+          address?: string | null
           created_at?: string
+          director?: string | null
           id?: string
           inn?: string | null
+          kpp?: string | null
           name?: string
+          ogrn?: string | null
           organization_id?: string
           updated_at?: string
         }
