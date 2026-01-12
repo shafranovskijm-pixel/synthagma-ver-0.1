@@ -1202,6 +1202,42 @@ export type Database = {
           },
         ]
       }
+      student_identity_documents: {
+        Row: {
+          created_at: string
+          file_path: string | null
+          file_url: string | null
+          id: string
+          name: string
+          organization_id: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          file_path?: string | null
+          file_url?: string | null
+          id?: string
+          name: string
+          organization_id: string
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          file_path?: string | null
+          file_url?: string | null
+          id?: string
+          name?: string
+          organization_id?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       test_attempts: {
         Row: {
           answers: Json

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,25 +9,22 @@ import { toast } from "sonner";
 import {
   User,
   FileText,
-  Receipt,
-  FileCheck,
   Shield,
   Video,
   BookOpen,
-  Clock,
   CheckCircle2,
-  XCircle,
   AlertCircle,
   Loader2,
-  Download,
-  History,
-  Eye,
   Camera,
   Mail,
-  Phone,
   Building2,
   GraduationCap,
-  Calendar,
+  Upload,
+  Trash2,
+  Eye,
+  XCircle,
+  History,
+  Download,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -82,6 +79,14 @@ interface DocumentRecord {
   created_at: string;
 }
 
+interface IdentityDocumentRecord {
+  id: string;
+  type: string;
+  name: string;
+  file_url: string | null;
+  created_at: string;
+}
+
 export function StudentDetailCard({
   isOpen,
   onOpenChange,
@@ -93,7 +98,11 @@ export function StudentDetailCard({
   const [consents, setConsents] = useState<ConsentRecord[]>([]);
   const [verifications, setVerifications] = useState<VerificationRecord[]>([]);
   const [documents, setDocuments] = useState<DocumentRecord[]>([]);
+  const [identityDocs, setIdentityDocs] = useState<IdentityDocumentRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [uploadingType, setUploadingType] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedDocType, setSelectedDocType] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen && student) {
@@ -106,7 +115,7 @@ export function StudentDetailCard({
     setIsLoading(true);
 
     try {
-      const [consentsRes, verificationsRes, documentsRes] = await Promise.all([
+      const [consentsRes, verificationsRes, documentsRes, identityDocsRes] = await Promise.all([
         supabase
           .from("student_consents")
           .select("*")
@@ -118,21 +127,108 @@ export function StudentDetailCard({
           .select("*")
           .eq("user_id", student.user_id)
           .order("created_at", { ascending: false }),
-        // Fetch student documents from enrollments
         supabase
           .from("student_documents")
           .select("*, enrollments!inner(user_id)")
           .eq("enrollments.user_id", student.user_id)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("student_identity_documents")
+          .select("*")
+          .eq("user_id", student.user_id)
+          .eq("organization_id", organizationId)
           .order("created_at", { ascending: false }),
       ]);
 
       if (consentsRes.data) setConsents(consentsRes.data as ConsentRecord[]);
       if (verificationsRes.data) setVerifications(verificationsRes.data as VerificationRecord[]);
       if (documentsRes.data) setDocuments(documentsRes.data as DocumentRecord[]);
+      if (identityDocsRes.data) setIdentityDocs(identityDocsRes.data as IdentityDocumentRecord[]);
     } catch (error) {
       console.error("Error loading student data:", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleUploadClick = (docType: string) => {
+    setSelectedDocType(docType);
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !student || !selectedDocType) return;
+
+    setUploadingType(selectedDocType);
+    
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${student.user_id}/${selectedDocType}_${Date.now()}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from("student-documents")
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from("student-documents")
+        .getPublicUrl(fileName);
+
+      const docNames: Record<string, string> = {
+        passport: "Паспорт",
+        birth_certificate: "Свидетельство о рождении",
+        snils: "СНИЛС",
+        education_document: "Документ об образовании",
+      };
+
+      const { error: insertError } = await supabase
+        .from("student_identity_documents")
+        .insert({
+          user_id: student.user_id,
+          organization_id: organizationId,
+          type: selectedDocType,
+          name: docNames[selectedDocType] || file.name,
+          file_url: publicUrl,
+          file_path: fileName,
+        });
+
+      if (insertError) throw insertError;
+
+      toast.success("Документ загружен");
+      loadStudentData();
+    } catch (error) {
+      console.error("Error uploading document:", error);
+      toast.error("Ошибка загрузки документа");
+    } finally {
+      setUploadingType(null);
+      setSelectedDocType(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleDeleteIdentityDoc = async (doc: IdentityDocumentRecord) => {
+    try {
+      if (doc.file_url) {
+        const path = doc.file_url.split("/student-documents/")[1];
+        if (path) {
+          await supabase.storage.from("student-documents").remove([path]);
+        }
+      }
+
+      const { error } = await supabase
+        .from("student_identity_documents")
+        .delete()
+        .eq("id", doc.id);
+
+      if (error) throw error;
+
+      toast.success("Документ удалён");
+      loadStudentData();
+    } catch (error) {
+      console.error("Error deleting document:", error);
+      toast.error("Ошибка удаления документа");
     }
   };
 
@@ -170,45 +266,58 @@ export function StudentDetailCard({
   const latestConsent = consents[0];
   const latestVerification = verifications[0];
 
-  // Document checklist items
+  // Document checklist items with upload capability
   const checklistItems = [
     {
       id: "contract",
       label: "Договор",
       icon: FileText,
       completed: documents.some(d => d.type === "contract"),
+      uploadable: false,
     },
     {
       id: "passport",
       label: "Паспорт / Св-во о рождении",
       icon: User,
-      completed: documents.some(d => d.type === "passport" || d.type === "birth_certificate"),
+      completed: identityDocs.some(d => d.type === "passport" || d.type === "birth_certificate"),
+      uploadable: true,
+      uploadType: "passport",
     },
     {
       id: "snils",
       label: "СНИЛС",
       icon: Shield,
-      completed: documents.some(d => d.type === "snils"),
+      completed: identityDocs.some(d => d.type === "snils"),
+      uploadable: true,
+      uploadType: "snils",
     },
     {
       id: "education_doc",
       label: "Документ об образовании",
       icon: GraduationCap,
-      completed: documents.some(d => d.type === "education_document" || d.type === "diploma" || d.type === "attestat"),
+      completed: identityDocs.some(d => d.type === "education_document" || d.type === "diploma" || d.type === "attestat"),
+      uploadable: true,
+      uploadType: "education_document",
     },
     {
       id: "consent",
       label: "Согласие на ПД",
       icon: Shield,
       completed: latestConsent?.status === "signed",
+      uploadable: false,
     },
     {
       id: "video_id",
       label: "Видеоидентификация",
       icon: Video,
       completed: latestVerification?.status === "verified",
+      uploadable: false,
     },
   ];
+
+  const getIdentityDocByType = (type: string) => {
+    return identityDocs.find(d => d.type === type);
+  };
 
   const handleVerifyIdentification = async (id: string, action: "verify" | "reject", reason?: string) => {
     try {
@@ -330,34 +439,92 @@ export function StudentDetailCard({
                       </div>
                     </div>
 
+                    {/* Hidden file input */}
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileChange}
+                      className="hidden"
+                      accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                    />
+
                     {/* Document Checklist */}
                     <div className="bg-card rounded-2xl border border-border p-6">
                       <h3 className="font-semibold mb-4 flex items-center gap-2">
                         <CheckCircle2 className="w-5 h-5 text-primary" />
                         Чек-лист документов
                       </h3>
-                      <div className="grid grid-cols-5 gap-3">
-                        {checklistItems.map((item) => (
-                          <div
-                            key={item.id}
-                            className={`p-4 rounded-xl border text-center transition-colors ${
-                              item.completed
-                                ? "bg-green-500/10 border-green-500/30"
-                                : "bg-muted/50 border-border"
-                            }`}
-                          >
-                            <div className={`w-10 h-10 rounded-full mx-auto mb-2 flex items-center justify-center ${
-                              item.completed ? "bg-green-500/20" : "bg-muted"
-                            }`}>
-                              {item.completed ? (
-                                <CheckCircle2 className="w-5 h-5 text-green-500" />
-                              ) : (
-                                <item.icon className="w-5 h-5 text-muted-foreground" />
-                              )}
+                      <div className="grid grid-cols-3 gap-3">
+                        {checklistItems.map((item) => {
+                          const existingDoc = item.uploadType ? getIdentityDocByType(item.uploadType) : null;
+                          const isUploading = uploadingType === item.uploadType;
+                          
+                          return (
+                            <div
+                              key={item.id}
+                              className={`p-4 rounded-xl border transition-colors ${
+                                item.completed
+                                  ? "bg-green-500/10 border-green-500/30"
+                                  : "bg-muted/50 border-border"
+                              }`}
+                            >
+                              <div className="flex items-start gap-3">
+                                <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center ${
+                                  item.completed ? "bg-green-500/20" : "bg-muted"
+                                }`}>
+                                  {item.completed ? (
+                                    <CheckCircle2 className="w-5 h-5 text-green-500" />
+                                  ) : (
+                                    <item.icon className="w-5 h-5 text-muted-foreground" />
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-sm font-medium">{item.label}</div>
+                                  {item.uploadable && (
+                                    <div className="mt-2 flex gap-1">
+                                      {existingDoc ? (
+                                        <>
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            className="h-7 px-2 text-xs"
+                                            onClick={() => existingDoc.file_url && window.open(existingDoc.file_url, '_blank')}
+                                          >
+                                            <Eye className="w-3 h-3 mr-1" />
+                                            Открыть
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            className="h-7 px-2 text-xs text-destructive hover:text-destructive"
+                                            onClick={() => handleDeleteIdentityDoc(existingDoc)}
+                                          >
+                                            <Trash2 className="w-3 h-3" />
+                                          </Button>
+                                        </>
+                                      ) : (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          className="h-7 px-2 text-xs"
+                                          onClick={() => item.uploadType && handleUploadClick(item.uploadType)}
+                                          disabled={isUploading}
+                                        >
+                                          {isUploading ? (
+                                            <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                                          ) : (
+                                            <Upload className="w-3 h-3 mr-1" />
+                                          )}
+                                          Загрузить
+                                        </Button>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
                             </div>
-                            <div className="text-xs font-medium">{item.label}</div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
 
