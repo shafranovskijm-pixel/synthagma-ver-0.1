@@ -204,6 +204,7 @@ export default function OrganizationDashboard() {
   const [isCreatingCredentials, setIsCreatingCredentials] = useState(false);
   const [isDeletingStudent, setIsDeletingStudent] = useState(false);
   const [isCreatingBulkCredentials, setIsCreatingBulkCredentials] = useState(false);
+  const [isSendingBulkDocReminders, setIsSendingBulkDocReminders] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [registrationLinks, setRegistrationLinks] = useState<RegistrationLink[]>([]);
   const [isLoadingLinks, setIsLoadingLinks] = useState(false);
@@ -1584,7 +1585,104 @@ export default function OrganizationDashboard() {
     }
   };
 
-  // Generate login and password for student without credentials
+  // Send document reminders to all students with missing documents
+  const handleBulkSendDocReminders = async () => {
+    if (!organizationId) return;
+    
+    setIsSendingBulkDocReminders(true);
+    try {
+      // Get all students in organization
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, full_name, email")
+        .eq("organization_id", organizationId);
+
+      if (!profiles || profiles.length === 0) {
+        toast.info("Нет учеников в организации");
+        setIsSendingBulkDocReminders(false);
+        return;
+      }
+
+      // Get identity documents for all students
+      const { data: allDocs } = await supabase
+        .from("student_identity_documents")
+        .select("user_id, type")
+        .eq("organization_id", organizationId);
+
+      const docsByUser = new Map<string, string[]>();
+      allDocs?.forEach(doc => {
+        const existing = docsByUser.get(doc.user_id) || [];
+        existing.push(doc.type);
+        docsByUser.set(doc.user_id, existing);
+      });
+
+      // Find students with missing documents
+      const studentsWithMissingDocs: { email: string; name: string; missing: string[] }[] = [];
+      
+      for (const profile of profiles) {
+        const userDocs = docsByUser.get(profile.user_id) || [];
+        const missing: string[] = [];
+        
+        const hasPassport = userDocs.some(t => t === "passport" || t === "birth_certificate");
+        const hasSnils = userDocs.includes("snils");
+        const hasEducation = userDocs.some(t => t === "education_document" || t === "diploma" || t === "attestat");
+        
+        if (!hasPassport) missing.push("Паспорт или свидетельство о рождении");
+        if (!hasSnils) missing.push("СНИЛС");
+        if (!hasEducation) missing.push("Документ об образовании");
+        
+        if (missing.length > 0 && profile.email) {
+          studentsWithMissingDocs.push({
+            email: profile.email,
+            name: profile.full_name || "Ученик",
+            missing
+          });
+        }
+      }
+
+      if (studentsWithMissingDocs.length === 0) {
+        toast.success("Все ученики загрузили документы!");
+        setIsSendingBulkDocReminders(false);
+        return;
+      }
+
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const student of studentsWithMissingDocs) {
+        try {
+          const response = await supabase.functions.invoke("send-documents-reminder", {
+            body: {
+              email: student.email,
+              studentName: student.name,
+              missingDocuments: student.missing,
+              organizationName: organizationName,
+              loginUrl: window.location.origin + "/login",
+            },
+          });
+
+          if (response.error) throw response.error;
+          successCount++;
+        } catch (err) {
+          errorCount++;
+          console.error(`Error sending to ${student.email}:`, err);
+        }
+      }
+
+      if (successCount > 0) {
+        toast.success(`Отправлено напоминаний: ${successCount} из ${studentsWithMissingDocs.length}`);
+      }
+      if (errorCount > 0) {
+        toast.error(`Ошибки отправки: ${errorCount}`);
+      }
+    } catch (error) {
+      console.error("Error in bulk doc reminders:", error);
+      toast.error("Ошибка массовой отправки");
+    } finally {
+      setIsSendingBulkDocReminders(false);
+    }
+  };
+
   const handleCreateStudentCredentials = async () => {
     if (!selectedStudent) return;
     const student = selectedStudent.student;
@@ -2472,6 +2570,15 @@ export default function OrganizationDashboard() {
                           Отчислить ({getSelectedEnrollmentsCount()})
                         </Button>}
                     </>}
+                  <Button 
+                    variant="outline" 
+                    className="rounded-xl gap-2" 
+                    onClick={handleBulkSendDocReminders}
+                    disabled={isSendingBulkDocReminders}
+                  >
+                    {isSendingBulkDocReminders ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+                    Напомнить о документах
+                  </Button>
                   <Button variant="outline" className="rounded-xl gap-2" onClick={() => {
                 import('xlsx').then(XLSX => {
                   const exportData = filteredStudents.map(s => ({
