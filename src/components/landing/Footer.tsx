@@ -14,7 +14,14 @@ export function Footer() {
         <div className="grid md:grid-cols-4 gap-12 mb-16">
           {/* Brand */}
           <div className="md:col-span-2">
-            <SigmaLogo size="lg" variant="white" className="mb-6" />
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary via-accent to-sigma-orange p-0.5">
+                <div className="flex items-center justify-center w-full h-full rounded-[10px] bg-foreground">
+                  <span className="font-display font-bold text-2xl bg-gradient-to-br from-primary via-accent to-sigma-orange bg-clip-text text-transparent">Σ</span>
+                </div>
+              </div>
+              <span className="font-display font-bold text-3xl text-white tracking-tight">СИНТАГМА</span>
+            </div>
             <p className="text-background/70 max-w-md mb-8 leading-relaxed text-lg">
               Современная система дистанционного обучения и документооборота для организаций.
               Соответствует требованиям 273-ФЗ.
