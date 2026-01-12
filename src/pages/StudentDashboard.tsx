@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import {
   BookOpen,
   MessageCircle,
@@ -112,6 +113,8 @@ export default function StudentDashboard() {
       loadData();
       // Track user visit for return achievements
       trackUserVisit();
+      // Check for new achievements and show toasts
+      checkNewAchievements();
     }
   }, [user]);
 
@@ -121,6 +124,64 @@ export default function StudentDashboard() {
       await supabase.rpc('track_user_visit', { p_user_id: user.id });
     } catch (error) {
       console.error("Error tracking visit:", error);
+    }
+  };
+
+  const checkNewAchievements = async () => {
+    if (!user) return;
+    try {
+      // Get unseen achievements
+      const { data: unseenAchievements } = await supabase
+        .from("user_achievements")
+        .select(`
+          id,
+          achievements (
+            name,
+            description,
+            icon,
+            color,
+            rarity
+          )
+        `)
+        .eq("user_id", user.id)
+        .eq("is_seen", false);
+
+      if (unseenAchievements && unseenAchievements.length > 0) {
+        // Show toasts for each new achievement with delay
+        unseenAchievements.forEach((ua, index) => {
+          const achievement = ua.achievements as any;
+          if (!achievement) return;
+
+          const rarityEmoji: Record<string, string> = {
+            common: "⭐",
+            rare: "💎",
+            epic: "🏆",
+            legendary: "👑"
+          };
+
+          setTimeout(() => {
+            toast.success(
+              `${rarityEmoji[achievement.rarity] || "🎖️"} Новое достижение!`,
+              {
+                description: `${achievement.name}: ${achievement.description}`,
+                duration: 5000,
+                style: {
+                  borderLeft: `4px solid ${achievement.color}`,
+                }
+              }
+            );
+          }, index * 1500); // Stagger toasts by 1.5 seconds
+        });
+
+        // Mark all as seen
+        const ids = unseenAchievements.map(ua => ua.id);
+        await supabase
+          .from("user_achievements")
+          .update({ is_seen: true })
+          .in("id", ids);
+      }
+    } catch (error) {
+      console.error("Error checking achievements:", error);
     }
   };
 
