@@ -16,6 +16,7 @@ import { OrgNotifications } from "@/components/organization/OrgNotifications";
 import { StudentDetailCard } from "@/components/organization/StudentDetailCard";
 import { ClassJournalExport } from "@/components/organization/ClassJournalExport";
 import { DocumentIssuanceLog } from "@/components/organization/DocumentIssuanceLog";
+import { BulkFRDOExport } from "@/components/organization/BulkFRDOExport";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -222,6 +223,7 @@ export default function OrganizationDashboard() {
   // Student selection for bulk actions
   const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
   const [showEnrollDialog, setShowEnrollDialog] = useState(false);
+  const [showBulkFRDOExport, setShowBulkFRDOExport] = useState(false);
   const [enrollCourseId, setEnrollCourseId] = useState<string>("");
   const [isEnrolling, setIsEnrolling] = useState(false);
   const [isUnenrolling, setIsUnenrolling] = useState(false);
@@ -2701,6 +2703,10 @@ export default function OrganizationDashboard() {
                           <XCircle className="w-4 h-4" />
                           Отчислить ({getSelectedEnrollmentsCount()})
                         </Button>}
+                      <Button onClick={() => setShowBulkFRDOExport(true)} variant="outline" className="rounded-xl gap-2">
+                        <FileSpreadsheet className="w-4 h-4" />
+                        ФИС ФРДО ({selectedStudentIds.size})
+                      </Button>
                     </>}
                   <Button 
                     variant="outline" 
@@ -4347,5 +4353,13 @@ export default function OrganizationDashboard() {
           enrollments={studentDetailCardEnrollments}
         />
       )}
+      
+      <BulkFRDOExport
+        isOpen={showBulkFRDOExport}
+        onOpenChange={setShowBulkFRDOExport}
+        organizationId={organizationId}
+        selectedStudentIds={selectedStudentIds}
+        students={students}
+      />
     </div>;
 }
