@@ -2756,7 +2756,7 @@ export default function OrganizationDashboard() {
                 </div>
                 
                 {/* Filters - scrollable on mobile */}
-                <div className="flex items-center gap-2 lg:gap-3 overflow-x-auto pb-2 -mx-4 px-4 lg:mx-0 lg:px-0 lg:overflow-visible lg:flex-wrap">
+                <div className="flex items-center gap-2 lg:gap-3 overflow-x-auto pb-2 lg:overflow-visible lg:flex-wrap scrollbar-hide max-w-full">
                   {selectedStudentIds.size > 0 && <>
                       <Button onClick={() => {
                   if (studentCourseFilter !== "all") {
