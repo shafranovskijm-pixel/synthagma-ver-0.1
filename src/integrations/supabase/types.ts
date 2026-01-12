@@ -1202,6 +1202,87 @@ export type Database = {
           },
         ]
       }
+      student_frdo_data: {
+        Row: {
+          birth_date: string | null
+          citizenship_code: string | null
+          created_at: string
+          education_doc_last_name: string | null
+          education_doc_number: string | null
+          education_doc_series: string | null
+          education_form: string | null
+          education_level: string | null
+          financing_source: string | null
+          first_name: string | null
+          gender: string | null
+          id: string
+          last_name: string | null
+          middle_name: string | null
+          organization_id: string
+          profession_name: string | null
+          professional_area: string | null
+          qualification_name: string | null
+          qualification_rank: string | null
+          snils: string | null
+          specialty_group: string | null
+          training_form: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          birth_date?: string | null
+          citizenship_code?: string | null
+          created_at?: string
+          education_doc_last_name?: string | null
+          education_doc_number?: string | null
+          education_doc_series?: string | null
+          education_form?: string | null
+          education_level?: string | null
+          financing_source?: string | null
+          first_name?: string | null
+          gender?: string | null
+          id?: string
+          last_name?: string | null
+          middle_name?: string | null
+          organization_id: string
+          profession_name?: string | null
+          professional_area?: string | null
+          qualification_name?: string | null
+          qualification_rank?: string | null
+          snils?: string | null
+          specialty_group?: string | null
+          training_form?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          birth_date?: string | null
+          citizenship_code?: string | null
+          created_at?: string
+          education_doc_last_name?: string | null
+          education_doc_number?: string | null
+          education_doc_series?: string | null
+          education_form?: string | null
+          education_level?: string | null
+          financing_source?: string | null
+          first_name?: string | null
+          gender?: string | null
+          id?: string
+          last_name?: string | null
+          middle_name?: string | null
+          organization_id?: string
+          profession_name?: string | null
+          professional_area?: string | null
+          qualification_name?: string | null
+          qualification_rank?: string | null
+          snils?: string | null
+          specialty_group?: string | null
+          training_form?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       student_identity_documents: {
         Row: {
           created_at: string

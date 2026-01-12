@@ -26,7 +26,9 @@ import {
   History,
   Download,
   Bell,
+  FileSpreadsheet,
 } from "lucide-react";
+import { FRDOExportDialog } from "./FRDOExportDialog";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 
@@ -44,6 +46,7 @@ interface StudentDetailCardProps {
   organizationId: string;
   enrollments?: {
     id: string;
+    course_id: string;
     course_title: string;
     progress: number;
     status: string;
@@ -106,6 +109,8 @@ export function StudentDetailCard({
   const [selectedDocType, setSelectedDocType] = useState<string | null>(null);
   const [previewDoc, setPreviewDoc] = useState<{ url: string; name: string; type: string; originalUrl?: string } | null>(null);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+  const [isFRDODialogOpen, setIsFRDODialogOpen] = useState(false);
+  const [selectedEnrollmentForFRDO, setSelectedEnrollmentForFRDO] = useState<typeof enrollments[0] | null>(null);
 
   useEffect(() => {
     if (isOpen && student) {
@@ -833,7 +838,21 @@ export function StudentDetailCard({
                             <div key={e.id} className="p-4 rounded-xl bg-muted/50">
                               <div className="flex items-center justify-between mb-2">
                                 <div className="font-medium">{e.course_title}</div>
-                                {getStatusBadge(e.status)}
+                                <div className="flex items-center gap-2">
+                                  {getStatusBadge(e.status)}
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="rounded-lg gap-1 h-7 text-xs"
+                                    onClick={() => {
+                                      setSelectedEnrollmentForFRDO(e);
+                                      setIsFRDODialogOpen(true);
+                                    }}
+                                  >
+                                    <FileSpreadsheet className="w-3 h-3" />
+                                    ФИС ФРДО
+                                  </Button>
+                                </div>
                               </div>
                               <div className="grid grid-cols-3 gap-4 text-sm">
                                 <div>
@@ -1055,6 +1074,14 @@ export function StudentDetailCard({
           </DialogContent>
         </Dialog>
       )}
+
+      <FRDOExportDialog
+        isOpen={isFRDODialogOpen}
+        onOpenChange={setIsFRDODialogOpen}
+        student={student}
+        organizationId={organizationId}
+        enrollment={selectedEnrollmentForFRDO}
+      />
     </Dialog>
   );
 }
