@@ -1,6 +1,7 @@
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { ScrollReveal } from "@/components/ui/ScrollReveal";
 
 export function CTA() {
   return (
@@ -30,71 +31,81 @@ export function CTA() {
       <div className="container mx-auto px-6 relative z-10">
         <div className="max-w-4xl mx-auto text-center">
           {/* Badge */}
-          <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-white/15 border border-white/30 mb-10 backdrop-blur-sm">
-            <span className="hieroglyphic text-white text-lg">𓊀</span>
-            <span className="text-sm font-semibold text-white">Начните бесплатно</span>
-            <span className="hieroglyphic text-white text-lg">𓊁</span>
-          </div>
+          <ScrollReveal>
+            <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-white/15 border border-white/30 mb-10 backdrop-blur-sm">
+              <span className="hieroglyphic text-white text-lg">𓊀</span>
+              <span className="text-sm font-semibold text-white">Начните бесплатно</span>
+              <span className="hieroglyphic text-white text-lg">𓊁</span>
+            </div>
+          </ScrollReveal>
 
-          <h2 className="font-display text-4xl md:text-6xl lg:text-7xl font-bold text-white mb-8 leading-tight tracking-tight">
-            Готовы автоматизировать обучение и документооборот?
-          </h2>
+          <ScrollReveal delay={0.1}>
+            <h2 className="font-display text-4xl md:text-6xl lg:text-7xl font-bold text-white mb-8 leading-tight tracking-tight">
+              Готовы автоматизировать обучение и документооборот?
+            </h2>
+          </ScrollReveal>
 
-          <p className="text-xl md:text-2xl text-white/80 mb-12 max-w-2xl mx-auto leading-relaxed">
-            Присоединяйтесь к десяткам организаций, которые уже используют нашу платформу
-            для дистанционного обучения и документооборота
-          </p>
+          <ScrollReveal delay={0.2}>
+            <p className="text-xl md:text-2xl text-white/80 mb-12 max-w-2xl mx-auto leading-relaxed">
+              Присоединяйтесь к десяткам организаций, которые уже используют нашу платформу
+              для дистанционного обучения и документооборота
+            </p>
 
-          {/* Egyptian border decoration */}
-          <div className="w-32 h-1 mx-auto mb-12 bg-gradient-to-r from-transparent via-white/50 to-transparent rounded-full" />
+            {/* Egyptian border decoration */}
+            <div className="w-32 h-1 mx-auto mb-12 bg-gradient-to-r from-transparent via-white/50 to-transparent rounded-full" />
+          </ScrollReveal>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link to="/register-organization">
-              <Button
-                size="lg"
-                className="bg-white text-slate-900 hover:bg-amber-50 rounded-2xl px-10 h-16 text-lg font-bold gap-3 shadow-2xl group border-2 border-white transition-all duration-300 hover:shadow-[0_0_30px_rgba(251,191,36,0.6),0_0_60px_rgba(251,191,36,0.3)]"
-              >
-                <span className="text-slate-900">Попробовать бесплатно</span>
-                <ArrowRight className="w-5 h-5 text-slate-900 group-hover:translate-x-1 transition-transform" />
-              </Button>
-            </Link>
-            <Link to="/login">
-              <Button
-                size="lg"
-                variant="outline"
-                className="border-2 border-white/50 bg-transparent text-white hover:bg-white/20 hover:text-white rounded-2xl px-10 h-16 text-lg backdrop-blur-sm"
-              >
-                Уже есть аккаунт? Войти
-              </Button>
-            </Link>
-          </div>
+          <ScrollReveal delay={0.3}>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Link to="/register-organization">
+                <Button
+                  size="lg"
+                  className="bg-white text-slate-900 hover:bg-amber-50 rounded-2xl px-10 h-16 text-lg font-bold gap-3 shadow-2xl group border-2 border-white transition-all duration-300 hover:shadow-[0_0_30px_rgba(251,191,36,0.6),0_0_60px_rgba(251,191,36,0.3)]"
+                >
+                  <span className="text-slate-900">Попробовать бесплатно</span>
+                  <ArrowRight className="w-5 h-5 text-slate-900 group-hover:translate-x-1 transition-transform" />
+                </Button>
+              </Link>
+              <Link to="/login">
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="border-2 border-white/50 bg-transparent text-white hover:bg-white/20 hover:text-white rounded-2xl px-10 h-16 text-lg backdrop-blur-sm"
+                >
+                  Уже есть аккаунт? Войти
+                </Button>
+              </Link>
+            </div>
+          </ScrollReveal>
 
           {/* Trust badges */}
-          <div className="mt-16 flex flex-wrap justify-center gap-8 text-white/80">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 text-white" />
-              <span className="font-medium">Бесплатный период 14 дней</span>
+          <ScrollReveal delay={0.4}>
+            <div className="mt-16 flex flex-wrap justify-center gap-8 text-white/80">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5 text-white" />
+                <span className="font-medium">Бесплатный период 14 дней</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="hieroglyphic text-white/60">𓆀</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5 text-white" />
+                <span className="font-medium">Не требуется карта</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="hieroglyphic text-white/60">𓇀</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5 text-white" />
+                <span className="font-medium">Настройка за 5 минут</span>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="hieroglyphic text-white/60">𓆀</span>
+            
+            {/* Greek text decoration */}
+            <div className="greek-text text-center mt-10 text-white/20 text-xs tracking-[0.5em]">
+              ΣΟΦΙΑ • ΔΥΝΑΜΙΣ • ΝΙΚΗ
             </div>
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 text-white" />
-              <span className="font-medium">Не требуется карта</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="hieroglyphic text-white/60">𓇀</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 text-white" />
-              <span className="font-medium">Настройка за 5 минут</span>
-            </div>
-          </div>
-          
-          {/* Greek text decoration */}
-          <div className="greek-text text-center mt-10 text-white/20 text-xs tracking-[0.5em]">
-            ΣΟΦΙΑ • ΔΥΝΑΜΙΣ • ΝΙΚΗ
-          </div>
+          </ScrollReveal>
         </div>
       </div>
     </section>

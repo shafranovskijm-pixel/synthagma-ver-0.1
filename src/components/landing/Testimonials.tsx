@@ -1,4 +1,6 @@
 import { Star, Quote } from "lucide-react";
+import { ScrollReveal, ScrollRevealGroup, scrollRevealItem } from "@/components/ui/ScrollReveal";
+import { motion } from "framer-motion";
 
 const testimonials = [
   {
@@ -43,7 +45,7 @@ export function Testimonials() {
 
       <div className="container mx-auto px-6 relative z-10">
         {/* Section header */}
-        <div className="text-center mb-16">
+        <ScrollReveal className="text-center mb-16">
           <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-gradient-to-r from-accent/15 to-primary/10 border border-accent/30 mb-8 backdrop-blur-sm">
             <Star className="w-5 h-5 text-accent fill-accent" />
             <span className="text-sm font-semibold text-foreground">Отзывы клиентов</span>
@@ -58,15 +60,15 @@ export function Testimonials() {
           
           {/* Egyptian border decoration */}
           <div className="egyptian-border w-32 mx-auto mt-8 rounded-full" />
-        </div>
+        </ScrollReveal>
 
         {/* Testimonials grid */}
-        <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-          {testimonials.map((testimonial, index) => (
-            <div
+        <ScrollRevealGroup className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto" staggerDelay={0.15}>
+          {testimonials.map((testimonial) => (
+            <motion.div
               key={testimonial.name}
-              className="relative bg-card/80 backdrop-blur-sm rounded-3xl p-8 border border-primary/20 hover:border-accent/40 shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-2 animate-slide-up overflow-hidden group"
-              style={{ animationDelay: `${index * 100}ms` }}
+              variants={scrollRevealItem}
+              className="relative bg-card/80 backdrop-blur-sm rounded-3xl p-8 border border-primary/20 hover:border-accent/40 shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-2 overflow-hidden group"
             >
               {/* Hieroglyph watermark */}
               <span className="hieroglyphic absolute top-4 right-4 text-4xl text-accent/20 group-hover:text-accent/40 transition-colors">
@@ -106,9 +108,9 @@ export function Testimonials() {
               
               {/* Gold bottom accent on hover */}
               <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-accent/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </ScrollRevealGroup>
         
         {/* Greek text decoration */}
         <div className="greek-text text-center mt-12 text-primary/15 text-xs tracking-[0.5em]">
