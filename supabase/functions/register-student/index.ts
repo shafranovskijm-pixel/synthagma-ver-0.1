@@ -137,16 +137,60 @@ serve(async (req) => {
       if (email) {
         const { data: existingProfile } = await supabaseAdmin
           .from("profiles")
-          .select("user_id, full_name")
+          .select("user_id, full_name, organization_id")
           .eq("email", email.toLowerCase())
           .maybeSingle();
 
         if (existingProfile) {
-          // User already exists - use existing user
-          userId = existingProfile.user_id;
-          isExisting = true;
-          existingName = existingProfile.full_name || full_name;
-          console.log(`User already exists: ${email}, enrolling to course`);
+          // Check if the user is already in THIS organization
+          if (existingProfile.organization_id === organization_id) {
+            // User already exists in this org - use existing user
+            userId = existingProfile.user_id;
+            isExisting = true;
+            existingName = existingProfile.full_name || full_name;
+            console.log(`User already exists in this org: ${email}`);
+          } else {
+            // User exists but in a different org - check if they have a profile for this org
+            const { data: orgProfile } = await supabaseAdmin
+              .from("profiles")
+              .select("user_id, full_name")
+              .eq("user_id", existingProfile.user_id)
+              .eq("organization_id", organization_id)
+              .maybeSingle();
+            
+            if (orgProfile) {
+              // Already has a profile in this org
+              userId = orgProfile.user_id;
+              isExisting = true;
+              existingName = orgProfile.full_name || full_name;
+              console.log(`User already has profile in this org: ${email}`);
+            } else {
+              // Create a new profile for this org (same user, different org)
+              userId = existingProfile.user_id;
+              
+              const { error: newProfileError } = await supabaseAdmin
+                .from("profiles")
+                .insert({
+                  id: crypto.randomUUID(),
+                  user_id: userId,
+                  full_name,
+                  email: email.toLowerCase(),
+                  organization_id,
+                  company_id: company_id || null
+                });
+              
+              if (newProfileError) {
+                console.error("New org profile error:", newProfileError);
+                return new Response(
+                  JSON.stringify({ error: "Ошибка создания профиля: " + newProfileError.message }),
+                  { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+                );
+              }
+              
+              console.log(`Created new org profile for existing user: ${email} in org ${organization_id}`);
+              isExisting = false; // Treat as new for messaging
+            }
+          }
         }
       }
 
