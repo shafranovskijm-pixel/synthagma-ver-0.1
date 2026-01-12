@@ -37,7 +37,7 @@ export function CTA() {
             <Link to="/register-organization">
               <Button
                 size="lg"
-                className="bg-white text-primary hover:bg-white/95 rounded-2xl px-10 h-16 text-lg font-bold gap-3 shadow-2xl group"
+                className="bg-white text-foreground hover:bg-white/95 hover:text-foreground rounded-2xl px-10 h-16 text-lg font-bold gap-3 shadow-2xl group"
               >
                 Попробовать бесплатно
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -47,7 +47,7 @@ export function CTA() {
               <Button
                 size="lg"
                 variant="outline"
-                className="border-2 border-white/30 text-white hover:bg-white/10 rounded-2xl px-10 h-16 text-lg backdrop-blur-sm"
+                className="border-2 border-white/50 text-white hover:bg-white/20 hover:text-white rounded-2xl px-10 h-16 text-lg backdrop-blur-sm"
               >
                 Уже есть аккаунт? Войти
               </Button>
