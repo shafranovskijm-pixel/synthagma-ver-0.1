@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -21,10 +22,14 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+    const SMTP_HOST = Deno.env.get("SMTP_HOST");
+    const SMTP_PORT = Deno.env.get("SMTP_PORT");
+    const SMTP_USER = Deno.env.get("SMTP_USER");
+    const SMTP_PASS = Deno.env.get("SMTP_PASS");
+    const SMTP_FROM = Deno.env.get("SMTP_FROM");
     
-    if (!RESEND_API_KEY) {
-      console.error("RESEND_API_KEY is not set");
+    if (!SMTP_HOST || !SMTP_PORT || !SMTP_USER || !SMTP_PASS || !SMTP_FROM) {
+      console.error("SMTP credentials are not fully configured");
       return new Response(
         JSON.stringify({ error: "Email service not configured" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -39,6 +44,9 @@ const handler = async (req: Request): Promise<Response> => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    console.log("Sending credentials email to:", email);
+    console.log("SMTP Config - Host:", SMTP_HOST, "Port:", SMTP_PORT, "User:", SMTP_USER);
 
     const htmlBody = `
       <!DOCTYPE html>
@@ -95,34 +103,31 @@ const handler = async (req: Request): Promise<Response> => {
       </html>
     `;
 
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${RESEND_API_KEY}`,
+    const client = new SMTPClient({
+      connection: {
+        hostname: SMTP_HOST,
+        port: parseInt(SMTP_PORT, 10),
+        tls: true,
+        auth: {
+          username: SMTP_USER,
+          password: SMTP_PASS,
+        },
       },
-      body: JSON.stringify({
-        from: "Система обучения <onboarding@resend.dev>",
-        to: [email],
-        subject: `Ваши данные для входа${organizationName ? ` - ${organizationName}` : ''}`,
-        html: htmlBody,
-      }),
     });
 
-    if (!res.ok) {
-      const errorText = await res.text();
-      console.error("Resend API error:", errorText);
-      return new Response(
-        JSON.stringify({ error: "Failed to send email", details: errorText }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    await client.send({
+      from: SMTP_FROM,
+      to: email,
+      subject: `Ваши данные для входа${organizationName ? ` - ${organizationName}` : ''}`,
+      html: htmlBody,
+    });
 
-    const data = await res.json();
-    console.log("Email sent successfully:", data);
+    await client.close();
+
+    console.log("Email sent successfully to:", email);
 
     return new Response(
-      JSON.stringify({ success: true, messageId: data.id }),
+      JSON.stringify({ success: true }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: unknown) {
