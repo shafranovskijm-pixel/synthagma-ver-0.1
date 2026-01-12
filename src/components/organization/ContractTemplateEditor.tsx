@@ -290,17 +290,44 @@ export function ContractTemplateEditor({
             // Apply regex patterns as fallback
             let processedText = fallbackText.trim();
             const patterns = [
+              // Реквизиты
               { regex: /ИНН:\s*(\d{10,12})/gi, replacement: "ИНН: {{org_inn}}" },
               { regex: /КПП:\s*(\d{9})/gi, replacement: "КПП: {{org_kpp}}" },
               { regex: /ОГРН:\s*(\d{13,15})/gi, replacement: "ОГРН: {{org_ogrn}}" },
+              { regex: /ОГРНИП:\s*(\d{15})/gi, replacement: "ОГРНИП: {{org_ogrn}}" },
               { regex: /БИК:\s*(\d{9})/gi, replacement: "БИК: {{org_bank_bik}}" },
-              { regex: /Р\/с:\s*(\d{20})/gi, replacement: "Р/с: {{org_bank_account}}" },
-              { regex: /К\/с:\s*(\d{20})/gi, replacement: "К/с: {{org_bank_corr_account}}" },
+              { regex: /Р\/с:?\s*(\d{20})/gi, replacement: "Р/с: {{org_bank_account}}" },
+              { regex: /Расч[её]тный счёт:?\s*(\d{20})/gi, replacement: "Расчётный счёт: {{org_bank_account}}" },
+              { regex: /К\/с:?\s*(\d{20})/gi, replacement: "К/с: {{org_bank_corr_account}}" },
+              { regex: /Корр[\.]*\s*сч[её]т:?\s*(\d{20})/gi, replacement: "Корр. счёт: {{org_bank_corr_account}}" },
+              // Номер и дата договора
               { regex: /№\s*([\d\-\/]+)\s+от/gi, replacement: "№ {{contract_number}} от" },
+              { regex: /Договор\s*№\s*([\d\-\/]+)/gi, replacement: "Договор № {{contract_number}}" },
               { regex: /от\s*«?(\d{1,2})»?\s*([а-яё]+)\s*(\d{4})\s*г?\.?/gi, replacement: "от {{contract_date}}" },
-              { regex: /(\d+[\s,]*)+\s*руб/gi, replacement: "{{price}} руб" },
-              { regex: /Количество обучающихся:\s*\d+/gi, replacement: "Количество обучающихся: {{students_count}}" },
-              { regex: /Количество слушателей:\s*\d+/gi, replacement: "Количество слушателей: {{students_count}}" },
+              // Суммы
+              { regex: /(\d{1,3}(?:\s?\d{3})*(?:[,\.]\d{2})?)\s*(?:\(.*?\))?\s*руб/gi, replacement: "{{price}} руб" },
+              { regex: /стоимость(?:[^:]*?):\s*(\d{1,3}(?:\s?\d{3})*(?:[,\.]\d{2})?)/gi, replacement: "стоимость: {{price}}" },
+              { regex: /итого(?:[^:]*?):\s*(\d{1,3}(?:\s?\d{3})*(?:[,\.]\d{2})?)/gi, replacement: "итого: {{total_price}}" },
+              { regex: /общая сумма(?:[^:]*?):\s*(\d{1,3}(?:\s?\d{3})*(?:[,\.]\d{2})?)/gi, replacement: "общая сумма: {{total_price}}" },
+              // Количество
+              { regex: /Количество обучающихся:?\s*(\d+)/gi, replacement: "Количество обучающихся: {{students_count}}" },
+              { regex: /Количество слушателей:?\s*(\d+)/gi, replacement: "Количество слушателей: {{students_count}}" },
+              { regex: /(\d+)\s*(?:чел(?:овек)?|слушател|обучающ)/gi, replacement: "{{students_count}} чел" },
+              // Организации (ООО, АО, ИП и т.д.)
+              { regex: /(ООО|ОАО|ЗАО|ПАО|АО)\s*[«"']([^»"']+)[»"']/gi, replacement: "{{org_name}}" },
+              { regex: /ИП\s+([А-ЯЁ][а-яё]+\s+[А-ЯЁ][а-яё]+\s+[А-ЯЁ][а-яё]+)/gi, replacement: "ИП {{org_director_name}}" },
+              // ФИО (Фамилия Имя Отчество)
+              { regex: /в лице\s+(?:Генерального директора|директора|руководителя)\s+([А-ЯЁ][а-яё]+\s+[А-ЯЁ][а-яё]+\s+[А-ЯЁ][а-яё]+)/gi, replacement: "в лице {{org_director_position}} {{org_director_name}}" },
+              { regex: /Генеральн(?:ый|ого) директор(?:а)?\s+([А-ЯЁ][а-яё]+\s+[А-ЯЁ][а-яё]*\.?\s*[А-ЯЁ][а-яё]*\.?)/gi, replacement: "{{org_director_position}} {{org_director_name}}" },
+              { regex: /Директор(?:а)?\s+([А-ЯЁ][а-яё]+\s+[А-ЯЁ][а-яё]*\.?\s*[А-ЯЁ][а-яё]*\.?)/gi, replacement: "{{org_director_position}} {{org_director_name}}" },
+              // Адреса
+              { regex: /(?:Юридический адрес|Адрес):?\s*(\d{6}),?\s*([^,\n]+(?:,\s*[^,\n]+){2,5})/gi, replacement: "Адрес: {{org_address}}" },
+              { regex: /г\.\s*[А-ЯЁ][а-яё]+,?\s+(?:ул\.|улица|пр\.|проспект|пер\.|переулок)\s+[^,\n]+,?\s*д\.\s*\d+[а-яё]?(?:,?\s*(?:корп|стр|оф|кв)\.\s*\d+)*/gi, replacement: "{{org_address}}" },
+              // Банк
+              { regex: /(?:Банк|в банке):?\s*(ПАО|АО|ООО)?\s*[«"']?([^»"'\n,]+)[»"']?/gi, replacement: "Банк: {{org_bank_name}}" },
+              // Курс/программа
+              { regex: /(?:программ[ае]|курс[ау]?)\s*[«"']([^»"']+)[»"']/gi, replacement: "программе «{{course_title}}»" },
+              { regex: /продолжительностью\s+(\d+)\s*(?:академических\s+)?час/gi, replacement: "продолжительностью {{course_duration}}" },
             ];
 
             patterns.forEach(({ regex, replacement }) => {
@@ -347,16 +374,44 @@ export function ContractTemplateEditor({
       
       // Replace common patterns with variables
       const patterns = [
+        // Реквизиты
         { regex: /ИНН:\s*\d{10,12}/gi, replacement: "ИНН: {{org_inn}}" },
         { regex: /КПП:\s*\d{9}/gi, replacement: "КПП: {{org_kpp}}" },
         { regex: /ОГРН:\s*\d{13,15}/gi, replacement: "ОГРН: {{org_ogrn}}" },
+        { regex: /ОГРНИП:\s*\d{15}/gi, replacement: "ОГРНИП: {{org_ogrn}}" },
         { regex: /БИК:\s*\d{9}/gi, replacement: "БИК: {{org_bank_bik}}" },
-        { regex: /Р\/с:\s*\d{20}/gi, replacement: "Р/с: {{org_bank_account}}" },
-        { regex: /К\/с:\s*\d{20}/gi, replacement: "К/с: {{org_bank_corr_account}}" },
+        { regex: /Р\/с:?\s*\d{20}/gi, replacement: "Р/с: {{org_bank_account}}" },
+        { regex: /Расч[её]тный счёт:?\s*\d{20}/gi, replacement: "Расчётный счёт: {{org_bank_account}}" },
+        { regex: /К\/с:?\s*\d{20}/gi, replacement: "К/с: {{org_bank_corr_account}}" },
+        { regex: /Корр[\.]*\s*сч[её]т:?\s*\d{20}/gi, replacement: "Корр. счёт: {{org_bank_corr_account}}" },
+        // Номер и дата договора
         { regex: /№\s*[\d\-\/]+\s+от/gi, replacement: "№ {{contract_number}} от" },
+        { regex: /Договор\s*№\s*[\d\-\/]+/gi, replacement: "Договор № {{contract_number}}" },
         { regex: /от\s*«?\d{1,2}»?\s*[а-яё]+\s*\d{4}\s*г?\.?/gi, replacement: "от {{contract_date}}" },
-        { regex: /(\d+[\s,]*)+\s*руб/gi, replacement: "{{price}} руб" },
-        { regex: /Количество обучающихся:\s*\d+/gi, replacement: "Количество обучающихся: {{students_count}}" },
+        // Суммы
+        { regex: /(\d{1,3}(?:\s?\d{3})*(?:[,\.]\d{2})?)\s*(?:\(.*?\))?\s*руб/gi, replacement: "{{price}} руб" },
+        { regex: /стоимость(?:[^:]*?):\s*\d{1,3}(?:\s?\d{3})*(?:[,\.]\d{2})?/gi, replacement: "стоимость: {{price}}" },
+        { regex: /итого(?:[^:]*?):\s*\d{1,3}(?:\s?\d{3})*(?:[,\.]\d{2})?/gi, replacement: "итого: {{total_price}}" },
+        { regex: /общая сумма(?:[^:]*?):\s*\d{1,3}(?:\s?\d{3})*(?:[,\.]\d{2})?/gi, replacement: "общая сумма: {{total_price}}" },
+        // Количество
+        { regex: /Количество обучающихся:?\s*\d+/gi, replacement: "Количество обучающихся: {{students_count}}" },
+        { regex: /Количество слушателей:?\s*\d+/gi, replacement: "Количество слушателей: {{students_count}}" },
+        { regex: /\d+\s*(?:чел(?:овек)?|слушател|обучающ)/gi, replacement: "{{students_count}} чел" },
+        // Организации (ООО, АО, ИП и т.д.)
+        { regex: /(ООО|ОАО|ЗАО|ПАО|АО)\s*[«"']([^»"']+)[»"']/gi, replacement: "{{org_name}}" },
+        { regex: /ИП\s+[А-ЯЁ][а-яё]+\s+[А-ЯЁ][а-яё]+\s+[А-ЯЁ][а-яё]+/gi, replacement: "ИП {{org_director_name}}" },
+        // ФИО (Фамилия Имя Отчество)
+        { regex: /в лице\s+(?:Генерального директора|директора|руководителя)\s+[А-ЯЁ][а-яё]+\s+[А-ЯЁ][а-яё]+\s+[А-ЯЁ][а-яё]+/gi, replacement: "в лице {{org_director_position}} {{org_director_name}}" },
+        { regex: /Генеральн(?:ый|ого) директор(?:а)?\s+[А-ЯЁ][а-яё]+\s+[А-ЯЁ][а-яё]*\.?\s*[А-ЯЁ][а-яё]*\.?/gi, replacement: "{{org_director_position}} {{org_director_name}}" },
+        { regex: /Директор(?:а)?\s+[А-ЯЁ][а-яё]+\s+[А-ЯЁ][а-яё]*\.?\s*[А-ЯЁ][а-яё]*\.?/gi, replacement: "{{org_director_position}} {{org_director_name}}" },
+        // Адреса
+        { regex: /(?:Юридический адрес|Адрес):?\s*\d{6},?\s*[^,\n]+(?:,\s*[^,\n]+){2,5}/gi, replacement: "Адрес: {{org_address}}" },
+        { regex: /г\.\s*[А-ЯЁ][а-яё]+,?\s+(?:ул\.|улица|пр\.|проспект|пер\.|переулок)\s+[^,\n]+,?\s*д\.\s*\d+[а-яё]?(?:,?\s*(?:корп|стр|оф|кв)\.\s*\d+)*/gi, replacement: "{{org_address}}" },
+        // Банк
+        { regex: /(?:Банк|в банке):?\s*(?:ПАО|АО|ООО)?\s*[«"']?[^»"'\n,]+[»"']?/gi, replacement: "Банк: {{org_bank_name}}" },
+        // Курс/программа
+        { regex: /(?:программ[ае]|курс[ау]?)\s*[«"'][^»"']+[»"']/gi, replacement: "программе «{{course_title}}»" },
+        { regex: /продолжительностью\s+\d+\s*(?:академических\s+)?час/gi, replacement: "продолжительностью {{course_duration}}" },
       ];
 
       patterns.forEach(({ regex, replacement }) => {
