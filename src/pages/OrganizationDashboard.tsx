@@ -14,6 +14,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import {
   GraduationCap,
   BookOpen,
   Users,
@@ -399,6 +405,11 @@ export default function OrganizationDashboard() {
 
       if (data.success && data.company) {
         const company = data.company;
+        // Update organization name
+        const orgName = company.shortName || company.name;
+        if (orgName) {
+          setEditOrgName(orgName);
+        }
         setRequisites(prev => ({
           ...prev,
           inn: inn,
@@ -5171,170 +5182,215 @@ export default function OrganizationDashboard() {
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-6 py-4">
-            {/* Organization Name */}
-            <div className="space-y-2">
-              <Label className="font-medium">Название организации</Label>
-              <Input
-                placeholder="ООО Название"
-                className="rounded-xl"
-                value={editOrgName}
-                onChange={(e) => setEditOrgName(e.target.value)}
-              />
-            </div>
-
-            {/* Basic requisites */}
-            <div>
-              <h4 className="font-medium text-sm mb-3 text-muted-foreground uppercase tracking-wide">Основные данные</h4>
-              <div className="grid md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label>ИНН</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="1234567890"
-                      className="rounded-xl"
-                      value={requisites.inn}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setRequisites(prev => ({ ...prev, inn: value }));
-                        if (value.length >= 10) {
-                          handleSearchRequisitesByInn(value);
-                        }
-                      }}
-                    />
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="rounded-xl shrink-0"
-                      onClick={() => handleSearchRequisitesByInn(requisites.inn)}
-                      disabled={requisites.inn.length < 10 || isSearchingDadataRequisites}
-                    >
-                      {isSearchingDadataRequisites ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Search className="w-4 h-4" />
-                      )}
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">Введите ИНН для автозаполнения</p>
-                </div>
-                <div className="space-y-2">
-                  <Label>КПП</Label>
+          <div className="space-y-4 py-4">
+            {/* Organization Name & INN - always visible */}
+            <div className="space-y-4 p-4 bg-secondary/30 rounded-xl">
+              <div className="space-y-2">
+                <Label className="font-medium">Название организации</Label>
+                <Input
+                  placeholder="ООО Название"
+                  className="rounded-xl"
+                  value={editOrgName}
+                  onChange={(e) => setEditOrgName(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="font-medium">ИНН</Label>
+                <div className="flex gap-2">
                   <Input
-                    placeholder="123456789"
+                    placeholder="1234567890"
                     className="rounded-xl"
-                    value={requisites.kpp}
-                    onChange={(e) => setRequisites(prev => ({ ...prev, kpp: e.target.value }))}
+                    value={requisites.inn}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setRequisites(prev => ({ ...prev, inn: value }));
+                      if (value.length >= 10) {
+                        handleSearchRequisitesByInn(value);
+                      }
+                    }}
                   />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="rounded-xl shrink-0"
+                    onClick={() => handleSearchRequisitesByInn(requisites.inn)}
+                    disabled={requisites.inn.length < 10 || isSearchingDadataRequisites}
+                  >
+                    {isSearchingDadataRequisites ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Search className="w-4 h-4" />
+                    )}
+                  </Button>
                 </div>
-                <div className="space-y-2">
-                  <Label>ОГРН</Label>
-                  <Input
-                    placeholder="1234567890123"
-                    className="rounded-xl"
-                    value={requisites.ogrn}
-                    onChange={(e) => setRequisites(prev => ({ ...prev, ogrn: e.target.value }))}
-                  />
-                </div>
+                <p className="text-xs text-muted-foreground">Введите ИНН для автозаполнения всех данных</p>
               </div>
             </div>
 
-            {/* Addresses */}
-            <div>
-              <h4 className="font-medium text-sm mb-3 text-muted-foreground uppercase tracking-wide">Адреса</h4>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Юридический адрес</Label>
-                  <Input
-                    placeholder="123456, г. Москва, ул. Примерная, д. 1, офис 100"
-                    className="rounded-xl"
-                    value={requisites.legal_address}
-                    onChange={(e) => setRequisites(prev => ({ ...prev, legal_address: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Фактический адрес</Label>
-                  <Input
-                    placeholder="123456, г. Москва, ул. Примерная, д. 1, офис 100"
-                    className="rounded-xl"
-                    value={requisites.actual_address}
-                    onChange={(e) => setRequisites(prev => ({ ...prev, actual_address: e.target.value }))}
-                  />
-                </div>
-              </div>
-            </div>
+            {/* Accordion sections */}
+            <Accordion type="multiple" className="space-y-2">
+              {/* Basic requisites */}
+              <AccordionItem value="basic" className="border rounded-xl px-4">
+                <AccordionTrigger className="hover:no-underline py-3">
+                  <span className="font-medium text-sm flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-muted-foreground" />
+                    Основные данные
+                    {(requisites.kpp || requisites.ogrn) && (
+                      <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">заполнено</span>
+                    )}
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent className="pb-4">
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>КПП</Label>
+                      <Input
+                        placeholder="123456789"
+                        className="rounded-xl"
+                        value={requisites.kpp}
+                        onChange={(e) => setRequisites(prev => ({ ...prev, kpp: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>ОГРН</Label>
+                      <Input
+                        placeholder="1234567890123"
+                        className="rounded-xl"
+                        value={requisites.ogrn}
+                        onChange={(e) => setRequisites(prev => ({ ...prev, ogrn: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
 
-            {/* Director */}
-            <div>
-              <h4 className="font-medium text-sm mb-3 text-muted-foreground uppercase tracking-wide">Руководитель</h4>
-              <div className="grid md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>ФИО руководителя</Label>
-                  <Input
-                    placeholder="Иванов Иван Иванович"
-                    className="rounded-xl"
-                    value={requisites.director_name}
-                    onChange={(e) => setRequisites(prev => ({ ...prev, director_name: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Должность</Label>
-                  <Input
-                    placeholder="Генеральный директор"
-                    className="rounded-xl"
-                    value={requisites.director_position}
-                    onChange={(e) => setRequisites(prev => ({ ...prev, director_position: e.target.value }))}
-                  />
-                </div>
-              </div>
-            </div>
+              {/* Addresses */}
+              <AccordionItem value="addresses" className="border rounded-xl px-4">
+                <AccordionTrigger className="hover:no-underline py-3">
+                  <span className="font-medium text-sm flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-muted-foreground" />
+                    Адреса
+                    {(requisites.legal_address || requisites.actual_address) && (
+                      <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">заполнено</span>
+                    )}
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent className="pb-4">
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Юридический адрес</Label>
+                      <Input
+                        placeholder="123456, г. Москва, ул. Примерная, д. 1, офис 100"
+                        className="rounded-xl"
+                        value={requisites.legal_address}
+                        onChange={(e) => setRequisites(prev => ({ ...prev, legal_address: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Фактический адрес</Label>
+                      <Input
+                        placeholder="123456, г. Москва, ул. Примерная, д. 1, офис 100"
+                        className="rounded-xl"
+                        value={requisites.actual_address}
+                        onChange={(e) => setRequisites(prev => ({ ...prev, actual_address: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
 
-            {/* Bank details */}
-            <div>
-              <h4 className="font-medium text-sm mb-3 text-muted-foreground uppercase tracking-wide">Банковские реквизиты</h4>
-              <div className="space-y-4">
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Наименование банка</Label>
-                    <Input
-                      placeholder="ПАО Сбербанк"
-                      className="rounded-xl"
-                      value={requisites.bank_name}
-                      onChange={(e) => setRequisites(prev => ({ ...prev, bank_name: e.target.value }))}
-                    />
+              {/* Director */}
+              <AccordionItem value="director" className="border rounded-xl px-4">
+                <AccordionTrigger className="hover:no-underline py-3">
+                  <span className="font-medium text-sm flex items-center gap-2">
+                    <Users className="w-4 h-4 text-muted-foreground" />
+                    Руководитель
+                    {requisites.director_name && (
+                      <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">заполнено</span>
+                    )}
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent className="pb-4">
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>ФИО руководителя</Label>
+                      <Input
+                        placeholder="Иванов Иван Иванович"
+                        className="rounded-xl"
+                        value={requisites.director_name}
+                        onChange={(e) => setRequisites(prev => ({ ...prev, director_name: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Должность</Label>
+                      <Input
+                        placeholder="Генеральный директор"
+                        className="rounded-xl"
+                        value={requisites.director_position}
+                        onChange={(e) => setRequisites(prev => ({ ...prev, director_position: e.target.value }))}
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label>БИК</Label>
-                    <Input
-                      placeholder="044525225"
-                      className="rounded-xl"
-                      value={requisites.bank_bik}
-                      onChange={(e) => setRequisites(prev => ({ ...prev, bank_bik: e.target.value }))}
-                    />
+                </AccordionContent>
+              </AccordionItem>
+
+              {/* Bank details */}
+              <AccordionItem value="bank" className="border rounded-xl px-4">
+                <AccordionTrigger className="hover:no-underline py-3">
+                  <span className="font-medium text-sm flex items-center gap-2">
+                    <Receipt className="w-4 h-4 text-muted-foreground" />
+                    Банковские реквизиты
+                    {requisites.bank_name && (
+                      <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">заполнено</span>
+                    )}
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent className="pb-4">
+                  <div className="space-y-4">
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Наименование банка</Label>
+                        <Input
+                          placeholder="ПАО Сбербанк"
+                          className="rounded-xl"
+                          value={requisites.bank_name}
+                          onChange={(e) => setRequisites(prev => ({ ...prev, bank_name: e.target.value }))}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>БИК</Label>
+                        <Input
+                          placeholder="044525225"
+                          className="rounded-xl"
+                          value={requisites.bank_bik}
+                          onChange={(e) => setRequisites(prev => ({ ...prev, bank_bik: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Расчётный счёт</Label>
+                        <Input
+                          placeholder="40702810123456789012"
+                          className="rounded-xl"
+                          value={requisites.bank_account}
+                          onChange={(e) => setRequisites(prev => ({ ...prev, bank_account: e.target.value }))}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Корр. счёт</Label>
+                        <Input
+                          placeholder="30101810400000000225"
+                          className="rounded-xl"
+                          value={requisites.bank_corr_account}
+                          onChange={(e) => setRequisites(prev => ({ ...prev, bank_corr_account: e.target.value }))}
+                        />
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Расчётный счёт</Label>
-                    <Input
-                      placeholder="40702810123456789012"
-                      className="rounded-xl"
-                      value={requisites.bank_account}
-                      onChange={(e) => setRequisites(prev => ({ ...prev, bank_account: e.target.value }))}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Корр. счёт</Label>
-                    <Input
-                      placeholder="30101810400000000225"
-                      className="rounded-xl"
-                      value={requisites.bank_corr_account}
-                      onChange={(e) => setRequisites(prev => ({ ...prev, bank_corr_account: e.target.value }))}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t border-border">
