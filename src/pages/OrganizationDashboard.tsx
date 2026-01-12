@@ -2622,41 +2622,68 @@ export default function OrganizationDashboard() {
             </div>}
 
           {/* Stats Tab */}
-          {activeTab === "stats" && <div className="space-y-6">
-              <div className="bg-card rounded-2xl border border-border p-6">
-                <h2 className="font-display text-xl font-semibold mb-6">Общая статистика</h2>
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground">Всего учеников</span>
-                      <span className="font-bold">{stats.totalStudents}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground">Всего курсов</span>
-                      <span className="font-bold">{stats.totalCourses}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground">Завершили обучение</span>
-                      <span className="font-bold text-sigma-green">{stats.completedCount}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground">Средний прогресс</span>
-                      <span className="font-bold">{stats.averageProgress}%</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-center">
-                    <div className="relative w-40 h-40">
-                      <svg className="w-40 h-40 transform -rotate-90">
-                        <circle cx="80" cy="80" r="70" fill="none" stroke="hsl(var(--border))" strokeWidth="12" />
-                        <circle cx="80" cy="80" r="70" fill="none" stroke="hsl(var(--primary))" strokeWidth="12" strokeDasharray={`${stats.averageProgress * 4.4} 440`} strokeLinecap="round" />
-                      </svg>
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-4xl font-bold font-display">{stats.averageProgress}%</span>
+          {activeTab === "stats" && organizationId && <div className="space-y-6">
+              <Tabs defaultValue="overview" className="w-full">
+                <TabsList className="w-full justify-start bg-card border border-border rounded-xl p-1 h-auto flex-wrap">
+                  <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-primary/10 gap-2">
+                    <BarChart3 className="w-4 h-4" />
+                    Обзор
+                  </TabsTrigger>
+                  <TabsTrigger value="class-journal" className="rounded-lg data-[state=active]:bg-primary/10 gap-2">
+                    <Clock className="w-4 h-4" />
+                    Журнал занятий
+                  </TabsTrigger>
+                  <TabsTrigger value="document-log" className="rounded-lg data-[state=active]:bg-primary/10 gap-2">
+                    <FileText className="w-4 h-4" />
+                    Журнал выдачи документов
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="overview" className="mt-6">
+                  <div className="bg-card rounded-2xl border border-border p-6">
+                    <h2 className="font-display text-xl font-semibold mb-6">Общая статистика</h2>
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-center">
+                          <span className="text-muted-foreground">Всего учеников</span>
+                          <span className="font-bold">{stats.totalStudents}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-muted-foreground">Всего курсов</span>
+                          <span className="font-bold">{stats.totalCourses}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-muted-foreground">Завершили обучение</span>
+                          <span className="font-bold text-sigma-green">{stats.completedCount}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-muted-foreground">Средний прогресс</span>
+                          <span className="font-bold">{stats.averageProgress}%</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-center">
+                        <div className="relative w-40 h-40">
+                          <svg className="w-40 h-40 transform -rotate-90">
+                            <circle cx="80" cy="80" r="70" fill="none" stroke="hsl(var(--border))" strokeWidth="12" />
+                            <circle cx="80" cy="80" r="70" fill="none" stroke="hsl(var(--primary))" strokeWidth="12" strokeDasharray={`${stats.averageProgress * 4.4} 440`} strokeLinecap="round" />
+                          </svg>
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <span className="text-4xl font-bold font-display">{stats.averageProgress}%</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              </div>
+                </TabsContent>
+
+                <TabsContent value="class-journal" className="mt-6">
+                  <ClassJournalExport organizationId={organizationId} />
+                </TabsContent>
+
+                <TabsContent value="document-log" className="mt-6">
+                  <DocumentIssuanceLog organizationId={organizationId} />
+                </TabsContent>
+              </Tabs>
             </div>}
 
           {/* Links Tab */}
