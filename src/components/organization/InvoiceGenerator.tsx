@@ -1,0 +1,573 @@
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { Receipt, Download, Loader2, Printer, Save } from "lucide-react";
+import { format } from "date-fns";
+import { ru } from "date-fns/locale";
+
+interface Company {
+  id: string;
+  name: string;
+  inn: string | null;
+  kpp: string | null;
+  ogrn: string | null;
+  address: string | null;
+  director: string | null;
+}
+
+interface Course {
+  id: string;
+  title: string;
+  duration: string | null;
+}
+
+interface OrgRequisites {
+  name: string;
+  inn: string;
+  kpp: string;
+  ogrn: string;
+  legal_address: string;
+  actual_address: string;
+  director_name: string;
+  director_position: string;
+  bank_name: string;
+  bank_bik: string;
+  bank_account: string;
+  bank_corr_account: string;
+  stamp_url?: string | null;
+  signature_url?: string | null;
+}
+
+interface InvoiceGeneratorProps {
+  organizationId: string;
+  isOpen: boolean;
+  onClose: () => void;
+  orgRequisites: OrgRequisites;
+  preselectedCompany?: Company | null;
+  onSave?: (html: string, invoiceNumber: string, companyName: string, amount: number) => Promise<void>;
+}
+
+export function InvoiceGenerator({
+  organizationId,
+  isOpen,
+  onClose,
+  orgRequisites,
+  preselectedCompany,
+  onSave,
+}: InvoiceGeneratorProps) {
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string>("");
+  const [selectedCourseId, setSelectedCourseId] = useState<string>("");
+  const [invoiceNumber, setInvoiceNumber] = useState("");
+  const [invoiceDate, setInvoiceDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [studentsCount, setStudentsCount] = useState("1");
+  const [price, setPrice] = useState("");
+
+  useEffect(() => {
+    if (preselectedCompany && isOpen) {
+      setSelectedCompanyId(preselectedCompany.id);
+    }
+  }, [preselectedCompany, isOpen]);
+
+  useEffect(() => {
+    const loadData = async () => {
+      if (!organizationId || !isOpen) return;
+
+      setIsLoading(true);
+      try {
+        const [companiesRes, coursesRes] = await Promise.all([
+          supabase
+            .from("companies")
+            .select("id, name, inn, kpp, ogrn, address, director")
+            .eq("organization_id", organizationId)
+            .order("name"),
+          supabase
+            .from("courses")
+            .select("id, title, duration")
+            .eq("organization_id", organizationId)
+            .eq("is_published", true)
+            .order("title"),
+        ]);
+
+        if (companiesRes.error) throw companiesRes.error;
+        if (coursesRes.error) throw coursesRes.error;
+
+        setCompanies(companiesRes.data || []);
+        setCourses(coursesRes.data || []);
+
+        const today = new Date();
+        const invoiceNum = `СЧ-${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`;
+        setInvoiceNumber(invoiceNum);
+      } catch (error) {
+        console.error("Error loading data:", error);
+        toast.error("Ошибка загрузки данных");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+  }, [organizationId, isOpen]);
+
+  const selectedCompany = preselectedCompany || companies.find((c) => c.id === selectedCompanyId);
+  const selectedCourse = courses.find((c) => c.id === selectedCourseId);
+
+  const formatPrice = (value: string) => {
+    const num = parseFloat(value);
+    if (isNaN(num)) return "0";
+    return new Intl.NumberFormat("ru-RU", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(num);
+  };
+
+  const numberToWords = (num: number): string => {
+    const ones = ['', 'один', 'два', 'три', 'четыре', 'пять', 'шесть', 'семь', 'восемь', 'девять'];
+    const teens = ['десять', 'одиннадцать', 'двенадцать', 'тринадцать', 'четырнадцать', 'пятнадцать', 'шестнадцать', 'семнадцать', 'восемнадцать', 'девятнадцать'];
+    const tens = ['', '', 'двадцать', 'тридцать', 'сорок', 'пятьдесят', 'шестьдесят', 'семьдесят', 'восемьдесят', 'девяносто'];
+    const hundreds = ['', 'сто', 'двести', 'триста', 'четыреста', 'пятьсот', 'шестьсот', 'семьсот', 'восемьсот', 'девятьсот'];
+    const thousands = ['тысяча', 'тысячи', 'тысяч'];
+
+    if (num === 0) return 'ноль';
+
+    const getHundreds = (n: number): string => {
+      let result = '';
+      if (n >= 100) {
+        result += hundreds[Math.floor(n / 100)] + ' ';
+        n %= 100;
+      }
+      if (n >= 20) {
+        result += tens[Math.floor(n / 10)] + ' ';
+        n %= 10;
+      } else if (n >= 10) {
+        result += teens[n - 10] + ' ';
+        return result.trim();
+      }
+      if (n > 0) {
+        result += ones[n] + ' ';
+      }
+      return result.trim();
+    };
+
+    let result = '';
+    const intPart = Math.floor(num);
+
+    if (intPart >= 1000000) {
+      const mil = Math.floor(intPart / 1000000);
+      result += getHundreds(mil) + ' миллион' + (mil === 1 ? '' : mil < 5 ? 'а' : 'ов') + ' ';
+    }
+
+    if (intPart >= 1000) {
+      const thou = Math.floor((intPart % 1000000) / 1000);
+      if (thou > 0) {
+        let thouStr = getHundreds(thou);
+        if (thou % 10 === 1 && thou % 100 !== 11) {
+          thouStr = thouStr.replace('один', 'одна');
+        } else if (thou % 10 === 2 && thou % 100 !== 12) {
+          thouStr = thouStr.replace('два', 'две');
+        }
+        result += thouStr + ' ' + thousands[thou % 10 === 1 && thou % 100 !== 11 ? 0 : thou % 10 >= 2 && thou % 10 <= 4 && (thou % 100 < 10 || thou % 100 >= 20) ? 1 : 2] + ' ';
+      }
+    }
+
+    const lastThree = intPart % 1000;
+    if (lastThree > 0 || intPart === 0) {
+      result += getHundreds(lastThree);
+    }
+
+    return result.trim();
+  };
+
+  const generateInvoiceHTML = (): string => {
+    if (!selectedCompany || !selectedCourse) return "";
+
+    const priceNum = parseFloat(price) || 0;
+    const totalPrice = priceNum * parseInt(studentsCount);
+    const dateFormatted = format(new Date(invoiceDate), "d MMMM yyyy г.", { locale: ru });
+
+    return `
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Счёт №${invoiceNumber}</title>
+  <style>
+    @page { margin: 1.5cm; }
+    body { 
+      font-family: 'Times New Roman', Times, serif; 
+      font-size: 11pt; 
+      line-height: 1.4;
+      color: #000;
+    }
+    .header { margin-bottom: 30px; }
+    .bank-details { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
+    .bank-details td, .bank-details th { border: 1px solid #000; padding: 4px 8px; font-size: 10pt; }
+    .bank-details .label { width: 80px; font-weight: normal; }
+    .title { font-size: 16pt; font-weight: bold; margin: 25px 0 15px 0; }
+    .info-row { margin-bottom: 8px; }
+    .info-label { font-weight: bold; }
+    .items-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+    .items-table th, .items-table td { border: 1px solid #000; padding: 6px 10px; }
+    .items-table th { background: #f5f5f5; font-weight: bold; text-align: center; }
+    .items-table .num { width: 40px; text-align: center; }
+    .items-table .qty { width: 60px; text-align: center; }
+    .items-table .unit { width: 50px; text-align: center; }
+    .items-table .price { width: 120px; text-align: right; }
+    .items-table .total { width: 120px; text-align: right; }
+    .total-row { font-weight: bold; }
+    .footer { margin-top: 30px; }
+    .signature-block { margin-top: 40px; position: relative; }
+    .signature-line { border-bottom: 1px solid #000; width: 200px; display: inline-block; margin-left: 20px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <table class="bank-details">
+      <tr>
+        <td rowspan="2" style="width: 50%;">
+          <div style="margin-bottom: 5px;">${orgRequisites.bank_name}</div>
+          <div style="font-size: 9pt;">Банк получателя</div>
+        </td>
+        <td class="label">БИК</td>
+        <td>${orgRequisites.bank_bik}</td>
+      </tr>
+      <tr>
+        <td class="label">К/с</td>
+        <td>${orgRequisites.bank_corr_account}</td>
+      </tr>
+      <tr>
+        <td>
+          <div>ИНН ${orgRequisites.inn}</div>
+          <div>КПП ${orgRequisites.kpp}</div>
+        </td>
+        <td class="label">Р/с</td>
+        <td rowspan="2">${orgRequisites.bank_account}</td>
+      </tr>
+      <tr>
+        <td>
+          <div>${orgRequisites.name}</div>
+          <div style="font-size: 9pt;">Получатель</div>
+        </td>
+        <td></td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="title">СЧЁТ № ${invoiceNumber} от ${dateFormatted}</div>
+
+  <div class="info-row">
+    <span class="info-label">Поставщик:</span> ${orgRequisites.name}, ИНН ${orgRequisites.inn}, КПП ${orgRequisites.kpp}, ${orgRequisites.legal_address}
+  </div>
+  <div class="info-row">
+    <span class="info-label">Покупатель:</span> ${selectedCompany.name}${selectedCompany.inn ? `, ИНН ${selectedCompany.inn}` : ''}${selectedCompany.kpp ? `, КПП ${selectedCompany.kpp}` : ''}${selectedCompany.address ? `, ${selectedCompany.address}` : ''}
+  </div>
+
+  <table class="items-table">
+    <thead>
+      <tr>
+        <th class="num">№</th>
+        <th>Наименование</th>
+        <th class="qty">Кол-во</th>
+        <th class="unit">Ед.</th>
+        <th class="price">Цена</th>
+        <th class="total">Сумма</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="num">1</td>
+        <td>Образовательные услуги по программе «${selectedCourse.title}»${selectedCourse.duration ? ` (${selectedCourse.duration})` : ''}</td>
+        <td class="qty">${studentsCount}</td>
+        <td class="unit">чел.</td>
+        <td class="price">${formatPrice(price)}</td>
+        <td class="total">${formatPrice(String(totalPrice))}</td>
+      </tr>
+    </tbody>
+    <tfoot>
+      <tr class="total-row">
+        <td colspan="5" style="text-align: right;">Итого:</td>
+        <td class="total">${formatPrice(String(totalPrice))}</td>
+      </tr>
+      <tr class="total-row">
+        <td colspan="5" style="text-align: right;">Без НДС</td>
+        <td class="total">—</td>
+      </tr>
+      <tr class="total-row">
+        <td colspan="5" style="text-align: right;">Всего к оплате:</td>
+        <td class="total">${formatPrice(String(totalPrice))}</td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <div style="margin-top: 20px;">
+    <strong>Всего наименований ${studentsCount}, на сумму ${formatPrice(String(totalPrice))} руб.</strong><br>
+    <strong>${numberToWords(totalPrice)} рублей 00 копеек</strong>
+  </div>
+
+  <div class="footer">
+    <div class="signature-block">
+      <div style="position: relative; display: inline-block;">
+        ${orgRequisites.director_position}
+        <span class="signature-line"></span>
+        ${orgRequisites.signature_url ? `<img src="${orgRequisites.signature_url}" alt="Подпись" style="max-height: 50px; max-width: 120px; position: absolute; left: 120px; top: -15px;">` : ''}
+        ${orgRequisites.stamp_url ? `<img src="${orgRequisites.stamp_url}" alt="Печать" style="max-height: 70px; max-width: 70px; position: absolute; left: 200px; top: -20px; opacity: 0.85;">` : ''}
+        / ${orgRequisites.director_name} /
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+  };
+
+  const handleGenerate = async () => {
+    if (!selectedCompanyId && !preselectedCompany) {
+      toast.error("Выберите компанию");
+      return;
+    }
+    if (!selectedCourseId) {
+      toast.error("Выберите курс");
+      return;
+    }
+    if (!price || parseFloat(price) <= 0) {
+      toast.error("Укажите стоимость");
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const html = generateInvoiceHTML();
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(html);
+        printWindow.document.close();
+        printWindow.focus();
+        setTimeout(() => printWindow.print(), 500);
+      }
+      toast.success("Счёт сформирован");
+    } catch (error) {
+      console.error("Error generating invoice:", error);
+      toast.error("Ошибка генерации счёта");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleDownloadDOC = () => {
+    if (!selectedCompany || !selectedCourseId) {
+      toast.error("Заполните все поля");
+      return;
+    }
+
+    const html = generateInvoiceHTML();
+    const docContent = `
+<!DOCTYPE html>
+<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head>
+<meta charset="utf-8">
+<meta name="ProgId" content="Word.Document">
+<title>Счёт ${invoiceNumber}</title>
+</head>
+<body>
+${html.replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>|<!DOCTYPE[^>]*>/gi, '')}
+</body>
+</html>`;
+
+    const blob = new Blob([docContent], { type: 'application/msword' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Счёт_${invoiceNumber}_${selectedCompany?.name || 'компания'}.doc`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success("Счёт скачан");
+  };
+
+  const handleSave = async () => {
+    if (!selectedCompany || !selectedCourseId || !price) {
+      toast.error("Заполните все поля");
+      return;
+    }
+
+    if (!onSave) {
+      toast.error("Сохранение недоступно");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const html = generateInvoiceHTML();
+      const totalPrice = parseFloat(price) * parseInt(studentsCount);
+      await onSave(html, invoiceNumber, selectedCompany.name, totalPrice);
+      toast.success("Счёт сохранён");
+      onClose();
+    } catch (error) {
+      console.error("Error saving invoice:", error);
+      toast.error("Ошибка сохранения");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Receipt className="w-5 h-5 text-blue-500" />
+            Создание счёта
+          </DialogTitle>
+          <DialogDescription>
+            Заполните данные для формирования счёта на оплату
+          </DialogDescription>
+        </DialogHeader>
+
+        {isLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-6 h-6 animate-spin" />
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Номер счёта</Label>
+                <Input
+                  value={invoiceNumber}
+                  onChange={(e) => setInvoiceNumber(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Дата</Label>
+                <Input
+                  type="date"
+                  value={invoiceDate}
+                  onChange={(e) => setInvoiceDate(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {!preselectedCompany && (
+              <div className="space-y-2">
+                <Label>Компания-заказчик</Label>
+                <Select value={selectedCompanyId} onValueChange={setSelectedCompanyId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Выберите компанию" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {companies.map((company) => (
+                      <SelectItem key={company.id} value={company.id}>
+                        {company.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label>Курс</Label>
+              <Select value={selectedCourseId} onValueChange={setSelectedCourseId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Выберите курс" />
+                </SelectTrigger>
+                <SelectContent>
+                  {courses.map((course) => (
+                    <SelectItem key={course.id} value={course.id}>
+                      {course.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Кол-во учеников</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  value={studentsCount}
+                  onChange={(e) => setStudentsCount(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Цена за 1 ученика (₽)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
+
+            {price && studentsCount && (
+              <div className="bg-secondary/50 rounded-lg p-3 text-center">
+                <span className="text-sm text-muted-foreground">Итого: </span>
+                <span className="font-bold text-lg">
+                  {formatPrice(String(parseFloat(price || "0") * parseInt(studentsCount || "1")))} ₽
+                </span>
+              </div>
+            )}
+
+            <div className="flex gap-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={handleDownloadDOC}
+                disabled={!selectedCourseId || !price}
+                className="flex-1"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Скачать DOC
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleGenerate}
+                disabled={isGenerating || !selectedCourseId || !price}
+                className="flex-1"
+              >
+                {isGenerating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Printer className="w-4 h-4 mr-2" />}
+                Печать
+              </Button>
+              {onSave && (
+                <Button
+                  onClick={handleSave}
+                  disabled={isSaving || !selectedCourseId || !price}
+                  className="flex-1"
+                >
+                  {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                  Сохранить
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}

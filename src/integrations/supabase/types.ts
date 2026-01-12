@@ -96,34 +96,46 @@ export type Database = {
       }
       company_documents: {
         Row: {
+          amount: number | null
           company_id: string
+          contract_number: string | null
           file_path: string | null
           file_size: number | null
           file_url: string | null
           id: string
+          is_paid: boolean | null
           name: string
+          paid_at: string | null
           type: string
           uploaded_at: string
           uploaded_by: string | null
         }
         Insert: {
+          amount?: number | null
           company_id: string
+          contract_number?: string | null
           file_path?: string | null
           file_size?: number | null
           file_url?: string | null
           id?: string
+          is_paid?: boolean | null
           name: string
+          paid_at?: string | null
           type: string
           uploaded_at?: string
           uploaded_by?: string | null
         }
         Update: {
+          amount?: number | null
           company_id?: string
+          contract_number?: string | null
           file_path?: string | null
           file_size?: number | null
           file_url?: string | null
           id?: string
+          is_paid?: boolean | null
           name?: string
+          paid_at?: string | null
           type?: string
           uploaded_at?: string
           uploaded_by?: string | null
