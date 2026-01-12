@@ -2764,7 +2764,7 @@ export default function OrganizationDashboard() {
           {/* Settings Tab */}
           {activeTab === "settings" && <div className="max-w-2xl space-y-6">
               {/* Theme Settings */}
-              <details className="bg-card rounded-2xl border border-border group" open>
+              <details className="bg-card rounded-2xl border border-border group">
                 <summary className="p-6 cursor-pointer list-none flex items-center justify-between">
                   <h3 className="font-display font-semibold text-lg flex items-center gap-2">
                     <Palette className="w-5 h-5" />
@@ -2828,7 +2828,7 @@ export default function OrganizationDashboard() {
               </details>
 
               {/* Menu Items Settings */}
-              <details className="bg-card rounded-2xl border border-border group" open>
+              <details className="bg-card rounded-2xl border border-border group">
                 <summary className="p-6 cursor-pointer list-none flex items-center justify-between">
                   <h3 className="font-display font-semibold text-lg flex items-center gap-2">
                     <LayoutGrid className="w-5 h-5" />
