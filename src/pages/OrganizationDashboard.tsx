@@ -239,6 +239,7 @@ export default function OrganizationDashboard() {
   const [isSendingBulkCredentials, setIsSendingBulkCredentials] = useState(false);
   const [isCreatingCredentials, setIsCreatingCredentials] = useState(false);
   const [isDeletingStudent, setIsDeletingStudent] = useState(false);
+  const [isCreatingBulkCredentials, setIsCreatingBulkCredentials] = useState(false);
 
   // Registration links state
   const [registrationLinks, setRegistrationLinks] = useState<RegistrationLink[]>([]);
@@ -1832,6 +1833,102 @@ export default function OrganizationDashboard() {
     }
   };
 
+  // Bulk create credentials for selected students without login
+  const handleBulkCreateCredentials = async () => {
+    if (selectedStudentIds.size === 0) {
+      toast.error("Выберите учеников");
+      return;
+    }
+
+    // Get selected students without credentials
+    const studentsToCreate = students.filter(
+      s => selectedStudentIds.has(s.enrollment_id || s.user_id) && !s.login
+    );
+
+    if (studentsToCreate.length === 0) {
+      toast.info("У всех выбранных учеников уже есть логин и пароль");
+      return;
+    }
+
+    setIsCreatingBulkCredentials(true);
+    let successCount = 0;
+    let errorCount = 0;
+    const createdCredentials: Array<{ name: string; login: string; password: string }> = [];
+
+    // Transliteration map
+    const translit: Record<string, string> = {
+      'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'e',
+      'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
+      'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
+      'ф': 'f', 'х': 'h', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch',
+      'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya'
+    };
+
+    try {
+      for (const student of studentsToCreate) {
+        try {
+          // Generate login from name
+          const nameParts = student.name.toLowerCase().split(/\s+/);
+          let baseLogin = nameParts.length >= 2 
+            ? nameParts[0].replace(/[^a-zа-яё]/gi, '').substring(0, 10) + '_' + nameParts[1].replace(/[^a-zа-яё]/gi, '').substring(0, 2)
+            : nameParts[0].replace(/[^a-zа-яё]/gi, '').substring(0, 12);
+          
+          baseLogin = baseLogin.split('').map(c => translit[c] || c).join('');
+          
+          const randomSuffix = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+          const login = baseLogin + randomSuffix;
+          
+          // Generate password
+          const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+          let password = '';
+          for (let i = 0; i < 8; i++) {
+            password += chars.charAt(Math.floor(Math.random() * chars.length));
+          }
+
+          // Update profile
+          const { error } = await supabase
+            .from("profiles")
+            .update({
+              login,
+              generated_password: password
+            })
+            .eq("user_id", student.user_id);
+
+          if (error) throw error;
+
+          createdCredentials.push({ name: student.name, login, password });
+          successCount++;
+        } catch (err) {
+          errorCount++;
+          console.error(`Error creating credentials for ${student.name}:`, err);
+        }
+      }
+
+      // Update local state
+      const credentialsMap = new Map(createdCredentials.map(c => [c.name, c]));
+      setStudents(prev => prev.map(s => {
+        const creds = createdCredentials.find(c => c.name === s.name && !s.login);
+        return creds ? { ...s, login: creds.login, generated_password: creds.password } : s;
+      }));
+      setAllProfiles(prev => prev.map(s => {
+        const creds = createdCredentials.find(c => c.name === s.name && !s.login);
+        return creds ? { ...s, login: creds.login, generated_password: creds.password } : s;
+      }));
+
+      if (successCount > 0) {
+        toast.success(`Создано логинов: ${successCount} из ${studentsToCreate.length}`);
+      }
+      if (errorCount > 0) {
+        toast.error(`Ошибки: ${errorCount}`);
+      }
+    } catch (error) {
+      console.error("Error in bulk create credentials:", error);
+      toast.error("Ошибка массового создания");
+    } finally {
+      setIsCreatingBulkCredentials(false);
+    }
+  };
+
   // View student details
   const handleViewStudent = async (student: Student) => {
     setShowStudentDialog(true);
@@ -2674,6 +2771,19 @@ export default function OrganizationDashboard() {
                         Зачислить на курс ({selectedStudentIds.size})
                       </Button>
                       <Button 
+                        onClick={handleBulkCreateCredentials} 
+                        variant="outline"
+                        className="rounded-xl gap-2"
+                        disabled={isCreatingBulkCredentials}
+                      >
+                        {isCreatingBulkCredentials ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Key className="w-4 h-4" />
+                        )}
+                        Создать логины
+                      </Button>
+                      <Button 
                         onClick={handleBulkSendCredentials} 
                         variant="outline"
                         className="rounded-xl gap-2"
@@ -2684,7 +2794,7 @@ export default function OrganizationDashboard() {
                         ) : (
                           <Mail className="w-4 h-4" />
                         )}
-                        Отправить данные на почту
+                        Отправить на почту
                       </Button>
                       {getSelectedEnrollmentsCount() > 0 && (
                         <Button 
