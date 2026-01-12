@@ -104,7 +104,8 @@ export function StudentDetailCard({
   const [uploadingType, setUploadingType] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedDocType, setSelectedDocType] = useState<string | null>(null);
-  const [previewDoc, setPreviewDoc] = useState<{ url: string; name: string; type: string } | null>(null);
+  const [previewDoc, setPreviewDoc] = useState<{ url: string; name: string; type: string; originalUrl?: string } | null>(null);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 
   useEffect(() => {
     if (isOpen && student) {
@@ -236,11 +237,14 @@ export function StudentDetailCard({
 
   const handlePreviewDoc = async (doc: IdentityDocumentRecord | DocumentRecord) => {
     if (!doc.file_url) return;
-    const ext = doc.file_url.split('.').pop()?.toLowerCase() || '';
-    const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext);
+    const ext = doc.file_url.split('.').pop()?.toLowerCase()?.split('?')[0] || '';
+    const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(ext);
+    const isPdf = ext === 'pdf';
     
-    if (isImage) {
-      try {
+    setIsLoadingPreview(true);
+    
+    try {
+      if (isImage) {
         // Fetch image as blob to bypass ad blockers
         const response = await fetch(doc.file_url);
         const blob = await response.blob();
@@ -248,20 +252,27 @@ export function StudentDetailCard({
         setPreviewDoc({
           url: blobUrl,
           name: doc.name,
-          type: 'image'
+          type: 'image',
+          originalUrl: doc.file_url
         });
-      } catch (error) {
-        console.error("Preview error:", error);
-        // Fallback: try direct URL
+      } else if (isPdf) {
+        // Use Google Docs Viewer for PDF
+        const encodedUrl = encodeURIComponent(doc.file_url);
         setPreviewDoc({
-          url: doc.file_url,
+          url: `https://docs.google.com/viewer?url=${encodedUrl}&embedded=true`,
           name: doc.name,
-          type: 'image'
+          type: 'pdf',
+          originalUrl: doc.file_url
         });
+      } else {
+        // For other files, just download
+        handleDownloadDoc(doc.file_url, doc.name);
       }
-    } else {
-      // For PDF and other files, download instead of opening in new tab
-      handleDownloadDoc(doc.file_url, doc.name);
+    } catch (error) {
+      console.error("Preview error:", error);
+      toast.error("Не удалось открыть предпросмотр");
+    } finally {
+      setIsLoadingPreview(false);
     }
   };
 
@@ -992,26 +1003,54 @@ export function StudentDetailCard({
           <DialogContent className="max-w-4xl max-h-[90vh] p-0 overflow-hidden">
             <DialogHeader className="p-4 border-b border-border">
               <DialogTitle className="flex items-center justify-between">
-                <span className="font-medium truncate">{previewDoc.name}</span>
-                <div className="flex gap-2">
+                <span className="font-medium truncate pr-4">{previewDoc.name}</span>
+                <div className="flex gap-2 flex-shrink-0">
                   <Button
                     size="sm"
                     variant="outline"
                     className="gap-2"
-                    onClick={() => handleDownloadDoc(previewDoc.url, previewDoc.name)}
+                    onClick={() => previewDoc.originalUrl && handleDownloadDoc(previewDoc.originalUrl, previewDoc.name)}
                   >
                     <Download className="w-4 h-4" />
                     Скачать
                   </Button>
+                  {previewDoc.originalUrl && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-2"
+                      onClick={() => window.open(previewDoc.originalUrl, '_blank')}
+                    >
+                      <Eye className="w-4 h-4" />
+                      Открыть
+                    </Button>
+                  )}
                 </div>
               </DialogTitle>
             </DialogHeader>
             <div className="flex items-center justify-center p-4 bg-muted/30 min-h-[60vh] max-h-[75vh] overflow-auto">
-              <img
-                src={previewDoc.url}
-                alt={previewDoc.name}
-                className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-lg"
-              />
+              {previewDoc.type === 'image' ? (
+                <img
+                  src={previewDoc.url}
+                  alt={previewDoc.name}
+                  className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-lg"
+                  onError={(e) => {
+                    // If blob fails, try original URL
+                    if (previewDoc.originalUrl && e.currentTarget.src !== previewDoc.originalUrl) {
+                      e.currentTarget.src = previewDoc.originalUrl;
+                    }
+                  }}
+                />
+              ) : previewDoc.type === 'pdf' ? (
+                <iframe
+                  src={previewDoc.url}
+                  title={previewDoc.name}
+                  className="w-full h-[70vh] rounded-lg border border-border bg-white"
+                  onError={() => {
+                    toast.error("Не удалось загрузить PDF. Попробуйте скачать файл.");
+                  }}
+                />
+              ) : null}
             </div>
           </DialogContent>
         </Dialog>
