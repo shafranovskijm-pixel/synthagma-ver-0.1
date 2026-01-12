@@ -189,6 +189,7 @@ export default function OrganizationDashboard() {
   } | null>(null);
   const [studentDetailCardEnrollments, setStudentDetailCardEnrollments] = useState<{
     id: string;
+    course_id: string;
     course_title: string;
     progress: number;
     status: string;
@@ -2014,6 +2015,7 @@ export default function OrganizationDashboard() {
     
     const enrollments = (enrollmentsData || []).map((e: any) => ({
       id: e.id,
+      course_id: e.course_id,
       course_title: e.courses?.title || "Неизвестный курс",
       progress: e.progress || 0,
       status: e.status || "active",
