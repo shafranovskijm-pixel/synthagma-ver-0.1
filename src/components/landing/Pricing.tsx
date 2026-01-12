@@ -10,6 +10,7 @@ const plans = [
     description: "Идеально для начала работы с платформой",
     icon: Zap,
     popular: false,
+    glyph: "𓂀",
     features: [
       "До 50 учеников",
       "До 5 курсов",
@@ -18,7 +19,6 @@ const plans = [
       "Ссылки для регистрации",
     ],
     cta: "Начать бесплатно",
-    variant: "outline" as const,
   },
   {
     name: "Оптимальный",
@@ -27,6 +27,7 @@ const plans = [
     description: "Полный функционал для организаций",
     icon: Star,
     popular: true,
+    glyph: "𓃀",
     features: [
       "Всё из тарифа «Стартовый»",
       "Неограниченное число учеников",
@@ -36,7 +37,6 @@ const plans = [
       "Приоритетная поддержка",
     ],
     cta: "Начать обучение",
-    variant: "default" as const,
   },
   {
     name: "Максимальный",
@@ -45,6 +45,7 @@ const plans = [
     description: "Полный функционал для крупных организаций",
     icon: Crown,
     popular: false,
+    glyph: "𓅀",
     features: [
       "Всё из тарифа «Оптимальный»",
       "Выгрузка в ФИС ФРДО",
@@ -54,30 +55,41 @@ const plans = [
       "Персональный менеджер",
     ],
     cta: "Получить предложение",
-    variant: "outline" as const,
   },
 ];
 
 export function Pricing() {
   return (
-    <section id="pricing" className="py-32 relative overflow-hidden">
-      {/* Background decorations */}
-      <div className="absolute top-1/4 -left-20 w-80 h-80 bg-primary/5 rounded-full blur-3xl" />
-      <div className="absolute bottom-1/4 -right-20 w-80 h-80 bg-accent/5 rounded-full blur-3xl" />
+    <section id="pricing" className="py-32 relative overflow-hidden bg-gradient-to-b from-secondary/20 via-background to-secondary/20">
+      {/* Decorative elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <span className="hieroglyphic absolute top-20 left-16 text-5xl text-accent/20 animate-pulse-soft">𓊀</span>
+        <span className="hieroglyphic absolute top-1/3 right-10 text-4xl text-primary/15 animate-pulse-soft delay-200">𓉀</span>
+        <span className="hieroglyphic absolute bottom-32 left-1/3 text-6xl text-accent/15 animate-pulse-soft delay-300">𓇀</span>
+        <span className="greek-text absolute top-1/2 right-8 text-sm text-primary/20 rotate-90">ΑΞΙΑ</span>
+      </div>
+      
+      {/* Cold nitrogen gradient orbs */}
+      <div className="absolute top-1/4 -left-20 w-96 h-96 bg-gradient-to-br from-primary/10 to-transparent rounded-full blur-3xl" />
+      <div className="absolute bottom-1/4 -right-20 w-96 h-96 bg-gradient-to-br from-accent/10 to-transparent rounded-full blur-3xl" />
 
       <div className="container mx-auto px-6 relative z-10">
         {/* Section header */}
         <div className="text-center mb-16">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-sigma-orange/10 border border-sigma-orange/20 mb-6">
-            <Crown className="w-4 h-4 text-sigma-orange" />
-            <span className="text-sm font-medium text-sigma-orange">Тарифы</span>
+          <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-gradient-to-r from-accent/15 to-primary/10 border border-accent/30 mb-8 backdrop-blur-sm">
+            <span className="hieroglyphic text-accent text-lg">𓆀</span>
+            <span className="text-sm font-semibold text-foreground">Тарифы</span>
+            <span className="hieroglyphic text-accent text-lg">𓇀</span>
           </div>
           <h2 className="font-display text-4xl md:text-5xl font-bold mb-4">
-            Выберите <span className="gradient-text">подходящий план</span>
+            Выберите <span className="gradient-text-gold">подходящий план</span>
           </h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
             Гибкие тарифы для организаций любого размера
           </p>
+          
+          {/* Egyptian border decoration */}
+          <div className="egyptian-border w-32 mx-auto mt-8 rounded-full" />
         </div>
 
         {/* Pricing cards */}
@@ -85,17 +97,20 @@ export function Pricing() {
           {plans.map((plan, index) => (
             <div
               key={plan.name}
-              className={`relative rounded-3xl p-8 animate-slide-up ${
+              className={`relative rounded-3xl p-8 animate-slide-up overflow-hidden ${
                 plan.popular
-                  ? "bg-gradient-to-b from-primary/10 to-accent/5 border-2 border-primary/30 shadow-xl scale-105"
-                  : "glass-card border border-border/50"
+                  ? "bg-gradient-to-b from-primary/15 via-[hsl(185_100%_45%/0.1)] to-accent/10 border-2 border-primary/40 shadow-xl scale-105"
+                  : "bg-card/80 backdrop-blur-sm border border-primary/20 hover:border-accent/40 transition-colors"
               }`}
               style={{ animationDelay: `${index * 100}ms` }}
             >
+              {/* Hieroglyph watermark */}
+              <span className="hieroglyphic absolute top-6 right-6 text-4xl text-accent/20">{plan.glyph}</span>
+              
               {/* Popular badge */}
               {plan.popular && (
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                  <div className="bg-gradient-to-r from-primary to-accent text-white text-sm font-semibold px-4 py-1.5 rounded-full shadow-lg">
+                  <div className="bg-gradient-to-r from-primary via-[hsl(185_100%_45%)] to-accent text-foreground text-sm font-semibold px-5 py-1.5 rounded-full shadow-lg">
                     Популярный
                   </div>
                 </div>
@@ -104,16 +119,16 @@ export function Pricing() {
               {/* Plan icon */}
               <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 ${
                 plan.popular
-                  ? "bg-gradient-to-br from-primary to-accent"
-                  : "bg-secondary"
+                  ? "bg-gradient-to-br from-primary via-[hsl(185_100%_45%)] to-accent sigma-glow"
+                  : "bg-gradient-to-br from-primary/20 to-accent/10 border border-primary/20"
               }`}>
-                <plan.icon className={`w-7 h-7 ${plan.popular ? "text-white" : "text-primary"}`} />
+                <plan.icon className={`w-7 h-7 ${plan.popular ? "text-foreground" : "text-primary"}`} />
               </div>
 
               {/* Plan name & price */}
               <h3 className="font-display text-2xl font-bold mb-2">{plan.name}</h3>
               <div className="flex items-baseline gap-1 mb-2">
-                <span className="font-display text-4xl font-bold">{plan.price}</span>
+                <span className={`font-display text-4xl font-bold ${plan.popular ? "gradient-text" : ""}`}>{plan.price}</span>
                 <span className="text-muted-foreground">{plan.period}</span>
               </div>
               <p className="text-muted-foreground mb-6">{plan.description}</p>
@@ -123,9 +138,9 @@ export function Pricing() {
                 {plan.features.map((feature) => (
                   <li key={feature} className="flex items-start gap-3">
                     <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                      plan.popular ? "bg-primary" : "bg-sigma-green/10"
+                      plan.popular ? "bg-gradient-to-br from-primary to-accent" : "bg-primary/20"
                     }`}>
-                      <Check className={`w-3 h-3 ${plan.popular ? "text-white" : "text-sigma-green"}`} />
+                      <Check className={`w-3 h-3 ${plan.popular ? "text-foreground" : "text-primary"}`} />
                     </div>
                     <span className="text-foreground">{feature}</span>
                   </li>
@@ -136,15 +151,21 @@ export function Pricing() {
               <Link to="/register-organization" className="block">
                 <Button
                   size="lg"
-                  variant={plan.variant}
                   className={`w-full rounded-xl h-12 font-semibold gap-2 group ${
-                    plan.popular ? "bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-white shadow-lg" : ""
+                    plan.popular 
+                      ? "btn-gradient shadow-lg sigma-glow" 
+                      : "bg-card border-2 border-primary/30 text-foreground hover:bg-primary/10 hover:border-primary"
                   }`}
                 >
-                  <span className="relative z-10">{plan.cta}</span>
-                  <ArrowRight className="w-4 h-4 relative z-10 group-hover:translate-x-1 transition-transform" />
+                  <span>{plan.cta}</span>
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </Link>
+              
+              {/* Gold bottom accent for popular */}
+              {plan.popular && (
+                <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-accent to-transparent" />
+              )}
             </div>
           ))}
         </div>
@@ -152,13 +173,21 @@ export function Pricing() {
         {/* Trust indicators */}
         <div className="mt-20 text-center">
           <p className="text-muted-foreground mb-6">Нам доверяют образовательные организации по всей России</p>
-          <div className="flex flex-wrap justify-center gap-8 opacity-60">
-            {["Соответствие 273-ФЗ", "Защита данных", "Техподдержка 24/7", "99.9% SLA"].map((item) => (
-              <div key={item} className="flex items-center gap-2">
-                <Check className="w-5 h-5 text-sigma-green" />
+          <div className="flex flex-wrap justify-center gap-8">
+            {["Соответствие 273-ФЗ", "Защита данных", "Техподдержка 24/7", "99.9% SLA"].map((item, index) => (
+              <div key={item} className="flex items-center gap-2 opacity-80">
+                <div className="w-5 h-5 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                  <Check className="w-3 h-3 text-foreground" />
+                </div>
                 <span className="font-medium">{item}</span>
+                {index < 3 && <span className="hieroglyphic text-accent/30 ml-4">𓆀</span>}
               </div>
             ))}
+          </div>
+          
+          {/* Greek text decoration */}
+          <div className="greek-text text-center mt-8 text-primary/15 text-xs tracking-[0.5em]">
+            ΠΙΣΤΙΣ • ΑΞΙΟΠΙΣΤΙΑ • ΠΟΙΟΤΗΤΑ
           </div>
         </div>
       </div>
