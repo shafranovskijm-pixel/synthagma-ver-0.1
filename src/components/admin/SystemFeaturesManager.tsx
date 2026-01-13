@@ -24,6 +24,7 @@ import {
   ChevronDown,
   ChevronRight,
   RefreshCw,
+  Percent,
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
@@ -239,11 +240,29 @@ export function SystemFeaturesManager() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
+  const [yearlyDiscount, setYearlyDiscount] = useState(20);
   const { toast } = useToast();
 
   useEffect(() => {
     fetchSettings();
+    fetchYearlyDiscount();
   }, []);
+
+  const fetchYearlyDiscount = async () => {
+    try {
+      const { data } = await supabase
+        .from("system_settings")
+        .select("value")
+        .eq("key", "yearly_discount")
+        .single();
+      
+      if (data?.value && typeof data.value === 'object' && 'percentage' in data.value) {
+        setYearlyDiscount((data.value as { percentage: number }).percentage);
+      }
+    } catch (error) {
+      console.error("Error fetching yearly discount:", error);
+    }
+  };
 
   const fetchSettings = async () => {
     try {
@@ -322,6 +341,16 @@ export function SystemFeaturesManager() {
           .upsert(feature, { onConflict: "feature_id" });
         if (error) throw error;
       }
+
+      // Save yearly discount
+      const { error: discountError } = await supabase
+        .from("system_settings")
+        .upsert({
+          key: "yearly_discount",
+          value: { percentage: yearlyDiscount },
+        }, { onConflict: "key" });
+      
+      if (discountError) throw discountError;
 
       toast({
         title: "Успешно",
@@ -473,6 +502,37 @@ export function SystemFeaturesManager() {
           </CardHeader>
         </Card>
       </div>
+
+      {/* Yearly Discount Setting */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <Percent className="w-5 h-5 text-primary" />
+            <CardTitle className="text-lg">Скидка за годовую оплату</CardTitle>
+          </div>
+          <CardDescription>
+            Устанавливает размер скидки для пользователей, выбирающих годовую оплату в калькуляторе на главной странице
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 flex-1 max-w-xs">
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                value={yearlyDiscount}
+                onChange={(e) => setYearlyDiscount(Math.min(100, Math.max(0, Number(e.target.value))))}
+                className="w-24"
+              />
+              <span className="text-muted-foreground font-medium">%</span>
+            </div>
+            <div className="text-sm text-muted-foreground">
+              При годовой оплате пользователь получает скидку {yearlyDiscount}% на каждый месяц
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Features List */}
       <ScrollArea className="h-[calc(100vh-380px)]">

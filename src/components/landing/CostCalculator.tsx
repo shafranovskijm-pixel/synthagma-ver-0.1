@@ -65,17 +65,33 @@ const defaultModules: FeatureModule[] = [
   { id: "student_cabinet", title: "Кабинет слушателя", icon: GraduationCap, color: "#0ea5e9", basePrice: 2000, description: "Личный кабинет", featuresCount: 8, isEnabled: true },
 ];
 
-const YEARLY_DISCOUNT = 0.20; // 20% скидка за годовую оплату
-
 export function CostCalculator() {
   const [modules, setModules] = useState<FeatureModule[]>(defaultModules);
   const [selectedModules, setSelectedModules] = useState<Set<string>>(new Set(defaultModules.map(m => m.id)));
   const [loading, setLoading] = useState(true);
   const [isYearly, setIsYearly] = useState(false);
+  const [yearlyDiscount, setYearlyDiscount] = useState(0.20);
 
   useEffect(() => {
     fetchModulesFromDB();
+    fetchYearlyDiscount();
   }, []);
+
+  const fetchYearlyDiscount = async () => {
+    try {
+      const { data } = await supabase
+        .from("system_settings")
+        .select("value")
+        .eq("key", "yearly_discount")
+        .single();
+      
+      if (data?.value && typeof data.value === 'object' && 'percentage' in data.value) {
+        setYearlyDiscount((data.value as { percentage: number }).percentage / 100);
+      }
+    } catch (error) {
+      console.error("Error fetching yearly discount:", error);
+    }
+  };
 
   const fetchModulesFromDB = async () => {
     try {
@@ -117,7 +133,7 @@ export function CostCalculator() {
     .filter(m => selectedModules.has(m.id))
     .reduce((sum, m) => sum + m.basePrice, 0);
 
-  const yearlyMonthlyPrice = Math.round(monthlyPrice * (1 - YEARLY_DISCOUNT));
+  const yearlyMonthlyPrice = Math.round(monthlyPrice * (1 - yearlyDiscount));
   const yearlySavings = (monthlyPrice - yearlyMonthlyPrice) * 12;
   const totalPrice = isYearly ? yearlyMonthlyPrice : monthlyPrice;
 
@@ -192,7 +208,7 @@ export function CostCalculator() {
                   ? "bg-primary-foreground/20 text-primary-foreground" 
                   : "bg-green-500/20 text-green-500"
               }`}>
-                -{Math.round(YEARLY_DISCOUNT * 100)}%
+                -{Math.round(yearlyDiscount * 100)}%
               </span>
             </button>
           </div>
