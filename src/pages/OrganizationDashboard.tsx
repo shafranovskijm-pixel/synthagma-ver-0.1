@@ -1,5 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { AnimatedTabContent } from "@/components/ui/AnimatedTabContent";
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -69,45 +68,21 @@ import { useDashboardSettings } from "@/hooks/useDashboardSettings";
 import { useStudentDetailCard } from "@/hooks/useStudentDetailCard";
 import { useStudentDetailsDialog } from "@/hooks/useStudentDetailsDialog";
 import { useOrganizationDataLoader } from "@/hooks/useOrganizationDataLoader";
-import { useOrganizationsTab } from "@/hooks/useOrganizationsTab";
+import { useOrganizationsTab, Organization } from "@/hooks/useOrganizationsTab";
 import { useEmailInvitation } from "@/hooks/useEmailInvitation";
 import { useStudentDocsDialog } from "@/hooks/useStudentDocsDialog";
 import { useCourseDocsDialog } from "@/hooks/useCourseDocsDialog";
 import { useCourseDetailsModal } from "@/hooks/useCourseDetailsModal";
 import { Button } from "@/components/ui/button";
-import { GraduationCap, BookOpen, Users, BarChart3, Settings, LogOut, Plus, Upload, FileSpreadsheet, Search, Eye, TrendingUp, Clock, CheckCircle2, XCircle, Loader2, Edit, Trash2, FileText, Download, X, ChevronRight, ChevronDown, Link, Copy, Building2, Save, Send, FileCheck, Receipt, CheckSquare, LayoutGrid, List, Filter, Tag, Palette, History, Moon, Sun, Library, Trophy, MessageCircle, Image, ExternalLink, ShoppingBag, Mail, Key, Menu, AlertCircle, Award, ClipboardList } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Eye, Plus, Upload, FileSpreadsheet, X, Menu, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { 
   Student, 
   Course, 
   CourseCategory, 
-  Company, 
-  StudentDocument, 
-  TestAttempt, 
-  TestQuestion, 
-  StudentDetails 
+  Company
 } from "@/types/shared";
-
-// Extended Organization interface for dashboard
-interface Organization {
-  id: string;
-  name: string;
-  email: string;
-  contact_name: string | null;
-  phone: string | null;
-  inn: string | null;
-  ai_enabled: boolean;
-  created_at: string;
-  studentsCount?: number;
-  coursesCount?: number;
-}
 export default function OrganizationDashboard() {
   const navigate = useNavigate();
   const {
@@ -448,25 +423,22 @@ export default function OrganizationDashboard() {
   };
   // handleViewOrg is now provided by organizationsTab hook
 
-  // Filter organizations
-  const filteredOrganizations = allOrganizations.filter(org => org.name.toLowerCase().includes(searchQuery.toLowerCase()) || org.email.toLowerCase().includes(searchQuery.toLowerCase()) || org.inn && org.inn.includes(searchQuery));
-  const filteredStudents = students.filter(s => {
+  // Filter organizations - using hook method
+  const filteredOrganizations = filterOrganizations(searchQuery);
+  
+  // Filter students - inline filter (could be moved to hook in future)
+  const filteredStudents = useMemo(() => students.filter(s => {
     const matchesSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase()) || s.email.toLowerCase().includes(searchQuery.toLowerCase());
     if (!matchesSearch) return false;
 
-    // Filter by course
     if (studentCourseFilter !== "all") {
       if (studentStatusFilter === "not_enrolled") {
-        // For "not_enrolled" status with a specific course, we want students not enrolled in THIS course
-        // but they might be enrolled in other courses or not enrolled at all
         if (s.course_id === studentCourseFilter) return false;
       } else {
-        // For other statuses, filter to only show students enrolled in this course
         if (s.course_id !== studentCourseFilter) return false;
       }
     }
     
-    // Filter by documents status
     if (studentDocsFilter !== "all") {
       const userDocs = studentDocsByUser.get(s.user_id) || [];
       const hasPassport = userDocs.some(t => t === "passport" || t === "birth_certificate");
@@ -486,13 +458,15 @@ export default function OrganizationDashboard() {
     if (studentStatusFilter === "completed") return s.status === "completed";
     if (studentStatusFilter === "not_enrolled") return !s.course_id;
     return true;
-  });
-  const filteredCourses = courses.filter(course => {
+  }), [students, searchQuery, studentCourseFilter, studentStatusFilter, studentDocsFilter, studentDocsByUser]);
+
+  // Filter courses - memoized
+  const filteredCourses = useMemo(() => courses.filter(course => {
     const matchesSearch = course.title.toLowerCase().includes(courseSearchQuery.toLowerCase());
-    const matchesFilter = courseFilter === "all" || courseFilter === "published" && course.is_published || courseFilter === "draft" && !course.is_published;
-    const matchesCategory = selectedCategoryFilter === "all" || selectedCategoryFilter === "none" && !course.category_id || course.category_id === selectedCategoryFilter;
+    const matchesFilter = courseFilter === "all" || (courseFilter === "published" && course.is_published) || (courseFilter === "draft" && !course.is_published);
+    const matchesCategory = selectedCategoryFilter === "all" || (selectedCategoryFilter === "none" && !course.category_id) || course.category_id === selectedCategoryFilter;
     return matchesSearch && matchesFilter && matchesCategory;
-  });
+  }), [courses, courseSearchQuery, courseFilter, selectedCategoryFilter]);
   const exitAdminView = () => {
     localStorage.removeItem("adminViewAsOrg");
     navigate("/admin");
