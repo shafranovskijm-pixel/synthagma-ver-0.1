@@ -164,6 +164,11 @@ export function useCourseStudentsManager(organizationId: string | null) {
     });
   }, []);
 
+  // Direct setter for course students (used by CourseDetailsModal)
+  const setCourseStudentsDirectly = useCallback((students: Student[]) => {
+    setCourseStudents(students);
+  }, []);
+
   return {
     showCourseStudentsDialog,
     setShowCourseStudentsDialog,
@@ -179,5 +184,6 @@ export function useCourseStudentsManager(organizationId: string | null) {
     addStudentsToCourse,
     removeStudentFromCourse,
     toggleStudentSelection,
+    setCourseStudentsDirectly,
   };
 }

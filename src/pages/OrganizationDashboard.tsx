@@ -30,6 +30,7 @@ import { useCourseDetailsModal } from "@/hooks/useCourseDetailsModal";
 import { Button } from "@/components/ui/button";
 import { Eye, Plus, Upload, FileSpreadsheet, X, Menu } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function OrganizationDashboard() {
   const navigate = useNavigate();
@@ -136,10 +137,50 @@ export default function OrganizationDashboard() {
   const branding = useBrandingSettings(organizationId, user?.id);
   const { brandingSettings, setBrandingSettings, isUploadingCover, isUploadingLogo, isSavingBranding, handleCoverUpload, handleLogoUpload, saveBranding: handleSaveBranding } = branding;
 
-  // Load course students when course details modal opens
+  // Load course students when course details modal opens (without opening second dialog)
   useEffect(() => {
     if (showCourseDetailsModal && selectedCourseForDetails) {
-      courseStudentsManager.openCourseStudents(selectedCourseForDetails);
+      // Only load students data, don't open another dialog
+      const loadStudents = async () => {
+        try {
+          const { data: enrollments } = await supabase
+            .from("enrollments")
+            .select("id, user_id, progress, status")
+            .eq("course_id", selectedCourseForDetails.id);
+          
+          const enrolledList: any[] = [];
+          
+          for (const enrollment of enrollments || []) {
+            const { data: profile } = await supabase
+              .from("profiles")
+              .select("id, user_id, full_name, email, login, generated_password")
+              .eq("user_id", enrollment.user_id)
+              .single();
+            
+            if (profile) {
+              enrolledList.push({
+                id: profile.id,
+                user_id: profile.user_id,
+                enrollment_id: enrollment.id,
+                name: profile.full_name || "Без имени",
+                email: profile.email || "",
+                login: profile.login || null,
+                generated_password: profile.generated_password || null,
+                course: selectedCourseForDetails.title,
+                course_id: selectedCourseForDetails.id,
+                progress: enrollment.progress,
+                lastActivity: null,
+                status: enrollment.status
+              });
+            }
+          }
+          
+          courseStudentsManager.setCourseStudentsDirectly(enrolledList);
+        } catch (error) {
+          console.error("Error loading course students:", error);
+        }
+      };
+      loadStudents();
     }
   }, [showCourseDetailsModal, selectedCourseForDetails?.id]);
 
