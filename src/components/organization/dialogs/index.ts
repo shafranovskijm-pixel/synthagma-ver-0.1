@@ -17,7 +17,7 @@ export { CourseStudentsDialog } from './CourseStudentsDialog';
 
 // New company-related dialogs
 export { CompanyDetailDialog } from './CompanyDetailDialog';
-export { CreateCompanyDialog, DeleteCompanyDialog } from './CompanyFormDialogs';
+export { CreateCompanyDialog, EditCompanyDialog as EditCompanyFormDialog, DeleteCompanyDialog } from './CompanyFormDialogs';
 export { ViewStudentsDialog, BulkAssignStudentsDialog } from './CompanyStudentsDialogs';
 export { CompanyLinksDialog } from './CompanyLinksDialog';
 export { BulkEnrollDialog } from './BulkEnrollDialog';
