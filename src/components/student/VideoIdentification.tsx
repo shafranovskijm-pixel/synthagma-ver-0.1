@@ -87,27 +87,90 @@ export function VideoIdentification({
   const startCamera = async () => {
     setCameraError(null);
     try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
+      // Check if getUserMedia is supported
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setCameraError("Ваш браузер не поддерживает доступ к камере. Попробуйте использовать другой браузер.");
+        return;
+      }
+
+      // Request camera with mobile-friendly constraints
+      const constraints: MediaStreamConstraints = {
         video: {
           facingMode: "user",
-          width: { ideal: 640 },
-          height: { ideal: 480 },
+          width: { ideal: 640, max: 1280 },
+          height: { ideal: 480, max: 720 },
         },
-      });
+        audio: false,
+      };
+
+      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
       setStream(mediaStream);
+      
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
+        
+        // Wait for video to be ready on mobile
+        await new Promise<void>((resolve, reject) => {
+          const video = videoRef.current;
+          if (!video) {
+            reject(new Error("Video element not found"));
+            return;
+          }
+          
+          const onLoadedMetadata = () => {
+            video.removeEventListener("loadedmetadata", onLoadedMetadata);
+            video.removeEventListener("error", onError);
+            resolve();
+          };
+          
+          const onError = () => {
+            video.removeEventListener("loadedmetadata", onLoadedMetadata);
+            video.removeEventListener("error", onError);
+            reject(new Error("Video failed to load"));
+          };
+          
+          video.addEventListener("loadedmetadata", onLoadedMetadata);
+          video.addEventListener("error", onError);
+          
+          // Fallback timeout for older devices
+          setTimeout(() => {
+            video.removeEventListener("loadedmetadata", onLoadedMetadata);
+            video.removeEventListener("error", onError);
+            resolve();
+          }, 3000);
+        });
+        
+        // Ensure video plays on mobile
+        try {
+          await videoRef.current.play();
+        } catch (playError) {
+          console.warn("Auto-play failed, user interaction may be needed:", playError);
+        }
       }
+      
       setIsCapturing(true);
       setStep("camera");
     } catch (error: any) {
       console.error("Camera error:", error);
-      if (error.name === "NotAllowedError") {
-        setCameraError("Доступ к камере запрещен. Пожалуйста, разрешите доступ в настройках браузера.");
-      } else if (error.name === "NotFoundError") {
+      
+      // Stop any partially started stream
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        setStream(null);
+      }
+      
+      if (error.name === "NotAllowedError" || error.name === "PermissionDeniedError") {
+        setCameraError("Доступ к камере запрещен. Пожалуйста, разрешите доступ в настройках браузера и обновите страницу.");
+      } else if (error.name === "NotFoundError" || error.name === "DevicesNotFoundError") {
         setCameraError("Камера не найдена. Проверьте подключение устройства.");
+      } else if (error.name === "NotReadableError" || error.name === "TrackStartError") {
+        setCameraError("Камера занята другим приложением. Закройте другие приложения и попробуйте снова.");
+      } else if (error.name === "OverconstrainedError") {
+        setCameraError("Камера не поддерживает требуемые параметры. Попробуйте еще раз.");
+      } else if (error.name === "SecurityError") {
+        setCameraError("Доступ к камере заблокирован. Убедитесь, что сайт использует HTTPS.");
       } else {
-        setCameraError("Не удалось запустить камеру. Попробуйте еще раз.");
+        setCameraError(`Не удалось запустить камеру: ${error.message || "неизвестная ошибка"}. Попробуйте обновить страницу.`);
       }
     }
   };
