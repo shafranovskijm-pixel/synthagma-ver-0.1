@@ -31,9 +31,13 @@ import {
   Loader2,
   Plus,
   Trash2,
-  Sparkles
+  Sparkles,
+  Search,
+  CheckCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface CommissionMember {
   fio: string;
@@ -194,6 +198,8 @@ export function SelfExaminationQuiz({
   organizationData,
 }: SelfExaminationQuizProps) {
   const [currentStep, setCurrentStep] = useState(1);
+  const [isLoadingInn, setIsLoadingInn] = useState(false);
+  const [innLoaded, setInnLoaded] = useState(false);
   const [data, setData] = useState<QuizData>(() => ({
     ...initialQuizData,
     fullName: organizationData?.name || "",
@@ -216,6 +222,62 @@ export function SelfExaminationQuiz({
     orderNumber: `${new Date().getFullYear()}-СО-01`,
     pedagogicalCouncilProtocolDate: new Date().toISOString().split('T')[0],
   }));
+
+  const loadCompanyByInn = async () => {
+    if (!data.inn || data.inn.length < 10) {
+      toast.error("Введите корректный ИНН (10 или 12 цифр)");
+      return;
+    }
+
+    setIsLoadingInn(true);
+    try {
+      const { data: result, error } = await supabase.functions.invoke('dadata-company', {
+        body: { inn: data.inn }
+      });
+
+      if (error) throw error;
+
+      if (result.success && result.company) {
+        const company = result.company;
+        
+        // Определяем организационно-правовую форму
+        let legalForm = "Общество с ограниченной ответственностью";
+        if (company.opf) {
+          if (company.opf.includes("ИП") || company.type === "INDIVIDUAL") {
+            legalForm = "Индивидуальный предприниматель";
+          } else if (company.opf.includes("АО") || company.opf.includes("Акционерное")) {
+            legalForm = "Акционерное общество";
+          } else if (company.opf.includes("АНО") || company.opf.includes("Автономная")) {
+            legalForm = "Автономная некоммерческая организация";
+          }
+        }
+
+        updateData({
+          fullName: company.fullName || company.name || data.fullName,
+          shortName: company.shortName || company.name || data.shortName,
+          legalForm,
+          legalAddress: company.address || data.legalAddress,
+          ogrn: company.ogrn || data.ogrn,
+          kpp: company.kpp || data.kpp,
+          directorFio: company.management || data.directorFio,
+          commissionChairman: {
+            fio: company.management || data.commissionChairman.fio,
+            position: data.commissionChairman.position
+          }
+        });
+
+        setInnLoaded(true);
+        toast.success("Данные организации загружены");
+      } else {
+        toast.error(result.message || "Компания не найдена");
+      }
+    } catch (error) {
+      console.error("Error loading company by INN:", error);
+      toast.error("Ошибка загрузки данных по ИНН");
+    } finally {
+      setIsLoadingInn(false);
+    }
+  };
 
   const updateData = (updates: Partial<QuizData>) => {
     setData(prev => ({ ...prev, ...updates }));
@@ -391,6 +453,52 @@ export function SelfExaminationQuiz({
               />
             </div>
 
+            {/* INN с автоподгрузкой */}
+            <div className="p-4 bg-primary/5 border border-primary/20 rounded-xl space-y-3">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Search className="h-4 w-4" />
+                <span>Автозаполнение по ИНН</span>
+                {innLoaded && (
+                  <span className="flex items-center gap-1 text-green-600 ml-auto">
+                    <CheckCircle className="h-4 w-4" />
+                    Загружено
+                  </span>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <Input
+                    value={data.inn}
+                    onChange={(e) => {
+                      updateData({ inn: e.target.value });
+                      setInnLoaded(false);
+                    }}
+                    placeholder="Введите ИНН организации"
+                    className="rounded-xl"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="default"
+                  onClick={loadCompanyByInn}
+                  disabled={isLoadingInn || !data.inn || data.inn.length < 10}
+                  className="rounded-xl"
+                >
+                  {isLoadingInn ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Search className="h-4 w-4 mr-2" />
+                      Найти
+                    </>
+                  )}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Введите ИНН и нажмите «Найти» для автоматического заполнения реквизитов
+              </p>
+            </div>
+
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label>ОГРН</Label>
@@ -408,6 +516,7 @@ export function SelfExaminationQuiz({
                   onChange={(e) => updateData({ inn: e.target.value })}
                   placeholder="1234567890"
                   className="rounded-xl"
+                  disabled
                 />
               </div>
               <div className="space-y-2">
