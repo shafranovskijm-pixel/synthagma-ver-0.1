@@ -52,17 +52,17 @@ const iconMap: Record<string, React.ElementType> = {
 };
 
 const defaultModules: FeatureModule[] = [
-  { id: "courses", title: "Управление курсами", icon: BookOpen, color: "#6366f1", basePrice: 3000, description: "Создание и управление курсами", featuresCount: 8, isEnabled: true },
-  { id: "students", title: "Слушатели", icon: Users, color: "#10b981", basePrice: 2500, description: "Управление слушателями", featuresCount: 10, isEnabled: true },
-  { id: "companies", title: "Компании", icon: Building2, color: "#f59e0b", basePrice: 1500, description: "Компании-заказчики", featuresCount: 6, isEnabled: true },
-  { id: "documents", title: "Документооборот", icon: FileCheck, color: "#ec4899", basePrice: 4000, description: "Генерация документов", featuresCount: 10, isEnabled: true },
-  { id: "journals", title: "Журналы", icon: ClipboardList, color: "#8b5cf6", basePrice: 2000, description: "Журналы учёта", featuresCount: 13, isEnabled: true },
-  { id: "frdo", title: "ФРДО", icon: Database, color: "#06b6d4", basePrice: 5000, description: "Выгрузка в реестр", featuresCount: 4, isEnabled: true },
-  { id: "links", title: "Ссылки регистрации", icon: LinkIcon, color: "#14b8a6", basePrice: 1000, description: "Уникальные ссылки", featuresCount: 5, isEnabled: true },
-  { id: "library", title: "Библиотека", icon: Library, color: "#f97316", basePrice: 1500, description: "Учебные материалы", featuresCount: 4, isEnabled: true },
-  { id: "services", title: "Услуги", icon: ShoppingBag, color: "#84cc16", basePrice: 500, description: "Доп. услуги", featuresCount: 3, isEnabled: true },
-  { id: "settings", title: "Настройки", icon: Settings, color: "#64748b", basePrice: 0, description: "Настройки системы", featuresCount: 5, isEnabled: true },
-  { id: "student_cabinet", title: "Кабинет слушателя", icon: GraduationCap, color: "#0ea5e9", basePrice: 2000, description: "Личный кабинет", featuresCount: 8, isEnabled: true },
+  { id: "courses", title: "Управление курсами", icon: BookOpen, color: "#6366f1", basePrice: 3000, description: "Современный редактор вместе с ИИ поможет превратить даже скучную лекцию в удобный и интерактивный формат. Удобный импорт с других платформ", featuresCount: 8, isEnabled: true },
+  { id: "students", title: "Слушатели", icon: Users, color: "#10b981", basePrice: 2500, description: "Импортируй большими файлами, автоматическая рассылка логинов и паролей. Получай документы: СНИЛС, документ об образовании, паспорт. Отправляй напоминания", featuresCount: 10, isEnabled: true },
+  { id: "companies", title: "Компании", icon: Building2, color: "#f59e0b", basePrice: 1500, description: "Создавайте ссылки и привязывайте группы учеников к компании. Храните договоры, счета, акты в одном месте", featuresCount: 6, isEnabled: true },
+  { id: "documents", title: "Документооборот", icon: FileCheck, color: "#ec4899", basePrice: 4000, description: "Автоматическое создание договоров, счетов, актов. Сбор согласий на обработку ПД, журналы выдачи документов, приказы о зачислении/отчислении", featuresCount: 10, isEnabled: true },
+  { id: "journals", title: "Журналы", icon: ClipboardList, color: "#8b5cf6", basePrice: 2000, description: "Все ваши журналы в одном месте с возможностью выгрузки в Excel. Журналы посещаемости, оценок, выдачи документов", featuresCount: 13, isEnabled: true },
+  { id: "frdo", title: "ФРДО", icon: Database, color: "#06b6d4", basePrice: 5000, description: "Устали вносить вручную? Система заполнит за вас. Готовы к интеграции с ЕР ЦРДО", featuresCount: 4, isEnabled: true },
+  { id: "links", title: "Ссылки регистрации", icon: LinkIcon, color: "#14b8a6", basePrice: 1000, description: "Уникальные ссылки для быстрой регистрации учеников", featuresCount: 5, isEnabled: true },
+  { id: "library", title: "Библиотека", icon: Library, color: "#f97316", basePrice: 1500, description: "Храните учебные материалы, программы и методички", featuresCount: 4, isEnabled: true },
+  { id: "services", title: "Магазин курсов", icon: ShoppingBag, color: "#84cc16", basePrice: 500, description: "Продавайте свои курсы или закажите готовую программу", featuresCount: 3, isEnabled: true },
+  { id: "settings", title: "Настройки", icon: Settings, color: "#64748b", basePrice: 0, description: "Настройки системы и брендирование", featuresCount: 5, isEnabled: true },
+  { id: "student_cabinet", title: "Кабинет слушателя", icon: GraduationCap, color: "#0ea5e9", basePrice: 2000, description: "ИИ-помощник проконсультирует учеников, озвучивание лекций, удобное прохождение курсов", featuresCount: 8, isEnabled: true },
 ];
 
 export function CostCalculator() {
@@ -247,12 +247,12 @@ export function CostCalculator() {
                           style={{ color: isSelected ? module.color : 'hsl(var(--muted-foreground))' }} 
                         />
                       </div>
-                      <div>
+                      <div className="flex-1 min-w-0">
                         <h3 className={`font-semibold ${isSelected ? '' : 'text-muted-foreground'}`}>
                           {module.title}
                         </h3>
-                        <p className="text-sm text-muted-foreground">
-                          {module.featuresCount} функций
+                        <p className="text-sm text-muted-foreground line-clamp-2">
+                          {module.description}
                         </p>
                       </div>
                     </div>
