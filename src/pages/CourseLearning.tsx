@@ -1245,29 +1245,46 @@ const CourseLearning = () => {
                 return (
                   <button
                     key={lesson.id}
-                    onClick={() => goToLesson(index)}
+                    onClick={() => {
+                      triggerHapticFeedback();
+                      goToLesson(index);
+                    }}
                     className={cn(
-                      "flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium transition-all",
-                      isCurrent && "ring-2 ring-primary ring-offset-2 ring-offset-background",
+                      "flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium",
+                      "transition-all duration-300 ease-out",
+                      "active:scale-90 active:opacity-70",
+                      isCurrent && "ring-2 ring-primary ring-offset-2 ring-offset-background scale-110",
                       isCompleted 
                         ? "bg-sigma-green text-white" 
                         : isCurrent 
                           ? "bg-primary text-primary-foreground" 
                           : "bg-muted text-muted-foreground hover:bg-muted-foreground/20"
                     )}
+                    style={{
+                      transform: isCurrent ? 'scale(1.1)' : 'scale(1)',
+                      transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                    }}
                   >
                     {isCompleted ? (
-                      <CheckCircle2 className="w-4 h-4" />
+                      <CheckCircle2 className={cn(
+                        "w-4 h-4 transition-transform duration-300",
+                        isCurrent && "animate-pulse"
+                      )} />
                     ) : (
-                      index + 1
+                      <span className={cn(
+                        "transition-transform duration-300",
+                        isCurrent && "font-bold"
+                      )}>
+                        {index + 1}
+                      </span>
                     )}
                   </button>
                 );
               })}
             </div>
             <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
-              <span>Урок {currentLessonIndex + 1} из {lessons.length}</span>
-              <span>{Math.round(progressPercent)}% пройдено</span>
+              <span className="transition-all duration-300">Урок {currentLessonIndex + 1} из {lessons.length}</span>
+              <span className="transition-all duration-300">{Math.round(progressPercent)}% пройдено</span>
             </div>
           </div>
         )}
