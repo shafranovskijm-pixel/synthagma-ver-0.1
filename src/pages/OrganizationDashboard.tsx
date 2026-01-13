@@ -67,6 +67,8 @@ import { useCategoryActions } from "@/hooks/useCategoryActions";
 import { useEnrollmentActions } from "@/hooks/useEnrollmentActions";
 import { useBrandingSettings } from "@/hooks/useBrandingSettings";
 import { useDashboardSettings } from "@/hooks/useDashboardSettings";
+import { useStudentDetailCard } from "@/hooks/useStudentDetailCard";
+import { useStudentDetailsDialog } from "@/hooks/useStudentDetailsDialog";
 import { Button } from "@/components/ui/button";
 import { GraduationCap, BookOpen, Users, BarChart3, Settings, LogOut, Plus, Upload, FileSpreadsheet, Search, Eye, TrendingUp, Clock, CheckCircle2, XCircle, Loader2, Edit, Trash2, FileText, Download, X, ChevronRight, ChevronDown, Link, Copy, Building2, Save, Send, FileCheck, Receipt, CheckSquare, LayoutGrid, List, Filter, Tag, Palette, History, Moon, Sun, Library, Trophy, MessageCircle, Image, ExternalLink, ShoppingBag, Mail, Key, Menu, AlertCircle, Award, ClipboardList } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -210,34 +212,16 @@ export default function OrganizationDashboard() {
   // Company management hook
   const companyActions = useCompanyActions();
 
-  // Student details dialog
+  // Student details dialog - legacy state for old dialog
   const [selectedStudent, setSelectedStudent] = useState<StudentDetails | null>(null);
   const [showStudentDialog, setShowStudentDialog] = useState(false);
   const [isLoadingStudentDetails, setIsLoadingStudentDetails] = useState(false);
   const [testQuestions, setTestQuestions] = useState<Record<string, TestQuestion[]>>({});
-  
-  // StudentDetailCard state
-  const [showStudentDetailCard, setShowStudentDetailCard] = useState(false);
-  const [studentDetailCardData, setStudentDetailCardData] = useState<{
-    id: string;
-    user_id: string;
-    name: string;
-    email: string;
-    login?: string | null;
-    company_name?: string | null;
-  } | null>(null);
-  const [studentDetailCardEnrollments, setStudentDetailCardEnrollments] = useState<{
-    id: string;
-    course_id: string;
-    course_title: string;
-    progress: number;
-    status: string;
-    started_at: string;
-    completed_at?: string | null;
-    time_spent: number;
-  }[]>([]);
   const [studentCompanyId, setStudentCompanyId] = useState<string>("");
   const [isSavingStudentCompany, setIsSavingStudentCompany] = useState(false);
+  
+  // StudentDetailCard hook
+  const studentDetailCard = useStudentDetailCard();
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   // Refresh trigger for data reload
@@ -919,39 +903,8 @@ export default function OrganizationDashboard() {
     await studentActions.bulkCreateCredentials(studentsToCreate);
   };
 
-  // View student details with StudentDetailCard
-  const handleViewStudent = async (student: Student) => {
-    // Find company name if student has company_id
-    let companyName: string | null = null;
-    
-    // Get all enrollments for this student
-    const { data: enrollmentsData } = await supabase
-      .from("enrollments")
-      .select("id, course_id, progress, status, started_at, completed_at, time_spent, courses(title)")
-      .eq("user_id", student.user_id);
-    
-    const enrollments = (enrollmentsData || []).map((e: any) => ({
-      id: e.id,
-      course_id: e.course_id,
-      course_title: e.courses?.title || "Неизвестный курс",
-      progress: e.progress || 0,
-      status: e.status || "active",
-      started_at: e.started_at,
-      completed_at: e.completed_at,
-      time_spent: e.time_spent || 0,
-    }));
-
-    setStudentDetailCardData({
-      id: student.id,
-      user_id: student.user_id,
-      name: student.name,
-      email: student.email,
-      login: student.login,
-      company_name: companyName,
-    });
-    setStudentDetailCardEnrollments(enrollments);
-    setShowStudentDetailCard(true);
-  };
+  // View student details with StudentDetailCard - using hook
+  const handleViewStudent = studentDetailCard.viewStudent;
 
   // Company management - using hooks
   const handleCreateCompany = async () => {
@@ -1596,11 +1549,11 @@ export default function OrganizationDashboard() {
       {/* Student Detail Card */}
       {organizationId && (
         <StudentDetailCard
-          isOpen={showStudentDetailCard}
-          onOpenChange={setShowStudentDetailCard}
-          student={studentDetailCardData}
+          isOpen={studentDetailCard.showStudentDetailCard}
+          onOpenChange={studentDetailCard.setShowStudentDetailCard}
+          student={studentDetailCard.studentDetailCardData}
           organizationId={organizationId}
-          enrollments={studentDetailCardEnrollments}
+          enrollments={studentDetailCard.studentDetailCardEnrollments}
         />
       )}
       
