@@ -13,7 +13,7 @@ import { EnrollmentHistory } from "@/components/organization/EnrollmentHistory";
 import { CourseTestReport } from "@/components/organization/CourseTestReport";
 import { CompaniesManager } from "@/components/organization/CompaniesManager";
 import { LibraryManager } from "@/components/organization/LibraryManager";
-import { ServicesManager } from "@/components/organization/ServicesManager";
+import { CourseStoreManager } from "@/components/organization/CourseStoreManager";
 import { ContractTemplateEditor } from "@/components/organization/ContractTemplateEditor";
 import { ConsentGenerator } from "@/components/organization/ConsentGenerator";
 import { OrgNotifications } from "@/components/organization/OrgNotifications";
@@ -2622,7 +2622,7 @@ export default function OrganizationDashboard() {
             setIsMobileSidebarOpen(false);
           }} className={`w-full flex items-center gap-3 px-4 py-2 rounded-xl text-sm transition-colors ${activeTab === "services" ? "bg-primary/10 text-primary" : "text-muted-foreground/70 hover:bg-secondary/50 hover:text-muted-foreground"}`}>
               <ShoppingBag className="w-4 h-4" />
-              Услуги
+              Магазин курсов
             </button>}
           <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-destructive hover:bg-destructive/10 transition-colors">
             <LogOut className="w-5 h-5" />
@@ -2655,7 +2655,7 @@ export default function OrganizationDashboard() {
                     {activeTab === "documents-diplomas" && "Дипломы"}
                     {activeTab === "documents-testimonials" && "Свидетельства"}
                     {activeTab === "journals" && "Журналы учёта"}
-                    {activeTab === "services" && "Услуги"}
+                    {activeTab === "services" && "Магазин курсов"}
                     {activeTab === "settings" && "Настройки"}
                   </h1>
                 )}
@@ -3573,8 +3573,8 @@ export default function OrganizationDashboard() {
           {/* FRDO Tab */}
           {activeTab === "frdo" && organizationId && <FRDOManager organizationId={organizationId} />}
 
-          {/* Services Tab */}
-          {activeTab === "services" && organizationId && <ServicesManager organizationId={organizationId} />}
+          {/* Course Store Tab */}
+          {activeTab === "services" && organizationId && <CourseStoreManager organizationId={organizationId} userId={user?.id} />}
 
           {/* Settings Tab */}
           {activeTab === "settings" && <div className="max-w-2xl space-y-4 lg:space-y-6">
@@ -3741,8 +3741,8 @@ export default function OrganizationDashboard() {
                           <ShoppingBag className="w-4 h-4 lg:w-5 lg:h-5 text-sigma-cyan" />
                         </div>
                         <div>
-                          <p className="font-medium text-sm lg:text-base">Услуги</p>
-                          <p className="text-xs lg:text-sm text-muted-foreground hidden sm:block">Дополнительные услуги</p>
+                          <p className="font-medium text-sm lg:text-base">Магазин курсов</p>
+                          <p className="text-xs lg:text-sm text-muted-foreground hidden sm:block">Покупка и продажа курсов</p>
                         </div>
                       </div>
                       <button onClick={() => setMenuSettings(prev => ({
