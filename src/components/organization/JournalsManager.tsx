@@ -38,6 +38,7 @@ import {
   Edit,
   BarChart3,
   Trash2,
+  Settings,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -184,6 +185,7 @@ export function JournalsManager({ organizationId }: JournalsManagerProps) {
   // Custom journals state
   const [customJournals, setCustomJournals] = useState<CustomJournal[]>([]);
   const [showCreateWizard, setShowCreateWizard] = useState(false);
+  const [editingCustomJournal, setEditingCustomJournal] = useState<CustomJournal | null>(null);
 
   // Load custom journals from localStorage
   useEffect(() => {
@@ -199,19 +201,36 @@ export function JournalsManager({ organizationId }: JournalsManagerProps) {
     setCustomJournals(journals);
   };
 
-  // Create new custom journal from wizard
-  const handleCreateJournal = (data: { title: string; description: string; fields: string[] }) => {
-    const newJournal: CustomJournal = {
-      id: `custom_${Date.now()}`,
-      title: data.title,
-      description: data.description,
-      fields: data.fields,
-      createdAt: new Date().toISOString(),
-    };
+  // Create or update custom journal from wizard
+  const handleSaveJournal = (data: { id?: string; title: string; description: string; fields: string[] }) => {
+    if (data.id) {
+      // Update existing journal
+      const updated = customJournals.map((j) =>
+        j.id === data.id
+          ? { ...j, title: data.title, description: data.description, fields: data.fields }
+          : j
+      );
+      saveCustomJournals(updated);
+      setEditingCustomJournal(null);
+      toast.success("Журнал обновлён");
+    } else {
+      // Create new journal
+      const newJournal: CustomJournal = {
+        id: `custom_${Date.now()}`,
+        title: data.title,
+        description: data.description,
+        fields: data.fields,
+        createdAt: new Date().toISOString(),
+      };
+      saveCustomJournals([...customJournals, newJournal]);
+      setShowCreateWizard(false);
+      toast.success("Журнал создан");
+    }
+  };
 
-    saveCustomJournals([...customJournals, newJournal]);
-    setShowCreateWizard(false);
-    toast.success("Журнал создан");
+  // Open edit wizard
+  const handleEditCustomJournal = (journal: CustomJournal) => {
+    setEditingCustomJournal(journal);
   };
 
   // Delete custom journal
@@ -684,6 +703,15 @@ export function JournalsManager({ organizationId }: JournalsManagerProps) {
                     Вести онлайн
                   </Button>
                   <Button
+                    variant="outline"
+                    size="icon"
+                    className="rounded-lg"
+                    onClick={() => handleEditCustomJournal(journal)}
+                    title="Настроить журнал"
+                  >
+                    <Settings className="w-4 h-4" />
+                  </Button>
+                  <Button
                     variant="ghost"
                     size="icon"
                     className="rounded-lg text-destructive hover:text-destructive hover:bg-destructive/10"
@@ -727,9 +755,13 @@ export function JournalsManager({ organizationId }: JournalsManagerProps) {
 
       {/* Create Journal Wizard */}
       <JournalCreationWizard
-        open={showCreateWizard}
-        onClose={() => setShowCreateWizard(false)}
-        onComplete={handleCreateJournal}
+        open={showCreateWizard || !!editingCustomJournal}
+        onClose={() => {
+          setShowCreateWizard(false);
+          setEditingCustomJournal(null);
+        }}
+        onComplete={handleSaveJournal}
+        editingJournal={editingCustomJournal}
       />
     </div>
   );

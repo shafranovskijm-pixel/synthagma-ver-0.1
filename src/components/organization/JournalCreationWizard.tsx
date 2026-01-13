@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -73,23 +73,48 @@ interface JournalCreationWizardProps {
   open: boolean;
   onClose: () => void;
   onComplete: (journal: {
+    id?: string;
     title: string;
     description: string;
     fields: string[];
   }) => void;
+  editingJournal?: {
+    id: string;
+    title: string;
+    description: string;
+    fields: string[];
+  } | null;
 }
 
 export function JournalCreationWizard({
   open,
   onClose,
   onComplete,
+  editingJournal,
 }: JournalCreationWizardProps) {
   const [step, setStep] = useState(1);
   const [selectedFields, setSelectedFields] = useState<string[]>([]);
   const [journalTitle, setJournalTitle] = useState("");
   const [journalDescription, setJournalDescription] = useState("");
 
+  const isEditMode = !!editingJournal;
   const totalSteps = 3;
+
+  // Initialize with editing data when opening
+  useEffect(() => {
+    if (open && editingJournal) {
+      setSelectedFields(editingJournal.fields || []);
+      setJournalTitle(editingJournal.title || "");
+      setJournalDescription(editingJournal.description || "");
+      setStep(1);
+    } else if (!open) {
+      // Reset when closing
+      setStep(1);
+      setSelectedFields([]);
+      setJournalTitle("");
+      setJournalDescription("");
+    }
+  }, [open, editingJournal]);
 
   const toggleField = (fieldId: string) => {
     setSelectedFields((prev) =>
@@ -118,6 +143,7 @@ export function JournalCreationWizard({
     if (!journalTitle.trim()) return;
     
     onComplete({
+      id: editingJournal?.id,
       title: journalTitle.trim(),
       description: journalDescription.trim() || generateDescription(),
       fields: selectedFields,
@@ -161,7 +187,7 @@ export function JournalCreationWizard({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-primary" />
-            Создание журнала
+            {isEditMode ? "Редактирование журнала" : "Создание журнала"}
           </DialogTitle>
         </DialogHeader>
 
@@ -394,7 +420,7 @@ export function JournalCreationWizard({
               className="rounded-xl"
             >
               <Sparkles className="w-4 h-4 mr-2" />
-              Создать журнал
+              {isEditMode ? "Сохранить изменения" : "Создать журнал"}
             </Button>
           )}
         </div>
