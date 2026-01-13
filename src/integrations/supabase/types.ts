@@ -536,6 +536,95 @@ export type Database = {
           },
         ]
       }
+      journal_entries: {
+        Row: {
+          created_at: string
+          entry_date: string
+          entry_type: string
+          id: string
+          journal_id: string
+          notes: string | null
+          updated_at: string
+          user_id: string
+          value: string | null
+        }
+        Insert: {
+          created_at?: string
+          entry_date?: string
+          entry_type?: string
+          id?: string
+          journal_id: string
+          notes?: string | null
+          updated_at?: string
+          user_id: string
+          value?: string | null
+        }
+        Update: {
+          created_at?: string
+          entry_date?: string
+          entry_type?: string
+          id?: string
+          journal_id?: string
+          notes?: string | null
+          updated_at?: string
+          user_id?: string
+          value?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "journal_entries_journal_id_fkey"
+            columns: ["journal_id"]
+            isOneToOne: false
+            referencedRelation: "journal_instances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      journal_instances: {
+        Row: {
+          course_id: string | null
+          created_at: string
+          id: string
+          journal_type: string
+          organization_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          course_id?: string | null
+          created_at?: string
+          id?: string
+          journal_type: string
+          organization_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          course_id?: string | null
+          created_at?: string
+          id?: string
+          journal_type?: string
+          organization_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "journal_instances_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journal_instances_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lesson_progress: {
         Row: {
           completed: boolean
