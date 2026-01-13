@@ -1234,6 +1234,44 @@ const CourseLearning = () => {
           </div>
         </ScrollArea>
 
+        {/* Mobile Lesson Progress Bar */}
+        {isMobile && (
+          <div className="border-t border-border bg-muted/30 px-3 py-2 shrink-0">
+            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
+              {lessons.map((lesson, index) => {
+                const isCompleted = isLessonCompleted(lesson.id);
+                const isCurrent = index === currentLessonIndex;
+                
+                return (
+                  <button
+                    key={lesson.id}
+                    onClick={() => goToLesson(index)}
+                    className={cn(
+                      "flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium transition-all",
+                      isCurrent && "ring-2 ring-primary ring-offset-2 ring-offset-background",
+                      isCompleted 
+                        ? "bg-sigma-green text-white" 
+                        : isCurrent 
+                          ? "bg-primary text-primary-foreground" 
+                          : "bg-muted text-muted-foreground hover:bg-muted-foreground/20"
+                    )}
+                  >
+                    {isCompleted ? (
+                      <CheckCircle2 className="w-4 h-4" />
+                    ) : (
+                      index + 1
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
+              <span>Урок {currentLessonIndex + 1} из {lessons.length}</span>
+              <span>{Math.round(progressPercent)}% пройдено</span>
+            </div>
+          </div>
+        )}
+
         {/* Footer */}
         <footer className={cn(
           "border-t border-border bg-card flex justify-between items-center shrink-0",
