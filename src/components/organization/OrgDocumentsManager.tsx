@@ -115,10 +115,30 @@ const DOCUMENT_CATEGORIES = [
     bgColor: "bg-cyan-500/10",
     documents: [
       { type: "program_approval", label: "Приказы об утверждении конкретных образовательных программ ДПО / ПО", required: true },
-      { type: "enrollment_orders", label: "Приказы о зачислении / отчислении слушателей", required: true },
       { type: "schedule_approval", label: "Приказ об утверждении календарного учебного графика / расписания", required: true },
       { type: "commission_orders", label: "Приказы о создании комиссий (аттестационной, апелляционной и др.)", required: true },
       { type: "doc_forms_approval", label: "Приказ об утверждении форм документов об образовании и квалификации", required: true },
+    ],
+  },
+  {
+    id: "enrollment_orders",
+    title: "Приказы о зачислении / отчислении слушателей",
+    icon: Users,
+    color: "text-indigo-500",
+    bgColor: "bg-indigo-500/10",
+    documents: [
+      { type: "enrollment_order", label: "Приказ о зачислении", required: false },
+      { type: "expulsion_order", label: "Приказ об отчислении", required: false },
+    ],
+  },
+  {
+    id: "attestation_protocols",
+    title: "Протоколы аттестационной комиссии",
+    icon: ClipboardList,
+    color: "text-rose-500",
+    bgColor: "bg-rose-500/10",
+    documents: [
+      { type: "attestation_protocol", label: "Протокол аттестационной комиссии", required: false },
     ],
   },
 ];
