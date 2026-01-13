@@ -9,9 +9,10 @@ const corsHeaders = {
 };
 
 // Limits
-const MAX_FILES_PER_REQUEST = 50; // Increased for ZIP support
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB per file (for ZIP)
-const MAX_TOTAL_SIZE = 50 * 1024 * 1024; // 50MB total
+const MAX_FILES_PER_REQUEST = 30; // Limit for ZIP support
+const MAX_FILE_SIZE = 30 * 1024 * 1024; // 30MB per file (for ZIP)
+const MAX_TOTAL_SIZE = 30 * 1024 * 1024; // 30MB total
+const MAX_ZIP_ENTRIES = 25; // Limit entries in ZIP to avoid timeout
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
@@ -152,8 +153,8 @@ async function parseDocxWithMammoth(buffer: ArrayBuffer): Promise<string> {
   }
 }
 
-// Fallback DOCX parser using JSZip
-async function parseDocxFallback(buffer: ArrayBuffer): Promise<string> {
+// Lightweight DOCX parser using JSZip (faster than mammoth)
+async function parseDocxLight(buffer: ArrayBuffer): Promise<string> {
   try {
     const zip = await JSZip.loadAsync(buffer);
     const docXml = await zip.file('word/document.xml')?.async('string');
@@ -162,59 +163,29 @@ async function parseDocxFallback(buffer: ArrayBuffer): Promise<string> {
       throw new Error('Не найден document.xml в DOCX');
     }
 
-    // Extract text content and basic formatting
     let html = '';
-
-    // Process paragraphs
-    const paragraphs = docXml.match(/<w:p[^>]*>[\s\S]*?<\/w:p>/g) || [];
-
+    
+    // Simple regex-based extraction for speed
+    const textParts: string[] = [];
+    const textRegex = /<w:t[^>]*>([^<]*)<\/w:t>/g;
+    let match;
+    while ((match = textRegex.exec(docXml)) !== null) {
+      textParts.push(match[1]);
+    }
+    
+    // Join all text and split by paragraph markers
+    const fullText = textParts.join('');
+    const paragraphs = fullText.split(/(?:\r\n|\r|\n)+/).filter(p => p.trim());
+    
     for (const para of paragraphs) {
-      // Check for heading style
-      const styleMatch = para.match(/<w:pStyle w:val="([^"]+)"/);
-      const style = styleMatch ? styleMatch[1] : '';
-
-      // Extract text runs
-      const runs = para.match(/<w:r[^>]*>[\s\S]*?<\/w:r>/g) || [];
-      let paraContent = '';
-
-      for (const run of runs) {
-        const textMatches = run.match(/<w:t[^>]*>([^<]*)<\/w:t>/g) || [];
-        for (const t of textMatches) {
-          const textMatch = t.match(/<w:t[^>]*>([^<]*)<\/w:t>/);
-          if (textMatch) {
-            let text = textMatch[1];
-
-            // Check for bold
-            if (run.includes('<w:b') || run.includes('<w:b/>')) {
-              text = `<strong>${text}</strong>`;
-            }
-            // Check for italic
-            if (run.includes('<w:i') || run.includes('<w:i/>')) {
-              text = `<em>${text}</em>`;
-            }
-
-            paraContent += text;
-          }
-        }
-      }
-
-      if (paraContent.trim()) {
-        // Determine tag based on style
-        if (style.includes('Heading1') || style.includes('Заголовок1') || style === 'Title') {
-          html += `<h1>${paraContent}</h1>\n`;
-        } else if (style.includes('Heading2') || style.includes('Заголовок2')) {
-          html += `<h2>${paraContent}</h2>\n`;
-        } else if (style.includes('Heading3') || style.includes('Заголовок3')) {
-          html += `<h3>${paraContent}</h3>\n`;
-        } else {
-          html += `<p>${paraContent}</p>\n`;
-        }
+      if (para.trim()) {
+        html += `<p>${para.trim()}</p>\n`;
       }
     }
 
-    return html;
+    return html || '<p>Содержимое не найдено</p>';
   } catch (e) {
-    console.error('JSZip fallback error:', e);
+    console.error('Light DOCX parser error:', e);
     throw e;
   }
 }
@@ -242,8 +213,8 @@ async function processFile(file: File): Promise<{ title: string; html: string; f
     try {
       sourceHtml = await parseDocxWithMammoth(buffer);
     } catch (mammothError) {
-      console.log('Mammoth failed, trying fallback:', mammothError);
-      sourceHtml = await parseDocxFallback(buffer);
+      console.log('Mammoth failed, trying light parser:', mammothError);
+      sourceHtml = await parseDocxLight(buffer);
     }
   } else if (fileName.endsWith('.doc')) {
     const text = await file.text();
@@ -256,7 +227,7 @@ async function processFile(file: File): Promise<{ title: string; html: string; f
   return { title: courseTitle, html: sourceHtml, fileName: file.name };
 }
 
-// Process file from ZIP buffer
+// Process file from ZIP buffer (uses light parser to avoid timeout)
 async function processZipEntry(
   fileName: string, 
   content: ArrayBuffer | string,
@@ -268,28 +239,29 @@ async function processZipEntry(
 
   console.log(`Processing ZIP entry: ${folderPath}/${fileName}`);
 
-  if (lowerName.endsWith('.txt') || lowerName.endsWith('.md')) {
-    const text = typeof content === 'string' ? content : new TextDecoder().decode(content);
-    sourceHtml = txtToHtml(text);
-  } else if (lowerName.endsWith('.html') || lowerName.endsWith('.htm')) {
-    let html = typeof content === 'string' ? content : new TextDecoder().decode(content);
-    const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
-    if (bodyMatch) html = bodyMatch[1];
-    const titleMatch = html.match(/<title[^>]*>(.*?)<\/title>/i);
-    if (titleMatch) title = titleMatch[1].trim() || title;
-    sourceHtml = html;
-  } else if (lowerName.endsWith('.docx')) {
-    const buffer = content instanceof ArrayBuffer ? content : new TextEncoder().encode(content as string).buffer;
-    try {
-      sourceHtml = await parseDocxWithMammoth(buffer);
-    } catch (mammothError) {
-      console.log('Mammoth failed for ZIP entry, trying fallback:', mammothError);
-      sourceHtml = await parseDocxFallback(buffer);
+  try {
+    if (lowerName.endsWith('.txt') || lowerName.endsWith('.md')) {
+      const text = typeof content === 'string' ? content : new TextDecoder().decode(content);
+      sourceHtml = txtToHtml(text);
+    } else if (lowerName.endsWith('.html') || lowerName.endsWith('.htm')) {
+      let html = typeof content === 'string' ? content : new TextDecoder().decode(content);
+      const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+      if (bodyMatch) html = bodyMatch[1];
+      const titleMatch = html.match(/<title[^>]*>(.*?)<\/title>/i);
+      if (titleMatch) title = titleMatch[1].trim() || title;
+      sourceHtml = html;
+    } else if (lowerName.endsWith('.docx')) {
+      const buffer = content instanceof ArrayBuffer ? content : new TextEncoder().encode(content as string).buffer;
+      // Use light parser for ZIP entries to avoid CPU timeout
+      sourceHtml = await parseDocxLight(buffer);
+    } else if (lowerName.endsWith('.doc')) {
+      const text = typeof content === 'string' ? content : new TextDecoder().decode(content);
+      const cleanText = text.replace(/[^\x20-\x7E\u0400-\u04FF\n\r\t]/g, ' ').replace(/\s+/g, ' ');
+      sourceHtml = txtToHtml(cleanText);
     }
-  } else if (lowerName.endsWith('.doc')) {
-    const text = typeof content === 'string' ? content : new TextDecoder().decode(content);
-    const cleanText = text.replace(/[^\x20-\x7E\u0400-\u04FF\n\r\t]/g, ' ').replace(/\s+/g, ' ');
-    sourceHtml = txtToHtml(cleanText);
+  } catch (e) {
+    console.error(`Error parsing ${fileName}:`, e);
+    sourceHtml = `<p>Ошибка обработки файла: ${(e as Error).message}</p>`;
   }
 
   return { title, html: sourceHtml, fileName, folderPath };
@@ -323,6 +295,12 @@ async function processZipArchive(file: File): Promise<Array<{ title: string; htm
   });
   
   console.log(`Found ${entries.length} supported files in ZIP`);
+  
+  // Limit entries to avoid CPU timeout
+  if (entries.length > MAX_ZIP_ENTRIES) {
+    console.log(`Limiting to ${MAX_ZIP_ENTRIES} entries`);
+    entries.length = MAX_ZIP_ENTRIES;
+  }
   
   // Sort entries by path for consistent ordering
   entries.sort((a, b) => a.path.localeCompare(b.path, 'ru'));
