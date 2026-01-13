@@ -3,7 +3,7 @@ import {
   Palette, Sun, Moon, FileText, Building2, LayoutGrid, 
   Library, BarChart3, Link, ShoppingBag, Save, Settings,
   Trophy, MessageCircle, ChevronRight, Loader2, Upload,
-  X, ExternalLink, Image, Eye, AlertCircle, GripVertical
+  X, ExternalLink, Image, Eye, AlertCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,23 +15,7 @@ import { ContractTemplateEditor } from "@/components/organization/ContractTempla
 import { ConsentGenerator } from "@/components/organization/ConsentGenerator";
 import { SystemFeaturesReport } from "@/components/organization/SystemFeaturesReport";
 import { SystemDiagnostics } from "@/components/organization/SystemDiagnostics";
-import { MenuResetSettings } from "@/components/ui/MenuResetSettings";
 import type { MenuSettings } from "@/types";
-import type { MenuItem } from "@/hooks/useMenuCustomization";
-
-const defaultOrgMenuItems: MenuItem[] = [
-  { id: "courses", label: "Курсы", icon: "BookOpen", visible: true, order: 0 },
-  { id: "organizations", label: "Компании", icon: "Building2", visible: true, order: 1 },
-  { id: "students", label: "Ученики", icon: "Users", visible: true, order: 2 },
-  { id: "library", label: "Библиотека", icon: "Library", visible: true, order: 3 },
-  { id: "stats", label: "Статистика", icon: "BarChart3", visible: true, order: 4 },
-  { id: "links", label: "Ссылки регистрации", icon: "Link", visible: true, order: 5 },
-  { id: "documents", label: "Документы", icon: "FileText", visible: true, order: 6 },
-  { id: "journals", label: "Журналы", icon: "ClipboardList", visible: true, order: 7 },
-  { id: "frdo", label: "ФИС ФРДО", icon: "FileSpreadsheet", visible: true, order: 8 },
-  { id: "services", label: "Магазин курсов", icon: "ShoppingBag", visible: true, order: 9 },
-  { id: "settings", label: "Настройки", icon: "Settings", visible: true, order: 10 },
-];
 
 interface BrandingSettings {
   coverUrl: string;
@@ -320,19 +304,6 @@ export function SettingsTab({
               <Save className="w-4 h-4" />
               Сохранить настройки меню
             </Button>
-          </div>
-          
-          <div className="mt-6 pt-4 border-t border-border">
-            <h4 className="font-medium mb-3 flex items-center gap-2 text-sm lg:text-base">
-              <GripVertical className="w-4 h-4" />
-              Порядок и скрытые пункты
-            </h4>
-            <MenuResetSettings
-              menuType="organization"
-              defaultItems={defaultOrgMenuItems}
-              title="Восстановление меню"
-              description="Перетаскивайте пункты в боковом меню для изменения порядка. Скрытые пункты можно восстановить здесь."
-            />
           </div>
         </div>
       </details>
