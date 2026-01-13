@@ -96,6 +96,11 @@ export interface MenuSettings {
   showDocuments: boolean;
   showLibrary: boolean;
   showServices: boolean;
+  showCourses?: boolean;
+  showCompanies?: boolean;
+  showStudents?: boolean;
+  showJournals?: boolean;
+  showFrdo?: boolean;
 }
 
 export interface DocumentsStats {
