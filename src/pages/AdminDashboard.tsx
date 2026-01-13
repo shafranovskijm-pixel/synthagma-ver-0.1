@@ -10,6 +10,7 @@ import { AdminAnalytics } from "@/components/admin/AdminAnalytics";
 import { ServiceOrdersManager } from "@/components/admin/ServiceOrdersManager";
 import { SystemFeaturesManager } from "@/components/admin/SystemFeaturesManager";
 import { AdminSettings } from "@/components/admin/AdminSettings";
+import { BlogManager } from "@/components/admin/BlogManager";
 
 const AdminDashboard = () => {
   const { user, signOut } = useAuth();
@@ -30,6 +31,7 @@ const AdminDashboard = () => {
       case "orders": return "Заявки на курсы";
       case "users": return "Пользователи";
       case "features": return "Функции системы";
+      case "blog": return "Блог";
       case "settings": return "Настройки";
       default: return "";
     }
@@ -85,6 +87,7 @@ const AdminDashboard = () => {
           {activeTab === "orders" && <ServiceOrdersManager />}
           {activeTab === "users" && <UsersManager />}
           {activeTab === "features" && <SystemFeaturesManager />}
+          {activeTab === "blog" && <BlogManager />}
           {activeTab === "settings" && <AdminSettings />}
         </div>
       </main>

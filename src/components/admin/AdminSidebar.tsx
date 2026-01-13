@@ -1,6 +1,6 @@
 import { 
   BarChart3, Building2, Users, ShoppingBag, Sparkles, 
-  LogOut, Shield, Settings
+  LogOut, Shield, Settings, FileText
 } from "lucide-react";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 
@@ -10,6 +10,7 @@ export type AdminTabType =
   | "orders" 
   | "users" 
   | "features"
+  | "blog"
   | "settings";
 
 interface AdminSidebarProps {
@@ -92,6 +93,12 @@ export function AdminSidebar({
           <button onClick={() => handleTabClick("features")} className={tabButtonClass("features")}>
             <Sparkles className="w-5 h-5" />
             Функции системы
+          </button>
+          
+          {/* Blog */}
+          <button onClick={() => handleTabClick("blog")} className={tabButtonClass("blog")}>
+            <FileText className="w-5 h-5" />
+            Блог
           </button>
           
           {/* Settings - always visible */}
