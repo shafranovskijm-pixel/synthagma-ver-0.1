@@ -192,14 +192,6 @@ export default function OrganizationDashboard() {
   
   // Company management hook
   const companyActions = useCompanyActions();
-
-  // Student details dialog - legacy state for old dialog
-  const [selectedStudent, setSelectedStudent] = useState<StudentDetails | null>(null);
-  const [showStudentDialog, setShowStudentDialog] = useState(false);
-  const [isLoadingStudentDetails, setIsLoadingStudentDetails] = useState(false);
-  const [testQuestions, setTestQuestions] = useState<Record<string, TestQuestion[]>>({});
-  const [studentCompanyId, setStudentCompanyId] = useState<string>("");
-  const [isSavingStudentCompany, setIsSavingStudentCompany] = useState(false);
   
   // StudentDetailCard hook
   const studentDetailCard = useStudentDetailCard();
@@ -232,6 +224,18 @@ export default function OrganizationDashboard() {
 
   // Student actions hook (credentials, delete, etc.)
   const studentActions = useStudentActions(organizationId, organizationName, refreshData);
+
+  // Student details dialog hook
+  const studentDetailsDialog = useStudentDetailsDialog({
+    students,
+    allProfiles,
+    setStudents,
+    setAllProfiles,
+    setStats,
+    studentActions,
+  });
+  
+  const { selectedStudent, setSelectedStudent, showStudentDialog, setShowStudentDialog, isLoadingStudentDetails, studentCompanyId, setStudentCompanyId, isSavingStudentCompany, handleAttachStudentToCompany, handleSendCredentials, handleSendCredentialsEmail, handleCreateStudentCredentials, handleDeleteStudentCompletely, handleCopyCredentials } = studentDetailsDialog;
 
   // Enrollment actions aliases
   const { selectedStudentIds, setSelectedStudentIds, showEnrollDialog, setShowEnrollDialog, showUnenrollConfirm, setShowUnenrollConfirm, showBulkFRDOExport, setShowBulkFRDOExport, enrollCourseId, setEnrollCourseId, isEnrolling, isUnenrolling } = enrollmentActions;
@@ -487,53 +491,6 @@ export default function OrganizationDashboard() {
   const handleCreateCategory = createCategory;
   const handleSetCourseCategory = (courseId: string, categoryId: string | null) => categoryActions.setCourseCategory(courseId, categoryId, setCourses);
 
-  // Copy credentials to clipboard
-  const handleCopyCredentials = (login: string, password: string) => {
-    const text = `Логин: ${login}\nПароль: ${password}`;
-    navigator.clipboard.writeText(text);
-    toast.success("Логин и пароль скопированы");
-  };
-
-  // Attach student to company
-  const handleAttachStudentToCompany = async () => {
-    if (!selectedStudent || !studentCompanyId) {
-      toast.error("Выберите компанию");
-      return;
-    }
-    setIsSavingStudentCompany(true);
-    try {
-      const {
-        error
-      } = await supabase.from("profiles").update({
-        company_id: studentCompanyId
-      }).eq("user_id", selectedStudent.student.user_id);
-      if (error) throw error;
-      toast.success("Ученик прикреплён к компании");
-      // Update local state
-      setStudents(prev => prev.map(s => s.user_id === selectedStudent.student.user_id ? {
-        ...s,
-        company_id: studentCompanyId
-      } : s));
-    } catch (error) {
-      console.error("Error attaching student to company:", error);
-      toast.error("Ошибка прикрепления к компании");
-    } finally {
-      setIsSavingStudentCompany(false);
-    }
-  };
-
-  // Send credentials via email (placeholder - needs email service)
-  // Use studentActions for credentials operations
-  const handleSendCredentials = async () => {
-    if (!selectedStudent) return;
-    await studentActions.sendCredentialsClipboard(selectedStudent.student);
-  };
-
-  const handleSendCredentialsEmail = async () => {
-    if (!selectedStudent) return;
-    await studentActions.sendCredentialsEmail(selectedStudent.student);
-  };
-
   const handleBulkSendCredentials = async () => {
     if (selectedStudentIds.size === 0) {
       toast.error("Выберите учеников");
@@ -545,42 +502,6 @@ export default function OrganizationDashboard() {
 
   // Use studentActions hook for bulk operations
   const handleBulkSendDocReminders = studentActions.bulkSendDocReminders;
-
-  const handleCreateStudentCredentials = async () => {
-    if (!selectedStudent) return;
-    const result = await studentActions.createCredentials(selectedStudent.student);
-    if (result) {
-      // Update local state
-      setStudents(prev => prev.map(s => s.user_id === selectedStudent.student.user_id ? {
-        ...s,
-        login: result.login,
-        generated_password: result.password
-      } : s));
-      setAllProfiles(prev => prev.map(s => s.user_id === selectedStudent.student.user_id ? {
-        ...s,
-        login: result.login,
-        generated_password: result.password
-      } : s));
-    }
-  };
-
-  // Delete student completely (profile and all enrollments)
-  const handleDeleteStudentCompletely = async () => {
-    if (!selectedStudent) return;
-    const student = selectedStudent.student;
-    if (!confirm(`Вы уверены, что хотите полностью удалить ученика "${student.name}"? Это действие нельзя отменить.`)) {
-      return;
-    }
-    await studentActions.deleteStudentCompletely(student.user_id);
-    setStudents(prev => prev.filter(s => s.user_id !== student.user_id));
-    setAllProfiles(prev => prev.filter(s => s.user_id !== student.user_id));
-    setStats(prev => ({
-      ...prev,
-      totalStudents: Math.max(0, prev.totalStudents - 1)
-    }));
-    setShowStudentDialog(false);
-    setSelectedStudent(null);
-  };
 
   // Bulk create credentials for selected students without login
   const handleBulkCreateCredentials = async () => {

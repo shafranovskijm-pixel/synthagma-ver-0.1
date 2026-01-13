@@ -1,50 +1,14 @@
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-
-interface Student {
-  id: string;
-  user_id: string;
-  name: string;
-  email: string;
-  login: string | null;
-  generated_password: string | null;
-}
-
-interface StudentDocument {
-  id: string;
-  type: string;
-  name: string;
-  file_url: string | null;
-}
-
-interface TestAttempt {
-  id: string;
-  lesson_id: string;
-  lesson_title: string;
-  score: number;
-  max_score: number;
-  completed_at: string;
-  answers: Record<string, number>;
-}
-
-interface StudentDetails {
-  student: Student;
-  documents: StudentDocument[];
-  testAttempts: TestAttempt[];
-}
+import { Student, StudentDocument, TestAttempt, StudentDetails, Stats } from "@/types/shared";
 
 interface UseStudentDetailsDialogProps {
   students: Student[];
   allProfiles: Student[];
   setStudents: React.Dispatch<React.SetStateAction<Student[]>>;
   setAllProfiles: React.Dispatch<React.SetStateAction<Student[]>>;
-  setStats: React.Dispatch<React.SetStateAction<{
-    totalStudents: number;
-    totalCourses: number;
-    completedCount: number;
-    averageProgress: number;
-  }>>;
+  setStats: React.Dispatch<React.SetStateAction<Stats>>;
   studentActions: {
     sendCredentialsClipboard: (student: Student) => Promise<void>;
     sendCredentialsEmail: (student: Student) => Promise<void>;
@@ -99,17 +63,17 @@ export function useStudentDetailsDialog({
 
   const handleSendCredentials = useCallback(async () => {
     if (!selectedStudent) return;
-    await studentActions.sendCredentialsClipboard(selectedStudent.student as any);
+    await studentActions.sendCredentialsClipboard(selectedStudent.student);
   }, [selectedStudent, studentActions]);
 
   const handleSendCredentialsEmail = useCallback(async () => {
     if (!selectedStudent) return;
-    await studentActions.sendCredentialsEmail(selectedStudent.student as any);
+    await studentActions.sendCredentialsEmail(selectedStudent.student);
   }, [selectedStudent, studentActions]);
 
   const handleCreateStudentCredentials = useCallback(async () => {
     if (!selectedStudent) return;
-    const result = await studentActions.createCredentials(selectedStudent.student as any);
+    const result = await studentActions.createCredentials(selectedStudent.student);
     if (result) {
       setStudents(prev => prev.map(s => 
         s.user_id === selectedStudent.student.user_id 
