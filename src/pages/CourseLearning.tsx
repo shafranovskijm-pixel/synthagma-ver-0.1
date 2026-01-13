@@ -1193,44 +1193,49 @@ const CourseLearning = () => {
                   </div>
                 </div>
 
-                {testScore && (
-                  <div className={cn(
-                    "p-6 rounded-2xl border transition-all",
-                    testScore.score / testScore.max >= 0.6 
-                      ? "bg-sigma-green/10 border-sigma-green/20" 
-                      : "bg-destructive/10 border-destructive/20"
-                  )}>
-                    <div className="flex items-center gap-4">
-                      <div className={cn(
-                        "w-16 h-16 rounded-full flex items-center justify-center",
-                        testScore.score / testScore.max >= 0.6 
-                          ? "bg-sigma-green/20" 
-                          : "bg-destructive/20"
-                      )}>
-                        <Trophy className={cn(
-                          "w-8 h-8",
-                          testScore.score / testScore.max >= 0.6 
-                            ? "text-sigma-green" 
-                            : "text-destructive"
-                        )} />
+                {testScore && (() => {
+                  const isPassed = testScore.max > 0 && (testScore.score / testScore.max >= 0.6);
+                  const percentage = testScore.max > 0 ? Math.round(testScore.score / testScore.max * 100) : 0;
+                  
+                  return (
+                    <div className={cn(
+                      "p-6 rounded-2xl border transition-all",
+                      isPassed 
+                        ? "bg-sigma-green/10 border-sigma-green/20" 
+                        : "bg-destructive/10 border-destructive/20"
+                    )}>
+                      <div className="flex items-center gap-4">
+                        <div className={cn(
+                          "w-16 h-16 rounded-full flex items-center justify-center",
+                          isPassed 
+                            ? "bg-sigma-green/20" 
+                            : "bg-destructive/20"
+                        )}>
+                          <Trophy className={cn(
+                            "w-8 h-8",
+                            isPassed 
+                              ? "text-sigma-green" 
+                              : "text-destructive"
+                          )} />
+                        </div>
+                        <div>
+                          <h3 className="text-xl font-bold">
+                            {isPassed ? 'Тест пройден!' : 'Тест не пройден'}
+                          </h3>
+                          <p className="text-muted-foreground">
+                            Результат: {testScore.score} из {testScore.max} ({percentage}%)
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="text-xl font-bold">
-                          {testScore.score / testScore.max >= 0.6 ? 'Тест пройден!' : 'Тест не пройден'}
-                        </h3>
-                        <p className="text-muted-foreground">
-                          Результат: {testScore.score} из {testScore.max} ({Math.round(testScore.score / testScore.max * 100)}%)
-                        </p>
-                      </div>
+                      {!isPassed && (
+                        <Button className="mt-4" onClick={retryTest}>
+                          <Sparkles className="w-4 h-4 mr-2" />
+                          Попробовать снова
+                        </Button>
+                      )}
                     </div>
-                    {testScore.score / testScore.max < 0.6 && (
-                      <Button className="mt-4" onClick={retryTest}>
-                        <Sparkles className="w-4 h-4 mr-2" />
-                        Попробовать снова
-                      </Button>
-                    )}
-                  </div>
-                )}
+                  );
+                })()}
 
                 {!testSubmitted && testQuestions.map((question, qIndex) => (
                   <div 
