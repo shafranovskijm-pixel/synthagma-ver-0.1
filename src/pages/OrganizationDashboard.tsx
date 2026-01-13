@@ -2524,6 +2524,10 @@ export default function OrganizationDashboard() {
               <Collapsible open={isDocumentsMenuOpen} onOpenChange={setIsDocumentsMenuOpen}>
                 <CollapsibleTrigger asChild>
                   <button 
+                    onClick={() => {
+                      setActiveTab("documents");
+                      setIsMobileSidebarOpen(false);
+                    }}
                     className={`w-full flex items-center justify-between px-4 py-3 rounded-xl font-medium transition-colors ${
                       activeTab.startsWith("documents") ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary"
                     }`}
