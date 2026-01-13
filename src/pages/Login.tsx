@@ -237,42 +237,6 @@ const Login = () => {
             Введите свои данные для входа в аккаунт
           </p>
 
-          {/* Demo Quick Login */}
-          <div className="mb-8 p-4 rounded-xl bg-muted/50 border border-border">
-            <p className="text-sm text-muted-foreground mb-3 text-center">Быстрый вход для демо:</p>
-            <div className="grid grid-cols-3 gap-2">
-              {(Object.entries(DEMO_ACCOUNTS) as [keyof typeof DEMO_ACCOUNTS, typeof DEMO_ACCOUNTS.admin][]).map(([key, account]) => {
-                const Icon = account.icon;
-                return (
-                  <Button
-                    key={key}
-                    variant="outline"
-                    onClick={() => handleDemoLogin(key)}
-                    disabled={demoLoading !== null}
-                    className={`flex flex-col items-center gap-1 h-auto py-3 hover:border-primary/50 ${demoLoading === key ? 'opacity-50' : ''}`}
-                  >
-                    {demoLoading === key ? (
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                    ) : (
-                      <div className={`w-8 h-8 rounded-lg ${account.color} flex items-center justify-center`}>
-                        <Icon className="w-4 h-4 text-white" />
-                      </div>
-                    )}
-                    <span className="text-xs font-medium">{account.label}</span>
-                  </Button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="relative mb-6">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-border" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">или войдите</span>
-            </div>
-          </div>
 
           <Tabs value={loginMode} onValueChange={(v) => setLoginMode(v as "email" | "login")} className="mb-6">
             <TabsList className="grid w-full grid-cols-2">
