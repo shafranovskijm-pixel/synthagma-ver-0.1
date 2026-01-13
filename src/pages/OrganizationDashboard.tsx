@@ -28,6 +28,7 @@ import { DocumentArchiveView } from "@/components/organization/DocumentArchiveVi
 import { JournalsManager } from "@/components/organization/JournalsManager";
 import { EducationDocumentsJournal } from "@/components/organization/EducationDocumentsJournal";
 import { SystemFeaturesReport } from "@/components/organization/SystemFeaturesReport";
+import { SystemDiagnostics } from "@/components/organization/SystemDiagnostics";
 import { generateEnrollmentOrder } from "@/utils/generateEnrollmentOrder";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrgFeatures } from "@/hooks/useOrgFeatures";
@@ -138,7 +139,7 @@ export default function OrganizationDashboard() {
   } = useAuth();
   const isMobile = useIsMobile();
   
-  const [activeTab, setActiveTab] = useState<"courses" | "organizations" | "students" | "library" | "stats" | "links" | "documents" | "documents-orders" | "documents-protocols" | "documents-certificates" | "documents-diplomas" | "documents-testimonials" | "journals" | "services" | "settings" | "frdo">("courses");
+  const [activeTab, setActiveTab] = useState<"courses" | "organizations" | "students" | "library" | "stats" | "links" | "documents" | "documents-orders" | "documents-protocols" | "documents-certificates" | "documents-diplomas" | "documents-testimonials" | "journals" | "services" | "settings" | "frdo" | "diagnostics">("courses");
   const [isDocumentsMenuOpen, setIsDocumentsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showImportDialog, setShowImportDialog] = useState(false);
@@ -374,7 +375,7 @@ export default function OrganizationDashboard() {
   });
 
   // Swipe navigation for mobile tabs
-  type TabType = "courses" | "organizations" | "students" | "library" | "stats" | "links" | "documents" | "documents-orders" | "documents-protocols" | "documents-certificates" | "documents-diplomas" | "documents-testimonials" | "journals" | "services" | "settings" | "frdo";
+  type TabType = "courses" | "organizations" | "students" | "library" | "stats" | "links" | "documents" | "documents-orders" | "documents-protocols" | "documents-certificates" | "documents-diplomas" | "documents-testimonials" | "journals" | "services" | "settings" | "frdo" | "diagnostics";
   
   const getVisibleTabs = useCallback((): TabType[] => {
     const baseTabs: TabType[] = [];
@@ -2608,6 +2609,13 @@ export default function OrganizationDashboard() {
               ФИС ФРДО
             </button>}
             {isEnabled("settings") && <button onClick={() => {
+            setActiveTab("diagnostics");
+            setIsMobileSidebarOpen(false);
+          }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === "diagnostics" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary"}`}>
+              <AlertCircle className="w-5 h-5" />
+              Диагностика
+            </button>}
+            {isEnabled("settings") && <button onClick={() => {
             setActiveTab("settings");
             setIsMobileSidebarOpen(false);
           }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === "settings" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary"}`}>
@@ -2657,6 +2665,7 @@ export default function OrganizationDashboard() {
                     {activeTab === "documents-testimonials" && "Свидетельства"}
                     {activeTab === "journals" && "Журналы учёта"}
                     {activeTab === "services" && "Магазин курсов"}
+                    {activeTab === "diagnostics" && "Самодиагностика системы"}
                     {activeTab === "settings" && "Настройки"}
                   </h1>
                 )}
@@ -3573,6 +3582,9 @@ export default function OrganizationDashboard() {
 
           {/* Course Store Tab */}
           {activeTab === "services" && organizationId && <CourseStoreManager organizationId={organizationId} userId={user?.id} />}
+
+          {/* Diagnostics Tab */}
+          {activeTab === "diagnostics" && organizationId && <SystemDiagnostics organizationId={organizationId} />}
 
           {/* Settings Tab */}
           {activeTab === "settings" && <div className="max-w-2xl space-y-4 lg:space-y-6">

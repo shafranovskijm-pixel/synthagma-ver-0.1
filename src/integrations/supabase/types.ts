@@ -59,6 +59,59 @@ export type Database = {
         }
         Relationships: []
       }
+      audit_logs: {
+        Row: {
+          action_type: string
+          created_at: string
+          details: Json | null
+          entity_id: string | null
+          entity_name: string | null
+          entity_type: string
+          id: string
+          ip_address: string | null
+          organization_id: string
+          user_agent: string | null
+          user_id: string
+          user_name: string | null
+        }
+        Insert: {
+          action_type: string
+          created_at?: string
+          details?: Json | null
+          entity_id?: string | null
+          entity_name?: string | null
+          entity_type: string
+          id?: string
+          ip_address?: string | null
+          organization_id: string
+          user_agent?: string | null
+          user_id: string
+          user_name?: string | null
+        }
+        Update: {
+          action_type?: string
+          created_at?: string
+          details?: Json | null
+          entity_id?: string | null
+          entity_name?: string | null
+          entity_type?: string
+          id?: string
+          ip_address?: string | null
+          organization_id?: string
+          user_agent?: string | null
+          user_id?: string
+          user_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_messages: {
         Row: {
           content: string
@@ -1800,6 +1853,50 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      system_diagnostics: {
+        Row: {
+          check_name: string
+          check_type: string
+          details: Json | null
+          executed_at: string
+          executed_by: string | null
+          id: string
+          message: string | null
+          organization_id: string
+          status: string
+        }
+        Insert: {
+          check_name: string
+          check_type: string
+          details?: Json | null
+          executed_at?: string
+          executed_by?: string | null
+          id?: string
+          message?: string | null
+          organization_id: string
+          status: string
+        }
+        Update: {
+          check_name?: string
+          check_type?: string
+          details?: Json | null
+          executed_at?: string
+          executed_by?: string | null
+          id?: string
+          message?: string | null
+          organization_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "system_diagnostics_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       system_feature_categories: {
         Row: {
