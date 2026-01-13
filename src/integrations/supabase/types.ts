@@ -1582,6 +1582,154 @@ export type Database = {
           },
         ]
       }
+      program_categories: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          name: string
+          organization_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          organization_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          organization_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "program_categories_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      program_documents: {
+        Row: {
+          category_id: string | null
+          created_at: string
+          description: string | null
+          file_size: number | null
+          file_type: string | null
+          file_url: string | null
+          folder_id: string | null
+          id: string
+          name: string
+          organization_id: string
+          updated_at: string
+        }
+        Insert: {
+          category_id?: string | null
+          created_at?: string
+          description?: string | null
+          file_size?: number | null
+          file_type?: string | null
+          file_url?: string | null
+          folder_id?: string | null
+          id?: string
+          name: string
+          organization_id: string
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string | null
+          created_at?: string
+          description?: string | null
+          file_size?: number | null
+          file_type?: string | null
+          file_url?: string | null
+          folder_id?: string | null
+          id?: string
+          name?: string
+          organization_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "program_documents_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "program_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "program_documents_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "program_folders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "program_documents_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      program_folders: {
+        Row: {
+          category_id: string | null
+          color: string | null
+          created_at: string
+          id: string
+          name: string
+          organization_id: string
+          parent_id: string | null
+        }
+        Insert: {
+          category_id?: string | null
+          color?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          organization_id: string
+          parent_id?: string | null
+        }
+        Update: {
+          category_id?: string | null
+          color?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          organization_id?: string
+          parent_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "program_folders_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "program_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "program_folders_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "program_folders_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "program_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       registration_links: {
         Row: {
           company_id: string | null

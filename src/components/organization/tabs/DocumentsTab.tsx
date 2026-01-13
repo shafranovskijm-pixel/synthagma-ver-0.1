@@ -1,14 +1,15 @@
 import { useState } from "react";
 import { 
   Users, ClipboardList, Award, GraduationCap, FileCheck, 
-  FileText, Upload
+  FileText, Upload, BookOpen
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { OrgDocumentsManager } from "@/components/organization/OrgDocumentsManager";
 import { DocumentArchiveView } from "@/components/organization/DocumentArchiveView";
 import { EducationDocumentsJournal } from "@/components/organization/EducationDocumentsJournal";
+import { ProgramsManager } from "@/components/organization/ProgramsManager";
 
-type DocumentSubTab = "org" | "orders" | "protocols" | "certificates" | "diplomas" | "testimonials";
+type DocumentSubTab = "programs" | "org" | "orders" | "protocols" | "certificates" | "diplomas" | "testimonials";
 
 interface DocumentsTabProps {
   organizationId: string | null;
@@ -17,7 +18,7 @@ interface DocumentsTabProps {
 }
 
 export function DocumentsTab({ organizationId, onShowBulkUploadDialog, isOrdersEnabled = true }: DocumentsTabProps) {
-  const [activeDocTab, setActiveDocTab] = useState<DocumentSubTab>("org");
+  const [activeDocTab, setActiveDocTab] = useState<DocumentSubTab>("programs");
 
   if (!organizationId) {
     return (
@@ -28,6 +29,7 @@ export function DocumentsTab({ organizationId, onShowBulkUploadDialog, isOrdersE
   }
 
   const tabs: { id: DocumentSubTab; label: string; shortLabel: string; icon: React.ReactNode }[] = [
+    { id: "programs", label: "Программы", shortLabel: "Прогр.", icon: <BookOpen className="w-4 h-4" /> },
     { id: "org", label: "Документы орг.", shortLabel: "Орг.", icon: <FileText className="w-4 h-4" /> },
     ...(isOrdersEnabled ? [{ id: "orders" as DocumentSubTab, label: "Приказы", shortLabel: "Приказы", icon: <Users className="w-4 h-4" /> }] : []),
     { id: "protocols", label: "Протоколы АК", shortLabel: "Протоколы", icon: <ClipboardList className="w-4 h-4" /> },
@@ -78,6 +80,10 @@ export function DocumentsTab({ organizationId, onShowBulkUploadDialog, isOrdersE
 
       {/* Content */}
       <div className="mt-4">
+        {activeDocTab === "programs" && (
+          <ProgramsManager organizationId={organizationId} />
+        )}
+
         {activeDocTab === "org" && (
           <OrgDocumentsManager organizationId={organizationId} />
         )}
