@@ -248,6 +248,56 @@ const RegisterOrganization = () => {
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* INN with search button - FIRST and highlighted */}
+            <div className="p-4 rounded-xl bg-primary/5 border-2 border-primary/20 space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Search className="w-4 h-4 text-primary" />
+                </div>
+                <div>
+                  <Label htmlFor="inn" className="text-base font-medium">Быстрое заполнение по ИНН</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Введите ИНН и мы заполним данные автоматически
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Input 
+                  id="inn" 
+                  type="text" 
+                  placeholder="Введите ИНН организации" 
+                  className="h-12 rounded-xl flex-1 bg-background"
+                  value={inn}
+                  onChange={(e) => {
+                    setInn(e.target.value.replace(/\D/g, '').slice(0, 12));
+                    setInnLoaded(false);
+                  }}
+                  disabled={isLoading || isLoadingInn}
+                />
+                <Button 
+                  type="button"
+                  variant={innLoaded ? "default" : "outline"}
+                  className={`h-12 rounded-xl px-4 ${innLoaded ? 'bg-sigma-green hover:bg-sigma-green/90' : ''}`}
+                  onClick={loadCompanyByInn}
+                  disabled={isLoading || isLoadingInn || inn.length < 10}
+                >
+                  {isLoadingInn ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : innLoaded ? (
+                    <>
+                      <CheckCircle2 className="w-4 h-4 mr-2" />
+                      Загружено
+                    </>
+                  ) : (
+                    <>
+                      <Search className="w-4 h-4 mr-2" />
+                      Найти
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="orgName">Название организации *</Label>
               <div className="relative">
@@ -278,43 +328,6 @@ const RegisterOrganization = () => {
                   disabled={isLoading}
                 />
               </div>
-            </div>
-
-            {/* INN with search button */}
-            <div className="space-y-2">
-              <Label htmlFor="inn">ИНН (для автозаполнения)</Label>
-              <div className="flex gap-2">
-                <Input 
-                  id="inn" 
-                  type="text" 
-                  placeholder="1234567890" 
-                  className="h-12 rounded-xl flex-1"
-                  value={inn}
-                  onChange={(e) => {
-                    setInn(e.target.value.replace(/\D/g, '').slice(0, 12));
-                    setInnLoaded(false);
-                  }}
-                  disabled={isLoading || isLoadingInn}
-                />
-                <Button 
-                  type="button"
-                  variant={innLoaded ? "default" : "outline"}
-                  className="h-12 rounded-xl px-4"
-                  onClick={loadCompanyByInn}
-                  disabled={isLoading || isLoadingInn || inn.length < 10}
-                >
-                  {isLoadingInn ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : innLoaded ? (
-                    <CheckCircle2 className="w-4 h-4" />
-                  ) : (
-                    <Search className="w-4 h-4" />
-                  )}
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Введите ИНН и нажмите поиск для автозаполнения данных
-              </p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
