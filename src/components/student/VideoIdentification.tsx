@@ -289,16 +289,17 @@ export function VideoIdentification({
         orgId = profileData?.organization_id || "";
       }
 
-      // Create verification record in database
+      // Create verification record in database - сразу со статусом verified
       const { data: verificationData, error: verificationError } = await supabase
         .from("video_identifications")
         .insert({
           user_id: userId,
           organization_id: orgId,
           enrollment_id: enrollmentId || null,
-          status: "pending",
+          status: "verified", // Автоматическое подтверждение
           photo_url: urlData.publicUrl,
-          ip_address: "", // Would need a service to get real IP
+          verified_at: new Date().toISOString(),
+          ip_address: "",
           user_agent: navigator.userAgent,
           device_info: {
             platform: navigator.platform,
@@ -316,7 +317,7 @@ export function VideoIdentification({
       setVerificationHistory(prev => [verificationData as VerificationRecord, ...prev]);
 
       setStep("success");
-      toast.success("Фото для идентификации отправлено на проверку!");
+      toast.success("Идентификация подтверждена! Доступ к курсам открыт.");
       onVerified?.();
     } catch (error) {
       console.error("Upload error:", error);
