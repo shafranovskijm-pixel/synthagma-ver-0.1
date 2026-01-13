@@ -62,16 +62,44 @@ interface AutoDocumentRegistrationJournalProps {
   onClose: () => void;
 }
 
-const DOCUMENT_TYPE_LABELS: Record<string, { label: string; icon: typeof FileText }> = {
-  contract: { label: "Договор", icon: FileCheck },
-  enrollment_order: { label: "Приказ о зачислении", icon: ArrowDownLeft },
-  expulsion_order: { label: "Приказ об отчислении", icon: ArrowUpRight },
-  certificate: { label: "Удостоверение", icon: FileText },
-  diploma: { label: "Диплом", icon: FileText },
-  protocol: { label: "Протокол", icon: FileText },
-  invoice: { label: "Счёт", icon: FileText },
-  act: { label: "Акт", icon: FileText },
-  other: { label: "Прочее", icon: FileText },
+const DOCUMENT_TYPE_LABELS: Record<string, { label: string; icon: typeof FileText; prefix: string }> = {
+  contract: { label: "Договор", icon: FileCheck, prefix: "ДОГ" },
+  enrollment_order: { label: "Приказ о зачислении", icon: ArrowDownLeft, prefix: "ПР-З" },
+  expulsion_order: { label: "Приказ об отчислении", icon: ArrowUpRight, prefix: "ПР-О" },
+  certificate: { label: "Удостоверение", icon: FileText, prefix: "УД" },
+  diploma: { label: "Диплом", icon: FileText, prefix: "ДП" },
+  protocol: { label: "Протокол", icon: FileText, prefix: "ПРТ" },
+  invoice: { label: "Счёт", icon: FileText, prefix: "СЧ" },
+  act: { label: "Акт", icon: FileText, prefix: "АКТ" },
+  other: { label: "Прочее", icon: FileText, prefix: "ПР" },
+};
+
+// Generate automatic registration number based on year and document type
+const generateRegNumber = (
+  docType: string,
+  date: string,
+  index: number,
+  typeCounters: Map<string, Map<number, number>>
+): string => {
+  const docDate = parseISO(date);
+  const year = docDate.getFullYear();
+  const prefix = DOCUMENT_TYPE_LABELS[docType]?.prefix || "ПР";
+  
+  // Get or initialize the counter for this type and year
+  if (!typeCounters.has(docType)) {
+    typeCounters.set(docType, new Map());
+  }
+  const yearCounters = typeCounters.get(docType)!;
+  
+  if (!yearCounters.has(year)) {
+    yearCounters.set(year, 0);
+  }
+  
+  const currentCount = yearCounters.get(year)! + 1;
+  yearCounters.set(year, currentCount);
+  
+  // Format: PREFIX-YYYY/NNN (e.g., ДОГ-2025/001)
+  return `${prefix}-${year}/${currentCount.toString().padStart(3, "0")}`;
 };
 
 export function AutoDocumentRegistrationJournal({
@@ -230,12 +258,40 @@ export function AutoDocumentRegistrationJournal({
           }
         }
 
-        // Sort by date descending
+        // Sort by date ascending first for proper numbering
         documentRecords.sort((a, b) => 
+          new Date(a.date).getTime() - new Date(b.date).getTime()
+        );
+
+        // Generate automatic registration numbers for documents without them
+        const typeCounters = new Map<string, Map<number, number>>();
+        
+        const numberedRecords = documentRecords.map((record) => {
+          // If already has a reg_number, use it but still track the count
+          if (record.reg_number) {
+            return record;
+          }
+          
+          // Generate auto number
+          const autoRegNumber = generateRegNumber(
+            record.document_type,
+            record.date,
+            0,
+            typeCounters
+          );
+          
+          return {
+            ...record,
+            reg_number: autoRegNumber,
+          };
+        });
+
+        // Sort back by date descending for display
+        numberedRecords.sort((a, b) => 
           new Date(b.date).getTime() - new Date(a.date).getTime()
         );
 
-        setRecords(documentRecords);
+        setRecords(numberedRecords);
       } catch (error) {
         console.error("Error fetching documents:", error);
         toast.error("Ошибка при загрузке данных");
