@@ -176,17 +176,46 @@ export function EducationDocumentsJournal({
     enrollment_id: "",
   });
 
-  // Load records from localStorage and check for new graduates
+  // Load records from Supabase
   useEffect(() => {
     const loadRecords = async () => {
       setLoading(true);
       try {
-        const stored = localStorage.getItem(`education_documents_${organizationId}`);
-        if (stored) {
-          setRecords(JSON.parse(stored));
-        }
+        const { data, error } = await supabase
+          .from("education_document_records")
+          .select("*")
+          .eq("organization_id", organizationId)
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+
+        const mappedRecords: EducationDocumentRecord[] = (data || []).map((r) => ({
+          id: r.id,
+          reg_number: r.reg_number,
+          full_name: r.full_name,
+          birth_date: r.birth_date || "",
+          document_type: r.document_type as "certificate" | "diploma" | "qualification",
+          document_series: r.document_series || "",
+          document_number: r.document_number,
+          issue_date: r.issue_date,
+          specialty_name: r.specialty_name,
+          qualification_name: r.qualification_name || "",
+          protocol_number: r.protocol_number || "",
+          protocol_date: r.protocol_date || "",
+          order_number: r.order_number || "",
+          order_date: r.order_date || "",
+          document_status: r.document_status as "original" | "duplicate",
+          original_document_data: r.original_document_data,
+          delivery_method: r.delivery_method as "personal" | "representative" | "postal",
+          delivery_details: r.delivery_details,
+          notes: r.notes,
+          enrollment_id: r.enrollment_id || undefined,
+        }));
+
+        setRecords(mappedRecords);
       } catch (error) {
         console.error("Error loading records:", error);
+        toast.error("Ошибка загрузки записей журнала");
       } finally {
         setLoading(false);
       }
@@ -208,7 +237,7 @@ export function EducationDocumentsJournal({
   }, [completedStudents]);
 
   // Auto-add all new graduates
-  const handleAutoAddAllGraduates = () => {
+  const handleAutoAddAllGraduates = async () => {
     const newStudents = completedStudents.filter((s) => !s.already_added);
     
     if (newStudents.length === 0) {
@@ -216,48 +245,80 @@ export function EducationDocumentsJournal({
       return;
     }
 
-    const year = new Date().getFullYear();
-    let existingCount = records.filter((r) => {
-      const issueYear = parseISO(r.issue_date).getFullYear();
-      return issueYear === year;
-    }).length;
+    setSaving(true);
+    try {
+      const year = new Date().getFullYear();
+      let existingCount = records.filter((r) => {
+        const issueYear = parseISO(r.issue_date).getFullYear();
+        return issueYear === year;
+      }).length;
 
-    const newRecords: EducationDocumentRecord[] = newStudents.map((student, index) => {
-      existingCount += 1;
-      const docNumber = `${year}/${(existingCount + index).toString().padStart(6, "0")}`;
-      return {
-        id: crypto.randomUUID(),
-        reg_number: `ДОК-${year}/${existingCount.toString().padStart(4, "0")}`,
-        full_name: student.full_name,
-        birth_date: student.birth_date || "",
-        document_type: documentTypeFilter || "certificate" as const,
-        document_series: "",
-        document_number: docNumber,
-        issue_date: new Date().toISOString(),
-        specialty_name: student.course_title,
-        qualification_name: "",
-        protocol_number: "",
-        protocol_date: "",
-        order_number: "",
-        order_date: "",
-        document_status: "original" as const,
-        original_document_data: null,
-        delivery_method: "personal" as const,
-        delivery_details: null,
-        notes: null,
-        enrollment_id: student.enrollment_id,
-      };
-    });
+      const recordsToInsert = newStudents.map((student, index) => {
+        existingCount += 1;
+        const docNumber = `${year}/${(existingCount + index).toString().padStart(6, "0")}`;
+        return {
+          organization_id: organizationId,
+          reg_number: `ДОК-${year}/${existingCount.toString().padStart(4, "0")}`,
+          full_name: student.full_name,
+          birth_date: student.birth_date || null,
+          document_type: documentTypeFilter || "certificate",
+          document_series: "",
+          document_number: docNumber,
+          issue_date: new Date().toISOString().split("T")[0],
+          specialty_name: student.course_title,
+          qualification_name: "",
+          protocol_number: "",
+          protocol_date: null,
+          order_number: "",
+          order_date: null,
+          document_status: "original",
+          original_document_data: null,
+          delivery_method: "personal",
+          delivery_details: null,
+          notes: null,
+          enrollment_id: student.enrollment_id,
+        };
+      });
 
-    saveRecords([...newRecords, ...records]);
-    loadCompletedStudents(); // Reload to update already_added status
-    toast.success(`Автоматически добавлено ${newRecords.length} записей`);
-  };
+      const { data, error } = await supabase
+        .from("education_document_records")
+        .insert(recordsToInsert)
+        .select();
 
-  // Save records to localStorage
-  const saveRecords = (newRecords: EducationDocumentRecord[]) => {
-    localStorage.setItem(`education_documents_${organizationId}`, JSON.stringify(newRecords));
-    setRecords(newRecords);
+      if (error) throw error;
+
+      const mappedRecords: EducationDocumentRecord[] = (data || []).map((r) => ({
+        id: r.id,
+        reg_number: r.reg_number,
+        full_name: r.full_name,
+        birth_date: r.birth_date || "",
+        document_type: r.document_type as "certificate" | "diploma" | "qualification",
+        document_series: r.document_series || "",
+        document_number: r.document_number,
+        issue_date: r.issue_date,
+        specialty_name: r.specialty_name,
+        qualification_name: r.qualification_name || "",
+        protocol_number: r.protocol_number || "",
+        protocol_date: r.protocol_date || "",
+        order_number: r.order_number || "",
+        order_date: r.order_date || "",
+        document_status: r.document_status as "original" | "duplicate",
+        original_document_data: r.original_document_data,
+        delivery_method: r.delivery_method as "personal" | "representative" | "postal",
+        delivery_details: r.delivery_details,
+        notes: r.notes,
+        enrollment_id: r.enrollment_id || undefined,
+      }));
+
+      setRecords([...mappedRecords, ...records]);
+      loadCompletedStudents();
+      toast.success(`Автоматически добавлено ${mappedRecords.length} записей`);
+    } catch (error) {
+      console.error("Error auto-adding graduates:", error);
+      toast.error("Ошибка при добавлении записей");
+    } finally {
+      setSaving(false);
+    }
   };
 
   // Filter records
@@ -499,7 +560,7 @@ export function EducationDocumentsJournal({
   };
 
   // Create records for selected students
-  const handleCreateFromStudents = () => {
+  const handleCreateFromStudents = async () => {
     const selectedList = completedStudents.filter(
       (s) => selectedStudents.has(s.enrollment_id) && !s.already_added
     );
@@ -509,41 +570,80 @@ export function EducationDocumentsJournal({
       return;
     }
 
-    const year = new Date().getFullYear();
-    let existingCount = records.filter((r) => {
-      const issueYear = parseISO(r.issue_date).getFullYear();
-      return issueYear === year;
-    }).length;
+    setSaving(true);
+    try {
+      const year = new Date().getFullYear();
+      let existingCount = records.filter((r) => {
+        const issueYear = parseISO(r.issue_date).getFullYear();
+        return issueYear === year;
+      }).length;
 
-    const newRecords: EducationDocumentRecord[] = selectedList.map((student, index) => {
-      existingCount += 1;
-      return {
-        id: crypto.randomUUID(),
-        reg_number: `ДОК-${year}/${existingCount.toString().padStart(4, "0")}`,
-        full_name: student.full_name,
-        birth_date: student.birth_date || "",
-        document_type: documentTypeFilter || "certificate" as const,
-        document_series: "",
-        document_number: generateDocumentNumber(index),
-        issue_date: new Date().toISOString(),
-        specialty_name: student.course_title,
-        qualification_name: "",
-        protocol_number: "",
-        protocol_date: "",
-        order_number: "",
-        order_date: "",
-        document_status: "original" as const,
-        original_document_data: null,
-        delivery_method: "personal" as const,
-        delivery_details: null,
-        notes: null,
-        enrollment_id: student.enrollment_id,
-      };
-    });
+      const recordsToInsert = selectedList.map((student, index) => {
+        existingCount += 1;
+        return {
+          organization_id: organizationId,
+          reg_number: `ДОК-${year}/${existingCount.toString().padStart(4, "0")}`,
+          full_name: student.full_name,
+          birth_date: student.birth_date || null,
+          document_type: documentTypeFilter || "certificate",
+          document_series: "",
+          document_number: generateDocumentNumber(index),
+          issue_date: new Date().toISOString().split("T")[0],
+          specialty_name: student.course_title,
+          qualification_name: "",
+          protocol_number: "",
+          protocol_date: null,
+          order_number: "",
+          order_date: null,
+          document_status: "original",
+          original_document_data: null,
+          delivery_method: "personal",
+          delivery_details: null,
+          notes: null,
+          enrollment_id: student.enrollment_id,
+        };
+      });
 
-    saveRecords([...newRecords, ...records]);
-    setShowSelectStudentsDialog(false);
-    toast.success(`Создано ${newRecords.length} записей`);
+      const { data, error } = await supabase
+        .from("education_document_records")
+        .insert(recordsToInsert)
+        .select();
+
+      if (error) throw error;
+
+      const mappedRecords: EducationDocumentRecord[] = (data || []).map((r) => ({
+        id: r.id,
+        reg_number: r.reg_number,
+        full_name: r.full_name,
+        birth_date: r.birth_date || "",
+        document_type: r.document_type as "certificate" | "diploma" | "qualification",
+        document_series: r.document_series || "",
+        document_number: r.document_number,
+        issue_date: r.issue_date,
+        specialty_name: r.specialty_name,
+        qualification_name: r.qualification_name || "",
+        protocol_number: r.protocol_number || "",
+        protocol_date: r.protocol_date || "",
+        order_number: r.order_number || "",
+        order_date: r.order_date || "",
+        document_status: r.document_status as "original" | "duplicate",
+        original_document_data: r.original_document_data,
+        delivery_method: r.delivery_method as "personal" | "representative" | "postal",
+        delivery_details: r.delivery_details,
+        notes: r.notes,
+        enrollment_id: r.enrollment_id || undefined,
+      }));
+
+      setRecords([...mappedRecords, ...records]);
+      setShowSelectStudentsDialog(false);
+      loadCompletedStudents();
+      toast.success(`Создано ${mappedRecords.length} записей`);
+    } catch (error) {
+      console.error("Error creating records from students:", error);
+      toast.error("Ошибка при создании записей");
+    } finally {
+      setSaving(false);
+    }
   };
 
   // Filter completed students by search
@@ -579,7 +679,7 @@ export function EducationDocumentsJournal({
   };
 
   // Save record
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.full_name.trim()) {
       toast.error("Введите ФИО выпускника");
       return;
@@ -600,42 +700,100 @@ export function EducationDocumentsJournal({
     setSaving(true);
 
     try {
-      const recordData: EducationDocumentRecord = {
-        id: editingRecord?.id || crypto.randomUUID(),
+      const dbRecord = {
+        organization_id: organizationId,
         reg_number: formData.reg_number.trim(),
         full_name: formData.full_name.trim(),
-        birth_date: formData.birth_date?.toISOString() || "",
+        birth_date: formData.birth_date?.toISOString().split("T")[0] || null,
         document_type: formData.document_type,
-        document_series: formData.document_series.trim(),
+        document_series: formData.document_series.trim() || null,
         document_number: formData.document_number.trim(),
-        issue_date: formData.issue_date.toISOString(),
+        issue_date: formData.issue_date.toISOString().split("T")[0],
         specialty_name: formData.specialty_name.trim(),
-        qualification_name: formData.qualification_name.trim(),
-        protocol_number: formData.protocol_number.trim(),
-        protocol_date: formData.protocol_date?.toISOString() || "",
-        order_number: formData.order_number.trim(),
-        order_date: formData.order_date?.toISOString() || "",
+        qualification_name: formData.qualification_name.trim() || null,
+        protocol_number: formData.protocol_number.trim() || null,
+        protocol_date: formData.protocol_date?.toISOString().split("T")[0] || null,
+        order_number: formData.order_number.trim() || null,
+        order_date: formData.order_date?.toISOString().split("T")[0] || null,
         document_status: formData.document_status,
         original_document_data: formData.document_status === "duplicate" ? formData.original_document_data.trim() : null,
         delivery_method: formData.delivery_method,
         delivery_details: formData.delivery_method !== "personal" ? formData.delivery_details.trim() : null,
         notes: formData.notes.trim() || null,
-        enrollment_id: formData.enrollment_id || undefined,
+        enrollment_id: formData.enrollment_id || null,
       };
 
-      let newRecords: EducationDocumentRecord[];
-
       if (editingRecord) {
-        newRecords = records.map((r) =>
-          r.id === editingRecord.id ? recordData : r
-        );
+        const { data, error } = await supabase
+          .from("education_document_records")
+          .update(dbRecord)
+          .eq("id", editingRecord.id)
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        const updatedRecord: EducationDocumentRecord = {
+          id: data.id,
+          reg_number: data.reg_number,
+          full_name: data.full_name,
+          birth_date: data.birth_date || "",
+          document_type: data.document_type as "certificate" | "diploma" | "qualification",
+          document_series: data.document_series || "",
+          document_number: data.document_number,
+          issue_date: data.issue_date,
+          specialty_name: data.specialty_name,
+          qualification_name: data.qualification_name || "",
+          protocol_number: data.protocol_number || "",
+          protocol_date: data.protocol_date || "",
+          order_number: data.order_number || "",
+          order_date: data.order_date || "",
+          document_status: data.document_status as "original" | "duplicate",
+          original_document_data: data.original_document_data,
+          delivery_method: data.delivery_method as "personal" | "representative" | "postal",
+          delivery_details: data.delivery_details,
+          notes: data.notes,
+          enrollment_id: data.enrollment_id || undefined,
+        };
+
+        setRecords(records.map((r) => r.id === editingRecord.id ? updatedRecord : r));
         toast.success("Запись обновлена");
       } else {
-        newRecords = [recordData, ...records];
+        const { data, error } = await supabase
+          .from("education_document_records")
+          .insert(dbRecord)
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        const newRecord: EducationDocumentRecord = {
+          id: data.id,
+          reg_number: data.reg_number,
+          full_name: data.full_name,
+          birth_date: data.birth_date || "",
+          document_type: data.document_type as "certificate" | "diploma" | "qualification",
+          document_series: data.document_series || "",
+          document_number: data.document_number,
+          issue_date: data.issue_date,
+          specialty_name: data.specialty_name,
+          qualification_name: data.qualification_name || "",
+          protocol_number: data.protocol_number || "",
+          protocol_date: data.protocol_date || "",
+          order_number: data.order_number || "",
+          order_date: data.order_date || "",
+          document_status: data.document_status as "original" | "duplicate",
+          original_document_data: data.original_document_data,
+          delivery_method: data.delivery_method as "personal" | "representative" | "postal",
+          delivery_details: data.delivery_details,
+          notes: data.notes,
+          enrollment_id: data.enrollment_id || undefined,
+        };
+
+        setRecords([newRecord, ...records]);
         toast.success("Запись добавлена");
       }
 
-      saveRecords(newRecords);
       setShowAddDialog(false);
       setEditingRecord(null);
       resetForm();
@@ -648,13 +806,24 @@ export function EducationDocumentsJournal({
   };
 
   // Delete record
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!deletingRecord) return;
 
-    const newRecords = records.filter((r) => r.id !== deletingRecord.id);
-    saveRecords(newRecords);
-    toast.success("Запись удалена");
-    setDeletingRecord(null);
+    try {
+      const { error } = await supabase
+        .from("education_document_records")
+        .delete()
+        .eq("id", deletingRecord.id);
+
+      if (error) throw error;
+
+      setRecords(records.filter((r) => r.id !== deletingRecord.id));
+      toast.success("Запись удалена");
+      setDeletingRecord(null);
+    } catch (error) {
+      console.error("Error deleting record:", error);
+      toast.error("Ошибка при удалении");
+    }
   };
 
   // Export to Excel
