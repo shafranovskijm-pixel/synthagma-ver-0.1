@@ -1,13 +1,15 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import { useMenuCustomization, MenuItem } from "@/hooks/useMenuCustomization";
 import { Button } from "@/components/ui/button";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { PullToRefreshIndicator } from "@/components/ui/PullToRefreshIndicator";
+import { DraggableMenu, MenuSettingsButton, HiddenItemsRestore } from "@/components/ui/DraggableMenu";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
@@ -51,6 +53,17 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+
+const defaultStudentMenuItems: MenuItem[] = [
+  { id: "courses", label: "Мои курсы", icon: "BookOpen", visible: true, order: 0 },
+  { id: "chat", label: "ИИ-помощник", icon: "MessageCircle", visible: true, order: 1 },
+  { id: "library", label: "Библиотека", icon: "Library", visible: true, order: 2 },
+  { id: "store", label: "Магазин курсов", icon: "Store", visible: true, order: 3 },
+  { id: "achievements", label: "Достижения", icon: "Trophy", visible: true, order: 4 },
+  { id: "identification", label: "Идентификация", icon: "Video", visible: true, order: 5 },
+  { id: "consent", label: "Согласие на ПД", icon: "FileCheck", visible: true, order: 6 },
+  { id: "documents", label: "Мои документы", icon: "FileText", visible: true, order: 7 },
+];
 
 interface Course {
   id: string;
@@ -120,6 +133,53 @@ export default function StudentDashboard() {
   const [documentsProgress, setDocumentsProgress] = useState({ completed: 0, total: 3 });
   const [isVideoIdentified, setIsVideoIdentified] = useState(false);
   const { theme, setTheme } = useTheme();
+
+  // Menu customization
+  const menuCustomization = useMenuCustomization("student", defaultStudentMenuItems);
+
+  const renderMenuIcon = useCallback((iconName: string) => {
+    const iconClass = "w-5 h-5";
+    switch (iconName) {
+      case "BookOpen": return <BookOpen className={iconClass} />;
+      case "MessageCircle": return <MessageCircle className={iconClass} />;
+      case "Library": return <Library className={iconClass} />;
+      case "Store": return <Store className={iconClass} />;
+      case "Trophy": return <Trophy className={iconClass} />;
+      case "Video": return <Video className={iconClass} />;
+      case "FileCheck": return <FileCheck className={iconClass} />;
+      case "FileText": return <FileText className={iconClass} />;
+      default: return <BookOpen className={iconClass} />;
+    }
+  }, []);
+
+  const handleMenuItemClick = useCallback((itemId: string) => {
+    switch (itemId) {
+      case "courses":
+        setActiveTab("courses");
+        break;
+      case "chat":
+        setActiveTab("chat");
+        break;
+      case "store":
+        setActiveTab("store");
+        break;
+      case "achievements":
+        setShowAchievements(true);
+        break;
+      case "identification":
+        setShowVideoIdentification(true);
+        break;
+      case "consent":
+        setShowConsentForm(true);
+        break;
+      case "documents":
+        setShowDocumentsUpload(true);
+        break;
+      default:
+        break;
+    }
+    setMobileMenuOpen(false);
+  }, []);
 
   useEffect(() => {
     // Check for preview mode
@@ -465,91 +525,31 @@ export default function StudentDashboard() {
         </div>
       </div>
 
-      <nav className="flex-1 p-4">
-        <div className="space-y-1">
-          <button
-            onClick={() => { setActiveTab("courses"); onNavigate?.(); }}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
-              activeTab === "courses"
-                ? "bg-primary/10 text-primary"
-                : "text-muted-foreground hover:bg-secondary"
-            }`}
-          >
-            <BookOpen className="w-5 h-5" />
-            Мои курсы
-          </button>
-          {dashboardSettings.showAiChat && (
-            <button
-              onClick={() => { setActiveTab("chat"); onNavigate?.(); }}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
-                activeTab === "chat"
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-secondary"
-              }`}
-            >
-              <MessageCircle className="w-5 h-5" />
-              ИИ-помощник
-              <span className="ml-auto w-2 h-2 rounded-full bg-sigma-green animate-pulse" />
-            </button>
-          )}
-          {dashboardSettings.showLibrary && (
-            <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors">
-              <Library className="w-5 h-5" />
-              Библиотека
-            </button>
-          )}
-          <button
-            onClick={() => { setActiveTab("store"); onNavigate?.(); }}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
-              activeTab === "store"
-                ? "bg-primary/10 text-primary"
-                : "text-muted-foreground hover:bg-secondary"
-            }`}
-          >
-            <Store className="w-5 h-5" />
-            Магазин курсов
-          </button>
-          {dashboardSettings.showAchievements && (
-            <button 
-              onClick={() => { setShowAchievements(true); onNavigate?.(); }}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors"
-            >
-              <Trophy className="w-5 h-5" />
-              Достижения
-            </button>
-          )}
-          <button 
-            onClick={() => { setShowVideoIdentification(true); onNavigate?.(); }}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors"
-          >
-            <Video className="w-5 h-5" />
-            Идентификация
-          </button>
-          <button 
-            onClick={() => { setShowConsentForm(true); onNavigate?.(); }}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors"
-          >
-            <FileCheck className="w-5 h-5" />
-            Согласие на ПД
-          </button>
-          <button 
-            onClick={() => { setShowDocumentsUpload(true); onNavigate?.(); }}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors"
-          >
-            <FileText className="w-5 h-5" />
-            Мои документы
-            {documentsProgress.completed < documentsProgress.total ? (
-              <span className="ml-auto flex items-center gap-1.5">
-                <span className="text-xs text-amber-600 font-medium">
-                  {documentsProgress.completed}/{documentsProgress.total}
-                </span>
-                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-              </span>
-            ) : (
-              <CheckCircle2 className="w-4 h-4 ml-auto text-green-500" />
-            )}
-          </button>
-          
+      <nav className="flex-1 p-4 overflow-y-auto">
+        <DraggableMenu
+          items={menuCustomization.items}
+          activeItemId={activeTab}
+          isEditMode={menuCustomization.isEditMode}
+          setIsEditMode={menuCustomization.setIsEditMode}
+          onReorder={menuCustomization.reorderItems}
+          onHideItem={menuCustomization.hideItem}
+          onItemClick={(itemId) => {
+            handleMenuItemClick(itemId);
+            onNavigate?.();
+          }}
+          renderIcon={renderMenuIcon}
+        />
+        
+        {menuCustomization.isEditMode && (
+          <HiddenItemsRestore
+            hiddenItems={menuCustomization.hiddenItems}
+            onShowItem={menuCustomization.showItem}
+            onShowAll={menuCustomization.showAllItems}
+            renderIcon={renderMenuIcon}
+          />
+        )}
+        
+        <div className="mt-4 pt-4 border-t border-border space-y-2">
           {/* Theme Settings Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -581,6 +581,11 @@ export default function StudentDashboard() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          
+          <MenuSettingsButton
+            isEditMode={menuCustomization.isEditMode}
+            onToggle={() => menuCustomization.setIsEditMode(!menuCustomization.isEditMode)}
+          />
         </div>
       </nav>
 

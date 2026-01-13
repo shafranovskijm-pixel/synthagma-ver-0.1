@@ -1,8 +1,11 @@
+import { useCallback } from "react";
 import { 
   BarChart3, Building2, Users, ShoppingBag, Sparkles, 
   LogOut, Shield, Settings
 } from "lucide-react";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
+import { useMenuCustomization, MenuItem } from "@/hooks/useMenuCustomization";
+import { DraggableMenu, MenuSettingsButton, HiddenItemsRestore } from "@/components/ui/DraggableMenu";
 
 export type AdminTabType = 
   | "analytics" 
@@ -11,6 +14,15 @@ export type AdminTabType =
   | "users" 
   | "features"
   | "settings";
+
+const defaultAdminMenuItems: MenuItem[] = [
+  { id: "analytics", label: "Аналитика", icon: "BarChart3", visible: true, order: 0 },
+  { id: "organizations", label: "Организации", icon: "Building2", visible: true, order: 1 },
+  { id: "orders", label: "Заявки на курсы", icon: "ShoppingBag", visible: true, order: 2 },
+  { id: "users", label: "Пользователи", icon: "Users", visible: true, order: 3 },
+  { id: "features", label: "Функции системы", icon: "Sparkles", visible: true, order: 4 },
+  { id: "settings", label: "Настройки", icon: "Settings", visible: true, order: 5 },
+];
 
 interface AdminSidebarProps {
   activeTab: AdminTabType;
@@ -29,16 +41,24 @@ export function AdminSidebar({
   setIsMobileSidebarOpen,
   onLogout
 }: AdminSidebarProps) {
-  
-  const handleTabClick = (tab: AdminTabType) => {
-    setActiveTab(tab);
-    setIsMobileSidebarOpen(false);
-  };
+  const menuCustomization = useMenuCustomization("admin", defaultAdminMenuItems);
 
-  const tabButtonClass = (tab: AdminTabType) => {
-    return `w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
-      activeTab === tab ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary"
-    }`;
+  const renderMenuIcon = useCallback((iconName: string) => {
+    const iconClass = "w-5 h-5";
+    switch (iconName) {
+      case "BarChart3": return <BarChart3 className={iconClass} />;
+      case "Building2": return <Building2 className={iconClass} />;
+      case "ShoppingBag": return <ShoppingBag className={iconClass} />;
+      case "Users": return <Users className={iconClass} />;
+      case "Sparkles": return <Sparkles className={iconClass} />;
+      case "Settings": return <Settings className={iconClass} />;
+      default: return <BarChart3 className={iconClass} />;
+    }
+  }, []);
+
+  const handleTabClick = (tabId: string) => {
+    setActiveTab(tabId as AdminTabType);
+    setIsMobileSidebarOpen(false);
   };
 
   return (
@@ -63,42 +83,31 @@ export function AdminSidebar({
       
       {/* Navigation */}
       <nav className="flex-1 p-4 overflow-y-auto scrollbar-hide">
-        <div className="space-y-2">
-          {/* Analytics */}
-          <button onClick={() => handleTabClick("analytics")} className={tabButtonClass("analytics")}>
-            <BarChart3 className="w-5 h-5" />
-            Аналитика
-          </button>
-          
-          {/* Organizations */}
-          <button onClick={() => handleTabClick("organizations")} className={tabButtonClass("organizations")}>
-            <Building2 className="w-5 h-5" />
-            Организации
-          </button>
-          
-          {/* Orders */}
-          <button onClick={() => handleTabClick("orders")} className={tabButtonClass("orders")}>
-            <ShoppingBag className="w-5 h-5" />
-            Заявки на курсы
-          </button>
-          
-          {/* Users */}
-          <button onClick={() => handleTabClick("users")} className={tabButtonClass("users")}>
-            <Users className="w-5 h-5" />
-            Пользователи
-          </button>
-          
-          {/* Features */}
-          <button onClick={() => handleTabClick("features")} className={tabButtonClass("features")}>
-            <Sparkles className="w-5 h-5" />
-            Функции системы
-          </button>
-          
-          {/* Settings */}
-          <button onClick={() => handleTabClick("settings")} className={tabButtonClass("settings")}>
-            <Settings className="w-5 h-5" />
-            Настройки
-          </button>
+        <DraggableMenu
+          items={menuCustomization.items}
+          activeItemId={activeTab}
+          isEditMode={menuCustomization.isEditMode}
+          setIsEditMode={menuCustomization.setIsEditMode}
+          onReorder={menuCustomization.reorderItems}
+          onHideItem={menuCustomization.hideItem}
+          onItemClick={handleTabClick}
+          renderIcon={renderMenuIcon}
+        />
+        
+        {menuCustomization.isEditMode && (
+          <HiddenItemsRestore
+            hiddenItems={menuCustomization.hiddenItems}
+            onShowItem={menuCustomization.showItem}
+            onShowAll={menuCustomization.showAllItems}
+            renderIcon={renderMenuIcon}
+          />
+        )}
+        
+        <div className="mt-4 pt-4 border-t border-border">
+          <MenuSettingsButton
+            isEditMode={menuCustomization.isEditMode}
+            onToggle={() => menuCustomization.setIsEditMode(!menuCustomization.isEditMode)}
+          />
         </div>
       </nav>
 
