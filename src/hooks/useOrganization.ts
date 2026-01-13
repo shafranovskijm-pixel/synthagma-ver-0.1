@@ -18,6 +18,14 @@ import {
 } from "@/api/organizations";
 import { toast } from "sonner";
 
+export type { 
+  Organization, 
+  BrandingSettings, 
+  StudentDashboardSettings,
+  OrganizationStats,
+  DocumentsStats 
+};
+
 interface UseOrganizationReturn {
   organizationId: string | null;
   organizationName: string;
