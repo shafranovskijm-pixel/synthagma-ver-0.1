@@ -29,6 +29,7 @@ import { JournalsManager } from "@/components/organization/JournalsManager";
 import { SystemFeaturesReport } from "@/components/organization/SystemFeaturesReport";
 import { generateEnrollmentOrder } from "@/utils/generateEnrollmentOrder";
 import { useAuth } from "@/hooks/useAuth";
+import { useOrgFeatures } from "@/hooks/useOrgFeatures";
 import { Button } from "@/components/ui/button";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import {
@@ -135,6 +136,7 @@ export default function OrganizationDashboard() {
     user
   } = useAuth();
   const isMobile = useIsMobile();
+  
   const [activeTab, setActiveTab] = useState<"courses" | "organizations" | "students" | "library" | "stats" | "links" | "documents" | "documents-orders" | "documents-protocols" | "documents-certificates" | "documents-diplomas" | "documents-testimonials" | "journals" | "services" | "settings" | "frdo">("courses");
   const [isDocumentsMenuOpen, setIsDocumentsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -156,6 +158,9 @@ export default function OrganizationDashboard() {
   const [selectedExistingStudentId, setSelectedExistingStudentId] = useState<string>("");
   const [isEnrollingExisting, setIsEnrollingExisting] = useState(false);
   const [noLoginStudent, setNoLoginStudent] = useState(false);
+  
+  // Organization features access control
+  const { features: orgFeatures, loading: loadingFeatures, isEnabled } = useOrgFeatures(organizationId);
 
   // Admin view mode
   const [isAdminView, setIsAdminView] = useState(false);
@@ -371,21 +376,23 @@ export default function OrganizationDashboard() {
   type TabType = "courses" | "organizations" | "students" | "library" | "stats" | "links" | "documents" | "documents-orders" | "documents-protocols" | "documents-certificates" | "documents-diplomas" | "documents-testimonials" | "journals" | "services" | "settings" | "frdo";
   
   const getVisibleTabs = useCallback((): TabType[] => {
-    const baseTabs: TabType[] = [
-      "courses",
-      "organizations",
-      "students",
-    ];
-    if (menuSettings.showLibrary) baseTabs.push("library");
+    const baseTabs: TabType[] = [];
+    
+    // Add tabs based on org feature access
+    if (isEnabled("courses")) baseTabs.push("courses");
+    if (isEnabled("companies")) baseTabs.push("organizations");
+    if (isEnabled("students")) baseTabs.push("students");
+    if (menuSettings.showLibrary && isEnabled("library")) baseTabs.push("library");
     if (menuSettings.showStats) baseTabs.push("stats");
-    if (menuSettings.showLinks) baseTabs.push("links");
-    if (menuSettings.showDocuments) baseTabs.push("documents");
-    baseTabs.push("journals");
-    if (isFrdoEnabled) baseTabs.push("frdo");
-    if (menuSettings.showServices) baseTabs.push("services");
-    baseTabs.push("settings");
+    if (menuSettings.showLinks && isEnabled("links")) baseTabs.push("links");
+    if (menuSettings.showDocuments && isEnabled("documents")) baseTabs.push("documents");
+    if (isEnabled("journals")) baseTabs.push("journals");
+    if (isFrdoEnabled && isEnabled("frdo")) baseTabs.push("frdo");
+    if (menuSettings.showServices && isEnabled("services")) baseTabs.push("services");
+    if (isEnabled("settings")) baseTabs.push("settings");
+    
     return baseTabs;
-  }, [menuSettings.showLibrary, menuSettings.showStats, menuSettings.showLinks, menuSettings.showDocuments, menuSettings.showServices, isFrdoEnabled]);
+  }, [menuSettings.showLibrary, menuSettings.showStats, menuSettings.showLinks, menuSettings.showDocuments, menuSettings.showServices, isFrdoEnabled, isEnabled]);
 
   // Animation direction for tab transitions (1 = swipe left/go right, -1 = swipe right/go left)
   const [swipeDirection, setSwipeDirection] = useState(0);
@@ -2481,28 +2488,28 @@ export default function OrganizationDashboard() {
 
         <nav className="flex-1 p-4 overflow-y-auto">
           <div className="space-y-1">
-            <button onClick={() => {
+            {isEnabled("courses") && <button onClick={() => {
             setActiveTab("courses");
             setIsMobileSidebarOpen(false);
           }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === "courses" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary"}`}>
               <BookOpen className="w-5 h-5" />
               Курсы
-            </button>
-            <button onClick={() => {
+            </button>}
+            {isEnabled("companies") && <button onClick={() => {
             setActiveTab("organizations");
             setIsMobileSidebarOpen(false);
           }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === "organizations" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary"}`}>
               <Building2 className="w-5 h-5" />
               Компании
-            </button>
-            <button onClick={() => {
+            </button>}
+            {isEnabled("students") && <button onClick={() => {
             setActiveTab("students");
             setIsMobileSidebarOpen(false);
           }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === "students" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary"}`}>
               <Users className="w-5 h-5" />
               Ученики
-            </button>
-            {menuSettings.showLibrary && <button onClick={() => {
+            </button>}
+            {menuSettings.showLibrary && isEnabled("library") && <button onClick={() => {
             setActiveTab("library");
             setIsMobileSidebarOpen(false);
           }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === "library" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary"}`}>
@@ -2516,14 +2523,14 @@ export default function OrganizationDashboard() {
                 <BarChart3 className="w-5 h-5" />
                 Статистика
               </button>}
-            {menuSettings.showLinks && <button onClick={() => {
+            {menuSettings.showLinks && isEnabled("links") && <button onClick={() => {
             setActiveTab("links");
             setIsMobileSidebarOpen(false);
           }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === "links" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary"}`}>
                 <Link className="w-5 h-5" />
                 Ссылки регистрации
               </button>}
-            {menuSettings.showDocuments && (
+            {menuSettings.showDocuments && isEnabled("documents") && (
               <Collapsible open={isDocumentsMenuOpen} onOpenChange={setIsDocumentsMenuOpen}>
                 <CollapsibleTrigger asChild>
                   <button 
@@ -2547,13 +2554,13 @@ export default function OrganizationDashboard() {
                   </button>
                 </CollapsibleTrigger>
                 <CollapsibleContent className="pl-4 space-y-1 mt-1">
-                  <button onClick={() => {
+                  {isEnabled("docs_orders") && <button onClick={() => {
                     setActiveTab("documents-orders");
                     setIsMobileSidebarOpen(false);
                   }} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm transition-colors ${activeTab === "documents-orders" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary"}`}>
                     <Users className="w-4 h-4" />
                     Приказы зач./отч.
-                  </button>
+                  </button>}
                   <button onClick={() => {
                     setActiveTab("documents-protocols");
                     setIsMobileSidebarOpen(false);
@@ -2585,32 +2592,32 @@ export default function OrganizationDashboard() {
                 </CollapsibleContent>
               </Collapsible>
             )}
-            <button onClick={() => {
+            {isEnabled("journals") && <button onClick={() => {
               setActiveTab("journals");
               setIsMobileSidebarOpen(false);
             }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === "journals" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary"}`}>
               <ClipboardList className="w-5 h-5" />
               Журналы
-            </button>
-            {isFrdoEnabled && <button onClick={() => {
+            </button>}
+            {isFrdoEnabled && isEnabled("frdo") && <button onClick={() => {
             setActiveTab("frdo");
             setIsMobileSidebarOpen(false);
           }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === "frdo" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary"}`}>
               <FileSpreadsheet className="w-5 h-5" />
               ФИС ФРДО
             </button>}
-            <button onClick={() => {
+            {isEnabled("settings") && <button onClick={() => {
             setActiveTab("settings");
             setIsMobileSidebarOpen(false);
           }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === "settings" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary"}`}>
               <Settings className="w-5 h-5" />
               Настройки
-            </button>
+            </button>}
           </div>
         </nav>
 
         <div className="p-4 border-t border-border flex-shrink-0 bg-card space-y-1">
-          {menuSettings.showServices && <button onClick={() => {
+          {menuSettings.showServices && isEnabled("services") && <button onClick={() => {
             setActiveTab("services");
             setIsMobileSidebarOpen(false);
           }} className={`w-full flex items-center gap-3 px-4 py-2 rounded-xl text-sm transition-colors ${activeTab === "services" ? "bg-primary/10 text-primary" : "text-muted-foreground/70 hover:bg-secondary/50 hover:text-muted-foreground"}`}>
