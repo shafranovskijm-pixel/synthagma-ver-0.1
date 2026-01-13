@@ -446,6 +446,7 @@ export default function OrganizationDashboard() {
             setShowCourseDetailsModal(false);
           }
         }}
+        onCourseDeleted={refreshData}
         showCourseStudentsDialog={courseStudentsManager.showCourseStudentsDialog}
         setShowCourseStudentsDialog={courseStudentsManager.setShowCourseStudentsDialog}
         selectedCourse={courseStudentsManager.selectedCourse}

@@ -1,10 +1,14 @@
+import { useState } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { CourseDocumentsManager } from "@/components/organization/CourseDocumentsManager";
 import { EnrollmentHistory } from "@/components/organization/EnrollmentHistory";
 import { CourseTestReport } from "@/components/organization/CourseTestReport";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { 
   Users, 
   BookOpen, 
@@ -15,7 +19,9 @@ import {
   FileText, 
   History, 
   CheckSquare,
-  Plus
+  Plus,
+  Trash2,
+  Loader2
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -50,6 +56,7 @@ interface CourseDetailsModalProps {
   activeTab: "students" | "materials" | "history" | "tests";
   onTabChange: (tab: "students" | "materials" | "history" | "tests") => void;
   onEnrollStudent: () => void;
+  onCourseDeleted?: () => void;
 }
 
 export function CourseDetailsModal({
@@ -60,11 +67,42 @@ export function CourseDetailsModal({
   organizationId,
   activeTab,
   onTabChange,
-  onEnrollStudent
+  onEnrollStudent,
+  onCourseDeleted
 }: CourseDetailsModalProps) {
   const navigate = useNavigate();
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   if (!course) return null;
+
+  const handleDeleteCourse = async () => {
+    setIsDeleting(true);
+    try {
+      // Delete enrollments first
+      await supabase.from("enrollments").delete().eq("course_id", course.id);
+      
+      // Delete lessons
+      await supabase.from("lessons").delete().eq("course_id", course.id);
+      
+      // Delete course documents
+      await supabase.from("course_documents").delete().eq("course_id", course.id);
+      
+      // Delete the course
+      const { error } = await supabase.from("courses").delete().eq("id", course.id);
+      if (error) throw error;
+      
+      toast.success("Курс удалён");
+      setShowDeleteConfirm(false);
+      onOpenChange(false);
+      onCourseDeleted?.();
+    } catch (error) {
+      console.error("Error deleting course:", error);
+      toast.error("Ошибка удаления курса");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const totalStudents = courseStudents.length;
   const activeStudents = courseStudents.filter(s => s.status !== 'completed').length;
@@ -116,6 +154,14 @@ export function CourseDetailsModal({
               >
                 <Edit className="w-4 h-4" />
                 Редактировать
+              </Button>
+              <Button 
+                variant="outline" 
+                className="rounded-xl gap-2 text-destructive hover:bg-destructive hover:text-destructive-foreground" 
+                onClick={() => setShowDeleteConfirm(true)}
+              >
+                <Trash2 className="w-4 h-4" />
+                Удалить
               </Button>
             </div>
           </div>
@@ -259,6 +305,42 @@ export function CourseDetailsModal({
           </div>
         </Tabs>
       </DialogContent>
+      
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить курс?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Вы уверены, что хотите удалить курс "{course.title}"? 
+              Будут также удалены все уроки, материалы и записи о зачислении учеников.
+              Это действие нельзя отменить.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-xl" disabled={isDeleting}>
+              Отмена
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={handleDeleteCourse}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Удаление...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Удалить
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }
