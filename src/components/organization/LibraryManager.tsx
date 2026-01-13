@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,8 +17,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Plus,
   FileText,
@@ -44,33 +48,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-
-interface LibraryDocument {
-  id: string;
-  organization_id: string;
-  name: string;
-  type: string;
-  description: string | null;
-  file_url: string | null;
-  file_size: number | null;
-  folder_id: string | null;
-  created_at: string;
-}
-
-interface LibraryFolder {
-  id: string;
-  organization_id: string;
-  name: string;
-  parent_id: string | null;
-  color: string;
-  created_at: string;
-}
+import { useLibraryManager, type LibraryDocument, type LibraryFolder, MAX_FILE_SIZE } from "@/hooks/useLibraryManager";
 
 const LIBRARY_TYPES = [
   { value: "document", label: "Документ (DOC, PDF, RTF)", icon: FileText, accept: ".doc,.docx,.pdf,.rtf" },
@@ -84,122 +62,37 @@ const FOLDER_COLORS = [
   "#eab308", "#22c55e", "#14b8a6", "#06b6d4", "#3b82f6"
 ];
 
-const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
-
 interface LibraryManagerProps {
   organizationId: string;
 }
 
 export function LibraryManager({ organizationId }: LibraryManagerProps) {
-  const [documents, setDocuments] = useState<LibraryDocument[]>([]);
-  const [folders, setFolders] = useState<LibraryFolder[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const library = useLibraryManager(organizationId);
+
+  // UI state
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showFolderDialog, setShowFolderDialog] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [typeFilter, setTypeFilter] = useState<string>("all");
-  
-  // Current folder navigation
-  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
-  const [folderPath, setFolderPath] = useState<LibraryFolder[]>([]);
-  
-  // Preview state
-  const [previewDoc, setPreviewDoc] = useState<LibraryDocument | null>(null);
   const [showPreviewDialog, setShowPreviewDialog] = useState(false);
+  const [previewDoc, setPreviewDoc] = useState<LibraryDocument | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isCreatingFolder, setIsCreatingFolder] = useState(false);
 
   // Form state
   const [docName, setDocName] = useState("");
   const [docType, setDocType] = useState("document");
   const [docDescription, setDocDescription] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(library.currentFolderId);
 
   // Folder form state
   const [folderName, setFolderName] = useState("");
   const [folderColor, setFolderColor] = useState("#6366f1");
   const [editingFolder, setEditingFolder] = useState<LibraryFolder | null>(null);
-  const [isCreatingFolder, setIsCreatingFolder] = useState(false);
-  const [storageLimit, setStorageLimit] = useState<number>(0);
-
-  useEffect(() => {
-    fetchData();
-    fetchStorageLimit();
-  }, [organizationId]);
-
-  const fetchStorageLimit = async () => {
-    const { data } = await supabase
-      .from("organizations")
-      .select("storage_limit_bytes")
-      .eq("id", organizationId)
-      .single();
-    if (data) {
-      setStorageLimit(data.storage_limit_bytes || 0);
-    }
-  };
-
-  useEffect(() => {
-    // Update selected folder when navigating
-    setSelectedFolderId(currentFolderId);
-  }, [currentFolderId]);
-
-  const fetchData = async () => {
-    setIsLoading(true);
-    try {
-      const [docsResult, foldersResult] = await Promise.all([
-        supabase
-          .from("library_documents")
-          .select("*")
-          .eq("organization_id", organizationId)
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("library_folders")
-          .select("*")
-          .eq("organization_id", organizationId)
-          .order("name", { ascending: true })
-      ]);
-
-      if (docsResult.error) throw docsResult.error;
-      if (foldersResult.error) throw foldersResult.error;
-
-      setDocuments(docsResult.data || []);
-      setFolders(foldersResult.data || []);
-    } catch (error) {
-      console.error("Error fetching library data:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const navigateToFolder = (folderId: string | null) => {
-    setCurrentFolderId(folderId);
-    
-    if (folderId === null) {
-      setFolderPath([]);
-    } else {
-      // Build folder path
-      const path: LibraryFolder[] = [];
-      let currentId: string | null = folderId;
-      
-      while (currentId) {
-        const folder = folders.find(f => f.id === currentId);
-        if (folder) {
-          path.unshift(folder);
-          currentId = folder.parent_id;
-        } else {
-          break;
-        }
-      }
-      
-      setFolderPath(path);
-    }
-  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > MAX_FILE_SIZE) {
-        toast.error("Файл слишком большой. Максимальный размер: 100 МБ");
         return;
       }
       setSelectedFile(file);
@@ -210,160 +103,59 @@ export function LibraryManager({ organizationId }: LibraryManagerProps) {
   };
 
   const handleAdd = async () => {
-    if (!docName.trim() || !selectedFile) {
-      toast.error("Введите название и выберите файл");
-      return;
-    }
-
-    if (selectedFile.size > MAX_FILE_SIZE) {
-      toast.error("Файл слишком большой. Максимальный размер: 100 МБ");
-      return;
-    }
+    if (!docName.trim() || !selectedFile) return;
 
     setIsUploading(true);
-    try {
-      const fileExt = selectedFile.name.split(".").pop();
-      const fileName = `library/${organizationId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from("library-files")
-        .upload(fileName, selectedFile);
-
-      if (uploadError) throw uploadError;
-
-      const { data: urlData } = supabase.storage
-        .from("library-files")
-        .getPublicUrl(fileName);
-
-      const { error } = await supabase
-        .from("library_documents")
-        .insert({
-          organization_id: organizationId,
-          name: docName.trim(),
-          type: docType,
-          description: docDescription.trim() || null,
-          file_url: urlData.publicUrl,
-          file_size: selectedFile.size,
-          folder_id: selectedFolderId,
-        });
-
-      if (error) throw error;
-
-      toast.success("Материал добавлен в библиотеку");
+    const success = await library.uploadDocument(
+      selectedFile,
+      docName,
+      docType,
+      docDescription,
+      selectedFolderId
+    );
+    
+    if (success) {
       setShowAddDialog(false);
       resetForm();
-      fetchData();
-    } catch (error) {
-      console.error("Error adding document:", error);
-      toast.error("Ошибка добавления материала");
-    } finally {
-      setIsUploading(false);
     }
+    setIsUploading(false);
   };
 
-  const handleCreateFolder = async () => {
-    if (!folderName.trim()) {
-      toast.error("Введите название папки");
-      return;
-    }
+  const handleCreateOrUpdateFolder = async () => {
+    if (!folderName.trim()) return;
 
     setIsCreatingFolder(true);
-    try {
-      if (editingFolder) {
-        // Update existing folder
-        const { error } = await supabase
-          .from("library_folders")
-          .update({
-            name: folderName.trim(),
-            color: folderColor,
-          })
-          .eq("id", editingFolder.id);
-
-        if (error) throw error;
-        toast.success("Папка обновлена");
-      } else {
-        // Create new folder
-        const { error } = await supabase
-          .from("library_folders")
-          .insert({
-            organization_id: organizationId,
-            name: folderName.trim(),
-            parent_id: currentFolderId,
-            color: folderColor,
-          });
-
-        if (error) throw error;
-        toast.success("Папка создана");
-      }
-
-      setShowFolderDialog(false);
-      setFolderName("");
-      setFolderColor("#6366f1");
-      setEditingFolder(null);
-      fetchData();
-    } catch (error) {
-      console.error("Error creating/updating folder:", error);
-      toast.error("Ошибка сохранения папки");
-    } finally {
-      setIsCreatingFolder(false);
+    
+    if (editingFolder) {
+      await library.updateFolder(editingFolder.id, folderName, folderColor);
+    } else {
+      await library.createFolder(folderName, folderColor, library.currentFolderId);
     }
+
+    setShowFolderDialog(false);
+    setFolderName("");
+    setFolderColor("#6366f1");
+    setEditingFolder(null);
+    setIsCreatingFolder(false);
   };
 
   const handleDeleteFolder = async (folderId: string) => {
-    const docsInFolder = documents.filter(d => d.folder_id === folderId).length;
-    const subfoldersCount = folders.filter(f => f.parent_id === folderId).length;
-
-    if (docsInFolder > 0 || subfoldersCount > 0) {
-      if (!confirm(`В папке ${docsInFolder} файлов и ${subfoldersCount} подпапок. Удалить всё?`)) {
+    const stats = library.getFolderStats(folderId);
+    
+    if (stats.docsInFolder > 0 || stats.subfoldersCount > 0) {
+      if (!confirm(`В папке ${stats.docsInFolder} файлов и ${stats.subfoldersCount} подпапок. Удалить всё?`)) {
         return;
       }
     } else if (!confirm("Удалить папку?")) {
       return;
     }
 
-    try {
-      const { error } = await supabase
-        .from("library_folders")
-        .delete()
-        .eq("id", folderId);
-
-      if (error) throw error;
-
-      toast.success("Папка удалена");
-      if (currentFolderId === folderId) {
-        navigateToFolder(null);
-      }
-      fetchData();
-    } catch (error) {
-      console.error("Error deleting folder:", error);
-      toast.error("Ошибка удаления папки");
-    }
+    await library.deleteFolder(folderId);
   };
 
-  const handleDelete = async (docId: string, fileUrl: string | null) => {
+  const handleDeleteDocument = async (docId: string, fileUrl: string | null) => {
     if (!confirm("Удалить материал из библиотеки?")) return;
-
-    try {
-      if (fileUrl) {
-        const path = fileUrl.split("/library-files/")[1];
-        if (path) {
-          await supabase.storage.from("library-files").remove([path]);
-        }
-      }
-
-      const { error } = await supabase
-        .from("library_documents")
-        .delete()
-        .eq("id", docId);
-
-      if (error) throw error;
-
-      setDocuments(documents.filter((d) => d.id !== docId));
-      toast.success("Материал удалён");
-    } catch (error) {
-      console.error("Error deleting document:", error);
-      toast.error("Ошибка удаления");
-    }
+    await library.deleteDocument(docId, fileUrl);
   };
 
   const resetForm = () => {
@@ -371,7 +163,14 @@ export function LibraryManager({ organizationId }: LibraryManagerProps) {
     setDocType("document");
     setDocDescription("");
     setSelectedFile(null);
-    setSelectedFolderId(currentFolderId);
+    setSelectedFolderId(library.currentFolderId);
+  };
+
+  const openEditFolder = (folder: LibraryFolder) => {
+    setEditingFolder(folder);
+    setFolderName(folder.name);
+    setFolderColor(folder.color);
+    setShowFolderDialog(true);
   };
 
   const getDocTypeInfo = (type: string) => {
@@ -385,27 +184,15 @@ export function LibraryManager({ organizationId }: LibraryManagerProps) {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
-  // Get folders and documents for current view
-  const currentFolders = folders.filter(f => f.parent_id === currentFolderId);
-  const currentDocuments = documents.filter(d => d.folder_id === currentFolderId);
-
-  const filteredDocuments = currentDocuments.filter((doc) => {
-    const matchesSearch = searchQuery === "" || 
-      doc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (doc.description && doc.description.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchesType = typeFilter === "all" || doc.type === typeFilter;
-    return matchesSearch && matchesType;
-  });
-
-  const filteredFolders = currentFolders.filter(folder => 
-    searchQuery === "" || folder.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const currentTypeConfig = LIBRARY_TYPES.find(t => t.value === docType);
+  const formatBytes = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+  };
 
   const getPreviewUrl = (fileUrl: string) => {
     const ext = fileUrl.split('.').pop()?.toLowerCase();
-    // RTF files work better with Google Docs Viewer
     if (ext === 'rtf') {
       return `https://docs.google.com/viewer?url=${encodeURIComponent(fileUrl)}&embedded=true`;
     }
@@ -431,12 +218,10 @@ export function LibraryManager({ organizationId }: LibraryManagerProps) {
     window.open(doc.file_url, '_blank');
   };
 
-  const openEditFolder = (folder: LibraryFolder) => {
-    setEditingFolder(folder);
-    setFolderName(folder.name);
-    setFolderColor(folder.color);
-    setShowFolderDialog(true);
-  };
+  const currentTypeConfig = LIBRARY_TYPES.find(t => t.value === docType);
+  const usagePercent = library.storageLimit > 0 ? Math.min((library.totalStorageUsed / library.storageLimit) * 100, 100) : 0;
+  const isWarning = usagePercent >= 80;
+  const isCritical = usagePercent >= 95;
 
   return (
     <div className="space-y-6">
@@ -447,12 +232,12 @@ export function LibraryManager({ organizationId }: LibraryManagerProps) {
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Поиск материалов..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              value={library.searchQuery}
+              onChange={(e) => library.setSearchQuery(e.target.value)}
               className="pl-10 w-64 rounded-xl"
             />
           </div>
-          <Select value={typeFilter} onValueChange={setTypeFilter}>
+          <Select value={library.typeFilter} onValueChange={library.setTypeFilter}>
             <SelectTrigger className="w-48 rounded-xl">
               <SelectValue placeholder="Все типы" />
             </SelectTrigger>
@@ -520,7 +305,7 @@ export function LibraryManager({ organizationId }: LibraryManagerProps) {
                           Корневая папка
                         </div>
                       </SelectItem>
-                      {folders.map((folder) => (
+                      {library.folders.map((folder) => (
                         <SelectItem key={folder.id} value={folder.id}>
                           <div className="flex items-center gap-2">
                             <Folder className="w-4 h-4" style={{ color: folder.color }} />
@@ -616,9 +401,9 @@ export function LibraryManager({ organizationId }: LibraryManagerProps) {
       {/* Breadcrumb navigation */}
       <div className="flex items-center gap-2 text-sm">
         <button
-          onClick={() => navigateToFolder(null)}
+          onClick={() => library.navigateToFolder(null)}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors ${
-            currentFolderId === null 
+            library.currentFolderId === null 
               ? 'bg-primary/10 text-primary font-medium' 
               : 'hover:bg-secondary text-muted-foreground'
           }`}
@@ -626,13 +411,13 @@ export function LibraryManager({ organizationId }: LibraryManagerProps) {
           <Home className="w-4 h-4" />
           Библиотека
         </button>
-        {folderPath.map((folder, index) => (
+        {library.folderPath.map((folder, index) => (
           <div key={folder.id} className="flex items-center gap-2">
             <ChevronRight className="w-4 h-4 text-muted-foreground" />
             <button
-              onClick={() => navigateToFolder(folder.id)}
+              onClick={() => library.navigateToFolder(folder.id)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors ${
-                index === folderPath.length - 1
+                index === library.folderPath.length - 1
                   ? 'bg-primary/10 text-primary font-medium'
                   : 'hover:bg-secondary text-muted-foreground'
               }`}
@@ -653,7 +438,7 @@ export function LibraryManager({ organizationId }: LibraryManagerProps) {
             </div>
             <div>
               <div className="text-xl font-bold">
-                {documents.filter(d => d.type === 'document' || d.type === 'presentation').length}
+                {library.documents.filter(d => d.type === 'document' || d.type === 'presentation').length}
               </div>
               <div className="text-xs text-muted-foreground">Учебников</div>
             </div>
@@ -665,102 +450,82 @@ export function LibraryManager({ organizationId }: LibraryManagerProps) {
               <FileText className="w-5 h-5 text-purple-500" />
             </div>
             <div>
-              <div className="text-xl font-bold">{folders.length}</div>
-              <div className="text-xs text-muted-foreground">Шаблонов</div>
+              <div className="text-xl font-bold">{library.folders.length}</div>
+              <div className="text-xs text-muted-foreground">Папок</div>
             </div>
           </div>
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
-              <File className="w-5 h-5 text-amber-500" />
+              <FileSpreadsheet className="w-5 h-5 text-amber-500" />
             </div>
             <div>
               <div className="text-xl font-bold">
-                {documents.filter(d => d.type === 'spreadsheet').length}
+                {library.documents.filter(d => d.type === 'spreadsheet').length}
               </div>
-              <div className="text-xs text-muted-foreground">Нормативных</div>
+              <div className="text-xs text-muted-foreground">Таблиц</div>
             </div>
           </div>
         </div>
         <div className="bg-card rounded-xl border border-border p-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center">
-              <Folder className="w-5 h-5 text-green-500" />
+              <File className="w-5 h-5 text-green-500" />
             </div>
             <div>
-              <div className="text-xl font-bold">
-                {documents.filter(d => d.type === 'other').length}
-              </div>
-              <div className="text-xs text-muted-foreground">Документов орг.</div>
+              <div className="text-xl font-bold">{library.documents.length}</div>
+              <div className="text-xs text-muted-foreground">Всего файлов</div>
             </div>
           </div>
         </div>
         <div className="bg-card rounded-xl border border-border p-4 col-span-2 md:col-span-1">
-          {(() => {
-            const totalBytes = documents.reduce((acc, doc) => acc + (doc.file_size || 0), 0);
-            const formatBytes = (bytes: number) => {
-              if (bytes < 1024) return `${bytes} B`;
-              if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-              if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-              return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
-            };
-            const usagePercent = storageLimit > 0 ? Math.min((totalBytes / storageLimit) * 100, 100) : 0;
-            const isWarning = usagePercent >= 80;
-            const isCritical = usagePercent >= 95;
-            
-            return (
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                    isCritical ? 'bg-destructive/10' : isWarning ? 'bg-yellow-500/10' : 'bg-cyan-500/10'
-                  }`}>
-                    <HardDrive className={`w-5 h-5 ${
-                      isCritical ? 'text-destructive' : isWarning ? 'text-yellow-500' : 'text-cyan-500'
-                    }`} />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-baseline justify-between">
-                      <div className="text-xl font-bold">{formatBytes(totalBytes)}</div>
-                      <div className="text-xs text-muted-foreground">
-                        из {formatBytes(storageLimit)}
-                      </div>
-                    </div>
-                    <div className="text-xs text-muted-foreground">Хранилище</div>
-                  </div>
-                </div>
-                <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                  <div 
-                    className={`h-full transition-all duration-300 rounded-full ${
-                      isCritical ? 'bg-destructive' : isWarning ? 'bg-yellow-500' : 'bg-cyan-500'
-                    }`}
-                    style={{ width: `${usagePercent}%` }}
-                  />
-                </div>
-                <div className="text-xs text-muted-foreground text-right">
-                  {usagePercent.toFixed(1)}% использовано
-                </div>
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                isCritical ? 'bg-destructive/10' : isWarning ? 'bg-yellow-500/10' : 'bg-cyan-500/10'
+              }`}>
+                <HardDrive className={`w-5 h-5 ${
+                  isCritical ? 'text-destructive' : isWarning ? 'text-yellow-500' : 'text-cyan-500'
+                }`} />
               </div>
-            );
-          })()}
+              <div className="flex-1">
+                <div className="flex items-baseline justify-between">
+                  <div className="text-xl font-bold">{formatBytes(library.totalStorageUsed)}</div>
+                  <div className="text-xs text-muted-foreground">
+                    из {formatBytes(library.storageLimit)}
+                  </div>
+                </div>
+                <div className="text-xs text-muted-foreground">Хранилище</div>
+              </div>
+            </div>
+            <div className="h-2 bg-secondary rounded-full overflow-hidden">
+              <div 
+                className={`h-full transition-all duration-300 rounded-full ${
+                  isCritical ? 'bg-destructive' : isWarning ? 'bg-yellow-500' : 'bg-cyan-500'
+                }`}
+                style={{ width: `${usagePercent}%` }}
+              />
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Content */}
-      {isLoading ? (
+      {library.isLoading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
       ) : (
         <div className="space-y-4">
           {/* Back button for subfolders */}
-          {currentFolderId && (
+          {library.currentFolderId && (
             <Button
               variant="ghost"
               className="gap-2 text-muted-foreground"
               onClick={() => {
-                const currentFolder = folders.find(f => f.id === currentFolderId);
-                navigateToFolder(currentFolder?.parent_id || null);
+                const currentFolder = library.folders.find(f => f.id === library.currentFolderId);
+                library.navigateToFolder(currentFolder?.parent_id || null);
               }}
             >
               <ArrowLeft className="w-4 h-4" />
@@ -769,17 +534,16 @@ export function LibraryManager({ organizationId }: LibraryManagerProps) {
           )}
 
           {/* Folders grid */}
-          {filteredFolders.length > 0 && (
+          {library.filteredFolders.length > 0 && (
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-              {filteredFolders.map((folder) => {
-                const docsCount = documents.filter(d => d.folder_id === folder.id).length;
-                const subfoldersCount = folders.filter(f => f.parent_id === folder.id).length;
+              {library.filteredFolders.map((folder) => {
+                const stats = library.getFolderStats(folder.id);
                 
                 return (
                   <div
                     key={folder.id}
                     className="group bg-card rounded-xl border border-border p-4 hover:border-primary/50 transition-all cursor-pointer"
-                    onClick={() => navigateToFolder(folder.id)}
+                    onClick={() => library.navigateToFolder(folder.id)}
                   >
                     <div className="flex items-start justify-between mb-3">
                       <div 
@@ -811,7 +575,7 @@ export function LibraryManager({ organizationId }: LibraryManagerProps) {
                     </div>
                     <h3 className="font-medium truncate">{folder.name}</h3>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {docsCount} файлов{subfoldersCount > 0 ? `, ${subfoldersCount} папок` : ''}
+                      {stats.docsInFolder} файлов{stats.subfoldersCount > 0 ? `, ${stats.subfoldersCount} папок` : ''}
                     </p>
                   </div>
                 );
@@ -820,15 +584,15 @@ export function LibraryManager({ organizationId }: LibraryManagerProps) {
           )}
 
           {/* Documents table */}
-          {filteredDocuments.length === 0 && filteredFolders.length === 0 ? (
+          {library.filteredDocuments.length === 0 && library.filteredFolders.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground bg-card rounded-2xl border border-border">
               <BookOpen className="w-12 h-12 mx-auto mb-4 opacity-50" />
               <p className="font-medium">
-                {currentFolderId ? 'Папка пуста' : 'Библиотека пуста'}
+                {library.currentFolderId ? 'Папка пуста' : 'Библиотека пуста'}
               </p>
               <p className="text-sm mt-1">Добавьте учебные материалы для ваших учеников</p>
             </div>
-          ) : filteredDocuments.length > 0 && (
+          ) : library.filteredDocuments.length > 0 && (
             <div className="bg-card rounded-2xl border border-border overflow-hidden">
               <table className="w-full">
                 <thead>
@@ -841,7 +605,7 @@ export function LibraryManager({ organizationId }: LibraryManagerProps) {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredDocuments.map((doc) => {
+                  {library.filteredDocuments.map((doc) => {
                     const typeInfo = getDocTypeInfo(doc.type);
                     const TypeIcon = typeInfo.icon;
                     return (
@@ -903,7 +667,7 @@ export function LibraryManager({ organizationId }: LibraryManagerProps) {
                               variant="outline"
                               size="sm"
                               className="rounded-lg text-destructive hover:text-destructive"
-                              onClick={() => handleDelete(doc.id, doc.file_url)}
+                              onClick={() => handleDeleteDocument(doc.id, doc.file_url)}
                               title="Удалить"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -976,7 +740,7 @@ export function LibraryManager({ organizationId }: LibraryManagerProps) {
             </div>
             <Button
               className="w-full btn-gradient rounded-xl"
-              onClick={handleCreateFolder}
+              onClick={handleCreateOrUpdateFolder}
               disabled={isCreatingFolder || !folderName.trim()}
             >
               {isCreatingFolder ? (
