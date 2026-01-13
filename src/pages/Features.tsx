@@ -374,7 +374,9 @@ export default function Features() {
 
   <h1 style="font-size: 22px; margin-bottom: 24px; text-align: center;">Функциональные возможности и тарифы</h1>
 
-  ${features.map(category => `
+  ${features.map(category => {
+    const catTotal = category.basePrice + category.features.filter(f => !f.included).reduce((s, f) => s + f.price, 0);
+    return `
     <div class="category">
       <div class="category-header" style="--color: ${category.color}">
         <span class="category-title">${category.title}</span>
@@ -390,8 +392,12 @@ export default function Features() {
           </li>
         `).join('')}
       </ul>
+      <div class="category-subtotal" style="background: ${category.color}10; border-top: 2px solid ${category.color}30; padding: 8px 16px; display: flex; justify-content: space-between; font-size: 14px;">
+        <span style="color: #6b7280;">Итого по модулю:</span>
+        <span style="font-weight: 600; color: ${category.color};">${catTotal.toLocaleString()} ₽/мес</span>
+      </div>
     </div>
-  `).join('')}
+  `}).join('')}
 
   <div class="summary">
     <div class="summary-title">Итого</div>
@@ -627,6 +633,17 @@ export default function Features() {
                       </div>
                     </div>
                   ))}
+                </div>
+                
+                {/* Category Subtotal */}
+                <div 
+                  className="flex items-center justify-between p-3 px-4 bg-secondary/50"
+                  style={{ borderTop: `2px solid ${category.color}30` }}
+                >
+                  <span className="text-sm font-medium text-muted-foreground">Итого по модулю:</span>
+                  <span className="font-semibold" style={{ color: category.color }}>
+                    {categoryTotal.toLocaleString()} ₽/мес
+                  </span>
                 </div>
               </div>
             );
