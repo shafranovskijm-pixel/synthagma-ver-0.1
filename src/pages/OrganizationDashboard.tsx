@@ -4,29 +4,18 @@ import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useNavigate } from "react-router-dom";
 import { useTabNavigation } from "@/hooks/useTabNavigation";
-import { OrgDocumentsManager } from "@/components/organization/OrgDocumentsManager";
 import { CourseDocumentsManager } from "@/components/organization/CourseDocumentsManager";
 import { StudentDocumentsManager } from "@/components/organization/StudentDocumentsManager";
 import { BulkDocumentUpload } from "@/components/organization/BulkDocumentUpload";
-import { EnrollmentHistory } from "@/components/organization/EnrollmentHistory";
-import { CourseTestReport } from "@/components/organization/CourseTestReport";
 import { CompaniesManager } from "@/components/organization/CompaniesManager";
 import { LibraryManager } from "@/components/organization/LibraryManager";
 import { CourseStoreManager } from "@/components/organization/CourseStoreManager";
-import { ContractTemplateEditor } from "@/components/organization/ContractTemplateEditor";
-import { ConsentGenerator } from "@/components/organization/ConsentGenerator";
-import { OrgNotifications } from "@/components/organization/OrgNotifications";
 import { StudentDetailCard } from "@/components/organization/StudentDetailCard";
-import { ClassJournalExport } from "@/components/organization/ClassJournalExport";
-import { DocumentIssuanceLog } from "@/components/organization/DocumentIssuanceLog";
 import { BulkFRDOExport } from "@/components/organization/BulkFRDOExport";
 import { FRDOManager } from "@/components/organization/FRDOManager";
-import { OrgRequisitesForm } from "@/components/organization/OrgRequisitesForm";
-import { OrdersArchive } from "@/components/organization/OrdersArchive";
 import { DocumentArchiveView } from "@/components/organization/DocumentArchiveView";
 import { JournalsManager } from "@/components/organization/JournalsManager";
 import { EducationDocumentsJournal } from "@/components/organization/EducationDocumentsJournal";
-import { SystemFeaturesReport } from "@/components/organization/SystemFeaturesReport";
 import { SystemDiagnostics } from "@/components/organization/SystemDiagnostics";
 import { CoursesTab } from "@/components/organization/tabs/CoursesTab";
 import { StatsCards } from "@/components/organization/tabs/StatsCards";
@@ -53,7 +42,6 @@ import {
   CreateLinkDialog,
   CourseStudentsDialog
 } from "@/components/organization/dialogs";
-import { generateEnrollmentOrder } from "@/utils/generateEnrollmentOrder";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrgFeatures } from "@/hooks/useOrgFeatures";
 import { useRegistrationLinks } from "@/hooks/useRegistrationLinks";
@@ -76,14 +64,8 @@ import { useCourseDocsDialog } from "@/hooks/useCourseDocsDialog";
 import { useCourseDetailsModal } from "@/hooks/useCourseDetailsModal";
 import { Button } from "@/components/ui/button";
 import { Eye, Plus, Upload, FileSpreadsheet, X, Menu, Users } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { 
-  Student, 
-  Course, 
-  CourseCategory, 
-  Company
-} from "@/types/shared";
+
 export default function OrganizationDashboard() {
   const navigate = useNavigate();
   const {
@@ -111,7 +93,6 @@ export default function OrganizationDashboard() {
     organizationName,
     isFrdoEnabled,
     isAdminView,
-    adminViewOrgId,
     courses,
     setCourses,
     students,
@@ -119,14 +100,10 @@ export default function OrganizationDashboard() {
     allProfiles,
     setAllProfiles,
     companies,
-    setCompanies,
-    isLoadingCourses,
-    isLoadingStudents,
     stats,
     setStats,
     documentsStats,
     studentDocsByUser,
-    studentFrdoStatus,
     refreshData,
   } = dataLoader;
 
@@ -138,7 +115,7 @@ export default function OrganizationDashboard() {
   }, [organizationId]);
   
   // Organization features access control
-  const { features: orgFeatures, loading: loadingFeatures, isEnabled } = useOrgFeatures(organizationId);
+  const { isEnabled } = useOrgFeatures(organizationId);
 
   // Registration links hook
   const {
@@ -235,7 +212,7 @@ export default function OrganizationDashboard() {
 
   // Organizations tab hook (needs activeTab)
   const organizationsTab = useOrganizationsTab({ activeTab });
-  const { allOrganizations, isLoadingOrgs, selectedOrg, showOrgDetails, setShowOrgDetails, orgStudents, isLoadingOrgDetails, handleViewOrg, filterOrganizations } = organizationsTab;
+  const { selectedOrg, showOrgDetails, setShowOrgDetails, orgStudents, isLoadingOrgDetails } = organizationsTab;
 
 
   // Swipe gesture for mobile navigation
@@ -283,48 +260,13 @@ export default function OrganizationDashboard() {
   const handleLogout = async () => {
     await signOut();
   };
-  // Use studentManagement hook for createStudent and enrollExistingStudent
-  const handleCreateStudent = studentManagement.createStudent;
-  const handleEnrollExistingStudent = studentManagement.enrollExistingStudent;
-
-  const handleDeleteStudent = async (enrollmentId: string | null) => {
-    if (!enrollmentId) {
-      toast.error("Нельзя удалить — нет зачисления");
-      return;
-    }
-    try {
-      const {
-        error
-      } = await supabase.from("enrollments").delete().eq("id", enrollmentId);
-      if (error) throw error;
-      setStudents(students.filter(s => s.enrollment_id !== enrollmentId));
-      toast.success("Ученик удалён из курса");
-    } catch (error) {
-      console.error("Error deleting enrollment:", error);
-      toast.error("Ошибка удаления");
-    }
-  };
-  // Use enrollment actions from hook
-  const toggleStudentSelection = enrollmentActions.toggleStudentSelection;
-  const toggleSelectAll = enrollmentActions.toggleSelectAll;
-  const getSelectedUserIds = () => enrollmentActions.getSelectedUserIds(students);
+  // Enrollment helpers
   const getSelectedEnrollmentsCount = () => enrollmentActions.getSelectedEnrollmentsCount(students);
-  // Use enrollment actions from hook for bulk operations
-  const handleBulkEnroll = () => enrollmentActions.bulkEnroll(enrollmentActions.enrollCourseId, students, allProfiles, courses);
   const handleBulkUnenroll = () => enrollmentActions.bulkUnenroll(students);
 
-  // Open course details to assign students - using hook
-  const handleOpenCourseStudents = courseStudentsManager.openCourseStudents;
+  // Course students actions
   const handleAddStudentsToCourse = courseStudentsManager.addStudentsToCourse;
   const handleRemoveFromCourse = courseStudentsManager.removeStudentFromCourse;
-
-  // Send course invitation by email - using hook
-  const handleSendInvitation = () => emailInvitation.sendInvitation(courseStudentsManager.selectedCourse);
-
-  // Category management
-  // Category management - use hook
-  const handleCreateCategory = createCategory;
-  const handleSetCourseCategory = (courseId: string, categoryId: string | null) => categoryActions.setCourseCategory(courseId, categoryId, setCourses);
 
   const handleBulkSendCredentials = async () => {
     if (selectedStudentIds.size === 0) {
@@ -335,7 +277,6 @@ export default function OrganizationDashboard() {
     await studentActions.bulkSendCredentials(studentsToSend);
   };
 
-  // Use studentActions hook for bulk operations
   const handleBulkSendDocReminders = studentActions.bulkSendDocReminders;
 
   // Bulk create credentials for selected students without login
@@ -355,30 +296,23 @@ export default function OrganizationDashboard() {
   // View student details with StudentDetailCard - using hook
   const handleViewStudent = studentDetailCard.viewStudent;
 
-  // Company management - using hooks
+  // Company management handlers
   const handleCreateCompany = async () => {
     const success = await companyActions.createCompany();
     if (success) {
-      // Refresh
       setActiveTab("courses");
       setTimeout(() => setActiveTab("organizations"), 100);
     }
   };
-  
-  const handleEditCompany = companyActions.openEditDialog;
   
   const handleSaveCompany = async () => {
     const success = await companyActions.saveCompany();
     if (success) {
-      // Refresh
       setActiveTab("courses");
       setTimeout(() => setActiveTab("organizations"), 100);
     }
   };
-  // handleViewOrg is now provided by organizationsTab hook
 
-  // Filter organizations - using hook method
-  const filteredOrganizations = filterOrganizations(searchQuery);
   const exitAdminView = () => {
     localStorage.removeItem("adminViewAsOrg");
     navigate("/admin");
