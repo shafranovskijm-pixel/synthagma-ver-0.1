@@ -14,10 +14,11 @@ import type { Course, CourseCategory, CourseFilter, CourseViewMode } from "@/typ
 
 interface CoursesTabProps {
   organizationId: string;
-  onCourseSelect?: (course: Course) => void;
+  onCourseClick?: (course: Course) => void;
+  onOpenCourseDetails?: (course: Course) => void;
 }
 
-export function CoursesTab({ organizationId, onCourseSelect }: CoursesTabProps) {
+export function CoursesTab({ organizationId, onCourseClick, onOpenCourseDetails }: CoursesTabProps) {
   const navigate = useNavigate();
   
   const {
@@ -58,8 +59,10 @@ export function CoursesTab({ organizationId, onCourseSelect }: CoursesTabProps) 
   };
 
   const handleCourseClick = (course: Course) => {
-    if (onCourseSelect) {
-      onCourseSelect(course);
+    if (onOpenCourseDetails) {
+      onOpenCourseDetails(course);
+    } else if (onCourseClick) {
+      onCourseClick(course);
     }
   };
 

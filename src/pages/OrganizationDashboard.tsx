@@ -29,6 +29,9 @@ import { JournalsManager } from "@/components/organization/JournalsManager";
 import { EducationDocumentsJournal } from "@/components/organization/EducationDocumentsJournal";
 import { SystemFeaturesReport } from "@/components/organization/SystemFeaturesReport";
 import { SystemDiagnostics } from "@/components/organization/SystemDiagnostics";
+import { CoursesTab } from "@/components/organization/tabs/CoursesTab";
+import { StatsCards } from "@/components/organization/tabs/StatsCards";
+import { DocumentsStatsCards } from "@/components/organization/tabs/DocumentsStatsCards";
 import { generateEnrollmentOrder } from "@/utils/generateEnrollmentOrder";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrgFeatures } from "@/hooks/useOrgFeatures";
@@ -2740,279 +2743,24 @@ export default function OrganizationDashboard() {
           <AnimatedTabContent tabKey={activeTab} direction={swipeDirection} isMobile={isMobile}>
           {/* Stats cards - hidden for organizations, services, settings, students, library, documents, journals, and frdo tabs */}
           {activeTab !== "organizations" && activeTab !== "services" && activeTab !== "settings" && activeTab !== "students" && activeTab !== "frdo" && activeTab !== "library" && activeTab !== "journals" && !activeTab.startsWith("documents") && (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-6 mb-6 lg:mb-8">
-              <div className="bg-card rounded-xl lg:rounded-2xl p-4 lg:p-6 border border-border">
-                <div className="flex items-center gap-3 lg:gap-4">
-                  <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-lg lg:rounded-xl bg-primary/10 flex items-center justify-center">
-                    <Users className="w-5 h-5 lg:w-6 lg:h-6 text-primary" />
-                  </div>
-                  <div>
-                    <div className="text-xl lg:text-2xl font-bold font-display">{stats.totalStudents}</div>
-                    <div className="text-muted-foreground text-xs lg:text-sm">Учеников</div>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-card rounded-xl lg:rounded-2xl p-4 lg:p-6 border border-border">
-                <div className="flex items-center gap-3 lg:gap-4">
-                  <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-lg lg:rounded-xl bg-accent/10 flex items-center justify-center">
-                    <BookOpen className="w-5 h-5 lg:w-6 lg:h-6 text-accent" />
-                  </div>
-                  <div>
-                    <div className="text-xl lg:text-2xl font-bold font-display">{stats.totalCourses}</div>
-                    <div className="text-muted-foreground text-xs lg:text-sm">Курсов</div>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-card rounded-xl lg:rounded-2xl p-4 lg:p-6 border border-border">
-                <div className="flex items-center gap-3 lg:gap-4">
-                  <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-lg lg:rounded-xl bg-sigma-green/10 flex items-center justify-center">
-                    <CheckCircle2 className="w-5 h-5 lg:w-6 lg:h-6 text-sigma-green" />
-                  </div>
-                  <div>
-                    <div className="text-xl lg:text-2xl font-bold font-display">{stats.completedCount}</div>
-                    <div className="text-muted-foreground text-xs lg:text-sm">Завершили</div>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-card rounded-xl lg:rounded-2xl p-4 lg:p-6 border border-border">
-                <div className="flex items-center gap-3 lg:gap-4">
-                  <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-lg lg:rounded-xl bg-sigma-orange/10 flex items-center justify-center">
-                    <TrendingUp className="w-5 h-5 lg:w-6 lg:h-6 text-sigma-orange" />
-                  </div>
-                  <div>
-                    <div className="text-xl lg:text-2xl font-bold font-display">{stats.averageProgress}%</div>
-                    <div className="text-muted-foreground text-xs lg:text-sm">Ср. прогресс</div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <StatsCards stats={stats} />
           )}
           
           {activeTab === "students" && (
-            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-4 mb-6 lg:mb-8">
-              <div className="bg-card rounded-xl lg:rounded-2xl p-3 lg:p-4 border border-border">
-                <div className="flex items-center gap-2 lg:gap-3">
-                  <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Users className="w-4 h-4 lg:w-5 lg:h-5 text-primary" />
-                  </div>
-                  <div>
-                    <div className="text-lg lg:text-2xl font-bold">{documentsStats.total}</div>
-                    <div className="text-[10px] lg:text-xs text-muted-foreground">Всего</div>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-card rounded-xl lg:rounded-2xl p-3 lg:p-4 border border-border">
-                <div className="flex items-center gap-2 lg:gap-3">
-                  <div className={`w-8 h-8 lg:w-10 lg:h-10 rounded-lg flex items-center justify-center ${documentsStats.withPassport === documentsStats.total && documentsStats.total > 0 ? 'bg-green-500/10' : 'bg-amber-500/10'}`}>
-                    <FileText className={`w-4 h-4 lg:w-5 lg:h-5 ${documentsStats.withPassport === documentsStats.total && documentsStats.total > 0 ? 'text-green-500' : 'text-amber-500'}`} />
-                  </div>
-                  <div>
-                    <div className="text-lg lg:text-2xl font-bold">{documentsStats.withPassport}<span className="text-xs lg:text-sm text-muted-foreground font-normal">/{documentsStats.total}</span></div>
-                    <div className="text-[10px] lg:text-xs text-muted-foreground">Паспорт</div>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-card rounded-xl lg:rounded-2xl p-3 lg:p-4 border border-border">
-                <div className="flex items-center gap-2 lg:gap-3">
-                  <div className={`w-8 h-8 lg:w-10 lg:h-10 rounded-lg flex items-center justify-center ${documentsStats.withSnils === documentsStats.total && documentsStats.total > 0 ? 'bg-green-500/10' : 'bg-amber-500/10'}`}>
-                    <FileText className={`w-4 h-4 lg:w-5 lg:h-5 ${documentsStats.withSnils === documentsStats.total && documentsStats.total > 0 ? 'text-green-500' : 'text-amber-500'}`} />
-                  </div>
-                  <div>
-                    <div className="text-lg lg:text-2xl font-bold">{documentsStats.withSnils}<span className="text-xs lg:text-sm text-muted-foreground font-normal">/{documentsStats.total}</span></div>
-                    <div className="text-[10px] lg:text-xs text-muted-foreground">СНИЛС</div>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-card rounded-xl lg:rounded-2xl p-3 lg:p-4 border border-border">
-                <div className="flex items-center gap-2 lg:gap-3">
-                  <div className={`w-8 h-8 lg:w-10 lg:h-10 rounded-lg flex items-center justify-center ${documentsStats.withEducation === documentsStats.total && documentsStats.total > 0 ? 'bg-green-500/10' : 'bg-amber-500/10'}`}>
-                    <GraduationCap className={`w-4 h-4 lg:w-5 lg:h-5 ${documentsStats.withEducation === documentsStats.total && documentsStats.total > 0 ? 'text-green-500' : 'text-amber-500'}`} />
-                  </div>
-                  <div>
-                    <div className="text-lg lg:text-2xl font-bold">{documentsStats.withEducation}<span className="text-xs lg:text-sm text-muted-foreground font-normal">/{documentsStats.total}</span></div>
-                    <div className="text-[10px] lg:text-xs text-muted-foreground">Образование</div>
-                  </div>
-                </div>
-              </div>
-              <div className="col-span-2 lg:col-span-1 bg-card rounded-xl lg:rounded-2xl p-3 lg:p-4 border border-border">
-                <div className="flex items-center gap-2 lg:gap-3">
-                  <div className={`w-8 h-8 lg:w-10 lg:h-10 rounded-lg flex items-center justify-center ${documentsStats.complete === documentsStats.total && documentsStats.total > 0 ? 'bg-green-500/10' : 'bg-primary/10'}`}>
-                    <CheckCircle2 className={`w-4 h-4 lg:w-5 lg:h-5 ${documentsStats.complete === documentsStats.total && documentsStats.total > 0 ? 'text-green-500' : 'text-primary'}`} />
-                  </div>
-                  <div>
-                    <div className="text-lg lg:text-2xl font-bold">{documentsStats.complete}<span className="text-xs lg:text-sm text-muted-foreground font-normal">/{documentsStats.total}</span></div>
-                    <div className="text-[10px] lg:text-xs text-muted-foreground">Все документы</div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <DocumentsStatsCards stats={documentsStats} />
           )}
 
           {/* Courses Tab */}
-          {activeTab === "courses" && <div className="space-y-4 lg:space-y-6">
-              <div className="bg-card rounded-xl lg:rounded-2xl border border-border p-3 lg:p-4">
-                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 lg:gap-4">
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 lg:gap-3">
-                    <div className="relative flex-1 sm:flex-none">
-                      <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                      <Input placeholder="Поиск курсов..." value={courseSearchQuery} onChange={e => setCourseSearchQuery(e.target.value)} className="pl-10 w-full sm:w-48 lg:w-64 rounded-xl text-sm" />
-                    </div>
-                    <div className="flex items-center gap-2 overflow-x-auto pb-1 lg:pb-0">
-                      <Select value={courseFilter} onValueChange={v => setCourseFilter(v as any)}>
-                        <SelectTrigger className="w-32 lg:w-40 rounded-xl text-xs lg:text-sm shrink-0">
-                          <Filter className="w-4 h-4 mr-1 lg:mr-2" />
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Все курсы</SelectItem>
-                          <SelectItem value="published">Опубликованные</SelectItem>
-                          <SelectItem value="draft">Черновики</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Select value={selectedCategoryFilter} onValueChange={setSelectedCategoryFilter}>
-                        <SelectTrigger className="w-36 lg:w-48 rounded-xl text-xs lg:text-sm shrink-0">
-                          <Tag className="w-4 h-4 mr-1 lg:mr-2" />
-                          <SelectValue placeholder="Категория" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Все категории</SelectItem>
-                          <SelectItem value="none">Без категории</SelectItem>
-                          {categories.map(cat => <SelectItem key={cat.id} value={cat.id}>
-                              <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 rounded-full" style={{
-                            backgroundColor: cat.color
-                          }} />
-                                {cat.name}
-                              </div>
-                            </SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                      <Button variant="outline" size="sm" className="rounded-lg gap-1 text-xs shrink-0" onClick={() => setShowCategoryDialog(true)}>
-                        <Plus className="w-4 h-4" />
-                        <span className="hidden sm:inline">Категория</span>
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 self-end lg:self-auto">
-                    <Button variant={courseViewMode === "grid" ? "secondary" : "ghost"} size="icon" className="h-8 w-8" onClick={() => setCourseViewMode("grid")}>
-                      <LayoutGrid className="w-4 h-4" />
-                    </Button>
-                    <Button variant={courseViewMode === "list" ? "secondary" : "ghost"} size="icon" className="h-8 w-8" onClick={() => setCourseViewMode("list")}>
-                      <List className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
-              {isLoadingCourses ? <div className="flex items-center justify-center py-12">
-                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                </div> : filteredCourses.length === 0 ? <div className="text-center py-12 text-muted-foreground">
-                  <BookOpen className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>Нет курсов</p>
-                </div> : courseViewMode === "grid" ? <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
-                  {filteredCourses.map(course => <div key={course.id} className="bg-card rounded-2xl border border-border overflow-hidden hover:shadow-lg transition-shadow cursor-pointer" onClick={() => {
-              setSelectedCourseForDetails(course);
-              setCourseDetailsTab("students");
-              setShowCourseDetailsModal(true);
-            }}>
-                      <div className="h-32 bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
-                        <BookOpen className="w-12 h-12 text-primary/50" />
-                      </div>
-                      <div className="p-5">
-                        <div className="flex items-start justify-between mb-2">
-                          
-                          <span className={`text-xs px-2 py-1 rounded-full ${course.is_published ? 'bg-sigma-green/10 text-sigma-green' : 'bg-muted text-muted-foreground'}`}>
-                            {course.is_published ? 'Опубликован' : 'Черновик'}
-                          </span>
-                        </div>
-                        {course.description && <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{course.description}</p>}
-                        {getCategoryById(course.category_id) && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium text-white mb-3" style={{
-                  backgroundColor: getCategoryById(course.category_id)?.color
-                }}>
-                            {getCategoryById(course.category_id)?.name}
-                          </span>}
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                          <div className="flex items-center gap-1">
-                            <Users className="w-4 h-4" />
-                            {course.studentsCount} учеников
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <BookOpen className="w-4 h-4" />
-                            {course.lessonsCount} уроков
-                          </div>
-                        </div>
-                      </div>
-                    </div>)}
-                </div> : <div className="bg-card rounded-2xl border border-border overflow-hidden">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-border">
-                        <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Курс</th>
-                        <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Категория</th>
-                        <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Статус</th>
-                        <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Ученики</th>
-                        <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Уроки</th>
-                        <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Действия</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredCourses.map(course => <tr key={course.id} className="border-b border-border last:border-0 hover:bg-secondary/50 transition-colors cursor-pointer" onClick={() => {
-                  setSelectedCourseForDetails(course);
-                  setCourseDetailsTab("students");
-                  setShowCourseDetailsModal(true);
-                }}>
-                          <td className="px-6 py-4">
-                            <div>
-                              <div className="font-medium">{course.title}</div>
-                              {course.description && <div className="text-sm text-muted-foreground line-clamp-1">{course.description}</div>}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            {getCategoryById(course.category_id) ? <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 rounded-full" style={{
-                        backgroundColor: getCategoryById(course.category_id)?.color
-                      }} />
-                                <span className="text-sm">{getCategoryById(course.category_id)?.name}</span>
-                              </div> : <span className="text-muted-foreground">—</span>}
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${course.is_published ? 'bg-sigma-green/10 text-sigma-green' : 'bg-muted text-muted-foreground'}`}>
-                              {course.is_published ? 'Опубликован' : 'Черновик'}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
-                              <Users className="w-3 h-3" />
-                              {course.studentsCount}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-accent/10 text-accent">
-                              <BookOpen className="w-3 h-3" />
-                              {course.lessonsCount}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="flex gap-2">
-                              <Button variant="outline" size="sm" className="rounded-lg" onClick={e => {
-                        e.stopPropagation();
-                        navigate(`/course-builder/${course.id}`);
-                      }}>
-                                <Edit className="w-4 h-4" />
-                              </Button>
-                              <Button variant="outline" size="sm" className="rounded-lg" onClick={e => {
-                        e.stopPropagation();
-                        navigate(`/course-preview/${course.id}`);
-                      }}>
-                                <Eye className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>)}
-                    </tbody>
-                  </table>
-                </div>}
-            </div>}
+          {activeTab === "courses" && organizationId && (
+            <CoursesTab 
+              organizationId={organizationId} 
+              onOpenCourseDetails={(course) => {
+                setSelectedCourseForDetails(course);
+                setCourseDetailsTab("students");
+                setShowCourseDetailsModal(true);
+              }}
+            />
+          )}
 
           {/* Organizations/Companies Tab */}
           {activeTab === "organizations" && organizationId && <CompaniesManager organizationId={organizationId} />}
