@@ -40,7 +40,8 @@ import {
   AddStudentDialog,
   EnrollDialog,
   CategoryDialog,
-  InviteEmailDialog
+  InviteEmailDialog,
+  CourseDetailsModal
 } from "@/components/organization/dialogs";
 import { generateEnrollmentOrder } from "@/utils/generateEnrollmentOrder";
 import { useAuth } from "@/hooks/useAuth";
@@ -3064,173 +3065,23 @@ export default function OrganizationDashboard() {
         }}
       />
 
-      {/* Course Details Modal */}
-      <Dialog open={showCourseDetailsModal} onOpenChange={setShowCourseDetailsModal}>
-        <DialogContent className="max-w-5xl rounded-2xl max-h-[90vh] overflow-hidden flex flex-col p-0">
-          {selectedCourseForDetails && <>
-              <div className="p-6 border-b border-border bg-gradient-to-br from-primary/10 to-accent/10">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <DialogTitle className="font-display text-2xl mb-2">{selectedCourseForDetails.title}</DialogTitle>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <span className={`px-2 py-1 rounded-full text-xs ${selectedCourseForDetails.is_published ? 'bg-sigma-green/10 text-sigma-green' : 'bg-muted text-muted-foreground'}`}>
-                        {selectedCourseForDetails.is_published ? 'Опубликован' : 'Черновик'}
-                      </span>
-                      <div className="flex items-center gap-1">
-                        <Users className="w-4 h-4" />
-                        {selectedCourseForDetails.studentsCount} учеников
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <BookOpen className="w-4 h-4" />
-                        {selectedCourseForDetails.lessonsCount} уроков
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" className="rounded-xl gap-2" onClick={() => navigate(`/course-preview/${selectedCourseForDetails.id}`)}>
-                      <Eye className="w-4 h-4" />
-                      Просмотр
-                    </Button>
-                    <Button className="rounded-xl gap-2 btn-gradient" onClick={() => navigate(`/course-builder/${selectedCourseForDetails.id}`)}>
-                      <Edit className="w-4 h-4" />
-                      Редактировать
-                    </Button>
-                  </div>
-                </div>
-                
-                {/* Course Statistics */}
-                <div className="grid grid-cols-3 gap-4 mt-4">
-                  {(() => {
-                const totalStudents = courseStudents.length;
-                const activeStudents = courseStudents.filter(s => s.status !== 'completed').length;
-                const completedStudents = courseStudents.filter(s => s.status === 'completed').length;
-                const avgProgress = totalStudents > 0 ? Math.round(courseStudents.reduce((sum, s) => sum + s.progress, 0) / totalStudents) : 0;
-                const completionRate = totalStudents > 0 ? Math.round(completedStudents / totalStudents * 100) : 0;
-                return <>
-                        <div className="bg-background/50 backdrop-blur-sm rounded-xl p-4 border border-border/50">
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-primary/10">
-                              <TrendingUp className="w-5 h-5 text-primary" />
-                            </div>
-                            <div>
-                              <div className="text-2xl font-bold">{avgProgress}%</div>
-                              <div className="text-xs text-muted-foreground">Средний прогресс</div>
-                            </div>
-                          </div>
-                          <Progress value={avgProgress} className="mt-3 h-1.5" />
-                        </div>
-                        
-                        <div className="bg-background/50 backdrop-blur-sm rounded-xl p-4 border border-border/50">
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-sigma-green/10">
-                              <Users className="w-5 h-5 text-sigma-green" />
-                            </div>
-                            <div>
-                              <div className="text-2xl font-bold">{activeStudents}</div>
-                              <div className="text-xs text-muted-foreground">Активных учеников</div>
-                            </div>
-                          </div>
-                          <div className="mt-3 text-xs text-muted-foreground">
-                            из {totalStudents} зачисленных
-                          </div>
-                        </div>
-                        
-                        <div className="bg-background/50 backdrop-blur-sm rounded-xl p-4 border border-border/50">
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-accent/10">
-                              <CheckCircle2 className="w-5 h-5 text-accent" />
-                            </div>
-                            <div>
-                              <div className="text-2xl font-bold">{completionRate}%</div>
-                              <div className="text-xs text-muted-foreground">Завершаемость</div>
-                            </div>
-                          </div>
-                          <div className="mt-3 text-xs text-muted-foreground">
-                            {completedStudents} из {totalStudents} завершили
-                          </div>
-                        </div>
-                      </>;
-              })()}
-                </div>
-              </div>
-
-              <Tabs value={courseDetailsTab} onValueChange={v => setCourseDetailsTab(v as any)} className="flex-1 flex flex-col overflow-hidden">
-                <div className="px-6 pt-4 border-b border-border">
-                  <TabsList className="bg-secondary/50 rounded-xl">
-                    <TabsTrigger value="students" className="rounded-lg gap-2">
-                      <Users className="w-4 h-4" />
-                      Ученики
-                    </TabsTrigger>
-                    <TabsTrigger value="materials" className="rounded-lg gap-2">
-                      <FileText className="w-4 h-4" />
-                      Материалы
-                    </TabsTrigger>
-                    <TabsTrigger value="history" className="rounded-lg gap-2">
-                      <History className="w-4 h-4" />
-                      История
-                    </TabsTrigger>
-                    <TabsTrigger value="tests" className="rounded-lg gap-2">
-                      <CheckSquare className="w-4 h-4" />
-                      Тесты
-                    </TabsTrigger>
-                  </TabsList>
-                </div>
-
-                <div className="flex-1 overflow-auto p-6">
-                  <TabsContent value="students" className="mt-0 h-full">
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-semibold">Ученики курса</h3>
-                        <Button className="btn-gradient rounded-xl gap-2" onClick={() => {
-                      setStudentCourseFilter(selectedCourseForDetails.id);
-                      setStudentStatusFilter("not_enrolled");
-                      setActiveTab("students");
-                      setShowCourseDetailsModal(false);
-                    }}>
-                          <Plus className="w-4 h-4" />
-                          Зачислить ученика
-                        </Button>
-                      </div>
-                      
-                      {courseStudents.length === 0 ? <div className="text-center py-12 text-muted-foreground">
-                          <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                          <p>Нет зачисленных учеников</p>
-                        </div> : <div className="space-y-2">
-                          {courseStudents.map(student => <div key={student.id} className="flex items-center justify-between p-4 bg-secondary/50 rounded-xl">
-                              <div>
-                                <div className="font-medium">{student.name}</div>
-                                <div className="text-sm text-muted-foreground">{student.email}</div>
-                              </div>
-                              <div className="flex items-center gap-4">
-                                <div className="text-right">
-                                  <div className="text-sm font-medium">{student.progress}%</div>
-                                  <Progress value={student.progress} className="w-24 h-2" />
-                                </div>
-                                <span className={`px-2 py-1 rounded-full text-xs ${student.status === 'completed' ? 'bg-sigma-green/10 text-sigma-green' : 'bg-primary/10 text-primary'}`}>
-                                  {student.status === 'completed' ? 'Завершил' : 'Активный'}
-                                </span>
-                              </div>
-                            </div>)}
-                        </div>}
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="materials" className="mt-0 h-full">
-                    <CourseDocumentsManager courseId={selectedCourseForDetails.id} courseName={selectedCourseForDetails.title} embedded={true} />
-                  </TabsContent>
-
-                  <TabsContent value="history" className="mt-0 h-full">
-                    <EnrollmentHistory courseId={selectedCourseForDetails.id} organizationId={organizationId || ""} courseName={selectedCourseForDetails.title} />
-                  </TabsContent>
-
-                  <TabsContent value="tests" className="mt-0 h-full">
-                    <CourseTestReport courseId={selectedCourseForDetails.id} courseName={selectedCourseForDetails.title} organizationId={organizationId || ""} />
-                  </TabsContent>
-                </div>
-              </Tabs>
-            </>}
-        </DialogContent>
-      </Dialog>
+      <CourseDetailsModal
+        open={showCourseDetailsModal}
+        onOpenChange={setShowCourseDetailsModal}
+        course={selectedCourseForDetails}
+        courseStudents={courseStudents}
+        organizationId={organizationId}
+        activeTab={courseDetailsTab}
+        onTabChange={setCourseDetailsTab}
+        onEnrollStudent={() => {
+          if (selectedCourseForDetails) {
+            setStudentCourseFilter(selectedCourseForDetails.id);
+            setStudentStatusFilter("not_enrolled");
+            setActiveTab("students");
+            setShowCourseDetailsModal(false);
+          }
+        }}
+      />
 
       {/* Course Students Dialog */}
       <Dialog open={showCourseStudentsDialog} onOpenChange={setShowCourseStudentsDialog}>

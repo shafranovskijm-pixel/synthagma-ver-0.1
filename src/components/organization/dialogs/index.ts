@@ -6,3 +6,5 @@ export {
   CategoryDialog,
   InviteEmailDialog
 } from './OrgDialogs';
+
+export { CourseDetailsModal } from './CourseDetailsModal';
