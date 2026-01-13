@@ -8,6 +8,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -108,6 +118,7 @@ export function JournalEditor({
   const [dates, setDates] = useState<Date[]>([]);
   const [weekStart, setWeekStart] = useState<Date>(startOfWeek(new Date(), { locale: ru, weekStartsOn: 1 }));
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [newJournalTitle, setNewJournalTitle] = useState(journalTitle);
   const [existingJournals, setExistingJournals] = useState<JournalInstance[]>([]);
   const [selectedJournalId, setSelectedJournalId] = useState<string>("");
@@ -447,8 +458,6 @@ export function JournalEditor({
   const deleteJournal = async () => {
     if (!journalInstance) return;
 
-    if (!confirm("Удалить журнал и все записи?")) return;
-
     try {
       const { error } = await supabase
         .from("journal_instances")
@@ -460,6 +469,7 @@ export function JournalEditor({
       setExistingJournals((prev) => prev.filter((j) => j.id !== journalInstance.id));
       setSelectedJournalId(existingJournals[1]?.id || "");
       setJournalInstance(null);
+      setShowDeleteDialog(false);
       toast.success("Журнал удалён");
     } catch (error) {
       console.error("Error deleting journal:", error);
@@ -564,8 +574,9 @@ export function JournalEditor({
               <Button
                 variant="ghost"
                 size="icon"
-                className="text-destructive rounded-xl"
-                onClick={deleteJournal}
+                className="text-destructive hover:text-destructive rounded-xl"
+                onClick={() => setShowDeleteDialog(true)}
+                title="Удалить журнал"
               >
                 <Trash2 className="w-4 h-4" />
               </Button>
@@ -695,6 +706,29 @@ export function JournalEditor({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить журнал?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Вы уверены, что хотите удалить журнал{" "}
+              <strong>"{journalInstance?.title}"</strong>? Все записи в этом журнале
+              также будут удалены. Это действие нельзя отменить.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={deleteJournal}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              Удалить
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
