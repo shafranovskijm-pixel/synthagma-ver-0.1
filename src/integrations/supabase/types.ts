@@ -457,6 +457,99 @@ export type Database = {
           },
         ]
       }
+      education_document_records: {
+        Row: {
+          birth_date: string | null
+          created_at: string
+          delivery_details: string | null
+          delivery_method: string
+          document_number: string
+          document_series: string | null
+          document_status: string
+          document_type: string
+          enrollment_id: string | null
+          full_name: string
+          id: string
+          issue_date: string
+          notes: string | null
+          order_date: string | null
+          order_number: string | null
+          organization_id: string
+          original_document_data: string | null
+          protocol_date: string | null
+          protocol_number: string | null
+          qualification_name: string | null
+          reg_number: string
+          specialty_name: string
+          updated_at: string
+        }
+        Insert: {
+          birth_date?: string | null
+          created_at?: string
+          delivery_details?: string | null
+          delivery_method?: string
+          document_number: string
+          document_series?: string | null
+          document_status?: string
+          document_type: string
+          enrollment_id?: string | null
+          full_name: string
+          id?: string
+          issue_date: string
+          notes?: string | null
+          order_date?: string | null
+          order_number?: string | null
+          organization_id: string
+          original_document_data?: string | null
+          protocol_date?: string | null
+          protocol_number?: string | null
+          qualification_name?: string | null
+          reg_number: string
+          specialty_name: string
+          updated_at?: string
+        }
+        Update: {
+          birth_date?: string | null
+          created_at?: string
+          delivery_details?: string | null
+          delivery_method?: string
+          document_number?: string
+          document_series?: string | null
+          document_status?: string
+          document_type?: string
+          enrollment_id?: string | null
+          full_name?: string
+          id?: string
+          issue_date?: string
+          notes?: string | null
+          order_date?: string | null
+          order_number?: string | null
+          organization_id?: string
+          original_document_data?: string | null
+          protocol_date?: string | null
+          protocol_number?: string | null
+          qualification_name?: string | null
+          reg_number?: string
+          specialty_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "education_document_records_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "education_document_records_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       enrollment_history: {
         Row: {
           action: string
