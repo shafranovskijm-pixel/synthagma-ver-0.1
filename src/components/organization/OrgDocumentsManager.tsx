@@ -114,6 +114,7 @@ const REGULAR_CATEGORIES = [
       { type: "pedagogical_council", label: "Положение о педагогическом совете", required: true },
       { type: "paid_services", label: "Положение о порядке оказания платных образовательных услуг", required: false },
       { type: "personal_data", label: "Положение о защите персональных данных", required: true },
+      { type: "electronic_docs_rules", label: "Положение о порядке ведения электронной документации и приравнивании электронных документов к документам на бумажном носителе", required: false },
     ],
   },
   {
