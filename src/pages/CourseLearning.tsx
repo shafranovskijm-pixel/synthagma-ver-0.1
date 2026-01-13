@@ -201,6 +201,10 @@ const CourseLearning = () => {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   
+  // Tooltip state for mobile progress bar
+  const [tooltipLesson, setTooltipLesson] = useState<{ index: number; title: string } | null>(null);
+  const longPressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
   // Test state
   const [testQuestions, setTestQuestions] = useState<TestQuestion[]>([]);
   const [allBankQuestions, setAllBankQuestions] = useState<TestQuestion[]>([]);
@@ -1236,19 +1240,59 @@ const CourseLearning = () => {
 
         {/* Mobile Lesson Progress Bar */}
         {isMobile && (
-          <div className="border-t border-border bg-muted/30 px-3 py-2 shrink-0">
+          <div className="border-t border-border bg-muted/30 px-3 py-2 shrink-0 relative">
+            {/* Tooltip */}
+            {tooltipLesson && (
+              <div 
+                className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-popover text-popover-foreground text-xs rounded-lg shadow-lg border border-border animate-fade-in z-50 max-w-[200px] text-center"
+                style={{
+                  animation: 'fade-in 0.2s ease-out'
+                }}
+              >
+                <div className="font-medium">Урок {tooltipLesson.index + 1}</div>
+                <div className="text-muted-foreground line-clamp-2">{tooltipLesson.title}</div>
+                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-full">
+                  <div className="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-border" />
+                </div>
+              </div>
+            )}
+            
             <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide">
               {lessons.map((lesson, index) => {
                 const isCompleted = isLessonCompleted(lesson.id);
                 const isCurrent = index === currentLessonIndex;
                 
+                const handleTouchStart = () => {
+                  longPressTimeoutRef.current = setTimeout(() => {
+                    triggerHapticFeedback();
+                    setTooltipLesson({ index, title: lesson.title });
+                  }, 400);
+                };
+                
+                const handleTouchEnd = () => {
+                  if (longPressTimeoutRef.current) {
+                    clearTimeout(longPressTimeoutRef.current);
+                    longPressTimeoutRef.current = null;
+                  }
+                  // Hide tooltip after a delay
+                  setTimeout(() => setTooltipLesson(null), 1500);
+                };
+                
+                const handleClick = () => {
+                  if (!tooltipLesson) {
+                    triggerHapticFeedback();
+                    goToLesson(index);
+                  }
+                  setTooltipLesson(null);
+                };
+                
                 return (
                   <button
                     key={lesson.id}
-                    onClick={() => {
-                      triggerHapticFeedback();
-                      goToLesson(index);
-                    }}
+                    onClick={handleClick}
+                    onTouchStart={handleTouchStart}
+                    onTouchEnd={handleTouchEnd}
+                    onTouchCancel={handleTouchEnd}
                     className={cn(
                       "flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium",
                       "transition-all duration-300 ease-out",
