@@ -57,6 +57,9 @@ import {
   GraduationCap,
   Award,
   Mail,
+  Users,
+  CheckCircle2,
+  Sparkles,
 } from "lucide-react";
 import { format, parseISO, startOfYear, endOfYear, isWithinInterval } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -64,6 +67,9 @@ import { cn } from "@/lib/utils";
 import * as XLSX from "xlsx";
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
+import { supabase } from "@/integrations/supabase/client";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface EducationDocumentRecord {
   id: string;
@@ -85,11 +91,22 @@ interface EducationDocumentRecord {
   delivery_method: "personal" | "representative" | "postal";
   delivery_details: string | null;
   notes: string | null;
+  enrollment_id?: string;
 }
 
 interface EducationDocumentsJournalProps {
   organizationId: string;
   onClose: () => void;
+}
+
+interface CompletedStudent {
+  enrollment_id: string;
+  user_id: string;
+  full_name: string;
+  birth_date: string | null;
+  course_title: string;
+  completed_at: string;
+  already_added: boolean;
 }
 
 const DOCUMENT_TYPES = [
@@ -124,8 +141,15 @@ export function EducationDocumentsJournal({
 
   // Dialog states
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showSelectStudentsDialog, setShowSelectStudentsDialog] = useState(false);
   const [editingRecord, setEditingRecord] = useState<EducationDocumentRecord | null>(null);
   const [deletingRecord, setDeletingRecord] = useState<EducationDocumentRecord | null>(null);
+
+  // Completed students for auto-fill
+  const [completedStudents, setCompletedStudents] = useState<CompletedStudent[]>([]);
+  const [loadingStudents, setLoadingStudents] = useState(false);
+  const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
+  const [studentSearchQuery, setStudentSearchQuery] = useState("");
 
   // Form state
   const [formData, setFormData] = useState({
@@ -147,6 +171,7 @@ export function EducationDocumentsJournal({
     delivery_method: "personal" as "personal" | "representative" | "postal",
     delivery_details: "",
     notes: "",
+    enrollment_id: "",
   });
 
   // Load records from localStorage
@@ -231,6 +256,7 @@ export function EducationDocumentsJournal({
       delivery_method: "personal",
       delivery_details: "",
       notes: "",
+      enrollment_id: "",
     });
   };
 
@@ -272,8 +298,203 @@ export function EducationDocumentsJournal({
       delivery_method: record.delivery_method,
       delivery_details: record.delivery_details || "",
       notes: record.notes || "",
+      enrollment_id: record.enrollment_id || "",
     });
     setEditingRecord(record);
+  };
+
+  // Load completed students for auto-fill
+  const loadCompletedStudents = async () => {
+    setLoadingStudents(true);
+    try {
+      // Get courses for this organization
+      const { data: courses, error: coursesError } = await supabase
+        .from("courses")
+        .select("id, title")
+        .eq("organization_id", organizationId);
+
+      if (coursesError) throw coursesError;
+
+      if (!courses || courses.length === 0) {
+        setCompletedStudents([]);
+        return;
+      }
+
+      const courseIds = courses.map((c) => c.id);
+      const courseMap = new Map(courses.map((c) => [c.id, c.title]));
+
+      // Get completed enrollments
+      const { data: enrollments, error: enrollmentsError } = await supabase
+        .from("enrollments")
+        .select("id, user_id, course_id, completed_at")
+        .in("course_id", courseIds)
+        .eq("status", "completed")
+        .not("completed_at", "is", null);
+
+      if (enrollmentsError) throw enrollmentsError;
+
+      if (!enrollments || enrollments.length === 0) {
+        setCompletedStudents([]);
+        return;
+      }
+
+      const userIds = [...new Set(enrollments.map((e) => e.user_id))];
+
+      // Get profiles
+      const { data: profiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("user_id, full_name, email")
+        .in("user_id", userIds);
+
+      if (profilesError) throw profilesError;
+
+      // Get FRDO data for birth dates
+      const { data: frdoData, error: frdoError } = await supabase
+        .from("student_frdo_data")
+        .select("user_id, birth_date")
+        .in("user_id", userIds);
+
+      if (frdoError) throw frdoError;
+
+      const profileMap = new Map(
+        profiles?.map((p) => [p.user_id, p]) || []
+      );
+      const frdoMap = new Map(
+        frdoData?.map((f) => [f.user_id, f.birth_date]) || []
+      );
+
+      // Check which enrollments already have records
+      const addedEnrollmentIds = new Set(
+        records
+          .filter((r) => r.enrollment_id)
+          .map((r) => r.enrollment_id)
+      );
+
+      const students: CompletedStudent[] = enrollments.map((enrollment) => {
+        const profile = profileMap.get(enrollment.user_id);
+        const birthDate = frdoMap.get(enrollment.user_id);
+
+        return {
+          enrollment_id: enrollment.id,
+          user_id: enrollment.user_id,
+          full_name: profile?.full_name || profile?.email || "Неизвестный студент",
+          birth_date: birthDate || null,
+          course_title: courseMap.get(enrollment.course_id) || "Неизвестный курс",
+          completed_at: enrollment.completed_at!,
+          already_added: addedEnrollmentIds.has(enrollment.id),
+        };
+      });
+
+      // Sort by completed_at desc
+      students.sort((a, b) => 
+        new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime()
+      );
+
+      setCompletedStudents(students);
+    } catch (error) {
+      console.error("Error loading completed students:", error);
+      toast.error("Ошибка загрузки списка выпускников");
+    } finally {
+      setLoadingStudents(false);
+    }
+  };
+
+  // Open select students dialog
+  const handleOpenSelectStudents = async () => {
+    setSelectedStudents(new Set());
+    setStudentSearchQuery("");
+    setShowSelectStudentsDialog(true);
+    await loadCompletedStudents();
+  };
+
+  // Generate document number based on existing records
+  const generateDocumentNumber = (index: number) => {
+    const year = new Date().getFullYear();
+    const existingCount = records.filter((r) => {
+      const issueYear = parseISO(r.issue_date).getFullYear();
+      return issueYear === year;
+    }).length;
+    return `${year}/${(existingCount + index + 1).toString().padStart(6, "0")}`;
+  };
+
+  // Create records for selected students
+  const handleCreateFromStudents = () => {
+    const selectedList = completedStudents.filter(
+      (s) => selectedStudents.has(s.enrollment_id) && !s.already_added
+    );
+
+    if (selectedList.length === 0) {
+      toast.error("Выберите хотя бы одного выпускника");
+      return;
+    }
+
+    const year = new Date().getFullYear();
+    let existingCount = records.filter((r) => {
+      const issueYear = parseISO(r.issue_date).getFullYear();
+      return issueYear === year;
+    }).length;
+
+    const newRecords: EducationDocumentRecord[] = selectedList.map((student, index) => {
+      existingCount += 1;
+      return {
+        id: crypto.randomUUID(),
+        reg_number: `ДОК-${year}/${existingCount.toString().padStart(4, "0")}`,
+        full_name: student.full_name,
+        birth_date: student.birth_date || "",
+        document_type: "certificate" as const,
+        document_series: "",
+        document_number: generateDocumentNumber(index),
+        issue_date: new Date().toISOString(),
+        specialty_name: student.course_title,
+        qualification_name: "",
+        protocol_number: "",
+        protocol_date: "",
+        order_number: "",
+        order_date: "",
+        document_status: "original" as const,
+        original_document_data: null,
+        delivery_method: "personal" as const,
+        delivery_details: null,
+        notes: null,
+        enrollment_id: student.enrollment_id,
+      };
+    });
+
+    saveRecords([...newRecords, ...records]);
+    setShowSelectStudentsDialog(false);
+    toast.success(`Создано ${newRecords.length} записей`);
+  };
+
+  // Filter completed students by search
+  const filteredStudents = useMemo(() => {
+    if (!studentSearchQuery) return completedStudents;
+    const query = studentSearchQuery.toLowerCase();
+    return completedStudents.filter(
+      (s) =>
+        s.full_name.toLowerCase().includes(query) ||
+        s.course_title.toLowerCase().includes(query)
+    );
+  }, [completedStudents, studentSearchQuery]);
+
+  // Toggle student selection
+  const toggleStudentSelection = (enrollmentId: string) => {
+    const newSet = new Set(selectedStudents);
+    if (newSet.has(enrollmentId)) {
+      newSet.delete(enrollmentId);
+    } else {
+      newSet.add(enrollmentId);
+    }
+    setSelectedStudents(newSet);
+  };
+
+  // Select all students
+  const selectAllStudents = () => {
+    const available = filteredStudents.filter((s) => !s.already_added);
+    if (selectedStudents.size === available.length) {
+      setSelectedStudents(new Set());
+    } else {
+      setSelectedStudents(new Set(available.map((s) => s.enrollment_id)));
+    }
   };
 
   // Save record
@@ -318,6 +539,7 @@ export function EducationDocumentsJournal({
         delivery_method: formData.delivery_method,
         delivery_details: formData.delivery_method !== "personal" ? formData.delivery_details.trim() : null,
         notes: formData.notes.trim() || null,
+        enrollment_id: formData.enrollment_id || undefined,
       };
 
       let newRecords: EducationDocumentRecord[];
@@ -423,14 +645,22 @@ export function EducationDocumentsJournal({
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Button 
+            variant="default" 
+            onClick={handleOpenSelectStudents} 
+            className="rounded-xl bg-gradient-to-r from-primary to-primary/80"
+          >
+            <Sparkles className="w-4 h-4 mr-2" />
+            Из выпускников
+          </Button>
           <Button variant="outline" onClick={handleOpenAdd} className="rounded-xl">
             <Plus className="w-4 h-4 mr-2" />
-            Добавить
+            Добавить вручную
           </Button>
-          <Button onClick={exportToExcel} className="rounded-xl">
+          <Button variant="outline" onClick={exportToExcel} className="rounded-xl">
             <FileSpreadsheet className="w-4 h-4 mr-2" />
-            Экспорт в Excel
+            Excel
           </Button>
         </div>
       </div>
@@ -1125,6 +1355,143 @@ export function EducationDocumentsJournal({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Select Students Dialog */}
+      <Dialog open={showSelectStudentsDialog} onOpenChange={setShowSelectStudentsDialog}>
+        <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="w-5 h-5" />
+              Создание записей из данных выпускников
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-hidden space-y-4">
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Поиск по ФИО или курсу..."
+                value={studentSearchQuery}
+                onChange={(e) => setStudentSearchQuery(e.target.value)}
+                className="pl-10 rounded-xl"
+              />
+            </div>
+
+            {/* Info */}
+            <div className="bg-muted/50 rounded-xl p-3 text-sm text-muted-foreground">
+              <div className="flex items-start gap-2">
+                <Sparkles className="w-4 h-4 mt-0.5 text-primary" />
+                <div>
+                  <p className="font-medium text-foreground">Автоматическое заполнение</p>
+                  <p>ФИО, дата рождения и наименование курса будут заполнены автоматически. 
+                  Остальные поля (номер протокола ГЭК, приказа и др.) можно будет добавить после создания записи.</p>
+                </div>
+              </div>
+            </div>
+
+            {loadingStudents ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              </div>
+            ) : completedStudents.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <GraduationCap className="w-12 h-12 text-muted-foreground mb-4" />
+                <h3 className="font-semibold text-lg">Нет завершивших обучение</h3>
+                <p className="text-muted-foreground text-sm max-w-sm">
+                  Завершившие студенты появятся здесь после того, как их статус обучения будет изменён на "Завершено"
+                </p>
+              </div>
+            ) : (
+              <>
+                {/* Select All */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="select-all"
+                      checked={
+                        filteredStudents.filter((s) => !s.already_added).length > 0 &&
+                        selectedStudents.size === filteredStudents.filter((s) => !s.already_added).length
+                      }
+                      onCheckedChange={selectAllStudents}
+                    />
+                    <Label htmlFor="select-all" className="text-sm cursor-pointer">
+                      Выбрать всех ({filteredStudents.filter((s) => !s.already_added).length})
+                    </Label>
+                  </div>
+                  {selectedStudents.size > 0 && (
+                    <Badge variant="secondary" className="rounded-full">
+                      Выбрано: {selectedStudents.size}
+                    </Badge>
+                  )}
+                </div>
+
+                {/* Students List */}
+                <ScrollArea className="h-[300px] rounded-xl border">
+                  <div className="divide-y">
+                    {filteredStudents.map((student) => (
+                      <div
+                        key={student.enrollment_id}
+                        className={cn(
+                          "flex items-center gap-3 p-3 hover:bg-muted/50 transition-colors",
+                          student.already_added && "opacity-50"
+                        )}
+                      >
+                        <Checkbox
+                          id={student.enrollment_id}
+                          checked={selectedStudents.has(student.enrollment_id)}
+                          onCheckedChange={() => toggleStudentSelection(student.enrollment_id)}
+                          disabled={student.already_added}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium truncate">{student.full_name}</span>
+                            {student.already_added && (
+                              <Badge variant="outline" className="text-xs shrink-0">
+                                <CheckCircle2 className="w-3 h-3 mr-1" />
+                                Добавлен
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="text-sm text-muted-foreground truncate">
+                            {student.course_title}
+                          </div>
+                          <div className="text-xs text-muted-foreground flex gap-3 mt-1">
+                            {student.birth_date && (
+                              <span>Дата рождения: {format(parseISO(student.birth_date), "dd.MM.yyyy")}</span>
+                            )}
+                            <span>
+                              Завершил: {format(parseISO(student.completed_at), "dd.MM.yyyy")}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </>
+            )}
+          </div>
+
+          <DialogFooter className="mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setShowSelectStudentsDialog(false)}
+              className="rounded-xl"
+            >
+              Отмена
+            </Button>
+            <Button
+              onClick={handleCreateFromStudents}
+              disabled={selectedStudents.size === 0}
+              className="rounded-xl"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Создать записи ({selectedStudents.size})
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
