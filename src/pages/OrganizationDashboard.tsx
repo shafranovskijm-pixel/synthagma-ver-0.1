@@ -69,6 +69,11 @@ import { useDashboardSettings } from "@/hooks/useDashboardSettings";
 import { useStudentDetailCard } from "@/hooks/useStudentDetailCard";
 import { useStudentDetailsDialog } from "@/hooks/useStudentDetailsDialog";
 import { useOrganizationDataLoader } from "@/hooks/useOrganizationDataLoader";
+import { useOrganizationsTab } from "@/hooks/useOrganizationsTab";
+import { useEmailInvitation } from "@/hooks/useEmailInvitation";
+import { useStudentDocsDialog } from "@/hooks/useStudentDocsDialog";
+import { useCourseDocsDialog } from "@/hooks/useCourseDocsDialog";
+import { useCourseDetailsModal } from "@/hooks/useCourseDetailsModal";
 import { Button } from "@/components/ui/button";
 import { GraduationCap, BookOpen, Users, BarChart3, Settings, LogOut, Plus, Upload, FileSpreadsheet, Search, Eye, TrendingUp, Clock, CheckCircle2, XCircle, Loader2, Edit, Trash2, FileText, Download, X, ChevronRight, ChevronDown, Link, Copy, Building2, Save, Send, FileCheck, Receipt, CheckSquare, LayoutGrid, List, Filter, Tag, Palette, History, Moon, Sun, Library, Trophy, MessageCircle, Image, ExternalLink, ShoppingBag, Mail, Key, Menu, AlertCircle, Award, ClipboardList } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -175,20 +180,9 @@ export default function OrganizationDashboard() {
     createLink: handleCreateRegistrationLink,
   } = useRegistrationLinks(organizationId);
 
-  // Organizations state
-  const [allOrganizations, setAllOrganizations] = useState<Organization[]>([]);
-  const [isLoadingOrgs, setIsLoadingOrgs] = useState(false);
-  const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
-  const [showOrgDetails, setShowOrgDetails] = useState(false);
-  const [orgDocuments, setOrgDocuments] = useState<{
-    id: string;
-    type: string;
-    name: string;
-    file_url: string | null;
-    created_at: string;
-  }[]>([]);
-  const [orgStudents, setOrgStudents] = useState<Student[]>([]);
-  const [isLoadingOrgDetails, setIsLoadingOrgDetails] = useState(false);
+  // Organizations tab hook
+  const organizationsTab = useOrganizationsTab({ activeTab });
+  const { allOrganizations, isLoadingOrgs, selectedOrg, showOrgDetails, setShowOrgDetails, orgStudents, isLoadingOrgDetails, handleViewOrg, filterOrganizations } = organizationsTab;
   
   // Company management hook
   const companyActions = useCompanyActions();
@@ -203,10 +197,8 @@ export default function OrganizationDashboard() {
   // Course students manager hook
   const courseStudentsManager = useCourseStudentsManager(organizationId);
 
-  // Email invitation state
-  const [showInviteEmailDialog, setShowInviteEmailDialog] = useState(false);
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [isSendingInvitation, setIsSendingInvitation] = useState(false);
+  // Email invitation hook
+  const emailInvitation = useEmailInvitation({ organizationName });
   
   const studentCoursesDialog = useStudentCoursesDialog(courses, refreshData);
 
@@ -246,22 +238,17 @@ export default function OrganizationDashboard() {
   const [studentDocsFilter, setStudentDocsFilter] = useState<"all" | "complete" | "no_passport" | "no_snils" | "no_education" | "incomplete">("all");
 
 
-  // Course details modal state
-  const [showCourseDetailsModal, setShowCourseDetailsModal] = useState(false);
-  const [selectedCourseForDetails, setSelectedCourseForDetails] = useState<Course | null>(null);
-  const [courseDetailsTab, setCourseDetailsTab] = useState<"students" | "materials" | "history" | "tests">("students");
+  // Course details modal hook
+  const courseDetailsModal = useCourseDetailsModal();
+  const { showCourseDetailsModal, setShowCourseDetailsModal, selectedCourseForDetails, setSelectedCourseForDetails, courseDetailsTab, setCourseDetailsTab } = courseDetailsModal;
 
-  // Course documents state
-  const [showCourseDocsDialog, setShowCourseDocsDialog] = useState(false);
-  const [selectedCourseForDocs, setSelectedCourseForDocs] = useState<Course | null>(null);
+  // Course documents dialog hook
+  const courseDocsDialog = useCourseDocsDialog();
+  const { showCourseDocsDialog, selectedCourseForDocs, closeCourseDocs } = courseDocsDialog;
 
-  // Student documents state
-  const [showStudentDocsDialog, setShowStudentDocsDialog] = useState(false);
-  const [selectedStudentForDocs, setSelectedStudentForDocs] = useState<{
-    enrollmentId: string;
-    studentName: string;
-    courseName: string;
-  } | null>(null);
+  // Student documents dialog hook
+  const studentDocsDialog = useStudentDocsDialog();
+  const { showStudentDocsDialog, selectedStudentForDocs, closeStudentDocs } = studentDocsDialog;
 
   // Bulk document upload state
   const [showBulkUploadDialog, setShowBulkUploadDialog] = useState(false);
@@ -353,48 +340,6 @@ export default function OrganizationDashboard() {
   // Preview student dashboard
   const handlePreviewStudentDashboard = previewStudentDashboard;
 
-  // Fetch all organizations
-  useEffect(() => {
-    const fetchAllOrganizations = async () => {
-      if (activeTab !== "organizations") return;
-      setIsLoadingOrgs(true);
-      try {
-        const {
-          data: orgs,
-          error
-        } = await supabase.from("organizations").select("*").order("created_at", {
-          ascending: false
-        });
-        if (error) throw error;
-        const orgsWithStats = await Promise.all((orgs || []).map(async org => {
-          const {
-            count: orgCoursesCount
-          } = await supabase.from("courses").select("*", {
-            count: "exact",
-            head: true
-          }).eq("organization_id", org.id);
-          const {
-            data: profiles
-          } = await supabase.from("profiles").select("id", {
-            count: "exact",
-            head: true
-          }).eq("organization_id", org.id);
-          return {
-            ...org,
-            coursesCount: orgCoursesCount || 0,
-            studentsCount: profiles?.length || 0
-          };
-        }));
-        setAllOrganizations(orgsWithStats);
-      } catch (error) {
-        console.error("Error fetching organizations:", error);
-      } finally {
-        setIsLoadingOrgs(false);
-      }
-    };
-    fetchAllOrganizations();
-  }, [activeTab]);
-
 
   // Load course students when course details modal opens
   // Load course students when course details modal opens
@@ -444,47 +389,8 @@ export default function OrganizationDashboard() {
   const handleAddStudentsToCourse = courseStudentsManager.addStudentsToCourse;
   const handleRemoveFromCourse = courseStudentsManager.removeStudentFromCourse;
 
-  // Send course invitation by email
-  const handleSendInvitation = async () => {
-    const course = courseStudentsManager.selectedCourse;
-    if (!course || !inviteEmail.trim()) {
-      toast.error("Введите email получателя");
-      return;
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(inviteEmail.trim())) {
-      toast.error("Введите корректный email адрес");
-      return;
-    }
-    setIsSendingInvitation(true);
-    try {
-      const {
-        data,
-        error
-      } = await supabase.functions.invoke("send-course-invitation", {
-        body: {
-          email: inviteEmail.trim(),
-          courseName: course.title,
-          courseId: course.id,
-          organizationName: organizationName
-        }
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      toast.success(`Приглашение отправлено на ${inviteEmail}`);
-      setShowInviteEmailDialog(false);
-      setInviteEmail("");
-    } catch (error: any) {
-      console.error("Error sending invitation:", error);
-      if (error.message?.includes("RESEND_API_KEY")) {
-        toast.error("Для отправки email необходимо настроить RESEND_API_KEY");
-      } else {
-        toast.error(error.message || "Ошибка отправки приглашения");
-      }
-    } finally {
-      setIsSendingInvitation(false);
-    }
-  };
+  // Send course invitation by email - using hook
+  const handleSendInvitation = () => emailInvitation.sendInvitation(courseStudentsManager.selectedCourse);
 
   // Category management
   // Category management - use hook
@@ -540,42 +446,7 @@ export default function OrganizationDashboard() {
       setTimeout(() => setActiveTab("organizations"), 100);
     }
   };
-  const handleViewOrg = async (org: Organization) => {
-    setSelectedOrg(org);
-    setShowOrgDetails(true);
-    setIsLoadingOrgDetails(true);
-    try {
-      const {
-        data: docs
-      } = await supabase.from("org_documents").select("*").eq("organization_id", org.id).order("created_at", {
-        ascending: false
-      });
-      setOrgDocuments(docs || []);
-      const {
-        data: profiles
-      } = await supabase.from("profiles").select("id, user_id, full_name, email, login, generated_password").eq("organization_id", org.id);
-      const studentsList: Student[] = (profiles || []).map(p => ({
-        id: p.id,
-        user_id: p.user_id,
-        enrollment_id: null,
-        name: p.full_name || "Без имени",
-        email: p.email || "",
-        login: p.login || null,
-        generated_password: p.generated_password || null,
-        course: null,
-        course_id: null,
-        progress: 0,
-        lastActivity: null,
-        status: null
-      }));
-      setOrgStudents(studentsList);
-    } catch (error) {
-      console.error("Error fetching org details:", error);
-      toast.error("Ошибка загрузки данных");
-    } finally {
-      setIsLoadingOrgDetails(false);
-    }
-  };
+  // handleViewOrg is now provided by organizationsTab hook
 
   // Filter organizations
   const filteredOrganizations = allOrganizations.filter(org => org.name.toLowerCase().includes(searchQuery.toLowerCase()) || org.email.toLowerCase().includes(searchQuery.toLowerCase()) || org.inn && org.inn.includes(searchQuery));
@@ -1022,47 +893,16 @@ export default function OrganizationDashboard() {
         onAddStudentsToCourse={handleAddStudentsToCourse}
         isAddingStudents={courseStudentsManager.isAddingStudentsToCourse}
         onRemoveFromCourse={handleRemoveFromCourse}
-        onShowInviteEmailDialog={() => setShowInviteEmailDialog(true)}
-        onShowStudentDocs={(enrollmentId, studentName, courseName) => {
-          setSelectedStudentForDocs({ enrollmentId, studentName, courseName });
-          setShowStudentDocsDialog(true);
-        }}
+        onShowInviteEmailDialog={() => emailInvitation.setShowInviteEmailDialog(true)}
+        onShowStudentDocs={(enrollmentId, studentName, courseName) => studentDocsDialog.openStudentDocs(enrollmentId, studentName, courseName)}
       />
 
       <InviteEmailDialog
-        open={showInviteEmailDialog}
-        onOpenChange={setShowInviteEmailDialog}
+        open={emailInvitation.showInviteEmailDialog}
+        onOpenChange={emailInvitation.setShowInviteEmailDialog}
         courseTitle={courseStudentsManager.selectedCourse?.title}
-        isSending={isSendingInvitation}
-        onSend={async (email) => {
-          const course = courseStudentsManager.selectedCourse;
-          if (!course) return;
-          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-          if (!emailRegex.test(email.trim())) {
-            toast.error("Введите корректный email адрес");
-            return;
-          }
-          setIsSendingInvitation(true);
-          try {
-            const { data, error } = await supabase.functions.invoke("send-course-invitation", {
-              body: {
-                email: email.trim(),
-                courseName: course.title,
-                courseId: course.id,
-                organizationName: organizationName
-              }
-            });
-            if (error) throw error;
-            if (data?.error) throw new Error(data.error);
-            toast.success(`Приглашение отправлено на ${email}`);
-            setShowInviteEmailDialog(false);
-          } catch (error: any) {
-            console.error("Error sending invitation:", error);
-            toast.error(error.message || "Ошибка отправки приглашения");
-          } finally {
-            setIsSendingInvitation(false);
-          }
-        }}
+        isSending={emailInvitation.isSendingInvitation}
+        onSend={(email) => emailInvitation.sendInvitationDirect(email, courseStudentsManager.selectedCourse)}
       />
 
       <StudentDetailsDialog
@@ -1146,16 +986,10 @@ export default function OrganizationDashboard() {
       />
 
       {/* Course Documents Manager */}
-      {selectedCourseForDocs && <CourseDocumentsManager courseId={selectedCourseForDocs.id} courseName={selectedCourseForDocs.title} isOpen={showCourseDocsDialog} onClose={() => {
-      setShowCourseDocsDialog(false);
-      setSelectedCourseForDocs(null);
-    }} />}
+      {selectedCourseForDocs && <CourseDocumentsManager courseId={selectedCourseForDocs.id} courseName={selectedCourseForDocs.title} isOpen={showCourseDocsDialog} onClose={closeCourseDocs} />}
 
       {/* Student Documents Manager */}
-      {selectedStudentForDocs && <StudentDocumentsManager enrollmentId={selectedStudentForDocs.enrollmentId} studentName={selectedStudentForDocs.studentName} courseName={selectedStudentForDocs.courseName} isOpen={showStudentDocsDialog} onClose={() => {
-      setShowStudentDocsDialog(false);
-      setSelectedStudentForDocs(null);
-    }} />}
+      {selectedStudentForDocs && <StudentDocumentsManager enrollmentId={selectedStudentForDocs.enrollmentId} studentName={selectedStudentForDocs.studentName} courseName={selectedStudentForDocs.courseName} isOpen={showStudentDocsDialog} onClose={closeStudentDocs} />}
 
       {/* Bulk Document Upload */}
       {organizationId && <BulkDocumentUpload organizationId={organizationId} isOpen={showBulkUploadDialog} onClose={() => setShowBulkUploadDialog(false)} />}
