@@ -27,11 +27,11 @@ export function Footer() {
               Соответствует требованиям 273-ФЗ.
             </p>
             <div className="space-y-3 text-background/70">
-              <a href="mailto:support@sintagma.ru" className="flex items-center gap-3 hover:text-background transition-colors group">
+              <a href="mailto:shafranovskij.m@gmail.com" className="flex items-center gap-3 hover:text-background transition-colors group">
                 <div className="w-10 h-10 rounded-xl bg-background/10 flex items-center justify-center group-hover:bg-background/20 transition-colors">
                   <Mail className="w-5 h-5" />
                 </div>
-                <span>support@sintagma.ru</span>
+                <span>shafranovskij.m@gmail.com</span>
               </a>
               <a href="tel:89147213424" className="flex items-center gap-3 hover:text-background transition-colors group">
                 <div className="w-10 h-10 rounded-xl bg-background/10 flex items-center justify-center group-hover:bg-background/20 transition-colors">
