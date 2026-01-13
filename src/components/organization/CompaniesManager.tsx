@@ -14,6 +14,8 @@ import {
   Receipt,
   CheckCircle2,
   Clock,
+  LayoutGrid,
+  List,
 } from "lucide-react";
 
 import { useCompaniesManager, type Company } from "@/hooks/useCompaniesManager";
@@ -60,6 +62,9 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
   const companiesManager = useCompaniesManager(organizationId);
   const detailManager = useCompanyDetailManager(organizationId);
   const studentsManager = useCompanyStudentsManager(organizationId);
+
+  // View mode state
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   // Organization requisites for generators
   const [orgRequisites, setOrgRequisites] = useState<OrgRequisites | null>(null);
@@ -309,15 +314,35 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
         </div>
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Поиск по названию или ИНН..."
-          value={companiesManager.searchQuery}
-          onChange={(e) => companiesManager.setSearchQuery(e.target.value)}
-          className="pl-10 rounded-xl"
-        />
+      {/* Search and View Toggle */}
+      <div className="flex gap-3">
+        <div className="relative flex-1">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Поиск по названию или ИНН..."
+            value={companiesManager.searchQuery}
+            onChange={(e) => companiesManager.setSearchQuery(e.target.value)}
+            className="pl-10 rounded-xl"
+          />
+        </div>
+        <div className="flex rounded-xl border border-border overflow-hidden">
+          <Button
+            variant="ghost"
+            size="icon"
+            className={`rounded-none ${viewMode === 'grid' ? 'bg-primary/10 text-primary' : ''}`}
+            onClick={() => setViewMode('grid')}
+          >
+            <LayoutGrid className="w-4 h-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className={`rounded-none ${viewMode === 'list' ? 'bg-primary/10 text-primary' : ''}`}
+            onClick={() => setViewMode('list')}
+          >
+            <List className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Companies List */}
@@ -333,7 +358,7 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
               : "Добавьте первую компанию"}
           </p>
         </div>
-      ) : (
+      ) : viewMode === 'grid' ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {companiesManager.filteredCompanies.map((company) => (
             <button
@@ -357,6 +382,57 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
               </div>
             </button>
           ))}
+        </div>
+      ) : (
+        <div className="bg-card rounded-xl border border-border overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-border bg-secondary/30">
+                <th className="text-left p-4 font-medium text-sm">Название</th>
+                <th className="text-left p-4 font-medium text-sm hidden md:table-cell">ИНН</th>
+                <th className="text-left p-4 font-medium text-sm hidden sm:table-cell">КПП</th>
+                <th className="text-left p-4 font-medium text-sm">Учеников</th>
+                <th className="text-left p-4 font-medium text-sm hidden lg:table-cell">Директор</th>
+                <th className="w-10"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {companiesManager.filteredCompanies.map((company) => (
+                <tr
+                  key={company.id}
+                  className="border-b border-border last:border-0 hover:bg-secondary/30 cursor-pointer transition-colors"
+                  onClick={() => detailManager.openCompanyDetail(company)}
+                >
+                  <td className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <Building2 className="w-4 h-4 text-primary" />
+                      </div>
+                      <span className="font-medium line-clamp-1">{company.name}</span>
+                    </div>
+                  </td>
+                  <td className="p-4 text-muted-foreground hidden md:table-cell">
+                    {company.inn || '—'}
+                  </td>
+                  <td className="p-4 text-muted-foreground hidden sm:table-cell">
+                    {company.kpp || '—'}
+                  </td>
+                  <td className="p-4">
+                    <div className="flex items-center gap-1 text-muted-foreground">
+                      <Users className="w-3 h-3" />
+                      {company.studentsCount}
+                    </div>
+                  </td>
+                  <td className="p-4 text-muted-foreground hidden lg:table-cell line-clamp-1">
+                    {company.director || '—'}
+                  </td>
+                  <td className="p-4">
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
