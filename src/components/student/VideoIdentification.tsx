@@ -92,13 +92,14 @@ export function VideoIdentification({
     setIsVideoReady(false);
     setStep("camera");
     
+    // Ждём пока React отрендерит video элемент
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
     try {
-      // Простая проверка поддержки - как в вашем коде
       if (!navigator.mediaDevices?.getUserMedia) {
         throw new Error('getUserMedia не поддерживается');
       }
       
-      // Простой запрос камеры - максимальная совместимость
       const mediaStream = await navigator.mediaDevices.getUserMedia({ 
         video: true, 
         audio: false 
@@ -108,55 +109,67 @@ export function VideoIdentification({
       setStream(mediaStream);
       setIsCapturing(true);
       
-      // Сразу подключаем к video элементу
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-        videoRef.current.play().catch(e => console.warn("Play failed:", e));
-      }
-      
     } catch (err: any) {
-      console.error("Камера/микрофон недоступны:", err);
+      console.error("Камера недоступна:", err);
       setStep("intro");
       setIsCameraLoading(false);
       setCameraError('Камера недоступна: ' + (err.message || err.name || 'неизвестная ошибка'));
     }
   };
   
-  // Подключаем stream к video когда оба готовы
+  // Подключаем stream к video - отдельный эффект
   useEffect(() => {
-    if (stream && videoRef.current && step === "camera") {
-      const video = videoRef.current;
-      video.srcObject = stream;
-      
-      const handleReady = () => {
-        console.log("Видео готово");
+    const video = videoRef.current;
+    if (!stream || !video || step !== "camera") return;
+    
+    console.log("Подключаем stream к video элементу");
+    video.srcObject = stream;
+    
+    const onCanPlay = () => {
+      console.log("Video: canplay");
+      setIsVideoReady(true);
+      setIsCameraLoading(false);
+    };
+    
+    const onPlaying = () => {
+      console.log("Video: playing");
+      setIsVideoReady(true);
+      setIsCameraLoading(false);
+    };
+    
+    const onError = (e: Event) => {
+      console.error("Video error:", e);
+      setCameraError("Ошибка воспроизведения видео");
+      setIsCameraLoading(false);
+    };
+    
+    video.addEventListener("canplay", onCanPlay);
+    video.addEventListener("playing", onPlaying);
+    video.addEventListener("error", onError);
+    
+    // Пробуем воспроизвести
+    video.play().catch(e => {
+      console.warn("Autoplay failed, trying muted:", e);
+      video.muted = true;
+      video.play().catch(e2 => console.warn("Muted play also failed:", e2));
+    });
+    
+    // Fallback через 3 секунды
+    const fallback = setTimeout(() => {
+      if (stream && !isVideoReady) {
+        console.log("Fallback: считаем видео готовым");
         setIsVideoReady(true);
         setIsCameraLoading(false);
-      };
-      
-      video.onloadeddata = handleReady;
-      video.oncanplay = handleReady;
-      video.onplaying = handleReady;
-      
-      video.play().catch(e => console.warn("Play error:", e));
-      
-      // Fallback - если события не сработали за 2 сек
-      const fallback = setTimeout(() => {
-        if (!isVideoReady && stream) {
-          console.log("Fallback: видео готово");
-          setIsVideoReady(true);
-          setIsCameraLoading(false);
-        }
-      }, 2000);
-      
-      return () => {
-        clearTimeout(fallback);
-        video.onloadeddata = null;
-        video.oncanplay = null;
-        video.onplaying = null;
-      };
-    }
-  }, [stream, step, isVideoReady]);
+      }
+    }, 3000);
+    
+    return () => {
+      clearTimeout(fallback);
+      video.removeEventListener("canplay", onCanPlay);
+      video.removeEventListener("playing", onPlaying);
+      video.removeEventListener("error", onError);
+    };
+  }, [stream, step]);
 
   const stopCamera = () => {
     if (stream) {
@@ -476,13 +489,8 @@ export function VideoIdentification({
                   autoPlay
                   playsInline
                   muted
-                  controls={false}
                   className="w-full h-full object-cover"
                   style={{ transform: "scaleX(-1)" }}
-                  // @ts-ignore - for iOS/Safari compatibility
-                  webkit-playsinline="true"
-                  // @ts-ignore - for older browsers
-                  x-webkit-airplay="allow"
                 />
                 {/* Face guide overlay */}
                 {isVideoReady && (
