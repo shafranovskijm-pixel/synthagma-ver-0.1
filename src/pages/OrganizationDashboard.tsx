@@ -2541,13 +2541,6 @@ export default function OrganizationDashboard() {
                 </CollapsibleTrigger>
                 <CollapsibleContent className="pl-4 space-y-1 mt-1">
                   <button onClick={() => {
-                    setActiveTab("documents");
-                    setIsMobileSidebarOpen(false);
-                  }} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm transition-colors ${activeTab === "documents" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary"}`}>
-                    <FileCheck className="w-4 h-4" />
-                    Обзор документов
-                  </button>
-                  <button onClick={() => {
                     setActiveTab("documents-orders");
                     setIsMobileSidebarOpen(false);
                   }} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm transition-colors ${activeTab === "documents-orders" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary"}`}>
