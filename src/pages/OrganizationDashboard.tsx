@@ -62,6 +62,7 @@ import { useCompanyActions } from "@/hooks/useCompanyActions";
 import { useStudentCoursesDialog } from "@/hooks/useStudentCoursesDialog";
 import { useStudentManagement } from "@/hooks/useStudentManagement";
 import { useCourseStudentsManager } from "@/hooks/useCourseStudentsManager";
+import { useStudentActions } from "@/hooks/useStudentActions";
 import { Button } from "@/components/ui/button";
 import { GraduationCap, BookOpen, Users, BarChart3, Settings, LogOut, Plus, Upload, FileSpreadsheet, Search, Eye, TrendingUp, Clock, CheckCircle2, XCircle, Loader2, Edit, Trash2, FileText, Download, X, ChevronRight, ChevronDown, Link, Copy, Building2, Save, Send, FileCheck, Receipt, CheckSquare, LayoutGrid, List, Filter, Tag, Palette, History, Moon, Sun, Library, Trophy, MessageCircle, Image, ExternalLink, ShoppingBag, Mail, Key, Menu, AlertCircle, Award, ClipboardList } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -158,23 +159,16 @@ export default function OrganizationDashboard() {
   const [isDocumentsMenuOpen, setIsDocumentsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showImportDialog, setShowImportDialog] = useState(false);
-  const [showAddStudentDialog, setShowAddStudentDialog] = useState(false);
   const [courses, setCourses] = useState<Course[]>([]);
   const [isLoadingCourses, setIsLoadingCourses] = useState(true);
   const [courseFilter, setCourseFilter] = useState<"all" | "published" | "draft">("all");
   const [courseViewMode, setCourseViewMode] = useState<"grid" | "list">("grid");
   const [courseSearchQuery, setCourseSearchQuery] = useState("");
-  const [newStudentName, setNewStudentName] = useState("");
-  const [newStudentEmail, setNewStudentEmail] = useState("");
-  const [selectedCourseId, setSelectedCourseId] = useState<string>("");
   const [students, setStudents] = useState<Student[]>([]);
   const [isLoadingStudents, setIsLoadingStudents] = useState(true);
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [organizationName, setOrganizationName] = useState("Организация");
   const [isFrdoEnabled, setIsFrdoEnabled] = useState(false);
-  const [selectedExistingStudentId, setSelectedExistingStudentId] = useState<string>("");
-  const [isEnrollingExisting, setIsEnrollingExisting] = useState(false);
-  const [noLoginStudent, setNoLoginStudent] = useState(false);
   
   // Organization features access control
   const { features: orgFeatures, loading: loadingFeatures, isEnabled } = useOrgFeatures(organizationId);
@@ -240,19 +234,7 @@ export default function OrganizationDashboard() {
   }[]>([]);
   const [studentCompanyId, setStudentCompanyId] = useState<string>("");
   const [isSavingStudentCompany, setIsSavingStudentCompany] = useState(false);
-  const [isSendingCredentials, setIsSendingCredentials] = useState(false);
-  const [isSendingCredentialsEmail, setIsSendingCredentialsEmail] = useState(false);
-  const [isSendingBulkCredentials, setIsSendingBulkCredentials] = useState(false);
-  const [isCreatingCredentials, setIsCreatingCredentials] = useState(false);
-  const [isDeletingStudent, setIsDeletingStudent] = useState(false);
-  const [isCreatingBulkCredentials, setIsCreatingBulkCredentials] = useState(false);
-  const [isSendingBulkDocReminders, setIsSendingBulkDocReminders] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const [isCreatingStudent, setIsCreatingStudent] = useState(false);
-
-  // Companies state
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [selectedCompanyId, setSelectedCompanyId] = useState<string>("");
 
   // Student selection for bulk actions
   const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
@@ -280,6 +262,32 @@ export default function OrganizationDashboard() {
 
   // All profiles (students without enrollments)
   const [allProfiles, setAllProfiles] = useState<Student[]>([]);
+  
+  // Statistics state
+  const [stats, setStats] = useState({
+    totalStudents: 0,
+    totalCourses: 0,
+    completedCount: 0,
+    averageProgress: 0
+  });
+
+  // Companies state (needed before hooks)
+  const [companies, setCompanies] = useState<Company[]>([]);
+
+  // Student management hook
+  const studentManagement = useStudentManagement({
+    organizationId,
+    courses,
+    students,
+    allProfiles,
+    setStudents,
+    setAllProfiles,
+    setStats,
+    onRefresh: refreshData,
+  });
+
+  // Student actions hook (credentials, delete, etc.)
+  const studentActions = useStudentActions(organizationId, organizationName, refreshData);
 
   // Documents stats
   const [documentsStats, setDocumentsStats] = useState<{
@@ -336,14 +344,6 @@ export default function OrganizationDashboard() {
 
   // Bulk document upload state
   const [showBulkUploadDialog, setShowBulkUploadDialog] = useState(false);
-
-  // Statistics state
-  const [stats, setStats] = useState({
-    totalStudents: 0,
-    totalCourses: 0,
-    completedCount: 0,
-    averageProgress: 0
-  });
 
   // Settings state
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -929,188 +929,10 @@ export default function OrganizationDashboard() {
   const handleLogout = async () => {
     await signOut();
   };
-  const generatePassword = () => {
-    const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    let password = "";
-    for (let i = 0; i < 10; i++) {
-      password += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return password;
-  };
-  const isValidEmail = (email: string): boolean => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email.trim());
-  };
-  const handleCreateStudent = async () => {
-    if (!organizationId || !newStudentName.trim() || !newStudentEmail.trim()) {
-      toast.error("Заполните ФИО и Email");
-      return;
-    }
-    if (!isValidEmail(newStudentEmail)) {
-      toast.error("Введите корректный email адрес");
-      return;
-    }
-    setIsCreatingStudent(true);
-    try {
-      const password = noLoginStudent ? null : generatePassword();
-      const {
-        data,
-        error
-      } = await supabase.functions.invoke("register-student", {
-        body: {
-          token: null,
-          email: newStudentEmail || null,
-          password,
-          full_name: newStudentName,
-          organization_id: organizationId,
-          course_id: selectedCourseId || null,
-          company_id: selectedCompanyId || null,
-          no_login: noLoginStudent
-        }
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+  // Use studentManagement hook for createStudent and enrollExistingStudent
+  const handleCreateStudent = studentManagement.createStudent;
+  const handleEnrollExistingStudent = studentManagement.enrollExistingStudent;
 
-      // Show appropriate message based on response
-      if (data.is_no_login) {
-        toast.success(data.message || "Ученик добавлен");
-      } else if (data.is_existing) {
-        toast.success(data.message || "Ученик зачислен на курс");
-      } else {
-        toast.success(`Ученик создан. Пароль: ${password} (сохраните его!)`);
-      }
-
-      // Add or update student in the list
-      const course = courses.find(c => c.id === selectedCourseId);
-      const newStudent: Student = {
-        id: data.user_id,
-        user_id: data.user_id,
-        enrollment_id: null,
-        name: newStudentName,
-        email: newStudentEmail || "",
-        login: data.login || null,
-        generated_password: data.password || null,
-        course: course?.title || null,
-        course_id: selectedCourseId || null,
-        progress: 0,
-        lastActivity: new Date().toISOString(),
-        status: selectedCourseId ? "active" : null
-      };
-
-      // Check if student is already in the list
-      const existsInList = students.some(s => s.user_id === data.user_id) || allProfiles.some(s => s.user_id === data.user_id);
-      if (data.is_no_login || !data.is_existing) {
-        // New student (with or without login) - add to lists
-        setStudents(prev => [...prev, newStudent]);
-        setAllProfiles(prev => [...prev, newStudent]);
-        setStats(prev => ({
-          ...prev,
-          totalStudents: prev.totalStudents + 1
-        }));
-      } else if (data.enrollment_created && selectedCourseId) {
-        // Existing student enrolled in new course - add enrollment entry
-        setStudents(prev => [...prev, newStudent]);
-      } else if (!existsInList) {
-        // Existing student not in list - add them so they're visible
-        setAllProfiles(prev => [...prev, newStudent]);
-        setStudents(prev => [...prev, newStudent]);
-      }
-
-      // Trigger data refresh to ensure student appears in list
-      setRefreshKey(prev => prev + 1);
-      setShowAddStudentDialog(false);
-      setNewStudentName("");
-      setNewStudentEmail("");
-      setSelectedCourseId("");
-      setSelectedCompanyId("");
-      setNoLoginStudent(false);
-    } catch (error: any) {
-      console.error("Error creating student:", error);
-      toast.error(error.message || "Ошибка создания ученика");
-    } finally {
-      setIsCreatingStudent(false);
-    }
-  };
-  const handleEnrollExistingStudent = async () => {
-    if (!selectedExistingStudentId || !selectedCourseId) {
-      toast.error("Выберите ученика и курс");
-      return;
-    }
-    setIsEnrollingExisting(true);
-    try {
-      // Check if already enrolled
-      const {
-        data: existingEnrollment
-      } = await supabase.from("enrollments").select("id").eq("user_id", selectedExistingStudentId).eq("course_id", selectedCourseId).single();
-      if (existingEnrollment) {
-        toast.error("Ученик уже зачислен на этот курс");
-        return;
-      }
-      const {
-        data: enrollment,
-        error
-      } = await supabase.from("enrollments").insert({
-        user_id: selectedExistingStudentId,
-        course_id: selectedCourseId,
-        status: "active",
-        progress: 0
-      }).select().single();
-      if (error) throw error;
-
-      // Find student info
-      const student = [...students, ...allProfiles].find(s => s.user_id === selectedExistingStudentId);
-      const course = courses.find(c => c.id === selectedCourseId);
-      if (student && course) {
-        const newEnrollment: Student = {
-          id: student.id,
-          user_id: student.user_id,
-          enrollment_id: enrollment.id,
-          name: student.name,
-          email: student.email,
-          login: student.login || null,
-          generated_password: student.generated_password || null,
-          course: course.title,
-          course_id: selectedCourseId,
-          progress: 0,
-          lastActivity: new Date().toISOString(),
-          status: "active"
-        };
-        setStudents(prev => [...prev, newEnrollment]);
-
-        // Generate enrollment order for single student
-        if (organizationId) {
-          const { data: orgData } = await supabase
-            .from("organizations")
-            .select("name, director_name, director_position")
-            .eq("id", organizationId)
-            .single();
-
-          const orderName = await generateEnrollmentOrder({
-            organizationId,
-            organizationName: orgData?.name || organizationName,
-            directorName: orgData?.director_name,
-            directorPosition: orgData?.director_position,
-            studentNames: [student.name],
-            courseName: course.title,
-            orderType: "enrollment",
-          });
-
-          if (orderName) {
-            toast.success(`Приказ о зачислении создан`);
-          }
-        }
-      }
-      toast.success("Ученик зачислен на курс");
-      setShowAddStudentDialog(false);
-      setSelectedExistingStudentId("");
-      setSelectedCourseId("");
-    } catch (error: any) {
-      console.error("Error enrolling student:", error);
-      toast.error(error.message || "Ошибка зачисления");
-    } finally {
-      setIsEnrollingExisting(false);
-    }
-  };
   const handleDeleteStudent = async (enrollmentId: string | null) => {
     if (!enrollmentId) {
       toast.error("Нельзя удалить — нет зачисления");
@@ -1460,320 +1282,44 @@ export default function OrganizationDashboard() {
   };
 
   // Send credentials via email (placeholder - needs email service)
+  // Use studentActions for credentials operations
   const handleSendCredentials = async () => {
     if (!selectedStudent) return;
-    const student = selectedStudent.student;
-    if (!student.login || !student.generated_password) {
-      toast.error("У ученика нет логина для входа");
-      return;
-    }
-    if (!student.email) {
-      toast.error("У ученика не указан email");
-      return;
-    }
-    setIsSendingCredentials(true);
-    try {
-      // For now, just copy to clipboard with a message
-      const text = `Здравствуйте!\n\nВаши данные для входа в систему обучения:\n\nЛогин: ${student.login}\nПароль: ${student.generated_password}\n\nСсылка для входа: ${window.location.origin}/login`;
-      await navigator.clipboard.writeText(text);
-      toast.success("Сообщение с данными скопировано в буфер обмена. Отправьте его ученику вручную.");
-    } catch (error) {
-      console.error("Error:", error);
-      toast.error("Ошибка копирования");
-    } finally {
-      setIsSendingCredentials(false);
-    }
+    await studentActions.sendCredentialsClipboard(selectedStudent.student);
   };
 
-  // Send credentials via email to single student
   const handleSendCredentialsEmail = async () => {
     if (!selectedStudent) return;
-    const student = selectedStudent.student;
-    if (!student.login || !student.generated_password) {
-      toast.error("У ученика нет логина для входа");
-      return;
-    }
-    if (!student.email) {
-      toast.error("У ученика не указан email");
-      return;
-    }
-    setIsSendingCredentialsEmail(true);
-    try {
-      const {
-        data,
-        error
-      } = await supabase.functions.invoke("send-credentials", {
-        body: {
-          email: student.email,
-          name: student.name,
-          login: student.login,
-          password: student.generated_password,
-          loginUrl: `https://wpczgwxsriezaubncuom.lovableproject.com/login`,
-          organizationName: organizationName
-        }
-      });
-      if (error) throw error;
-      toast.success(`Данные для входа отправлены на ${student.email}`);
-    } catch (error) {
-      console.error("Error sending credentials:", error);
-      toast.error("Ошибка отправки email. Проверьте настройки почтового сервиса.");
-    } finally {
-      setIsSendingCredentialsEmail(false);
-    }
+    await studentActions.sendCredentialsEmail(selectedStudent.student);
   };
 
-  // Send credentials via email to multiple students (bulk)
   const handleBulkSendCredentials = async () => {
     if (selectedStudentIds.size === 0) {
       toast.error("Выберите учеников");
       return;
     }
-
-    // Get selected students with credentials
-    const studentsToSend = students.filter(s => selectedStudentIds.has(s.user_id) && s.login && s.generated_password && s.email);
-    if (studentsToSend.length === 0) {
-      toast.error("У выбранных учеников нет данных для отправки (логин, пароль или email)");
-      return;
-    }
-    setIsSendingBulkCredentials(true);
-    let successCount = 0;
-    let errorCount = 0;
-    try {
-      for (const student of studentsToSend) {
-        try {
-          const {
-            error
-          } = await supabase.functions.invoke("send-credentials", {
-            body: {
-              email: student.email,
-              name: student.name,
-              login: student.login!,
-              password: student.generated_password!,
-              loginUrl: `https://wpczgwxsriezaubncuom.lovableproject.com/login`,
-              organizationName: organizationName
-            }
-          });
-          if (error) {
-            errorCount++;
-            console.error(`Error sending to ${student.email}:`, error);
-          } else {
-            successCount++;
-          }
-        } catch (err) {
-          errorCount++;
-          console.error(`Error sending to ${student.email}:`, err);
-        }
-      }
-      if (successCount > 0) {
-        toast.success(`Отправлено: ${successCount} из ${studentsToSend.length}`);
-      }
-      if (errorCount > 0) {
-        toast.error(`Ошибки отправки: ${errorCount}`);
-      }
-    } catch (error) {
-      console.error("Error in bulk send:", error);
-      toast.error("Ошибка массовой отправки");
-    } finally {
-      setIsSendingBulkCredentials(false);
-    }
+    const studentsToSend = students.filter(s => selectedStudentIds.has(s.user_id));
+    await studentActions.bulkSendCredentials(studentsToSend);
   };
 
-  // Send document reminders to all students with missing documents
-  const handleBulkSendDocReminders = async () => {
-    if (!organizationId) return;
-    
-    setIsSendingBulkDocReminders(true);
-    try {
-      // Get all students in organization
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("user_id, full_name, email")
-        .eq("organization_id", organizationId);
-
-      if (!profiles || profiles.length === 0) {
-        toast.info("Нет учеников в организации");
-        setIsSendingBulkDocReminders(false);
-        return;
-      }
-
-      // Get identity documents for all students
-      const { data: allDocs } = await supabase
-        .from("student_identity_documents")
-        .select("user_id, type")
-        .eq("organization_id", organizationId);
-
-      const docsByUser = new Map<string, string[]>();
-      allDocs?.forEach(doc => {
-        const existing = docsByUser.get(doc.user_id) || [];
-        existing.push(doc.type);
-        docsByUser.set(doc.user_id, existing);
-      });
-
-      // Find students with missing documents
-      const studentsWithMissingDocs: { email: string; name: string; missing: string[] }[] = [];
-      
-      for (const profile of profiles) {
-        const userDocs = docsByUser.get(profile.user_id) || [];
-        const missing: string[] = [];
-        
-        const hasPassport = userDocs.some(t => t === "passport" || t === "birth_certificate");
-        const hasSnils = userDocs.includes("snils");
-        const hasEducation = userDocs.some(t => t === "education_document" || t === "diploma" || t === "attestat");
-        
-        if (!hasPassport) missing.push("Паспорт или свидетельство о рождении");
-        if (!hasSnils) missing.push("СНИЛС");
-        if (!hasEducation) missing.push("Документ об образовании");
-        
-        if (missing.length > 0 && profile.email) {
-          studentsWithMissingDocs.push({
-            email: profile.email,
-            name: profile.full_name || "Ученик",
-            missing
-          });
-        }
-      }
-
-      if (studentsWithMissingDocs.length === 0) {
-        toast.success("Все ученики загрузили документы!");
-        setIsSendingBulkDocReminders(false);
-        return;
-      }
-
-      let successCount = 0;
-      let errorCount = 0;
-
-      for (const student of studentsWithMissingDocs) {
-        try {
-          const response = await supabase.functions.invoke("send-documents-reminder", {
-            body: {
-              email: student.email,
-              studentName: student.name,
-              missingDocuments: student.missing,
-              organizationName: organizationName,
-              loginUrl: window.location.origin + "/login",
-            },
-          });
-
-          if (response.error) throw response.error;
-          successCount++;
-        } catch (err) {
-          errorCount++;
-          console.error(`Error sending to ${student.email}:`, err);
-        }
-      }
-
-      if (successCount > 0) {
-        toast.success(`Отправлено напоминаний: ${successCount} из ${studentsWithMissingDocs.length}`);
-      }
-      if (errorCount > 0) {
-        toast.error(`Ошибки отправки: ${errorCount}`);
-      }
-    } catch (error) {
-      console.error("Error in bulk doc reminders:", error);
-      toast.error("Ошибка массовой отправки");
-    } finally {
-      setIsSendingBulkDocReminders(false);
-    }
-  };
+  // Use studentActions hook for bulk operations
+  const handleBulkSendDocReminders = studentActions.bulkSendDocReminders;
 
   const handleCreateStudentCredentials = async () => {
     if (!selectedStudent) return;
-    const student = selectedStudent.student;
-    if (student.login && student.generated_password) {
-      toast.info("У ученика уже есть логин и пароль");
-      return;
-    }
-    setIsCreatingCredentials(true);
-    try {
-      // Generate login from name
-      const nameParts = student.name.toLowerCase().split(/\s+/);
-      let baseLogin = nameParts.length >= 2 ? nameParts[0].replace(/[^a-zа-яё]/gi, '').substring(0, 10) + '_' + nameParts[1].replace(/[^a-zа-яё]/gi, '').substring(0, 2) : nameParts[0].replace(/[^a-zа-яё]/gi, '').substring(0, 12);
-
-      // Transliterate Russian characters
-      const translit: Record<string, string> = {
-        'а': 'a',
-        'б': 'b',
-        'в': 'v',
-        'г': 'g',
-        'д': 'd',
-        'е': 'e',
-        'ё': 'e',
-        'ж': 'zh',
-        'з': 'z',
-        'и': 'i',
-        'й': 'y',
-        'к': 'k',
-        'л': 'l',
-        'м': 'm',
-        'н': 'n',
-        'о': 'o',
-        'п': 'p',
-        'р': 'r',
-        'с': 's',
-        'т': 't',
-        'у': 'u',
-        'ф': 'f',
-        'х': 'h',
-        'ц': 'ts',
-        'ч': 'ch',
-        'ш': 'sh',
-        'щ': 'sch',
-        'ъ': '',
-        'ы': 'y',
-        'ь': '',
-        'э': 'e',
-        'ю': 'yu',
-        'я': 'ya'
-      };
-      baseLogin = baseLogin.split('').map(c => translit[c] || c).join('');
-
-      // Add random suffix to ensure uniqueness
-      const randomSuffix = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-      const login = baseLogin + randomSuffix;
-
-      // Generate password
-      const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-      let password = '';
-      for (let i = 0; i < 8; i++) {
-        password += chars.charAt(Math.floor(Math.random() * chars.length));
-      }
-
-      // Update profile with login and password
-      const {
-        error
-      } = await supabase.from("profiles").update({
-        login,
-        generated_password: password
-      }).eq("user_id", student.user_id);
-      if (error) throw error;
-
+    const result = await studentActions.createCredentials(selectedStudent.student);
+    if (result) {
       // Update local state
-      setSelectedStudent({
-        ...selectedStudent,
-        student: {
-          ...student,
-          login,
-          generated_password: password
-        }
-      });
-
-      // Update students list
-      setStudents(prev => prev.map(s => s.user_id === student.user_id ? {
+      setStudents(prev => prev.map(s => s.user_id === selectedStudent.student.user_id ? {
         ...s,
-        login,
-        generated_password: password
+        login: result.login,
+        generated_password: result.password
       } : s));
-      setAllProfiles(prev => prev.map(s => s.user_id === student.user_id ? {
+      setAllProfiles(prev => prev.map(s => s.user_id === selectedStudent.student.user_id ? {
         ...s,
-        login,
-        generated_password: password
+        login: result.login,
+        generated_password: result.password
       } : s));
-      toast.success(`Логин и пароль созданы! Логин: ${login}, Пароль: ${password}`);
-    } catch (error) {
-      console.error("Error creating credentials:", error);
-      toast.error("Ошибка создания логина и пароля");
-    } finally {
-      setIsCreatingCredentials(false);
     }
   };
 
@@ -1784,33 +1330,15 @@ export default function OrganizationDashboard() {
     if (!confirm(`Вы уверены, что хотите полностью удалить ученика "${student.name}"? Это действие нельзя отменить.`)) {
       return;
     }
-    setIsDeletingStudent(true);
-    try {
-      // Delete all enrollments
-      await supabase.from("enrollments").delete().eq("user_id", student.user_id);
-
-      // Delete profile
-      const {
-        error
-      } = await supabase.from("profiles").delete().eq("user_id", student.user_id);
-      if (error) throw error;
-
-      // Update local state
-      setStudents(prev => prev.filter(s => s.user_id !== student.user_id));
-      setAllProfiles(prev => prev.filter(s => s.user_id !== student.user_id));
-      setStats(prev => ({
-        ...prev,
-        totalStudents: Math.max(0, prev.totalStudents - 1)
-      }));
-      setShowStudentDialog(false);
-      setSelectedStudent(null);
-      toast.success("Ученик удалён");
-    } catch (error) {
-      console.error("Error deleting student:", error);
-      toast.error("Ошибка удаления ученика");
-    } finally {
-      setIsDeletingStudent(false);
-    }
+    await studentActions.deleteStudentCompletely(student.user_id);
+    setStudents(prev => prev.filter(s => s.user_id !== student.user_id));
+    setAllProfiles(prev => prev.filter(s => s.user_id !== student.user_id));
+    setStats(prev => ({
+      ...prev,
+      totalStudents: Math.max(0, prev.totalStudents - 1)
+    }));
+    setShowStudentDialog(false);
+    setSelectedStudent(null);
   };
 
   // Bulk create credentials for selected students without login
@@ -1819,125 +1347,12 @@ export default function OrganizationDashboard() {
       toast.error("Выберите учеников");
       return;
     }
-
-    // Get selected students without credentials
     const studentsToCreate = students.filter(s => selectedStudentIds.has(s.enrollment_id || s.user_id) && !s.login);
     if (studentsToCreate.length === 0) {
       toast.info("У всех выбранных учеников уже есть логин и пароль");
       return;
     }
-    setIsCreatingBulkCredentials(true);
-    let successCount = 0;
-    let errorCount = 0;
-    const createdCredentials: Array<{
-      name: string;
-      login: string;
-      password: string;
-    }> = [];
-
-    // Transliteration map
-    const translit: Record<string, string> = {
-      'а': 'a',
-      'б': 'b',
-      'в': 'v',
-      'г': 'g',
-      'д': 'd',
-      'е': 'e',
-      'ё': 'e',
-      'ж': 'zh',
-      'з': 'z',
-      'и': 'i',
-      'й': 'y',
-      'к': 'k',
-      'л': 'l',
-      'м': 'm',
-      'н': 'n',
-      'о': 'o',
-      'п': 'p',
-      'р': 'r',
-      'с': 's',
-      'т': 't',
-      'у': 'u',
-      'ф': 'f',
-      'х': 'h',
-      'ц': 'ts',
-      'ч': 'ch',
-      'ш': 'sh',
-      'щ': 'sch',
-      'ъ': '',
-      'ы': 'y',
-      'ь': '',
-      'э': 'e',
-      'ю': 'yu',
-      'я': 'ya'
-    };
-    try {
-      for (const student of studentsToCreate) {
-        try {
-          // Generate login from name
-          const nameParts = student.name.toLowerCase().split(/\s+/);
-          let baseLogin = nameParts.length >= 2 ? nameParts[0].replace(/[^a-zа-яё]/gi, '').substring(0, 10) + '_' + nameParts[1].replace(/[^a-zа-яё]/gi, '').substring(0, 2) : nameParts[0].replace(/[^a-zа-яё]/gi, '').substring(0, 12);
-          baseLogin = baseLogin.split('').map(c => translit[c] || c).join('');
-          const randomSuffix = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-          const login = baseLogin + randomSuffix;
-
-          // Generate password
-          const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-          let password = '';
-          for (let i = 0; i < 8; i++) {
-            password += chars.charAt(Math.floor(Math.random() * chars.length));
-          }
-
-          // Update profile
-          const {
-            error
-          } = await supabase.from("profiles").update({
-            login,
-            generated_password: password
-          }).eq("user_id", student.user_id);
-          if (error) throw error;
-          createdCredentials.push({
-            name: student.name,
-            login,
-            password
-          });
-          successCount++;
-        } catch (err) {
-          errorCount++;
-          console.error(`Error creating credentials for ${student.name}:`, err);
-        }
-      }
-
-      // Update local state
-      const credentialsMap = new Map(createdCredentials.map(c => [c.name, c]));
-      setStudents(prev => prev.map(s => {
-        const creds = createdCredentials.find(c => c.name === s.name && !s.login);
-        return creds ? {
-          ...s,
-          login: creds.login,
-          generated_password: creds.password
-        } : s;
-      }));
-      setAllProfiles(prev => prev.map(s => {
-        const creds = createdCredentials.find(c => c.name === s.name && !s.login);
-        return creds ? {
-          ...s,
-          login: creds.login,
-          generated_password: creds.password
-        } : s;
-      }));
-      if (successCount > 0) {
-        toast.success(`Создано логинов: ${successCount} из ${studentsToCreate.length}`);
-      }
-      if (errorCount > 0) {
-        toast.error(`Ошибки: ${errorCount}`);
-      }
-    } catch (error) {
-      console.error("Error in bulk create credentials:", error);
-      toast.error("Ошибка массового создания");
-    } finally {
-      setIsCreatingBulkCredentials(false);
-    }
+    await studentActions.bulkCreateCredentials(studentsToCreate);
   };
 
   // View student details with StudentDetailCard
@@ -2169,7 +1584,7 @@ export default function OrganizationDashboard() {
                     <span className="hidden sm:inline">Импорт учеников</span>
                     <span className="sm:hidden">Импорт</span>
                   </Button>
-                  <Button className="btn-gradient rounded-xl gap-2 text-xs lg:text-sm" onClick={() => setShowAddStudentDialog(true)}>
+                  <Button className="btn-gradient rounded-xl gap-2 text-xs lg:text-sm" onClick={() => studentManagement.setShowAddStudentDialog(true)}>
                     <Plus className="w-4 h-4" />
                     <span className="hidden sm:inline">Добавить ученика</span>
                     <span className="sm:hidden">Добавить</span>
@@ -2240,9 +1655,9 @@ export default function OrganizationDashboard() {
               }}
               onShowUnenrollConfirm={() => setShowUnenrollConfirm(true)}
               onShowBulkFRDOExport={() => setShowBulkFRDOExport(true)}
-              isCreatingBulkCredentials={isCreatingBulkCredentials}
-              isSendingBulkCredentials={isSendingBulkCredentials}
-              isSendingBulkDocReminders={isSendingBulkDocReminders}
+              isCreatingBulkCredentials={studentActions.isCreatingBulkCredentials}
+              isSendingBulkCredentials={studentActions.isSendingBulkCredentials}
+              isSendingBulkDocReminders={studentActions.isSendingBulkDocReminders}
             />
           )}
 
@@ -2404,47 +1819,20 @@ export default function OrganizationDashboard() {
       />
 
       <AddStudentDialog
-        open={showAddStudentDialog}
-        onOpenChange={setShowAddStudentDialog}
+        open={studentManagement.showAddStudentDialog}
+        onOpenChange={studentManagement.setShowAddStudentDialog}
         courses={courses}
         companies={companies}
         onSubmit={async (name, email, courseId, companyId, noLogin) => {
-          // Directly call create student logic with provided values
-          if (!organizationId) return;
-          if (!name.trim()) {
-            toast.error("Введите ФИО");
-            return;
-          }
-          if (!noLogin && !email.trim()) {
-            toast.error("Введите email");
-            return;
-          }
-          
-          setIsCreatingStudent(true);
-          try {
-            const { data, error } = await supabase.functions.invoke('register-student', {
-              body: {
-                organizationId,
-                fullName: name.trim(),
-                email: email.trim() || null,
-                courseId: courseId || null,
-                companyId: companyId || null,
-                noLogin: noLogin
-              }
-            });
-            if (error) throw error;
-            if (data?.error) throw new Error(data.error);
-            toast.success("Ученик успешно добавлен");
-            setShowAddStudentDialog(false);
-            setRefreshKey(prev => prev + 1);
-          } catch (error: any) {
-            console.error("Error creating student:", error);
-            toast.error(error.message || "Ошибка создания ученика");
-          } finally {
-            setIsCreatingStudent(false);
-          }
+          // Set values and call createStudent
+          studentManagement.setNewStudentName(name);
+          studentManagement.setNewStudentEmail(email);
+          studentManagement.setSelectedCourseId(courseId);
+          studentManagement.setSelectedCompanyId(companyId);
+          studentManagement.setNoLoginStudent(noLogin);
+          await studentManagement.createStudent();
         }}
-        isCreating={isCreatingStudent}
+        isCreating={studentManagement.isCreatingStudent}
       />
 
       <EnrollDialog
@@ -2610,13 +1998,13 @@ export default function OrganizationDashboard() {
         onStudentCompanyIdChange={setStudentCompanyId}
         isSavingStudentCompany={isSavingStudentCompany}
         onAttachToCompany={handleAttachStudentToCompany}
-        isCreatingCredentials={isCreatingCredentials}
+        isCreatingCredentials={studentActions.isCreatingCredentials}
         onCreateCredentials={handleCreateStudentCredentials}
-        isSendingCredentials={isSendingCredentials}
+        isSendingCredentials={studentActions.isSendingCredentials}
         onSendCredentials={handleSendCredentials}
-        isSendingCredentialsEmail={isSendingCredentialsEmail}
+        isSendingCredentialsEmail={studentActions.isSendingCredentialsEmail}
         onSendCredentialsEmail={handleSendCredentialsEmail}
-        isDeletingStudent={isDeletingStudent}
+        isDeletingStudent={studentActions.isDeletingStudent}
         onDeleteStudent={handleDeleteStudentCompletely}
         onCopyCredentials={handleCopyCredentials}
       />
