@@ -412,6 +412,7 @@ export function useCompaniesManager(organizationId: string) {
     
     // Refresh
     refreshCompanies: fetchCompanies,
+    fetchGlobalDocStats,
   };
 }
 

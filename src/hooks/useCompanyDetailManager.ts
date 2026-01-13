@@ -208,3 +208,5 @@ export function useCompanyDetailManager(organizationId: string) {
     setIsLoadingPreview,
   };
 }
+
+export type { CompanyDocument, LinkStudent } from "./useCompaniesManager";
