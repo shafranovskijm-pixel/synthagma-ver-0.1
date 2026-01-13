@@ -2,23 +2,28 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { 
   Search, Filter, Tag, Plus, LayoutGrid, List, Loader2, 
-  BookOpen, Users, Edit, Eye 
+  BookOpen, Users, Edit, Eye, Trash2 
 } from "lucide-react";
 import { useCourses } from "@/hooks/useCourses";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import type { Course, CourseCategory, CourseFilter, CourseViewMode } from "@/types";
 
 interface CoursesTabProps {
   organizationId: string;
   onCourseClick?: (course: Course) => void;
   onOpenCourseDetails?: (course: Course) => void;
+  onCoursesDeleted?: () => void;
 }
 
-export function CoursesTab({ organizationId, onCourseClick, onOpenCourseDetails }: CoursesTabProps) {
+export function CoursesTab({ organizationId, onCourseClick, onOpenCourseDetails, onCoursesDeleted }: CoursesTabProps) {
   const navigate = useNavigate();
   
   const {
@@ -35,6 +40,7 @@ export function CoursesTab({ organizationId, onCourseClick, onOpenCourseDetails 
     setViewMode,
     filteredCourses,
     createCat,
+    refresh,
   } = useCourses(organizationId);
 
   // Category dialog state
@@ -42,6 +48,11 @@ export function CoursesTab({ organizationId, onCourseClick, onOpenCourseDetails 
   const [newCategoryName, setNewCategoryName] = useState("");
   const [newCategoryColor, setNewCategoryColor] = useState("#6366f1");
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+
+  // Bulk selection state
+  const [selectedCourseIds, setSelectedCourseIds] = useState<Set<string>>(new Set());
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+  const [isDeletingCourses, setIsDeletingCourses] = useState(false);
 
   const getCategoryById = (categoryId: string | null | undefined): CourseCategory | undefined => {
     if (!categoryId) return undefined;
@@ -63,6 +74,60 @@ export function CoursesTab({ organizationId, onCourseClick, onOpenCourseDetails 
       onOpenCourseDetails(course);
     } else if (onCourseClick) {
       onCourseClick(course);
+    }
+  };
+
+  const toggleCourseSelection = (courseId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedCourseIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(courseId)) {
+        newSet.delete(courseId);
+      } else {
+        newSet.add(courseId);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleAllCourses = () => {
+    if (selectedCourseIds.size === filteredCourses.length) {
+      setSelectedCourseIds(new Set());
+    } else {
+      setSelectedCourseIds(new Set(filteredCourses.map(c => c.id)));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedCourseIds.size === 0) return;
+    
+    setIsDeletingCourses(true);
+    try {
+      const courseIds = Array.from(selectedCourseIds);
+      
+      // Delete enrollments
+      await supabase.from("enrollments").delete().in("course_id", courseIds);
+      
+      // Delete lessons
+      await supabase.from("lessons").delete().in("course_id", courseIds);
+      
+      // Delete course documents
+      await supabase.from("course_documents").delete().in("course_id", courseIds);
+      
+      // Delete courses
+      const { error } = await supabase.from("courses").delete().in("id", courseIds);
+      if (error) throw error;
+      
+      toast.success(`Удалено курсов: ${courseIds.length}`);
+      setSelectedCourseIds(new Set());
+      setShowBulkDeleteConfirm(false);
+      refresh();
+      onCoursesDeleted?.();
+    } catch (error) {
+      console.error("Error deleting courses:", error);
+      toast.error("Ошибка удаления курсов");
+    } finally {
+      setIsDeletingCourses(false);
     }
   };
 
@@ -143,6 +208,34 @@ export function CoursesTab({ organizationId, onCourseClick, onOpenCourseDetails 
         </div>
       </div>
 
+      {/* Bulk Actions Bar */}
+      {selectedCourseIds.size > 0 && (
+        <div className="bg-primary/10 border border-primary/20 rounded-xl p-3 lg:p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium">
+              Выбрано: {selectedCourseIds.size}
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs"
+              onClick={() => setSelectedCourseIds(new Set())}
+            >
+              Снять выделение
+            </Button>
+          </div>
+          <Button
+            variant="destructive"
+            size="sm"
+            className="rounded-xl gap-2"
+            onClick={() => setShowBulkDeleteConfirm(true)}
+          >
+            <Trash2 className="w-4 h-4" />
+            Удалить выбранные
+          </Button>
+        </div>
+      )}
+
       {/* Course List */}
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
@@ -158,9 +251,21 @@ export function CoursesTab({ organizationId, onCourseClick, onOpenCourseDetails 
           {filteredCourses.map(course => (
             <div 
               key={course.id} 
-              className="bg-card rounded-2xl border border-border overflow-hidden hover:shadow-lg transition-shadow cursor-pointer" 
+              className={`bg-card rounded-2xl border overflow-hidden hover:shadow-lg transition-shadow cursor-pointer relative ${
+                selectedCourseIds.has(course.id) ? 'border-primary ring-2 ring-primary/20' : 'border-border'
+              }`}
               onClick={() => handleCourseClick(course)}
             >
+              {/* Selection Checkbox */}
+              <div 
+                className="absolute top-3 left-3 z-10"
+                onClick={e => toggleCourseSelection(course.id, e)}
+              >
+                <Checkbox 
+                  checked={selectedCourseIds.has(course.id)}
+                  className="bg-background/80 backdrop-blur-sm"
+                />
+              </div>
               <div className="h-32 bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
                 <BookOpen className="w-12 h-12 text-primary/50" />
               </div>
@@ -203,6 +308,12 @@ export function CoursesTab({ organizationId, onCourseClick, onOpenCourseDetails 
           <table className="w-full">
             <thead>
               <tr className="border-b border-border">
+                <th className="w-12 px-4 py-4">
+                  <Checkbox 
+                    checked={selectedCourseIds.size === filteredCourses.length && filteredCourses.length > 0}
+                    onCheckedChange={toggleAllCourses}
+                  />
+                </th>
                 <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Курс</th>
                 <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Категория</th>
                 <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Статус</th>
@@ -215,9 +326,17 @@ export function CoursesTab({ organizationId, onCourseClick, onOpenCourseDetails 
               {filteredCourses.map(course => (
                 <tr 
                   key={course.id} 
-                  className="border-b border-border last:border-0 hover:bg-secondary/50 transition-colors cursor-pointer" 
+                  className={`border-b border-border last:border-0 hover:bg-secondary/50 transition-colors cursor-pointer ${
+                    selectedCourseIds.has(course.id) ? 'bg-primary/5' : ''
+                  }`}
                   onClick={() => handleCourseClick(course)}
                 >
+                  <td className="px-4 py-4" onClick={e => e.stopPropagation()}>
+                    <Checkbox 
+                      checked={selectedCourseIds.has(course.id)}
+                      onCheckedChange={() => toggleCourseSelection(course.id, { stopPropagation: () => {} } as React.MouseEvent)}
+                    />
+                  </td>
                   <td className="px-6 py-4">
                     <div>
                       <div className="font-medium">{course.title}</div>
@@ -340,6 +459,42 @@ export function CoursesTab({ organizationId, onCourseClick, onOpenCourseDetails 
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Bulk Delete Confirmation */}
+      <AlertDialog open={showBulkDeleteConfirm} onOpenChange={setShowBulkDeleteConfirm}>
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить выбранные курсы?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Вы уверены, что хотите удалить {selectedCourseIds.size} курс(ов)?
+              Будут также удалены все уроки, материалы и записи о зачислении учеников.
+              Это действие нельзя отменить.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-xl" disabled={isDeletingCourses}>
+              Отмена
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={handleBulkDelete}
+              disabled={isDeletingCourses}
+            >
+              {isDeletingCourses ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Удаление...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Удалить {selectedCourseIds.size} курс(ов)
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
