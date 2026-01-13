@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +15,7 @@ import {
   CheckCircle2,
   FileText,
   AlertCircle,
+  ChevronDown,
 } from "lucide-react";
 
 interface StudentDocumentsUploadProps {
@@ -74,6 +75,60 @@ export function StudentDocumentsUpload({
   const [uploadingType, setUploadingType] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedDocType, setSelectedDocType] = useState<string | null>(null);
+  
+  // Swipe to close
+  const swipeRef = useRef<HTMLDivElement>(null);
+  const touchStartY = useRef<number | null>(null);
+  const touchCurrentY = useRef<number | null>(null);
+  const [swipeOffset, setSwipeOffset] = useState(0);
+  
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    // Only track swipe from the top area (header)
+    const touch = e.touches[0];
+    const target = e.target as HTMLElement;
+    const isScrollableContent = target.closest('[data-scrollable]');
+    
+    // Don't start swipe if scrolling inside content
+    if (isScrollableContent) {
+      const scrollEl = isScrollableContent as HTMLElement;
+      if (scrollEl.scrollTop > 0) return;
+    }
+    
+    touchStartY.current = touch.clientY;
+    touchCurrentY.current = touch.clientY;
+  }, []);
+  
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (touchStartY.current === null) return;
+    
+    const touch = e.touches[0];
+    touchCurrentY.current = touch.clientY;
+    
+    const delta = touch.clientY - touchStartY.current;
+    
+    // Only allow downward swipe
+    if (delta > 0) {
+      setSwipeOffset(Math.min(delta * 0.5, 150));
+    }
+  }, []);
+  
+  const handleTouchEnd = useCallback(() => {
+    if (touchStartY.current === null || touchCurrentY.current === null) {
+      setSwipeOffset(0);
+      return;
+    }
+    
+    const delta = touchCurrentY.current - touchStartY.current;
+    
+    // If swiped down more than 80px, close the dialog
+    if (delta > 80) {
+      onOpenChange(false);
+    }
+    
+    setSwipeOffset(0);
+    touchStartY.current = null;
+    touchCurrentY.current = null;
+  }, [onOpenChange]);
 
   useEffect(() => {
     if (isOpen) {
@@ -193,7 +248,22 @@ export function StudentDocumentsUpload({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl rounded-2xl">
+      <DialogContent 
+        className="max-w-2xl rounded-2xl"
+        style={{ 
+          transform: swipeOffset > 0 ? `translateY(${swipeOffset}px)` : undefined,
+          opacity: swipeOffset > 0 ? 1 - (swipeOffset / 300) : 1,
+          transition: swipeOffset === 0 ? 'transform 0.2s ease-out, opacity 0.2s ease-out' : 'none'
+        }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        {/* Swipe indicator */}
+        <div className="flex justify-center pt-1 pb-2 md:hidden">
+          <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
+        </div>
+        
         <DialogHeader>
           <DialogTitle className="font-display flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -242,7 +312,7 @@ export function StudentDocumentsUpload({
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
         ) : (
-          <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+          <div className="space-y-3 max-h-[60vh] overflow-y-auto" data-scrollable>
             {DOCUMENT_TYPES.map((docType) => {
               const existingDoc = getDocumentByType(docType.id);
               const isUploading = uploadingType === docType.id;
