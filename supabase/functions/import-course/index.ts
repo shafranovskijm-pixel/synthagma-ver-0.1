@@ -165,21 +165,61 @@ async function parseDocxLight(buffer: ArrayBuffer): Promise<string> {
 
     let html = '';
     
-    // Simple regex-based extraction for speed
-    const textParts: string[] = [];
-    const textRegex = /<w:t[^>]*>([^<]*)<\/w:t>/g;
-    let match;
-    while ((match = textRegex.exec(docXml)) !== null) {
-      textParts.push(match[1]);
+    // Parse each paragraph (<w:p>) separately to preserve structure
+    const paragraphRegex = /<w:p[^>]*>([\s\S]*?)<\/w:p>/g;
+    let paragraphMatch;
+    
+    while ((paragraphMatch = paragraphRegex.exec(docXml)) !== null) {
+      const paragraphContent = paragraphMatch[1];
+      
+      // Check if this is a heading (based on pStyle)
+      const styleMatch = paragraphContent.match(/<w:pStyle\s+w:val="([^"]+)"/);
+      const styleName = styleMatch?.[1] || '';
+      const isHeading = /heading|заголовок|title/i.test(styleName);
+      const headingLevel = styleName.match(/(\d)/)?.[1] || '2';
+      
+      // Check for bold text (indicates possible sub-heading)
+      const hasBold = /<w:b(?:\s|\/|>)/.test(paragraphContent) && !/<w:b\s+w:val="(false|0)"/.test(paragraphContent);
+      
+      // Extract all text runs from this paragraph
+      const textParts: string[] = [];
+      const textRegex = /<w:t[^>]*>([^<]*)<\/w:t>/g;
+      let textMatch;
+      while ((textMatch = textRegex.exec(paragraphContent)) !== null) {
+        textParts.push(textMatch[1]);
+      }
+      
+      const paragraphText = textParts.join('').trim();
+      
+      if (paragraphText) {
+        // Escape HTML entities
+        const escapedText = paragraphText
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;');
+        
+        if (isHeading) {
+          html += `<h${headingLevel}>${escapedText}</h${headingLevel}>\n`;
+        } else if (hasBold && paragraphText.length < 150 && !paragraphText.includes('.')) {
+          // Short bold text without periods - likely a sub-heading
+          html += `<h3>${escapedText}</h3>\n`;
+        } else {
+          html += `<p>${escapedText}</p>\n`;
+        }
+      }
     }
     
-    // Join all text and split by paragraph markers
-    const fullText = textParts.join('');
-    const paragraphs = fullText.split(/(?:\r\n|\r|\n)+/).filter(p => p.trim());
-    
-    for (const para of paragraphs) {
-      if (para.trim()) {
-        html += `<p>${para.trim()}</p>\n`;
+    // If no paragraphs found, try simple extraction as fallback
+    if (!html.trim()) {
+      const textParts: string[] = [];
+      const textRegex = /<w:t[^>]*>([^<]*)<\/w:t>/g;
+      let match;
+      while ((match = textRegex.exec(docXml)) !== null) {
+        textParts.push(match[1]);
+      }
+      const fullText = textParts.join(' ').trim();
+      if (fullText) {
+        html = `<p>${fullText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>`;
       }
     }
 
