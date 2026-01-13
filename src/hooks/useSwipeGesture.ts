@@ -21,24 +21,27 @@ export function useSwipeGesture<T extends HTMLElement = HTMLElement>(
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
   const touchEndX = useRef<number | null>(null);
+  const touchEndY = useRef<number | null>(null);
 
   const handleTouchStart = useCallback((e: TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
     touchEndX.current = null;
+    touchEndY.current = null;
   }, []);
 
   const handleTouchMove = useCallback((e: TouchEvent) => {
     touchEndX.current = e.touches[0].clientX;
+    touchEndY.current = e.touches[0].clientY;
   }, []);
 
   const handleTouchEnd = useCallback(() => {
-    if (touchStartX.current === null || touchEndX.current === null || touchStartY.current === null) {
+    if (touchStartX.current === null || touchEndX.current === null || touchStartY.current === null || touchEndY.current === null) {
       return;
     }
 
     const deltaX = touchEndX.current - touchStartX.current;
-    const deltaY = Math.abs(touchEndX.current - touchStartX.current);
+    const deltaY = Math.abs(touchEndY.current - touchStartY.current);
     
     // Only trigger swipe if horizontal movement is significant and greater than vertical
     if (Math.abs(deltaX) > minSwipeDistance && Math.abs(deltaX) > deltaY * 0.5) {
@@ -53,6 +56,7 @@ export function useSwipeGesture<T extends HTMLElement = HTMLElement>(
     touchStartX.current = null;
     touchStartY.current = null;
     touchEndX.current = null;
+    touchEndY.current = null;
   }, [onSwipeLeft, onSwipeRight, threshold, minSwipeDistance]);
 
   useEffect(() => {
