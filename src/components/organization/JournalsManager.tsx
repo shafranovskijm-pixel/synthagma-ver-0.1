@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -6,6 +6,16 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   ClipboardList,
   CheckCircle2,
@@ -27,7 +37,10 @@ import {
   Plus,
   Edit,
   BarChart3,
+  Trash2,
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { JournalEditor } from "./JournalEditor";
 import { AutoAttendanceJournal } from "./AutoAttendanceJournal";
 import { AutoGradesJournal } from "./AutoGradesJournal";
@@ -150,6 +163,72 @@ export function JournalsManager({ organizationId }: JournalsManagerProps) {
   const [showAutoFinalAttestation, setShowAutoFinalAttestation] = useState(false);
   const [showAutoDocumentRegistration, setShowAutoDocumentRegistration] = useState(false);
   const [showCopiesDuplicates, setShowCopiesDuplicates] = useState(false);
+  
+  // Delete dialog state
+  const [deletingJournal, setDeletingJournal] = useState<{
+    type: string;
+    title: string;
+  } | null>(null);
+  const [journalCounts, setJournalCounts] = useState<Record<string, number>>({});
+
+  // Fetch journal counts for each type
+  useEffect(() => {
+    const fetchJournalCounts = async () => {
+      try {
+        const { data } = await supabase
+          .from("journal_instances")
+          .select("journal_type")
+          .eq("organization_id", organizationId);
+        
+        if (data) {
+          const counts: Record<string, number> = {};
+          data.forEach((j) => {
+            counts[j.journal_type] = (counts[j.journal_type] || 0) + 1;
+          });
+          setJournalCounts(counts);
+        }
+      } catch (error) {
+        console.error("Error fetching journal counts:", error);
+      }
+    };
+
+    fetchJournalCounts();
+  }, [organizationId]);
+
+  // Delete all journals of a type
+  const handleDeleteJournals = async () => {
+    if (!deletingJournal) return;
+
+    try {
+      // For copies_duplicates, clear localStorage
+      if (deletingJournal.type === "copies_duplicates") {
+        localStorage.removeItem(`copies_duplicates_${organizationId}`);
+        toast.success("Журнал очищен");
+        setDeletingJournal(null);
+        return;
+      }
+
+      // Delete from database
+      const { error } = await supabase
+        .from("journal_instances")
+        .delete()
+        .eq("organization_id", organizationId)
+        .eq("journal_type", deletingJournal.type);
+
+      if (error) throw error;
+
+      setJournalCounts((prev) => ({
+        ...prev,
+        [deletingJournal.type]: 0,
+      }));
+      
+      toast.success("Все журналы удалены");
+      setDeletingJournal(null);
+    } catch (error) {
+      console.error("Error deleting journals:", error);
+      toast.error("Ошибка при удалении");
+    }
+  };
 
   const toggleCategory = (categoryId: string) => {
     setExpandedCategories((prev) =>
@@ -472,6 +551,18 @@ export function JournalsManager({ organizationId }: JournalsManagerProps) {
                             <Download className="w-4 h-4 mr-2" />
                             Шаблон
                           </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="rounded-lg text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => setDeletingJournal({
+                              type: journal.id,
+                              title: journal.title,
+                            })}
+                            title="Удалить журнал"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         </div>
                       </div>
                     ))}
@@ -482,6 +573,32 @@ export function JournalsManager({ organizationId }: JournalsManagerProps) {
           );
         })}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deletingJournal} onOpenChange={() => setDeletingJournal(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить журнал?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Вы уверены, что хотите удалить все данные журнала{" "}
+              <strong>"{deletingJournal?.title}"</strong>?{" "}
+              {journalCounts[deletingJournal?.type || ""] > 0 && (
+                <>Будет удалено журналов: {journalCounts[deletingJournal?.type || ""]}. </>
+              )}
+              Это действие нельзя отменить.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteJournals}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              Удалить
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
