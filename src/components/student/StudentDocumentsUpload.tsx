@@ -249,20 +249,25 @@ export function StudentDocumentsUpload({
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent 
-        className="max-w-2xl rounded-2xl"
+        className="max-w-2xl rounded-2xl overflow-hidden"
         style={{ 
           transform: swipeOffset > 0 ? `translateY(${swipeOffset}px)` : undefined,
           opacity: swipeOffset > 0 ? 1 - (swipeOffset / 300) : 1,
           transition: swipeOffset === 0 ? 'transform 0.2s ease-out, opacity 0.2s ease-out' : 'none'
         }}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
       >
-        {/* Swipe indicator */}
-        <div className="flex justify-center pt-1 pb-2 md:hidden">
-          <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
-        </div>
+        {/* Swipe area wrapper */}
+        <div 
+          ref={swipeRef}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          className="contents"
+        >
+          {/* Swipe indicator */}
+          <div className="flex justify-center pt-1 pb-2 md:hidden touch-none">
+            <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
+          </div>
         
         <DialogHeader>
           <DialogTitle className="font-display flex items-center gap-3">
@@ -408,6 +413,7 @@ export function StudentDocumentsUpload({
             качественные сканы или фотографии документов. Принимаются форматы:
             PDF, JPG, PNG. Максимальный размер файла: 10 МБ.
           </div>
+        </div>
         </div>
       </DialogContent>
     </Dialog>

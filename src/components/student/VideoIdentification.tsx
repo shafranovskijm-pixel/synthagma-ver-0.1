@@ -92,60 +92,84 @@ export function VideoIdentification({
     setIsVideoReady(false);
     setStep("camera");
     
+    // Small delay to ensure video element is mounted
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
     try {
-      // Check if getUserMedia is supported
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      // Check if getUserMedia is supported - handle Yandex browser legacy API
+      const mediaDevices = navigator.mediaDevices;
+      const getUserMedia = mediaDevices?.getUserMedia?.bind(mediaDevices) || 
+        // @ts-ignore - legacy API fallback
+        (navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia);
+      
+      if (!getUserMedia && !mediaDevices) {
         throw new Error("NotSupportedError");
       }
 
-      // Try simple constraints first for better mobile compatibility
       let mediaStream: MediaStream;
       
-      try {
-        // First try with specific constraints
-        mediaStream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: "user",
-            width: { ideal: 640 },
-            height: { ideal: 480 },
-          },
-          audio: false,
-        });
-      } catch (constraintError) {
-        console.warn("Specific constraints failed, trying simple:", constraintError);
-        // Fallback to simple video: true
-        mediaStream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: false,
-        });
+      // Try multiple constraint configurations for maximum compatibility
+      const constraintSets = [
+        // Simple constraint - most compatible
+        { video: true, audio: false },
+        // With facing mode
+        { video: { facingMode: "user" }, audio: false },
+        // With resolution
+        { video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } }, audio: false },
+      ];
+      
+      let lastError: any = null;
+      
+      for (const constraints of constraintSets) {
+        try {
+          if (mediaDevices?.getUserMedia) {
+            mediaStream = await mediaDevices.getUserMedia(constraints);
+          } else {
+            // Legacy API
+            mediaStream = await new Promise<MediaStream>((resolve, reject) => {
+              getUserMedia.call(navigator, constraints, resolve, reject);
+            });
+          }
+          console.log("Camera access granted with constraints:", constraints);
+          break;
+        } catch (err) {
+          console.warn("Constraints failed:", constraints, err);
+          lastError = err;
+        }
       }
       
-      console.log("Camera access granted, tracks:", mediaStream.getVideoTracks().length);
+      // @ts-ignore - check if mediaStream was set
+      if (!mediaStream) {
+        throw lastError || new Error("Failed to get camera stream");
+      }
+      
+      console.log("Camera stream obtained, tracks:", mediaStream.getVideoTracks().length);
       setStream(mediaStream);
       setIsCapturing(true);
-      // Keep isCameraLoading true until video is ready
       
     } catch (error: any) {
       console.error("Camera error:", error);
       setStep("intro");
       setIsCameraLoading(false);
       
-      if (error.message === "NotSupportedError") {
-        setCameraError("Ваш браузер не поддерживает доступ к камере. Попробуйте использовать Chrome или Safari.");
-      } else if (error.name === "NotAllowedError" || error.name === "PermissionDeniedError") {
-        setCameraError("Доступ к камере запрещен. Разрешите доступ к камере в настройках браузера.");
-      } else if (error.name === "NotFoundError" || error.name === "DevicesNotFoundError") {
+      const errorName = error?.name || error?.message || "";
+      
+      if (errorName.includes("NotSupported") || error.message === "NotSupportedError") {
+        setCameraError("Ваш браузер не поддерживает доступ к камере. Попробуйте использовать Яндекс Браузер, Chrome или Safari последней версии.");
+      } else if (errorName.includes("NotAllowed") || errorName.includes("PermissionDenied")) {
+        setCameraError("Доступ к камере запрещен. Разрешите доступ к камере в настройках браузера и обновите страницу.");
+      } else if (errorName.includes("NotFound") || errorName.includes("DevicesNotFound")) {
         setCameraError("Камера не найдена на устройстве.");
-      } else if (error.name === "NotReadableError" || error.name === "TrackStartError") {
-        setCameraError("Камера занята другим приложением.");
-      } else if (error.name === "OverconstrainedError") {
-        setCameraError("Камера не поддерживает требуемые параметры.");
-      } else if (error.name === "SecurityError") {
-        setCameraError("Доступ к камере заблокирован. Используйте HTTPS.");
-      } else if (error.name === "AbortError") {
+      } else if (errorName.includes("NotReadable") || errorName.includes("TrackStart")) {
+        setCameraError("Камера занята другим приложением. Закройте другие приложения и попробуйте снова.");
+      } else if (errorName.includes("Overconstrained")) {
+        setCameraError("Камера не поддерживает требуемые параметры. Попробуйте снова.");
+      } else if (errorName.includes("Security")) {
+        setCameraError("Доступ к камере заблокирован. Используйте HTTPS или разрешите доступ в настройках сайта.");
+      } else if (errorName.includes("Abort")) {
         setCameraError("Запрос камеры был прерван. Попробуйте снова.");
       } else {
-        setCameraError(`Ошибка камеры: ${error.message || error.name || "неизвестная ошибка"}`);
+        setCameraError(`Ошибка камеры: ${error.message || errorName || "неизвестная ошибка"}. Проверьте разрешения камеры в настройках браузера.`);
       }
     }
   };
@@ -517,9 +541,13 @@ export function VideoIdentification({
                   autoPlay
                   playsInline
                   muted
-                  webkit-playsinline="true"
+                  controls={false}
                   className="w-full h-full object-cover"
                   style={{ transform: "scaleX(-1)" }}
+                  // @ts-ignore - for iOS/Safari compatibility
+                  webkit-playsinline="true"
+                  // @ts-ignore - for older browsers
+                  x-webkit-airplay="allow"
                 />
                 {/* Face guide overlay */}
                 {isVideoReady && (
