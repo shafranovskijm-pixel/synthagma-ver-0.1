@@ -98,7 +98,13 @@ export function useCourses(organizationId: string | null): UseCoursesReturn {
       }
 
       // Category filter
-      if (categoryFilter !== "all" && course.category_id !== categoryFilter) return false;
+      if (categoryFilter !== "all") {
+        if (categoryFilter === "none") {
+          if (course.category_id) return false;
+        } else if (course.category_id !== categoryFilter) {
+          return false;
+        }
+      }
 
       return true;
     });
