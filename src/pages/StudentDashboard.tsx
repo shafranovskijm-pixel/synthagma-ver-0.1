@@ -342,7 +342,7 @@ export default function StudentDashboard() {
           .select("status")
           .eq("user_id", user.id)
           .eq("organization_id", profileData.organization_id)
-          .eq("status", "approved")
+          .in("status", ["approved", "verified"])
           .maybeSingle();
 
         setIsVideoIdentified(!!videoId);
@@ -653,8 +653,13 @@ export default function StudentDashboard() {
         <VideoIdentification
           userId={user.id}
           userName={profile?.full_name || "Ученик"}
+          organizationId={profile?.organization_id}
           isOpen={showVideoIdentification}
           onOpenChange={setShowVideoIdentification}
+          onVerified={() => {
+            setIsVideoIdentified(true);
+            setShowVideoIdentification(false);
+          }}
         />
       )}
 
