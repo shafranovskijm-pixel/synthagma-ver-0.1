@@ -2537,8 +2537,8 @@ export default function OrganizationDashboard() {
 
         <div className="p-4 lg:p-8 overflow-hidden">
           <AnimatedTabContent tabKey={activeTab} direction={swipeDirection} isMobile={isMobile}>
-          {/* Stats cards - hidden for organizations, services, settings, students, and frdo tabs */}
-          {activeTab !== "organizations" && activeTab !== "services" && activeTab !== "settings" && activeTab !== "students" && activeTab !== "frdo" && (
+          {/* Stats cards - hidden for organizations, services, settings, students, library, and frdo tabs */}
+          {activeTab !== "organizations" && activeTab !== "services" && activeTab !== "settings" && activeTab !== "students" && activeTab !== "frdo" && activeTab !== "library" && (
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-6 mb-6 lg:mb-8">
               <div className="bg-card rounded-xl lg:rounded-2xl p-4 lg:p-6 border border-border">
                 <div className="flex items-center gap-3 lg:gap-4">
