@@ -4,7 +4,7 @@ import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Mail, Lock, User, Building, Phone, Loader2 } from "lucide-react";
+import { ArrowLeft, Mail, Lock, User, Building, Phone, Loader2, Search, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,13 +15,69 @@ const RegisterOrganization = () => {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [inn, setInn] = useState("");
+  const [kpp, setKpp] = useState("");
+  const [ogrn, setOgrn] = useState("");
+  const [address, setAddress] = useState("");
+  const [directorName, setDirectorName] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingInn, setIsLoadingInn] = useState(false);
+  const [innLoaded, setInnLoaded] = useState(false);
   
   const { user, loading, refreshUserRole } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  const loadCompanyByInn = async () => {
+    if (!inn || inn.length < 10) {
+      toast({
+        title: "Ошибка",
+        description: "Введите корректный ИНН (10 или 12 цифр)",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoadingInn(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('dadata-company', {
+        body: { inn }
+      });
+
+      if (error) throw error;
+
+      if (data?.success && data?.company) {
+        const company = data.company;
+        setOrgName(company.shortName || company.name || "");
+        setKpp(company.kpp || "");
+        setOgrn(company.ogrn || "");
+        setAddress(company.address || "");
+        setDirectorName(company.management || "");
+        setInnLoaded(true);
+        
+        toast({
+          title: "Данные загружены",
+          description: `Найдена компания: ${company.shortName || company.name}`,
+        });
+      } else {
+        toast({
+          title: "Компания не найдена",
+          description: "Проверьте правильность ИНН",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      console.error("Error loading company:", error);
+      toast({
+        title: "Ошибка загрузки",
+        description: error.message || "Не удалось загрузить данные компании",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingInn(false);
+    }
+  };
 
   useEffect(() => {
     if (user && !loading) {
@@ -69,7 +125,11 @@ const RegisterOrganization = () => {
           p_email: email,
           p_phone: phone || null,
           p_inn: inn || null,
-          p_contact_name: contactName
+          p_contact_name: contactName,
+          p_kpp: kpp || null,
+          p_ogrn: ogrn || null,
+          p_legal_address: address || null,
+          p_director_name: directorName || null
         });
 
       if (orgError) throw orgError;
@@ -220,32 +280,107 @@ const RegisterOrganization = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="phone">Телефон</Label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                  <Input 
-                    id="phone" 
-                    type="tel" 
-                    placeholder="+7 (999) 123-45-67" 
-                    className="pl-10 h-12 rounded-xl"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    disabled={isLoading}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="inn">ИНН</Label>
+            {/* INN with search button */}
+            <div className="space-y-2">
+              <Label htmlFor="inn">ИНН (для автозаполнения)</Label>
+              <div className="flex gap-2">
                 <Input 
                   id="inn" 
                   type="text" 
                   placeholder="1234567890" 
-                  className="h-12 rounded-xl"
+                  className="h-12 rounded-xl flex-1"
                   value={inn}
-                  onChange={(e) => setInn(e.target.value)}
+                  onChange={(e) => {
+                    setInn(e.target.value.replace(/\D/g, '').slice(0, 12));
+                    setInnLoaded(false);
+                  }}
+                  disabled={isLoading || isLoadingInn}
+                />
+                <Button 
+                  type="button"
+                  variant={innLoaded ? "default" : "outline"}
+                  className="h-12 rounded-xl px-4"
+                  onClick={loadCompanyByInn}
+                  disabled={isLoading || isLoadingInn || inn.length < 10}
+                >
+                  {isLoadingInn ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : innLoaded ? (
+                    <CheckCircle2 className="w-4 h-4" />
+                  ) : (
+                    <Search className="w-4 h-4" />
+                  )}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Введите ИНН и нажмите поиск для автозаполнения данных
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="kpp">КПП</Label>
+                <Input 
+                  id="kpp" 
+                  type="text" 
+                  placeholder="123456789" 
+                  className="h-12 rounded-xl"
+                  value={kpp}
+                  onChange={(e) => setKpp(e.target.value.replace(/\D/g, '').slice(0, 9))}
+                  disabled={isLoading}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="ogrn">ОГРН</Label>
+                <Input 
+                  id="ogrn" 
+                  type="text" 
+                  placeholder="1234567890123" 
+                  className="h-12 rounded-xl"
+                  value={ogrn}
+                  onChange={(e) => setOgrn(e.target.value.replace(/\D/g, '').slice(0, 15))}
+                  disabled={isLoading}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="address">Юридический адрес</Label>
+              <Input 
+                id="address" 
+                type="text" 
+                placeholder="г. Москва, ул. Примерная, д. 1" 
+                className="h-12 rounded-xl"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                disabled={isLoading}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="directorName">Руководитель</Label>
+              <Input 
+                id="directorName" 
+                type="text" 
+                placeholder="Иванов Иван Иванович" 
+                className="h-12 rounded-xl"
+                value={directorName}
+                onChange={(e) => setDirectorName(e.target.value)}
+                disabled={isLoading}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="phone">Телефон</Label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <Input 
+                  id="phone" 
+                  type="tel" 
+                  placeholder="+7 (999) 123-45-67" 
+                  className="pl-10 h-12 rounded-xl"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
                   disabled={isLoading}
                 />
               </div>
