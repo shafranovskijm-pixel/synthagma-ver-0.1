@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import type { Student, StudentFRDOStatus, StudentStatusFilter, StudentDocsFilter } from "@/types";
 import { 
   fetchStudents,
   fetchFRDOStatus,
   createStudent,
   enrollStudent,
-  unenrollStudent,
+  unenrollStudent as apiUnenrollStudent,
   bulkEnrollStudents,
   bulkUnenrollStudents,
   updateStudentCompany,
@@ -28,12 +28,15 @@ interface UseStudentsReturn {
     companyId?: string;
     noLogin?: boolean;
   }) => Promise<boolean>;
-  enrollToCoourse: (userId: string, courseId: string) => Promise<boolean>;
+  enrollToCourse: (userId: string, courseId: string) => Promise<boolean>;
   unenrollFromCourse: (enrollmentId: string) => Promise<boolean>;
   bulkEnroll: (courseId: string) => Promise<{ success: number; failed: number }>;
   bulkUnenroll: () => Promise<{ success: number; failed: number }>;
   updateCompany: (userId: string, companyId: string | null) => Promise<boolean>;
   removeStudent: (userId: string) => Promise<boolean>;
+  toggleSelection: (uniqueId: string) => void;
+  toggleSelectAll: (filteredList: Student[]) => void;
+  getSelectedUserIds: () => string[];
   refresh: () => void;
   // Filtering
   statusFilter: StudentStatusFilter;
@@ -65,6 +68,9 @@ export function useStudents(
   const [docsFilter, setDocsFilter] = useState<StudentDocsFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Memoize courseIds join to prevent infinite loops
+  const courseIdsKey = useMemo(() => courseIds.join(","), [courseIds]);
+
   // Load students
   useEffect(() => {
     const load = async () => {
@@ -84,8 +90,10 @@ export function useStudents(
 
         // Fetch FRDO status
         const userIds = [...new Set(studentsData.map(s => s.user_id))];
-        const status = await fetchFRDOStatus(organizationId, userIds);
-        setFrdoStatus(status);
+        if (userIds.length > 0) {
+          const status = await fetchFRDOStatus(organizationId, userIds);
+          setFrdoStatus(status);
+        }
       } catch (error) {
         console.error("Error loading students:", error);
       } finally {
@@ -94,46 +102,88 @@ export function useStudents(
     };
 
     load();
-  }, [organizationId, courseIds.join(","), refreshKey]);
+  }, [organizationId, courseIdsKey, refreshKey]);
 
   // Filtered students
-  const filteredStudents = students.filter(student => {
-    // Search filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      const matchesSearch = 
-        student.name.toLowerCase().includes(query) ||
-        student.email.toLowerCase().includes(query) ||
-        (student.login && student.login.toLowerCase().includes(query));
-      if (!matchesSearch) return false;
+  const filteredStudents = useMemo(() => {
+    return students.filter(student => {
+      // Search filter
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const matchesSearch = 
+          student.name.toLowerCase().includes(query) ||
+          student.email.toLowerCase().includes(query) ||
+          (student.login && student.login.toLowerCase().includes(query));
+        if (!matchesSearch) return false;
+      }
+
+      // Status filter
+      if (statusFilter !== "all") {
+        if (statusFilter === "not_enrolled" && student.enrollment_id) return false;
+        if (statusFilter === "active" && student.status !== "active") return false;
+        if (statusFilter === "completed" && student.status !== "completed") return false;
+      }
+
+      // Course filter
+      if (courseFilter !== "all" && student.course_id !== courseFilter) return false;
+
+      // Documents filter
+      if (docsFilter !== "all") {
+        const userDocs = studentDocsByUser.get(student.user_id) || [];
+        const hasPassport = userDocs.some(t => t === "passport" || t === "birth_certificate");
+        const hasSnils = userDocs.includes("snils");
+        const hasEducation = userDocs.some(t => t === "education_document" || t === "diploma" || t === "attestat");
+        
+        if (docsFilter === "complete" && !(hasPassport && hasSnils && hasEducation)) return false;
+        if (docsFilter === "incomplete" && (hasPassport && hasSnils && hasEducation)) return false;
+        if (docsFilter === "no_passport" && hasPassport) return false;
+        if (docsFilter === "no_snils" && hasSnils) return false;
+        if (docsFilter === "no_education" && hasEducation) return false;
+      }
+
+      return true;
+    });
+  }, [students, searchQuery, statusFilter, courseFilter, docsFilter, studentDocsByUser]);
+
+  // Selection helpers
+  const toggleSelection = useCallback((uniqueId: string) => {
+    setSelectedStudentIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(uniqueId)) {
+        newSet.delete(uniqueId);
+      } else {
+        newSet.add(uniqueId);
+      }
+      return newSet;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback((filteredList: Student[]) => {
+    const filteredIds = filteredList.map(s => s.enrollment_id || s.user_id);
+    setSelectedStudentIds(prev => {
+      const allSelected = filteredIds.every(id => prev.has(id)) && filteredIds.length > 0;
+      if (allSelected) {
+        const newSet = new Set(prev);
+        filteredIds.forEach(id => newSet.delete(id));
+        return newSet;
+      } else {
+        const newSet = new Set(prev);
+        filteredIds.forEach(id => newSet.add(id));
+        return newSet;
+      }
+    });
+  }, []);
+
+  const getSelectedUserIds = useCallback((): string[] => {
+    const userIds = new Set<string>();
+    for (const student of students) {
+      const uniqueId = student.enrollment_id || student.user_id;
+      if (selectedStudentIds.has(uniqueId)) {
+        userIds.add(student.user_id);
+      }
     }
-
-    // Status filter
-    if (statusFilter !== "all") {
-      if (statusFilter === "not_enrolled" && student.enrollment_id) return false;
-      if (statusFilter === "active" && student.status !== "active") return false;
-      if (statusFilter === "completed" && student.status !== "completed") return false;
-    }
-
-    // Course filter
-    if (courseFilter !== "all" && student.course_id !== courseFilter) return false;
-
-    // Documents filter
-    if (docsFilter !== "all") {
-      const userDocs = studentDocsByUser.get(student.user_id) || [];
-      const hasPassport = userDocs.some(t => t === "passport" || t === "birth_certificate");
-      const hasSnils = userDocs.includes("snils");
-      const hasEducation = userDocs.some(t => t === "education_document" || t === "diploma" || t === "attestat");
-      
-      if (docsFilter === "complete" && !(hasPassport && hasSnils && hasEducation)) return false;
-      if (docsFilter === "incomplete" && (hasPassport && hasSnils && hasEducation)) return false;
-      if (docsFilter === "no_passport" && hasPassport) return false;
-      if (docsFilter === "no_snils" && hasSnils) return false;
-      if (docsFilter === "no_education" && hasEducation) return false;
-    }
-
-    return true;
-  });
+    return Array.from(userIds);
+  }, [students, selectedStudentIds]);
 
   const createNewStudent = useCallback(async (params: {
     name: string;
@@ -176,7 +226,7 @@ export function useStudents(
     return true;
   }, [organizationId]);
 
-  const enrollToCoourse = useCallback(async (userId: string, courseId: string): Promise<boolean> => {
+  const enrollToCourse = useCallback(async (userId: string, courseId: string): Promise<boolean> => {
     const result = await enrollStudent(userId, courseId);
     if (!result.success) {
       toast.error(result.error || "Ошибка зачисления");
@@ -188,7 +238,7 @@ export function useStudents(
   }, []);
 
   const unenrollFromCourse = useCallback(async (enrollmentId: string): Promise<boolean> => {
-    const success = await unenrollStudent(enrollmentId);
+    const success = await apiUnenrollStudent(enrollmentId);
     if (!success) {
       toast.error("Ошибка отчисления");
       return false;
@@ -199,11 +249,7 @@ export function useStudents(
   }, []);
 
   const bulkEnroll = useCallback(async (courseId: string): Promise<{ success: number; failed: number }> => {
-    const userIds = Array.from(selectedStudentIds).map(id => {
-      const student = students.find(s => s.id === id || s.user_id === id);
-      return student?.user_id;
-    }).filter(Boolean) as string[];
-
+    const userIds = getSelectedUserIds();
     const result = await bulkEnrollStudents(userIds, courseId);
     
     if (result.success > 0) {
@@ -216,11 +262,11 @@ export function useStudents(
     setSelectedStudentIds(new Set());
     setRefreshKey(prev => prev + 1);
     return result;
-  }, [selectedStudentIds, students]);
+  }, [getSelectedUserIds]);
 
   const bulkUnenroll = useCallback(async (): Promise<{ success: number; failed: number }> => {
     const enrollmentIds = Array.from(selectedStudentIds).map(id => {
-      const student = students.find(s => s.id === id || s.user_id === id);
+      const student = students.find(s => s.enrollment_id === id);
       return student?.enrollment_id;
     }).filter(Boolean) as string[];
 
@@ -272,12 +318,15 @@ export function useStudents(
     selectedStudentIds,
     setSelectedStudentIds,
     createNewStudent,
-    enrollToCoourse,
+    enrollToCourse,
     unenrollFromCourse,
     bulkEnroll,
     bulkUnenroll,
     updateCompany,
     removeStudent,
+    toggleSelection,
+    toggleSelectAll,
+    getSelectedUserIds,
     refresh,
     statusFilter,
     setStatusFilter,
