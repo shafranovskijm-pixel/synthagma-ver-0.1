@@ -35,7 +35,10 @@ import {
   CheckCircle2,
   AlertCircle,
   FolderOpen,
+  Sparkles,
+  CheckCircle,
 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Progress } from "@/components/ui/progress";
@@ -235,6 +238,12 @@ export function OrgDocumentsManager({ organizationId }: OrgDocumentsManagerProps
   const [uploadDocType, setUploadDocType] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
+  // Auto-generation service dialog state
+  const [showAutoGenDialog, setShowAutoGenDialog] = useState(false);
+  const [autoGenNotes, setAutoGenNotes] = useState("");
+  const [isSubmittingAutoGen, setIsSubmittingAutoGen] = useState(false);
+  const [showAutoGenSuccessDialog, setShowAutoGenSuccessDialog] = useState(false);
+
   useEffect(() => {
     fetchDocuments();
   }, [organizationId]);
@@ -360,6 +369,34 @@ export function OrgDocumentsManager({ organizationId }: OrgDocumentsManagerProps
     setUploadDocType(docType);
     setSelectedFile(null);
     setShowUploadDialog(true);
+  };
+
+  const handleSubmitAutoGenOrder = async () => {
+    setIsSubmittingAutoGen(true);
+    try {
+      const { error } = await supabase
+        .from('service_orders')
+        .insert({
+          organization_id: organizationId,
+          service_id: 'self_examination_report_auto',
+          service_title: 'Автоформирование отчёта о результатах самообследования',
+          service_price: '3 500 ₽',
+          notes: autoGenNotes || null,
+          status: 'pending'
+        });
+
+      if (error) throw error;
+
+      setShowAutoGenDialog(false);
+      setAutoGenNotes("");
+      setShowAutoGenSuccessDialog(true);
+      toast.success('Заявка на автоформирование отправлена!');
+    } catch (error: any) {
+      console.error('Error submitting auto-gen order:', error);
+      toast.error('Ошибка при отправке заявки');
+    } finally {
+      setIsSubmittingAutoGen(false);
+    }
   };
 
   const getDocumentForType = (docType: string) => {
@@ -618,6 +655,19 @@ export function OrgDocumentsManager({ organizationId }: OrgDocumentsManagerProps
                                   </Button>
                                 </>
                               )}
+                              {/* Кнопка заказа автоформирования для отчёта самообследования */}
+                              {docItem.type === 'self_examination_report' && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setShowAutoGenDialog(true)}
+                                  className="rounded-lg border-primary/50 text-primary hover:bg-primary/10"
+                                  title="Заказать автоформирование отчёта"
+                                >
+                                  <Sparkles className="w-4 h-4 mr-2" />
+                                  Сформировать за 3 500 ₽
+                                </Button>
+                              )}
                               <Button
                                 variant={hasFile ? (annualStatus?.needsUpdate ? "default" : "outline") : "default"}
                                 size="sm"
@@ -811,6 +861,92 @@ export function OrgDocumentsManager({ organizationId }: OrgDocumentsManagerProps
                   Загрузить
                 </>
               )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Auto-generation Order Dialog */}
+      <Dialog open={showAutoGenDialog} onOpenChange={setShowAutoGenDialog}>
+        <DialogContent className="rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-display flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-primary" />
+              Автоформирование отчёта
+            </DialogTitle>
+            <DialogDescription>
+              Закажите автоматическое формирование отчёта о результатах самообследования
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="bg-gradient-to-r from-primary/10 to-accent/10 rounded-xl p-4 border border-primary/20">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-muted-foreground">Услуга:</span>
+                <span className="font-medium">Отчёт о результатах самообследования</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Стоимость:</span>
+                <span className="font-bold text-primary text-xl">3 500 ₽</span>
+              </div>
+            </div>
+            <div className="bg-secondary/50 rounded-xl p-4 text-sm space-y-2">
+              <h4 className="font-medium flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-green-500" />
+                Что входит в услугу:
+              </h4>
+              <ul className="text-muted-foreground space-y-1 ml-6">
+                <li>• Анализ данных организации</li>
+                <li>• Формирование отчёта по требованиям 273-ФЗ</li>
+                <li>• Оформление в соответствии со стандартами</li>
+                <li>• Готовый документ в формате PDF и DOCX</li>
+              </ul>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Комментарий к заявке (необязательно)</label>
+              <Textarea
+                placeholder="Опишите ваши пожелания или уточнения..."
+                value={autoGenNotes}
+                onChange={(e) => setAutoGenNotes(e.target.value)}
+                className="rounded-xl min-h-[80px]"
+              />
+            </div>
+            <Button
+              className="w-full btn-gradient rounded-xl"
+              onClick={handleSubmitAutoGenOrder}
+              disabled={isSubmittingAutoGen}
+            >
+              {isSubmittingAutoGen ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Отправка...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Заказать за 3 500 ₽
+                </>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Auto-generation Success Dialog */}
+      <Dialog open={showAutoGenSuccessDialog} onOpenChange={setShowAutoGenSuccessDialog}>
+        <DialogContent className="rounded-2xl text-center">
+          <div className="py-6">
+            <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center mx-auto mb-4">
+              <CheckCircle className="w-8 h-8 text-green-500" />
+            </div>
+            <DialogTitle className="font-display text-xl mb-2">Заявка отправлена!</DialogTitle>
+            <DialogDescription className="text-base">
+              Мы получили вашу заявку на формирование отчёта о результатах самообследования и свяжемся с вами в ближайшее время.
+            </DialogDescription>
+            <Button
+              className="mt-6 btn-gradient rounded-xl"
+              onClick={() => setShowAutoGenSuccessDialog(false)}
+            >
+              Отлично
             </Button>
           </div>
         </DialogContent>
