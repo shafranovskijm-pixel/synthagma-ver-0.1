@@ -960,6 +960,9 @@ export default function CourseBuilder() {
   };
 
   const saveCourse = async () => {
+    // Защита от двойного вызова
+    if (isSaving) return;
+    
     if (!courseTitle.trim()) {
       toast.error("Введите название курса");
       return;
