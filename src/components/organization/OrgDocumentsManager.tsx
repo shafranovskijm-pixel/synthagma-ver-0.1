@@ -126,6 +126,17 @@ const REGULAR_CATEGORIES = [
       { type: "doc_forms_approval", label: "Приказ об утверждении форм документов об образовании", required: true },
     ],
   },
+  {
+    id: "annual_reports",
+    title: "Отчёты",
+    shortTitle: "Отчёты",
+    icon: FileText,
+    color: "text-pink-500",
+    bgColor: "bg-pink-500/10",
+    documents: [
+      { type: "self_examination_report", label: "Отчёт о результатах самообследования", required: true, annual: true },
+    ],
+  },
 ];
 
 // Специальные категории с отдельным интерфейсом (в аккордеоне слева)
@@ -417,8 +428,8 @@ export function OrgDocumentsManager({ organizationId }: OrgDocumentsManagerProps
             />
           </div>
 
-          {/* Regular Categories Grid */}
-          <div className="grid gap-4">
+          {/* Regular Categories Accordion */}
+          <Accordion type="multiple" className="space-y-4">
             {REGULAR_CATEGORIES.map((category) => {
               const CategoryIcon = category.icon;
               const categoryDocs = category.documents;
@@ -436,124 +447,196 @@ export function OrgDocumentsManager({ organizationId }: OrgDocumentsManagerProps
 
               if (searchQuery && filteredDocs.length === 0) return null;
 
+              // Check for annual report reminder
+              const annualDocs = categoryDocs.filter((d: any) => d.annual);
+              const annualReminders = annualDocs.map((d: any) => {
+                const uploadedDoc = getDocumentForType(d.type);
+                if (!uploadedDoc) return { type: d.type, label: d.label, needsUpdate: true, daysSince: null };
+                const lastUpdate = new Date(uploadedDoc.updated_at);
+                const now = new Date();
+                const daysSince = Math.floor((now.getTime() - lastUpdate.getTime()) / (1000 * 60 * 60 * 24));
+                const needsUpdate = daysSince >= 365;
+                return { type: d.type, label: d.label, needsUpdate, daysSince };
+              });
+              const hasAnnualReminder = annualReminders.some(r => r.needsUpdate);
+
               return (
-                <div key={category.id} className="bg-card rounded-2xl border border-border overflow-hidden">
-                  <div className="flex items-center justify-between p-4 border-b border-border">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-lg ${category.bgColor} flex items-center justify-center`}>
-                        <CategoryIcon className={`w-5 h-5 ${category.color}`} />
+                <AccordionItem 
+                  key={category.id} 
+                  value={category.id}
+                  className="bg-card rounded-2xl border border-border overflow-hidden"
+                >
+                  <AccordionTrigger className="px-4 py-3 hover:no-underline [&[data-state=open]>svg]:rotate-180">
+                    <div className="flex items-center justify-between w-full pr-2">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-lg ${category.bgColor} flex items-center justify-center`}>
+                          <CategoryIcon className={`w-5 h-5 ${category.color}`} />
+                        </div>
+                        <div className="text-left">
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold">{category.title}</h3>
+                            {hasAnnualReminder && (
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 flex items-center gap-1">
+                                <AlertCircle className="w-3 h-3" />
+                                Требуется обновление
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            {uploadedCount} из {categoryDocs.length} загружено
+                            {requiredCount > 0 && (
+                              <span className="ml-2">(обязательных: {uploadedRequiredCount}/{requiredCount})</span>
+                            )}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="font-semibold">{category.title}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          {uploadedCount} из {categoryDocs.length} загружено
-                          {requiredCount > 0 && (
-                            <span className="ml-2">(обязательных: {uploadedRequiredCount}/{requiredCount})</span>
-                          )}
-                        </p>
+                      <div className="flex items-center gap-2">
+                        {uploadedRequiredCount === requiredCount && requiredCount > 0 && (
+                          <CheckCircle2 className="w-5 h-5 text-green-500" />
+                        )}
                       </div>
                     </div>
-                    {uploadedRequiredCount === requiredCount && requiredCount > 0 && (
-                      <CheckCircle2 className="w-5 h-5 text-green-500" />
-                    )}
-                  </div>
-                  <div className="divide-y divide-border">
-                    {(searchQuery ? filteredDocs : categoryDocs).map((docItem) => {
-                      const uploadedDoc = getDocumentForType(docItem.type);
-                      const hasFile = !!uploadedDoc?.file_url;
+                  </AccordionTrigger>
+                  <AccordionContent className="px-0 pb-0">
+                    <div className="divide-y divide-border border-t border-border">
+                      {(searchQuery ? filteredDocs : categoryDocs).map((docItem: any) => {
+                        const uploadedDoc = getDocumentForType(docItem.type);
+                        const hasFile = !!uploadedDoc?.file_url;
+                        
+                        // Check if this is an annual document that needs update
+                        const isAnnual = docItem.annual;
+                        let annualStatus: { needsUpdate: boolean; daysSince: number | null; daysUntil: number | null } | null = null;
+                        if (isAnnual && uploadedDoc) {
+                          const lastUpdate = new Date(uploadedDoc.updated_at);
+                          const now = new Date();
+                          const daysSince = Math.floor((now.getTime() - lastUpdate.getTime()) / (1000 * 60 * 60 * 24));
+                          const daysUntil = 365 - daysSince;
+                          annualStatus = { 
+                            needsUpdate: daysSince >= 365, 
+                            daysSince,
+                            daysUntil: daysUntil > 0 ? daysUntil : 0
+                          };
+                        }
 
-                      return (
-                        <div
-                          key={docItem.type}
-                          className="flex items-center justify-between p-4 hover:bg-secondary/30 transition-colors"
-                        >
-                          <div className="flex items-center gap-3 flex-1 min-w-0">
-                            <div
-                              className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                                hasFile
-                                  ? "bg-green-500/10"
-                                  : docItem.required
-                                  ? "bg-destructive/10"
-                                  : "bg-secondary"
-                              }`}
-                            >
-                              {hasFile ? (
-                                <CheckCircle2 className="w-4 h-4 text-green-500" />
-                              ) : docItem.required ? (
-                                <AlertCircle className="w-4 h-4 text-destructive" />
-                              ) : (
-                                <FileText className="w-4 h-4 text-muted-foreground" />
-                              )}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium truncate">{docItem.label}</span>
-                                {docItem.required && (
-                                  <span className="text-xs px-1.5 py-0.5 rounded bg-destructive/10 text-destructive flex-shrink-0">
-                                    Обязательный
-                                  </span>
+                        return (
+                          <div
+                            key={docItem.type}
+                            className="flex items-center justify-between p-4 hover:bg-secondary/30 transition-colors"
+                          >
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                              <div
+                                className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                                  hasFile
+                                    ? annualStatus?.needsUpdate 
+                                      ? "bg-amber-500/10"
+                                      : "bg-green-500/10"
+                                    : docItem.required
+                                    ? "bg-destructive/10"
+                                    : "bg-secondary"
+                                }`}
+                              >
+                                {hasFile ? (
+                                  annualStatus?.needsUpdate ? (
+                                    <AlertCircle className="w-4 h-4 text-amber-500" />
+                                  ) : (
+                                    <CheckCircle2 className="w-4 h-4 text-green-500" />
+                                  )
+                                ) : docItem.required ? (
+                                  <AlertCircle className="w-4 h-4 text-destructive" />
+                                ) : (
+                                  <FileText className="w-4 h-4 text-muted-foreground" />
                                 )}
                               </div>
-                              {uploadedDoc && (
-                                <div className="text-xs text-muted-foreground mt-0.5">
-                                  Загружен {format(new Date(uploadedDoc.updated_at), "d MMMM yyyy", { locale: ru })}
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-medium truncate">{docItem.label}</span>
+                                  {docItem.required && (
+                                    <span className="text-xs px-1.5 py-0.5 rounded bg-destructive/10 text-destructive flex-shrink-0">
+                                      Обязательный
+                                    </span>
+                                  )}
+                                  {isAnnual && (
+                                    <span className="text-xs px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 flex-shrink-0">
+                                      Ежегодный
+                                    </span>
+                                  )}
                                 </div>
+                                {uploadedDoc && (
+                                  <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-2 flex-wrap">
+                                    <span>Загружен {format(new Date(uploadedDoc.updated_at), "d MMMM yyyy", { locale: ru })}</span>
+                                    {annualStatus && !annualStatus.needsUpdate && annualStatus.daysUntil !== null && (
+                                      <span className="text-blue-600">
+                                        (до обновления: {annualStatus.daysUntil} дн.)
+                                      </span>
+                                    )}
+                                    {annualStatus?.needsUpdate && (
+                                      <span className="text-amber-600 font-medium">
+                                        ⚠️ Требуется обновление (прошло {annualStatus.daysSince} дн.)
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                                {isAnnual && !uploadedDoc && (
+                                  <div className="text-xs text-amber-600 mt-0.5">
+                                    ⚠️ Отчёт не загружен — необходимо загрузить ежегодно
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 flex-shrink-0 ml-4">
+                              {hasFile && uploadedDoc && (
+                                <>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => window.open(uploadedDoc.file_url!, "_blank")}
+                                    title="Просмотр"
+                                  >
+                                    <Eye className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => {
+                                      const link = document.createElement("a");
+                                      link.href = uploadedDoc.file_url!;
+                                      link.download = docItem.label;
+                                      link.click();
+                                    }}
+                                    title="Скачать"
+                                  >
+                                    <Download className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleDelete(uploadedDoc.id)}
+                                    className="text-destructive hover:text-destructive"
+                                    title="Удалить"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </>
                               )}
+                              <Button
+                                variant={hasFile ? (annualStatus?.needsUpdate ? "default" : "outline") : "default"}
+                                size="sm"
+                                onClick={() => openUploadDialog(docItem.type)}
+                                className={cn("rounded-lg", annualStatus?.needsUpdate && "bg-amber-500 hover:bg-amber-600")}
+                              >
+                                <Upload className="w-4 h-4 mr-2" />
+                                {annualStatus?.needsUpdate ? "Обновить" : hasFile ? "Заменить" : "Загрузить"}
+                              </Button>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2 flex-shrink-0 ml-4">
-                            {hasFile && uploadedDoc && (
-                              <>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => window.open(uploadedDoc.file_url!, "_blank")}
-                                  title="Просмотр"
-                                >
-                                  <Eye className="w-4 h-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => {
-                                    const link = document.createElement("a");
-                                    link.href = uploadedDoc.file_url!;
-                                    link.download = docItem.label;
-                                    link.click();
-                                  }}
-                                  title="Скачать"
-                                >
-                                  <Download className="w-4 h-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleDelete(uploadedDoc.id)}
-                                  className="text-destructive hover:text-destructive"
-                                  title="Удалить"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </>
-                            )}
-                            <Button
-                              variant={hasFile ? "outline" : "default"}
-                              size="sm"
-                              onClick={() => openUploadDialog(docItem.type)}
-                              className="rounded-lg"
-                            >
-                              <Upload className="w-4 h-4 mr-2" />
-                              {hasFile ? "Заменить" : "Загрузить"}
-                            </Button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                        );
+                      })}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
               );
             })}
-          </div>
+          </Accordion>
         </div>
       );
     }
