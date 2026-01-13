@@ -57,6 +57,7 @@ import { generateEnrollmentOrder } from "@/utils/generateEnrollmentOrder";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrgFeatures } from "@/hooks/useOrgFeatures";
 import { useOrganizationData } from "@/hooks/useOrganizationData";
+import { useRegistrationLinks } from "@/hooks/useRegistrationLinks";
 import { Button } from "@/components/ui/button";
 import { GraduationCap, BookOpen, Users, BarChart3, Settings, LogOut, Plus, Upload, FileSpreadsheet, Search, Eye, TrendingUp, Clock, CheckCircle2, XCircle, Loader2, Edit, Trash2, FileText, Download, X, ChevronRight, ChevronDown, Link, Copy, Building2, Save, Send, FileCheck, Receipt, CheckSquare, LayoutGrid, List, Filter, Tag, Palette, History, Moon, Sun, Library, Trophy, MessageCircle, Image, ExternalLink, ShoppingBag, Mail, Key, Menu, AlertCircle, Award, ClipboardList } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -174,6 +175,18 @@ export default function OrganizationDashboard() {
   // Organization features access control
   const { features: orgFeatures, loading: loadingFeatures, isEnabled } = useOrgFeatures(organizationId);
 
+  // Registration links hook
+  const {
+    showCreateLinkDialog,
+    setShowCreateLinkDialog,
+    newLinkCompanyName,
+    setNewLinkCompanyName,
+    newLinkInn,
+    setNewLinkInn,
+    isCreatingLink,
+    createLink: handleCreateRegistrationLink,
+  } = useRegistrationLinks(organizationId);
+
   // Admin view mode
   const [isAdminView, setIsAdminView] = useState(false);
   const [adminViewOrgId, setAdminViewOrgId] = useState<string | null>(null);
@@ -244,10 +257,6 @@ export default function OrganizationDashboard() {
   const [isCreatingBulkCredentials, setIsCreatingBulkCredentials] = useState(false);
   const [isSendingBulkDocReminders, setIsSendingBulkDocReminders] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const [showCreateLinkDialog, setShowCreateLinkDialog] = useState(false);
-  const [newLinkCompanyName, setNewLinkCompanyName] = useState("");
-  const [newLinkInn, setNewLinkInn] = useState("");
-  const [isCreatingLink, setIsCreatingLink] = useState(false);
   const [isCreatingStudent, setIsCreatingStudent] = useState(false);
 
   // Companies state
@@ -973,35 +982,6 @@ export default function OrganizationDashboard() {
   }, [showCourseDetailsModal, selectedCourseForDetails?.id]);
   const handleLogout = async () => {
     await signOut();
-  };
-  const generateToken = () => {
-    return Math.random().toString(36).substring(2) + Date.now().toString(36);
-  };
-  const handleCreateRegistrationLink = async () => {
-    if (!organizationId) return;
-    setIsCreatingLink(true);
-    try {
-      const token = generateToken();
-      const {
-        error
-      } = await supabase.from("registration_links").insert({
-        organization_id: organizationId,
-        token,
-        name: newLinkCompanyName || null,
-        inn: newLinkInn || null
-      });
-      if (error) throw error;
-      setShowCreateLinkDialog(false);
-      setNewLinkCompanyName("");
-      setNewLinkInn("");
-      toast.success("Ссылка для регистрации создана");
-      // LinksTab will refetch on mount
-    } catch (error) {
-      console.error("Error creating link:", error);
-      toast.error("Ошибка создания ссылки");
-    } finally {
-      setIsCreatingLink(false);
-    }
   };
   const generatePassword = () => {
     const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
