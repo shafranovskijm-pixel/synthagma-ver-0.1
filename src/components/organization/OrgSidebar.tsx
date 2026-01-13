@@ -1,10 +1,8 @@
 import { 
-  GraduationCap, BookOpen, Users, BarChart3, Settings, LogOut, 
+  BookOpen, Users, BarChart3, Settings, LogOut, 
   Link, Library, FileText, FileSpreadsheet, ShoppingBag, 
-  ChevronRight, ChevronDown, Building2, ClipboardList, 
-  Award, FileCheck
+  Building2, ClipboardList
 } from "lucide-react";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import type { MenuSettings } from "@/types";
 
@@ -33,8 +31,6 @@ interface OrgSidebarProps {
   isFrdoEnabled: boolean;
   menuSettings: MenuSettings;
   isEnabled: (feature: string) => boolean;
-  isDocumentsMenuOpen: boolean;
-  setIsDocumentsMenuOpen: (open: boolean) => void;
   isMobileSidebarOpen: boolean;
   setIsMobileSidebarOpen: (open: boolean) => void;
   onLogout: () => void;
@@ -47,8 +43,6 @@ export function OrgSidebar({
   isFrdoEnabled,
   menuSettings,
   isEnabled,
-  isDocumentsMenuOpen,
-  setIsDocumentsMenuOpen,
   isMobileSidebarOpen,
   setIsMobileSidebarOpen,
   onLogout
@@ -65,12 +59,6 @@ export function OrgSidebar({
       : activeTab === tab;
     return `w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
       isActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary"
-    }`;
-  };
-
-  const subTabButtonClass = (tab: TabType) => {
-    return `w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm transition-colors ${
-      activeTab === tab ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary"
     }`;
   };
 
@@ -142,48 +130,12 @@ export function OrgSidebar({
             </button>
           )}
           
-          {/* Documents with submenu */}
+          {/* Documents */}
           {menuSettings.showDocuments && isEnabled("documents") && (
-            <Collapsible open={isDocumentsMenuOpen} onOpenChange={setIsDocumentsMenuOpen}>
-              <CollapsibleTrigger asChild>
-                <button 
-                  onClick={() => handleTabClick("documents")}
-                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl font-medium transition-colors ${
-                    activeTab.startsWith("documents") ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary"
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <FileText className="w-5 h-5" />
-                    Документы
-                  </div>
-                  {isDocumentsMenuOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                </button>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="pl-4 space-y-1 mt-1">
-                {isEnabled("docs_orders") && (
-                  <button onClick={() => handleTabClick("documents-orders")} className={subTabButtonClass("documents-orders")}>
-                    <Users className="w-4 h-4" />
-                    Приказы зач./отч.
-                  </button>
-                )}
-                <button onClick={() => handleTabClick("documents-protocols")} className={subTabButtonClass("documents-protocols")}>
-                  <ClipboardList className="w-4 h-4" />
-                  Протоколы АК
-                </button>
-                <button onClick={() => handleTabClick("documents-certificates")} className={subTabButtonClass("documents-certificates")}>
-                  <Award className="w-4 h-4" />
-                  Удостоверения
-                </button>
-                <button onClick={() => handleTabClick("documents-diplomas")} className={subTabButtonClass("documents-diplomas")}>
-                  <GraduationCap className="w-4 h-4" />
-                  Дипломы
-                </button>
-                <button onClick={() => handleTabClick("documents-testimonials")} className={subTabButtonClass("documents-testimonials")}>
-                  <FileCheck className="w-4 h-4" />
-                  Свидетельства
-                </button>
-              </CollapsibleContent>
-            </Collapsible>
+            <button onClick={() => handleTabClick("documents")} className={tabButtonClass("documents")}>
+              <FileText className="w-5 h-5" />
+              Документы
+            </button>
           )}
           
           {/* Journals */}

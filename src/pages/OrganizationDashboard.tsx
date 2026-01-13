@@ -36,7 +36,7 @@ export default function OrganizationDashboard() {
   const { signOut, user } = useAuth();
   const isMobile = useIsMobile();
   
-  const [isDocumentsMenuOpen, setIsDocumentsMenuOpen] = useState(false);
+  
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [showBulkUploadDialog, setShowBulkUploadDialog] = useState(false);
@@ -199,8 +199,6 @@ export default function OrganizationDashboard() {
         isFrdoEnabled={isFrdoEnabled}
         menuSettings={menuSettings}
         isEnabled={isEnabled}
-        isDocumentsMenuOpen={isDocumentsMenuOpen}
-        setIsDocumentsMenuOpen={setIsDocumentsMenuOpen}
         isMobileSidebarOpen={isMobileSidebarOpen}
         setIsMobileSidebarOpen={setIsMobileSidebarOpen}
         onLogout={handleLogout}
@@ -224,11 +222,6 @@ export default function OrganizationDashboard() {
                     {activeTab === "stats" && "Статистика обучения"}
                     {activeTab === "links" && "Ссылки для регистрации"}
                     {activeTab === "documents" && "Документооборот"}
-                    {activeTab === "documents-orders" && "Приказы о зачислении / отчислении"}
-                    {activeTab === "documents-protocols" && "Протоколы аттестационной комиссии"}
-                    {activeTab === "documents-certificates" && "Удостоверения"}
-                    {activeTab === "documents-diplomas" && "Дипломы"}
-                    {activeTab === "documents-testimonials" && "Свидетельства"}
                     {activeTab === "journals" && "Журналы учёта"}
                     {activeTab === "services" && "Магазин курсов"}
                     {activeTab === "settings" && "Настройки"}
