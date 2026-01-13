@@ -189,14 +189,16 @@ export default function OrganizationDashboard() {
   const handleBulkUnenroll = () => enrollmentActions.bulkUnenroll(students);
   const handleViewStudent = studentDetailCard.viewStudent;
 
-  const handleBulkSendCredentials = async () => {
-    if (selectedStudentIds.size === 0) { toast.error("Выберите учеников"); return; }
-    await studentActions.bulkSendCredentials(students.filter(s => selectedStudentIds.has(s.user_id)));
+  const handleBulkSendCredentials = async (userIds?: string[]) => {
+    const ids = userIds || Array.from(selectedStudentIds);
+    if (ids.length === 0) { toast.error("Выберите учеников"); return; }
+    await studentActions.bulkSendCredentials(students.filter(s => ids.includes(s.user_id)));
   };
 
-  const handleBulkCreateCredentials = async () => {
-    if (selectedStudentIds.size === 0) { toast.error("Выберите учеников"); return; }
-    const studentsToCreate = students.filter(s => selectedStudentIds.has(s.enrollment_id || s.user_id) && !s.login);
+  const handleBulkCreateCredentials = async (userIds?: string[]) => {
+    const ids = userIds || Array.from(selectedStudentIds);
+    if (ids.length === 0) { toast.error("Выберите учеников"); return; }
+    const studentsToCreate = students.filter(s => ids.includes(s.user_id) && !s.login);
     if (studentsToCreate.length === 0) { toast.info("У всех выбранных учеников уже есть логин и пароль"); return; }
     await studentActions.bulkCreateCredentials(studentsToCreate);
   };
@@ -335,8 +337,8 @@ export default function OrganizationDashboard() {
               onCoursesDeleted={refreshData}
               onViewStudent={handleViewStudent}
               onCopyCredentials={handleCopyCredentials}
-              onBulkCreateCredentials={async () => { await handleBulkCreateCredentials(); }}
-              onBulkSendCredentials={async () => { await handleBulkSendCredentials(); }}
+              onBulkCreateCredentials={handleBulkCreateCredentials}
+              onBulkSendCredentials={handleBulkSendCredentials}
               onBulkSendDocReminders={studentActions.bulkSendDocReminders}
               onShowEnrollDialog={() => {
                 if (studentCourseFilter !== "all") setEnrollCourseId(studentCourseFilter);
