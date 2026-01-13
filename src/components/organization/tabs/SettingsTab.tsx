@@ -3,7 +3,7 @@ import {
   Palette, Sun, Moon, FileText, Building2, LayoutGrid, 
   Library, BarChart3, Link, ShoppingBag, Save, Settings,
   Trophy, MessageCircle, ChevronRight, Loader2, Upload,
-  X, ExternalLink, Image, Eye
+  X, ExternalLink, Image, Eye, AlertCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ import { OrgRequisitesForm } from "@/components/organization/OrgRequisitesForm";
 import { ContractTemplateEditor } from "@/components/organization/ContractTemplateEditor";
 import { ConsentGenerator } from "@/components/organization/ConsentGenerator";
 import { SystemFeaturesReport } from "@/components/organization/SystemFeaturesReport";
+import { SystemDiagnostics } from "@/components/organization/SystemDiagnostics";
 import type { MenuSettings } from "@/types";
 
 interface BrandingSettings {
@@ -569,6 +570,20 @@ export function SettingsTab({
               )}
             </Button>
           </div>
+        </div>
+      </details>
+
+      {/* System Diagnostics */}
+      <details className="bg-card rounded-xl lg:rounded-2xl border border-border group">
+        <summary className="p-4 lg:p-6 cursor-pointer list-none flex items-center justify-between">
+          <h3 className="font-display font-semibold text-base lg:text-lg flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 lg:w-5 lg:h-5" />
+            Диагностика системы
+          </h3>
+          <ChevronRight className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90" />
+        </summary>
+        <div className="px-4 lg:px-6 pb-4 lg:pb-6">
+          {organizationId && <SystemDiagnostics organizationId={organizationId} />}
         </div>
       </details>
 

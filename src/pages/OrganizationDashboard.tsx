@@ -231,7 +231,6 @@ export default function OrganizationDashboard() {
                     {activeTab === "documents-testimonials" && "Свидетельства"}
                     {activeTab === "journals" && "Журналы учёта"}
                     {activeTab === "services" && "Магазин курсов"}
-                    {activeTab === "diagnostics" && "Самодиагностика системы"}
                     {activeTab === "settings" && "Настройки"}
                   </h1>
                 )}
