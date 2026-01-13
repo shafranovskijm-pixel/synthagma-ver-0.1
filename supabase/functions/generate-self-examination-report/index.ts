@@ -87,64 +87,108 @@ serve(async (req) => {
       });
     }
 
-    // Fetch courses
-    const { data: courses, error: coursesError } = await supabase
-      .from("courses")
-      .select("id, title, description, duration")
-      .eq("organization_id", organizationId)
-      .eq("is_published", true);
+    // Fetch order to get quiz data if available
+    let quizData = null;
+    if (orderId) {
+      const { data: order } = await supabase
+        .from("service_orders")
+        .select("notes")
+        .eq("id", orderId)
+        .single();
 
-    if (coursesError) {
-      console.error("Error fetching courses:", coursesError);
-    }
-
-    // Fetch enrollments for statistics
-    const courseIds = courses?.map(c => c.id) || [];
-    let enrollmentStats: EnrollmentStats = { total: 0, completed: 0, inProgress: 0 };
-
-    if (courseIds.length > 0) {
-      const { data: enrollments, error: enrollError } = await supabase
-        .from("enrollments")
-        .select("id, status")
-        .in("course_id", courseIds);
-
-      if (!enrollError && enrollments) {
-        enrollmentStats = {
-          total: enrollments.length,
-          completed: enrollments.filter(e => e.status === "completed").length,
-          inProgress: enrollments.filter(e => e.status === "active" || e.status === "in_progress").length,
-        };
+      if (order?.notes) {
+        try {
+          quizData = JSON.parse(order.notes);
+          console.log("Using quiz data from order");
+        } catch (e) {
+          console.log("No quiz data in order notes");
+        }
       }
     }
 
-    // Fetch profiles (staff/teachers)
-    const { data: profiles, error: profilesError } = await supabase
-      .from("profiles")
-      .select("full_name, email")
-      .eq("organization_id", organizationId);
-
-    if (profilesError) {
-      console.error("Error fetching profiles:", profilesError);
-    }
-
-    // Build the data object for AI generation
-    const reportData = {
+    // Build the data object for AI generation - use quiz data if available
+    const reportData = quizData ? {
+      organization: {
+        full_name: quizData.fullName || organization.name,
+        short_name: quizData.shortName || organization.name,
+        legal_form: quizData.legalForm || "Общество с ограниченной ответственностью",
+        legal_address: quizData.legalAddress || organization.legal_address || "Не указан",
+        phone: quizData.phone || organization.phone || "Не указан",
+        email: quizData.email || organization.email,
+        site: quizData.website || "Не указан",
+        ogrn: quizData.ogrn || organization.ogrn || "Не указан",
+        inn: quizData.inn || organization.inn || "Не указан",
+        kpp: quizData.kpp || organization.kpp || "Не указан",
+        license: {
+          number: quizData.licenseNumber || "Не указан",
+          date: quizData.licenseDate || "Не указана",
+          program_types: quizData.programTypes || ["дополнительное профессиональное образование"],
+        },
+        founders: quizData.founders ? quizData.founders.split(",").map((f: string) => f.trim()) : [],
+      },
+      self_inspection: {
+        period_start: quizData.periodStart ? new Date(quizData.periodStart).toLocaleDateString("ru-RU") : new Date().toLocaleDateString("ru-RU"),
+        period_end: quizData.periodEnd ? new Date(quizData.periodEnd).toLocaleDateString("ru-RU") : new Date().toLocaleDateString("ru-RU"),
+        order_number: quizData.orderNumber || `${new Date().getFullYear()}-СО-01`,
+        order_date: quizData.orderDate ? new Date(quizData.orderDate).toLocaleDateString("ru-RU") : new Date().toLocaleDateString("ru-RU"),
+        commission: {
+          chairman: quizData.commissionChairman || { fio: "Не указан", position: "Директор" },
+          members: quizData.commissionMembers || [],
+        },
+      },
+      management: {
+        director: { 
+          fio: quizData.directorFio || organization.director_name || "Не указан", 
+          term_years: quizData.directorTermYears || 3 
+        },
+        pedagogical_council: {
+          exists: quizData.hasPedagogicalCouncil !== false,
+          protocol_number: quizData.pedagogicalCouncilProtocolNumber || "1",
+          protocol_date: quizData.pedagogicalCouncilProtocolDate ? new Date(quizData.pedagogicalCouncilProtocolDate).toLocaleDateString("ru-RU") : new Date().toLocaleDateString("ru-RU"),
+        },
+      },
+      education: {
+        program_types: quizData.programTypes || ["повышение квалификации"],
+        programs: quizData.programs?.filter((p: any) => p.name) || [],
+        total_students: quizData.totalStudents || 0,
+        completed_students: quizData.completedStudents || 0,
+      },
+      quality: {
+        control_types: quizData.controlTypes || ["входной", "текущий", "промежуточный", "итоговый"],
+        testing_platform: {
+          name: quizData.testingPlatformName || "Собственная образовательная платформа",
+          url: quizData.testingPlatformUrl || "",
+        },
+        final_attestation_form: quizData.finalAttestationForm || "квалификационный экзамен",
+        employer_participation: quizData.hasEmployerParticipation !== false,
+      },
+      staff: quizData.staff?.filter((s: any) => s.fio) || [],
+      infrastructure: {
+        website: quizData.hasWebsite !== false,
+        distance_platform: quizData.hasDistancePlatform !== false,
+        multimedia: quizData.hasMultimedia !== false,
+        library: quizData.hasLibrary !== false,
+        additional_equipment: quizData.additionalEquipment || "",
+      },
+      conclusion: {
+        period_text: `с ${quizData.periodStart ? new Date(quizData.periodStart).toLocaleDateString("ru-RU") : ""} по ${quizData.periodEnd ? new Date(quizData.periodEnd).toLocaleDateString("ru-RU") : ""}`,
+        conclusion_variant: "положительное",
+      },
+      additional_notes: quizData.additionalNotes || "",
+    } : {
+      // Fallback to database data if no quiz data
       organization: {
         full_name: organization.name,
         short_name: organization.name,
         legal_form: "Общество с ограниченной ответственностью",
-        legal_address: organization.legal_address || organization.actual_address || "Не указан",
+        legal_address: organization.legal_address || "Не указан",
         phone: organization.phone || "Не указан",
         email: organization.email,
         site: "Не указан",
         ogrn: organization.ogrn || "Не указан",
         inn: organization.inn || "Не указан",
         kpp: organization.kpp || "Не указан",
-        license: {
-          number: "Не указан",
-          date: "Не указана",
-          program_types: ["дополнительное профессиональное образование"],
-        },
+        license: { number: "Не указан", date: "Не указана", program_types: ["ДПО"] },
         founders: [organization.director_name || "Не указан"],
       },
       self_inspection: {
@@ -152,66 +196,17 @@ serve(async (req) => {
         period_end: new Date().toLocaleDateString("ru-RU"),
         order_number: `${new Date().getFullYear()}-СО-01`,
         order_date: new Date().toLocaleDateString("ru-RU"),
-        commission: {
-          chairman: { 
-            fio: organization.director_name || "Не указан", 
-            position: organization.director_position || "Директор" 
-          },
-          members: profiles?.slice(0, 3).map(p => ({
-            fio: p.full_name || "Не указан",
-            position: "Преподаватель"
-          })) || [],
-        },
+        commission: { chairman: { fio: organization.director_name || "Не указан", position: "Директор" }, members: [] },
       },
       management: {
-        director: { 
-          fio: organization.director_name || "Не указан", 
-          term_years: 3 
-        },
-        pedagogical_council: {
-          exists: true,
-          protocol_number: "1",
-          protocol_date: new Date().toLocaleDateString("ru-RU"),
-        },
+        director: { fio: organization.director_name || "Не указан", term_years: 3 },
+        pedagogical_council: { exists: true, protocol_number: "1", protocol_date: new Date().toLocaleDateString("ru-RU") },
       },
-      education: {
-        program_types: ["повышение квалификации", "профессиональная переподготовка"],
-        reporting_months: new Date().getMonth() + 1,
-        reporting_year: new Date().getFullYear(),
-        programs: courses?.map(c => ({
-          name: c.title,
-          type: "повышение квалификации",
-          students_count: Math.floor(enrollmentStats.total / (courses?.length || 1)),
-        })) || [],
-        total_students: enrollmentStats.total,
-        completed_students: enrollmentStats.completed,
-      },
-      quality: {
-        control_types: ["входной", "текущий", "промежуточный", "итоговый"],
-        testing_platform: {
-          name: "Собственная образовательная платформа",
-          url: organization.email?.includes("@") ? `https://${organization.email.split("@")[1]}` : "Не указан",
-        },
-        final_attestation_form: "квалификационный экзамен",
-        employer_participation: true,
-      },
-      staff: profiles?.map(p => ({
-        fio: p.full_name || "Не указан",
-        subject: "Профильные дисциплины",
-        education: "Высшее профессиональное",
-        experience_years: 5,
-        employment_type: "По договору",
-      })) || [],
-      infrastructure: {
-        website: true,
-        distance_platform: true,
-        multimedia: true,
-        library: true,
-      },
-      conclusion: {
-        period_text: `с ${new Date(new Date().getFullYear(), 0, 1).toLocaleDateString("ru-RU")} по ${new Date().toLocaleDateString("ru-RU")}`,
-        conclusion_variant: "положительное",
-      },
+      education: { program_types: ["ДПО"], programs: [], total_students: 0, completed_students: 0 },
+      quality: { control_types: ["входной", "текущий", "промежуточный", "итоговый"], testing_platform: { name: "", url: "" }, final_attestation_form: "квалификационный экзамен", employer_participation: true },
+      staff: [],
+      infrastructure: { website: true, distance_platform: true, multimedia: true, library: true },
+      conclusion: { period_text: "", conclusion_variant: "положительное" },
     };
 
     console.log("Generating report with AI...");
