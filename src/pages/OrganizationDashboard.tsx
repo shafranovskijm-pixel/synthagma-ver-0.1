@@ -332,6 +332,7 @@ export default function OrganizationDashboard() {
               onShowBulkUploadDialog={() => setShowBulkUploadDialog(true)}
               setActiveTab={setActiveTab}
               onCreateLinkClick={() => setShowCreateLinkDialog(true)}
+              onCoursesDeleted={refreshData}
               onViewStudent={handleViewStudent}
               onCopyCredentials={handleCopyCredentials}
               onBulkCreateCredentials={async () => { await handleBulkCreateCredentials(); }}
