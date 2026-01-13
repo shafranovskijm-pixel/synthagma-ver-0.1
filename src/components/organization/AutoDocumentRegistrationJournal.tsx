@@ -31,6 +31,8 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   ArrowLeft,
   Calendar as CalendarIcon,
@@ -45,6 +47,7 @@ import {
   User,
   Hash,
   Pencil,
+  Plus,
 } from "lucide-react";
 import { format, parseISO, startOfYear, endOfYear, isWithinInterval } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -133,6 +136,18 @@ export function AutoDocumentRegistrationJournal({
   // Edit dialog state
   const [editingRecord, setEditingRecord] = useState<DocumentRecord | null>(null);
   const [editRegNumber, setEditRegNumber] = useState("");
+  
+  // Add new document dialog state
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [newDocument, setNewDocument] = useState({
+    document_type: "contract",
+    document_name: "",
+    direction: "outgoing" as "incoming" | "outgoing",
+    date: new Date(),
+    related_entity: "",
+    reg_number: "",
+    notes: "",
+  });
 
   // Fetch all document data
   useEffect(() => {
@@ -437,6 +452,102 @@ export function AutoDocumentRegistrationJournal({
     setEditRegNumber(suggestedNumber);
   };
 
+  // Add new document to database
+  const handleAddDocument = async () => {
+    if (!newDocument.document_name.trim()) {
+      toast.error("Введите наименование документа");
+      return;
+    }
+    
+    setSaving(true);
+    try {
+      // Get current user for user_id and user_name
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Пользователь не авторизован");
+        return;
+      }
+      
+      // Get user profile for name
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name, email")
+        .eq("user_id", user.id)
+        .single();
+      
+      const userName = newDocument.related_entity.trim() || profile?.full_name || profile?.email || "Неизвестный";
+      
+      const { data: insertedDoc, error } = await supabase
+        .from("document_issuance_log")
+        .insert({
+          organization_id: organizationId,
+          user_id: user.id,
+          user_name: userName,
+          document_type: newDocument.document_type,
+          document_name: newDocument.document_name.trim(),
+          reg_number: newDocument.reg_number.trim() || null,
+          issued_at: newDocument.date.toISOString(),
+          send_method: newDocument.notes.trim() || null,
+        })
+        .select()
+        .single();
+        
+      if (error) throw error;
+      
+      // Add to local state
+      const newRecord: DocumentRecord = {
+        id: insertedDoc.id,
+        original_id: insertedDoc.id,
+        reg_number: insertedDoc.reg_number,
+        document_type: newDocument.document_type,
+        document_name: insertedDoc.document_name,
+        direction: newDocument.direction,
+        date: insertedDoc.issued_at,
+        related_entity: userName,
+        related_entity_type: "student",
+        notes: insertedDoc.send_method ? `Примечание: ${insertedDoc.send_method}` : null,
+        source: "issuance_log",
+        is_editable: true,
+      };
+      
+      setRecords((prev) => [newRecord, ...prev]);
+      
+      // Reset form
+      setNewDocument({
+        document_type: "contract",
+        document_name: "",
+        direction: "outgoing",
+        date: new Date(),
+        related_entity: "",
+        reg_number: "",
+        notes: "",
+      });
+      setShowAddDialog(false);
+      
+      toast.success("Документ добавлен в журнал");
+    } catch (error) {
+      console.error("Error adding document:", error);
+      toast.error("Ошибка при добавлении документа");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Generate auto number for new document
+  const generateNewDocNumber = () => {
+    const year = newDocument.date.getFullYear();
+    const prefix = DOCUMENT_TYPE_LABELS[newDocument.document_type]?.prefix || "ПР";
+    
+    // Count existing documents of this type in this year
+    const sameTypeYearCount = records.filter((r) => {
+      const rYear = parseISO(r.date).getFullYear();
+      return r.document_type === newDocument.document_type && rYear === year;
+    }).length;
+    
+    const suggestedNumber = `${prefix}-${year}/${(sameTypeYearCount + 1).toString().padStart(3, "0")}`;
+    setNewDocument((prev) => ({ ...prev, reg_number: suggestedNumber }));
+  };
+
   // Export to Excel
   const exportToExcel = () => {
     if (filteredRecords.length === 0) {
@@ -500,10 +611,16 @@ export function AutoDocumentRegistrationJournal({
             </p>
           </div>
         </div>
-        <Button onClick={exportToExcel} className="rounded-xl">
-          <FileSpreadsheet className="w-4 h-4 mr-2" />
-          Экспорт в Excel
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setShowAddDialog(true)} className="rounded-xl">
+            <Plus className="w-4 h-4 mr-2" />
+            Добавить
+          </Button>
+          <Button onClick={exportToExcel} className="rounded-xl">
+            <FileSpreadsheet className="w-4 h-4 mr-2" />
+            Экспорт в Excel
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -856,6 +973,168 @@ export function AutoDocumentRegistrationJournal({
                 </>
               ) : (
                 "Сохранить"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add New Document Dialog */}
+      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Добавить документ</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {/* Document Type */}
+            <div className="space-y-2">
+              <Label>Тип документа *</Label>
+              <Select
+                value={newDocument.document_type}
+                onValueChange={(value) => setNewDocument((prev) => ({ ...prev, document_type: value }))}
+              >
+                <SelectTrigger className="rounded-xl">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(DOCUMENT_TYPE_LABELS).map(([key, { label }]) => (
+                    <SelectItem key={key} value={key}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {/* Document Name */}
+            <div className="space-y-2">
+              <Label>Наименование документа *</Label>
+              <Input
+                value={newDocument.document_name}
+                onChange={(e) => setNewDocument((prev) => ({ ...prev, document_name: e.target.value }))}
+                placeholder="Например: Договор №123 на оказание образовательных услуг"
+                className="rounded-xl"
+              />
+            </div>
+            
+            {/* Direction */}
+            <div className="space-y-2">
+              <Label>Направление</Label>
+              <Select
+                value={newDocument.direction}
+                onValueChange={(value: "incoming" | "outgoing") => setNewDocument((prev) => ({ ...prev, direction: value }))}
+              >
+                <SelectTrigger className="rounded-xl">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="incoming">
+                    <div className="flex items-center gap-2">
+                      <ArrowDownLeft className="w-4 h-4 text-green-500" />
+                      Входящий
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="outgoing">
+                    <div className="flex items-center gap-2">
+                      <ArrowUpRight className="w-4 h-4 text-amber-500" />
+                      Исходящий
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {/* Date */}
+            <div className="space-y-2">
+              <Label>Дата документа</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start rounded-xl">
+                    <CalendarIcon className="w-4 h-4 mr-2" />
+                    {format(newDocument.date, "dd MMMM yyyy", { locale: ru })}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={newDocument.date}
+                    onSelect={(date) => date && setNewDocument((prev) => ({ ...prev, date }))}
+                    locale={ru}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            
+            {/* Related Entity */}
+            <div className="space-y-2">
+              <Label>Контрагент / Лицо</Label>
+              <Input
+                value={newDocument.related_entity}
+                onChange={(e) => setNewDocument((prev) => ({ ...prev, related_entity: e.target.value }))}
+                placeholder="ФИО или название организации"
+                className="rounded-xl"
+              />
+            </div>
+            
+            {/* Registration Number */}
+            <div className="space-y-2">
+              <Label>Регистрационный номер</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={newDocument.reg_number}
+                  onChange={(e) => setNewDocument((prev) => ({ ...prev, reg_number: e.target.value }))}
+                  placeholder="Например: ДОГ-2025/001"
+                  className="flex-1 rounded-xl"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={generateNewDocNumber}
+                  className="shrink-0 rounded-xl"
+                >
+                  <Hash className="w-4 h-4 mr-1" />
+                  Авто
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Нажмите "Авто" для автоматической генерации номера
+              </p>
+            </div>
+            
+            {/* Notes */}
+            <div className="space-y-2">
+              <Label>Примечание</Label>
+              <Textarea
+                value={newDocument.notes}
+                onChange={(e) => setNewDocument((prev) => ({ ...prev, notes: e.target.value }))}
+                placeholder="Дополнительная информация о документе"
+                className="rounded-xl resize-none"
+                rows={3}
+              />
+            </div>
+          </div>
+          
+          <DialogFooter className="flex gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setShowAddDialog(false)}
+              disabled={saving}
+            >
+              Отмена
+            </Button>
+            <Button onClick={handleAddDocument} disabled={saving}>
+              {saving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Сохранение...
+                </>
+              ) : (
+                <>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Добавить
+                </>
               )}
             </Button>
           </DialogFooter>
