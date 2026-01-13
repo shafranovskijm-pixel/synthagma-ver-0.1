@@ -161,13 +161,43 @@ ${courseDescription ? `Описание курса: ${courseDescription}` : ""}
     }
 
     const result = await response.json();
+    console.log("AI response:", JSON.stringify(result, null, 2));
     
+    // Try to get tool call first
+    let args: any = null;
     const toolCall = result.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall) {
+    
+    if (toolCall?.function?.arguments) {
+      try {
+        args = JSON.parse(toolCall.function.arguments);
+      } catch (e) {
+        console.error("Failed to parse tool call arguments:", e);
+      }
+    }
+    
+    // Fallback: try to parse content as JSON if no tool call
+    if (!args) {
+      const content = result.choices?.[0]?.message?.content;
+      if (content) {
+        console.log("No tool call, trying to parse content as JSON");
+        try {
+          // Try to extract JSON from content
+          const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/) || 
+                           content.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            const jsonStr = jsonMatch[1] || jsonMatch[0];
+            args = JSON.parse(jsonStr);
+          }
+        } catch (e) {
+          console.error("Failed to parse content as JSON:", e);
+        }
+      }
+    }
+    
+    if (!args) {
+      console.error("Could not extract structured data from AI response");
       throw new Error("Неверный формат ответа AI");
     }
-
-    const args = JSON.parse(toolCall.function.arguments);
 
     if (lessonType === "test") {
       return new Response(
