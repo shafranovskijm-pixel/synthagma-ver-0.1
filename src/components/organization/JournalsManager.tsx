@@ -33,6 +33,7 @@ import { AutoAttendanceJournal } from "./AutoAttendanceJournal";
 import { AutoGradesJournal } from "./AutoGradesJournal";
 import { AutoFinalAttestationJournal } from "./AutoFinalAttestationJournal";
 import { AutoDocumentRegistrationJournal } from "./AutoDocumentRegistrationJournal";
+import { CopiesDuplicatesJournal } from "./CopiesDuplicatesJournal";
 
 interface JournalItem {
   id: string;
@@ -148,6 +149,7 @@ export function JournalsManager({ organizationId }: JournalsManagerProps) {
   const [showAutoGrades, setShowAutoGrades] = useState(false);
   const [showAutoFinalAttestation, setShowAutoFinalAttestation] = useState(false);
   const [showAutoDocumentRegistration, setShowAutoDocumentRegistration] = useState(false);
+  const [showCopiesDuplicates, setShowCopiesDuplicates] = useState(false);
 
   const toggleCategory = (categoryId: string) => {
     setExpandedCategories((prev) =>
@@ -203,6 +205,16 @@ export function JournalsManager({ organizationId }: JournalsManagerProps) {
       <AutoDocumentRegistrationJournal
         organizationId={organizationId}
         onClose={() => setShowAutoDocumentRegistration(false)}
+      />
+    );
+  }
+
+  // Show copies/duplicates journal
+  if (showCopiesDuplicates) {
+    return (
+      <CopiesDuplicatesJournal
+        organizationId={organizationId}
+        onClose={() => setShowCopiesDuplicates(false)}
       />
     );
   }
@@ -426,6 +438,16 @@ export function JournalsManager({ organizationId }: JournalsManagerProps) {
                                 Ручной
                               </Button>
                             </>
+                          ) : journal.id === "copies_duplicates" ? (
+                            <Button
+                              variant="default"
+                              size="sm"
+                              className="rounded-lg"
+                              onClick={() => setShowCopiesDuplicates(true)}
+                            >
+                              <Edit className="w-4 h-4 mr-2" />
+                              Вести журнал
+                            </Button>
                           ) : (
                             <Button
                               variant="default"
