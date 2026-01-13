@@ -174,9 +174,9 @@ export function EducationDocumentsJournal({
     enrollment_id: "",
   });
 
-  // Load records from localStorage
+  // Load records from localStorage and check for new graduates
   useEffect(() => {
-    const loadRecords = () => {
+    const loadRecords = async () => {
       setLoading(true);
       try {
         const stored = localStorage.getItem(`education_documents_${organizationId}`);
@@ -192,6 +192,65 @@ export function EducationDocumentsJournal({
 
     loadRecords();
   }, [organizationId]);
+
+  // Automatically load completed students when journal opens
+  useEffect(() => {
+    if (!loading) {
+      loadCompletedStudents();
+    }
+  }, [loading, organizationId]);
+
+  // Count of new graduates not yet added
+  const newGraduatesCount = useMemo(() => {
+    return completedStudents.filter((s) => !s.already_added).length;
+  }, [completedStudents]);
+
+  // Auto-add all new graduates
+  const handleAutoAddAllGraduates = () => {
+    const newStudents = completedStudents.filter((s) => !s.already_added);
+    
+    if (newStudents.length === 0) {
+      toast.info("Все выпускники уже добавлены в журнал");
+      return;
+    }
+
+    const year = new Date().getFullYear();
+    let existingCount = records.filter((r) => {
+      const issueYear = parseISO(r.issue_date).getFullYear();
+      return issueYear === year;
+    }).length;
+
+    const newRecords: EducationDocumentRecord[] = newStudents.map((student, index) => {
+      existingCount += 1;
+      const docNumber = `${year}/${(existingCount + index).toString().padStart(6, "0")}`;
+      return {
+        id: crypto.randomUUID(),
+        reg_number: `ДОК-${year}/${existingCount.toString().padStart(4, "0")}`,
+        full_name: student.full_name,
+        birth_date: student.birth_date || "",
+        document_type: "certificate" as const,
+        document_series: "",
+        document_number: docNumber,
+        issue_date: new Date().toISOString(),
+        specialty_name: student.course_title,
+        qualification_name: "",
+        protocol_number: "",
+        protocol_date: "",
+        order_number: "",
+        order_date: "",
+        document_status: "original" as const,
+        original_document_data: null,
+        delivery_method: "personal" as const,
+        delivery_details: null,
+        notes: null,
+        enrollment_id: student.enrollment_id,
+      };
+    });
+
+    saveRecords([...newRecords, ...records]);
+    loadCompletedStudents(); // Reload to update already_added status
+    toast.success(`Автоматически добавлено ${newRecords.length} записей`);
+  };
 
   // Save records to localStorage
   const saveRecords = (newRecords: EducationDocumentRecord[]) => {
@@ -712,6 +771,45 @@ export function EducationDocumentsJournal({
           </div>
         </div>
       </div>
+
+      {/* New Graduates Banner */}
+      {!loadingStudents && newGraduatesCount > 0 && (
+        <div className="bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 rounded-2xl p-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+                <Sparkles className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground">
+                  Новые выпускники: {newGraduatesCount}
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Найдены студенты, завершившие обучение. Добавить их в журнал автоматически?
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleOpenSelectStudents}
+                className="rounded-xl"
+              >
+                Выбрать
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleAutoAddAllGraduates}
+                className="rounded-xl"
+              >
+                <Plus className="w-4 h-4 mr-1" />
+                Добавить всех
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="bg-card rounded-2xl border border-border p-4">
