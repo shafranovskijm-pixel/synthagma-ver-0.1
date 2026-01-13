@@ -1306,6 +1306,44 @@ export type Database = {
           },
         ]
       }
+      organization_feature_usage: {
+        Row: {
+          created_at: string
+          feature_id: string
+          id: string
+          last_used_at: string
+          organization_id: string
+          updated_at: string
+          usage_count: number
+        }
+        Insert: {
+          created_at?: string
+          feature_id: string
+          id?: string
+          last_used_at?: string
+          organization_id: string
+          updated_at?: string
+          usage_count?: number
+        }
+        Update: {
+          created_at?: string
+          feature_id?: string
+          id?: string
+          last_used_at?: string
+          organization_id?: string
+          updated_at?: string
+          usage_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_feature_usage_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_features: {
         Row: {
           category_id: string
@@ -1444,20 +1482,25 @@ export type Database = {
           director_name: string | null
           director_position: string | null
           email: string
+          enabled_features: Json | null
           frdo_enabled: boolean
           id: string
           inn: string | null
+          is_paid: boolean
           kpp: string | null
           legal_address: string | null
+          monthly_price: number | null
           name: string
           notify_on_limit_80: boolean
           notify_on_limit_exceeded: boolean
           ogrn: string | null
+          paid_until: string | null
           phone: string | null
           signature_url: string | null
           stamp_url: string | null
           storage_limit_bytes: number
           student_dashboard_settings: Json | null
+          tariff_type: string | null
           updated_at: string
         }
         Insert: {
@@ -1474,20 +1517,25 @@ export type Database = {
           director_name?: string | null
           director_position?: string | null
           email: string
+          enabled_features?: Json | null
           frdo_enabled?: boolean
           id?: string
           inn?: string | null
+          is_paid?: boolean
           kpp?: string | null
           legal_address?: string | null
+          monthly_price?: number | null
           name: string
           notify_on_limit_80?: boolean
           notify_on_limit_exceeded?: boolean
           ogrn?: string | null
+          paid_until?: string | null
           phone?: string | null
           signature_url?: string | null
           stamp_url?: string | null
           storage_limit_bytes?: number
           student_dashboard_settings?: Json | null
+          tariff_type?: string | null
           updated_at?: string
         }
         Update: {
@@ -1504,20 +1552,25 @@ export type Database = {
           director_name?: string | null
           director_position?: string | null
           email?: string
+          enabled_features?: Json | null
           frdo_enabled?: boolean
           id?: string
           inn?: string | null
+          is_paid?: boolean
           kpp?: string | null
           legal_address?: string | null
+          monthly_price?: number | null
           name?: string
           notify_on_limit_80?: boolean
           notify_on_limit_exceeded?: boolean
           ogrn?: string | null
+          paid_until?: string | null
           phone?: string | null
           signature_url?: string | null
           stamp_url?: string | null
           storage_limit_bytes?: number
           student_dashboard_settings?: Json | null
+          tariff_type?: string | null
           updated_at?: string
         }
         Relationships: []

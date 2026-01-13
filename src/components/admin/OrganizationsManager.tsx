@@ -32,7 +32,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Building2, Loader2, Users, BookOpen, Key, Eye, EyeOff, Copy, Check, Download, ExternalLink, Search, X, FolderOpen } from "lucide-react";
+import { Plus, Pencil, Trash2, Building2, Loader2, Users, BookOpen, Key, Eye, EyeOff, Copy, Check, Download, ExternalLink, Search, X, FolderOpen, DollarSign, Calendar } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import * as XLSX from "xlsx";
@@ -47,6 +47,10 @@ interface Organization {
   contact_name: string | null;
   ai_enabled: boolean;
   created_at: string;
+  is_paid?: boolean;
+  paid_until?: string | null;
+  tariff_type?: string;
+  monthly_price?: number;
   users_count?: number;
   courses_count?: number;
   credentials?: {
@@ -110,7 +114,7 @@ export function OrganizationsManager() {
     try {
       const { data, error } = await supabase
         .from("organizations")
-        .select("*")
+        .select("*, is_paid, paid_until, tariff_type, monthly_price")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -469,11 +473,31 @@ export function OrganizationsManager() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Всего организаций</CardDescription>
             <CardTitle className="text-3xl">{organizations.length}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card className="border-green-500/30 bg-green-500/5">
+          <CardHeader className="pb-2">
+            <CardDescription className="flex items-center gap-1">
+              <DollarSign className="w-3 h-3" /> С оплатой
+            </CardDescription>
+            <CardTitle className="text-3xl text-green-600">
+              {organizations.filter(o => o.is_paid).length}
+            </CardTitle>
+          </CardHeader>
+        </Card>
+        <Card className="border-orange-500/30 bg-orange-500/5">
+          <CardHeader className="pb-2">
+            <CardDescription className="flex items-center gap-1">
+              <Building2 className="w-3 h-3" /> Без оплаты
+            </CardDescription>
+            <CardTitle className="text-3xl text-orange-600">
+              {organizations.filter(o => !o.is_paid).length}
+            </CardTitle>
           </CardHeader>
         </Card>
         <Card>
@@ -522,6 +546,7 @@ export function OrganizationsManager() {
             <TableHeader>
               <TableRow>
                 <TableHead>Организация</TableHead>
+                <TableHead>Статус</TableHead>
                 <TableHead>Контакты</TableHead>
                 <TableHead>Учётные данные</TableHead>
                 <TableHead className="text-center">Сотрудники</TableHead>
@@ -533,21 +558,24 @@ export function OrganizationsManager() {
             <TableBody>
               {filteredOrganizations.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                     <Building2 className="w-12 h-12 mx-auto mb-2 opacity-50" />
                     {searchQuery ? "Ничего не найдено" : "Организации не найдены"}
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredOrganizations.map((org) => (
-                  <TableRow key={org.id}>
+                  <TableRow 
+                    key={org.id}
+                    className={org.is_paid ? "bg-green-500/5" : "bg-orange-500/5"}
+                  >
                     <TableCell>
                       <div 
                         className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
                         onClick={() => setViewingOrg(org)}
                       >
-                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                          <Building2 className="w-5 h-5 text-primary" />
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${org.is_paid ? 'bg-green-500/20' : 'bg-orange-500/20'}`}>
+                          <Building2 className={`w-5 h-5 ${org.is_paid ? 'text-green-600' : 'text-orange-600'}`} />
                         </div>
                         <div>
                           <div className="font-medium text-primary hover:underline">{org.name}</div>
@@ -555,6 +583,33 @@ export function OrganizationsManager() {
                             <div className="text-sm text-muted-foreground">ИНН: {org.inn}</div>
                           )}
                         </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="space-y-1">
+                        {org.is_paid ? (
+                          <Badge className="bg-green-500 hover:bg-green-600">
+                            <DollarSign className="w-3 h-3 mr-1" />
+                            Оплачено
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="border-orange-500 text-orange-600">
+                            Без оплаты
+                          </Badge>
+                        )}
+                        {org.tariff_type && org.tariff_type !== 'trial' && (
+                          <div>
+                            <Badge variant="secondary" className="text-xs">
+                              <Calendar className="w-3 h-3 mr-1" />
+                              {org.tariff_type === 'yearly' ? 'Годовой' : 'Месячный'}
+                            </Badge>
+                          </div>
+                        )}
+                        {org.paid_until && (
+                          <div className="text-xs text-muted-foreground">
+                            до {format(new Date(org.paid_until), "d MMM yyyy", { locale: ru })}
+                          </div>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell>
