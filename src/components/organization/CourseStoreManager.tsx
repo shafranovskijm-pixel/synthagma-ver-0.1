@@ -409,6 +409,28 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
         .eq('id', orderId);
 
       if (error) throw error;
+
+      // Send notification to buyer about status change
+      if (selectedOrder && ['approved', 'paid', 'completed', 'cancelled'].includes(newStatus)) {
+        try {
+          await supabase.functions.invoke('notify-order-status', {
+            body: {
+              orderId,
+              newStatus,
+              courseName: selectedOrder.marketplace_course?.course?.title || 'Курс',
+              sellerName: selectedOrder.marketplace_course?.organization?.name || 'Продавец',
+              buyerUserId: selectedOrder.buyer_user_id,
+              buyerOrganizationId: selectedOrder.buyer_organization_id,
+              buyerType: selectedOrder.buyer_type,
+              price: selectedOrder.price,
+            },
+          });
+          console.log('Status notification sent to buyer');
+        } catch (notifyError) {
+          console.error('Failed to send status notification:', notifyError);
+        }
+      }
+
       toast.success('Статус заявки обновлён');
       fetchOrders();
       setShowOrderDetailsDialog(false);
