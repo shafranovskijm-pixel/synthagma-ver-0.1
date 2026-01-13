@@ -43,6 +43,7 @@ interface TabContentRendererProps {
   onShowBulkUploadDialog: () => void;
   setActiveTab: (tab: TabType) => void;
   onCreateLinkClick: () => void;
+  onCoursesDeleted?: () => void;
   
   // Student tab props
   onViewStudent: (student: any) => void;
@@ -89,6 +90,7 @@ export function TabContentRenderer({
   onOpenCourseDetails,
   onShowBulkUploadDialog,
   setActiveTab,
+  onCoursesDeleted,
   onCreateLinkClick,
   onViewStudent,
   onCopyCredentials,
@@ -139,6 +141,7 @@ export function TabContentRenderer({
         <CoursesTab 
           organizationId={organizationId} 
           onOpenCourseDetails={onOpenCourseDetails}
+          onCoursesDeleted={onCoursesDeleted}
         />
       )}
 
