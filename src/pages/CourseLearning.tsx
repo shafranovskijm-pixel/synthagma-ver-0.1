@@ -406,6 +406,12 @@ const CourseLearning = () => {
   }, [courseId, user]);
 
   useEffect(() => {
+    // Reset test state when lesson changes
+    setTestSubmitted(false);
+    setTestScore(null);
+    setTestQuestions([]);
+    setAnswers({});
+    
     if (currentLesson?.type === 'test') {
       fetchTestQuestions(currentLesson.id);
     }
