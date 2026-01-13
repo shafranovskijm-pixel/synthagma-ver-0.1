@@ -8,14 +8,16 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Hard limit to avoid CPU/worker limits when parsing many DOCX files in one request
-const MAX_FILES_PER_REQUEST = 3;
-// File size limits to prevent resource exhaustion
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB per file
-const MAX_TOTAL_SIZE = 25 * 1024 * 1024; // 25MB total
+// Limits
+const MAX_FILES_PER_REQUEST = 50; // Increased for ZIP support
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB per file (for ZIP)
+const MAX_TOTAL_SIZE = 50 * 1024 * 1024; // 50MB total
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+
+// Supported file extensions for content extraction
+const SUPPORTED_EXTENSIONS = ['.docx', '.doc', '.txt', '.html', '.htm', '.md'];
 
 // Convert plain text to HTML paragraphs
 function txtToHtml(text: string): string {
@@ -218,14 +220,14 @@ async function parseDocxFallback(buffer: ArrayBuffer): Promise<string> {
 }
 
 // Process single file and return its content
-async function processFile(file: File): Promise<{ title: string; html: string; fileName: string }> {
+async function processFile(file: File): Promise<{ title: string; html: string; fileName: string; folderPath?: string }> {
   const fileName = file.name.toLowerCase();
   let sourceHtml = '';
   let courseTitle = file.name.replace(/\.[^.]+$/, '');
 
   console.log(`Processing file: ${fileName}, size: ${file.size}`);
 
-  if (fileName.endsWith('.txt')) {
+  if (fileName.endsWith('.txt') || fileName.endsWith('.md')) {
     const text = await file.text();
     sourceHtml = txtToHtml(text);
   } else if (fileName.endsWith('.html') || fileName.endsWith('.htm')) {
@@ -252,6 +254,105 @@ async function processFile(file: File): Promise<{ title: string; html: string; f
   }
 
   return { title: courseTitle, html: sourceHtml, fileName: file.name };
+}
+
+// Process file from ZIP buffer
+async function processZipEntry(
+  fileName: string, 
+  content: ArrayBuffer | string,
+  folderPath: string
+): Promise<{ title: string; html: string; fileName: string; folderPath: string }> {
+  const lowerName = fileName.toLowerCase();
+  let sourceHtml = '';
+  let title = fileName.replace(/\.[^.]+$/, '');
+
+  console.log(`Processing ZIP entry: ${folderPath}/${fileName}`);
+
+  if (lowerName.endsWith('.txt') || lowerName.endsWith('.md')) {
+    const text = typeof content === 'string' ? content : new TextDecoder().decode(content);
+    sourceHtml = txtToHtml(text);
+  } else if (lowerName.endsWith('.html') || lowerName.endsWith('.htm')) {
+    let html = typeof content === 'string' ? content : new TextDecoder().decode(content);
+    const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+    if (bodyMatch) html = bodyMatch[1];
+    const titleMatch = html.match(/<title[^>]*>(.*?)<\/title>/i);
+    if (titleMatch) title = titleMatch[1].trim() || title;
+    sourceHtml = html;
+  } else if (lowerName.endsWith('.docx')) {
+    const buffer = content instanceof ArrayBuffer ? content : new TextEncoder().encode(content as string).buffer;
+    try {
+      sourceHtml = await parseDocxWithMammoth(buffer);
+    } catch (mammothError) {
+      console.log('Mammoth failed for ZIP entry, trying fallback:', mammothError);
+      sourceHtml = await parseDocxFallback(buffer);
+    }
+  } else if (lowerName.endsWith('.doc')) {
+    const text = typeof content === 'string' ? content : new TextDecoder().decode(content);
+    const cleanText = text.replace(/[^\x20-\x7E\u0400-\u04FF\n\r\t]/g, ' ').replace(/\s+/g, ' ');
+    sourceHtml = txtToHtml(cleanText);
+  }
+
+  return { title, html: sourceHtml, fileName, folderPath };
+}
+
+// Extract and process ZIP archive
+async function processZipArchive(file: File): Promise<Array<{ title: string; html: string; fileName: string; folderPath: string }>> {
+  console.log('Processing ZIP archive:', file.name);
+  
+  const buffer = await file.arrayBuffer();
+  const zip = await JSZip.loadAsync(buffer);
+  
+  const results: Array<{ title: string; html: string; fileName: string; folderPath: string }> = [];
+  const entries: Array<{ path: string; file: any }> = [];
+  
+  // Collect all supported files from ZIP
+  zip.forEach((relativePath: string, zipEntry: any) => {
+    if (zipEntry.dir) return;
+    
+    // Skip hidden files and system files
+    if (relativePath.startsWith('__MACOSX') || relativePath.startsWith('.')) return;
+    
+    const fileName = relativePath.split('/').pop() || '';
+    if (fileName.startsWith('.')) return;
+    
+    // Check if file extension is supported
+    const ext = '.' + fileName.split('.').pop()?.toLowerCase();
+    if (SUPPORTED_EXTENSIONS.includes(ext)) {
+      entries.push({ path: relativePath, file: zipEntry });
+    }
+  });
+  
+  console.log(`Found ${entries.length} supported files in ZIP`);
+  
+  // Sort entries by path for consistent ordering
+  entries.sort((a, b) => a.path.localeCompare(b.path, 'ru'));
+  
+  // Process entries sequentially to avoid memory issues
+  for (const entry of entries) {
+    try {
+      const fileName = entry.path.split('/').pop() || '';
+      const folderPath = entry.path.split('/').slice(0, -1).join('/');
+      
+      // Get file content
+      const ext = '.' + fileName.split('.').pop()?.toLowerCase();
+      let content: ArrayBuffer | string;
+      
+      if (ext === '.docx') {
+        content = await entry.file.async('arraybuffer');
+      } else {
+        content = await entry.file.async('string');
+      }
+      
+      const result = await processZipEntry(fileName, content, folderPath);
+      if (result.html.trim()) {
+        results.push(result);
+      }
+    } catch (e) {
+      console.error(`Error processing ZIP entry ${entry.path}:`, e);
+    }
+  }
+  
+  return results;
 }
 
 // Analyze content structure to suggest optimal organization
@@ -393,7 +494,7 @@ serve(async (req) => {
           return new Response(
             JSON.stringify({
               success: false,
-              error: `Файл "${value.name}" превышает лимит 10МБ (${(value.size / 1024 / 1024).toFixed(1)}МБ)`
+              error: `Файл "${value.name}" превышает лимит 50МБ (${(value.size / 1024 / 1024).toFixed(1)}МБ)`
             }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
@@ -407,7 +508,7 @@ serve(async (req) => {
           return new Response(
             JSON.stringify({
               success: false,
-              error: `Общий размер файлов превышает лимит 25МБ`
+              error: `Общий размер файлов превышает лимит 50МБ`
             }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
@@ -424,36 +525,71 @@ serve(async (req) => {
       );
     }
 
-    if (files.length > MAX_FILES_PER_REQUEST) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: `Слишком много файлов за раз (${files.length}). Загрузите максимум ${MAX_FILES_PER_REQUEST} файлов за один импорт.`,
-        }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     console.log(`Files validated: ${files.length} files, total size: ${(totalSize / 1024 / 1024).toFixed(2)}MB`);
 
-    console.log(`Processing ${files.length} files`);
+    // Check if first file is a ZIP archive
+    const firstFile = files[0];
+    const isZipArchive = firstFile.name.toLowerCase().endsWith('.zip');
+    
+    let processedFiles: Array<{ title: string; html: string; fileName: string; folderPath?: string }> = [];
+    let folderStructure: Array<{ name: string; files: string[] }> = [];
 
-    // Process files SEQUENTIALLY to avoid CPU timeout
-    // (parallel processing of 20+ DOCX files exceeds edge function limits)
-    const processedFiles: Array<{ title: string; html: string; fileName: string } | null> = [];
-    for (const file of files) {
+    if (isZipArchive) {
+      console.log('Processing as ZIP archive');
+      
       try {
-        const result = await processFile(file);
-        processedFiles.push(result);
-        console.log(`Completed: ${file.name}`);
+        const zipResults = await processZipArchive(firstFile);
+        processedFiles = zipResults;
+        
+        // Build folder structure for response
+        const folderMap = new Map<string, string[]>();
+        for (const result of zipResults) {
+          const folder = result.folderPath || 'Корень';
+          if (!folderMap.has(folder)) {
+            folderMap.set(folder, []);
+          }
+          folderMap.get(folder)!.push(result.fileName);
+        }
+        
+        folderStructure = Array.from(folderMap.entries()).map(([name, files]) => ({
+          name,
+          files
+        }));
+        
       } catch (e) {
-        console.error(`Error processing ${file.name}:`, e);
-        processedFiles.push(null);
+        console.error('ZIP processing error:', e);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Не удалось распаковать ZIP-архив: ' + (e as Error).message }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } else {
+      // Process regular files
+      console.log(`Processing ${files.length} regular files`);
+
+      if (files.length > MAX_FILES_PER_REQUEST) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: `Слишком много файлов за раз (${files.length}). Загрузите максимум ${MAX_FILES_PER_REQUEST} файлов за один импорт.`,
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      for (const file of files) {
+        try {
+          const result = await processFile(file);
+          processedFiles.push(result);
+          console.log(`Completed: ${file.name}`);
+        } catch (e) {
+          console.error(`Error processing ${file.name}:`, e);
+        }
       }
     }
 
-    // Filter out failed files
-    const validFiles = processedFiles.filter((f): f is NonNullable<typeof f> => f !== null);
+    // Filter out empty results
+    const validFiles = processedFiles.filter(f => f && f.html.trim());
 
     if (validFiles.length === 0) {
       return new Response(
@@ -466,7 +602,6 @@ serve(async (req) => {
     const analyzedFiles = analyzeContentStructure(validFiles);
 
     // Create lessons - 1 file = 1 lesson
-    // Important: do NOT split again here (DOCX->HTML is the heavy part); keep processing minimal.
     const lessons = analyzedFiles.map((file, index) => ({
       id: crypto.randomUUID(),
       type: 'text',
@@ -480,12 +615,17 @@ serve(async (req) => {
         hasTables: file.hasTables,
         hasImages: file.hasImages,
         fileName: file.fileName,
+        folderPath: (file as any).folderPath,
       },
     }));
 
-    // Suggest course title based on common prefix or first file
+    // Suggest course title
     let suggestedCourseTitle = '';
-    if (lessons.length > 1) {
+    
+    // For ZIP: try to use archive name
+    if (isZipArchive) {
+      suggestedCourseTitle = firstFile.name.replace(/\.zip$/i, '');
+    } else if (lessons.length > 1) {
       // Try to find common prefix in file names
       const titles = analyzedFiles.map(f => f.title);
       const prefix = findCommonPrefix(titles);
@@ -493,24 +633,27 @@ serve(async (req) => {
         suggestedCourseTitle = prefix.trim();
       }
     }
+    
     if (!suggestedCourseTitle && lessons.length > 0) {
       suggestedCourseTitle = lessons[0].title;
     }
 
-    console.log(`Processed ${lessons.length} lessons from ${files.length} files`);
+    console.log(`Processed ${lessons.length} lessons from ${isZipArchive ? 'ZIP archive' : files.length + ' files'}`);
 
     return new Response(
       JSON.stringify({
         success: true,
         courseTitle: suggestedCourseTitle,
         lessons,
-        filesCount: files.length,
+        filesCount: isZipArchive ? validFiles.length : files.length,
         sectionsCount: lessons.length,
+        folderStructure: folderStructure.length > 0 ? folderStructure : undefined,
         analysis: analyzedFiles.map(f => ({
           fileName: f.fileName,
           title: f.title,
           wordCount: f.wordCount,
           contentType: f.contentType,
+          folderPath: (f as any).folderPath,
         })),
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
