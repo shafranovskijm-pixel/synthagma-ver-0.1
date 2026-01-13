@@ -887,7 +887,8 @@ export default function CourseBuilder() {
         id: crypto.randomUUID(),
         type: l.type as LessonType,
         title: l.title,
-        content: l.description || "",
+        // Для video/audio/image уроков контент должен быть пустым (ждём ссылку от пользователя)
+        content: l.type === "text" || l.type === "test" ? (l.description || "") : "",
         expanded: false,
         blocks: l.type === "text" ? [] : undefined,
       }));
