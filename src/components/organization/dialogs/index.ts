@@ -14,3 +14,10 @@ export { OrgDetailsDialog } from './OrgDetailsDialog';
 export { AddCompanyDialog, EditCompanyDialog } from './CompanyDialogs';
 export { CreateLinkDialog } from './CreateLinkDialog';
 export { CourseStudentsDialog } from './CourseStudentsDialog';
+
+// New company-related dialogs
+export { CompanyDetailDialog } from './CompanyDetailDialog';
+export { CreateCompanyDialog, DeleteCompanyDialog } from './CompanyFormDialogs';
+export { ViewStudentsDialog, BulkAssignStudentsDialog } from './CompanyStudentsDialogs';
+export { CompanyLinksDialog } from './CompanyLinksDialog';
+export { BulkEnrollDialog } from './BulkEnrollDialog';
