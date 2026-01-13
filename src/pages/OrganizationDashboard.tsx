@@ -340,12 +340,25 @@ export default function OrganizationDashboard() {
               onBulkCreateCredentials={handleBulkCreateCredentials}
               onBulkSendCredentials={handleBulkSendCredentials}
               onBulkSendDocReminders={studentActions.bulkSendDocReminders}
-              onShowEnrollDialog={() => {
+              onShowEnrollDialog={(selectedIds) => {
+                if (selectedIds && selectedIds.length > 0) {
+                  setSelectedStudentIds(new Set(selectedIds));
+                }
                 if (studentCourseFilter !== "all") setEnrollCourseId(studentCourseFilter);
                 setShowEnrollDialog(true);
               }}
-              onShowUnenrollConfirm={() => setShowUnenrollConfirm(true)}
-              onShowBulkFRDOExport={() => setShowBulkFRDOExport(true)}
+              onShowUnenrollConfirm={(selectedIds) => {
+                if (selectedIds && selectedIds.length > 0) {
+                  setSelectedStudentIds(new Set(selectedIds));
+                }
+                setShowUnenrollConfirm(true);
+              }}
+              onShowBulkFRDOExport={(selectedIds) => {
+                if (selectedIds && selectedIds.length > 0) {
+                  setSelectedStudentIds(new Set(selectedIds));
+                }
+                setShowBulkFRDOExport(true);
+              }}
               isCreatingBulkCredentials={studentActions.isCreatingBulkCredentials}
               isSendingBulkCredentials={studentActions.isSendingBulkCredentials}
               isSendingBulkDocReminders={studentActions.isSendingBulkDocReminders}
