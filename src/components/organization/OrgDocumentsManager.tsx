@@ -407,7 +407,7 @@ export function OrgDocumentsManager({ organizationId }: OrgDocumentsManagerProps
           organization_id: organizationId,
           service_id: 'self_examination_report_auto',
           service_title: 'Автоформирование отчёта о результатах самообследования',
-          service_price: '3 500 ₽',
+          service_price: '1 000 ₽',
           notes: JSON.stringify(quizData),
           status: 'pending'
         });
@@ -997,9 +997,7 @@ export function OrgDocumentsManager({ organizationId }: OrgDocumentsManagerProps
             <div className="space-y-4">
               {REGULAR_CATEGORIES.map((category) => {
                 const CategoryIcon = category.icon;
-                const missingDocs = category.documents.filter(d => !getDocumentForType(d.type));
-                
-                if (missingDocs.length === 0) return null;
+                const allDocs = category.documents;
                 
                 return (
                   <div key={category.id} className="space-y-2">
@@ -1010,8 +1008,9 @@ export function OrgDocumentsManager({ organizationId }: OrgDocumentsManagerProps
                       <h4 className="font-medium text-sm">{category.title}</h4>
                     </div>
                     <div className="ml-10 space-y-1">
-                      {missingDocs.map((doc) => {
+                      {allDocs.map((doc) => {
                         const isSelected = selectedDocsForOrder.includes(doc.type);
+                        const isUploaded = !!getDocumentForType(doc.type);
                         return (
                           <div
                             key={doc.type}
@@ -1032,7 +1031,12 @@ export function OrgDocumentsManager({ organizationId }: OrgDocumentsManagerProps
                               {isSelected && <Check className="w-3 h-3 text-primary-foreground" />}
                             </div>
                             <span className="text-sm flex-1">{doc.label}</span>
-                            {doc.required && (
+                            {isUploaded && (
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/10 text-green-600">
+                                Загружен
+                              </span>
+                            )}
+                            {doc.required && !isUploaded && (
                               <span className="text-xs px-2 py-0.5 rounded-full bg-destructive/10 text-destructive">
                                 Обязательный
                               </span>
