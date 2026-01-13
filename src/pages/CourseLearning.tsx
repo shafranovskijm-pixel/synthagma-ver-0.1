@@ -556,9 +556,8 @@ const CourseLearning = () => {
       // First attempt - select random questions from bank
       selectRandomQuestions(allQuestions, questionsCount, []);
       setUsedQuestionIds([]);
+      setAnswers({});
     }
-    
-    setAnswers({});
   };
 
   const selectRandomQuestions = (allQuestions: TestQuestion[], count: number, excludeIds: string[]) => {
