@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { 
   Store, ShoppingCart, GraduationCap, Loader2, CheckCircle, 
   Eye, Edit, Trash2, Plus, Users, Building2, Search, Filter,
-  DollarSign, Tag, Package
+  DollarSign, Tag, Package, MessageSquarePlus, Megaphone, Send,
+  Clock, User
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -93,6 +94,21 @@ interface MarketplaceOrder {
   };
 }
 
+interface CourseRequest {
+  id: string;
+  organization_id: string | null;
+  user_id: string;
+  title: string;
+  description: string | null;
+  budget_min: number | null;
+  budget_max: number | null;
+  students_count: number | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  status: string;
+  created_at: string;
+}
+
 interface CourseStoreManagerProps {
   organizationId: string;
   userRole?: 'organization' | 'student';
@@ -141,6 +157,16 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
   const [showOrderDetailsDialog, setShowOrderDetailsDialog] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<MarketplaceOrder | null>(null);
 
+  // Course requests (announcements)
+  const [courseRequests, setCourseRequests] = useState<CourseRequest[]>([]);
+  const [showRequestDialog, setShowRequestDialog] = useState(false);
+  const [requestTitle, setRequestTitle] = useState("");
+  const [requestDescription, setRequestDescription] = useState("");
+  const [requestBudgetMin, setRequestBudgetMin] = useState("");
+  const [requestBudgetMax, setRequestBudgetMax] = useState("");
+  const [requestStudentsCount, setRequestStudentsCount] = useState("1");
+  const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
+
   useEffect(() => {
     fetchData();
   }, [organizationId]);
@@ -153,11 +179,72 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
         fetchMyCourses(),
         fetchOrders(),
         fetchAvailableCourses(),
+        fetchCourseRequests(),
       ]);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchCourseRequests = async () => {
+    const { data, error } = await supabase
+      .from('course_requests')
+      .select('*')
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    if (error) {
+      console.error('Error fetching course requests:', error);
+      return;
+    }
+    setCourseRequests(data || []);
+  };
+
+  const handleSubmitRequest = async () => {
+    if (!requestTitle.trim()) {
+      toast.error('Введите заголовок объявления');
+      return;
+    }
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast.error('Необходимо авторизоваться');
+      return;
+    }
+
+    setIsSubmittingRequest(true);
+    try {
+      const { error } = await supabase
+        .from('course_requests')
+        .insert({
+          user_id: user.id,
+          organization_id: organizationId,
+          title: requestTitle.trim(),
+          description: requestDescription.trim() || null,
+          budget_min: requestBudgetMin ? parseInt(requestBudgetMin) : null,
+          budget_max: requestBudgetMax ? parseInt(requestBudgetMax) : null,
+          students_count: parseInt(requestStudentsCount) || 1,
+          status: 'active',
+        });
+
+      if (error) throw error;
+
+      toast.success('Объявление опубликовано!');
+      setShowRequestDialog(false);
+      setRequestTitle("");
+      setRequestDescription("");
+      setRequestBudgetMin("");
+      setRequestBudgetMax("");
+      setRequestStudentsCount("1");
+      fetchCourseRequests();
+    } catch (error: any) {
+      console.error('Error creating request:', error);
+      toast.error('Ошибка при публикации объявления');
+    } finally {
+      setIsSubmittingRequest(false);
     }
   };
 
@@ -521,7 +608,78 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
                 className="pl-10 rounded-xl"
               />
             </div>
+            <Button
+              variant="outline"
+              className="rounded-xl gap-2"
+              onClick={() => setShowRequestDialog(true)}
+            >
+              <MessageSquarePlus className="w-4 h-4" />
+              <span className="hidden sm:inline">Разместить объявление</span>
+            </Button>
           </div>
+
+          {/* Course Requests Widget */}
+          {courseRequests.length > 0 && (
+            <Card className="border-amber-500/30 bg-amber-500/5">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Megaphone className="w-5 h-5 text-amber-500" />
+                    <CardTitle className="text-base">Ищут курсы</CardTitle>
+                  </div>
+                  <Badge variant="secondary" className="bg-amber-500/10 text-amber-600">
+                    {courseRequests.length} объявлений
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {courseRequests.slice(0, 5).map((request) => (
+                  <div 
+                    key={request.id}
+                    className="p-4 rounded-xl bg-card border border-border hover:border-primary/30 transition-colors"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium line-clamp-1">{request.title}</h4>
+                        {request.description && (
+                          <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                            {request.description}
+                          </p>
+                        )}
+                        <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-muted-foreground">
+                          {(request.budget_min || request.budget_max) && (
+                            <span className="flex items-center gap-1">
+                              <DollarSign className="w-3 h-3" />
+                              {request.budget_min && request.budget_max 
+                                ? `${request.budget_min.toLocaleString()} - ${request.budget_max.toLocaleString()} ₽`
+                                : request.budget_max 
+                                  ? `до ${request.budget_max.toLocaleString()} ₽`
+                                  : `от ${request.budget_min?.toLocaleString()} ₽`
+                              }
+                            </span>
+                          )}
+                          {request.students_count && request.students_count > 1 && (
+                            <span className="flex items-center gap-1">
+                              <Users className="w-3 h-3" />
+                              {request.students_count} чел.
+                            </span>
+                          )}
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {format(new Date(request.created_at), 'd MMM', { locale: ru })}
+                          </span>
+                        </div>
+                      </div>
+                      <Button size="sm" variant="outline" className="rounded-lg shrink-0">
+                        <Send className="w-3 h-3 mr-1" />
+                        Предложить
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
 
           {filteredCatalog.length === 0 ? (
             <Card className="border-dashed">
@@ -1106,6 +1264,104 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Course Request Dialog */}
+      <Dialog open={showRequestDialog} onOpenChange={setShowRequestDialog}>
+        <DialogContent className="rounded-2xl max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="font-display flex items-center gap-2">
+              <Megaphone className="w-5 h-5 text-primary" />
+              Разместить объявление
+            </DialogTitle>
+            <DialogDescription>
+              Опишите какой курс вы ищете, и продавцы смогут вам его предложить
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="request-title">Заголовок *</Label>
+              <Input
+                id="request-title"
+                placeholder="Например: Ищу курс по охране труда"
+                value={requestTitle}
+                onChange={(e) => setRequestTitle(e.target.value)}
+                className="rounded-xl"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="request-description">Описание</Label>
+              <Textarea
+                id="request-description"
+                placeholder="Опишите подробнее требования к курсу..."
+                value={requestDescription}
+                onChange={(e) => setRequestDescription(e.target.value)}
+                className="rounded-xl min-h-[100px]"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="budget-min">Бюджет от (₽)</Label>
+                <Input
+                  id="budget-min"
+                  type="number"
+                  placeholder="3000"
+                  value={requestBudgetMin}
+                  onChange={(e) => setRequestBudgetMin(e.target.value)}
+                  className="rounded-xl"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="budget-max">Бюджет до (₽)</Label>
+                <Input
+                  id="budget-max"
+                  type="number"
+                  placeholder="10000"
+                  value={requestBudgetMax}
+                  onChange={(e) => setRequestBudgetMax(e.target.value)}
+                  className="rounded-xl"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="students-count">Количество слушателей</Label>
+              <Input
+                id="students-count"
+                type="number"
+                min="1"
+                value={requestStudentsCount}
+                onChange={(e) => setRequestStudentsCount(e.target.value)}
+                className="rounded-xl"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowRequestDialog(false)}
+              className="rounded-xl"
+            >
+              Отмена
+            </Button>
+            <Button
+              onClick={handleSubmitRequest}
+              disabled={isSubmittingRequest || !requestTitle.trim()}
+              className="btn-gradient rounded-xl"
+            >
+              {isSubmittingRequest ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Публикация...
+                </>
+              ) : (
+                <>
+                  <Send className="w-4 h-4 mr-2" />
+                  Опубликовать
+                </>
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
