@@ -277,5 +277,30 @@ export function useCompanyStudentsManager(organizationId: string) {
     isEnrolling,
     openBulkEnrollDialog,
     enrollCompanyToCourses,
+    toggleStudentSelection: (studentId: string) => {
+      setSelectedStudentIds((prev) =>
+        prev.includes(studentId)
+          ? prev.filter((id) => id !== studentId)
+          : [...prev, studentId]
+      );
+    },
+    toggleSelectAll: () => {
+      const allIds = filteredAvailableStudents.map((s) => s.id);
+      if (selectedStudentIds.length === allIds.length) {
+        setSelectedStudentIds([]);
+      } else {
+        setSelectedStudentIds(allIds);
+      }
+    },
+    toggleCourseSelection: (courseId: string) => {
+      setSelectedCourseIds((prev) =>
+        prev.includes(courseId)
+          ? prev.filter((id) => id !== courseId)
+          : [...prev, courseId]
+      );
+    },
   };
 }
+
+export type { CompanyStudent } from "./useCompaniesManager";
+export type { AvailableStudent };
