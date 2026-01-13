@@ -631,35 +631,57 @@ export function LibraryManager({ organizationId }: LibraryManagerProps) {
       </div>
 
       {/* Statistics */}
-      <div className="grid grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-card rounded-xl border border-border p-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
-              <Folder className="w-5 h-5 text-accent" />
+            <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+              <BookOpen className="w-5 h-5 text-blue-500" />
             </div>
             <div>
-              <div className="text-xl font-bold">{folders.length}</div>
-              <div className="text-xs text-muted-foreground">Папок</div>
+              <div className="text-xl font-bold">
+                {documents.filter(d => d.type === 'document' || d.type === 'presentation').length}
+              </div>
+              <div className="text-xs text-muted-foreground">Учебников</div>
             </div>
           </div>
         </div>
-        {LIBRARY_TYPES.map((type) => {
-          const count = documents.filter(d => d.type === type.value).length;
-          const TypeIcon = type.icon;
-          return (
-            <div key={type.value} className="bg-card rounded-xl border border-border p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <TypeIcon className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <div className="text-xl font-bold">{count}</div>
-                  <div className="text-xs text-muted-foreground truncate">{type.label.split(" ")[0]}</div>
-                </div>
-              </div>
+        <div className="bg-card rounded-xl border border-border p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
+              <FileText className="w-5 h-5 text-purple-500" />
             </div>
-          );
-        })}
+            <div>
+              <div className="text-xl font-bold">{folders.length}</div>
+              <div className="text-xs text-muted-foreground">Шаблонов</div>
+            </div>
+          </div>
+        </div>
+        <div className="bg-card rounded-xl border border-border p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+              <File className="w-5 h-5 text-amber-500" />
+            </div>
+            <div>
+              <div className="text-xl font-bold">
+                {documents.filter(d => d.type === 'spreadsheet').length}
+              </div>
+              <div className="text-xs text-muted-foreground">Нормативных документов</div>
+            </div>
+          </div>
+        </div>
+        <div className="bg-card rounded-xl border border-border p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center">
+              <Folder className="w-5 h-5 text-green-500" />
+            </div>
+            <div>
+              <div className="text-xl font-bold">
+                {documents.filter(d => d.type === 'other').length}
+              </div>
+              <div className="text-xs text-muted-foreground">Документы организации</div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Content */}
