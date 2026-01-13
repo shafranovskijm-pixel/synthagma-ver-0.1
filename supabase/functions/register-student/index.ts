@@ -201,6 +201,9 @@ serve(async (req) => {
 
         userId = authData.user.id;
 
+        // Generate login for credential storage
+        const loginForStorage = `student_${Math.floor(10000 + Math.random() * 90000)}`;
+        
         // Upsert profile (trigger may have already created one)
         const { error: profileError } = await supabaseAdmin
           .from("profiles")
@@ -209,7 +212,9 @@ serve(async (req) => {
             full_name,
             email: email.toLowerCase(),
             organization_id,
-            company_id: company_id || null
+            company_id: company_id || null,
+            login: loginForStorage,
+            generated_password: password
           }, { onConflict: "user_id" });
 
         if (profileError) {

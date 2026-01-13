@@ -12,7 +12,7 @@ export function useStudentFiltersState({
   searchQuery,
   studentDocsByUser,
 }: UseStudentFiltersStateProps) {
-  const [studentStatusFilter, setStudentStatusFilter] = useState<"all" | "active" | "completed" | "not_enrolled">("not_enrolled");
+  const [studentStatusFilter, setStudentStatusFilter] = useState<"all" | "active" | "completed" | "not_enrolled">("all");
   const [studentCourseFilter, setStudentCourseFilter] = useState<string>("all");
   const [studentDocsFilter, setStudentDocsFilter] = useState<"all" | "complete" | "no_passport" | "no_snils" | "no_education" | "incomplete">("all");
 

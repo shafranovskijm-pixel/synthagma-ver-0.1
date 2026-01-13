@@ -63,7 +63,7 @@ export function useStudents(
   const [refreshKey, setRefreshKey] = useState(0);
   
   // Filters
-  const [statusFilter, setStatusFilter] = useState<StudentStatusFilter>("not_enrolled");
+  const [statusFilter, setStatusFilter] = useState<StudentStatusFilter>("all");
   const [courseFilter, setCourseFilter] = useState<string>("all");
   const [docsFilter, setDocsFilter] = useState<StudentDocsFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");

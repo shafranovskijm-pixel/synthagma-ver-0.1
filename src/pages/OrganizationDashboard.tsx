@@ -41,7 +41,7 @@ export default function OrganizationDashboard() {
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [showBulkUploadDialog, setShowBulkUploadDialog] = useState(false);
-  const [studentStatusFilter, setStudentStatusFilter] = useState<"all" | "active" | "completed" | "not_enrolled">("not_enrolled");
+  const [studentStatusFilter, setStudentStatusFilter] = useState<"all" | "active" | "completed" | "not_enrolled">("all");
   const [studentCourseFilter, setStudentCourseFilter] = useState<string>("all");
 
   // Category management hook

@@ -16,7 +16,7 @@ export function useStudentFilters({
   studentDocsByUser,
 }: UseStudentFiltersProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<StudentStatusFilter>("not_enrolled");
+  const [statusFilter, setStatusFilter] = useState<StudentStatusFilter>("all");
   const [courseFilter, setCourseFilter] = useState<string>("all");
   const [docsFilter, setDocsFilter] = useState<StudentDocsFilter>("all");
 
@@ -93,7 +93,7 @@ export function useStudentFilters({
 
   const resetFilters = useCallback(() => {
     setSearchQuery("");
-    setStatusFilter("not_enrolled");
+    setStatusFilter("all");
     setCourseFilter("all");
     setDocsFilter("all");
   }, []);
