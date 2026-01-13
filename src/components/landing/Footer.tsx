@@ -48,8 +48,8 @@ export function Footer() {
             <ul className="space-y-4 text-background/70">
               {[
                 { label: "Возможности", href: "#features" },
-                { label: "Для учеников", href: "#for-students" },
-                { label: "Тарифы", href: "#pricing" },
+                { label: "Дорожная карта", href: "#roadmap" },
+                { label: "Калькулятор стоимости", href: "#pricing" },
                 { label: "Документация", href: "#" },
               ].map((link) => (
                 <li key={link.label}>
