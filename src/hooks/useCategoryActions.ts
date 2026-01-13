@@ -8,7 +8,8 @@ interface CourseCategory {
   color: string;
 }
 
-export function useCategoryActions(organizationId: string | null) {
+export function useCategoryActions(initialOrganizationId: string | null) {
+  const [orgId, setOrgId] = useState<string | null>(initialOrganizationId);
   const [categories, setCategories] = useState<CourseCategory[]>([]);
   const [showCategoryDialog, setShowCategoryDialog] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
@@ -17,22 +18,26 @@ export function useCategoryActions(organizationId: string | null) {
   const [editingCategory, setEditingCategory] = useState<CourseCategory | null>(null);
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>("all");
 
+  const setOrganizationId = useCallback((id: string | null) => {
+    setOrgId(id);
+  }, []);
+
   const fetchCategories = useCallback(async () => {
-    if (!organizationId) return;
+    if (!orgId) return;
     try {
       const { data } = await supabase
         .from("course_categories")
         .select("*")
-        .eq("organization_id", organizationId)
+        .eq("organization_id", orgId)
         .order("name");
       setCategories(data || []);
     } catch (error) {
       console.error("Error fetching categories:", error);
     }
-  }, [organizationId]);
+  }, [orgId]);
 
   const createCategory = useCallback(async () => {
-    if (!organizationId || !newCategoryName.trim()) {
+    if (!orgId || !newCategoryName.trim()) {
       toast.error("Введите название категории");
       return null;
     }
@@ -42,7 +47,7 @@ export function useCategoryActions(organizationId: string | null) {
       const { data, error } = await supabase
         .from("course_categories")
         .insert({
-          organization_id: organizationId,
+          organization_id: orgId,
           name: newCategoryName.trim(),
           color: newCategoryColor
         })
@@ -63,7 +68,7 @@ export function useCategoryActions(organizationId: string | null) {
     } finally {
       setIsCreatingCategory(false);
     }
-  }, [organizationId, newCategoryName, newCategoryColor]);
+  }, [orgId, newCategoryName, newCategoryColor]);
 
   const setCourseCategory = useCallback(async (courseId: string, categoryId: string | null, setCourses: React.Dispatch<React.SetStateAction<any[]>>) => {
     try {
@@ -91,6 +96,7 @@ export function useCategoryActions(organizationId: string | null) {
   return {
     categories,
     setCategories,
+    setOrganizationId,
     showCategoryDialog,
     setShowCategoryDialog,
     newCategoryName,

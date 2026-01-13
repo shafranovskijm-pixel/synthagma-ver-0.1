@@ -69,6 +69,7 @@ import { useBrandingSettings } from "@/hooks/useBrandingSettings";
 import { useDashboardSettings } from "@/hooks/useDashboardSettings";
 import { useStudentDetailCard } from "@/hooks/useStudentDetailCard";
 import { useStudentDetailsDialog } from "@/hooks/useStudentDetailsDialog";
+import { useOrganizationDataLoader } from "@/hooks/useOrganizationDataLoader";
 import { Button } from "@/components/ui/button";
 import { GraduationCap, BookOpen, Users, BarChart3, Settings, LogOut, Plus, Upload, FileSpreadsheet, Search, Eye, TrendingUp, Clock, CheckCircle2, XCircle, Loader2, Edit, Trash2, FileText, Download, X, ChevronRight, ChevronDown, Link, Copy, Building2, Save, Send, FileCheck, Receipt, CheckSquare, LayoutGrid, List, Filter, Tag, Palette, History, Moon, Sun, Library, Trophy, MessageCircle, Image, ExternalLink, ShoppingBag, Mail, Key, Menu, AlertCircle, Award, ClipboardList } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -165,16 +166,50 @@ export default function OrganizationDashboard() {
   const [isDocumentsMenuOpen, setIsDocumentsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showImportDialog, setShowImportDialog] = useState(false);
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [isLoadingCourses, setIsLoadingCourses] = useState(true);
   const [courseFilter, setCourseFilter] = useState<"all" | "published" | "draft">("all");
   const [courseViewMode, setCourseViewMode] = useState<"grid" | "list">("grid");
   const [courseSearchQuery, setCourseSearchQuery] = useState("");
-  const [students, setStudents] = useState<Student[]>([]);
-  const [isLoadingStudents, setIsLoadingStudents] = useState(true);
-  const [organizationId, setOrganizationId] = useState<string | null>(null);
-  const [organizationName, setOrganizationName] = useState("Организация");
-  const [isFrdoEnabled, setIsFrdoEnabled] = useState(false);
+
+  // Category management hook - initialize before data loader
+  const categoryActions = useCategoryActions(null);
+  const { categories, setCategories, showCategoryDialog, setShowCategoryDialog, newCategoryName, setNewCategoryName, newCategoryColor, setNewCategoryColor, isCreatingCategory, selectedCategoryFilter, getCategoryById, createCategory } = categoryActions;
+
+  // Organization data loader hook
+  const dataLoader = useOrganizationDataLoader({
+    userId: user?.id,
+    onCategoriesLoaded: setCategories,
+  });
+  
+  const {
+    organizationId,
+    organizationName,
+    isFrdoEnabled,
+    isAdminView,
+    adminViewOrgId,
+    courses,
+    setCourses,
+    students,
+    setStudents,
+    allProfiles,
+    setAllProfiles,
+    companies,
+    setCompanies,
+    isLoadingCourses,
+    isLoadingStudents,
+    stats,
+    setStats,
+    documentsStats,
+    studentDocsByUser,
+    studentFrdoStatus,
+    refreshData,
+  } = dataLoader;
+
+  // Update category actions with organizationId after it loads
+  useEffect(() => {
+    if (organizationId) {
+      categoryActions.setOrganizationId(organizationId);
+    }
+  }, [organizationId]);
   
   // Organization features access control
   const { features: orgFeatures, loading: loadingFeatures, isEnabled } = useOrgFeatures(organizationId);
@@ -191,10 +226,6 @@ export default function OrganizationDashboard() {
     createLink: handleCreateRegistrationLink,
   } = useRegistrationLinks(organizationId);
 
-  // Admin view mode
-  const [isAdminView, setIsAdminView] = useState(false);
-  const [adminViewOrgId, setAdminViewOrgId] = useState<string | null>(null);
-
   // Organizations state
   const [allOrganizations, setAllOrganizations] = useState<Organization[]>([]);
   const [isLoadingOrgs, setIsLoadingOrgs] = useState(false);
@@ -209,6 +240,7 @@ export default function OrganizationDashboard() {
   }[]>([]);
   const [orgStudents, setOrgStudents] = useState<Student[]>([]);
   const [isLoadingOrgDetails, setIsLoadingOrgDetails] = useState(false);
+  
   // Company management hook
   const companyActions = useCompanyActions();
 
@@ -224,14 +256,6 @@ export default function OrganizationDashboard() {
   const studentDetailCard = useStudentDetailCard();
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
-  // Refresh trigger for data reload
-  const [refreshKey, setRefreshKey] = useState(0);
-  
-  // Student course assignment hook - refresh callback will be set after data loading setup
-  const refreshData = useCallback(() => {
-    setRefreshKey(prev => prev + 1);
-  }, []);
-
   // Enrollment actions hook
   const enrollmentActions = useEnrollmentActions(organizationId, organizationName, refreshData);
 
@@ -244,20 +268,6 @@ export default function OrganizationDashboard() {
   const [isSendingInvitation, setIsSendingInvitation] = useState(false);
   
   const studentCoursesDialog = useStudentCoursesDialog(courses, refreshData);
-
-  // All profiles (students without enrollments)
-  const [allProfiles, setAllProfiles] = useState<Student[]>([]);
-  
-  // Statistics state
-  const [stats, setStats] = useState({
-    totalStudents: 0,
-    totalCourses: 0,
-    completedCount: 0,
-    averageProgress: 0
-  });
-
-  // Companies state (needed before hooks)
-  const [companies, setCompanies] = useState<Company[]>([]);
 
   // Student management hook
   const studentManagement = useStudentManagement({
@@ -274,19 +284,6 @@ export default function OrganizationDashboard() {
   // Student actions hook (credentials, delete, etc.)
   const studentActions = useStudentActions(organizationId, organizationName, refreshData);
 
-  // Documents stats
-  const [documentsStats, setDocumentsStats] = useState<{
-    total: number;
-    withPassport: number;
-    withSnils: number;
-    withEducation: number;
-    complete: number;
-  }>({ total: 0, withPassport: 0, withSnils: 0, withEducation: 0, complete: 0 });
-
-  // Category management hook
-  const categoryActions = useCategoryActions(organizationId);
-  const { categories, setCategories, showCategoryDialog, setShowCategoryDialog, newCategoryName, setNewCategoryName, newCategoryColor, setNewCategoryColor, isCreatingCategory, selectedCategoryFilter, getCategoryById, createCategory } = categoryActions;
-  
   // Enrollment actions aliases
   const { selectedStudentIds, setSelectedStudentIds, showEnrollDialog, setShowEnrollDialog, showUnenrollConfirm, setShowUnenrollConfirm, showBulkFRDOExport, setShowBulkFRDOExport, enrollCourseId, setEnrollCourseId, isEnrolling, isUnenrolling } = enrollmentActions;
 
@@ -294,16 +291,6 @@ export default function OrganizationDashboard() {
   const [studentStatusFilter, setStudentStatusFilter] = useState<"all" | "active" | "completed" | "not_enrolled">("not_enrolled");
   const [studentCourseFilter, setStudentCourseFilter] = useState<string>("all");
   const [studentDocsFilter, setStudentDocsFilter] = useState<"all" | "complete" | "no_passport" | "no_snils" | "no_education" | "incomplete">("all");
-  
-  // Student documents by user_id for filtering
-  const [studentDocsByUser, setStudentDocsByUser] = useState<Map<string, string[]>>(new Map());
-
-  // FRDO data status by user_id
-  const [studentFrdoStatus, setStudentFrdoStatus] = useState<Map<string, { 
-    hasData: boolean; 
-    isComplete: boolean; 
-    missingFields: string[] 
-  }>>(new Map());
 
 
   // Course details modal state
@@ -412,249 +399,6 @@ export default function OrganizationDashboard() {
   
   // Preview student dashboard
   const handlePreviewStudentDashboard = previewStudentDashboard;
-
-  // Fetch organization data
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!user) return;
-      try {
-        // Check for admin view mode
-        const adminViewData = localStorage.getItem("adminViewAsOrg");
-        let orgId: string | null = null;
-        if (adminViewData) {
-          const adminView = JSON.parse(adminViewData);
-          orgId = adminView.id;
-          setAdminViewOrgId(adminView.id);
-          setOrganizationName(adminView.name);
-          setIsAdminView(true);
-        } else {
-          const {
-            data: profile
-          } = await supabase.from("profiles").select("organization_id").eq("user_id", user.id).single();
-          if (!profile?.organization_id) {
-            setIsLoadingCourses(false);
-            return;
-          }
-          orgId = profile.organization_id;
-          const {
-            data: orgData
-          } = await supabase.from("organizations").select("name, frdo_enabled").eq("id", orgId).single();
-          if (orgData) {
-            setOrganizationName(orgData.name);
-            setIsFrdoEnabled(orgData.frdo_enabled || false);
-          }
-        }
-        setOrganizationId(orgId);
-
-        // Fetch courses
-        const {
-          data: coursesData,
-          error
-        } = await supabase.from("courses").select(`*, lessons(count)`).eq("organization_id", orgId).order("created_at", {
-          ascending: false
-        });
-        if (error) throw error;
-        const courseIds = (coursesData || []).map((c: any) => c.id);
-
-        // Get enrollments
-        let allEnrollments: any[] = [];
-        if (courseIds.length > 0) {
-          const {
-            data: enrollmentsData
-          } = await supabase.from("enrollments").select("*").in("course_id", courseIds);
-          allEnrollments = enrollmentsData || [];
-        }
-
-        // Fetch students
-        const {
-          data: allProfilesData
-        } = await supabase.from("profiles").select("id, user_id, full_name, email, login, generated_password").eq("organization_id", orgId);
-        const userEnrollmentsMap: Record<string, any[]> = {};
-        for (const enrollment of allEnrollments) {
-          if (!userEnrollmentsMap[enrollment.user_id]) {
-            userEnrollmentsMap[enrollment.user_id] = [];
-          }
-          userEnrollmentsMap[enrollment.user_id].push(enrollment);
-        }
-        const studentsList: Student[] = [];
-        const profilesWithoutEnrollments: Student[] = [];
-        for (const profile of allProfilesData || []) {
-          const userEnrollments = userEnrollmentsMap[profile.user_id] || [];
-          if (userEnrollments.length === 0) {
-            profilesWithoutEnrollments.push({
-              id: profile.id,
-              user_id: profile.user_id,
-              enrollment_id: null,
-              name: profile.full_name || "Без имени",
-              email: profile.email || "",
-              login: profile.login || null,
-              generated_password: profile.generated_password || null,
-              course: null,
-              course_id: null,
-              progress: 0,
-              lastActivity: null,
-              status: null
-            });
-          } else {
-            for (const enrollment of userEnrollments) {
-              const course = coursesData?.find((c: any) => c.id === enrollment.course_id);
-              studentsList.push({
-                id: profile.id,
-                user_id: profile.user_id,
-                enrollment_id: enrollment.id,
-                name: profile.full_name || "Без имени",
-                email: profile.email || "",
-                login: profile.login || null,
-                generated_password: profile.generated_password || null,
-                course: course?.title || "—",
-                course_id: enrollment.course_id,
-                progress: enrollment.progress || 0,
-                lastActivity: enrollment.started_at,
-                status: enrollment.status
-              });
-            }
-          }
-        }
-        setStudents([...studentsList, ...profilesWithoutEnrollments]);
-        setAllProfiles(profilesWithoutEnrollments);
-        setIsLoadingStudents(false);
-
-        // Calculate stats
-        const totalStudents = (allProfilesData || []).length;
-        const totalCourses = coursesData?.length || 0;
-        const completedCount = allEnrollments.filter(e => e.status === 'completed').length;
-        const averageProgress = allEnrollments.length > 0 ? Math.round(allEnrollments.reduce((sum, e) => sum + (e.progress || 0), 0) / allEnrollments.length) : 0;
-        setStats({
-          totalStudents,
-          totalCourses,
-          completedCount,
-          averageProgress
-        });
-
-        // Fetch documents stats
-        const { data: identityDocs } = await supabase
-          .from("student_identity_documents")
-          .select("user_id, type")
-          .eq("organization_id", orgId);
-
-        if (identityDocs && allProfilesData) {
-          const docsByUser = new Map<string, string[]>();
-          identityDocs.forEach(doc => {
-            const existing = docsByUser.get(doc.user_id) || [];
-            existing.push(doc.type);
-            docsByUser.set(doc.user_id, existing);
-          });
-
-          let withPassport = 0;
-          let withSnils = 0;
-          let withEducation = 0;
-          let complete = 0;
-
-          for (const profile of allProfilesData) {
-            const userDocs = docsByUser.get(profile.user_id) || [];
-            const hasPassport = userDocs.some(t => t === "passport" || t === "birth_certificate");
-            const hasSnils = userDocs.includes("snils");
-            const hasEducation = userDocs.some(t => t === "education_document" || t === "diploma" || t === "attestat");
-
-            if (hasPassport) withPassport++;
-            if (hasSnils) withSnils++;
-            if (hasEducation) withEducation++;
-            if (hasPassport && hasSnils && hasEducation) complete++;
-          }
-
-          setStudentDocsByUser(docsByUser);
-          setDocumentsStats({
-            total: allProfilesData.length,
-            withPassport,
-            withSnils,
-            withEducation,
-            complete
-          });
-        }
-
-        // Fetch FRDO data status for all students
-        const userIds = allProfilesData.map(p => p.user_id);
-        if (userIds.length > 0) {
-          const { data: frdoData } = await supabase
-            .from("student_frdo_data")
-            .select("user_id, last_name, first_name, middle_name, birth_date, gender, snils, education_level")
-            .eq("organization_id", orgId)
-            .in("user_id", userIds);
-
-          const frdoStatusMap = new Map<string, { hasData: boolean; isComplete: boolean; missingFields: string[] }>();
-          
-          const requiredFields = [
-            { key: "last_name", label: "Фамилия" },
-            { key: "first_name", label: "Имя" },
-            { key: "birth_date", label: "Дата рождения" },
-            { key: "gender", label: "Пол" },
-            { key: "snils", label: "СНИЛС" },
-          ];
-
-          for (const profile of allProfilesData) {
-            const data = frdoData?.find(f => f.user_id === profile.user_id);
-            const missing: string[] = [];
-            
-            if (data) {
-              for (const field of requiredFields) {
-                if (!data[field.key as keyof typeof data]) {
-                  missing.push(field.label);
-                }
-              }
-              frdoStatusMap.set(profile.user_id, {
-                hasData: true,
-                isComplete: missing.length === 0,
-                missingFields: missing,
-              });
-            } else {
-              frdoStatusMap.set(profile.user_id, {
-                hasData: false,
-                isComplete: false,
-                missingFields: requiredFields.map(f => f.label),
-              });
-            }
-          }
-          
-          setStudentFrdoStatus(frdoStatusMap);
-        }
-
-        // Fetch categories
-        const {
-          data: categoriesData
-        } = await supabase.from("course_categories").select("*").eq("organization_id", orgId).order("name");
-        categoryActions.setCategories(categoriesData || []);
-
-        // Fetch companies
-        const {
-          data: companiesData
-        } = await supabase.from("companies").select("id, name, inn").eq("organization_id", orgId).order("name");
-        setCompanies(companiesData || []);
-
-        // Process courses with stats
-        const coursesWithStats = (coursesData || []).map((course: any) => {
-          const courseEnrollments = allEnrollments.filter(e => e.course_id === course.id);
-          return {
-            id: course.id,
-            title: course.title,
-            description: course.description,
-            is_published: course.is_published,
-            created_at: course.created_at,
-            lessonsCount: course.lessons?.[0]?.count || 0,
-            studentsCount: courseEnrollments.length,
-            duration: course.duration || "—",
-            category_id: course.category_id
-          };
-        });
-        setCourses(coursesWithStats);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        toast.error("Ошибка загрузки данных");
-      } finally {
-        setIsLoadingCourses(false);
-      }
-    };
-    fetchData();
-  }, [user, refreshKey]);
 
   // Fetch all organizations
   useEffect(() => {
