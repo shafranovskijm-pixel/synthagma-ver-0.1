@@ -56,7 +56,6 @@ import {
 import { generateEnrollmentOrder } from "@/utils/generateEnrollmentOrder";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrgFeatures } from "@/hooks/useOrgFeatures";
-import { useOrganizationData } from "@/hooks/useOrganizationData";
 import { useRegistrationLinks } from "@/hooks/useRegistrationLinks";
 import { useCompanyActions } from "@/hooks/useCompanyActions";
 import { useStudentCoursesDialog } from "@/hooks/useStudentCoursesDialog";
@@ -80,36 +79,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-interface CourseCategory {
-  id: string;
-  name: string;
-  color: string;
-}
-interface Course {
-  id: string;
-  title: string;
-  description: string | null;
-  is_published: boolean;
-  created_at: string;
-  lessonsCount?: number;
-  studentsCount?: number;
-  duration?: string;
-  category_id?: string | null;
-}
-interface Student {
-  id: string;
-  user_id: string;
-  enrollment_id: string | null;
-  name: string;
-  email: string;
-  login: string | null;
-  generated_password: string | null;
-  course: string | null;
-  course_id: string | null;
-  progress: number;
-  lastActivity: string | null;
-  status: string | null;
-}
+import { 
+  Student, 
+  Course, 
+  CourseCategory, 
+  Company, 
+  StudentDocument, 
+  TestAttempt, 
+  TestQuestion, 
+  StudentDetails 
+} from "@/types/shared";
+
+// Extended Organization interface for dashboard
 interface Organization {
   id: string;
   name: string;
@@ -121,38 +102,6 @@ interface Organization {
   created_at: string;
   studentsCount?: number;
   coursesCount?: number;
-}
-interface StudentDocument {
-  id: string;
-  type: string;
-  name: string;
-  file_url: string | null;
-}
-interface TestAttempt {
-  id: string;
-  lesson_id: string;
-  lesson_title: string;
-  score: number;
-  max_score: number;
-  completed_at: string;
-  answers: Record<string, number>;
-}
-interface TestQuestion {
-  id: string;
-  question: string;
-  options: string[];
-  correct_answer: number;
-  order_index: number;
-}
-interface StudentDetails {
-  student: Student;
-  documents: StudentDocument[];
-  testAttempts: TestAttempt[];
-}
-interface Company {
-  id: string;
-  name: string;
-  inn: string | null;
 }
 export default function OrganizationDashboard() {
   const navigate = useNavigate();

@@ -1,21 +1,8 @@
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-
-interface Student {
-  id: string;
-  user_id: string;
-  enrollment_id: string | null;
-  name: string;
-  email: string;
-  login: string | null;
-  generated_password: string | null;
-  course: string | null;
-  course_id: string | null;
-  progress: number;
-  lastActivity: string | null;
-  status: string | null;
-}
+import { Student } from "@/types/shared";
+import { generateLogin, generateSimplePassword } from "@/utils/credentials";
 
 export function useStudentActions(
   organizationId: string | null,
@@ -29,34 +16,6 @@ export function useStudentActions(
   const [isCreatingBulkCredentials, setIsCreatingBulkCredentials] = useState(false);
   const [isDeletingStudent, setIsDeletingStudent] = useState(false);
   const [isSendingBulkDocReminders, setIsSendingBulkDocReminders] = useState(false);
-
-  // Transliteration map for login generation
-  const translit: Record<string, string> = {
-    'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'e',
-    'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
-    'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
-    'ф': 'f', 'х': 'h', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch',
-    'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya'
-  };
-
-  const generatePassword = useCallback(() => {
-    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-    let password = '';
-    for (let i = 0; i < 8; i++) {
-      password += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return password;
-  }, []);
-
-  const generateLogin = useCallback((name: string) => {
-    const nameParts = name.toLowerCase().split(/\s+/);
-    let baseLogin = nameParts.length >= 2
-      ? nameParts[0].replace(/[^a-zа-яё]/gi, '').substring(0, 10) + '_' + nameParts[1].replace(/[^a-zа-яё]/gi, '').substring(0, 2)
-      : nameParts[0].replace(/[^a-zа-яё]/gi, '').substring(0, 12);
-    baseLogin = baseLogin.split('').map(c => translit[c] || c).join('');
-    const randomSuffix = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-    return baseLogin + randomSuffix;
-  }, [translit]);
 
   const copyCredentials = useCallback((login: string, password: string) => {
     const text = `Логин: ${login}\nПароль: ${password}`;
@@ -125,7 +84,7 @@ export function useStudentActions(
     setIsCreatingCredentials(true);
     try {
       const login = generateLogin(student.name);
-      const password = generatePassword();
+      const password = generateSimplePassword();
 
       const { error } = await supabase.from("profiles").update({
         login,
@@ -143,7 +102,7 @@ export function useStudentActions(
     } finally {
       setIsCreatingCredentials(false);
     }
-  }, [generateLogin, generatePassword, onRefresh]);
+  }, [onRefresh]);
 
   const deleteStudentCompletely = useCallback(async (userId: string) => {
     setIsDeletingStudent(true);
@@ -217,7 +176,7 @@ export function useStudentActions(
       for (const student of studentsToCreate) {
         try {
           const login = generateLogin(student.name);
-          const password = generatePassword();
+          const password = generateSimplePassword();
           const { error } = await supabase.from("profiles").update({
             login,
             generated_password: password
@@ -238,7 +197,7 @@ export function useStudentActions(
     } finally {
       setIsCreatingBulkCredentials(false);
     }
-  }, [generateLogin, generatePassword, onRefresh]);
+  }, [onRefresh]);
 
   const bulkSendDocReminders = useCallback(async () => {
     if (!organizationId) return;

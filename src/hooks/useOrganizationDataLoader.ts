@@ -1,60 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-
-interface Student {
-  id: string;
-  user_id: string;
-  enrollment_id: string | null;
-  name: string;
-  email: string;
-  login: string | null;
-  generated_password: string | null;
-  course: string | null;
-  course_id: string | null;
-  progress: number;
-  lastActivity: string | null;
-  status: string | null;
-}
-
-interface Course {
-  id: string;
-  title: string;
-  description: string | null;
-  is_published: boolean;
-  created_at: string;
-  lessonsCount?: number;
-  studentsCount?: number;
-  duration?: string;
-  category_id?: string | null;
-}
-
-interface Company {
-  id: string;
-  name: string;
-  inn: string | null;
-}
-
-interface CourseCategory {
-  id: string;
-  name: string;
-  color: string;
-}
-
-interface Stats {
-  totalStudents: number;
-  totalCourses: number;
-  completedCount: number;
-  averageProgress: number;
-}
-
-interface DocumentsStats {
-  total: number;
-  withPassport: number;
-  withSnils: number;
-  withEducation: number;
-  complete: number;
-}
+import { Student, Course, Company, CourseCategory, Stats, DocumentsStats } from "@/types/shared";
 
 interface FrdoStatus {
   hasData: boolean;
