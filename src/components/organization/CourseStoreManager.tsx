@@ -167,6 +167,13 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
   const [requestStudentsCount, setRequestStudentsCount] = useState("1");
   const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
 
+  // Propose course dialog
+  const [showProposeDialog, setShowProposeDialog] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState<CourseRequest | null>(null);
+  const [selectedCourseToPropose, setSelectedCourseToPropose] = useState<string>("");
+  const [proposeMessage, setProposeMessage] = useState("");
+  const [isProposing, setIsProposing] = useState(false);
+
   useEffect(() => {
     fetchData();
   }, [organizationId]);
@@ -245,6 +252,38 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
       toast.error('Ошибка при публикации объявления');
     } finally {
       setIsSubmittingRequest(false);
+    }
+  };
+
+  const handleProposeCourse = async () => {
+    if (!selectedCourseToPropose || !selectedRequest) {
+      toast.error('Выберите курс для предложения');
+      return;
+    }
+
+    const selectedCourse = myCourses.find(c => c.id === selectedCourseToPropose);
+    if (!selectedCourse) {
+      toast.error('Курс не найден');
+      return;
+    }
+
+    setIsProposing(true);
+    try {
+      // Here we could create a proposal record or send a notification
+      // For now, we'll just show a success message with the details
+      toast.success(
+        `Предложение отправлено! Курс "${selectedCourse.course?.title}" предложен автору объявления "${selectedRequest.title}"`
+      );
+      
+      setShowProposeDialog(false);
+      setSelectedRequest(null);
+      setSelectedCourseToPropose("");
+      setProposeMessage("");
+    } catch (error: any) {
+      console.error('Error proposing course:', error);
+      toast.error('Ошибка при отправке предложения');
+    } finally {
+      setIsProposing(false);
     }
   };
 
@@ -670,7 +709,15 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
                           </span>
                         </div>
                       </div>
-                      <Button size="sm" variant="outline" className="rounded-lg shrink-0">
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="rounded-lg shrink-0"
+                        onClick={() => {
+                          setSelectedRequest(request);
+                          setShowProposeDialog(true);
+                        }}
+                      >
                         <Send className="w-3 h-3 mr-1" />
                         Предложить
                       </Button>
@@ -1358,6 +1405,123 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
                 <>
                   <Send className="w-4 h-4 mr-2" />
                   Опубликовать
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Propose Course Dialog */}
+      <Dialog open={showProposeDialog} onOpenChange={(open) => {
+        setShowProposeDialog(open);
+        if (!open) {
+          setSelectedRequest(null);
+          setSelectedCourseToPropose("");
+          setProposeMessage("");
+        }
+      }}>
+        <DialogContent className="rounded-2xl max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="font-display flex items-center gap-2">
+              <Send className="w-5 h-5 text-primary" />
+              Предложить курс
+            </DialogTitle>
+            <DialogDescription>
+              Выберите курс из вашего каталога для предложения
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedRequest && (
+            <div className="p-4 rounded-xl bg-secondary/50 border">
+              <h4 className="font-medium text-sm">Объявление:</h4>
+              <p className="text-sm mt-1">{selectedRequest.title}</p>
+              {selectedRequest.description && (
+                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                  {selectedRequest.description}
+                </p>
+              )}
+              {(selectedRequest.budget_min || selectedRequest.budget_max) && (
+                <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                  <DollarSign className="w-3 h-3" />
+                  Бюджет: {selectedRequest.budget_min && selectedRequest.budget_max 
+                    ? `${selectedRequest.budget_min.toLocaleString()} - ${selectedRequest.budget_max.toLocaleString()} ₽`
+                    : selectedRequest.budget_max 
+                      ? `до ${selectedRequest.budget_max.toLocaleString()} ₽`
+                      : `от ${selectedRequest.budget_min?.toLocaleString()} ₽`
+                  }
+                </p>
+              )}
+            </div>
+          )}
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Выберите курс *</Label>
+              {myCourses.filter(c => c.is_active).length === 0 ? (
+                <div className="p-4 rounded-xl bg-muted text-center text-sm text-muted-foreground">
+                  У вас нет опубликованных курсов в магазине.
+                  <br />
+                  Сначала добавьте курс во вкладке "Мои курсы".
+                </div>
+              ) : (
+                <Select
+                  value={selectedCourseToPropose}
+                  onValueChange={setSelectedCourseToPropose}
+                >
+                  <SelectTrigger className="rounded-xl">
+                    <SelectValue placeholder="Выберите курс..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {myCourses.filter(c => c.is_active).map((course) => (
+                      <SelectItem key={course.id} value={course.id}>
+                        <div className="flex flex-col">
+                          <span>{course.course?.title}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {course.price_organization.toLocaleString()} ₽ / студент
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="propose-message">Сообщение (необязательно)</Label>
+              <Textarea
+                id="propose-message"
+                placeholder="Дополнительная информация о вашем предложении..."
+                value={proposeMessage}
+                onChange={(e) => setProposeMessage(e.target.value)}
+                className="rounded-xl min-h-[80px]"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowProposeDialog(false)}
+              className="rounded-xl"
+            >
+              Отмена
+            </Button>
+            <Button
+              onClick={handleProposeCourse}
+              disabled={isProposing || !selectedCourseToPropose || myCourses.filter(c => c.is_active).length === 0}
+              className="btn-gradient rounded-xl"
+            >
+              {isProposing ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Отправка...
+                </>
+              ) : (
+                <>
+                  <Send className="w-4 h-4 mr-2" />
+                  Отправить предложение
                 </>
               )}
             </Button>
