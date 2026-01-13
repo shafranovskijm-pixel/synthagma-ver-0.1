@@ -84,9 +84,14 @@ export function Footer() {
 
         {/* Bottom */}
         <div className="pt-8 border-t border-background/10 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-background/50 text-sm">
-            © 2024 СИНТАГМА. Все права защищены.
-          </p>
+          <div className="flex flex-col items-center md:items-start gap-1">
+            <p className="text-background/50 text-sm">
+              © 2026 СИНТАГМА. Все права защищены.
+            </p>
+            <a href="https://24zxc.ru" target="_blank" rel="noopener noreferrer" className="text-background/40 text-xs hover:text-background/60 transition-colors">
+              Создание сайтов и рекламы — 24zxc.ru
+            </a>
+          </div>
           <div className="flex gap-8 text-sm text-background/50">
             <a href="#" className="hover:text-background transition-colors">
               Политика конфиденциальности
