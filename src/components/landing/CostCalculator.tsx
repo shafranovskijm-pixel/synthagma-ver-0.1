@@ -18,6 +18,8 @@ import {
   Settings,
   GraduationCap,
   Loader2,
+  Percent,
+  Calendar,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -63,10 +65,13 @@ const defaultModules: FeatureModule[] = [
   { id: "student_cabinet", title: "Кабинет слушателя", icon: GraduationCap, color: "#0ea5e9", basePrice: 2000, description: "Личный кабинет", featuresCount: 8, isEnabled: true },
 ];
 
+const YEARLY_DISCOUNT = 0.20; // 20% скидка за годовую оплату
+
 export function CostCalculator() {
   const [modules, setModules] = useState<FeatureModule[]>(defaultModules);
   const [selectedModules, setSelectedModules] = useState<Set<string>>(new Set(defaultModules.map(m => m.id)));
   const [loading, setLoading] = useState(true);
+  const [isYearly, setIsYearly] = useState(false);
 
   useEffect(() => {
     fetchModulesFromDB();
@@ -108,9 +113,13 @@ export function CostCalculator() {
     setSelectedModules(newSelected);
   };
 
-  const totalPrice = modules
+  const monthlyPrice = modules
     .filter(m => selectedModules.has(m.id))
     .reduce((sum, m) => sum + m.basePrice, 0);
+
+  const yearlyMonthlyPrice = Math.round(monthlyPrice * (1 - YEARLY_DISCOUNT));
+  const yearlySavings = (monthlyPrice - yearlyMonthlyPrice) * 12;
+  const totalPrice = isYearly ? yearlyMonthlyPrice : monthlyPrice;
 
   const selectedCount = selectedModules.size;
   const totalFeaturesCount = modules
@@ -152,9 +161,41 @@ export function CostCalculator() {
           <h2 className="font-display text-4xl md:text-5xl font-bold mb-4">
             Соберите <span className="gradient-text-gold">свой тариф</span>
           </h2>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-6">
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
             Выберите только нужные модули и платите за то, что используете
           </p>
+          
+          {/* Billing toggle */}
+          <div className="inline-flex items-center gap-4 p-2 rounded-2xl bg-card/80 border border-border backdrop-blur-sm">
+            <button
+              onClick={() => setIsYearly(false)}
+              className={`px-6 py-2.5 rounded-xl font-medium transition-all ${
+                !isYearly 
+                  ? "bg-primary text-primary-foreground shadow-md" 
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Помесячно
+            </button>
+            <button
+              onClick={() => setIsYearly(true)}
+              className={`px-6 py-2.5 rounded-xl font-medium transition-all flex items-center gap-2 ${
+                isYearly 
+                  ? "bg-primary text-primary-foreground shadow-md" 
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Calendar className="w-4 h-4" />
+              За год
+              <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                isYearly 
+                  ? "bg-primary-foreground/20 text-primary-foreground" 
+                  : "bg-green-500/20 text-green-500"
+              }`}>
+                -{Math.round(YEARLY_DISCOUNT * 100)}%
+              </span>
+            </button>
+          </div>
           
           <div className="egyptian-border w-32 mx-auto mt-8 rounded-full" />
         </ScrollReveal>
@@ -250,14 +291,36 @@ export function CostCalculator() {
 
               <div className="bg-background/50 rounded-2xl p-4 mb-6">
                 <div className="text-center">
-                  <div className="text-sm text-muted-foreground mb-1">Итого в месяц:</div>
-                  <div className="flex items-baseline justify-center gap-1">
+                  <div className="text-sm text-muted-foreground mb-1">
+                    {isYearly ? "Итого в месяц (при оплате за год):" : "Итого в месяц:"}
+                  </div>
+                  <div className="flex items-baseline justify-center gap-2">
+                    {isYearly && (
+                      <span className="text-lg text-muted-foreground line-through">
+                        {monthlyPrice.toLocaleString()} ₽
+                      </span>
+                    )}
                     <span className="font-display text-4xl font-bold gradient-text">
                       {totalPrice.toLocaleString()}
                     </span>
                     <span className="text-xl text-muted-foreground">₽</span>
                   </div>
+                  {isYearly && yearlySavings > 0 && (
+                    <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-500/10 text-green-500 text-sm font-medium">
+                      <Percent className="w-3.5 h-3.5" />
+                      Экономия {yearlySavings.toLocaleString()} ₽ в год
+                    </div>
+                  )}
                 </div>
+                
+                {isYearly && (
+                  <div className="mt-4 pt-4 border-t border-primary/10 text-center">
+                    <div className="text-sm text-muted-foreground">Стоимость за год:</div>
+                    <div className="font-semibold text-lg">
+                      {(totalPrice * 12).toLocaleString()} ₽
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-3">
