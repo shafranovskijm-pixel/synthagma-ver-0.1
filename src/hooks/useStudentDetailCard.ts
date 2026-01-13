@@ -1,13 +1,6 @@
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-
-interface Student {
-  id: string;
-  user_id: string;
-  name: string;
-  email: string;
-  login: string | null;
-}
+import { Student } from "@/types/shared";
 
 interface StudentCardData {
   id: string;
