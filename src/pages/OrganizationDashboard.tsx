@@ -3323,6 +3323,7 @@ export default function OrganizationDashboard() {
                   <span className="sm:hidden">Массовая загрузка</span>
                 </Button>
               </div>
+              <OrgDocumentsManager organizationId={organizationId} />
             </div>}
 
           {/* FRDO Tab */}
