@@ -41,6 +41,7 @@ import {
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Progress } from "@/components/ui/progress";
+import { OrdersArchive } from "./OrdersArchive";
 
 interface OrgDocument {
   id: string;
@@ -463,7 +464,17 @@ export function OrgDocumentsManager({ organizationId }: OrgDocumentsManagerProps
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <div className="border-t border-border">
-                    {categoryDocs.map((docItem) => {
+                    {/* Special handling for enrollment_orders category */}
+                    {category.id === "enrollment_orders" ? (
+                      <div className="p-4">
+                        <OrdersArchive
+                          documents={documents}
+                          onDelete={handleDelete}
+                          onView={(url) => window.open(url, "_blank")}
+                        />
+                      </div>
+                    ) : (
+                    categoryDocs.map((docItem) => {
                       const uploadedDoc = getDocumentForType(docItem.type);
                       const hasFile = !!uploadedDoc?.file_url;
 
@@ -556,7 +567,8 @@ export function OrgDocumentsManager({ organizationId }: OrgDocumentsManagerProps
                           </div>
                         </div>
                       );
-                    })}
+                    })
+                    )}
                   </div>
                 </CollapsibleContent>
               </div>
