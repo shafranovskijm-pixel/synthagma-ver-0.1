@@ -88,10 +88,10 @@ const RegisterOrganization = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!orgName || !contactName || !email || !password) {
+    if (!orgName || !contactName || !email || !phone || !password) {
       toast({
         title: "Ошибка",
-        description: "Заполните все обязательные поля",
+        description: "Заполните все обязательные поля (включая телефон)",
         variant: "destructive",
       });
       return;
@@ -384,7 +384,7 @@ const RegisterOrganization = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="phone">Телефон</Label>
+              <Label htmlFor="phone">Телефон *</Label>
               <div className="relative">
                 <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <Input 
@@ -395,6 +395,7 @@ const RegisterOrganization = () => {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   disabled={isLoading}
+                  required
                 />
               </div>
             </div>

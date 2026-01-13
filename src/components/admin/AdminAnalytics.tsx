@@ -5,16 +5,26 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { AreaChart, Area, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
-import { Loader2, TrendingUp, Users, GraduationCap, BookOpen, Activity, CheckCircle } from "lucide-react";
+import { Loader2, TrendingUp, Users, GraduationCap, BookOpen, Activity, CheckCircle, Building2, DollarSign, Calendar } from "lucide-react";
 import { format, subDays, startOfDay, eachDayOfInterval, startOfWeek, startOfMonth, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
+import { Badge } from "@/components/ui/badge";
 
 interface AnalyticsData {
   profiles: { created_at: string }[];
   enrollments: { started_at: string; completed_at: string | null; status: string }[];
   lessonProgress: { completed_at: string | null; completed: boolean }[];
   courses: { created_at: string; is_published: boolean }[];
-  organizations: { created_at: string }[];
+  organizations: { 
+    id: string;
+    name: string;
+    created_at: string; 
+    is_paid: boolean;
+    paid_until: string | null;
+    tariff_type: string;
+    monthly_price: number;
+  }[];
+  featureUsage: { feature_id: string; usage_count: number; organization_id: string }[];
 }
 
 const CHART_COLORS = [
@@ -25,6 +35,17 @@ const CHART_COLORS = [
   "hsl(25, 95%, 53%)",   // Orange
   "hsl(330, 81%, 60%)",  // Pink
 ];
+
+const FEATURE_LABELS: Record<string, string> = {
+  courses: "Курсы",
+  students: "Слушатели",
+  companies: "Компании",
+  documents: "Документооборот",
+  journals: "Журналы",
+  frdo: "ФРДО",
+  marketplace: "Магазин курсов",
+  library: "Библиотека",
+};
 
 export function AdminAnalytics() {
   const [data, setData] = useState<AnalyticsData | null>(null);
@@ -37,12 +58,13 @@ export function AdminAnalytics() {
 
   const fetchAnalytics = async () => {
     try {
-      const [profilesRes, enrollmentsRes, progressRes, coursesRes, orgsRes] = await Promise.all([
+      const [profilesRes, enrollmentsRes, progressRes, coursesRes, orgsRes, featureUsageRes] = await Promise.all([
         supabase.from("profiles").select("created_at"),
         supabase.from("enrollments").select("started_at, completed_at, status"),
         supabase.from("lesson_progress").select("completed_at, completed"),
         supabase.from("courses").select("created_at, is_published"),
-        supabase.from("organizations").select("created_at"),
+        supabase.from("organizations").select("id, name, created_at, is_paid, paid_until, tariff_type, monthly_price"),
+        supabase.from("organization_feature_usage").select("feature_id, usage_count, organization_id"),
       ]);
 
       setData({
@@ -51,6 +73,7 @@ export function AdminAnalytics() {
         lessonProgress: progressRes.data || [],
         courses: coursesRes.data || [],
         organizations: orgsRes.data || [],
+        featureUsage: featureUsageRes.data || [],
       });
     } catch (error) {
       console.error("Error fetching analytics:", error);
@@ -143,6 +166,52 @@ export function AdminAnalytics() {
     });
   }, [data, dateRange]);
 
+  // Payment and revenue stats
+  const paymentStats = useMemo(() => {
+    if (!data) return null;
+
+    const paidOrgs = data.organizations.filter(o => o.is_paid);
+    const unpaidOrgs = data.organizations.filter(o => !o.is_paid);
+    const yearlyOrgs = data.organizations.filter(o => o.tariff_type === 'yearly');
+    const monthlyOrgs = data.organizations.filter(o => o.tariff_type === 'monthly');
+    
+    // Calculate projected revenue
+    const monthlyRevenue = monthlyOrgs.reduce((sum, o) => sum + (o.monthly_price || 0), 0);
+    const yearlyRevenue = yearlyOrgs.reduce((sum, o) => sum + ((o.monthly_price || 0) * 12 * 0.8), 0); // 20% discount for yearly
+    const projectedMonthlyRevenue = monthlyRevenue + (yearlyRevenue / 12);
+    const projectedYearlyRevenue = projectedMonthlyRevenue * 12;
+
+    return {
+      paidCount: paidOrgs.length,
+      unpaidCount: unpaidOrgs.length,
+      yearlyCount: yearlyOrgs.length,
+      monthlyCount: monthlyOrgs.length,
+      projectedMonthlyRevenue,
+      projectedYearlyRevenue,
+    };
+  }, [data]);
+
+  // Feature usage stats
+  const featureUsageStats = useMemo(() => {
+    if (!data || !data.featureUsage.length) return [];
+
+    const usageByFeature: Record<string, number> = {};
+    data.featureUsage.forEach(fu => {
+      if (!usageByFeature[fu.feature_id]) {
+        usageByFeature[fu.feature_id] = 0;
+      }
+      usageByFeature[fu.feature_id] += fu.usage_count;
+    });
+
+    return Object.entries(usageByFeature)
+      .map(([feature_id, count]) => ({
+        feature_id,
+        name: FEATURE_LABELS[feature_id] || feature_id,
+        count,
+      }))
+      .sort((a, b) => b.count - a.count);
+  }, [data]);
+
   // Summary stats
   const stats = useMemo(() => {
     if (!data) return null;
@@ -172,6 +241,10 @@ export function AdminAnalytics() {
       ? Math.round((totalCompleted / data.enrollments.length) * 100) 
       : 0;
 
+    const newOrgs = data.organizations.filter(
+      (o) => new Date(o.created_at) >= periodStart
+    ).length;
+
     return {
       newUsers,
       newEnrollments,
@@ -182,6 +255,8 @@ export function AdminAnalytics() {
       totalUsers: data.profiles.length,
       totalCourses: data.courses.length,
       publishedCourses: data.courses.filter((c) => c.is_published).length,
+      totalOrganizations: data.organizations.length,
+      newOrgs,
     };
   }, [data, periodDays]);
 
@@ -197,6 +272,34 @@ export function AdminAnalytics() {
       { name: "В процессе", value: active, color: CHART_COLORS[0] },
       { name: "Завершено", value: completed, color: CHART_COLORS[2] },
       { name: "Другое", value: other, color: CHART_COLORS[4] },
+    ].filter((item) => item.value > 0);
+  }, [data]);
+
+  // Payment status distribution
+  const paymentStatusData = useMemo(() => {
+    if (!data) return [];
+
+    const paid = data.organizations.filter(o => o.is_paid).length;
+    const unpaid = data.organizations.filter(o => !o.is_paid).length;
+
+    return [
+      { name: "Оплачено", value: paid, color: CHART_COLORS[2] },
+      { name: "Без оплаты", value: unpaid, color: CHART_COLORS[4] },
+    ].filter((item) => item.value > 0);
+  }, [data]);
+
+  // Tariff distribution
+  const tariffDistributionData = useMemo(() => {
+    if (!data) return [];
+
+    const trial = data.organizations.filter(o => o.tariff_type === 'trial').length;
+    const monthly = data.organizations.filter(o => o.tariff_type === 'monthly').length;
+    const yearly = data.organizations.filter(o => o.tariff_type === 'yearly').length;
+
+    return [
+      { name: "Пробный", value: trial, color: CHART_COLORS[5] },
+      { name: "Месячный", value: monthly, color: CHART_COLORS[0] },
+      { name: "Годовой", value: yearly, color: CHART_COLORS[2] },
     ].filter((item) => item.value > 0);
   }, [data]);
 
@@ -224,6 +327,14 @@ export function AdminAnalytics() {
     completions: { label: "Завершения", color: CHART_COLORS[2] },
   };
 
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('ru-RU', { 
+      style: 'currency', 
+      currency: 'RUB',
+      maximumFractionDigits: 0 
+    }).format(value);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -243,8 +354,78 @@ export function AdminAnalytics() {
         </Select>
       </div>
 
+      {/* Payment & Revenue Stats */}
+      {paymentStats && (
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+          <Card className="border-green-500/30 bg-green-500/5">
+            <CardHeader className="pb-2">
+              <CardDescription className="flex items-center gap-1">
+                <Building2 className="w-3 h-3" /> С оплатой
+              </CardDescription>
+              <CardTitle className="text-2xl text-green-600">{paymentStats.paidCount}</CardTitle>
+            </CardHeader>
+          </Card>
+          <Card className="border-orange-500/30 bg-orange-500/5">
+            <CardHeader className="pb-2">
+              <CardDescription className="flex items-center gap-1">
+                <Building2 className="w-3 h-3" /> Без оплаты
+              </CardDescription>
+              <CardTitle className="text-2xl text-orange-600">{paymentStats.unpaidCount}</CardTitle>
+            </CardHeader>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardDescription className="flex items-center gap-1">
+                <Calendar className="w-3 h-3" /> Годовой тариф
+              </CardDescription>
+              <CardTitle className="text-2xl">{paymentStats.yearlyCount}</CardTitle>
+            </CardHeader>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardDescription className="flex items-center gap-1">
+                <Calendar className="w-3 h-3" /> Месячный тариф
+              </CardDescription>
+              <CardTitle className="text-2xl">{paymentStats.monthlyCount}</CardTitle>
+            </CardHeader>
+          </Card>
+          <Card className="border-primary/30 bg-primary/5">
+            <CardHeader className="pb-2">
+              <CardDescription className="flex items-center gap-1">
+                <DollarSign className="w-3 h-3" /> Прогноз/мес
+              </CardDescription>
+              <CardTitle className="text-xl text-primary">{formatCurrency(paymentStats.projectedMonthlyRevenue)}</CardTitle>
+            </CardHeader>
+          </Card>
+          <Card className="border-primary/30 bg-primary/5">
+            <CardHeader className="pb-2">
+              <CardDescription className="flex items-center gap-1">
+                <DollarSign className="w-3 h-3" /> Прогноз/год
+              </CardDescription>
+              <CardTitle className="text-xl text-primary">{formatCurrency(paymentStats.projectedYearlyRevenue)}</CardTitle>
+            </CardHeader>
+          </Card>
+        </div>
+      )}
+
       {/* Summary Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription className="flex items-center gap-1">
+              <Building2 className="w-3 h-3" /> Всего организаций
+            </CardDescription>
+            <CardTitle className="text-2xl">{stats.totalOrganizations}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription className="flex items-center gap-1">
+              <Building2 className="w-3 h-3" /> Новых орг-ций
+            </CardDescription>
+            <CardTitle className="text-2xl">{stats.newOrgs}</CardTitle>
+          </CardHeader>
+        </Card>
         <Card>
           <CardHeader className="pb-2">
             <CardDescription className="flex items-center gap-1">
@@ -272,14 +453,6 @@ export function AdminAnalytics() {
         <Card>
           <CardHeader className="pb-2">
             <CardDescription className="flex items-center gap-1">
-              <GraduationCap className="w-3 h-3" /> Уроков пройдено
-            </CardDescription>
-            <CardTitle className="text-2xl">{stats.lessonsCompleted}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-1">
               <Activity className="w-3 h-3" /> Активных записей
             </CardDescription>
             <CardTitle className="text-2xl">{stats.activeEnrollments}</CardTitle>
@@ -297,10 +470,12 @@ export function AdminAnalytics() {
 
       {/* Charts */}
       <Tabs defaultValue="registrations" className="space-y-4">
-        <TabsList>
+        <TabsList className="flex-wrap">
           <TabsTrigger value="registrations">Регистрации</TabsTrigger>
           <TabsTrigger value="activity">Активность</TabsTrigger>
           <TabsTrigger value="completions">Завершения</TabsTrigger>
+          <TabsTrigger value="payments">Оплаты</TabsTrigger>
+          <TabsTrigger value="features">Функции</TabsTrigger>
           <TabsTrigger value="overview">Обзор</TabsTrigger>
         </TabsList>
 
@@ -452,37 +627,156 @@ export function AdminAnalytics() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="payments">
+          <div className="grid md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Статус оплаты организаций</CardTitle>
+                <CardDescription>
+                  Распределение по статусу оплаты
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {paymentStatusData.length > 0 ? (
+                  <ChartContainer config={{}} className="h-[300px] w-full">
+                    <PieChart>
+                      <Pie
+                        data={paymentStatusData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        outerRadius={100}
+                        dataKey="value"
+                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      >
+                        {paymentStatusData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                    </PieChart>
+                  </ChartContainer>
+                ) : (
+                  <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                    Нет данных
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Распределение тарифов</CardTitle>
+                <CardDescription>
+                  Типы тарифов организаций
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {tariffDistributionData.length > 0 ? (
+                  <ChartContainer config={{}} className="h-[300px] w-full">
+                    <PieChart>
+                      <Pie
+                        data={tariffDistributionData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        outerRadius={100}
+                        dataKey="value"
+                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      >
+                        {tariffDistributionData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                    </PieChart>
+                  </ChartContainer>
+                ) : (
+                  <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                    Нет данных
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="features">
+          <Card>
+            <CardHeader>
+              <CardTitle>Популярность функций</CardTitle>
+              <CardDescription>
+                Какими функциями организации пользуются больше всего
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {featureUsageStats.length > 0 ? (
+                <div className="space-y-4">
+                  {featureUsageStats.map((feature, index) => (
+                    <div key={feature.feature_id} className="flex items-center gap-4">
+                      <div className="w-8 text-center font-bold text-muted-foreground">
+                        #{index + 1}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-medium">{feature.name}</span>
+                          <span className="text-muted-foreground">{feature.count} использований</span>
+                        </div>
+                        <div className="h-2 bg-muted rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-primary rounded-full transition-all"
+                            style={{ 
+                              width: `${(feature.count / (featureUsageStats[0]?.count || 1)) * 100}%` 
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                  Данные об использовании функций пока не собраны
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="overview">
           <div className="grid md:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
-                <CardTitle>Распределение записей по статусу</CardTitle>
+                <CardTitle>Статусы записей на курсы</CardTitle>
                 <CardDescription>
-                  Текущий статус всех записей на курсы
+                  Распределение записей по статусу
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <ChartContainer config={chartConfig} className="h-[300px] w-full">
-                  <PieChart>
-                    <Pie
-                      data={enrollmentStatusData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={100}
-                      paddingAngle={5}
-                      dataKey="value"
-                      nameKey="name"
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                      labelLine={false}
-                    >
-                      {enrollmentStatusData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                  </PieChart>
-                </ChartContainer>
+                {enrollmentStatusData.length > 0 ? (
+                  <ChartContainer config={{}} className="h-[300px] w-full">
+                    <PieChart>
+                      <Pie
+                        data={enrollmentStatusData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        outerRadius={100}
+                        dataKey="value"
+                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      >
+                        {enrollmentStatusData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                    </PieChart>
+                  </ChartContainer>
+                ) : (
+                  <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                    Нет записей на курсы
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -490,45 +784,38 @@ export function AdminAnalytics() {
               <CardHeader>
                 <CardTitle>Общая статистика</CardTitle>
                 <CardDescription>
-                  Ключевые метрики платформы
+                  Ключевые показатели платформы
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                  <div className="flex items-center gap-3">
-                    <Users className="w-5 h-5 text-primary" />
-                    <span>Всего пользователей</span>
-                  </div>
+                <div className="flex justify-between items-center p-3 rounded-lg bg-muted/50">
+                  <span className="text-muted-foreground">Всего пользователей</span>
                   <span className="font-bold text-lg">{stats.totalUsers}</span>
                 </div>
-                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                  <div className="flex items-center gap-3">
-                    <BookOpen className="w-5 h-5 text-primary" />
-                    <span>Всего курсов</span>
-                  </div>
+                <div className="flex justify-between items-center p-3 rounded-lg bg-muted/50">
+                  <span className="text-muted-foreground">Всего организаций</span>
+                  <span className="font-bold text-lg">{stats.totalOrganizations}</span>
+                </div>
+                <div className="flex justify-between items-center p-3 rounded-lg bg-muted/50">
+                  <span className="text-muted-foreground">Всего курсов</span>
                   <span className="font-bold text-lg">{stats.totalCourses}</span>
                 </div>
-                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="w-5 h-5 text-green-500" />
-                    <span>Опубликовано курсов</span>
-                  </div>
+                <div className="flex justify-between items-center p-3 rounded-lg bg-muted/50">
+                  <span className="text-muted-foreground">Опубликованных курсов</span>
                   <span className="font-bold text-lg">{stats.publishedCourses}</span>
                 </div>
-                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                  <div className="flex items-center gap-3">
-                    <Activity className="w-5 h-5 text-cyan-500" />
-                    <span>Активных записей</span>
-                  </div>
-                  <span className="font-bold text-lg">{stats.activeEnrollments}</span>
-                </div>
-                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                  <div className="flex items-center gap-3">
-                    <TrendingUp className="w-5 h-5 text-purple-500" />
-                    <span>Процент завершения</span>
-                  </div>
-                  <span className="font-bold text-lg">{stats.completionRate}%</span>
-                </div>
+                {paymentStats && (
+                  <>
+                    <div className="flex justify-between items-center p-3 rounded-lg bg-green-500/10">
+                      <span className="text-muted-foreground">Оплаченных организаций</span>
+                      <span className="font-bold text-lg text-green-600">{paymentStats.paidCount}</span>
+                    </div>
+                    <div className="flex justify-between items-center p-3 rounded-lg bg-primary/10">
+                      <span className="text-muted-foreground">Прогноз выручки/год</span>
+                      <span className="font-bold text-lg text-primary">{formatCurrency(paymentStats.projectedYearlyRevenue)}</span>
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
           </div>
