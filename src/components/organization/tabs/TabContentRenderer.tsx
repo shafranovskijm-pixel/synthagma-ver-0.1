@@ -1,5 +1,3 @@
-import { Button } from "@/components/ui/button";
-import { Users } from "lucide-react";
 import { CoursesTab } from "./CoursesTab";
 import { StatsCards } from "./StatsCards";
 import { DocumentsStatsCards } from "./DocumentsStatsCards";
@@ -12,9 +10,7 @@ import { CompaniesManager } from "@/components/organization/CompaniesManager";
 import { LibraryManager } from "@/components/organization/LibraryManager";
 import { CourseStoreManager } from "@/components/organization/CourseStoreManager";
 import { FRDOManager } from "@/components/organization/FRDOManager";
-import { DocumentArchiveView } from "@/components/organization/DocumentArchiveView";
 import { JournalsManager } from "@/components/organization/JournalsManager";
-import { EducationDocumentsJournal } from "@/components/organization/EducationDocumentsJournal";
 import type { TabType } from "../OrgSidebar";
 import type { OrganizationStats, DocumentsStats, Course, MenuSettings } from "@/types";
 
@@ -191,66 +187,9 @@ export function TabContentRenderer({
 
       {/* Documents Tab */}
       {activeTab === "documents" && organizationId && (
-        <div className="space-y-4 lg:space-y-6">
-          <div className="flex justify-end">
-            <Button 
-              variant="outline" 
-              className="rounded-xl gap-2 text-xs lg:text-sm" 
-              onClick={onShowBulkUploadDialog}
-            >
-              <Users className="w-4 h-4" />
-              <span className="hidden sm:inline">Массовая загрузка ученикам</span>
-              <span className="sm:hidden">Массовая загрузка</span>
-            </Button>
-          </div>
-          <DocumentsTab organizationId={organizationId} />
-        </div>
-      )}
-
-      {/* Documents Orders Tab */}
-      {activeTab === "documents-orders" && organizationId && (
-        <DocumentArchiveView
-          organizationId={organizationId}
-          categoryId="enrollment_orders"
-          title="Приказы о зачислении / отчислении"
-          docTypes={["enrollment_order", "expulsion_order"]}
-        />
-      )}
-
-      {/* Documents Protocols Tab */}
-      {activeTab === "documents-protocols" && organizationId && (
-        <DocumentArchiveView
-          organizationId={organizationId}
-          categoryId="attestation_protocols"
-          title="Протоколы аттестационной комиссии"
-          docTypes={["attestation_protocol"]}
-        />
-      )}
-
-      {/* Documents Certificates Tab - Удостоверения */}
-      {activeTab === "documents-certificates" && organizationId && (
-        <EducationDocumentsJournal
-          organizationId={organizationId}
-          onClose={() => setActiveTab("courses")}
-          documentTypeFilter="certificate"
-        />
-      )}
-
-      {/* Documents Diplomas Tab - Дипломы */}
-      {activeTab === "documents-diplomas" && organizationId && (
-        <EducationDocumentsJournal
-          organizationId={organizationId}
-          onClose={() => setActiveTab("courses")}
-          documentTypeFilter="diploma"
-        />
-      )}
-
-      {/* Documents Testimonials Tab - Свидетельства */}
-      {activeTab === "documents-testimonials" && organizationId && (
-        <EducationDocumentsJournal
-          organizationId={organizationId}
-          onClose={() => setActiveTab("courses")}
-          documentTypeFilter="qualification"
+        <DocumentsTab 
+          organizationId={organizationId} 
+          onShowBulkUploadDialog={onShowBulkUploadDialog}
         />
       )}
 
