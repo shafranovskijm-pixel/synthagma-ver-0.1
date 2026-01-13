@@ -26,6 +26,7 @@ import { OrgRequisitesForm } from "@/components/organization/OrgRequisitesForm";
 import { OrdersArchive } from "@/components/organization/OrdersArchive";
 import { DocumentArchiveView } from "@/components/organization/DocumentArchiveView";
 import { JournalsManager } from "@/components/organization/JournalsManager";
+import { EducationDocumentsJournal } from "@/components/organization/EducationDocumentsJournal";
 import { SystemFeaturesReport } from "@/components/organization/SystemFeaturesReport";
 import { generateEnrollmentOrder } from "@/utils/generateEnrollmentOrder";
 import { useAuth } from "@/hooks/useAuth";
@@ -3537,33 +3538,30 @@ export default function OrganizationDashboard() {
             />
           )}
 
-          {/* Documents Certificates Tab */}
+          {/* Documents Certificates Tab - Удостоверения */}
           {activeTab === "documents-certificates" && organizationId && (
-            <DocumentArchiveView
+            <EducationDocumentsJournal
               organizationId={organizationId}
-              categoryId="certificates"
-              title="Удостоверения"
-              docTypes={["certificate_qualification"]}
+              onClose={() => setActiveTab("courses")}
+              documentTypeFilter="certificate"
             />
           )}
 
-          {/* Documents Diplomas Tab */}
+          {/* Documents Diplomas Tab - Дипломы */}
           {activeTab === "documents-diplomas" && organizationId && (
-            <DocumentArchiveView
+            <EducationDocumentsJournal
               organizationId={organizationId}
-              categoryId="diplomas"
-              title="Дипломы"
-              docTypes={["diploma_retraining"]}
+              onClose={() => setActiveTab("courses")}
+              documentTypeFilter="diploma"
             />
           )}
 
-          {/* Documents Testimonials Tab */}
+          {/* Documents Testimonials Tab - Свидетельства */}
           {activeTab === "documents-testimonials" && organizationId && (
-            <DocumentArchiveView
+            <EducationDocumentsJournal
               organizationId={organizationId}
-              categoryId="testimonials"
-              title="Свидетельства"
-              docTypes={["testimonial_profession", "testimonial_position"]}
+              onClose={() => setActiveTab("courses")}
+              documentTypeFilter="qualification"
             />
           )}
 

@@ -97,6 +97,7 @@ interface EducationDocumentRecord {
 interface EducationDocumentsJournalProps {
   organizationId: string;
   onClose: () => void;
+  documentTypeFilter?: "certificate" | "diploma" | "qualification";
 }
 
 interface CompletedStudent {
@@ -124,6 +125,7 @@ const DELIVERY_METHODS = [
 export function EducationDocumentsJournal({
   organizationId,
   onClose,
+  documentTypeFilter,
 }: EducationDocumentsJournalProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -228,7 +230,7 @@ export function EducationDocumentsJournal({
         reg_number: `ДОК-${year}/${existingCount.toString().padStart(4, "0")}`,
         full_name: student.full_name,
         birth_date: student.birth_date || "",
-        document_type: "certificate" as const,
+        document_type: documentTypeFilter || "certificate" as const,
         document_series: "",
         document_number: docNumber,
         issue_date: new Date().toISOString(),
@@ -261,6 +263,11 @@ export function EducationDocumentsJournal({
   // Filter records
   const filteredRecords = useMemo(() => {
     return records.filter((record) => {
+      // Apply document type filter from props first
+      if (documentTypeFilter && record.document_type !== documentTypeFilter) {
+        return false;
+      }
+
       const searchLower = searchQuery.toLowerCase();
       const matchesSearch =
         !searchQuery ||
@@ -283,7 +290,7 @@ export function EducationDocumentsJournal({
 
       return matchesSearch && matchesDocType && matchesStatus && matchesDate;
     });
-  }, [records, searchQuery, selectedDocType, selectedStatus, dateRange]);
+  }, [records, searchQuery, selectedDocType, selectedStatus, dateRange, documentTypeFilter]);
 
   // Statistics
   const stats = useMemo(() => {
@@ -294,13 +301,28 @@ export function EducationDocumentsJournal({
     return { total: filteredRecords.length, certificates, diplomas, originals, duplicates };
   }, [filteredRecords]);
 
+  // Get title based on document type filter
+  const getJournalTitle = () => {
+    if (documentTypeFilter === "certificate") return "Журнал регистрации удостоверений";
+    if (documentTypeFilter === "diploma") return "Журнал регистрации дипломов";
+    if (documentTypeFilter === "qualification") return "Журнал регистрации свидетельств";
+    return "Журнал регистрации документов об образовании";
+  };
+
+  const getJournalSubtitle = () => {
+    if (documentTypeFilter === "certificate") return "Учёт выданных удостоверений о повышении квалификации";
+    if (documentTypeFilter === "diploma") return "Учёт выданных дипломов о профессиональной переподготовке";
+    if (documentTypeFilter === "qualification") return "Учёт выданных свидетельств о профессии/квалификации";
+    return "Учёт выданных удостоверений, дипломов и свидетельств о квалификации";
+  };
+
   // Reset form
   const resetForm = () => {
     setFormData({
       reg_number: "",
       full_name: "",
       birth_date: null,
-      document_type: "certificate",
+      document_type: documentTypeFilter || "certificate",
       document_series: "",
       document_number: "",
       issue_date: new Date(),
@@ -500,7 +522,7 @@ export function EducationDocumentsJournal({
         reg_number: `ДОК-${year}/${existingCount.toString().padStart(4, "0")}`,
         full_name: student.full_name,
         birth_date: student.birth_date || "",
-        document_type: "certificate" as const,
+        document_type: documentTypeFilter || "certificate" as const,
         document_series: "",
         document_number: generateDocumentNumber(index),
         issue_date: new Date().toISOString(),
@@ -692,15 +714,17 @@ export function EducationDocumentsJournal({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={onClose} className="rounded-xl">
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
+          {!documentTypeFilter && (
+            <Button variant="ghost" size="icon" onClick={onClose} className="rounded-xl">
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+          )}
           <div>
-            <h2 className="text-xl font-semibold">Журнал регистрации документов об образовании</h2>
+            <h2 className="text-xl font-semibold">{getJournalTitle()}</h2>
             <p className="text-sm text-muted-foreground">
-              Учёт выданных удостоверений, дипломов и свидетельств о квалификации
+              {getJournalSubtitle()}
             </p>
           </div>
         </div>
