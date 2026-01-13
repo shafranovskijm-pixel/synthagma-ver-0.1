@@ -129,6 +129,7 @@ const REGULAR_CATEGORIES = [
       { type: "schedule_approval", label: "Приказ об утверждении календарного учебного графика", required: true },
       { type: "commission_orders", label: "Приказы о создании комиссий", required: true },
       { type: "doc_forms_approval", label: "Приказ об утверждении форм документов об образовании", required: true },
+      { type: "electronic_docs_order", label: "Приказ об утверждении Положения о порядке ведения электронной документации и приравнивании электронных документов к документам на бумажном носителе", required: false },
     ],
   },
   {
