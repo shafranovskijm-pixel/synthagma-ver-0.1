@@ -1518,6 +1518,63 @@ export type Database = {
         }
         Relationships: []
       }
+      system_feature_categories: {
+        Row: {
+          base_price: number
+          category_id: string
+          created_at: string
+          id: string
+          is_enabled: boolean
+          updated_at: string
+        }
+        Insert: {
+          base_price?: number
+          category_id: string
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          updated_at?: string
+        }
+        Update: {
+          base_price?: number
+          category_id?: string
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      system_features: {
+        Row: {
+          category_id: string
+          created_at: string
+          feature_id: string
+          id: string
+          is_enabled: boolean
+          price: number
+          updated_at: string
+        }
+        Insert: {
+          category_id: string
+          created_at?: string
+          feature_id: string
+          id?: string
+          is_enabled?: boolean
+          price?: number
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string
+          created_at?: string
+          feature_id?: string
+          id?: string
+          is_enabled?: boolean
+          price?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       test_attempts: {
         Row: {
           answers: Json

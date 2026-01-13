@@ -4,11 +4,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
-import { LogOut, Building2, Users, Shield, BarChart3, ShoppingBag } from "lucide-react";
+import { LogOut, Building2, Users, Shield, BarChart3, ShoppingBag, Sparkles } from "lucide-react";
 import { OrganizationsManager } from "@/components/admin/OrganizationsManager";
 import { UsersManager } from "@/components/admin/UsersManager";
 import { AdminAnalytics } from "@/components/admin/AdminAnalytics";
 import { ServiceOrdersManager } from "@/components/admin/ServiceOrdersManager";
+import { SystemFeaturesManager } from "@/components/admin/SystemFeaturesManager";
 
 const AdminDashboard = () => {
   const { user, signOut } = useAuth();
@@ -48,22 +49,26 @@ const AdminDashboard = () => {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full max-w-2xl grid-cols-4">
+          <TabsList className="grid w-full max-w-3xl grid-cols-5">
             <TabsTrigger value="analytics" className="flex items-center gap-2">
               <BarChart3 className="w-4 h-4" />
-              Аналитика
+              <span className="hidden sm:inline">Аналитика</span>
             </TabsTrigger>
             <TabsTrigger value="organizations" className="flex items-center gap-2">
               <Building2 className="w-4 h-4" />
-              Организации
+              <span className="hidden sm:inline">Организации</span>
             </TabsTrigger>
             <TabsTrigger value="orders" className="flex items-center gap-2">
               <ShoppingBag className="w-4 h-4" />
-              Заявки
+              <span className="hidden sm:inline">Заявки</span>
             </TabsTrigger>
             <TabsTrigger value="users" className="flex items-center gap-2">
               <Users className="w-4 h-4" />
-              Пользователи
+              <span className="hidden sm:inline">Пользователи</span>
+            </TabsTrigger>
+            <TabsTrigger value="features" className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4" />
+              <span className="hidden sm:inline">Функции</span>
             </TabsTrigger>
           </TabsList>
 
@@ -81,6 +86,10 @@ const AdminDashboard = () => {
 
           <TabsContent value="users" className="space-y-6">
             <UsersManager />
+          </TabsContent>
+
+          <TabsContent value="features" className="space-y-6">
+            <SystemFeaturesManager />
           </TabsContent>
         </Tabs>
       </main>
