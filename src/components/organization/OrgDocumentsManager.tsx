@@ -141,6 +141,37 @@ const DOCUMENT_CATEGORIES = [
       { type: "attestation_protocol", label: "Протокол аттестационной комиссии", required: false },
     ],
   },
+  {
+    id: "certificates",
+    title: "Удостоверения",
+    icon: Award,
+    color: "text-orange-500",
+    bgColor: "bg-orange-500/10",
+    documents: [
+      { type: "certificate_qualification", label: "Удостоверение о повышении квалификации", required: false },
+    ],
+  },
+  {
+    id: "diplomas",
+    title: "Дипломы",
+    icon: GraduationCap,
+    color: "text-violet-500",
+    bgColor: "bg-violet-500/10",
+    documents: [
+      { type: "diploma_retraining", label: "Диплом о профессиональной переподготовке", required: false },
+    ],
+  },
+  {
+    id: "testimonials",
+    title: "Свидетельства",
+    icon: FileCheck,
+    color: "text-teal-500",
+    bgColor: "bg-teal-500/10",
+    documents: [
+      { type: "testimonial_profession", label: "Свидетельство о профессии рабочего", required: false },
+      { type: "testimonial_position", label: "Свидетельство о должности служащего", required: false },
+    ],
+  },
 ];
 
 // Получить все типы документов
