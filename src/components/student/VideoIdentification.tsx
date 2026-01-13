@@ -49,6 +49,12 @@ export function VideoIdentification({
   const [isLoading, setIsLoading] = useState(true);
   const [isCameraLoading, setIsCameraLoading] = useState(false);
   const [isVideoReady, setIsVideoReady] = useState(false);
+  const [debugLog, setDebugLog] = useState<string[]>([]);
+  
+  const addLog = (msg: string) => {
+    console.log("[Camera]", msg);
+    setDebugLog(prev => [...prev, `${new Date().toLocaleTimeString()}: ${msg}`]);
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -87,6 +93,8 @@ export function VideoIdentification({
   };
 
   const startCamera = async () => {
+    setDebugLog([]);
+    addLog("Начинаем...");
     setCameraError(null);
     setIsCameraLoading(true);
     setIsVideoReady(false);
@@ -100,36 +108,76 @@ export function VideoIdentification({
     let cancelled = false;
     
     const initCamera = async () => {
-      // Даём время на рендер video элемента
+      addLog("Ждём рендер video элемента...");
       await new Promise(r => setTimeout(r, 100));
       
       if (cancelled) return;
       
+      addLog("Проверяем поддержку getUserMedia...");
+      
+      if (!navigator.mediaDevices) {
+        addLog("ОШИБКА: navigator.mediaDevices отсутствует!");
+        setCameraError('navigator.mediaDevices не поддерживается');
+        setStep("intro");
+        setIsCameraLoading(false);
+        return;
+      }
+      
+      if (!navigator.mediaDevices.getUserMedia) {
+        addLog("ОШИБКА: getUserMedia отсутствует!");
+        setCameraError('getUserMedia не поддерживается');
+        setStep("intro");
+        setIsCameraLoading(false);
+        return;
+      }
+      
+      addLog("getUserMedia поддерживается. Запрашиваем камеру...");
+      
       try {
-        if (!navigator.mediaDevices?.getUserMedia) {
-          throw new Error('getUserMedia не поддерживается');
-        }
-        
         const mediaStream = await navigator.mediaDevices.getUserMedia({ 
           video: true, 
           audio: false 
         });
+        
+        addLog(`Камера получена! Треков: ${mediaStream.getVideoTracks().length}`);
         
         if (cancelled) {
           mediaStream.getTracks().forEach(t => t.stop());
           return;
         }
         
-        // Сразу подключаем к video
         const video = videoRef.current;
+        addLog(`Video элемент: ${video ? 'найден' : 'НЕ НАЙДЕН!'}`);
+        
         if (video) {
+          addLog("Присваиваем srcObject...");
           video.srcObject = mediaStream;
+          addLog(`srcObject присвоен: ${video.srcObject ? 'да' : 'нет'}`);
+          
           video.onloadedmetadata = () => {
+            addLog("onloadedmetadata сработал");
             video.play().then(() => {
+              addLog("play() успешно!");
               setIsVideoReady(true);
               setIsCameraLoading(false);
-            }).catch(console.warn);
+            }).catch(e => {
+              addLog(`play() ошибка: ${e.message}`);
+            });
           };
+          
+          video.onerror = (e) => {
+            addLog(`video onerror: ${JSON.stringify(e)}`);
+          };
+          
+          // Пробуем play сразу
+          addLog("Пробуем play() сразу...");
+          video.play().then(() => {
+            addLog("Прямой play() успешно!");
+            setIsVideoReady(true);
+            setIsCameraLoading(false);
+          }).catch(e => {
+            addLog(`Прямой play() ошибка: ${e.message}`);
+          });
         }
         
         setStream(mediaStream);
@@ -138,14 +186,15 @@ export function VideoIdentification({
         // Fallback
         setTimeout(() => {
           if (!cancelled) {
+            addLog("Fallback таймер сработал");
             setIsVideoReady(true);
             setIsCameraLoading(false);
           }
-        }, 2000);
+        }, 3000);
         
       } catch (err: any) {
         if (cancelled) return;
-        console.error("Камера недоступна:", err);
+        addLog(`ОШИБКА getUserMedia: ${err.name} - ${err.message}`);
         setStep("intro");
         setIsCameraLoading(false);
         setCameraError('Камера недоступна: ' + (err.message || err.name || 'неизвестная ошибка'));
@@ -445,6 +494,17 @@ export function VideoIdentification({
                   <li>3. Подтвердите фото</li>
                 </ul>
               </div>
+              
+              {/* Debug log */}
+              <div className="bg-black/80 text-green-400 text-xs p-2 rounded-lg max-h-32 overflow-y-auto font-mono">
+                <p className="text-white font-bold mb-1">Отладка камеры:</p>
+                {debugLog.length === 0 ? (
+                  <p>Ожидание...</p>
+                ) : (
+                  debugLog.map((log, i) => <p key={i}>{log}</p>)
+                )}
+              </div>
+              
               {cameraError && (
                 <div className="bg-destructive/10 text-destructive rounded-xl p-4 flex items-start gap-3">
                   <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
