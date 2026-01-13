@@ -91,85 +91,71 @@ export function VideoIdentification({
     setIsCameraLoading(true);
     setIsVideoReady(false);
     setStep("camera");
-    
-    // Ждём пока React отрендерит video элемент
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    try {
-      if (!navigator.mediaDevices?.getUserMedia) {
-        throw new Error('getUserMedia не поддерживается');
-      }
-      
-      const mediaStream = await navigator.mediaDevices.getUserMedia({ 
-        video: true, 
-        audio: false 
-      });
-      
-      console.log("Камера готова. Треков:", mediaStream.getVideoTracks().length);
-      setStream(mediaStream);
-      setIsCapturing(true);
-      
-    } catch (err: any) {
-      console.error("Камера недоступна:", err);
-      setStep("intro");
-      setIsCameraLoading(false);
-      setCameraError('Камера недоступна: ' + (err.message || err.name || 'неизвестная ошибка'));
-    }
   };
   
-  // Подключаем stream к video - отдельный эффект
+  // Запускаем камеру когда step стал "camera"
   useEffect(() => {
-    const video = videoRef.current;
-    if (!stream || !video || step !== "camera") return;
+    if (step !== "camera" || stream) return;
     
-    console.log("Подключаем stream к video элементу");
-    video.srcObject = stream;
+    let cancelled = false;
     
-    const onCanPlay = () => {
-      console.log("Video: canplay");
-      setIsVideoReady(true);
-      setIsCameraLoading(false);
-    };
-    
-    const onPlaying = () => {
-      console.log("Video: playing");
-      setIsVideoReady(true);
-      setIsCameraLoading(false);
-    };
-    
-    const onError = (e: Event) => {
-      console.error("Video error:", e);
-      setCameraError("Ошибка воспроизведения видео");
-      setIsCameraLoading(false);
-    };
-    
-    video.addEventListener("canplay", onCanPlay);
-    video.addEventListener("playing", onPlaying);
-    video.addEventListener("error", onError);
-    
-    // Пробуем воспроизвести
-    video.play().catch(e => {
-      console.warn("Autoplay failed, trying muted:", e);
-      video.muted = true;
-      video.play().catch(e2 => console.warn("Muted play also failed:", e2));
-    });
-    
-    // Fallback через 3 секунды
-    const fallback = setTimeout(() => {
-      if (stream && !isVideoReady) {
-        console.log("Fallback: считаем видео готовым");
-        setIsVideoReady(true);
+    const initCamera = async () => {
+      // Даём время на рендер video элемента
+      await new Promise(r => setTimeout(r, 100));
+      
+      if (cancelled) return;
+      
+      try {
+        if (!navigator.mediaDevices?.getUserMedia) {
+          throw new Error('getUserMedia не поддерживается');
+        }
+        
+        const mediaStream = await navigator.mediaDevices.getUserMedia({ 
+          video: true, 
+          audio: false 
+        });
+        
+        if (cancelled) {
+          mediaStream.getTracks().forEach(t => t.stop());
+          return;
+        }
+        
+        // Сразу подключаем к video
+        const video = videoRef.current;
+        if (video) {
+          video.srcObject = mediaStream;
+          video.onloadedmetadata = () => {
+            video.play().then(() => {
+              setIsVideoReady(true);
+              setIsCameraLoading(false);
+            }).catch(console.warn);
+          };
+        }
+        
+        setStream(mediaStream);
+        setIsCapturing(true);
+        
+        // Fallback
+        setTimeout(() => {
+          if (!cancelled) {
+            setIsVideoReady(true);
+            setIsCameraLoading(false);
+          }
+        }, 2000);
+        
+      } catch (err: any) {
+        if (cancelled) return;
+        console.error("Камера недоступна:", err);
+        setStep("intro");
         setIsCameraLoading(false);
+        setCameraError('Камера недоступна: ' + (err.message || err.name || 'неизвестная ошибка'));
       }
-    }, 3000);
-    
-    return () => {
-      clearTimeout(fallback);
-      video.removeEventListener("canplay", onCanPlay);
-      video.removeEventListener("playing", onPlaying);
-      video.removeEventListener("error", onError);
     };
-  }, [stream, step]);
+    
+    initCamera();
+    
+    return () => { cancelled = true; };
+  }, [step]);
 
   const stopCamera = () => {
     if (stream) {
@@ -475,15 +461,7 @@ export function VideoIdentification({
           {step === "camera" && (
             <div className="space-y-4">
               <div className="relative aspect-video bg-black rounded-xl overflow-hidden">
-                {/* Loading indicator */}
-                {(isCameraLoading || !isVideoReady) && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black z-10">
-                    <Loader2 className="w-8 h-8 animate-spin text-white mb-2" />
-                    <p className="text-white text-sm">
-                      {isCameraLoading ? "Подключение к камере..." : "Загрузка видео..."}
-                    </p>
-                  </div>
-                )}
+                {/* Video element - всегда видимый */}
                 <video
                   ref={videoRef}
                   autoPlay
@@ -492,6 +470,13 @@ export function VideoIdentification({
                   className="w-full h-full object-cover"
                   style={{ transform: "scaleX(-1)" }}
                 />
+                {/* Loading indicator - полупрозрачный, не блокирует видео */}
+                {isCameraLoading && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50">
+                    <Loader2 className="w-8 h-8 animate-spin text-white mb-2" />
+                    <p className="text-white text-sm">Подключение к камере...</p>
+                  </div>
+                )}
                 {/* Face guide overlay */}
                 {isVideoReady && (
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
