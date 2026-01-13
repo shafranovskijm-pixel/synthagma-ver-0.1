@@ -952,6 +952,79 @@ export type Database = {
           },
         ]
       }
+      organization_feature_categories: {
+        Row: {
+          category_id: string
+          created_at: string
+          id: string
+          is_enabled: boolean
+          organization_id: string
+          updated_at: string
+        }
+        Insert: {
+          category_id: string
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          organization_id: string
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          organization_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_feature_categories_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_features: {
+        Row: {
+          category_id: string
+          created_at: string
+          feature_id: string
+          id: string
+          is_enabled: boolean
+          organization_id: string
+          updated_at: string
+        }
+        Insert: {
+          category_id: string
+          created_at?: string
+          feature_id: string
+          id?: string
+          is_enabled?: boolean
+          organization_id: string
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string
+          created_at?: string
+          feature_id?: string
+          id?: string
+          is_enabled?: boolean
+          organization_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_features_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_reminders: {
         Row: {
           created_at: string
