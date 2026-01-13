@@ -41,7 +41,13 @@ import {
   EnrollDialog,
   CategoryDialog,
   InviteEmailDialog,
-  CourseDetailsModal
+  CourseDetailsModal,
+  StudentDetailsDialog,
+  StudentCoursesDialog,
+  OrgDetailsDialog,
+  AddCompanyDialog,
+  EditCompanyDialog,
+  CreateLinkDialog
 } from "@/components/organization/dialogs";
 import { generateEnrollmentOrder } from "@/utils/generateEnrollmentOrder";
 import { useAuth } from "@/hooks/useAuth";
@@ -2528,39 +2534,23 @@ export default function OrganizationDashboard() {
               </div>
             </div>
             <div className="flex gap-2 lg:gap-3 flex-wrap">
-              {activeTab === "links" && <Dialog open={showCreateLinkDialog} onOpenChange={setShowCreateLinkDialog}>
-                  <DialogTrigger asChild>
-                    <Button className="btn-gradient rounded-xl gap-2 text-xs lg:text-sm">
-                      <Plus className="w-4 h-4" />
-                      <span className="hidden sm:inline">Создать ссылку</span>
-                      <span className="sm:hidden">Создать</span>
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="rounded-2xl mx-4 max-w-[calc(100vw-2rem)] sm:max-w-lg">
-                    <DialogHeader>
-                      <DialogTitle className="font-display">Создать ссылку регистрации</DialogTitle>
-                      <DialogDescription>
-                        Ученики, зарегистрировавшиеся по этой ссылке, автоматически привяжутся к вашей организации
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                      <div className="space-y-2">
-                        <Label>Название компании</Label>
-                        <Input placeholder="ООО Пример" className="rounded-xl" value={newLinkCompanyName} onChange={e => setNewLinkCompanyName(e.target.value)} />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>ИНН компании</Label>
-                        <Input placeholder="1234567890" className="rounded-xl" value={newLinkInn} onChange={e => setNewLinkInn(e.target.value)} />
-                      </div>
-                      <Button className="w-full btn-gradient rounded-xl" onClick={handleCreateRegistrationLink} disabled={isCreatingLink}>
-                        {isCreatingLink ? <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Создание...
-                          </> : "Создать ссылку"}
-                      </Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>}
+              {activeTab === "links" && <>
+                  <Button className="btn-gradient rounded-xl gap-2 text-xs lg:text-sm" onClick={() => setShowCreateLinkDialog(true)}>
+                    <Plus className="w-4 h-4" />
+                    <span className="hidden sm:inline">Создать ссылку</span>
+                    <span className="sm:hidden">Создать</span>
+                  </Button>
+                  <CreateLinkDialog
+                    open={showCreateLinkDialog}
+                    onOpenChange={setShowCreateLinkDialog}
+                    companyName={newLinkCompanyName}
+                    onCompanyNameChange={setNewLinkCompanyName}
+                    inn={newLinkInn}
+                    onInnChange={setNewLinkInn}
+                    isCreating={isCreatingLink}
+                    onCreate={handleCreateRegistrationLink}
+                  />
+                </>}
               {activeTab === "students" && <>
                   <Button variant="outline" className="rounded-xl gap-2 text-xs lg:text-sm" onClick={() => setShowImportDialog(true)}>
                     <FileSpreadsheet className="w-4 h-4" />
@@ -3234,372 +3224,85 @@ export default function OrganizationDashboard() {
         }}
       />
 
-      {/* Student Details Dialog */}
-      <Dialog open={showStudentDialog} onOpenChange={setShowStudentDialog}>
-        <DialogContent className="max-w-2xl rounded-2xl max-h-[90vh] overflow-auto">
-          <DialogHeader>
-            <DialogTitle className="font-display">Карточка ученика</DialogTitle>
-          </DialogHeader>
-          {isLoadingStudentDetails ? <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            </div> : selectedStudent && <div className="space-y-6">
-              {/* Basic Info */}
-              <div className="bg-secondary/30 rounded-xl p-4">
-                <h3 className="font-semibold text-lg">{selectedStudent.student.name}</h3>
-                <p className="text-muted-foreground">{selectedStudent.student.email || "Email не указан"}</p>
-                
-                {/* Login credentials */}
-                {selectedStudent.student.login && <div className="mt-3 p-3 bg-background rounded-lg border border-border">
-                    <p className="text-sm text-muted-foreground mb-2">Данные для входа:</p>
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <span className="bg-primary/10 text-primary px-2 py-1 rounded text-sm font-mono">
-                        {selectedStudent.student.login}
-                      </span>
-                      {selectedStudent.student.generated_password && <span className="bg-muted text-muted-foreground px-2 py-1 rounded text-sm font-mono">
-                          {selectedStudent.student.generated_password}
-                        </span>}
-                      <Button variant="outline" size="sm" className="rounded-lg gap-1 ml-auto" onClick={() => handleCopyCredentials(selectedStudent.student.login!, selectedStudent.student.generated_password || "")}>
-                        <Copy className="w-3.5 h-3.5" />
-                        Копировать
-                      </Button>
-                    </div>
-                  </div>}
+      <StudentDetailsDialog
+        open={showStudentDialog}
+        onOpenChange={setShowStudentDialog}
+        studentDetails={selectedStudent}
+        isLoading={isLoadingStudentDetails}
+        companies={companies}
+        studentCompanyId={studentCompanyId}
+        onStudentCompanyIdChange={setStudentCompanyId}
+        isSavingStudentCompany={isSavingStudentCompany}
+        onAttachToCompany={handleAttachStudentToCompany}
+        isCreatingCredentials={isCreatingCredentials}
+        onCreateCredentials={handleCreateStudentCredentials}
+        isSendingCredentials={isSendingCredentials}
+        onSendCredentials={handleSendCredentials}
+        isSendingCredentialsEmail={isSendingCredentialsEmail}
+        onSendCredentialsEmail={handleSendCredentialsEmail}
+        isDeletingStudent={isDeletingStudent}
+        onDeleteStudent={handleDeleteStudentCompletely}
+        onCopyCredentials={handleCopyCredentials}
+      />
 
-                {selectedStudent.student.course && <p className="text-sm mt-3">Курс: <span className="font-medium">{selectedStudent.student.course}</span></p>}
-                <div className="flex items-center gap-3 mt-3">
-                  <Progress value={selectedStudent.student.progress} className="flex-1 h-3" />
-                  <span className="font-semibold">{selectedStudent.student.progress}%</span>
-                </div>
-              </div>
+      <AddCompanyDialog
+        open={showAddCompanyDialog}
+        onOpenChange={setShowAddCompanyDialog}
+        name={newCompanyName}
+        onNameChange={setNewCompanyName}
+        email={newCompanyEmail}
+        onEmailChange={setNewCompanyEmail}
+        inn={newCompanyInn}
+        onInnChange={setNewCompanyInn}
+        contactName={newCompanyContactName}
+        onContactNameChange={setNewCompanyContactName}
+        phone={newCompanyPhone}
+        onPhoneChange={setNewCompanyPhone}
+        isCreating={isCreatingCompany}
+        onCreate={handleCreateCompany}
+      />
 
-              {/* Actions */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* Attach to company */}
-                <div className="bg-secondary/30 rounded-xl p-4">
-                  <h4 className="font-medium mb-3 flex items-center gap-2">
-                    <Building2 className="w-4 h-4" />
-                    Прикрепить к компании
-                  </h4>
-                  <div className="flex gap-2">
-                    <Select value={studentCompanyId} onValueChange={setStudentCompanyId}>
-                      <SelectTrigger className="flex-1 rounded-lg">
-                        <SelectValue placeholder="Выберите компанию" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {companies.map(company => <SelectItem key={company.id} value={company.id}>
-                            {company.name}
-                          </SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    <Button variant="outline" size="icon" className="rounded-lg shrink-0" onClick={handleAttachStudentToCompany} disabled={!studentCompanyId || isSavingStudentCompany}>
-                      {isSavingStudentCompany ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                    </Button>
-                  </div>
-                </div>
+      <EditCompanyDialog
+        open={showEditCompanyDialog}
+        onOpenChange={setShowEditCompanyDialog}
+        name={editCompanyName}
+        onNameChange={setEditCompanyName}
+        email={editCompanyEmail}
+        onEmailChange={setEditCompanyEmail}
+        inn={editCompanyInn}
+        onInnChange={setEditCompanyInn}
+        contactName={editCompanyContactName}
+        onContactNameChange={setEditCompanyContactName}
+        phone={editCompanyPhone}
+        onPhoneChange={setEditCompanyPhone}
+        isSaving={isSavingCompany}
+        onSave={handleSaveCompany}
+      />
 
-                {/* Create credentials for students without login */}
-                {!selectedStudent.student.login && <div className="bg-secondary/30 rounded-xl p-4">
-                    <h4 className="font-medium mb-3 flex items-center gap-2">
-                      <Key className="w-4 h-4" />
-                      Данные для входа
-                    </h4>
-                    <p className="text-sm text-muted-foreground mb-3">
-                      У ученика нет логина и пароля для входа в систему
-                    </p>
-                    <Button className="w-full rounded-lg gap-2 btn-gradient" onClick={handleCreateStudentCredentials} disabled={isCreatingCredentials}>
-                      {isCreatingCredentials ? <Loader2 className="w-4 h-4 animate-spin" /> : <Key className="w-4 h-4" />}
-                      Создать логин и пароль
-                    </Button>
-                  </div>}
+      <OrgDetailsDialog
+        open={showOrgDetails}
+        onOpenChange={setShowOrgDetails}
+        organization={selectedOrg}
+        students={orgStudents}
+        isLoading={isLoadingOrgDetails}
+      />
 
-                {/* Send credentials */}
-                {selectedStudent.student.login && selectedStudent.student.generated_password && <div className="bg-secondary/30 rounded-xl p-4">
-                    <h4 className="font-medium mb-3 flex items-center gap-2">
-                      <Send className="w-4 h-4" />
-                      Отправить данные для входа
-                    </h4>
-                    <div className="flex flex-col gap-2">
-                      <Button variant="outline" className="w-full rounded-lg gap-2" onClick={handleSendCredentials} disabled={isSendingCredentials}>
-                        {isSendingCredentials ? <Loader2 className="w-4 h-4 animate-spin" /> : <Copy className="w-4 h-4" />}
-                        Скопировать сообщение
-                      </Button>
-                      <Button className="w-full rounded-lg gap-2 btn-gradient" onClick={handleSendCredentialsEmail} disabled={isSendingCredentialsEmail || !selectedStudent.student.email}>
-                        {isSendingCredentialsEmail ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
-                        {selectedStudent.student.email ? "Отправить на почту" : "Email не указан"}
-                      </Button>
-                    </div>
-                  </div>}
-
-                {/* Delete student */}
-                <div className="bg-destructive/10 rounded-xl p-4">
-                  <h4 className="font-medium mb-3 flex items-center gap-2 text-destructive">
-                    <Trash2 className="w-4 h-4" />
-                    Удалить ученика
-                  </h4>
-                  <p className="text-sm text-muted-foreground mb-3">
-                    Полностью удалить ученика из системы
-                  </p>
-                  <Button variant="destructive" className="w-full rounded-lg gap-2" onClick={handleDeleteStudentCompletely} disabled={isDeletingStudent}>
-                    {isDeletingStudent ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                    Удалить ученика
-                  </Button>
-                </div>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-semibold">Результаты тестов</h3>
-                  {selectedStudent.testAttempts.length > 0 && <Button variant="outline" size="sm" className="rounded-lg gap-2" onClick={() => {
-                import('xlsx').then(XLSX => {
-                  const exportData = selectedStudent.testAttempts.map(attempt => ({
-                    'Тест': attempt.lesson_title,
-                    'Баллы': attempt.score,
-                    'Макс. баллы': attempt.max_score,
-                    'Процент': Math.round(attempt.score / attempt.max_score * 100) + '%',
-                    'Результат': attempt.score >= attempt.max_score * 0.7 ? 'Пройден' : 'Не пройден',
-                    'Дата': new Date(attempt.completed_at).toLocaleString('ru-RU')
-                  }));
-                  const ws = XLSX.utils.json_to_sheet(exportData);
-                  const wb = XLSX.utils.book_new();
-                  XLSX.utils.book_append_sheet(wb, ws, 'Результаты тестов');
-                  XLSX.writeFile(wb, `тесты_${selectedStudent.student.name}_${new Date().toISOString().split('T')[0]}.xlsx`);
-                  toast.success('Результаты тестов экспортированы');
-                });
-              }}>
-                      <FileSpreadsheet className="w-4 h-4" />
-                      Экспорт
-                    </Button>}
-                </div>
-                {selectedStudent.testAttempts.length === 0 ? <p className="text-muted-foreground text-sm">Нет пройденных тестов</p> : <div className="space-y-3">
-                    {selectedStudent.testAttempts.map(attempt => <div key={attempt.id} className="bg-secondary/30 rounded-xl p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="font-medium">{attempt.lesson_title}</span>
-                          <span className={`font-bold ${attempt.score >= attempt.max_score * 0.7 ? 'text-sigma-green' : 'text-destructive'}`}>
-                            {attempt.score} / {attempt.max_score}
-                          </span>
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          {new Date(attempt.completed_at).toLocaleString()}
-                        </p>
-                      </div>)}
-                  </div>}
-              </div>
-            </div>}
-        </DialogContent>
-      </Dialog>
-
-      {/* Add Company Dialog */}
-      <Dialog open={showAddCompanyDialog} onOpenChange={setShowAddCompanyDialog}>
-        <DialogContent className="rounded-2xl">
-          <DialogHeader>
-            <DialogTitle className="font-display">Добавить компанию</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Название *</Label>
-              <Input placeholder="ООО Пример" className="rounded-xl" value={newCompanyName} onChange={e => setNewCompanyName(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Email *</Label>
-              <Input type="email" placeholder="info@example.com" className="rounded-xl" value={newCompanyEmail} onChange={e => setNewCompanyEmail(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>ИНН</Label>
-              <Input placeholder="1234567890" className="rounded-xl" value={newCompanyInn} onChange={e => setNewCompanyInn(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Контактное лицо</Label>
-              <Input placeholder="Иванов Иван" className="rounded-xl" value={newCompanyContactName} onChange={e => setNewCompanyContactName(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Телефон</Label>
-              <Input placeholder="+7 (999) 123-45-67" className="rounded-xl" value={newCompanyPhone} onChange={e => setNewCompanyPhone(e.target.value)} />
-            </div>
-            <Button className="w-full btn-gradient rounded-xl" onClick={handleCreateCompany} disabled={isCreatingCompany}>
-              {isCreatingCompany ? <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Создание...
-                </> : "Создать компанию"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Company Dialog */}
-      <Dialog open={showEditCompanyDialog} onOpenChange={setShowEditCompanyDialog}>
-        <DialogContent className="rounded-2xl">
-          <DialogHeader>
-            <DialogTitle className="font-display">Редактировать компанию</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Название *</Label>
-              <Input className="rounded-xl" value={editCompanyName} onChange={e => setEditCompanyName(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Email *</Label>
-              <Input type="email" className="rounded-xl" value={editCompanyEmail} onChange={e => setEditCompanyEmail(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>ИНН</Label>
-              <Input className="rounded-xl" value={editCompanyInn} onChange={e => setEditCompanyInn(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Контактное лицо</Label>
-              <Input className="rounded-xl" value={editCompanyContactName} onChange={e => setEditCompanyContactName(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Телефон</Label>
-              <Input className="rounded-xl" value={editCompanyPhone} onChange={e => setEditCompanyPhone(e.target.value)} />
-            </div>
-            <Button className="w-full btn-gradient rounded-xl" onClick={handleSaveCompany} disabled={isSavingCompany}>
-              {isSavingCompany ? <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Сохранение...
-                </> : "Сохранить"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Org Details Dialog */}
-      <Dialog open={showOrgDetails} onOpenChange={setShowOrgDetails}>
-        <DialogContent className="max-w-3xl rounded-2xl max-h-[90vh] overflow-auto">
-          <DialogHeader>
-            <DialogTitle className="font-display">{selectedOrg?.name}</DialogTitle>
-          </DialogHeader>
-          {isLoadingOrgDetails ? <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            </div> : selectedOrg && <div className="space-y-6">
-              <div className="grid md:grid-cols-2 gap-4">
-                <div className="bg-secondary/30 rounded-xl p-4">
-                  <p className="text-sm text-muted-foreground">Email</p>
-                  <p className="font-medium">{selectedOrg.email}</p>
-                </div>
-                <div className="bg-secondary/30 rounded-xl p-4">
-                  <p className="text-sm text-muted-foreground">ИНН</p>
-                  <p className="font-medium">{selectedOrg.inn || "—"}</p>
-                </div>
-                <div className="bg-secondary/30 rounded-xl p-4">
-                  <p className="text-sm text-muted-foreground">Контактное лицо</p>
-                  <p className="font-medium">{selectedOrg.contact_name || "—"}</p>
-                </div>
-                <div className="bg-secondary/30 rounded-xl p-4">
-                  <p className="text-sm text-muted-foreground">Телефон</p>
-                  <p className="font-medium">{selectedOrg.phone || "—"}</p>
-                </div>
-              </div>
-
-              <div>
-                <h3 className="font-semibold mb-3">Ученики ({orgStudents.length})</h3>
-                {orgStudents.length === 0 ? <p className="text-muted-foreground text-sm">Нет учеников</p> : <div className="space-y-2 max-h-60 overflow-auto">
-                    {orgStudents.map(s => <div key={s.id} className="flex items-center justify-between p-3 bg-secondary/30 rounded-xl">
-                        <div>
-                          <div className="font-medium">{s.name}</div>
-                          <div className="text-sm text-muted-foreground">{s.email}</div>
-                        </div>
-                      </div>)}
-                  </div>}
-              </div>
-            </div>}
-        </DialogContent>
-      </Dialog>
-
-      {/* Student Courses Management Dialog */}
-      <Dialog open={showStudentCoursesDialog} onOpenChange={setShowStudentCoursesDialog}>
-        <DialogContent className="max-w-3xl rounded-2xl max-h-[90vh] overflow-auto">
-          <DialogHeader>
-            <DialogTitle className="font-display">
-              Курсы ученика: {selectedStudentForCourses?.name}
-            </DialogTitle>
-            <DialogDescription>
-              Управление зачислениями на курсы
-            </DialogDescription>
-          </DialogHeader>
-          
-          {isLoadingStudentCourses ? <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            </div> : <div className="space-y-6">
-              {/* Current enrollments */}
-              <div>
-                <h3 className="font-semibold mb-3 flex items-center gap-2">
-                  <GraduationCap className="w-5 h-5" />
-                  Текущие курсы ({studentEnrollments.length})
-                </h3>
-                {studentEnrollments.length === 0 ? <p className="text-muted-foreground text-sm bg-secondary/30 rounded-xl p-4">
-                    Ученик не зачислен ни на один курс
-                  </p> : <div className="space-y-2 max-h-48 overflow-auto">
-                    {studentEnrollments.map(({
-                course,
-                enrollment_id,
-                progress,
-                status
-              }) => <div key={enrollment_id} className="flex items-center justify-between p-3 bg-secondary/30 rounded-xl">
-                        <div className="flex-1">
-                          <div className="font-medium">{course.title}</div>
-                          <div className="flex items-center gap-3 mt-1">
-                            <Progress value={progress} className="w-24 h-2" />
-                            <span className="text-sm text-muted-foreground">{progress}%</span>
-                            <span className={`text-xs px-2 py-0.5 rounded-full ${status === 'completed' ? 'bg-sigma-green/10 text-sigma-green' : 'bg-primary/10 text-primary'}`}>
-                              {status === 'completed' ? 'Завершён' : 'В процессе'}
-                            </span>
-                          </div>
-                        </div>
-                        <Button variant="outline" size="sm" className="rounded-lg text-destructive hover:text-destructive ml-3" onClick={() => handleRemoveStudentFromCourse(enrollment_id)}>
-                          <X className="w-4 h-4" />
-                        </Button>
-                      </div>)}
-                  </div>}
-              </div>
-
-              {/* Available courses to add */}
-              <div>
-                <h3 className="font-semibold mb-3 flex items-center gap-2">
-                  <Plus className="w-5 h-5" />
-                  Зачислить на курсы
-                </h3>
-                
-                {availableCoursesForStudent.length === 0 ? <p className="text-muted-foreground text-sm bg-secondary/30 rounded-xl p-4">
-                    Все доступные курсы уже назначены
-                  </p> : <>
-                    <div className="relative mb-3">
-                      <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                      <Input placeholder="Поиск курсов..." value={studentCoursesSearchQuery} onChange={e => setStudentCoursesSearchQuery(e.target.value)} className="pl-10 rounded-xl" />
-                    </div>
-                    
-                    <div className="space-y-2 max-h-48 overflow-auto border border-border rounded-xl p-2">
-                      {availableCoursesForStudent.filter(c => studentCoursesSearchQuery === "" || c.title.toLowerCase().includes(studentCoursesSearchQuery.toLowerCase())).map(course => {
-                  const isSelected = selectedCoursesToAdd.has(course.id);
-                  const category = getCategoryById(course.category_id);
-                  return <div key={course.id} className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-colors ${isSelected ? 'bg-primary/10 border border-primary' : 'bg-secondary/30 hover:bg-secondary/50'}`} onClick={() => toggleCourseSelection(course.id)}>
-                              <input type="checkbox" checked={isSelected} onChange={() => toggleCourseSelection(course.id)} className="w-4 h-4 rounded" />
-                              <div className="flex-1">
-                                <div className="font-medium">{course.title}</div>
-                                {category && <span className="text-xs px-2 py-0.5 rounded-full mt-1 inline-block" style={{
-                        backgroundColor: category.color + '20',
-                        color: category.color
-                      }}>
-                                    {category.name}
-                                  </span>}
-                              </div>
-                            </div>;
-                })}
-                    </div>
-                    
-                    {selectedCoursesToAdd.size > 0 && <Button className="w-full btn-gradient rounded-xl mt-4" onClick={handleAddCoursesToStudent} disabled={isAddingCoursesToStudent}>
-                        {isAddingCoursesToStudent ? <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Зачисление...
-                          </> : <>
-                            <GraduationCap className="w-4 h-4 mr-2" />
-                            Зачислить на {selectedCoursesToAdd.size} курсов
-                          </>}
-                      </Button>}
-                  </>}
-              </div>
-            </div>}
-        </DialogContent>
-      </Dialog>
+      <StudentCoursesDialog
+        open={showStudentCoursesDialog}
+        onOpenChange={setShowStudentCoursesDialog}
+        student={selectedStudentForCourses}
+        isLoading={isLoadingStudentCourses}
+        studentEnrollments={studentEnrollments}
+        availableCourses={availableCoursesForStudent}
+        selectedCoursesToAdd={selectedCoursesToAdd}
+        searchQuery={studentCoursesSearchQuery}
+        onSearchQueryChange={setStudentCoursesSearchQuery}
+        onToggleCourseSelection={toggleCourseSelection}
+        isAddingCourses={isAddingCoursesToStudent}
+        onAddCourses={handleAddCoursesToStudent}
+        onRemoveEnrollment={handleRemoveStudentFromCourse}
+        getCategoryById={getCategoryById}
+      />
 
       {/* Course Documents Manager */}
       {selectedCourseForDocs && <CourseDocumentsManager courseId={selectedCourseForDocs.id} courseName={selectedCourseForDocs.title} isOpen={showCourseDocsDialog} onClose={() => {
