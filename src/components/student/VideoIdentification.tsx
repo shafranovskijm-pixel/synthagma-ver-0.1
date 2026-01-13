@@ -92,133 +92,68 @@ export function VideoIdentification({
     setIsVideoReady(false);
     setStep("camera");
     
-    // Small delay to ensure video element is mounted
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
     try {
-      // Check if getUserMedia is supported - handle Yandex browser legacy API
-      const mediaDevices = navigator.mediaDevices;
-      const getUserMedia = mediaDevices?.getUserMedia?.bind(mediaDevices) || 
-        // @ts-ignore - legacy API fallback
-        (navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia);
-      
-      if (!getUserMedia && !mediaDevices) {
-        throw new Error("NotSupportedError");
-      }
-
-      let mediaStream: MediaStream;
-      
-      // Try multiple constraint configurations for maximum compatibility
-      const constraintSets = [
-        // Simple constraint - most compatible
-        { video: true, audio: false },
-        // With facing mode
-        { video: { facingMode: "user" }, audio: false },
-        // With resolution
-        { video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } }, audio: false },
-      ];
-      
-      let lastError: any = null;
-      
-      for (const constraints of constraintSets) {
-        try {
-          if (mediaDevices?.getUserMedia) {
-            mediaStream = await mediaDevices.getUserMedia(constraints);
-          } else {
-            // Legacy API
-            mediaStream = await new Promise<MediaStream>((resolve, reject) => {
-              getUserMedia.call(navigator, constraints, resolve, reject);
-            });
-          }
-          console.log("Camera access granted with constraints:", constraints);
-          break;
-        } catch (err) {
-          console.warn("Constraints failed:", constraints, err);
-          lastError = err;
-        }
+      // Простая проверка поддержки - как в вашем коде
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error('getUserMedia не поддерживается');
       }
       
-      // @ts-ignore - check if mediaStream was set
-      if (!mediaStream) {
-        throw lastError || new Error("Failed to get camera stream");
-      }
+      // Простой запрос камеры - максимальная совместимость
+      const mediaStream = await navigator.mediaDevices.getUserMedia({ 
+        video: true, 
+        audio: false 
+      });
       
-      console.log("Camera stream obtained, tracks:", mediaStream.getVideoTracks().length);
+      console.log("Камера готова. Треков:", mediaStream.getVideoTracks().length);
       setStream(mediaStream);
       setIsCapturing(true);
       
-    } catch (error: any) {
-      console.error("Camera error:", error);
+      // Сразу подключаем к video элементу
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream;
+        videoRef.current.play().catch(e => console.warn("Play failed:", e));
+      }
+      
+    } catch (err: any) {
+      console.error("Камера/микрофон недоступны:", err);
       setStep("intro");
       setIsCameraLoading(false);
-      
-      const errorName = error?.name || error?.message || "";
-      
-      if (errorName.includes("NotSupported") || error.message === "NotSupportedError") {
-        setCameraError("Ваш браузер не поддерживает доступ к камере. Попробуйте использовать Яндекс Браузер, Chrome или Safari последней версии.");
-      } else if (errorName.includes("NotAllowed") || errorName.includes("PermissionDenied")) {
-        setCameraError("Доступ к камере запрещен. Разрешите доступ к камере в настройках браузера и обновите страницу.");
-      } else if (errorName.includes("NotFound") || errorName.includes("DevicesNotFound")) {
-        setCameraError("Камера не найдена на устройстве.");
-      } else if (errorName.includes("NotReadable") || errorName.includes("TrackStart")) {
-        setCameraError("Камера занята другим приложением. Закройте другие приложения и попробуйте снова.");
-      } else if (errorName.includes("Overconstrained")) {
-        setCameraError("Камера не поддерживает требуемые параметры. Попробуйте снова.");
-      } else if (errorName.includes("Security")) {
-        setCameraError("Доступ к камере заблокирован. Используйте HTTPS или разрешите доступ в настройках сайта.");
-      } else if (errorName.includes("Abort")) {
-        setCameraError("Запрос камеры был прерван. Попробуйте снова.");
-      } else {
-        setCameraError(`Ошибка камеры: ${error.message || errorName || "неизвестная ошибка"}. Проверьте разрешения камеры в настройках браузера.`);
-      }
+      setCameraError('Камера недоступна: ' + (err.message || err.name || 'неизвестная ошибка'));
     }
   };
   
-  // Effect to attach stream to video element when both are ready
+  // Подключаем stream к video когда оба готовы
   useEffect(() => {
     if (stream && videoRef.current && step === "camera") {
       const video = videoRef.current;
       video.srcObject = stream;
       
-      const handleCanPlay = () => {
-        console.log("Video can play");
+      const handleReady = () => {
+        console.log("Видео готово");
         setIsVideoReady(true);
         setIsCameraLoading(false);
       };
       
-      const handleLoadedMetadata = () => {
-        console.log("Video metadata loaded:", video.videoWidth, "x", video.videoHeight);
-        // Also try to play here for iOS
-        video.play().catch(err => console.warn("Play on metadata failed:", err));
-      };
+      video.onloadeddata = handleReady;
+      video.oncanplay = handleReady;
+      video.onplaying = handleReady;
       
-      const handlePlaying = () => {
-        console.log("Video is playing");
-        setIsVideoReady(true);
-        setIsCameraLoading(false);
-      };
+      video.play().catch(e => console.warn("Play error:", e));
       
-      video.addEventListener("canplay", handleCanPlay);
-      video.addEventListener("loadedmetadata", handleLoadedMetadata);
-      video.addEventListener("playing", handlePlaying);
-      
-      // Try to play immediately
-      video.play().catch(err => console.warn("Initial play failed:", err));
-      
-      // Fallback: if video doesn't fire events in 3 seconds, assume it's ready
-      const fallbackTimer = setTimeout(() => {
+      // Fallback - если события не сработали за 2 сек
+      const fallback = setTimeout(() => {
         if (!isVideoReady && stream) {
-          console.log("Fallback: assuming video is ready");
+          console.log("Fallback: видео готово");
           setIsVideoReady(true);
           setIsCameraLoading(false);
         }
-      }, 3000);
+      }, 2000);
       
       return () => {
-        clearTimeout(fallbackTimer);
-        video.removeEventListener("canplay", handleCanPlay);
-        video.removeEventListener("loadedmetadata", handleLoadedMetadata);
-        video.removeEventListener("playing", handlePlaying);
+        clearTimeout(fallback);
+        video.onloadeddata = null;
+        video.oncanplay = null;
+        video.onplaying = null;
       };
     }
   }, [stream, step, isVideoReady]);
