@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { JournalEditor } from "./JournalEditor";
 import { AutoAttendanceJournal } from "./AutoAttendanceJournal";
+import { AutoGradesJournal } from "./AutoGradesJournal";
 
 interface JournalItem {
   id: string;
@@ -142,6 +143,7 @@ export function JournalsManager({ organizationId }: JournalsManagerProps) {
     title: string;
   } | null>(null);
   const [showAutoAttendance, setShowAutoAttendance] = useState(false);
+  const [showAutoGrades, setShowAutoGrades] = useState(false);
 
   const toggleCategory = (categoryId: string) => {
     setExpandedCategories((prev) =>
@@ -167,6 +169,16 @@ export function JournalsManager({ organizationId }: JournalsManagerProps) {
       <AutoAttendanceJournal
         organizationId={organizationId}
         onClose={() => setShowAutoAttendance(false)}
+      />
+    );
+  }
+
+  // Show automatic grades journal
+  if (showAutoGrades) {
+    return (
+      <AutoGradesJournal
+        organizationId={organizationId}
+        onClose={() => setShowAutoGrades(false)}
       />
     );
   }
@@ -293,6 +305,32 @@ export function JournalsManager({ organizationId }: JournalsManagerProps) {
                                 size="sm"
                                 className="rounded-lg"
                                 onClick={() => setShowAutoAttendance(true)}
+                              >
+                                <BarChart3 className="w-4 h-4 mr-2" />
+                                Автоматический
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="rounded-lg"
+                                onClick={() =>
+                                  setActiveJournal({
+                                    type: journal.id,
+                                    title: journal.title,
+                                  })
+                                }
+                              >
+                                <Edit className="w-4 h-4 mr-2" />
+                                Ручной
+                              </Button>
+                            </>
+                          ) : journal.id === "current_control" ? (
+                            <>
+                              <Button
+                                variant="default"
+                                size="sm"
+                                className="rounded-lg"
+                                onClick={() => setShowAutoGrades(true)}
                               >
                                 <BarChart3 className="w-4 h-4 mr-2" />
                                 Автоматический
