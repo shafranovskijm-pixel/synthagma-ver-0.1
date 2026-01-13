@@ -36,5 +36,8 @@ verify_jwt = false
 [functions.notify-course-order]
 verify_jwt = false
 
+[functions.notify-order-status]
+verify_jwt = false
+
 [functions.send-documents-reminder]
 verify_jwt = false
