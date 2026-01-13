@@ -258,48 +258,49 @@ const Blog = () => {
             <h2 className="text-2xl font-bold mb-8">Избранные статьи</h2>
             <div className="grid md:grid-cols-2 gap-6">
               {featuredPosts.map((post, index) => (
-                <motion.article
-                  key={post.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                  className="group relative overflow-hidden rounded-2xl border border-border bg-card hover:shadow-xl transition-all duration-300"
-                >
-                  <div className="aspect-[2/1] overflow-hidden">
-                    <img
-                      src={post.image_url || "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&h=400&fit=crop"}
-                      alt={post.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                  </div>
-                  <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Badge className="bg-primary/90 hover:bg-primary">
-                        {categoryIcons[post.category] || <BookOpen className="h-4 w-4" />}
-                        <span className="ml-1">{post.category}</span>
-                      </Badge>
+                <Link key={post.id} to={`/blog/${post.slug}`}>
+                  <motion.article
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: index * 0.1 }}
+                    className="group relative overflow-hidden rounded-2xl border border-border bg-card hover:shadow-xl transition-all duration-300 cursor-pointer"
+                  >
+                    <div className="aspect-[2/1] overflow-hidden">
+                      <img
+                        src={post.image_url || "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&h=400&fit=crop"}
+                        alt={post.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                     </div>
-                    <h3 className="text-xl font-bold mb-2 group-hover:text-primary-foreground/90 transition-colors">
-                      {post.title}
-                    </h3>
-                    <p className="text-white/80 text-sm mb-4 line-clamp-2">
-                      {post.excerpt}
-                    </p>
-                    <div className="flex items-center gap-4 text-xs text-white/60">
-                      <span className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        {formatDate(post.published_at || post.created_at)}
-                      </span>
-                      {post.read_time && (
+                    <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Badge className="bg-primary/90 hover:bg-primary">
+                          {categoryIcons[post.category] || <BookOpen className="h-4 w-4" />}
+                          <span className="ml-1">{post.category}</span>
+                        </Badge>
+                      </div>
+                      <h3 className="text-xl font-bold mb-2 group-hover:text-primary-foreground/90 transition-colors">
+                        {post.title}
+                      </h3>
+                      <p className="text-white/80 text-sm mb-4 line-clamp-2">
+                        {post.excerpt}
+                      </p>
+                      <div className="flex items-center gap-4 text-xs text-white/60">
                         <span className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {post.read_time}
+                          <Calendar className="h-3 w-3" />
+                          {formatDate(post.published_at || post.created_at)}
                         </span>
-                      )}
+                        {post.read_time && (
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {post.read_time}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </motion.article>
+                  </motion.article>
+                </Link>
               ))}
             </div>
           </div>
@@ -315,50 +316,51 @@ const Blog = () => {
             </h2>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {regularPosts.map((post, index) => (
-                <motion.article
-                  key={post.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                  className="group bg-card rounded-xl border border-border overflow-hidden hover:shadow-lg transition-all duration-300"
-                >
-                  <div className="aspect-[16/9] overflow-hidden">
-                    <img
-                      src={post.image_url || "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&h=400&fit=crop"}
-                      alt={post.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                  </div>
-                  <div className="p-5">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Badge variant="secondary" className="text-xs">
-                        {categoryIcons[post.category] || <BookOpen className="h-3 w-3" />}
-                        <span className="ml-1">{post.category}</span>
-                      </Badge>
+                <Link key={post.id} to={`/blog/${post.slug}`}>
+                  <motion.article
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: index * 0.1 }}
+                    className="group bg-card rounded-xl border border-border overflow-hidden hover:shadow-lg transition-all duration-300 cursor-pointer h-full"
+                  >
+                    <div className="aspect-[16/9] overflow-hidden">
+                      <img
+                        src={post.image_url || "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&h=400&fit=crop"}
+                        alt={post.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
                     </div>
-                    <h3 className="font-semibold mb-2 group-hover:text-primary transition-colors line-clamp-2">
-                      {post.title}
-                    </h3>
-                    <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                      {post.excerpt}
-                    </p>
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <div className="flex items-center gap-3">
-                        <span className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          {formatDate(post.published_at || post.created_at)}
-                        </span>
-                        {post.read_time && (
-                          <span className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {post.read_time}
-                          </span>
-                        )}
+                    <div className="p-5">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Badge variant="secondary" className="text-xs">
+                          {categoryIcons[post.category] || <BookOpen className="h-3 w-3" />}
+                          <span className="ml-1">{post.category}</span>
+                        </Badge>
                       </div>
-                      <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                      <h3 className="font-semibold mb-2 group-hover:text-primary transition-colors line-clamp-2">
+                        {post.title}
+                      </h3>
+                      <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+                        {post.excerpt}
+                      </p>
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <div className="flex items-center gap-3">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {formatDate(post.published_at || post.created_at)}
+                          </span>
+                          {post.read_time && (
+                            <span className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {post.read_time}
+                            </span>
+                          )}
+                        </div>
+                        <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                      </div>
                     </div>
-                  </div>
-                </motion.article>
+                  </motion.article>
+                </Link>
               ))}
             </div>
           </div>
