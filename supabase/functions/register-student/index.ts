@@ -201,16 +201,16 @@ serve(async (req) => {
 
         userId = authData.user.id;
 
-        // Create profile with company_id if provided
+        // Upsert profile (trigger may have already created one)
         const { error: profileError } = await supabaseAdmin
           .from("profiles")
-          .insert({
+          .upsert({
             user_id: userId,
             full_name,
             email: email.toLowerCase(),
             organization_id,
             company_id: company_id || null
-          });
+          }, { onConflict: "user_id" });
 
         if (profileError) {
           console.error("Profile error:", profileError);
