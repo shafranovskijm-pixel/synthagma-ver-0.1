@@ -1,13 +1,24 @@
 import { useState, useEffect } from "react";
 import { 
   Sun, Moon, Palette, ChevronRight, Database, 
-  Shield, Bell, Loader2, Save, AlertCircle
+  Shield, Bell, Loader2, Save, AlertCircle, LayoutGrid
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { MenuResetSettings } from "@/components/ui/MenuResetSettings";
+import type { MenuItem } from "@/hooks/useMenuCustomization";
+
+const defaultAdminMenuItems: MenuItem[] = [
+  { id: "analytics", label: "Аналитика", icon: "BarChart3", visible: true, order: 0 },
+  { id: "organizations", label: "Организации", icon: "Building2", visible: true, order: 1 },
+  { id: "orders", label: "Заявки на курсы", icon: "ShoppingBag", visible: true, order: 2 },
+  { id: "users", label: "Пользователи", icon: "Users", visible: true, order: 3 },
+  { id: "features", label: "Функции системы", icon: "Sparkles", visible: true, order: 4 },
+  { id: "settings", label: "Настройки", icon: "Settings", visible: true, order: 5 },
+];
 
 interface SystemSettings {
   maintenanceMode: boolean;
@@ -126,6 +137,25 @@ export function AdminSettings() {
               </Button>
             </div>
           </div>
+        </div>
+      </details>
+
+      {/* Menu Settings */}
+      <details className="bg-card rounded-xl lg:rounded-2xl border border-border group">
+        <summary className="p-4 lg:p-6 cursor-pointer list-none flex items-center justify-between">
+          <h3 className="font-display font-semibold text-base lg:text-lg flex items-center gap-2">
+            <LayoutGrid className="w-4 h-4 lg:w-5 lg:h-5" />
+            Настройка меню
+          </h3>
+          <ChevronRight className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90" />
+        </summary>
+        <div className="px-4 lg:px-6 pb-4 lg:pb-6">
+          <MenuResetSettings
+            menuType="admin"
+            defaultItems={defaultAdminMenuItems}
+            title="Порядок и видимость пунктов"
+            description="Перетаскивайте пункты в боковом меню для изменения порядка. Скрытые пункты можно восстановить здесь."
+          />
         </div>
       </details>
 
