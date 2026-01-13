@@ -12,8 +12,9 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { 
   Plus, Sparkles, Pencil, Trash2, Eye, EyeOff, 
-  Star, StarOff, Loader2, FileText, Calendar 
+  Star, StarOff, Loader2, FileText, Calendar, Mail, Users
 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 
@@ -34,6 +35,14 @@ interface BlogPost {
   published_at: string | null;
 }
 
+interface Subscriber {
+  id: string;
+  email: string;
+  subscribed_at: string;
+  is_active: boolean;
+  source: string | null;
+}
+
 const categories = [
   "Тренды",
   "Гайды", 
@@ -46,7 +55,9 @@ const categories = [
 
 export function BlogManager() {
   const [posts, setPosts] = useState<BlogPost[]>([]);
+  const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingSubscribers, setIsLoadingSubscribers] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -66,6 +77,7 @@ export function BlogManager() {
 
   useEffect(() => {
     fetchPosts();
+    fetchSubscribers();
   }, []);
 
   const fetchPosts = async () => {
@@ -82,6 +94,38 @@ export function BlogManager() {
       toast.error("Ошибка загрузки статей");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchSubscribers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("newsletter_subscribers")
+        .select("*")
+        .order("subscribed_at", { ascending: false });
+
+      if (error) throw error;
+      setSubscribers(data || []);
+    } catch (error: any) {
+      console.error("Error fetching subscribers:", error);
+    } finally {
+      setIsLoadingSubscribers(false);
+    }
+  };
+
+  const deleteSubscriber = async (id: string) => {
+    if (!confirm("Удалить подписчика?")) return;
+    try {
+      const { error } = await supabase
+        .from("newsletter_subscribers")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+      toast.success("Подписчик удалён");
+      fetchSubscribers();
+    } catch (error: any) {
+      toast.error("Ошибка удаления");
     }
   };
 
@@ -268,7 +312,7 @@ export function BlogManager() {
         <div>
           <h2 className="text-xl font-semibold">Управление блогом</h2>
           <p className="text-sm text-muted-foreground">
-            {posts.length} статей • {posts.filter(p => p.is_published).length} опубликовано
+            {posts.length} статей • {posts.filter(p => p.is_published).length} опубликовано • {subscribers.length} подписчиков
           </p>
         </div>
         <Button onClick={openCreateDialog} className="gap-2">
@@ -276,6 +320,20 @@ export function BlogManager() {
           Новая статья
         </Button>
       </div>
+
+      <Tabs defaultValue="posts" className="w-full">
+        <TabsList>
+          <TabsTrigger value="posts" className="gap-2">
+            <FileText className="h-4 w-4" />
+            Статьи ({posts.length})
+          </TabsTrigger>
+          <TabsTrigger value="subscribers" className="gap-2">
+            <Users className="h-4 w-4" />
+            Подписчики ({subscribers.length})
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="posts" className="mt-6">
 
       {/* Posts Grid */}
       {posts.length === 0 ? (
@@ -377,6 +435,53 @@ export function BlogManager() {
           ))}
         </div>
       )}
+        </TabsContent>
+
+        <TabsContent value="subscribers" className="mt-6">
+          {isLoadingSubscribers ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : subscribers.length === 0 ? (
+            <Card className="p-12 text-center">
+              <Mail className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="font-semibold mb-2">Нет подписчиков</h3>
+              <p className="text-sm text-muted-foreground">
+                Подписчики появятся здесь после подписки на рассылку в блоге
+              </p>
+            </Card>
+          ) : (
+            <Card>
+              <div className="divide-y">
+                {subscribers.map((subscriber) => (
+                  <div key={subscriber.id} className="flex items-center justify-between p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Mail className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-medium">{subscriber.email}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {format(new Date(subscriber.subscribed_at), "d MMM yyyy, HH:mm", { locale: ru })}
+                          {subscriber.source && ` • ${subscriber.source}`}
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => deleteSubscriber(subscriber.id)}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+        </TabsContent>
+      </Tabs>
 
       {/* Create/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

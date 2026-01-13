@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Calendar, Clock, ArrowRight, BookOpen, TrendingUp, Shield, Lightbulb, Loader2 } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, ArrowRight, BookOpen, TrendingUp, Shield, Lightbulb, Loader2, Mail } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
@@ -98,6 +99,8 @@ const Blog = () => {
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState("Все");
+  const [email, setEmail] = useState("");
+  const [isSubscribing, setIsSubscribing] = useState(false);
 
   useEffect(() => {
     fetchPosts();
@@ -135,6 +138,42 @@ const Blog = () => {
       return format(new Date(dateString), "d MMMM yyyy", { locale: ru });
     } catch {
       return dateString;
+    }
+  };
+
+  const handleSubscribe = async () => {
+    if (!email.trim()) {
+      toast.error("Введите email");
+      return;
+    }
+    
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      toast.error("Введите корректный email");
+      return;
+    }
+
+    setIsSubscribing(true);
+    try {
+      const { error } = await supabase
+        .from("newsletter_subscribers")
+        .insert({ email: email.trim(), source: "blog" });
+
+      if (error) {
+        if (error.code === "23505") {
+          toast.info("Вы уже подписаны на рассылку");
+        } else {
+          throw error;
+        }
+      } else {
+        toast.success("Вы успешно подписались на рассылку!");
+        setEmail("");
+      }
+    } catch (error: any) {
+      console.error("Error subscribing:", error);
+      toast.error("Ошибка при подписке");
+    } finally {
+      setIsSubscribing(false);
     }
   };
 
@@ -354,9 +393,16 @@ const Blog = () => {
               <input
                 type="email"
                 placeholder="Ваш email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="flex-1 px-4 py-3 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
               />
-              <Button size="lg">
+              <Button size="lg" onClick={handleSubscribe} disabled={isSubscribing}>
+                {isSubscribing ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Mail className="h-4 w-4 mr-2" />
+                )}
                 Подписаться
               </Button>
             </div>
