@@ -2396,16 +2396,31 @@ export type Database = {
         Args: { p_achievement_code: string; p_user_id: string }
         Returns: undefined
       }
-      create_organization: {
-        Args: {
-          p_contact_name?: string
-          p_email: string
-          p_inn?: string
-          p_name: string
-          p_phone?: string
-        }
-        Returns: string
-      }
+      create_organization:
+        | {
+            Args: {
+              p_contact_name?: string
+              p_email: string
+              p_inn?: string
+              p_name: string
+              p_phone?: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_contact_name?: string
+              p_director_name?: string
+              p_email: string
+              p_inn?: string
+              p_kpp?: string
+              p_legal_address?: string
+              p_name: string
+              p_ogrn?: string
+              p_phone?: string
+            }
+            Returns: string
+          }
       current_organization_id: { Args: never; Returns: string }
       get_user_role: {
         Args: { _user_id: string }
