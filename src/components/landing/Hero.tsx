@@ -63,13 +63,8 @@ export function Hero() {
           <div className="flex items-center gap-3">
             <ThemeToggle />
             <Link to="/login">
-              <Button variant="ghost" className="font-medium hover:text-primary">
-                Войти
-              </Button>
-            </Link>
-            <Link to="/register-organization">
               <Button className="btn-gradient rounded-xl px-6 shadow-lg sigma-glow">
-                <span>Для организаций</span>
+                Войти
               </Button>
             </Link>
           </div>
