@@ -263,7 +263,7 @@ export function JournalEditor({
         .from("journal_instances")
         .insert({
           organization_id: organizationId,
-          course_id: selectedCourse || null,
+          course_id: selectedCourse === "all" ? null : selectedCourse || null,
           journal_type: journalType,
           title: newJournalTitle,
         })
@@ -666,10 +666,10 @@ export function JournalEditor({
                 <SelectTrigger className="rounded-xl">
                   <SelectValue placeholder="Все ученики организации" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">Все ученики организации</SelectItem>
-                  {courses.map((course) => (
-                    <SelectItem key={course.id} value={course.id}>
+              <SelectContent>
+                <SelectItem value="all">Все ученики организации</SelectItem>
+                {courses.map((course) => (
+                  <SelectItem key={course.id} value={course.id}>
                       {course.title}
                     </SelectItem>
                   ))}
