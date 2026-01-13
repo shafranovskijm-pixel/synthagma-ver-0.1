@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
-import { ArrowRight, Play, Sparkles, CheckCircle2, GraduationCap, FileCheck, Building2, Zap } from "lucide-react";
+import { ArrowRight, Play, CheckCircle2, GraduationCap, FileCheck, Building2, Bot, ShoppingCart, FolderArchive, Shield } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const heroFeatures = [
@@ -158,21 +158,47 @@ export function Hero() {
             <span>Не требуется карта</span>
           </p>
 
-          {/* Stats with Egyptian-styled cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-20 animate-slide-up delay-300">
+          {/* Features with Egyptian-styled cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-20 animate-slide-up delay-300">
             {[
-              { value: "10+", label: "организаций", icon: Building2, glyph: "𓉀" },
-              { value: "50k+", label: "учеников", icon: GraduationCap, glyph: "𓀀" },
-              { value: "98%", label: "довольны", icon: Sparkles, glyph: "𓇀" },
-              { value: "24/7", label: "поддержка", icon: Zap, glyph: "𓄀" },
-            ].map((stat) => (
-              <div key={stat.label} className="relative glass-card rounded-2xl p-6 text-center hover-lift group overflow-hidden">
+              { 
+                title: "ИИ-ассистент", 
+                description: "ИИ поможет вам подготовить учебный материал и тестирование", 
+                icon: Bot, 
+                glyph: "𓂀" 
+              },
+              { 
+                title: "Автоматизация документов", 
+                description: "Автоматизированный документооборот поможет получить лицензию или пройти проверки в Рособрнадзоре", 
+                icon: Shield, 
+                glyph: "𓉀" 
+              },
+              { 
+                title: "Единый архив", 
+                description: "Все ваши документы в одном месте", 
+                icon: FolderArchive, 
+                glyph: "𓃀" 
+              },
+              { 
+                title: "Магазин курсов", 
+                description: "Вам не нужен методист — теперь курс или учебную программу вы можете приобрести в магазине курсов", 
+                icon: ShoppingCart, 
+                glyph: "𓅀" 
+              },
+            ].map((feature) => (
+              <div key={feature.title} className="relative glass-card rounded-2xl p-6 text-left hover-lift group overflow-hidden">
                 {/* Egyptian glyph watermark */}
-                <span className="hieroglyphic absolute top-2 right-2 text-2xl text-accent/20 group-hover:text-accent/40 transition-colors">{stat.glyph}</span>
+                <span className="hieroglyphic absolute top-3 right-3 text-3xl text-accent/20 group-hover:text-accent/40 transition-colors">{feature.glyph}</span>
                 
-                <stat.icon className="w-6 h-6 text-primary mx-auto mb-3 group-hover:scale-110 transition-transform" />
-                <div className="text-3xl md:text-4xl font-bold font-display gradient-text mb-2">{stat.value}</div>
-                <div className="text-sm text-muted-foreground">{stat.label}</div>
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-accent/10 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                    <feature.icon className="w-6 h-6 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold font-display gradient-text mb-2">{feature.title}</h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
+                  </div>
+                </div>
                 
                 {/* Gold bottom accent */}
                 <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-accent/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
