@@ -120,10 +120,23 @@ export function LibraryManager({ organizationId }: LibraryManagerProps) {
   const [folderColor, setFolderColor] = useState("#6366f1");
   const [editingFolder, setEditingFolder] = useState<LibraryFolder | null>(null);
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
+  const [storageLimit, setStorageLimit] = useState<number>(0);
 
   useEffect(() => {
     fetchData();
+    fetchStorageLimit();
   }, [organizationId]);
+
+  const fetchStorageLimit = async () => {
+    const { data } = await supabase
+      .from("organizations")
+      .select("storage_limit_bytes")
+      .eq("id", organizationId)
+      .single();
+    if (data) {
+      setStorageLimit(data.storage_limit_bytes || 0);
+    }
+  };
 
   useEffect(() => {
     // Update selected folder when navigating
@@ -683,24 +696,53 @@ export function LibraryManager({ organizationId }: LibraryManagerProps) {
             </div>
           </div>
         </div>
-        <div className="bg-card rounded-xl border border-border p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-cyan-500/10 flex items-center justify-center">
-              <HardDrive className="w-5 h-5 text-cyan-500" />
-            </div>
-            <div>
-              <div className="text-xl font-bold">
-                {(() => {
-                  const totalBytes = documents.reduce((acc, doc) => acc + (doc.file_size || 0), 0);
-                  if (totalBytes < 1024) return `${totalBytes} B`;
-                  if (totalBytes < 1024 * 1024) return `${(totalBytes / 1024).toFixed(1)} KB`;
-                  if (totalBytes < 1024 * 1024 * 1024) return `${(totalBytes / (1024 * 1024)).toFixed(1)} MB`;
-                  return `${(totalBytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
-                })()}
+        <div className="bg-card rounded-xl border border-border p-4 col-span-2 md:col-span-1">
+          {(() => {
+            const totalBytes = documents.reduce((acc, doc) => acc + (doc.file_size || 0), 0);
+            const formatBytes = (bytes: number) => {
+              if (bytes < 1024) return `${bytes} B`;
+              if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+              if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+              return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+            };
+            const usagePercent = storageLimit > 0 ? Math.min((totalBytes / storageLimit) * 100, 100) : 0;
+            const isWarning = usagePercent >= 80;
+            const isCritical = usagePercent >= 95;
+            
+            return (
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                    isCritical ? 'bg-destructive/10' : isWarning ? 'bg-yellow-500/10' : 'bg-cyan-500/10'
+                  }`}>
+                    <HardDrive className={`w-5 h-5 ${
+                      isCritical ? 'text-destructive' : isWarning ? 'text-yellow-500' : 'text-cyan-500'
+                    }`} />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-baseline justify-between">
+                      <div className="text-xl font-bold">{formatBytes(totalBytes)}</div>
+                      <div className="text-xs text-muted-foreground">
+                        из {formatBytes(storageLimit)}
+                      </div>
+                    </div>
+                    <div className="text-xs text-muted-foreground">Хранилище</div>
+                  </div>
+                </div>
+                <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full transition-all duration-300 rounded-full ${
+                      isCritical ? 'bg-destructive' : isWarning ? 'bg-yellow-500' : 'bg-cyan-500'
+                    }`}
+                    style={{ width: `${usagePercent}%` }}
+                  />
+                </div>
+                <div className="text-xs text-muted-foreground text-right">
+                  {usagePercent.toFixed(1)}% использовано
+                </div>
               </div>
-              <div className="text-xs text-muted-foreground">Хранилище</div>
-            </div>
-          </div>
+            );
+          })()}
         </div>
       </div>
 
