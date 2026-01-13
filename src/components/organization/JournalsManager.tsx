@@ -25,7 +25,9 @@ import {
   ClipboardCheck,
   Download,
   Plus,
+  Edit,
 } from "lucide-react";
+import { JournalEditor } from "./JournalEditor";
 
 interface JournalItem {
   id: string;
@@ -133,6 +135,10 @@ export function JournalsManager({ organizationId }: JournalsManagerProps) {
   const [expandedCategories, setExpandedCategories] = useState<string[]>(
     JOURNAL_CATEGORIES.map((c) => c.id)
   );
+  const [activeJournal, setActiveJournal] = useState<{
+    type: string;
+    title: string;
+  } | null>(null);
 
   const toggleCategory = (categoryId: string) => {
     setExpandedCategories((prev) =>
@@ -151,6 +157,18 @@ export function JournalsManager({ organizationId }: JournalsManagerProps) {
         journal.description.toLowerCase().includes(searchQuery.toLowerCase())
     ),
   })).filter((cat) => cat.journals.length > 0);
+
+  // Show journal editor if active
+  if (activeJournal) {
+    return (
+      <JournalEditor
+        organizationId={organizationId}
+        journalType={activeJournal.type}
+        journalTitle={activeJournal.title}
+        onClose={() => setActiveJournal(null)}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -255,6 +273,20 @@ export function JournalsManager({ organizationId }: JournalsManagerProps) {
                           </div>
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0 ml-4">
+                          <Button
+                            variant="default"
+                            size="sm"
+                            className="rounded-lg"
+                            onClick={() =>
+                              setActiveJournal({
+                                type: journal.id,
+                                title: journal.title,
+                              })
+                            }
+                          >
+                            <Edit className="w-4 h-4 mr-2" />
+                            Вести онлайн
+                          </Button>
                           <Button
                             variant="outline"
                             size="sm"
