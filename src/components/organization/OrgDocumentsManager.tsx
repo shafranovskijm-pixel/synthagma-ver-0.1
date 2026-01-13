@@ -37,6 +37,8 @@ import {
   FolderOpen,
   Sparkles,
   CheckCircle,
+  ShoppingCart,
+  Check,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { format } from "date-fns";
@@ -247,6 +249,11 @@ export function OrgDocumentsManager({ organizationId }: OrgDocumentsManagerProps
   const [showAutoGenSuccessDialog, setShowAutoGenSuccessDialog] = useState(false);
   const [organizationData, setOrganizationData] = useState<any>(null);
 
+  // Order documents state
+  const [showOrderDialog, setShowOrderDialog] = useState(false);
+  const [selectedDocsForOrder, setSelectedDocsForOrder] = useState<string[]>([]);
+  const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
+
   useEffect(() => {
     fetchDocuments();
     fetchOrganizationData();
@@ -418,6 +425,57 @@ export function OrgDocumentsManager({ organizationId }: OrgDocumentsManagerProps
     }
   };
 
+  // Handle order documents submission
+  const handleOrderDocuments = async () => {
+    if (selectedDocsForOrder.length === 0) {
+      toast.error('Выберите хотя бы один документ');
+      return;
+    }
+
+    setIsSubmittingOrder(true);
+    try {
+      const allDocs = getAllDocumentTypes();
+      const selectedDocLabels = selectedDocsForOrder.map(type => {
+        const doc = allDocs.find(d => d.value === type);
+        return doc?.label || type;
+      });
+
+      const { error } = await supabase
+        .from('service_orders')
+        .insert({
+          organization_id: organizationId,
+          service_id: 'document_order',
+          service_title: 'Заказ документов',
+          service_price: 'По запросу',
+          notes: JSON.stringify({
+            documents: selectedDocsForOrder,
+            documentLabels: selectedDocLabels,
+            count: selectedDocsForOrder.length
+          }),
+          status: 'pending'
+        });
+
+      if (error) throw error;
+
+      setShowOrderDialog(false);
+      setSelectedDocsForOrder([]);
+      toast.success('Заявка на изготовление документов отправлена!');
+    } catch (error: any) {
+      console.error('Error submitting document order:', error);
+      toast.error('Ошибка при отправке заявки');
+    } finally {
+      setIsSubmittingOrder(false);
+    }
+  };
+
+  const toggleDocForOrder = (docType: string) => {
+    setSelectedDocsForOrder(prev => 
+      prev.includes(docType) 
+        ? prev.filter(t => t !== docType)
+        : [...prev, docType]
+    );
+  };
+
   const getDocumentForType = (docType: string) => {
     return documents.find((d) => d.type === docType);
   };
@@ -473,15 +531,25 @@ export function OrgDocumentsManager({ organizationId }: OrgDocumentsManagerProps
             <Progress value={completionPercent} className="h-2" />
           </div>
 
-          {/* Search */}
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Поиск документов..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 rounded-xl"
-            />
+          {/* Search and Order button */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Поиск документов..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 rounded-xl"
+              />
+            </div>
+            <Button
+              variant="outline"
+              className="rounded-xl gap-2"
+              onClick={() => setShowOrderDialog(true)}
+            >
+              <ShoppingCart className="w-4 h-4" />
+              Заказать документы
+            </Button>
           </div>
 
           {/* Regular Categories Accordion */}
@@ -911,6 +979,108 @@ export function OrgDocumentsManager({ organizationId }: OrgDocumentsManagerProps
             >
               Отлично
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Order Documents Dialog */}
+      <Dialog open={showOrderDialog} onOpenChange={setShowOrderDialog}>
+        <DialogContent className="rounded-2xl max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="font-display text-xl">Заказать документы</DialogTitle>
+            <DialogDescription>
+              Выберите документы, которые нужно изготовить. Мы свяжемся с вами для уточнения деталей.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <ScrollArea className="flex-1 max-h-[50vh] pr-4">
+            <div className="space-y-4">
+              {REGULAR_CATEGORIES.map((category) => {
+                const CategoryIcon = category.icon;
+                const missingDocs = category.documents.filter(d => !getDocumentForType(d.type));
+                
+                if (missingDocs.length === 0) return null;
+                
+                return (
+                  <div key={category.id} className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-8 h-8 rounded-lg ${category.bgColor} flex items-center justify-center`}>
+                        <CategoryIcon className={`w-4 h-4 ${category.color}`} />
+                      </div>
+                      <h4 className="font-medium text-sm">{category.title}</h4>
+                    </div>
+                    <div className="ml-10 space-y-1">
+                      {missingDocs.map((doc) => {
+                        const isSelected = selectedDocsForOrder.includes(doc.type);
+                        return (
+                          <div
+                            key={doc.type}
+                            onClick={() => toggleDocForOrder(doc.type)}
+                            className={cn(
+                              "flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-colors border",
+                              isSelected 
+                                ? "bg-primary/10 border-primary" 
+                                : "bg-secondary/30 border-transparent hover:bg-secondary/50"
+                            )}
+                          >
+                            <div className={cn(
+                              "w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors",
+                              isSelected 
+                                ? "bg-primary border-primary" 
+                                : "border-muted-foreground/30"
+                            )}>
+                              {isSelected && <Check className="w-3 h-3 text-primary-foreground" />}
+                            </div>
+                            <span className="text-sm flex-1">{doc.label}</span>
+                            {doc.required && (
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-destructive/10 text-destructive">
+                                Обязательный
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </ScrollArea>
+          
+          <div className="pt-4 border-t border-border space-y-3">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Выбрано документов:</span>
+              <span className="font-semibold">{selectedDocsForOrder.length}</span>
+            </div>
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                className="flex-1 rounded-xl"
+                onClick={() => {
+                  setShowOrderDialog(false);
+                  setSelectedDocsForOrder([]);
+                }}
+              >
+                Отмена
+              </Button>
+              <Button
+                className="flex-1 btn-gradient rounded-xl"
+                onClick={handleOrderDocuments}
+                disabled={isSubmittingOrder || selectedDocsForOrder.length === 0}
+              >
+                {isSubmittingOrder ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Отправка...
+                  </>
+                ) : (
+                  <>
+                    <ShoppingCart className="w-4 h-4 mr-2" />
+                    Заказать
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
