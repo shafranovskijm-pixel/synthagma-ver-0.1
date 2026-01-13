@@ -25,6 +25,13 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
   ArrowLeft,
   Calendar as CalendarIcon,
   Search,
@@ -37,6 +44,7 @@ import {
   Building2,
   User,
   Hash,
+  Pencil,
 } from "lucide-react";
 import { format, parseISO, startOfYear, endOfYear, isWithinInterval } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -46,6 +54,7 @@ import { Badge } from "@/components/ui/badge";
 
 interface DocumentRecord {
   id: string;
+  original_id: string; // ID without prefixes for DB updates
   reg_number: string | null;
   document_type: string;
   document_name: string;
@@ -55,6 +64,7 @@ interface DocumentRecord {
   related_entity_type: "student" | "company" | "organization" | null;
   notes: string | null;
   source: "issuance_log" | "company_document" | "enrollment";
+  is_editable: boolean; // Can this record's reg_number be edited in DB
 }
 
 interface AutoDocumentRegistrationJournalProps {
@@ -107,6 +117,7 @@ export function AutoDocumentRegistrationJournal({
   onClose,
 }: AutoDocumentRegistrationJournalProps) {
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [records, setRecords] = useState<DocumentRecord[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedType, setSelectedType] = useState<string>("all");
@@ -118,6 +129,10 @@ export function AutoDocumentRegistrationJournal({
     from: startOfYear(new Date()),
     to: endOfYear(new Date()),
   });
+  
+  // Edit dialog state
+  const [editingRecord, setEditingRecord] = useState<DocumentRecord | null>(null);
+  const [editRegNumber, setEditRegNumber] = useState("");
 
   // Fetch all document data
   useEffect(() => {
@@ -147,6 +162,7 @@ export function AutoDocumentRegistrationJournal({
 
           documentRecords.push({
             id: doc.id,
+            original_id: doc.id,
             reg_number: doc.reg_number,
             document_type: docType,
             document_name: doc.document_name,
@@ -156,6 +172,7 @@ export function AutoDocumentRegistrationJournal({
             related_entity_type: "student",
             notes: doc.send_method ? `Отправлено: ${doc.send_method}` : null,
             source: "issuance_log",
+            is_editable: true,
           });
         }
 
@@ -190,6 +207,7 @@ export function AutoDocumentRegistrationJournal({
 
           documentRecords.push({
             id: doc.id,
+            original_id: doc.id,
             reg_number: doc.contract_number,
             document_type: docType,
             document_name: doc.name,
@@ -199,6 +217,7 @@ export function AutoDocumentRegistrationJournal({
             related_entity_type: "company",
             notes: doc.amount ? `Сумма: ${doc.amount} ₽` : null,
             source: "company_document",
+            is_editable: true,
           });
         }
 
@@ -230,6 +249,7 @@ export function AutoDocumentRegistrationJournal({
           if (entry.action === "enrolled") {
             documentRecords.push({
               id: `enrollment_${entry.id}`,
+              original_id: entry.id,
               reg_number: entry.enrollment_id ? `ПР-${entry.enrollment_id.slice(0, 8).toUpperCase()}` : null,
               document_type: "enrollment_order",
               document_name: `Приказ о зачислении на курс "${course.title}"`,
@@ -239,10 +259,12 @@ export function AutoDocumentRegistrationJournal({
               related_entity_type: "student",
               notes: null,
               source: "enrollment",
+              is_editable: false, // enrollment_history has no reg_number field
             });
           } else if (entry.action === "completed" || entry.action === "expelled") {
             documentRecords.push({
               id: `expulsion_${entry.id}`,
+              original_id: entry.id,
               reg_number: entry.enrollment_id ? `ПР-${entry.enrollment_id.slice(0, 8).toUpperCase()}` : null,
               document_type: entry.action === "completed" ? "certificate" : "expulsion_order",
               document_name: entry.action === "completed" 
@@ -254,6 +276,7 @@ export function AutoDocumentRegistrationJournal({
               related_entity_type: "student",
               notes: null,
               source: "enrollment",
+              is_editable: false, // enrollment_history has no reg_number field
             });
           }
         }
@@ -344,6 +367,75 @@ export function AutoDocumentRegistrationJournal({
 
     return { incoming, outgoing, contracts, orders, total: filteredRecords.length };
   }, [filteredRecords]);
+
+  // Open edit dialog
+  const handleEditClick = (record: DocumentRecord) => {
+    if (!record.is_editable) {
+      toast.info("Этот документ нельзя редактировать");
+      return;
+    }
+    setEditingRecord(record);
+    setEditRegNumber(record.reg_number || "");
+  };
+
+  // Save registration number to database
+  const handleSaveRegNumber = async () => {
+    if (!editingRecord) return;
+    
+    setSaving(true);
+    try {
+      const newRegNumber = editRegNumber.trim() || null;
+      
+      if (editingRecord.source === "issuance_log") {
+        const { error } = await supabase
+          .from("document_issuance_log")
+          .update({ reg_number: newRegNumber })
+          .eq("id", editingRecord.original_id);
+          
+        if (error) throw error;
+      } else if (editingRecord.source === "company_document") {
+        const { error } = await supabase
+          .from("company_documents")
+          .update({ contract_number: newRegNumber })
+          .eq("id", editingRecord.original_id);
+          
+        if (error) throw error;
+      }
+      
+      // Update local state
+      setRecords((prev) =>
+        prev.map((r) =>
+          r.id === editingRecord.id ? { ...r, reg_number: newRegNumber } : r
+        )
+      );
+      
+      toast.success("Регистрационный номер сохранён");
+      setEditingRecord(null);
+      setEditRegNumber("");
+    } catch (error) {
+      console.error("Error saving reg number:", error);
+      toast.error("Ошибка при сохранении");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Generate suggested number for document
+  const generateSuggestedNumber = () => {
+    if (!editingRecord) return;
+    
+    const year = parseISO(editingRecord.date).getFullYear();
+    const prefix = DOCUMENT_TYPE_LABELS[editingRecord.document_type]?.prefix || "ПР";
+    
+    // Count existing documents of this type in this year
+    const sameTypeYearCount = records.filter((r) => {
+      const rYear = parseISO(r.date).getFullYear();
+      return r.document_type === editingRecord.document_type && rYear === year;
+    }).length;
+    
+    const suggestedNumber = `${prefix}-${year}/${(sameTypeYearCount + 1).toString().padStart(3, "0")}`;
+    setEditRegNumber(suggestedNumber);
+  };
 
   // Export to Excel
   const exportToExcel = () => {
@@ -586,13 +678,25 @@ export function AutoDocumentRegistrationJournal({
                         {index + 1}
                       </TableCell>
                       <TableCell>
-                        {record.reg_number ? (
-                          <Badge variant="outline" className="rounded font-mono">
-                            {record.reg_number}
-                          </Badge>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
+                        <div className="flex items-center gap-1">
+                          {record.reg_number ? (
+                            <Badge variant="outline" className="rounded font-mono">
+                              {record.reg_number}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                          {record.is_editable && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 opacity-50 hover:opacity-100"
+                              onClick={() => handleEditClick(record)}
+                            >
+                              <Pencil className="w-3 h-3" />
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-start gap-2">
@@ -693,6 +797,70 @@ export function AutoDocumentRegistrationJournal({
           </p>
         </div>
       )}
+
+      {/* Edit Registration Number Dialog */}
+      <Dialog open={!!editingRecord} onOpenChange={(open) => !open && setEditingRecord(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Редактирование рег. номера</DialogTitle>
+          </DialogHeader>
+          
+          {editingRecord && (
+            <div className="space-y-4">
+              <div className="bg-muted/50 rounded-lg p-3">
+                <p className="text-sm font-medium">{editingRecord.document_name}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {DOCUMENT_TYPE_LABELS[editingRecord.document_type]?.label || "Документ"} • {format(parseISO(editingRecord.date), "dd.MM.yyyy", { locale: ru })}
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Регистрационный номер</label>
+                <div className="flex gap-2">
+                  <Input
+                    value={editRegNumber}
+                    onChange={(e) => setEditRegNumber(e.target.value)}
+                    placeholder="Например: ДОГ-2025/001"
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={generateSuggestedNumber}
+                    className="shrink-0"
+                  >
+                    <Hash className="w-4 h-4 mr-1" />
+                    Авто
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Формат: ТИП-ГОД/НОМЕР (например, ДОГ-2025/001)
+                </p>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter className="flex gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setEditingRecord(null)}
+              disabled={saving}
+            >
+              Отмена
+            </Button>
+            <Button onClick={handleSaveRegNumber} disabled={saving}>
+              {saving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Сохранение...
+                </>
+              ) : (
+                "Сохранить"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
