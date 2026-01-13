@@ -84,6 +84,7 @@ interface DialogsContainerProps {
   courseDetailsTab: CourseDetailsTabType;
   onTabChange: (tab: CourseDetailsTabType) => void;
   onEnrollStudent: () => void;
+  onCourseDeleted?: () => void;
   
   // Course students dialog
   showCourseStudentsDialog: boolean;
@@ -267,6 +268,7 @@ export function DialogsContainer(props: DialogsContainerProps) {
         activeTab={props.courseDetailsTab}
         onTabChange={props.onTabChange}
         onEnrollStudent={props.onEnrollStudent}
+        onCourseDeleted={props.onCourseDeleted}
       />
 
       <CourseStudentsDialog
