@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   ArrowLeft,
@@ -20,18 +19,17 @@ import {
   CheckCircle2,
   Calculator,
   Sparkles,
-  Edit,
-  Save,
-  X,
+  Loader2,
 } from "lucide-react";
-import { toast } from "sonner";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
+import { supabase } from "@/integrations/supabase/client";
 
 interface FeatureItem {
   id: string;
   name: string;
   price: number;
   included: boolean;
+  isEnabled: boolean;
 }
 
 interface FeatureCategory {
@@ -40,199 +38,282 @@ interface FeatureCategory {
   icon: React.ElementType;
   color: string;
   basePrice: number;
+  isEnabled: boolean;
   features: FeatureItem[];
 }
 
-const getInitialFeatures = (): FeatureCategory[] => {
-  const saved = localStorage.getItem("sigma_features_pricing");
-  if (saved) {
-    return JSON.parse(saved);
-  }
-  
-  return [
-    {
-      id: "courses",
-      title: "Управление курсами",
-      icon: BookOpen,
-      color: "#6366f1",
-      basePrice: 3000,
-      features: [
-        { id: "courses_create", name: "Создание и редактирование курсов", price: 0, included: true },
-        { id: "courses_publish", name: "Публикация и снятие с публикации", price: 0, included: true },
-        { id: "courses_categories", name: "Категории курсов с цветовой маркировкой", price: 0, included: true },
-        { id: "courses_lessons", name: "Конструктор уроков (лекции, тесты, видео)", price: 0, included: true },
-        { id: "courses_import", name: "Импорт курсов из внешних источников", price: 500, included: false },
-        { id: "courses_ai", name: "ИИ-генерация контента курсов", price: 2000, included: false },
-        { id: "courses_preview", name: "Предпросмотр курса перед публикацией", price: 0, included: true },
-        { id: "courses_duration", name: "Управление продолжительностью обучения", price: 0, included: true },
-      ],
-    },
-    {
-      id: "students",
-      title: "Управление слушателями",
-      icon: Users,
-      color: "#10b981",
-      basePrice: 2500,
-      features: [
-        { id: "students_add", name: "Добавление слушателей вручную", price: 0, included: true },
-        { id: "students_import", name: "Массовый импорт из Excel", price: 0, included: true },
-        { id: "students_enroll", name: "Зачисление на курсы (индивидуально и массово)", price: 0, included: true },
-        { id: "students_progress", name: "Отслеживание прогресса обучения", price: 0, included: true },
-        { id: "students_card", name: "Карточка слушателя с полной информацией", price: 0, included: true },
-        { id: "students_credentials", name: "Генерация логинов и паролей", price: 0, included: true },
-        { id: "students_email", name: "Отправка учётных данных по Email", price: 500, included: false },
-        { id: "students_companies", name: "Привязка к компаниям-заказчикам", price: 0, included: true },
-        { id: "students_bulk", name: "Массовые операции (отчисление, рассылка)", price: 500, included: false },
-        { id: "students_filter", name: "Фильтрация по статусу, курсу, документам", price: 0, included: true },
-      ],
-    },
-    {
-      id: "companies",
-      title: "Компании (юридические лица)",
-      icon: Building2,
-      color: "#f59e0b",
-      basePrice: 1500,
-      features: [
-        { id: "companies_list", name: "Справочник компаний-заказчиков", price: 0, included: true },
-        { id: "companies_requisites", name: "Полные реквизиты (ИНН, КПП, ОГРН)", price: 0, included: true },
-        { id: "companies_bank", name: "Банковские реквизиты", price: 0, included: true },
-        { id: "companies_stamp", name: "Загрузка печати и подписи", price: 500, included: false },
-        { id: "companies_docs", name: "Документы компаний (договоры, счета)", price: 0, included: true },
-        { id: "companies_students", name: "Привязка слушателей к компаниям", price: 0, included: true },
-      ],
-    },
-    {
-      id: "documents",
-      title: "Документооборот",
-      icon: FileCheck,
-      color: "#ec4899",
-      basePrice: 4000,
-      features: [
-        { id: "docs_contracts", name: "Генератор договоров с шаблонами", price: 0, included: true },
-        { id: "docs_templates", name: "Редактор шаблонов с переменными", price: 0, included: true },
-        { id: "docs_consent", name: "Генератор согласий на обработку ПДн", price: 0, included: true },
-        { id: "docs_acts", name: "Генератор актов выполненных работ", price: 500, included: false },
-        { id: "docs_invoices", name: "Генератор счетов на оплату", price: 500, included: false },
-        { id: "docs_issuance", name: "Журнал выдачи документов", price: 0, included: true },
-        { id: "docs_orders", name: "Архив приказов (зачисление, отчисление)", price: 0, included: true },
-        { id: "docs_bulk", name: "Массовая загрузка документов", price: 500, included: false },
-        { id: "docs_student", name: "Управление документами слушателей", price: 0, included: true },
-        { id: "docs_journal", name: "Экспорт классного журнала", price: 500, included: false },
-      ],
-    },
-    {
-      id: "journals",
-      title: "Журналы учёта",
-      icon: ClipboardList,
-      color: "#8b5cf6",
-      basePrice: 2000,
-      features: [
-        { id: "journal_attendance_auto", name: "Журнал посещаемости (автоматический)", price: 0, included: true },
-        { id: "journal_attendance_manual", name: "Журнал посещаемости (ручной)", price: 0, included: true },
-        { id: "journal_grades", name: "Журнал текущего контроля успеваемости", price: 0, included: true },
-        { id: "journal_attestation", name: "Журнал итоговой аттестации", price: 0, included: true },
-        { id: "journal_docs", name: "Журнал регистрации документов", price: 0, included: true },
-        { id: "journal_blanks", name: "Журнал учёта бланков строгой отчётности", price: 0, included: true },
-        { id: "journal_copies", name: "Журнал выдачи копий/дубликатов", price: 0, included: true },
-        { id: "journal_entry", name: "Журнал входного контроля", price: 0, included: true },
-        { id: "journal_plans", name: "Журнал индивидуальных планов", price: 0, included: true },
-        { id: "journal_internship", name: "Журнал стажировки/практики", price: 0, included: true },
-        { id: "journal_safety", name: "Журнал инструктажей по ТБ", price: 0, included: true },
-        { id: "journal_custom", name: "Создание пользовательских журналов", price: 500, included: false },
-        { id: "journal_export", name: "Экспорт журналов в Excel", price: 0, included: true },
-      ],
-    },
-    {
-      id: "frdo",
-      title: "ФРДО (Федеральный реестр)",
-      icon: Database,
-      color: "#06b6d4",
-      basePrice: 5000,
-      features: [
-        { id: "frdo_manage", name: "Управление данными для ФРДО", price: 0, included: true },
-        { id: "frdo_check", name: "Проверка полноты данных", price: 0, included: true },
-        { id: "frdo_bulk", name: "Массовый экспорт в формате ФРДО", price: 0, included: true },
-        { id: "frdo_single", name: "Индивидуальный экспорт данных", price: 0, included: true },
-      ],
-    },
-    {
-      id: "links",
-      title: "Ссылки регистрации",
-      icon: LinkIcon,
-      color: "#14b8a6",
-      basePrice: 1000,
-      features: [
-        { id: "links_generate", name: "Генерация уникальных ссылок", price: 0, included: true },
-        { id: "links_courses", name: "Привязка к курсам", price: 0, included: true },
-        { id: "links_companies", name: "Привязка к компаниям", price: 0, included: true },
-        { id: "links_stats", name: "Отслеживание использования", price: 0, included: true },
-        { id: "links_expire", name: "Срок действия ссылок", price: 0, included: true },
-      ],
-    },
-    {
-      id: "library",
-      title: "Библиотека",
-      icon: Library,
-      color: "#f97316",
-      basePrice: 1500,
-      features: [
-        { id: "library_files", name: "Хранение учебных материалов", price: 0, included: true },
-        { id: "library_folders", name: "Организация по папкам", price: 0, included: true },
-        { id: "library_formats", name: "Загрузка файлов различных форматов", price: 0, included: true },
-        { id: "library_access", name: "Доступ для слушателей", price: 0, included: true },
-      ],
-    },
-    {
-      id: "services",
-      title: "Услуги",
-      icon: ShoppingBag,
-      color: "#84cc16",
-      basePrice: 500,
-      features: [
-        { id: "services_catalog", name: "Каталог дополнительных услуг", price: 0, included: true },
-        { id: "services_orders", name: "Заказ услуг организациями", price: 0, included: true },
-        { id: "services_status", name: "Отслеживание статусов заказов", price: 0, included: true },
-      ],
-    },
-    {
-      id: "settings",
-      title: "Настройки системы",
-      icon: Settings,
-      color: "#64748b",
-      basePrice: 0,
-      features: [
-        { id: "settings_requisites", name: "Реквизиты организации", price: 0, included: true },
-        { id: "settings_theme", name: "Тёмная и светлая тема", price: 0, included: true },
-        { id: "settings_menu", name: "Настройки видимости меню", price: 0, included: true },
-        { id: "settings_student", name: "Настройки кабинета слушателя", price: 0, included: true },
-        { id: "settings_notifications", name: "Управление уведомлениями", price: 0, included: true },
-      ],
-    },
-    {
-      id: "student_cabinet",
-      title: "Кабинет слушателя",
-      icon: GraduationCap,
-      color: "#0ea5e9",
-      basePrice: 2000,
-      features: [
-        { id: "cabinet_courses", name: "Прохождение курсов онлайн", price: 0, included: true },
-        { id: "cabinet_tests", name: "Интерактивное тестирование", price: 0, included: true },
-        { id: "cabinet_docs", name: "Загрузка документов", price: 0, included: true },
-        { id: "cabinet_consent", name: "Подписание согласий на ПДн", price: 0, included: true },
-        { id: "cabinet_video", name: "Видеоидентификация", price: 1000, included: false },
-        { id: "cabinet_achievements", name: "Система достижений и бейджей", price: 500, included: false },
-        { id: "cabinet_ai", name: "ИИ-помощник (чат-бот)", price: 2000, included: false },
-        { id: "cabinet_progress", name: "Просмотр прогресса обучения", price: 0, included: true },
-      ],
-    },
-  ];
+const iconMap: Record<string, React.ElementType> = {
+  courses: BookOpen,
+  students: Users,
+  companies: Building2,
+  documents: FileCheck,
+  journals: ClipboardList,
+  frdo: Database,
+  links: LinkIcon,
+  library: Library,
+  services: ShoppingBag,
+  settings: Settings,
+  student_cabinet: GraduationCap,
 };
 
+const colorMap: Record<string, string> = {
+  courses: "#6366f1",
+  students: "#10b981",
+  companies: "#f59e0b",
+  documents: "#ec4899",
+  journals: "#8b5cf6",
+  frdo: "#06b6d4",
+  links: "#14b8a6",
+  library: "#f97316",
+  services: "#84cc16",
+  settings: "#64748b",
+  student_cabinet: "#0ea5e9",
+};
+
+const getDefaultFeatures = (): FeatureCategory[] => [
+  {
+    id: "courses",
+    title: "Управление курсами",
+    icon: BookOpen,
+    color: "#6366f1",
+    basePrice: 3000,
+    isEnabled: true,
+    features: [
+      { id: "courses_create", name: "Создание и редактирование курсов", price: 0, included: true, isEnabled: true },
+      { id: "courses_publish", name: "Публикация и снятие с публикации", price: 0, included: true, isEnabled: true },
+      { id: "courses_categories", name: "Категории курсов с цветовой маркировкой", price: 0, included: true, isEnabled: true },
+      { id: "courses_lessons", name: "Конструктор уроков (лекции, тесты, видео)", price: 0, included: true, isEnabled: true },
+      { id: "courses_import", name: "Импорт курсов из внешних источников", price: 500, included: false, isEnabled: true },
+      { id: "courses_ai", name: "ИИ-генерация контента курсов", price: 2000, included: false, isEnabled: true },
+      { id: "courses_preview", name: "Предпросмотр курса перед публикацией", price: 0, included: true, isEnabled: true },
+      { id: "courses_duration", name: "Управление продолжительностью обучения", price: 0, included: true, isEnabled: true },
+    ],
+  },
+  {
+    id: "students",
+    title: "Управление слушателями",
+    icon: Users,
+    color: "#10b981",
+    basePrice: 2500,
+    isEnabled: true,
+    features: [
+      { id: "students_add", name: "Добавление слушателей вручную", price: 0, included: true, isEnabled: true },
+      { id: "students_import", name: "Массовый импорт из Excel", price: 0, included: true, isEnabled: true },
+      { id: "students_enroll", name: "Зачисление на курсы (индивидуально и массово)", price: 0, included: true, isEnabled: true },
+      { id: "students_progress", name: "Отслеживание прогресса обучения", price: 0, included: true, isEnabled: true },
+      { id: "students_card", name: "Карточка слушателя с полной информацией", price: 0, included: true, isEnabled: true },
+      { id: "students_credentials", name: "Генерация логинов и паролей", price: 0, included: true, isEnabled: true },
+      { id: "students_email", name: "Отправка учётных данных по Email", price: 500, included: false, isEnabled: true },
+      { id: "students_companies", name: "Привязка к компаниям-заказчикам", price: 0, included: true, isEnabled: true },
+      { id: "students_bulk", name: "Массовые операции (отчисление, рассылка)", price: 500, included: false, isEnabled: true },
+      { id: "students_filter", name: "Фильтрация по статусу, курсу, документам", price: 0, included: true, isEnabled: true },
+    ],
+  },
+  {
+    id: "companies",
+    title: "Компании (юридические лица)",
+    icon: Building2,
+    color: "#f59e0b",
+    basePrice: 1500,
+    isEnabled: true,
+    features: [
+      { id: "companies_list", name: "Справочник компаний-заказчиков", price: 0, included: true, isEnabled: true },
+      { id: "companies_requisites", name: "Полные реквизиты (ИНН, КПП, ОГРН)", price: 0, included: true, isEnabled: true },
+      { id: "companies_bank", name: "Банковские реквизиты", price: 0, included: true, isEnabled: true },
+      { id: "companies_stamp", name: "Загрузка печати и подписи", price: 500, included: false, isEnabled: true },
+      { id: "companies_docs", name: "Документы компаний (договоры, счета)", price: 0, included: true, isEnabled: true },
+      { id: "companies_students", name: "Привязка слушателей к компаниям", price: 0, included: true, isEnabled: true },
+    ],
+  },
+  {
+    id: "documents",
+    title: "Документооборот",
+    icon: FileCheck,
+    color: "#ec4899",
+    basePrice: 4000,
+    isEnabled: true,
+    features: [
+      { id: "docs_contracts", name: "Генератор договоров с шаблонами", price: 0, included: true, isEnabled: true },
+      { id: "docs_templates", name: "Редактор шаблонов с переменными", price: 0, included: true, isEnabled: true },
+      { id: "docs_consent", name: "Генератор согласий на обработку ПДн", price: 0, included: true, isEnabled: true },
+      { id: "docs_acts", name: "Генератор актов выполненных работ", price: 500, included: false, isEnabled: true },
+      { id: "docs_invoices", name: "Генератор счетов на оплату", price: 500, included: false, isEnabled: true },
+      { id: "docs_issuance", name: "Журнал выдачи документов", price: 0, included: true, isEnabled: true },
+      { id: "docs_orders", name: "Архив приказов (зачисление, отчисление)", price: 0, included: true, isEnabled: true },
+      { id: "docs_bulk", name: "Массовая загрузка документов", price: 500, included: false, isEnabled: true },
+      { id: "docs_student", name: "Управление документами слушателей", price: 0, included: true, isEnabled: true },
+      { id: "docs_journal", name: "Экспорт классного журнала", price: 500, included: false, isEnabled: true },
+    ],
+  },
+  {
+    id: "journals",
+    title: "Журналы учёта",
+    icon: ClipboardList,
+    color: "#8b5cf6",
+    basePrice: 2000,
+    isEnabled: true,
+    features: [
+      { id: "journal_attendance_auto", name: "Журнал посещаемости (автоматический)", price: 0, included: true, isEnabled: true },
+      { id: "journal_attendance_manual", name: "Журнал посещаемости (ручной)", price: 0, included: true, isEnabled: true },
+      { id: "journal_grades", name: "Журнал текущего контроля успеваемости", price: 0, included: true, isEnabled: true },
+      { id: "journal_attestation", name: "Журнал итоговой аттестации", price: 0, included: true, isEnabled: true },
+      { id: "journal_docs", name: "Журнал регистрации документов", price: 0, included: true, isEnabled: true },
+      { id: "journal_blanks", name: "Журнал учёта бланков строгой отчётности", price: 0, included: true, isEnabled: true },
+      { id: "journal_copies", name: "Журнал выдачи копий/дубликатов", price: 0, included: true, isEnabled: true },
+      { id: "journal_entry", name: "Журнал входного контроля", price: 0, included: true, isEnabled: true },
+      { id: "journal_plans", name: "Журнал индивидуальных планов", price: 0, included: true, isEnabled: true },
+      { id: "journal_internship", name: "Журнал стажировки/практики", price: 0, included: true, isEnabled: true },
+      { id: "journal_safety", name: "Журнал инструктажей по ТБ", price: 0, included: true, isEnabled: true },
+      { id: "journal_custom", name: "Создание пользовательских журналов", price: 500, included: false, isEnabled: true },
+      { id: "journal_export", name: "Экспорт журналов в Excel", price: 0, included: true, isEnabled: true },
+    ],
+  },
+  {
+    id: "frdo",
+    title: "ФРДО (Федеральный реестр)",
+    icon: Database,
+    color: "#06b6d4",
+    basePrice: 5000,
+    isEnabled: true,
+    features: [
+      { id: "frdo_manage", name: "Управление данными для ФРДО", price: 0, included: true, isEnabled: true },
+      { id: "frdo_check", name: "Проверка полноты данных", price: 0, included: true, isEnabled: true },
+      { id: "frdo_bulk", name: "Массовый экспорт в формате ФРДО", price: 0, included: true, isEnabled: true },
+      { id: "frdo_single", name: "Индивидуальный экспорт данных", price: 0, included: true, isEnabled: true },
+    ],
+  },
+  {
+    id: "links",
+    title: "Ссылки регистрации",
+    icon: LinkIcon,
+    color: "#14b8a6",
+    basePrice: 1000,
+    isEnabled: true,
+    features: [
+      { id: "links_generate", name: "Генерация уникальных ссылок", price: 0, included: true, isEnabled: true },
+      { id: "links_courses", name: "Привязка к курсам", price: 0, included: true, isEnabled: true },
+      { id: "links_companies", name: "Привязка к компаниям", price: 0, included: true, isEnabled: true },
+      { id: "links_stats", name: "Отслеживание использования", price: 0, included: true, isEnabled: true },
+      { id: "links_expire", name: "Срок действия ссылок", price: 0, included: true, isEnabled: true },
+    ],
+  },
+  {
+    id: "library",
+    title: "Библиотека",
+    icon: Library,
+    color: "#f97316",
+    basePrice: 1500,
+    isEnabled: true,
+    features: [
+      { id: "library_files", name: "Хранение учебных материалов", price: 0, included: true, isEnabled: true },
+      { id: "library_folders", name: "Организация по папкам", price: 0, included: true, isEnabled: true },
+      { id: "library_formats", name: "Загрузка файлов различных форматов", price: 0, included: true, isEnabled: true },
+      { id: "library_access", name: "Доступ для слушателей", price: 0, included: true, isEnabled: true },
+    ],
+  },
+  {
+    id: "services",
+    title: "Услуги",
+    icon: ShoppingBag,
+    color: "#84cc16",
+    basePrice: 500,
+    isEnabled: true,
+    features: [
+      { id: "services_catalog", name: "Каталог дополнительных услуг", price: 0, included: true, isEnabled: true },
+      { id: "services_orders", name: "Заказ услуг организациями", price: 0, included: true, isEnabled: true },
+      { id: "services_status", name: "Отслеживание статусов заказов", price: 0, included: true, isEnabled: true },
+    ],
+  },
+  {
+    id: "settings",
+    title: "Настройки системы",
+    icon: Settings,
+    color: "#64748b",
+    basePrice: 0,
+    isEnabled: true,
+    features: [
+      { id: "settings_requisites", name: "Реквизиты организации", price: 0, included: true, isEnabled: true },
+      { id: "settings_theme", name: "Тёмная и светлая тема", price: 0, included: true, isEnabled: true },
+      { id: "settings_menu", name: "Настройки видимости меню", price: 0, included: true, isEnabled: true },
+      { id: "settings_student", name: "Настройки кабинета слушателя", price: 0, included: true, isEnabled: true },
+      { id: "settings_notifications", name: "Управление уведомлениями", price: 0, included: true, isEnabled: true },
+    ],
+  },
+  {
+    id: "student_cabinet",
+    title: "Кабинет слушателя",
+    icon: GraduationCap,
+    color: "#0ea5e9",
+    basePrice: 2000,
+    isEnabled: true,
+    features: [
+      { id: "cabinet_courses", name: "Прохождение курсов онлайн", price: 0, included: true, isEnabled: true },
+      { id: "cabinet_tests", name: "Интерактивное тестирование", price: 0, included: true, isEnabled: true },
+      { id: "cabinet_docs", name: "Загрузка документов", price: 0, included: true, isEnabled: true },
+      { id: "cabinet_consent", name: "Подписание согласий на ПДн", price: 0, included: true, isEnabled: true },
+      { id: "cabinet_video", name: "Видеоидентификация", price: 1000, included: false, isEnabled: true },
+      { id: "cabinet_achievements", name: "Система достижений и бейджей", price: 500, included: false, isEnabled: true },
+      { id: "cabinet_ai", name: "ИИ-помощник (чат-бот)", price: 2000, included: false, isEnabled: true },
+      { id: "cabinet_progress", name: "Просмотр прогресса обучения", price: 0, included: true, isEnabled: true },
+    ],
+  },
+];
+
 export default function Features() {
-  const [features, setFeatures] = useState<FeatureCategory[]>(getInitialFeatures);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [editingPrice, setEditingPrice] = useState<{ categoryId: string; featureId?: string } | null>(null);
-  const [tempPrice, setTempPrice] = useState("");
+  const [features, setFeatures] = useState<FeatureCategory[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchFeaturesFromDB();
+  }, []);
+
+  const fetchFeaturesFromDB = async () => {
+    try {
+      const [categoriesResult, featuresResult] = await Promise.all([
+        supabase.from("system_feature_categories").select("*"),
+        supabase.from("system_features").select("*"),
+      ]);
+
+      const defaultFeatures = getDefaultFeatures();
+      
+      // Merge database data with defaults
+      const mergedFeatures = defaultFeatures.map(category => {
+        const dbCategory = categoriesResult.data?.find(c => c.category_id === category.id);
+        
+        return {
+          ...category,
+          icon: iconMap[category.id] || BookOpen,
+          color: colorMap[category.id] || "#6366f1",
+          basePrice: dbCategory?.base_price ?? category.basePrice,
+          isEnabled: dbCategory?.is_enabled ?? true,
+          features: category.features.map(feature => {
+            const dbFeature = featuresResult.data?.find(f => f.feature_id === feature.id);
+            return {
+              ...feature,
+              price: dbFeature?.price ?? feature.price,
+              isEnabled: dbFeature?.is_enabled ?? true,
+            };
+          }),
+        };
+      });
+
+      // Filter only enabled categories and features
+      const enabledFeatures = mergedFeatures
+        .filter(cat => cat.isEnabled)
+        .map(cat => ({
+          ...cat,
+          features: cat.features.filter(f => f.isEnabled),
+        }));
+
+      setFeatures(enabledFeatures);
+    } catch (error) {
+      console.error("Error fetching features:", error);
+      // Fallback to defaults if DB fetch fails
+      setFeatures(getDefaultFeatures());
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Calculate totals
   const totalModules = features.length;
@@ -242,66 +323,15 @@ export default function Features() {
     sum + cat.features.filter(f => !f.included).reduce((s, f) => s + f.price, 0), 0
   );
 
-  // Save to localStorage
-  const saveFeatures = () => {
-    localStorage.setItem("sigma_features_pricing", JSON.stringify(features));
-    toast.success("Цены сохранены");
-    setIsEditMode(false);
-  };
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
-  // Update category base price
-  const updateCategoryPrice = (categoryId: string, price: number) => {
-    setFeatures(prev => prev.map(cat => 
-      cat.id === categoryId ? { ...cat, basePrice: price } : cat
-    ));
-  };
 
-  // Update feature price
-  const updateFeaturePrice = (categoryId: string, featureId: string, price: number) => {
-    setFeatures(prev => prev.map(cat => 
-      cat.id === categoryId 
-        ? { 
-            ...cat, 
-            features: cat.features.map(f => 
-              f.id === featureId ? { ...f, price } : f
-            )
-          } 
-        : cat
-    ));
-  };
-
-  // Toggle feature included
-  const toggleFeatureIncluded = (categoryId: string, featureId: string) => {
-    setFeatures(prev => prev.map(cat => 
-      cat.id === categoryId 
-        ? { 
-            ...cat, 
-            features: cat.features.map(f => 
-              f.id === featureId ? { ...f, included: !f.included } : f
-            )
-          } 
-        : cat
-    ));
-  };
-
-  const handlePriceEdit = (categoryId: string, featureId?: string, currentPrice?: number) => {
-    setEditingPrice({ categoryId, featureId });
-    setTempPrice(String(currentPrice || 0));
-  };
-
-  const handlePriceSave = () => {
-    if (!editingPrice) return;
-    const price = parseInt(tempPrice) || 0;
-    
-    if (editingPrice.featureId) {
-      updateFeaturePrice(editingPrice.categoryId, editingPrice.featureId, price);
-    } else {
-      updateCategoryPrice(editingPrice.categoryId, price);
-    }
-    
-    setEditingPrice(null);
-    setTempPrice("");
-  };
 
   // Generate PDF
   const generatePDF = () => {
@@ -429,7 +459,6 @@ export default function Features() {
       printWindow.document.write(printContent);
       printWindow.document.close();
       printWindow.onload = () => printWindow.print();
-      toast.success("PDF готов к сохранению");
     }
   };
 
@@ -448,29 +477,10 @@ export default function Features() {
               <span className="font-medium">Функции и тарифы</span>
             </div>
             <div className="flex items-center gap-2">
-              {isEditMode ? (
-                <>
-                  <Button variant="outline" size="sm" onClick={() => setIsEditMode(false)} className="rounded-xl">
-                    <X className="w-4 h-4 mr-2" />
-                    Отмена
-                  </Button>
-                  <Button size="sm" onClick={saveFeatures} className="rounded-xl">
-                    <Save className="w-4 h-4 mr-2" />
-                    Сохранить
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button variant="outline" size="sm" onClick={() => setIsEditMode(true)} className="rounded-xl">
-                    <Edit className="w-4 h-4 mr-2" />
-                    Редактировать цены
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={generatePDF} className="rounded-xl">
-                    <Download className="w-4 h-4 mr-2" />
-                    PDF
-                  </Button>
-                </>
-              )}
+              <Button variant="outline" size="sm" onClick={generatePDF} className="rounded-xl">
+                <Download className="w-4 h-4 mr-2" />
+                PDF
+              </Button>
               <Link to="/">
                 <Button variant="ghost" size="sm" className="rounded-xl">
                   <ArrowLeft className="w-4 h-4 mr-2" />
@@ -552,28 +562,10 @@ export default function Features() {
                     </div>
                   </div>
                   <div className="text-right">
-                    {isEditMode && editingPrice?.categoryId === category.id && !editingPrice.featureId ? (
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="number"
-                          value={tempPrice}
-                          onChange={(e) => setTempPrice(e.target.value)}
-                          className="w-24 h-8 text-right rounded-lg"
-                          autoFocus
-                        />
-                        <Button size="sm" variant="ghost" onClick={handlePriceSave}>
-                          <CheckCircle2 className="w-4 h-4 text-green-500" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <div 
-                        className={`font-semibold text-lg ${isEditMode ? 'cursor-pointer hover:text-primary' : ''}`}
-                        onClick={() => isEditMode && handlePriceEdit(category.id, undefined, category.basePrice)}
-                      >
-                        {category.basePrice.toLocaleString()} ₽
-                        <span className="text-sm font-normal text-muted-foreground">/мес</span>
-                      </div>
-                    )}
+                    <div className="font-semibold text-lg">
+                      {category.basePrice.toLocaleString()} ₽
+                      <span className="text-sm font-normal text-muted-foreground">/мес</span>
+                    </div>
                   </div>
                 </div>
 
@@ -588,49 +580,9 @@ export default function Features() {
                         <CheckCircle2 className={`w-4 h-4 flex-shrink-0 ${feature.included ? 'text-green-500' : 'text-amber-500'}`} />
                         <span className="text-sm">{feature.name}</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {isEditMode ? (
-                          <>
-                            <button
-                              onClick={() => toggleFeatureIncluded(category.id, feature.id)}
-                              className={`text-xs px-2 py-1 rounded-lg ${
-                                feature.included 
-                                  ? 'bg-green-500/10 text-green-500' 
-                                  : 'bg-amber-500/10 text-amber-500'
-                              }`}
-                            >
-                              {feature.included ? 'Включено' : 'Доп.'}
-                            </button>
-                            {!feature.included && (
-                              editingPrice?.categoryId === category.id && editingPrice.featureId === feature.id ? (
-                                <div className="flex items-center gap-1">
-                                  <Input
-                                    type="number"
-                                    value={tempPrice}
-                                    onChange={(e) => setTempPrice(e.target.value)}
-                                    className="w-20 h-7 text-right text-xs rounded-lg"
-                                    autoFocus
-                                  />
-                                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={handlePriceSave}>
-                                    <CheckCircle2 className="w-3 h-3 text-green-500" />
-                                  </Button>
-                                </div>
-                              ) : (
-                                <span 
-                                  className="text-xs text-amber-500 cursor-pointer hover:underline"
-                                  onClick={() => handlePriceEdit(category.id, feature.id, feature.price)}
-                                >
-                                  +{feature.price.toLocaleString()} ₽
-                                </span>
-                              )
-                            )}
-                          </>
-                        ) : (
-                          <span className={`text-xs ${feature.included ? 'text-green-500' : 'text-amber-500'}`}>
-                            {feature.included ? 'Включено' : `+${feature.price.toLocaleString()} ₽`}
-                          </span>
-                        )}
-                      </div>
+                      <span className={`text-xs ${feature.included ? 'text-green-500' : 'text-amber-500'}`}>
+                        {feature.included ? 'Включено' : `+${feature.price.toLocaleString()} ₽`}
+                      </span>
                     </div>
                   ))}
                 </div>
