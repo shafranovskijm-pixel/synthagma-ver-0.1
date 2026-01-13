@@ -165,6 +165,47 @@ serve(async (req) => {
           } else {
             console.log(`User already exists in this org: ${email}`);
           }
+        } else {
+          // Check if user exists in auth but not in profiles
+          const { data: authUsers } = await supabaseAdmin.auth.admin.listUsers();
+          const existingAuthUser = authUsers?.users?.find(u => u.email?.toLowerCase() === email.toLowerCase());
+          
+          if (existingAuthUser) {
+            // User exists in auth but not in profiles - create profile
+            userId = existingAuthUser.id;
+            isExisting = true;
+            existingName = (existingAuthUser.user_metadata?.full_name as string) || full_name;
+            
+            // Generate login for credential storage
+            const loginForStorage = await generateLogin();
+            
+            // Create profile for existing auth user
+            const { error: profileError } = await supabaseAdmin
+              .from("profiles")
+              .insert({
+                user_id: userId,
+                full_name: existingName,
+                email: email.toLowerCase(),
+                organization_id,
+                company_id: company_id || null,
+                login: loginForStorage,
+                generated_password: password || null
+              });
+
+            if (profileError) {
+              console.error("Profile creation error for existing auth user:", profileError);
+            } else {
+              console.log(`Created profile for existing auth user: ${email}`);
+            }
+
+            // Assign student role if not exists
+            await supabaseAdmin
+              .from("user_roles")
+              .upsert({
+                user_id: userId,
+                role: "student"
+              }, { onConflict: "user_id" });
+          }
         }
       }
 
@@ -202,7 +243,7 @@ serve(async (req) => {
         userId = authData.user.id;
 
         // Generate login for credential storage
-        const loginForStorage = `student_${Math.floor(10000 + Math.random() * 90000)}`;
+        const loginForStorage = await generateLogin();
         
         // Upsert profile (trigger may have already created one)
         const { error: profileError } = await supabaseAdmin
