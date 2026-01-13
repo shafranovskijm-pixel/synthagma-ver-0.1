@@ -65,6 +65,8 @@ import { useCourseStudentsManager } from "@/hooks/useCourseStudentsManager";
 import { useStudentActions } from "@/hooks/useStudentActions";
 import { useCategoryActions } from "@/hooks/useCategoryActions";
 import { useEnrollmentActions } from "@/hooks/useEnrollmentActions";
+import { useBrandingSettings } from "@/hooks/useBrandingSettings";
+import { useDashboardSettings } from "@/hooks/useDashboardSettings";
 import { Button } from "@/components/ui/button";
 import { GraduationCap, BookOpen, Users, BarChart3, Settings, LogOut, Plus, Upload, FileSpreadsheet, Search, Eye, TrendingUp, Clock, CheckCircle2, XCircle, Loader2, Edit, Trash2, FileText, Download, X, ChevronRight, ChevronDown, Link, Copy, Building2, Save, Send, FileCheck, Receipt, CheckSquare, LayoutGrid, List, Filter, Tag, Palette, History, Moon, Sun, Library, Trophy, MessageCircle, Image, ExternalLink, ShoppingBag, Mail, Key, Menu, AlertCircle, Award, ClipboardList } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -340,28 +342,9 @@ export default function OrganizationDashboard() {
   // Bulk document upload state
   const [showBulkUploadDialog, setShowBulkUploadDialog] = useState(false);
 
-  // Settings state
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return document.documentElement.classList.contains('dark');
-    }
-    return false;
-  });
-  const [studentDashboardSettings, setStudentDashboardSettings] = useState({
-    showLibrary: true,
-    showAchievements: true,
-    showAiChat: true
-  });
-  const [isSavingSettings, setIsSavingSettings] = useState(false);
-
-  // Menu visibility settings
-  const [menuSettings, setMenuSettings] = useState({
-    showStats: false,
-    showLinks: false,
-    showDocuments: false,
-    showLibrary: true,
-    showServices: true
-  });
+  // Dashboard settings hook
+  const dashboardSettings = useDashboardSettings(organizationId);
+  const { isDarkMode, setIsDarkMode, studentDashboardSettings, setStudentDashboardSettings, menuSettings, setMenuSettings, isSavingSettings, setIsSavingSettings, previewStudentDashboard } = dashboardSettings;
 
   // Swipe navigation for mobile tabs
   
@@ -439,191 +422,12 @@ export default function OrganizationDashboard() {
     }),
   };
 
-  const [brandingSettings, setBrandingSettings] = useState({
-    coverUrl: '',
-    primaryColor: '#6366f1',
-    secondaryColor: '#8b5cf6',
-    logoUrl: '',
-    showOrgName: true
-  });
-  const [isUploadingCover, setIsUploadingCover] = useState(false);
-  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
-  const [isSavingBranding, setIsSavingBranding] = useState(false);
-
-  // Load theme and settings on mount
-  useEffect(() => {
-    // Load theme
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark') {
-      setIsDarkMode(true);
-      document.documentElement.classList.add('dark');
-    } else if (savedTheme === 'light') {
-      setIsDarkMode(false);
-      document.documentElement.classList.remove('dark');
-    }
-
-    // Load menu settings
-    const savedMenuSettings = localStorage.getItem('orgMenuSettings');
-    if (savedMenuSettings) {
-      try {
-        setMenuSettings(JSON.parse(savedMenuSettings));
-      } catch (e) {
-        console.error('Error loading menu settings:', e);
-      }
-    }
-  }, []);
-
-  // Load student dashboard settings from organization
-  useEffect(() => {
-    const loadStudentSettings = async () => {
-      if (!organizationId) return;
-      try {
-        const {
-          data,
-          error
-        } = await supabase.from('organizations').select('student_dashboard_settings').eq('id', organizationId).single();
-        if (error) throw error;
-        if (data?.student_dashboard_settings && typeof data.student_dashboard_settings === 'object') {
-          const settings = data.student_dashboard_settings as Record<string, unknown>;
-          setStudentDashboardSettings({
-            showLibrary: settings.showLibrary !== false,
-            showAchievements: settings.showAchievements !== false,
-            showAiChat: settings.showAiChat !== false
-          });
-        }
-      } catch (error) {
-        console.error('Error loading student dashboard settings:', error);
-      }
-    };
-    loadStudentSettings();
-  }, [organizationId]);
-
-  // Load branding settings from organization
-  useEffect(() => {
-    const loadBranding = async () => {
-      if (!organizationId) return;
-      try {
-        const {
-          data,
-          error
-        } = await supabase.from('organizations').select('branding').eq('id', organizationId).single();
-        if (error) throw error;
-        if (data?.branding && typeof data.branding === 'object') {
-          const branding = data.branding as Record<string, unknown>;
-          setBrandingSettings({
-            coverUrl: branding.coverUrl as string || '',
-            primaryColor: branding.primaryColor as string || '#6366f1',
-            secondaryColor: branding.secondaryColor as string || '#8b5cf6',
-            logoUrl: branding.logoUrl as string || '',
-            showOrgName: branding.showOrgName !== false
-          });
-        }
-      } catch (error) {
-        console.error('Error loading branding:', error);
-      }
-    };
-    loadBranding();
-  }, [organizationId]);
-
-  // Handle cover image upload
-  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !user) return;
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Файл слишком большой. Максимум 5 МБ');
-      return;
-    }
-    setIsUploadingCover(true);
-    try {
-      const fileExt = file.name.split('.').pop();
-      const filePath = `${user.id}/cover.${fileExt}`;
-      const {
-        error: uploadError
-      } = await supabase.storage.from('org-branding').upload(filePath, file, {
-        upsert: true
-      });
-      if (uploadError) throw uploadError;
-      const {
-        data: {
-          publicUrl
-        }
-      } = supabase.storage.from('org-branding').getPublicUrl(filePath);
-      setBrandingSettings(prev => ({
-        ...prev,
-        coverUrl: publicUrl
-      }));
-      toast.success('Обложка загружена');
-    } catch (error) {
-      console.error('Error uploading cover:', error);
-      toast.error('Ошибка загрузки обложки');
-    } finally {
-      setIsUploadingCover(false);
-    }
-  };
-
-  // Handle logo upload
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !user) return;
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error('Файл слишком большой. Максимум 2 МБ');
-      return;
-    }
-    setIsUploadingLogo(true);
-    try {
-      const fileExt = file.name.split('.').pop();
-      const filePath = `${user.id}/logo.${fileExt}`;
-      const {
-        error: uploadError
-      } = await supabase.storage.from('org-branding').upload(filePath, file, {
-        upsert: true
-      });
-      if (uploadError) throw uploadError;
-      const {
-        data: {
-          publicUrl
-        }
-      } = supabase.storage.from('org-branding').getPublicUrl(filePath);
-      setBrandingSettings(prev => ({
-        ...prev,
-        logoUrl: publicUrl
-      }));
-      toast.success('Логотип загружен');
-    } catch (error) {
-      console.error('Error uploading logo:', error);
-      toast.error('Ошибка загрузки логотипа');
-    } finally {
-      setIsUploadingLogo(false);
-    }
-  };
-
-  // Save branding settings
-  const handleSaveBranding = async () => {
-    if (!organizationId) return;
-    setIsSavingBranding(true);
-    try {
-      const {
-        error
-      } = await supabase.from('organizations').update({
-        branding: brandingSettings
-      }).eq('id', organizationId);
-      if (error) throw error;
-      toast.success('Настройки брендирования сохранены');
-    } catch (error) {
-      console.error('Error saving branding:', error);
-      toast.error('Ошибка сохранения настроек');
-    } finally {
-      setIsSavingBranding(false);
-    }
-  };
-
+  // Branding settings hook
+  const branding = useBrandingSettings(organizationId, user?.id);
+  const { brandingSettings, setBrandingSettings, isUploadingCover, isUploadingLogo, isSavingBranding, handleCoverUpload, handleLogoUpload, saveBranding: handleSaveBranding } = branding;
+  
   // Preview student dashboard
-  const handlePreviewStudentDashboard = () => {
-    // Store branding and settings for preview
-    localStorage.setItem('previewStudentDashboard', 'true');
-    localStorage.setItem('studentDashboardSettings', JSON.stringify(studentDashboardSettings));
-    window.open('/student', '_blank');
-  };
+  const handlePreviewStudentDashboard = previewStudentDashboard;
 
   // Fetch organization data
   useEffect(() => {
