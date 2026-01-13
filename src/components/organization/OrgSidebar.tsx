@@ -2,7 +2,7 @@ import {
   GraduationCap, BookOpen, Users, BarChart3, Settings, LogOut, 
   Link, Library, FileText, FileSpreadsheet, ShoppingBag, 
   ChevronRight, ChevronDown, Building2, ClipboardList, 
-  AlertCircle, Award, FileCheck
+  Award, FileCheck
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -24,8 +24,7 @@ export type TabType =
   | "journals" 
   | "services" 
   | "settings" 
-  | "frdo" 
-  | "diagnostics";
+  | "frdo";
 
 interface OrgSidebarProps {
   activeTab: TabType;
@@ -203,13 +202,6 @@ export function OrgSidebar({
             </button>
           )}
           
-          {/* Diagnostics */}
-          {isEnabled("settings") && (
-            <button onClick={() => handleTabClick("diagnostics")} className={tabButtonClass("diagnostics")}>
-              <AlertCircle className="w-5 h-5" />
-              Диагностика
-            </button>
-          )}
           
           {/* Settings */}
           {isEnabled("settings") && (

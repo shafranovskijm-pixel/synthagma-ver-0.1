@@ -15,7 +15,6 @@ import { FRDOManager } from "@/components/organization/FRDOManager";
 import { DocumentArchiveView } from "@/components/organization/DocumentArchiveView";
 import { JournalsManager } from "@/components/organization/JournalsManager";
 import { EducationDocumentsJournal } from "@/components/organization/EducationDocumentsJournal";
-import { SystemDiagnostics } from "@/components/organization/SystemDiagnostics";
 import type { TabType } from "../OrgSidebar";
 import type { OrganizationStats, DocumentsStats, Course, MenuSettings } from "@/types";
 
@@ -270,10 +269,6 @@ export function TabContentRenderer({
         <CourseStoreManager organizationId={organizationId} userId={userId} />
       )}
 
-      {/* Diagnostics Tab */}
-      {activeTab === "diagnostics" && organizationId && (
-        <SystemDiagnostics organizationId={organizationId} />
-      )}
 
       {/* Settings Tab */}
       {activeTab === "settings" && (
