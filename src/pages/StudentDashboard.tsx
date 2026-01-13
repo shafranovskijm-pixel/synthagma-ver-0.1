@@ -34,6 +34,7 @@ import {
   Sun,
   Moon,
   Monitor,
+  Store,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
@@ -41,6 +42,7 @@ import { VideoIdentification } from "@/components/student/VideoIdentification";
 import { StudentConsentForm } from "@/components/student/StudentConsentForm";
 import { StudentDocumentsUpload } from "@/components/student/StudentDocumentsUpload";
 import { AchievementsPanel } from "@/components/student/AchievementsPanel";
+import { CourseStoreManager } from "@/components/organization/CourseStoreManager";
 import { useTheme } from "next-themes";
 import {
   DropdownMenu,
@@ -94,7 +96,7 @@ export default function StudentDashboard() {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const isMobile = useIsMobile();
-  const [activeTab, setActiveTab] = useState<"courses" | "chat">("courses");
+  const [activeTab, setActiveTab] = useState<"courses" | "chat" | "store">("courses");
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [inputValue, setInputValue] = useState("");
   const [isAiLoading, setIsAiLoading] = useState(false);
@@ -496,6 +498,17 @@ export default function StudentDashboard() {
               Библиотека
             </button>
           )}
+          <button
+            onClick={() => { setActiveTab("store"); onNavigate?.(); }}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
+              activeTab === "store"
+                ? "bg-primary/10 text-primary"
+                : "text-muted-foreground hover:bg-secondary"
+            }`}
+          >
+            <Store className="w-5 h-5" />
+            Магазин курсов
+          </button>
           {dashboardSettings.showAchievements && (
             <button 
               onClick={() => { setShowAchievements(true); onNavigate?.(); }}
@@ -980,6 +993,20 @@ export default function StudentDashboard() {
                 ИИ-помощник поможет разобраться в материалах курса и ответит на ваши вопросы
               </p>
             </div>
+          </div>
+        )}
+
+        {activeTab === "store" && profile?.organization_id && (
+          <div className="p-8">
+            <header className="mb-6">
+              <h1 className="font-display text-2xl font-bold">Магазин курсов</h1>
+              <p className="text-muted-foreground">Найдите и приобретите новые курсы</p>
+            </header>
+            <CourseStoreManager 
+              organizationId={profile.organization_id} 
+              userRole="student"
+              userId={user?.id}
+            />
           </div>
         )}
       </main>
