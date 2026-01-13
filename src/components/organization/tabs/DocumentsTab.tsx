@@ -18,7 +18,7 @@ interface DocumentsTabProps {
 }
 
 export function DocumentsTab({ organizationId, onShowBulkUploadDialog, isOrdersEnabled = true }: DocumentsTabProps) {
-  const [activeDocTab, setActiveDocTab] = useState<DocumentSubTab>("programs");
+  const [activeDocTab, setActiveDocTab] = useState<DocumentSubTab>("org");
 
   if (!organizationId) {
     return (
