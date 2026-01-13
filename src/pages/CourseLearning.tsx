@@ -204,6 +204,8 @@ const CourseLearning = () => {
   // Tooltip state for mobile progress bar
   const [tooltipLesson, setTooltipLesson] = useState<{ index: number; title: string } | null>(null);
   const longPressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const progressBarRef = useRef<HTMLDivElement>(null);
+  const lessonButtonRefs = useRef<(HTMLButtonElement | null)[]>([]);
   
   // Test state
   const [testQuestions, setTestQuestions] = useState<TestQuestion[]>([]);
@@ -413,6 +415,17 @@ const CourseLearning = () => {
       contentRef.current.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }, [currentLessonIndex]);
+
+  // Auto-scroll progress bar to current lesson
+  useEffect(() => {
+    if (isMobile && lessonButtonRefs.current[currentLessonIndex]) {
+      lessonButtonRefs.current[currentLessonIndex]?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'center'
+      });
+    }
+  }, [currentLessonIndex, isMobile]);
 
   const fetchCourseData = async () => {
     try {
@@ -1289,6 +1302,7 @@ const CourseLearning = () => {
                 return (
                   <button
                     key={lesson.id}
+                    ref={(el) => { lessonButtonRefs.current[index] = el; }}
                     onClick={handleClick}
                     onTouchStart={handleTouchStart}
                     onTouchEnd={handleTouchEnd}
