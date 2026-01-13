@@ -20,6 +20,7 @@ import JoinByLink from "./pages/JoinByLink";
 import AdminDashboard from "./pages/AdminDashboard";
 import Features from "./pages/Features";
 import CourseImport from "./pages/CourseImport";
+import About from "./pages/About";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -74,6 +75,7 @@ const App = () => (
             } />
             <Route path="/join/:token" element={<JoinByLink />} />
             <Route path="/features" element={<Features />} />
+            <Route path="/about" element={<About />} />
             <Route path="/course-import" element={
               <ProtectedRoute requiredRole="organization">
                 <CourseImport />
