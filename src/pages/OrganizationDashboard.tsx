@@ -33,6 +33,8 @@ import { StatsCards } from "@/components/organization/tabs/StatsCards";
 import { DocumentsStatsCards } from "@/components/organization/tabs/DocumentsStatsCards";
 import { StudentsTab } from "@/components/organization/tabs/StudentsTab";
 import { SettingsTab } from "@/components/organization/tabs/SettingsTab";
+import { LinksTab } from "@/components/organization/tabs/LinksTab";
+import { StatsTab } from "@/components/organization/tabs/StatsTab";
 import { OrgSidebar, TabType } from "@/components/organization/OrgSidebar";
 import { 
   ImportStudentsDialog,
@@ -47,7 +49,8 @@ import {
   OrgDetailsDialog,
   AddCompanyDialog,
   EditCompanyDialog,
-  CreateLinkDialog
+  CreateLinkDialog,
+  CourseStudentsDialog
 } from "@/components/organization/dialogs";
 import { generateEnrollmentOrder } from "@/utils/generateEnrollmentOrder";
 import { useAuth } from "@/hooks/useAuth";
@@ -130,15 +133,6 @@ interface StudentDetails {
   student: Student;
   documents: StudentDocument[];
   testAttempts: TestAttempt[];
-}
-interface RegistrationLink {
-  id: string;
-  token: string;
-  name: string | null;
-  inn: string | null;
-  expires_at: string | null;
-  used_count: number;
-  created_at: string;
 }
 interface Company {
   id: string;
@@ -248,8 +242,6 @@ export default function OrganizationDashboard() {
   const [isCreatingBulkCredentials, setIsCreatingBulkCredentials] = useState(false);
   const [isSendingBulkDocReminders, setIsSendingBulkDocReminders] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const [registrationLinks, setRegistrationLinks] = useState<RegistrationLink[]>([]);
-  const [isLoadingLinks, setIsLoadingLinks] = useState(false);
   const [showCreateLinkDialog, setShowCreateLinkDialog] = useState(false);
   const [newLinkCompanyName, setNewLinkCompanyName] = useState("");
   const [newLinkInn, setNewLinkInn] = useState("");
@@ -935,28 +927,6 @@ export default function OrganizationDashboard() {
     fetchAllOrganizations();
   }, [activeTab]);
 
-  // Fetch registration links
-  useEffect(() => {
-    const fetchLinks = async () => {
-      if (!organizationId || activeTab !== "links") return;
-      setIsLoadingLinks(true);
-      try {
-        const {
-          data,
-          error
-        } = await supabase.from("registration_links").select("*").eq("organization_id", organizationId).order("created_at", {
-          ascending: false
-        });
-        if (error) throw error;
-        setRegistrationLinks(data || []);
-      } catch (error) {
-        console.error("Error fetching links:", error);
-      } finally {
-        setIsLoadingLinks(false);
-      }
-    };
-    fetchLinks();
-  }, [organizationId, activeTab]);
 
   // Load course students when course details modal opens
   // Load course students when course details modal opens
@@ -1019,40 +989,17 @@ export default function OrganizationDashboard() {
         inn: newLinkInn || null
       });
       if (error) throw error;
-      const {
-        data
-      } = await supabase.from("registration_links").select("*").eq("organization_id", organizationId).order("created_at", {
-        ascending: false
-      });
-      setRegistrationLinks(data || []);
       setShowCreateLinkDialog(false);
       setNewLinkCompanyName("");
       setNewLinkInn("");
       toast.success("Ссылка для регистрации создана");
+      // LinksTab will refetch on mount
     } catch (error) {
       console.error("Error creating link:", error);
       toast.error("Ошибка создания ссылки");
     } finally {
       setIsCreatingLink(false);
     }
-  };
-  const handleDeleteLink = async (linkId: string) => {
-    try {
-      const {
-        error
-      } = await supabase.from("registration_links").delete().eq("id", linkId);
-      if (error) throw error;
-      setRegistrationLinks(registrationLinks.filter(l => l.id !== linkId));
-      toast.success("Ссылка удалена");
-    } catch (error) {
-      console.error("Error deleting link:", error);
-      toast.error("Ошибка удаления");
-    }
-  };
-  const copyLinkToClipboard = (token: string) => {
-    const url = `${window.location.origin}/join/${token}`;
-    navigator.clipboard.writeText(url);
-    toast.success("Ссылка скопирована");
   };
   const generatePassword = () => {
     const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -2635,160 +2582,17 @@ export default function OrganizationDashboard() {
           )}
 
           {/* Stats Tab */}
-          {activeTab === "stats" && organizationId && <div className="space-y-4 lg:space-y-6">
-              <Tabs defaultValue="overview" className="w-full">
-                <TabsList className="w-full justify-start bg-card border border-border rounded-xl p-1 h-auto flex-wrap gap-1">
-                  <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-primary/10 gap-1 lg:gap-2 text-xs lg:text-sm px-2 lg:px-3">
-                    <BarChart3 className="w-3 h-3 lg:w-4 lg:h-4" />
-                    <span className="hidden sm:inline">Обзор</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="class-journal" className="rounded-lg data-[state=active]:bg-primary/10 gap-1 lg:gap-2 text-xs lg:text-sm px-2 lg:px-3">
-                    <Clock className="w-3 h-3 lg:w-4 lg:h-4" />
-                    <span className="hidden sm:inline">Журнал занятий</span>
-                    <span className="sm:hidden">Журнал</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="document-log" className="rounded-lg data-[state=active]:bg-primary/10 gap-1 lg:gap-2 text-xs lg:text-sm px-2 lg:px-3">
-                    <FileText className="w-3 h-3 lg:w-4 lg:h-4" />
-                    <span className="hidden sm:inline">Журнал документов</span>
-                    <span className="sm:hidden">Документы</span>
-                  </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="overview" className="mt-4 lg:mt-6">
-                  <div className="bg-card rounded-xl lg:rounded-2xl border border-border p-4 lg:p-6">
-                    <h2 className="font-display text-lg lg:text-xl font-semibold mb-4 lg:mb-6">Общая статистика</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
-                      <div className="space-y-3 lg:space-y-4">
-                        <div className="flex justify-between items-center py-2 border-b border-border/50">
-                          <span className="text-sm text-muted-foreground">Всего учеников</span>
-                          <span className="font-bold">{stats.totalStudents}</span>
-                        </div>
-                        <div className="flex justify-between items-center py-2 border-b border-border/50">
-                          <span className="text-sm text-muted-foreground">Всего курсов</span>
-                          <span className="font-bold">{stats.totalCourses}</span>
-                        </div>
-                        <div className="flex justify-between items-center py-2 border-b border-border/50">
-                          <span className="text-sm text-muted-foreground">Завершили обучение</span>
-                          <span className="font-bold text-sigma-green">{stats.completedCount}</span>
-                        </div>
-                        <div className="flex justify-between items-center py-2">
-                          <span className="text-sm text-muted-foreground">Средний прогресс</span>
-                          <span className="font-bold">{stats.averageProgress}%</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-center py-4">
-                        <div className="relative w-32 h-32 lg:w-40 lg:h-40">
-                          <svg className="w-32 h-32 lg:w-40 lg:h-40 transform -rotate-90">
-                            <circle cx="50%" cy="50%" r="45%" fill="none" stroke="hsl(var(--border))" strokeWidth="12" />
-                            <circle cx="50%" cy="50%" r="45%" fill="none" stroke="hsl(var(--primary))" strokeWidth="12" strokeDasharray={`${stats.averageProgress * 2.83} 283`} strokeLinecap="round" />
-                          </svg>
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <span className="text-2xl lg:text-4xl font-bold font-display">{stats.averageProgress}%</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="class-journal" className="mt-4 lg:mt-6">
-                  <ClassJournalExport organizationId={organizationId} />
-                </TabsContent>
-
-                <TabsContent value="document-log" className="mt-4 lg:mt-6">
-                  <DocumentIssuanceLog organizationId={organizationId} />
-                </TabsContent>
-              </Tabs>
-            </div>}
+          {activeTab === "stats" && organizationId && (
+            <StatsTab organizationId={organizationId} stats={stats} />
+          )}
 
           {/* Links Tab */}
-          {activeTab === "links" && <div className="bg-card rounded-xl lg:rounded-2xl border border-border">
-              <div className="p-4 lg:p-6 border-b border-border">
-                <h2 className="font-display text-lg lg:text-xl font-semibold">Ссылки для регистрации</h2>
-                <p className="text-xs lg:text-sm text-muted-foreground mt-1">
-                  Ученики автоматически привяжутся к вашей организации
-                </p>
-              </div>
-
-              {isLoadingLinks ? <div className="flex items-center justify-center py-12">
-                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                </div> : registrationLinks.length === 0 ? <div className="text-center py-12 text-muted-foreground">
-                  <Link className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>Нет ссылок для регистрации</p>
-                  <Button className="mt-4 btn-gradient rounded-xl gap-2" onClick={() => setShowCreateLinkDialog(true)}>
-                    <Plus className="w-4 h-4" />
-                    Создать первую ссылку
-                  </Button>
-                </div> : <>
-                  {/* Mobile view - cards */}
-                  <div className="lg:hidden divide-y divide-border">
-                    {registrationLinks.map(link => (
-                      <div key={link.id} className="p-4 space-y-2">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <div className="font-medium">{link.name || "Без названия"}</div>
-                            {link.inn && <div className="text-xs text-muted-foreground">ИНН: {link.inn}</div>}
-                          </div>
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
-                            {link.used_count} исп.
-                          </span>
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          Создана: {new Date(link.created_at).toLocaleDateString()}
-                        </div>
-                        <div className="flex gap-2 pt-1">
-                          <Button variant="outline" size="sm" className="rounded-lg gap-1 flex-1 text-xs" onClick={() => copyLinkToClipboard(link.token)}>
-                            <Copy className="w-3 h-3" />
-                            Копировать
-                          </Button>
-                          <Button variant="outline" size="sm" className="rounded-lg text-destructive hover:text-destructive" onClick={() => handleDeleteLink(link.id)}>
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  {/* Desktop view - table */}
-                  <div className="hidden lg:block overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b border-border">
-                          <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Компания</th>
-                          <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">ИНН</th>
-                          <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Использований</th>
-                          <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Создана</th>
-                          <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Действия</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {registrationLinks.map(link => <tr key={link.id} className="border-b border-border last:border-0 hover:bg-secondary/50 transition-colors">
-                            <td className="px-6 py-4 font-medium">{link.name || "—"}</td>
-                            <td className="px-6 py-4 text-sm">{link.inn || "—"}</td>
-                            <td className="px-6 py-4">
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
-                                {link.used_count}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 text-sm text-muted-foreground">
-                              {new Date(link.created_at).toLocaleDateString()}
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className="flex gap-2">
-                                <Button variant="outline" size="sm" className="rounded-lg gap-1" onClick={() => copyLinkToClipboard(link.token)}>
-                                  <Copy className="w-4 h-4" />
-                                  Копировать
-                                </Button>
-                                <Button variant="outline" size="sm" className="rounded-lg text-destructive hover:text-destructive" onClick={() => handleDeleteLink(link.id)}>
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            </td>
-                          </tr>)}
-                      </tbody>
-                    </table>
-                  </div>
-                </>}
-            </div>}
+          {activeTab === "links" && organizationId && (
+            <LinksTab 
+              organizationId={organizationId} 
+              onCreateLinkClick={() => setShowCreateLinkDialog(true)} 
+            />
+          )}
 
           {/* Library Tab */}
           {activeTab === "library" && organizationId && <LibraryManager organizationId={organizationId} />}
@@ -3073,121 +2877,33 @@ export default function OrganizationDashboard() {
         }}
       />
 
-      {/* Course Students Dialog */}
-      <Dialog open={showCourseStudentsDialog} onOpenChange={setShowCourseStudentsDialog}>
-        <DialogContent className="max-w-3xl rounded-2xl max-h-[90vh] overflow-auto">
-          <DialogHeader>
-            <DialogTitle className="font-display">Ученики курса: {selectedCourse?.title}</DialogTitle>
-          </DialogHeader>
-          {isLoadingCourseStudents ? <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            </div> : <div className="space-y-6">
-              {/* Quick Actions */}
-              <div className="bg-secondary/30 rounded-xl p-4 space-y-4">
-                <h3 className="font-semibold flex items-center gap-2">
-                  <Link className="w-4 h-4" />
-                  Быстрые действия
-                </h3>
-                <div className="flex flex-wrap gap-3">
-                  <Button variant="outline" className="rounded-xl gap-2" onClick={() => {
-                if (selectedCourse) {
-                  const url = `${window.location.origin}/course/${selectedCourse.id}`;
-                  navigator.clipboard.writeText(url);
-                  toast.success("Ссылка на курс скопирована");
-                }
-              }}>
-                    <Copy className="w-4 h-4" />
-                    Скопировать ссылку
-                  </Button>
-                  <Button variant="outline" className="rounded-xl gap-2" onClick={() => setShowInviteEmailDialog(true)}>
-                    <Send className="w-4 h-4" />
-                    Отправить приглашение
-                  </Button>
-                </div>
-              </div>
-
-              <div>
-                <h3 className="font-semibold mb-3">Зачисленные ученики ({courseStudents.length})</h3>
-                {courseStudents.length === 0 ? <p className="text-muted-foreground text-sm">Нет зачисленных учеников</p> : <div className="space-y-2 max-h-40 overflow-auto">
-                    {courseStudents.map(s => <div key={s.enrollment_id} className="flex items-center justify-between p-3 bg-secondary/50 rounded-xl">
-                        <div>
-                          <div className="font-medium">{s.name}</div>
-                          <div className="text-sm text-muted-foreground">{s.email}</div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <div className="flex items-center gap-2">
-                            <Progress value={s.progress} className="w-20 h-2" />
-                            <span className="text-sm">{s.progress}%</span>
-                          </div>
-                          <Button variant="ghost" size="sm" onClick={() => {
-                    if (s.enrollment_id && selectedCourse) {
-                      setSelectedStudentForDocs({
-                        enrollmentId: s.enrollment_id,
-                        studentName: s.name,
-                        courseName: selectedCourse.title
-                      });
-                      setShowStudentDocsDialog(true);
-                    }
-                  }} title="Документы ученика">
-                            <FileText className="w-4 h-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => s.enrollment_id && handleRemoveFromCourse(s.enrollment_id)}>
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>)}
-                  </div>}
-              </div>
-
-              <div>
-                <h3 className="font-semibold mb-3">Добавить учеников</h3>
-                {availableStudentsForCourse.length === 0 ? <p className="text-muted-foreground text-sm">Все ученики уже зачислены</p> : <>
-                    <div className="space-y-2 max-h-40 overflow-auto mb-4">
-                      {availableStudentsForCourse.map(s => <label key={s.user_id} className="flex items-center gap-3 p-3 bg-secondary/30 rounded-xl cursor-pointer hover:bg-secondary/50 transition-colors">
-                          <input type="checkbox" checked={selectedStudentsToAdd.has(s.user_id)} onChange={() => {
-                    const newSet = new Set(selectedStudentsToAdd);
-                    if (newSet.has(s.user_id)) {
-                      newSet.delete(s.user_id);
-                    } else {
-                      newSet.add(s.user_id);
-                    }
-                    setSelectedStudentsToAdd(newSet);
-                  }} className="w-4 h-4" />
-                          <div>
-                            <div className="font-medium">{s.name}</div>
-                            <div className="text-sm text-muted-foreground">{s.email}</div>
-                          </div>
-                        </label>)}
-                    </div>
-                    <Button className="w-full btn-gradient rounded-xl" onClick={handleAddStudentsToCourse} disabled={selectedStudentsToAdd.size === 0 || isAddingStudentsToCourse}>
-                      {isAddingStudentsToCourse ? <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Добавление...
-                        </> : `Зачислить (${selectedStudentsToAdd.size})`}
-                    </Button>
-                  </>}
-              </div>
-
-              {/* Course Test Report */}
-              {selectedCourse && organizationId && <div>
-                  <h3 className="font-semibold mb-3 flex items-center gap-2">
-                    <BarChart3 className="w-4 h-4" />
-                    Результаты тестирования
-                  </h3>
-                  <CourseTestReport courseId={selectedCourse.id} courseName={selectedCourse.title} organizationId={organizationId} />
-                </div>}
-
-              {/* Enrollment History */}
-              {selectedCourse && organizationId && <div>
-                  <h3 className="font-semibold mb-3 flex items-center gap-2">
-                    <History className="w-4 h-4" />
-                    История зачислений
-                  </h3>
-                  <EnrollmentHistory courseId={selectedCourse.id} organizationId={organizationId} courseName={selectedCourse.title} />
-                </div>}
-            </div>}
-        </DialogContent>
-      </Dialog>
+      <CourseStudentsDialog
+        open={showCourseStudentsDialog}
+        onOpenChange={setShowCourseStudentsDialog}
+        course={selectedCourse}
+        courseStudents={courseStudents}
+        availableStudents={availableStudentsForCourse}
+        organizationId={organizationId}
+        isLoading={isLoadingCourseStudents}
+        selectedStudentsToAdd={selectedStudentsToAdd}
+        onToggleStudentSelection={(userId) => {
+          const newSet = new Set(selectedStudentsToAdd);
+          if (newSet.has(userId)) {
+            newSet.delete(userId);
+          } else {
+            newSet.add(userId);
+          }
+          setSelectedStudentsToAdd(newSet);
+        }}
+        onAddStudentsToCourse={handleAddStudentsToCourse}
+        isAddingStudents={isAddingStudentsToCourse}
+        onRemoveFromCourse={handleRemoveFromCourse}
+        onShowInviteEmailDialog={() => setShowInviteEmailDialog(true)}
+        onShowStudentDocs={(enrollmentId, studentName, courseName) => {
+          setSelectedStudentForDocs({ enrollmentId, studentName, courseName });
+          setShowStudentDocsDialog(true);
+        }}
+      />
 
       <InviteEmailDialog
         open={showInviteEmailDialog}
