@@ -2,54 +2,72 @@ import {
   Upload,
   Brain,
   Users,
-  BarChart3,
-  Shield,
-  Layout,
-  Sparkles,
+  Building2,
+  FileCheck,
+  ClipboardList,
+  Database,
+  ShoppingBag,
+  GraduationCap,
   Smartphone,
   BookOpen,
   MessageCircle,
-  Bell
+  Bell,
+  Volume2,
+  FileSpreadsheet,
+  Send,
+  Link as LinkIcon
 } from "lucide-react";
 import { ScrollReveal, ScrollRevealGroup, scrollRevealItem } from "@/components/ui/ScrollReveal";
 import { motion } from "framer-motion";
 
 const features = [
   {
-    icon: Upload,
-    title: "Быстрый экспорт курсов",
-    description: "Импортируйте готовые курсы с других платформ за считанные минуты",
+    icon: BookOpen,
+    title: "Управление курсами",
+    description: "Современный редактор вместе с ИИ поможет превратить даже скучную лекцию в удобный и интерактивный формат. Удобный импорт с других платформ",
     glyph: "𓂀",
   },
   {
-    icon: Layout,
-    title: "Удобное оформление",
-    description: "Лекции, аудио, фото, видео — всё в одном месте с интуитивным редактором",
+    icon: Users,
+    title: "Слушатели",
+    description: "Импортируй большими файлами, автоматическая рассылка логинов. Получай документы: СНИЛС, документ об образовании, паспорт. Отправляй напоминания",
     glyph: "𓃀",
   },
   {
-    icon: Brain,
-    title: "ИИ-помощник",
-    description: "Подготовка лекций, тестов и самостоятельных работ с помощью искусственного интеллекта",
+    icon: Building2,
+    title: "Компании",
+    description: "Создавайте ссылки и привязывайте группы учеников к компании. Храните договоры, счета, акты в одном месте",
     glyph: "𓅀",
   },
   {
-    icon: Users,
-    title: "Автоматизация",
-    description: "Загрузите файл с учениками — система создаст логины и отправит на почту",
+    icon: FileCheck,
+    title: "Документооборот",
+    description: "Автоматическое создание договоров, счетов, актов. Сбор согласий на обработку ПД, журналы выдачи документов, приказы о зачислении/отчислении",
     glyph: "𓆀",
   },
   {
-    icon: BarChart3,
-    title: "Подробные отчёты",
-    description: "Получайте детальную статистику прохождения обучения каждым учеником",
+    icon: ClipboardList,
+    title: "Журналы",
+    description: "Все ваши журналы в одном месте с возможностью выгрузки в Excel. Журналы посещаемости, оценок, выдачи документов",
     glyph: "𓇀",
   },
   {
-    icon: Shield,
-    title: "Соответствие 273-ФЗ",
-    description: "Более 10 организаций получили лицензию с помощью нашей платформы",
+    icon: Database,
+    title: "ФРДО",
+    description: "Устали вносить вручную? Система заполнит за вас. Готовы к интеграции с ЕР ЦРДО",
     glyph: "𓈀",
+  },
+  {
+    icon: ShoppingBag,
+    title: "Магазин курсов",
+    description: "Продавайте свои курсы или закажите готовую программу. Вам не нужен методист",
+    glyph: "𓉀",
+  },
+  {
+    icon: GraduationCap,
+    title: "Кабинет слушателя",
+    description: "ИИ-помощник проконсультирует учеников, озвучивание лекций, удобное прохождение курсов",
+    glyph: "𓊀",
   },
 ];
 
@@ -57,6 +75,7 @@ const mobileFeatures = [
   { icon: BookOpen, text: "Курсы офлайн" },
   { icon: Bell, text: "Push-уведомления" },
   { icon: MessageCircle, text: "Чат с куратором" },
+  { icon: Volume2, text: "Озвучка лекций" },
 ];
 
 export function Features() {
