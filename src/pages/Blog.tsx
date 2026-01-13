@@ -1,98 +1,150 @@
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Calendar, Clock, User, ArrowRight, BookOpen, TrendingUp, Shield, Lightbulb } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, ArrowRight, BookOpen, TrendingUp, Shield, Lightbulb, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/integrations/supabase/client";
+import { format } from "date-fns";
+import { ru } from "date-fns/locale";
 
 interface BlogPost {
   id: string;
   title: string;
-  excerpt: string;
+  slug: string;
+  excerpt: string | null;
+  content: string | null;
   category: string;
   author: string;
-  date: string;
-  readTime: string;
-  image: string;
-  featured?: boolean;
-  icon: React.ReactNode;
+  image_url: string | null;
+  is_featured: boolean;
+  read_time: string | null;
+  created_at: string;
+  published_at: string | null;
 }
 
-const blogPosts: BlogPost[] = [
+const categoryIcons: Record<string, React.ReactNode> = {
+  "Тренды": <TrendingUp className="h-4 w-4" />,
+  "Гайды": <BookOpen className="h-4 w-4" />,
+  "Безопасность": <Shield className="h-4 w-4" />,
+  "Технологии": <Lightbulb className="h-4 w-4" />,
+  "Интеграции": <BookOpen className="h-4 w-4" />,
+  "Методология": <TrendingUp className="h-4 w-4" />,
+  "Новости": <BookOpen className="h-4 w-4" />,
+};
+
+const defaultPosts: BlogPost[] = [
   {
     id: "1",
     title: "Как организовать эффективное дистанционное обучение в 2026 году",
+    slug: "effective-distance-learning-2026",
     excerpt: "Рассказываем о ключевых трендах и лучших практиках организации онлайн-обучения для корпоративных клиентов и образовательных учреждений.",
+    content: null,
     category: "Тренды",
     author: "Команда СИНТАГМА",
-    date: "10 января 2026",
-    readTime: "7 мин",
-    image: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&h=400&fit=crop",
-    featured: true,
-    icon: <TrendingUp className="h-5 w-5" />
+    image_url: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&h=400&fit=crop",
+    is_featured: true,
+    read_time: "7 мин",
+    created_at: "2026-01-10T10:00:00Z",
+    published_at: "2026-01-10T10:00:00Z",
   },
   {
     id: "2",
     title: "Автоматизация документооборота: от заявки до диплома",
+    slug: "document-automation-guide",
     excerpt: "Полный гайд по настройке автоматического формирования документов — договоры, акты, удостоверения и выгрузка в ФРДО.",
+    content: null,
     category: "Гайды",
     author: "Команда СИНТАГМА",
-    date: "8 января 2026",
-    readTime: "12 мин",
-    image: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=800&h=400&fit=crop",
-    featured: true,
-    icon: <BookOpen className="h-5 w-5" />
+    image_url: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=800&h=400&fit=crop",
+    is_featured: true,
+    read_time: "12 мин",
+    created_at: "2026-01-08T10:00:00Z",
+    published_at: "2026-01-08T10:00:00Z",
   },
   {
     id: "3",
     title: "Безопасность данных слушателей: чек-лист для образовательных организаций",
+    slug: "student-data-security-checklist",
     excerpt: "Проверьте, соответствует ли ваша система требованиям 152-ФЗ и защищены ли персональные данные ваших учеников.",
+    content: null,
     category: "Безопасность",
     author: "Команда СИНТАГМА",
-    date: "5 января 2026",
-    readTime: "5 мин",
-    image: "https://images.unsplash.com/photo-1563986768609-322da13575f3?w=800&h=400&fit=crop",
-    icon: <Shield className="h-5 w-5" />
+    image_url: "https://images.unsplash.com/photo-1563986768609-322da13575f3?w=800&h=400&fit=crop",
+    is_featured: false,
+    read_time: "5 мин",
+    created_at: "2026-01-05T10:00:00Z",
+    published_at: "2026-01-05T10:00:00Z",
   },
   {
     id: "4",
     title: "ИИ-помощник в обучении: возможности и ограничения",
+    slug: "ai-assistant-in-learning",
     excerpt: "Как использовать искусственный интеллект для генерации курсов, проверки тестов и персонализации обучения.",
+    content: null,
     category: "Технологии",
     author: "Команда СИНТАГМА",
-    date: "2 января 2026",
-    readTime: "8 мин",
-    image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&h=400&fit=crop",
-    icon: <Lightbulb className="h-5 w-5" />
+    image_url: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&h=400&fit=crop",
+    is_featured: false,
+    read_time: "8 мин",
+    created_at: "2026-01-02T10:00:00Z",
+    published_at: "2026-01-02T10:00:00Z",
   },
-  {
-    id: "5",
-    title: "Интеграция с 1С: синхронизация данных учебного центра",
-    excerpt: "Пошаговая инструкция по настройке обмена данными между СИНТАГМА и вашей учётной системой.",
-    category: "Интеграции",
-    author: "Команда СИНТАГМА",
-    date: "28 декабря 2025",
-    readTime: "10 мин",
-    image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&h=400&fit=crop",
-    icon: <BookOpen className="h-5 w-5" />
-  },
-  {
-    id: "6",
-    title: "Как повысить завершаемость онлайн-курсов до 85%",
-    excerpt: "Делимся проверенными методиками мотивации слушателей и геймификации образовательного процесса.",
-    category: "Методология",
-    author: "Команда СИНТАГМА",
-    date: "25 декабря 2025",
-    readTime: "6 мин",
-    image: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=800&h=400&fit=crop",
-    icon: <TrendingUp className="h-5 w-5" />
-  }
 ];
 
-const categories = ["Все", "Тренды", "Гайды", "Безопасность", "Технологии", "Интеграции", "Методология"];
+const categories = ["Все", "Тренды", "Гайды", "Безопасность", "Технологии", "Интеграции", "Методология", "Новости"];
 
 const Blog = () => {
-  const featuredPosts = blogPosts.filter(post => post.featured);
-  const regularPosts = blogPosts.filter(post => !post.featured);
+  const [posts, setPosts] = useState<BlogPost[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState("Все");
+
+  useEffect(() => {
+    fetchPosts();
+  }, []);
+
+  const fetchPosts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("blog_posts")
+        .select("*")
+        .eq("is_published", true)
+        .order("published_at", { ascending: false });
+
+      if (error) throw error;
+      
+      // Use database posts if available, otherwise use default posts
+      setPosts(data && data.length > 0 ? data : defaultPosts);
+    } catch (error) {
+      console.error("Error fetching posts:", error);
+      setPosts(defaultPosts);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const filteredPosts = selectedCategory === "Все" 
+    ? posts 
+    : posts.filter(post => post.category === selectedCategory);
+
+  const featuredPosts = filteredPosts.filter(post => post.is_featured);
+  const regularPosts = filteredPosts.filter(post => !post.is_featured);
+
+  const formatDate = (dateString: string) => {
+    try {
+      return format(new Date(dateString), "d MMMM yyyy", { locale: ru });
+    } catch {
+      return dateString;
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -147,9 +199,10 @@ const Blog = () => {
                 transition={{ duration: 0.3, delay: index * 0.05 }}
               >
                 <Button
-                  variant={index === 0 ? "default" : "outline"}
+                  variant={selectedCategory === category ? "default" : "outline"}
                   size="sm"
                   className="rounded-full"
+                  onClick={() => setSelectedCategory(category)}
                 >
                   {category}
                 </Button>
@@ -160,108 +213,127 @@ const Blog = () => {
       </section>
 
       {/* Featured Posts */}
-      <section className="py-12 md:py-16">
-        <div className="container mx-auto px-4">
-          <h2 className="text-2xl font-bold mb-8">Избранные статьи</h2>
-          <div className="grid md:grid-cols-2 gap-6">
-            {featuredPosts.map((post, index) => (
-              <motion.article
-                key={post.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                className="group relative overflow-hidden rounded-2xl border border-border bg-card hover:shadow-xl transition-all duration-300"
-              >
-                <div className="aspect-[2/1] overflow-hidden">
-                  <img
-                    src={post.image}
-                    alt={post.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                </div>
-                <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Badge className="bg-primary/90 hover:bg-primary">
-                      {post.icon}
-                      <span className="ml-1">{post.category}</span>
-                    </Badge>
+      {featuredPosts.length > 0 && (
+        <section className="py-12 md:py-16">
+          <div className="container mx-auto px-4">
+            <h2 className="text-2xl font-bold mb-8">Избранные статьи</h2>
+            <div className="grid md:grid-cols-2 gap-6">
+              {featuredPosts.map((post, index) => (
+                <motion.article
+                  key={post.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: index * 0.1 }}
+                  className="group relative overflow-hidden rounded-2xl border border-border bg-card hover:shadow-xl transition-all duration-300"
+                >
+                  <div className="aspect-[2/1] overflow-hidden">
+                    <img
+                      src={post.image_url || "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&h=400&fit=crop"}
+                      alt={post.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                   </div>
-                  <h3 className="text-xl font-bold mb-2 group-hover:text-primary-foreground/90 transition-colors">
-                    {post.title}
-                  </h3>
-                  <p className="text-white/80 text-sm mb-4 line-clamp-2">
-                    {post.excerpt}
-                  </p>
-                  <div className="flex items-center gap-4 text-xs text-white/60">
-                    <span className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      {post.date}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {post.readTime}
-                    </span>
-                  </div>
-                </div>
-              </motion.article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Regular Posts */}
-      <section className="py-12 md:py-16 bg-muted/30">
-        <div className="container mx-auto px-4">
-          <h2 className="text-2xl font-bold mb-8">Все статьи</h2>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {regularPosts.map((post, index) => (
-              <motion.article
-                key={post.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                className="group bg-card rounded-xl border border-border overflow-hidden hover:shadow-lg transition-all duration-300"
-              >
-                <div className="aspect-[16/9] overflow-hidden">
-                  <img
-                    src={post.image}
-                    alt={post.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                </div>
-                <div className="p-5">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Badge variant="secondary" className="text-xs">
-                      {post.icon}
-                      <span className="ml-1">{post.category}</span>
-                    </Badge>
-                  </div>
-                  <h3 className="font-semibold mb-2 group-hover:text-primary transition-colors line-clamp-2">
-                    {post.title}
-                  </h3>
-                  <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                    {post.excerpt}
-                  </p>
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <div className="flex items-center gap-3">
+                  <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Badge className="bg-primary/90 hover:bg-primary">
+                        {categoryIcons[post.category] || <BookOpen className="h-4 w-4" />}
+                        <span className="ml-1">{post.category}</span>
+                      </Badge>
+                    </div>
+                    <h3 className="text-xl font-bold mb-2 group-hover:text-primary-foreground/90 transition-colors">
+                      {post.title}
+                    </h3>
+                    <p className="text-white/80 text-sm mb-4 line-clamp-2">
+                      {post.excerpt}
+                    </p>
+                    <div className="flex items-center gap-4 text-xs text-white/60">
                       <span className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
-                        {post.date}
+                        {formatDate(post.published_at || post.created_at)}
                       </span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {post.readTime}
-                      </span>
+                      {post.read_time && (
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {post.read_time}
+                        </span>
+                      )}
                     </div>
-                    <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                   </div>
-                </div>
-              </motion.article>
-            ))}
+                </motion.article>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
+
+      {/* Regular Posts */}
+      {regularPosts.length > 0 && (
+        <section className="py-12 md:py-16 bg-muted/30">
+          <div className="container mx-auto px-4">
+            <h2 className="text-2xl font-bold mb-8">
+              {featuredPosts.length > 0 ? "Все статьи" : "Статьи"}
+            </h2>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {regularPosts.map((post, index) => (
+                <motion.article
+                  key={post.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: index * 0.1 }}
+                  className="group bg-card rounded-xl border border-border overflow-hidden hover:shadow-lg transition-all duration-300"
+                >
+                  <div className="aspect-[16/9] overflow-hidden">
+                    <img
+                      src={post.image_url || "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&h=400&fit=crop"}
+                      alt={post.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                  </div>
+                  <div className="p-5">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Badge variant="secondary" className="text-xs">
+                        {categoryIcons[post.category] || <BookOpen className="h-3 w-3" />}
+                        <span className="ml-1">{post.category}</span>
+                      </Badge>
+                    </div>
+                    <h3 className="font-semibold mb-2 group-hover:text-primary transition-colors line-clamp-2">
+                      {post.title}
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+                      {post.excerpt}
+                    </p>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <div className="flex items-center gap-3">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          {formatDate(post.published_at || post.created_at)}
+                        </span>
+                        {post.read_time && (
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {post.read_time}
+                          </span>
+                        )}
+                      </div>
+                      <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </div>
+                </motion.article>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* No posts message */}
+      {filteredPosts.length === 0 && (
+        <section className="py-16">
+          <div className="container mx-auto px-4 text-center">
+            <p className="text-muted-foreground">Нет статей в этой категории</p>
+          </div>
+        </section>
+      )}
 
       {/* Newsletter */}
       <section className="py-16 md:py-24">

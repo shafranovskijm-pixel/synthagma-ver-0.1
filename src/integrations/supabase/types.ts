@@ -112,6 +112,60 @@ export type Database = {
           },
         ]
       }
+      blog_posts: {
+        Row: {
+          author: string
+          category: string
+          content: string | null
+          created_at: string
+          excerpt: string | null
+          id: string
+          image_url: string | null
+          is_featured: boolean
+          is_published: boolean
+          published_at: string | null
+          read_time: string | null
+          slug: string
+          title: string
+          updated_at: string
+          views_count: number
+        }
+        Insert: {
+          author?: string
+          category?: string
+          content?: string | null
+          created_at?: string
+          excerpt?: string | null
+          id?: string
+          image_url?: string | null
+          is_featured?: boolean
+          is_published?: boolean
+          published_at?: string | null
+          read_time?: string | null
+          slug: string
+          title: string
+          updated_at?: string
+          views_count?: number
+        }
+        Update: {
+          author?: string
+          category?: string
+          content?: string | null
+          created_at?: string
+          excerpt?: string | null
+          id?: string
+          image_url?: string | null
+          is_featured?: boolean
+          is_published?: boolean
+          published_at?: string | null
+          read_time?: string | null
+          slug?: string
+          title?: string
+          updated_at?: string
+          views_count?: number
+        }
+        Relationships: []
+      }
       chat_messages: {
         Row: {
           content: string
