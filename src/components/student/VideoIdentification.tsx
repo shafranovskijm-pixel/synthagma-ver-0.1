@@ -47,6 +47,8 @@ export function VideoIdentification({
   const [step, setStep] = useState<"intro" | "camera" | "confirm" | "success" | "history">("intro");
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isCameraLoading, setIsCameraLoading] = useState(false);
+  const [isVideoReady, setIsVideoReady] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -86,11 +88,14 @@ export function VideoIdentification({
 
   const startCamera = async () => {
     setCameraError(null);
+    setIsCameraLoading(true);
+    setIsVideoReady(false);
+    setStep("camera");
+    
     try {
       // Check if getUserMedia is supported
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        setCameraError("Ваш браузер не поддерживает доступ к камере. Попробуйте использовать другой браузер.");
-        return;
+        throw new Error("NotSupportedError");
       }
 
       // Request camera with mobile-friendly constraints
@@ -103,63 +108,20 @@ export function VideoIdentification({
         audio: false,
       };
 
+      console.log("Requesting camera access...");
       const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+      console.log("Camera access granted, tracks:", mediaStream.getVideoTracks().length);
+      
       setStream(mediaStream);
-      
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-        
-        // Wait for video to be ready on mobile
-        await new Promise<void>((resolve, reject) => {
-          const video = videoRef.current;
-          if (!video) {
-            reject(new Error("Video element not found"));
-            return;
-          }
-          
-          const onLoadedMetadata = () => {
-            video.removeEventListener("loadedmetadata", onLoadedMetadata);
-            video.removeEventListener("error", onError);
-            resolve();
-          };
-          
-          const onError = () => {
-            video.removeEventListener("loadedmetadata", onLoadedMetadata);
-            video.removeEventListener("error", onError);
-            reject(new Error("Video failed to load"));
-          };
-          
-          video.addEventListener("loadedmetadata", onLoadedMetadata);
-          video.addEventListener("error", onError);
-          
-          // Fallback timeout for older devices
-          setTimeout(() => {
-            video.removeEventListener("loadedmetadata", onLoadedMetadata);
-            video.removeEventListener("error", onError);
-            resolve();
-          }, 3000);
-        });
-        
-        // Ensure video plays on mobile
-        try {
-          await videoRef.current.play();
-        } catch (playError) {
-          console.warn("Auto-play failed, user interaction may be needed:", playError);
-        }
-      }
-      
       setIsCapturing(true);
-      setStep("camera");
+      
     } catch (error: any) {
       console.error("Camera error:", error);
+      setStep("intro");
       
-      // Stop any partially started stream
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-        setStream(null);
-      }
-      
-      if (error.name === "NotAllowedError" || error.name === "PermissionDeniedError") {
+      if (error.message === "NotSupportedError") {
+        setCameraError("Ваш браузер не поддерживает доступ к камере. Попробуйте использовать Chrome или Safari.");
+      } else if (error.name === "NotAllowedError" || error.name === "PermissionDeniedError") {
         setCameraError("Доступ к камере запрещен. Пожалуйста, разрешите доступ в настройках браузера и обновите страницу.");
       } else if (error.name === "NotFoundError" || error.name === "DevicesNotFoundError") {
         setCameraError("Камера не найдена. Проверьте подключение устройства.");
@@ -172,8 +134,42 @@ export function VideoIdentification({
       } else {
         setCameraError(`Не удалось запустить камеру: ${error.message || "неизвестная ошибка"}. Попробуйте обновить страницу.`);
       }
+    } finally {
+      setIsCameraLoading(false);
     }
   };
+  
+  // Effect to attach stream to video element when both are ready
+  useEffect(() => {
+    if (stream && videoRef.current && step === "camera") {
+      const video = videoRef.current;
+      video.srcObject = stream;
+      
+      const handleCanPlay = () => {
+        console.log("Video can play");
+        setIsVideoReady(true);
+        video.play().catch(err => console.warn("Play failed:", err));
+      };
+      
+      const handleLoadedMetadata = () => {
+        console.log("Video metadata loaded:", video.videoWidth, "x", video.videoHeight);
+      };
+      
+      video.addEventListener("canplay", handleCanPlay);
+      video.addEventListener("loadedmetadata", handleLoadedMetadata);
+      
+      // Try to play immediately if already ready
+      if (video.readyState >= 3) {
+        setIsVideoReady(true);
+        video.play().catch(err => console.warn("Play failed:", err));
+      }
+      
+      return () => {
+        video.removeEventListener("canplay", handleCanPlay);
+        video.removeEventListener("loadedmetadata", handleLoadedMetadata);
+      };
+    }
+  }, [stream, step]);
 
   const stopCamera = () => {
     if (stream) {
@@ -192,13 +188,21 @@ export function VideoIdentification({
 
     if (!context) return;
 
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    
+    // Mirror the image horizontally to match the preview
+    context.translate(canvas.width, 0);
+    context.scale(-1, 1);
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    // Reset transform
+    context.setTransform(1, 0, 0, 1, 0, 0);
 
     const photoData = canvas.toDataURL("image/jpeg", 0.8);
     setCapturedPhoto(photoData);
     setStep("confirm");
+    setIsVideoReady(false);
     stopCamera();
   };
 
@@ -471,24 +475,57 @@ export function VideoIdentification({
           {step === "camera" && (
             <div className="space-y-4">
               <div className="relative aspect-video bg-black rounded-xl overflow-hidden">
+                {/* Loading indicator */}
+                {(isCameraLoading || !isVideoReady) && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black z-10">
+                    <Loader2 className="w-8 h-8 animate-spin text-white mb-2" />
+                    <p className="text-white text-sm">
+                      {isCameraLoading ? "Подключение к камере..." : "Загрузка видео..."}
+                    </p>
+                  </div>
+                )}
                 <video
                   ref={videoRef}
                   autoPlay
                   playsInline
                   muted
+                  webkit-playsinline="true"
                   className="w-full h-full object-cover"
+                  style={{ transform: "scaleX(-1)" }}
                 />
                 {/* Face guide overlay */}
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <div className="w-48 h-64 border-4 border-white/50 rounded-full" />
-                </div>
+                {isVideoReady && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="w-48 h-64 border-4 border-white/50 rounded-full" />
+                  </div>
+                )}
               </div>
+              {cameraError && (
+                <div className="bg-destructive/10 text-destructive rounded-xl p-4 flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                  <p className="text-sm">{cameraError}</p>
+                </div>
+              )}
               <p className="text-center text-sm text-muted-foreground">
                 Расположите ваше лицо в центре кадра
               </p>
-              <Button className="w-full btn-gradient rounded-xl gap-2" onClick={capturePhoto}>
+              <Button 
+                className="w-full btn-gradient rounded-xl gap-2" 
+                onClick={capturePhoto}
+                disabled={!isVideoReady || isCameraLoading}
+              >
                 <Camera className="w-4 h-4" />
                 Сделать фото
+              </Button>
+              <Button 
+                variant="outline" 
+                className="w-full rounded-xl" 
+                onClick={() => {
+                  stopCamera();
+                  setStep("intro");
+                }}
+              >
+                Отмена
               </Button>
             </div>
           )}
