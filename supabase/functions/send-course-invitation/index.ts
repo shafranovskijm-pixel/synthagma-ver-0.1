@@ -48,42 +48,7 @@ const handler = async (req: Request): Promise<Response> => {
         from: "Обучение <onboarding@resend.dev>",
         to: [email],
         subject: `Приглашение на курс: ${courseName}`,
-        html: `
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <meta charset="utf-8">
-            <style>
-              body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-              .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-              .header { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; padding: 30px; border-radius: 12px 12px 0 0; text-align: center; }
-              .content { background: #f9fafb; padding: 30px; border-radius: 0 0 12px 12px; }
-              .button { display: inline-block; background: #6366f1; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 20px 0; }
-              .footer { text-align: center; margin-top: 20px; color: #666; font-size: 14px; }
-            </style>
-          </head>
-          <body>
-            <div class="container">
-              <div class="header">
-                <h1>📚 Приглашение на курс</h1>
-              </div>
-              <div class="content">
-                <p>Здравствуйте!</p>
-                <p>Вас приглашают на курс <strong>"${courseName}"</strong> от компании <strong>${organizationName}</strong>.</p>
-                <p>Чтобы начать обучение, нажмите на кнопку ниже:</p>
-                <p style="text-align: center;">
-                  <a href="${inviteLink}" class="button">Перейти к курсу</a>
-                </p>
-                <p>Или скопируйте эту ссылку в браузер:</p>
-                <p style="word-break: break-all; background: #e5e7eb; padding: 10px; border-radius: 4px; font-size: 12px;">${inviteLink}</p>
-              </div>
-              <div class="footer">
-                <p>Это автоматическое сообщение. Пожалуйста, не отвечайте на него.</p>
-              </div>
-            </div>
-          </body>
-          </html>
-        `,
+        html: `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:Arial,sans-serif;line-height:1.6;color:#333}.container{max-width:600px;margin:0 auto;padding:20px}.header{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;padding:30px;border-radius:12px 12px 0 0;text-align:center}.content{background:#f9fafb;padding:30px;border-radius:0 0 12px 12px}.button{display:inline-block;background:#6366f1;color:white;padding:14px 28px;text-decoration:none;border-radius:8px;font-weight:bold;margin:20px 0}.footer{text-align:center;margin-top:20px;color:#666;font-size:14px}</style></head><body><div class="container"><div class="header"><h1>📚 Приглашение на курс</h1></div><div class="content"><p>Здравствуйте!</p><p>Вас приглашают на курс <strong>"${courseName}"</strong> от компании <strong>${organizationName}</strong>.</p><p>Чтобы начать обучение, нажмите на кнопку ниже:</p><p style="text-align:center"><a href="${inviteLink}" class="button">Перейти к курсу</a></p><p>Или скопируйте эту ссылку в браузер:</p><p style="word-break:break-all;background:#e5e7eb;padding:10px;border-radius:4px;font-size:12px">${inviteLink}</p></div><div class="footer"><p>Это автоматическое сообщение. Пожалуйста, не отвечайте на него.</p></div></div></body></html>`,
       }),
     });
 
