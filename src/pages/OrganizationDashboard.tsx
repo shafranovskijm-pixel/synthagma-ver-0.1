@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import ImportStudentsForm from "@/components/ImportStudentsForm";
 import { AnimatedTabContent } from "@/components/ui/AnimatedTabContent";
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -35,6 +34,14 @@ import { DocumentsStatsCards } from "@/components/organization/tabs/DocumentsSta
 import { StudentsTab } from "@/components/organization/tabs/StudentsTab";
 import { SettingsTab } from "@/components/organization/tabs/SettingsTab";
 import { OrgSidebar, TabType } from "@/components/organization/OrgSidebar";
+import { 
+  ImportStudentsDialog,
+  UnenrollConfirmDialog,
+  AddStudentDialog,
+  EnrollDialog,
+  CategoryDialog,
+  InviteEmailDialog
+} from "@/components/organization/dialogs";
 import { generateEnrollmentOrder } from "@/utils/generateEnrollmentOrder";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrgFeatures } from "@/hooks/useOrgFeatures";
@@ -2918,198 +2925,144 @@ export default function OrganizationDashboard() {
       </main>
 
       {/* Dialogs */}
-      {/* Import Students Dialog */}
-      <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
-        <DialogContent className="max-w-2xl rounded-2xl">
-          <DialogHeader>
-            <DialogTitle className="font-display">Импорт учеников</DialogTitle>
-            <DialogDescription>
-              Загрузите файл Excel или CSV со списком учеников
-            </DialogDescription>
-          </DialogHeader>
-          {organizationId && <ImportStudentsForm organizationId={organizationId} courses={courses.filter(c => c.is_published)} companies={companies} onSuccess={() => {
-          setShowImportDialog(false);
-          window.location.reload();
-        }} />}
-        </DialogContent>
-      </Dialog>
+      <ImportStudentsDialog
+        open={showImportDialog}
+        onOpenChange={setShowImportDialog}
+        organizationId={organizationId}
+        courses={courses}
+        companies={companies}
+      />
 
-      {/* Bulk Unenroll Confirmation Dialog */}
-      <Dialog open={showUnenrollConfirm} onOpenChange={setShowUnenrollConfirm}>
-        <DialogContent className="rounded-2xl">
-          <DialogHeader>
-            <DialogTitle className="font-display text-destructive">Подтвердите отчисление</DialogTitle>
-            <DialogDescription>
-              Вы действительно хотите отчислить {getSelectedEnrollmentsCount()} учеников с курсов? 
-              Это действие нельзя отменить.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex gap-3 justify-end pt-4">
-            <Button variant="outline" className="rounded-xl" onClick={() => setShowUnenrollConfirm(false)} disabled={isUnenrolling}>
-              Отмена
-            </Button>
-            <Button variant="destructive" className="rounded-xl" onClick={handleBulkUnenroll} disabled={isUnenrolling}>
-              {isUnenrolling ? <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Отчисление...
-                </> : <>
-                  <XCircle className="w-4 h-4 mr-2" />
-                  Отчислить
-                </>}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <UnenrollConfirmDialog
+        open={showUnenrollConfirm}
+        onOpenChange={setShowUnenrollConfirm}
+        selectedCount={getSelectedEnrollmentsCount()}
+        isUnenrolling={isUnenrolling}
+        onConfirm={handleBulkUnenroll}
+      />
 
-      {/* Add Student Dialog */}
-      <Dialog open={showAddStudentDialog} onOpenChange={setShowAddStudentDialog}>
-        <DialogContent className="rounded-2xl">
-          <DialogHeader>
-            <DialogTitle className="font-display">Добавить ученика</DialogTitle>
-            <DialogDescription>
-              Создайте нового ученика или добавьте существующего на курс
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>ФИО *</Label>
-              <Input placeholder="Иванов Иван Иванович" className="rounded-xl" value={newStudentName} onChange={e => setNewStudentName(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Email {!noLoginStudent && "*"}</Label>
-              <Input type="email" placeholder="ivan@example.com" className="rounded-xl" value={newStudentEmail} onChange={e => setNewStudentEmail(e.target.value)} />
-              {!noLoginStudent && <p className="text-xs text-muted-foreground">
-                  Если ученик с таким email уже существует — он будет зачислен на курс
-                </p>}
-            </div>
-            <div className="flex items-center space-x-2">
-              <input type="checkbox" id="noLogin" checked={noLoginStudent} onChange={e => setNoLoginStudent(e.target.checked)} className="rounded" />
-              <Label htmlFor="noLogin" className="text-sm font-normal cursor-pointer">
-                Без входа в систему (можно использовать одну почту для нескольких учеников)
-              </Label>
-            </div>
-            <div className="space-y-2">
-              <Label>Компания (необязательно)</Label>
-              <Select value={selectedCompanyId} onValueChange={setSelectedCompanyId}>
-                <SelectTrigger className="rounded-xl">
-                  <SelectValue placeholder="Выберите компанию" />
-                </SelectTrigger>
-                <SelectContent>
-                  {companies.map(company => <SelectItem key={company.id} value={company.id}>
-                      {company.name} {company.inn ? `(ИНН: ${company.inn})` : ""}
-                    </SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Курс (необязательно)</Label>
-              <Select value={selectedCourseId} onValueChange={setSelectedCourseId}>
-                <SelectTrigger className="rounded-xl">
-                  <SelectValue placeholder="Выберите курс" />
-                </SelectTrigger>
-                <SelectContent>
-                  {courses.filter(c => c.is_published).map(course => <SelectItem key={course.id} value={course.id}>{course.title}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <Button className="w-full btn-gradient rounded-xl" onClick={handleCreateStudent} disabled={isCreatingStudent}>
-              {isCreatingStudent ? <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Добавление...
-                </> : "Добавить ученика"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <AddStudentDialog
+        open={showAddStudentDialog}
+        onOpenChange={setShowAddStudentDialog}
+        courses={courses}
+        companies={companies}
+        onSubmit={async (name, email, courseId, companyId, noLogin) => {
+          // Directly call create student logic with provided values
+          if (!organizationId) return;
+          if (!name.trim()) {
+            toast.error("Введите ФИО");
+            return;
+          }
+          if (!noLogin && !email.trim()) {
+            toast.error("Введите email");
+            return;
+          }
+          
+          setIsCreatingStudent(true);
+          try {
+            const { data, error } = await supabase.functions.invoke('register-student', {
+              body: {
+                organizationId,
+                fullName: name.trim(),
+                email: email.trim() || null,
+                courseId: courseId || null,
+                companyId: companyId || null,
+                noLogin: noLogin
+              }
+            });
+            if (error) throw error;
+            if (data?.error) throw new Error(data.error);
+            toast.success("Ученик успешно добавлен");
+            setShowAddStudentDialog(false);
+            setRefreshKey(prev => prev + 1);
+          } catch (error: any) {
+            console.error("Error creating student:", error);
+            toast.error(error.message || "Ошибка создания ученика");
+          } finally {
+            setIsCreatingStudent(false);
+          }
+        }}
+        isCreating={isCreatingStudent}
+      />
 
-      {/* Enroll Dialog - Enhanced with search */}
-      <Dialog open={showEnrollDialog} onOpenChange={setShowEnrollDialog}>
-        <DialogContent className="rounded-2xl max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="font-display">Зачислить на курс</DialogTitle>
-            <DialogDescription>
-              Выберите курс для зачисления {selectedStudentIds.size} учеников
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4 flex-1 overflow-hidden flex flex-col">
-            <div className="relative">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Поиск курса..." value={courseSearchQuery} onChange={e => setCourseSearchQuery(e.target.value)} className="pl-10 rounded-xl" />
-            </div>
-            <div className="flex-1 overflow-auto border border-border rounded-xl p-2 space-y-2 min-h-[200px] max-h-[300px]">
-              {courses.filter(c => c.is_published && c.title.toLowerCase().includes(courseSearchQuery.toLowerCase())).length === 0 ? <div className="text-center text-muted-foreground py-8">
-                  <BookOpen className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                  <p>Курсы не найдены</p>
-                </div> : courses.filter(c => c.is_published && c.title.toLowerCase().includes(courseSearchQuery.toLowerCase())).map(course => {
-              const category = getCategoryById(course.category_id);
-              const isSelected = enrollCourseId === course.id;
-              return <div key={course.id} onClick={() => setEnrollCourseId(course.id)} className={`p-3 rounded-xl cursor-pointer transition-colors ${isSelected ? 'bg-primary/10 border-2 border-primary' : 'bg-secondary/30 hover:bg-secondary/50 border-2 border-transparent'}`}>
-                      <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-                          <BookOpen className="w-5 h-5" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="font-medium">{course.title}</div>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <span>{course.lessonsCount} уроков</span>
-                            <span>•</span>
-                            <span>{course.studentsCount} учеников</span>
-                            {category && <>
-                                <span>•</span>
-                                <span className="px-1.5 py-0.5 rounded text-xs" style={{
-                          backgroundColor: category.color + '20',
-                          color: category.color
-                        }}>
-                                  {category.name}
-                                </span>
-                              </>}
-                          </div>
-                        </div>
-                        {isSelected && <CheckCircle2 className="w-5 h-5 text-primary" />}
-                      </div>
-                    </div>;
-            })}
-            </div>
-            <Button className="w-full btn-gradient rounded-xl" onClick={handleBulkEnroll} disabled={isEnrolling || !enrollCourseId}>
-              {isEnrolling ? <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Зачисление...
-                </> : <>
-                  <GraduationCap className="w-4 h-4 mr-2" />
-                  Зачислить на курс
-                </>}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <EnrollDialog
+        open={showEnrollDialog}
+        onOpenChange={setShowEnrollDialog}
+        selectedCount={selectedStudentIds.size}
+        courses={courses}
+        categories={categories}
+        getCategoryById={getCategoryById}
+        isEnrolling={isEnrolling}
+        onEnroll={async (courseId) => {
+          if (!courseId) {
+            toast.error("Выберите курс");
+            return;
+          }
+          const userIds = getSelectedUserIds();
+          if (userIds.length === 0) {
+            toast.error("Выберите учеников");
+            return;
+          }
+          setIsEnrolling(true);
+          try {
+            const { data: existingEnrollments } = await supabase
+              .from("enrollments")
+              .select("user_id")
+              .eq("course_id", courseId)
+              .in("user_id", userIds);
+            const existingUserIds = new Set((existingEnrollments || []).map(e => e.user_id));
+            const newUserIds = userIds.filter(id => !existingUserIds.has(id));
+            if (newUserIds.length === 0) {
+              toast.info("Все выбранные ученики уже зачислены на этот курс");
+              setShowEnrollDialog(false);
+              return;
+            }
+            const enrollmentsToInsert = newUserIds.map(userId => ({
+              user_id: userId,
+              course_id: courseId,
+              status: "active",
+              progress: 0
+            }));
+            const { error } = await supabase.from("enrollments").insert(enrollmentsToInsert);
+            if (error) throw error;
+            toast.success(`Зачислено ${newUserIds.length} учеников`);
+            setShowEnrollDialog(false);
+            setSelectedStudentIds(new Set());
+            setRefreshKey(prev => prev + 1);
+          } catch (error) {
+            console.error("Error enrolling:", error);
+            toast.error("Ошибка зачисления");
+          } finally {
+            setIsEnrolling(false);
+          }
+        }}
+      />
 
-      {/* Category Dialog */}
-      <Dialog open={showCategoryDialog} onOpenChange={setShowCategoryDialog}>
-        <DialogContent className="rounded-2xl">
-          <DialogHeader>
-            <DialogTitle className="font-display">Создать категорию</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Название</Label>
-              <Input placeholder="Название категории" className="rounded-xl" value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Цвет</Label>
-              <div className="flex items-center gap-3">
-                <input type="color" value={newCategoryColor} onChange={e => setNewCategoryColor(e.target.value)} className="w-12 h-10 rounded-lg border border-border cursor-pointer" />
-                <Input value={newCategoryColor} onChange={e => setNewCategoryColor(e.target.value)} className="flex-1 rounded-xl" />
-              </div>
-            </div>
-            <Button className="w-full btn-gradient rounded-xl" onClick={handleCreateCategory} disabled={isCreatingCategory}>
-              {isCreatingCategory ? <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Создание...
-                </> : "Создать"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <CategoryDialog
+        open={showCategoryDialog}
+        onOpenChange={setShowCategoryDialog}
+        isCreating={isCreatingCategory}
+        onCreate={async (name, color) => {
+          if (!organizationId || !name.trim()) return;
+          setIsCreatingCategory(true);
+          try {
+            const { error } = await supabase.from("course_categories").insert({
+              name: name.trim(),
+              color,
+              organization_id: organizationId
+            });
+            if (error) throw error;
+            toast.success("Категория создана");
+            setShowCategoryDialog(false);
+            setRefreshKey(prev => prev + 1);
+          } catch (error) {
+            console.error("Error creating category:", error);
+            toast.error("Ошибка создания категории");
+          } finally {
+            setIsCreatingCategory(false);
+          }
+        }}
+      />
 
       {/* Course Details Modal */}
       <Dialog open={showCourseDetailsModal} onOpenChange={setShowCourseDetailsModal}>
@@ -3395,37 +3348,40 @@ export default function OrganizationDashboard() {
         </DialogContent>
       </Dialog>
 
-      {/* Invite by Email Dialog */}
-      <Dialog open={showInviteEmailDialog} onOpenChange={setShowInviteEmailDialog}>
-        <DialogContent className="rounded-2xl">
-          <DialogHeader>
-            <DialogTitle className="font-display">Отправить приглашение на курс</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Email получателя</Label>
-              <Input type="email" placeholder="student@example.com" className="rounded-xl" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} />
-            </div>
-            <div className="bg-secondary/30 rounded-xl p-3 text-sm">
-              <p className="text-muted-foreground">
-                Курс: <span className="font-medium text-foreground">{selectedCourse?.title}</span>
-              </p>
-              <p className="text-muted-foreground mt-1">
-                Получатель получит письмо со ссылкой на курс
-              </p>
-            </div>
-            <Button className="w-full btn-gradient rounded-xl" onClick={handleSendInvitation} disabled={isSendingInvitation || !inviteEmail.trim()}>
-              {isSendingInvitation ? <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Отправка...
-                </> : <>
-                  <Send className="w-4 h-4 mr-2" />
-                  Отправить приглашение
-                </>}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <InviteEmailDialog
+        open={showInviteEmailDialog}
+        onOpenChange={setShowInviteEmailDialog}
+        courseTitle={selectedCourse?.title}
+        isSending={isSendingInvitation}
+        onSend={async (email) => {
+          if (!selectedCourse) return;
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(email.trim())) {
+            toast.error("Введите корректный email адрес");
+            return;
+          }
+          setIsSendingInvitation(true);
+          try {
+            const { data, error } = await supabase.functions.invoke("send-course-invitation", {
+              body: {
+                email: email.trim(),
+                courseName: selectedCourse.title,
+                courseId: selectedCourse.id,
+                organizationName: organizationName
+              }
+            });
+            if (error) throw error;
+            if (data?.error) throw new Error(data.error);
+            toast.success(`Приглашение отправлено на ${email}`);
+            setShowInviteEmailDialog(false);
+          } catch (error: any) {
+            console.error("Error sending invitation:", error);
+            toast.error(error.message || "Ошибка отправки приглашения");
+          } finally {
+            setIsSendingInvitation(false);
+          }
+        }}
+      />
 
       {/* Student Details Dialog */}
       <Dialog open={showStudentDialog} onOpenChange={setShowStudentDialog}>
