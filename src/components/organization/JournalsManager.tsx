@@ -32,6 +32,7 @@ import { JournalEditor } from "./JournalEditor";
 import { AutoAttendanceJournal } from "./AutoAttendanceJournal";
 import { AutoGradesJournal } from "./AutoGradesJournal";
 import { AutoFinalAttestationJournal } from "./AutoFinalAttestationJournal";
+import { AutoDocumentRegistrationJournal } from "./AutoDocumentRegistrationJournal";
 
 interface JournalItem {
   id: string;
@@ -146,6 +147,7 @@ export function JournalsManager({ organizationId }: JournalsManagerProps) {
   const [showAutoAttendance, setShowAutoAttendance] = useState(false);
   const [showAutoGrades, setShowAutoGrades] = useState(false);
   const [showAutoFinalAttestation, setShowAutoFinalAttestation] = useState(false);
+  const [showAutoDocumentRegistration, setShowAutoDocumentRegistration] = useState(false);
 
   const toggleCategory = (categoryId: string) => {
     setExpandedCategories((prev) =>
@@ -191,6 +193,16 @@ export function JournalsManager({ organizationId }: JournalsManagerProps) {
       <AutoFinalAttestationJournal
         organizationId={organizationId}
         onClose={() => setShowAutoFinalAttestation(false)}
+      />
+    );
+  }
+
+  // Show automatic document registration journal
+  if (showAutoDocumentRegistration) {
+    return (
+      <AutoDocumentRegistrationJournal
+        organizationId={organizationId}
+        onClose={() => setShowAutoDocumentRegistration(false)}
       />
     );
   }
@@ -369,6 +381,32 @@ export function JournalsManager({ organizationId }: JournalsManagerProps) {
                                 size="sm"
                                 className="rounded-lg"
                                 onClick={() => setShowAutoFinalAttestation(true)}
+                              >
+                                <BarChart3 className="w-4 h-4 mr-2" />
+                                Автоматический
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="rounded-lg"
+                                onClick={() =>
+                                  setActiveJournal({
+                                    type: journal.id,
+                                    title: journal.title,
+                                  })
+                                }
+                              >
+                                <Edit className="w-4 h-4 mr-2" />
+                                Ручной
+                              </Button>
+                            </>
+                          ) : journal.id === "document_registration" ? (
+                            <>
+                              <Button
+                                variant="default"
+                                size="sm"
+                                className="rounded-lg"
+                                onClick={() => setShowAutoDocumentRegistration(true)}
                               >
                                 <BarChart3 className="w-4 h-4 mr-2" />
                                 Автоматический
