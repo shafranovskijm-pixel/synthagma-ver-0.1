@@ -18,6 +18,7 @@ import CourseLearning from "./pages/CourseLearning";
 import CoursePreview from "./pages/CoursePreview";
 import JoinByLink from "./pages/JoinByLink";
 import AdminDashboard from "./pages/AdminDashboard";
+import Features from "./pages/Features";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -71,6 +72,7 @@ const App = () => (
               </ProtectedRoute>
             } />
             <Route path="/join/:token" element={<JoinByLink />} />
+            <Route path="/features" element={<Features />} />
             <Route path="/admin" element={
               <ProtectedRoute requiredRole="admin">
                 <AdminDashboard />

@@ -1,4 +1,4 @@
-import { Check, Star, Crown, Zap, ArrowRight } from "lucide-react";
+import { Check, Star, Crown, Zap, ArrowRight, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { ScrollReveal, ScrollRevealGroup, scrollRevealItem } from "@/components/ui/ScrollReveal";
@@ -69,9 +69,18 @@ export function Pricing() {
           <h2 className="font-display text-4xl md:text-5xl font-bold mb-4">
             Выберите <span className="gradient-text-gold">подходящий план</span>
           </h2>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-6">
             Гибкие тарифы для организаций любого размера
           </p>
+          
+          {/* Link to features page */}
+          <Link to="/features">
+            <Button variant="outline" className="rounded-xl gap-2 hover:bg-primary/10">
+              <FileText className="w-4 h-4" />
+              Все функции и цены
+              <ArrowRight className="w-4 h-4" />
+            </Button>
+          </Link>
           
           {/* Egyptian border decoration */}
           <div className="egyptian-border w-32 mx-auto mt-8 rounded-full" />
