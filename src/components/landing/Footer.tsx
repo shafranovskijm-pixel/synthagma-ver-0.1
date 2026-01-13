@@ -50,7 +50,7 @@ export function Footer() {
                 { label: "Возможности", href: "#features" },
                 { label: "Дорожная карта", href: "#roadmap" },
                 { label: "Калькулятор стоимости", href: "#pricing" },
-                { label: "Документация", href: "#" },
+                { label: "О нас", href: "/about" },
               ].map((link) => (
                 <li key={link.label}>
                   <a href={link.href} className="hover:text-background transition-colors flex items-center gap-1 group">

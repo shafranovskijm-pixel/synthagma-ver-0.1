@@ -59,6 +59,9 @@ export function Hero() {
             <a href="#pricing" className="text-muted-foreground hover:text-primary transition-colors font-medium">
               Калькулятор стоимости
             </a>
+            <Link to="/about" className="text-muted-foreground hover:text-primary transition-colors font-medium">
+              О нас
+            </Link>
           </div>
           <div className="flex items-center gap-3">
             <ThemeToggle />
