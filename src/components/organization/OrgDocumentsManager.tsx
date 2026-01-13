@@ -985,7 +985,7 @@ export function OrgDocumentsManager({ organizationId }: OrgDocumentsManagerProps
 
       {/* Order Documents Dialog */}
       <Dialog open={showOrderDialog} onOpenChange={setShowOrderDialog}>
-        <DialogContent className="rounded-2xl max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+        <DialogContent className="rounded-2xl max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle className="font-display text-xl">Заказать документы</DialogTitle>
             <DialogDescription>
@@ -993,7 +993,7 @@ export function OrgDocumentsManager({ organizationId }: OrgDocumentsManagerProps
             </DialogDescription>
           </DialogHeader>
           
-          <ScrollArea className="flex-1 max-h-[50vh] pr-4">
+          <ScrollArea className="flex-1 min-h-[200px] max-h-[60vh] pr-4">
             <div className="space-y-4">
               {REGULAR_CATEGORIES.map((category) => {
                 const CategoryIcon = category.icon;
