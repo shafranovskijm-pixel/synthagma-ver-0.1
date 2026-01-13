@@ -25,6 +25,7 @@ import { FRDOManager } from "@/components/organization/FRDOManager";
 import { OrgRequisitesForm } from "@/components/organization/OrgRequisitesForm";
 import { OrdersArchive } from "@/components/organization/OrdersArchive";
 import { DocumentArchiveView } from "@/components/organization/DocumentArchiveView";
+import { JournalsManager } from "@/components/organization/JournalsManager";
 import { generateEnrollmentOrder } from "@/utils/generateEnrollmentOrder";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -133,7 +134,7 @@ export default function OrganizationDashboard() {
     user
   } = useAuth();
   const isMobile = useIsMobile();
-  const [activeTab, setActiveTab] = useState<"courses" | "organizations" | "students" | "library" | "stats" | "links" | "documents" | "documents-orders" | "documents-protocols" | "documents-certificates" | "documents-diplomas" | "documents-testimonials" | "services" | "settings" | "frdo">("courses");
+  const [activeTab, setActiveTab] = useState<"courses" | "organizations" | "students" | "library" | "stats" | "links" | "documents" | "documents-orders" | "documents-protocols" | "documents-certificates" | "documents-diplomas" | "documents-testimonials" | "journals" | "services" | "settings" | "frdo">("courses");
   const [isDocumentsMenuOpen, setIsDocumentsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showImportDialog, setShowImportDialog] = useState(false);
@@ -366,7 +367,7 @@ export default function OrganizationDashboard() {
   });
 
   // Swipe navigation for mobile tabs
-  type TabType = "courses" | "organizations" | "students" | "library" | "stats" | "links" | "documents" | "documents-orders" | "documents-protocols" | "documents-certificates" | "documents-diplomas" | "documents-testimonials" | "services" | "settings" | "frdo";
+  type TabType = "courses" | "organizations" | "students" | "library" | "stats" | "links" | "documents" | "documents-orders" | "documents-protocols" | "documents-certificates" | "documents-diplomas" | "documents-testimonials" | "journals" | "services" | "settings" | "frdo";
   
   const getVisibleTabs = useCallback((): TabType[] => {
     const baseTabs: TabType[] = [
@@ -378,6 +379,7 @@ export default function OrganizationDashboard() {
     if (menuSettings.showStats) baseTabs.push("stats");
     if (menuSettings.showLinks) baseTabs.push("links");
     if (menuSettings.showDocuments) baseTabs.push("documents");
+    baseTabs.push("journals");
     if (isFrdoEnabled) baseTabs.push("frdo");
     if (menuSettings.showServices) baseTabs.push("services");
     baseTabs.push("settings");
@@ -2582,6 +2584,13 @@ export default function OrganizationDashboard() {
                 </CollapsibleContent>
               </Collapsible>
             )}
+            <button onClick={() => {
+              setActiveTab("journals");
+              setIsMobileSidebarOpen(false);
+            }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === "journals" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary"}`}>
+              <ClipboardList className="w-5 h-5" />
+              Журналы
+            </button>
             {isFrdoEnabled && <button onClick={() => {
             setActiveTab("frdo");
             setIsMobileSidebarOpen(false);
@@ -2637,6 +2646,7 @@ export default function OrganizationDashboard() {
                     {activeTab === "documents-certificates" && "Удостоверения"}
                     {activeTab === "documents-diplomas" && "Дипломы"}
                     {activeTab === "documents-testimonials" && "Свидетельства"}
+                    {activeTab === "journals" && "Журналы учёта"}
                     {activeTab === "services" && "Услуги"}
                     {activeTab === "settings" && "Настройки"}
                   </h1>
@@ -2710,8 +2720,8 @@ export default function OrganizationDashboard() {
 
         <div className="p-4 lg:p-8 overflow-hidden">
           <AnimatedTabContent tabKey={activeTab} direction={swipeDirection} isMobile={isMobile}>
-          {/* Stats cards - hidden for organizations, services, settings, students, library, documents, and frdo tabs */}
-          {activeTab !== "organizations" && activeTab !== "services" && activeTab !== "settings" && activeTab !== "students" && activeTab !== "frdo" && activeTab !== "library" && !activeTab.startsWith("documents") && (
+          {/* Stats cards - hidden for organizations, services, settings, students, library, documents, journals, and frdo tabs */}
+          {activeTab !== "organizations" && activeTab !== "services" && activeTab !== "settings" && activeTab !== "students" && activeTab !== "frdo" && activeTab !== "library" && activeTab !== "journals" && !activeTab.startsWith("documents") && (
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-6 mb-6 lg:mb-8">
               <div className="bg-card rounded-xl lg:rounded-2xl p-4 lg:p-6 border border-border">
                 <div className="flex items-center gap-3 lg:gap-4">
@@ -3548,6 +3558,9 @@ export default function OrganizationDashboard() {
               docTypes={["testimonial_profession", "testimonial_position"]}
             />
           )}
+
+          {/* Journals Tab */}
+          {activeTab === "journals" && organizationId && <JournalsManager organizationId={organizationId} />}
 
           {/* FRDO Tab */}
           {activeTab === "frdo" && organizationId && <FRDOManager organizationId={organizationId} />}
