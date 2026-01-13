@@ -35,6 +35,7 @@ import { StudentsTab } from "@/components/organization/tabs/StudentsTab";
 import { SettingsTab } from "@/components/organization/tabs/SettingsTab";
 import { LinksTab } from "@/components/organization/tabs/LinksTab";
 import { StatsTab } from "@/components/organization/tabs/StatsTab";
+import { DocumentsTab } from "@/components/organization/tabs/DocumentsTab";
 import { OrgSidebar, TabType } from "@/components/organization/OrgSidebar";
 import { 
   ImportStudentsDialog,
@@ -2599,7 +2600,8 @@ export default function OrganizationDashboard() {
           {activeTab === "library" && organizationId && <LibraryManager organizationId={organizationId} />}
 
           {/* Documents Tab */}
-          {activeTab === "documents" && organizationId && <div className="space-y-4 lg:space-y-6">
+          {activeTab === "documents" && organizationId && (
+            <div className="space-y-4 lg:space-y-6">
               <div className="flex justify-end">
                 <Button variant="outline" className="rounded-xl gap-2 text-xs lg:text-sm" onClick={() => setShowBulkUploadDialog(true)}>
                   <Users className="w-4 h-4" />
@@ -2607,8 +2609,9 @@ export default function OrganizationDashboard() {
                   <span className="sm:hidden">Массовая загрузка</span>
                 </Button>
               </div>
-              <OrgDocumentsManager organizationId={organizationId} />
-            </div>}
+              <DocumentsTab organizationId={organizationId} />
+            </div>
+          )}
 
           {/* Documents Orders Tab */}
           {activeTab === "documents-orders" && organizationId && (

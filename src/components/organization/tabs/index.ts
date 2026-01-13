@@ -5,5 +5,6 @@ export { StudentsTab } from './StudentsTab';
 export { SettingsTab } from './SettingsTab';
 export { LinksTab } from './LinksTab';
 export { StatsTab } from './StatsTab';
+export { DocumentsTab } from './DocumentsTab';
 export type { TabType } from '../OrgSidebar';
 export { OrgSidebar } from '../OrgSidebar';
