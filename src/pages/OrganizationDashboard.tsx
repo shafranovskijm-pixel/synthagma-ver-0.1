@@ -60,6 +60,8 @@ import { useOrganizationData } from "@/hooks/useOrganizationData";
 import { useRegistrationLinks } from "@/hooks/useRegistrationLinks";
 import { useCompanyActions } from "@/hooks/useCompanyActions";
 import { useStudentCoursesDialog } from "@/hooks/useStudentCoursesDialog";
+import { useStudentManagement } from "@/hooks/useStudentManagement";
+import { useCourseStudentsManager } from "@/hooks/useCourseStudentsManager";
 import { Button } from "@/components/ui/button";
 import { GraduationCap, BookOpen, Users, BarChart3, Settings, LogOut, Plus, Upload, FileSpreadsheet, Search, Eye, TrendingUp, Clock, CheckCircle2, XCircle, Loader2, Edit, Trash2, FileText, Download, X, ChevronRight, ChevronDown, Link, Copy, Building2, Save, Send, FileCheck, Receipt, CheckSquare, LayoutGrid, List, Filter, Tag, Palette, History, Moon, Sun, Library, Trophy, MessageCircle, Image, ExternalLink, ShoppingBag, Mail, Key, Menu, AlertCircle, Award, ClipboardList } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -261,14 +263,8 @@ export default function OrganizationDashboard() {
   const [isUnenrolling, setIsUnenrolling] = useState(false);
   const [showUnenrollConfirm, setShowUnenrollConfirm] = useState(false);
 
-  // Course details dialog (for assigning students to course)
-  const [showCourseStudentsDialog, setShowCourseStudentsDialog] = useState(false);
-  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
-  const [courseStudents, setCourseStudents] = useState<Student[]>([]);
-  const [availableStudentsForCourse, setAvailableStudentsForCourse] = useState<Student[]>([]);
-  const [isLoadingCourseStudents, setIsLoadingCourseStudents] = useState(false);
-  const [selectedStudentsToAdd, setSelectedStudentsToAdd] = useState<Set<string>>(new Set());
-  const [isAddingStudentsToCourse, setIsAddingStudentsToCourse] = useState(false);
+  // Course students manager hook
+  const courseStudentsManager = useCourseStudentsManager(organizationId);
 
   // Email invitation state
   const [showInviteEmailDialog, setShowInviteEmailDialog] = useState(false);
@@ -925,39 +921,8 @@ export default function OrganizationDashboard() {
   useEffect(() => {
     const loadCourseStudentsData = async () => {
       if (!showCourseDetailsModal || !selectedCourseForDetails) return;
-      setIsLoadingCourseStudents(true);
-      try {
-        const {
-          data: enrollments
-        } = await supabase.from("enrollments").select("id, user_id, progress, status").eq("course_id", selectedCourseForDetails.id);
-        const enrolledList: Student[] = [];
-        for (const enrollment of enrollments || []) {
-          const {
-            data: profile
-          } = await supabase.from("profiles").select("id, user_id, full_name, email, login, generated_password").eq("user_id", enrollment.user_id).single();
-          if (profile) {
-            enrolledList.push({
-              id: profile.id,
-              user_id: profile.user_id,
-              enrollment_id: enrollment.id,
-              name: profile.full_name || "Без имени",
-              email: profile.email || "",
-              login: profile.login || null,
-              generated_password: profile.generated_password || null,
-              course: selectedCourseForDetails.title,
-              course_id: selectedCourseForDetails.id,
-              progress: enrollment.progress,
-              lastActivity: null,
-              status: enrollment.status
-            });
-          }
-        }
-        setCourseStudents(enrolledList);
-      } catch (error) {
-        console.error("Error loading course students:", error);
-      } finally {
-        setIsLoadingCourseStudents(false);
-      }
+      // Load students for course details modal via hook
+      courseStudentsManager.openCourseStudents(selectedCourseForDetails);
     };
     loadCourseStudentsData();
   }, [showCourseDetailsModal, selectedCourseForDetails?.id]);
@@ -1360,129 +1325,15 @@ export default function OrganizationDashboard() {
     }).length;
   };
 
-  // Open course details to assign students
-  const handleOpenCourseStudents = async (course: Course) => {
-    setSelectedCourse(course);
-    setShowCourseStudentsDialog(true);
-    setIsLoadingCourseStudents(true);
-    setSelectedStudentsToAdd(new Set());
-    try {
-      const {
-        data: enrollments
-      } = await supabase.from("enrollments").select("id, user_id, progress, status").eq("course_id", course.id);
-      const enrolledStudentIds = new Set((enrollments || []).map(e => e.user_id));
-      const enrolledList: Student[] = [];
-      for (const enrollment of enrollments || []) {
-        const {
-          data: profile
-        } = await supabase.from("profiles").select("id, user_id, full_name, email, login, generated_password").eq("user_id", enrollment.user_id).single();
-        if (profile) {
-          enrolledList.push({
-            id: profile.id,
-            user_id: profile.user_id,
-            enrollment_id: enrollment.id,
-            name: profile.full_name || "Без имени",
-            email: profile.email || "",
-            login: profile.login || null,
-            generated_password: profile.generated_password || null,
-            course: course.title,
-            course_id: course.id,
-            progress: enrollment.progress,
-            lastActivity: null,
-            status: enrollment.status
-          });
-        }
-      }
-      setCourseStudents(enrolledList);
-      if (organizationId) {
-        const {
-          data: allProfiles
-        } = await supabase.from("profiles").select("id, user_id, full_name, email, login, generated_password").eq("organization_id", organizationId);
-        const available = (allProfiles || []).filter(p => !enrolledStudentIds.has(p.user_id)).map(p => ({
-          id: p.id,
-          user_id: p.user_id,
-          enrollment_id: null,
-          name: p.full_name || "Без имени",
-          email: p.email || "",
-          login: p.login || null,
-          generated_password: p.generated_password || null,
-          course: null,
-          course_id: null,
-          progress: 0,
-          lastActivity: null,
-          status: null
-        }));
-        setAvailableStudentsForCourse(available);
-      }
-    } catch (error) {
-      console.error("Error loading course students:", error);
-      toast.error("Ошибка загрузки данных");
-    } finally {
-      setIsLoadingCourseStudents(false);
-    }
-  };
-  const handleAddStudentsToCourse = async () => {
-    if (!selectedCourse || selectedStudentsToAdd.size === 0) return;
-    setIsAddingStudentsToCourse(true);
-    try {
-      const userIds = Array.from(selectedStudentsToAdd);
-
-      // Check for existing enrollments
-      const {
-        data: existingEnrollments
-      } = await supabase.from("enrollments").select("user_id").eq("course_id", selectedCourse.id).in("user_id", userIds);
-      const existingUserIds = new Set((existingEnrollments || []).map(e => e.user_id));
-      const newUserIds = userIds.filter(id => !existingUserIds.has(id));
-      if (newUserIds.length === 0) {
-        toast.info("Все выбранные ученики уже зачислены на этот курс");
-        setSelectedStudentsToAdd(new Set());
-        return;
-      }
-      const enrollmentsToInsert = newUserIds.map(userId => ({
-        user_id: userId,
-        course_id: selectedCourse.id,
-        status: "active",
-        progress: 0
-      }));
-      const {
-        error
-      } = await supabase.from("enrollments").insert(enrollmentsToInsert);
-      if (error) throw error;
-      toast.success(`Зачислено ${newUserIds.length} учеников`);
-      setSelectedStudentsToAdd(new Set());
-      handleOpenCourseStudents(selectedCourse);
-    } catch (error) {
-      console.error("Error adding students to course:", error);
-      toast.error("Ошибка зачисления");
-    } finally {
-      setIsAddingStudentsToCourse(false);
-    }
-  };
-  const handleRemoveFromCourse = async (enrollmentId: string) => {
-    try {
-      const {
-        error
-      } = await supabase.from("enrollments").delete().eq("id", enrollmentId);
-      if (error) throw error;
-      toast.success("Ученик удалён из курса");
-      if (selectedCourse) {
-        handleOpenCourseStudents(selectedCourse);
-      }
-    } catch (error) {
-      console.error("Error removing enrollment:", error);
-      toast.error("Ошибка удаления");
-    }
-  };
-
-  // Open student courses management dialog - using hook
-  const handleOpenStudentCourses = studentCoursesDialog.openDialog;
-
-  // Toggle course selection for bulk enrollment - using hook
-  const toggleCourseSelection = studentCoursesDialog.toggleCourseSelection;
+  // Open course details to assign students - using hook
+  const handleOpenCourseStudents = courseStudentsManager.openCourseStudents;
+  const handleAddStudentsToCourse = courseStudentsManager.addStudentsToCourse;
+  const handleRemoveFromCourse = courseStudentsManager.removeStudentFromCourse;
 
   // Send course invitation by email
   const handleSendInvitation = async () => {
-    if (!selectedCourse || !inviteEmail.trim()) {
+    const course = courseStudentsManager.selectedCourse;
+    if (!course || !inviteEmail.trim()) {
       toast.error("Введите email получателя");
       return;
     }
@@ -1499,8 +1350,8 @@ export default function OrganizationDashboard() {
       } = await supabase.functions.invoke("send-course-invitation", {
         body: {
           email: inviteEmail.trim(),
-          courseName: selectedCourse.title,
-          courseId: selectedCourse.id,
+          courseName: course.title,
+          courseId: course.id,
           organizationName: organizationName
         }
       });
@@ -2679,7 +2530,7 @@ export default function OrganizationDashboard() {
         open={showCourseDetailsModal}
         onOpenChange={setShowCourseDetailsModal}
         course={selectedCourseForDetails}
-        courseStudents={courseStudents}
+        courseStudents={courseStudentsManager.courseStudents}
         organizationId={organizationId}
         activeTab={courseDetailsTab}
         onTabChange={setCourseDetailsTab}
@@ -2694,25 +2545,17 @@ export default function OrganizationDashboard() {
       />
 
       <CourseStudentsDialog
-        open={showCourseStudentsDialog}
-        onOpenChange={setShowCourseStudentsDialog}
-        course={selectedCourse}
-        courseStudents={courseStudents}
-        availableStudents={availableStudentsForCourse}
+        open={courseStudentsManager.showCourseStudentsDialog}
+        onOpenChange={courseStudentsManager.setShowCourseStudentsDialog}
+        course={courseStudentsManager.selectedCourse}
+        courseStudents={courseStudentsManager.courseStudents}
+        availableStudents={courseStudentsManager.availableStudentsForCourse}
         organizationId={organizationId}
-        isLoading={isLoadingCourseStudents}
-        selectedStudentsToAdd={selectedStudentsToAdd}
-        onToggleStudentSelection={(userId) => {
-          const newSet = new Set(selectedStudentsToAdd);
-          if (newSet.has(userId)) {
-            newSet.delete(userId);
-          } else {
-            newSet.add(userId);
-          }
-          setSelectedStudentsToAdd(newSet);
-        }}
+        isLoading={courseStudentsManager.isLoadingCourseStudents}
+        selectedStudentsToAdd={courseStudentsManager.selectedStudentsToAdd}
+        onToggleStudentSelection={courseStudentsManager.toggleStudentSelection}
         onAddStudentsToCourse={handleAddStudentsToCourse}
-        isAddingStudents={isAddingStudentsToCourse}
+        isAddingStudents={courseStudentsManager.isAddingStudentsToCourse}
         onRemoveFromCourse={handleRemoveFromCourse}
         onShowInviteEmailDialog={() => setShowInviteEmailDialog(true)}
         onShowStudentDocs={(enrollmentId, studentName, courseName) => {
@@ -2724,10 +2567,11 @@ export default function OrganizationDashboard() {
       <InviteEmailDialog
         open={showInviteEmailDialog}
         onOpenChange={setShowInviteEmailDialog}
-        courseTitle={selectedCourse?.title}
+        courseTitle={courseStudentsManager.selectedCourse?.title}
         isSending={isSendingInvitation}
         onSend={async (email) => {
-          if (!selectedCourse) return;
+          const course = courseStudentsManager.selectedCourse;
+          if (!course) return;
           const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
           if (!emailRegex.test(email.trim())) {
             toast.error("Введите корректный email адрес");
@@ -2738,8 +2582,8 @@ export default function OrganizationDashboard() {
             const { data, error } = await supabase.functions.invoke("send-course-invitation", {
               body: {
                 email: email.trim(),
-                courseName: selectedCourse.title,
-                courseId: selectedCourse.id,
+                courseName: course.title,
+                courseId: course.id,
                 organizationName: organizationName
               }
             });
@@ -2829,7 +2673,7 @@ export default function OrganizationDashboard() {
         selectedCoursesToAdd={studentCoursesDialog.selectedCoursesToAdd}
         searchQuery={studentCoursesDialog.studentCoursesSearchQuery}
         onSearchQueryChange={studentCoursesDialog.setStudentCoursesSearchQuery}
-        onToggleCourseSelection={toggleCourseSelection}
+        onToggleCourseSelection={studentCoursesDialog.toggleCourseSelection}
         isAddingCourses={studentCoursesDialog.isAddingCoursesToStudent}
         onAddCourses={studentCoursesDialog.addCourses}
         onRemoveEnrollment={studentCoursesDialog.removeEnrollment}
