@@ -41,3 +41,6 @@ verify_jwt = false
 
 [functions.send-documents-reminder]
 verify_jwt = false
+
+[functions.generate-self-examination-report]
+verify_jwt = false

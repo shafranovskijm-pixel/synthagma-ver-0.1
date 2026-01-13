@@ -11,7 +11,10 @@ import {
   MessageSquare,
   Building2,
   Calendar,
-  RefreshCw
+  RefreshCw,
+  Sparkles,
+  FileText,
+  ExternalLink
 } from "lucide-react";
 import {
   Select,
@@ -46,6 +49,7 @@ interface ServiceOrder {
 
 const statusLabels: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
   pending: { label: 'Новая', color: 'bg-sigma-orange/10 text-sigma-orange', icon: <Clock className="w-3 h-3" /> },
+  paid: { label: 'Оплачена', color: 'bg-blue-500/10 text-blue-500', icon: <CheckCircle className="w-3 h-3" /> },
   in_progress: { label: 'В работе', color: 'bg-primary/10 text-primary', icon: <RefreshCw className="w-3 h-3" /> },
   completed: { label: 'Выполнена', color: 'bg-sigma-green/10 text-sigma-green', icon: <CheckCircle className="w-3 h-3" /> },
   cancelled: { label: 'Отменена', color: 'bg-destructive/10 text-destructive', icon: <XCircle className="w-3 h-3" /> },
@@ -58,6 +62,7 @@ export function ServiceOrdersManager() {
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
   useEffect(() => {
     fetchOrders();
@@ -84,9 +89,54 @@ export function ServiceOrdersManager() {
     }
   };
 
-  const handleStatusChange = async (orderId: string, newStatus: string) => {
+  const handleStatusChange = async (orderId: string, newStatus: string, order?: ServiceOrder) => {
+    const targetOrder = order || orders.find(o => o.id === orderId);
+    
     setIsUpdatingStatus(true);
     try {
+      // If status is "paid" and it's a self-examination report order, trigger auto-generation
+      if (newStatus === 'paid' && targetOrder?.service_id === 'self_examination_report_auto') {
+        setIsGeneratingReport(true);
+        toast.info('Генерация отчёта началась. Это может занять несколько минут...');
+        
+        try {
+          const { data, error } = await supabase.functions.invoke('generate-self-examination-report', {
+            body: { 
+              organizationId: targetOrder.organization_id,
+              orderId: targetOrder.id
+            }
+          });
+
+          if (error) {
+            console.error('Generation error:', error);
+            toast.error('Ошибка при генерации отчёта');
+          } else if (data?.success) {
+            toast.success('Отчёт успешно сгенерирован!');
+            // Update order status to completed
+            const { error: updateError } = await supabase
+              .from('service_orders')
+              .update({ status: 'completed' })
+              .eq('id', orderId);
+            
+            if (!updateError) {
+              setOrders(orders.map(o => 
+                o.id === orderId ? { ...o, status: 'completed', notes: `Отчёт сгенерирован: ${data.fileUrl}` } : o
+              ));
+              if (selectedOrder?.id === orderId) {
+                setSelectedOrder({ ...selectedOrder, status: 'completed', notes: `Отчёт сгенерирован: ${data.fileUrl}` });
+              }
+              setIsUpdatingStatus(false);
+              setIsGeneratingReport(false);
+              return;
+            }
+          }
+        } catch (genError) {
+          console.error('Generation error:', genError);
+          toast.error('Ошибка при генерации отчёта');
+        }
+        setIsGeneratingReport(false);
+      }
+
       const { error } = await supabase
         .from('service_orders')
         .update({ status: newStatus })
@@ -108,6 +158,43 @@ export function ServiceOrdersManager() {
       toast.error('Ошибка при обновлении статуса');
     } finally {
       setIsUpdatingStatus(false);
+    }
+  };
+
+  const handleGenerateReport = async (order: ServiceOrder) => {
+    setIsGeneratingReport(true);
+    toast.info('Генерация отчёта началась. Это может занять несколько минут...');
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-self-examination-report', {
+        body: { 
+          organizationId: order.organization_id,
+          orderId: order.id
+        }
+      });
+
+      if (error) {
+        console.error('Generation error:', error);
+        toast.error('Ошибка при генерации отчёта');
+      } else if (data?.success) {
+        toast.success('Отчёт успешно сгенерирован!');
+        
+        // Update order status to completed
+        await supabase
+          .from('service_orders')
+          .update({ 
+            status: 'completed',
+            notes: `Отчёт сгенерирован: ${data.fileUrl}`
+          })
+          .eq('id', order.id);
+        
+        fetchOrders();
+      }
+    } catch (genError) {
+      console.error('Generation error:', genError);
+      toast.error('Ошибка при генерации отчёта');
+    } finally {
+      setIsGeneratingReport(false);
     }
   };
 
@@ -233,21 +320,57 @@ export function ServiceOrdersManager() {
                       </div>
                     </td>
                     <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
-                      <Select 
-                        value={order.status} 
-                        onValueChange={(v) => handleStatusChange(order.id, v)}
-                        disabled={isUpdatingStatus}
-                      >
-                        <SelectTrigger className="w-32 rounded-lg h-8 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="pending">Новая</SelectItem>
-                          <SelectItem value="in_progress">В работе</SelectItem>
-                          <SelectItem value="completed">Выполнена</SelectItem>
-                          <SelectItem value="cancelled">Отменена</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <div className="flex items-center gap-2">
+                        {/* Generate Report Button for self-examination report orders */}
+                        {order.service_id === 'self_examination_report_auto' && 
+                         (order.status === 'paid' || order.status === 'in_progress') && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="rounded-lg text-xs gap-1 border-primary/50 text-primary hover:bg-primary/10"
+                            onClick={() => handleGenerateReport(order)}
+                            disabled={isGeneratingReport}
+                          >
+                            {isGeneratingReport ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Sparkles className="w-3 h-3" />
+                            )}
+                            Сгенерировать
+                          </Button>
+                        )}
+                        {/* View generated report link */}
+                        {order.status === 'completed' && order.notes?.includes('http') && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="rounded-lg text-xs gap-1"
+                            onClick={() => {
+                              const urlMatch = order.notes?.match(/(https?:\/\/[^\s]+)/);
+                              if (urlMatch) window.open(urlMatch[0], '_blank');
+                            }}
+                          >
+                            <FileText className="w-3 h-3" />
+                            Открыть
+                          </Button>
+                        )}
+                        <Select 
+                          value={order.status} 
+                          onValueChange={(v) => handleStatusChange(order.id, v, order)}
+                          disabled={isUpdatingStatus || isGeneratingReport}
+                        >
+                          <SelectTrigger className="w-32 rounded-lg h-8 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pending">Новая</SelectItem>
+                            <SelectItem value="paid">Оплачена</SelectItem>
+                            <SelectItem value="in_progress">В работе</SelectItem>
+                            <SelectItem value="completed">Выполнена</SelectItem>
+                            <SelectItem value="cancelled">Отменена</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -284,20 +407,65 @@ export function ServiceOrdersManager() {
                 <div className="text-xs text-muted-foreground mb-1">Статус</div>
                 <Select 
                   value={selectedOrder.status} 
-                  onValueChange={(v) => handleStatusChange(selectedOrder.id, v)}
-                  disabled={isUpdatingStatus}
+                  onValueChange={(v) => handleStatusChange(selectedOrder.id, v, selectedOrder)}
+                  disabled={isUpdatingStatus || isGeneratingReport}
                 >
                   <SelectTrigger className="w-full rounded-lg">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="pending">Новая</SelectItem>
+                    <SelectItem value="paid">Оплачена</SelectItem>
                     <SelectItem value="in_progress">В работе</SelectItem>
                     <SelectItem value="completed">Выполнена</SelectItem>
                     <SelectItem value="cancelled">Отменена</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Generate Report Button for self-examination report */}
+              {selectedOrder.service_id === 'self_examination_report_auto' && 
+               (selectedOrder.status === 'paid' || selectedOrder.status === 'in_progress') && (
+                <Button
+                  className="w-full btn-gradient rounded-xl gap-2"
+                  onClick={() => handleGenerateReport(selectedOrder)}
+                  disabled={isGeneratingReport}
+                >
+                  {isGeneratingReport ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Генерация отчёта...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4" />
+                      Сгенерировать отчёт
+                    </>
+                  )}
+                </Button>
+              )}
+
+              {/* View generated report */}
+              {selectedOrder.status === 'completed' && selectedOrder.notes?.includes('http') && (
+                <div className="bg-sigma-green/10 rounded-xl p-3">
+                  <div className="flex items-center gap-2 text-sigma-green mb-2">
+                    <CheckCircle className="w-4 h-4" />
+                    <span className="font-medium">Отчёт сгенерирован</span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full rounded-lg gap-2"
+                    onClick={() => {
+                      const urlMatch = selectedOrder.notes?.match(/(https?:\/\/[^\s]+)/);
+                      if (urlMatch) window.open(urlMatch[0], '_blank');
+                    }}
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    Открыть отчёт
+                  </Button>
+                </div>
+              )}
 
               {selectedOrder.notes && (
                 <div className="bg-secondary/50 rounded-xl p-3">
