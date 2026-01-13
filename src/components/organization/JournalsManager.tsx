@@ -47,6 +47,7 @@ import { AutoGradesJournal } from "./AutoGradesJournal";
 import { AutoFinalAttestationJournal } from "./AutoFinalAttestationJournal";
 import { AutoDocumentRegistrationJournal } from "./AutoDocumentRegistrationJournal";
 import { CopiesDuplicatesJournal } from "./CopiesDuplicatesJournal";
+import { JournalCreationWizard } from "./JournalCreationWizard";
 
 interface JournalItem {
   id: string;
@@ -59,6 +60,7 @@ interface CustomJournal {
   id: string;
   title: string;
   description: string;
+  fields: string[];
   createdAt: string;
 }
 
@@ -181,9 +183,7 @@ export function JournalsManager({ organizationId }: JournalsManagerProps) {
   
   // Custom journals state
   const [customJournals, setCustomJournals] = useState<CustomJournal[]>([]);
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [newJournalTitle, setNewJournalTitle] = useState("");
-  const [newJournalDescription, setNewJournalDescription] = useState("");
+  const [showCreateWizard, setShowCreateWizard] = useState(false);
 
   // Load custom journals from localStorage
   useEffect(() => {
@@ -199,24 +199,18 @@ export function JournalsManager({ organizationId }: JournalsManagerProps) {
     setCustomJournals(journals);
   };
 
-  // Create new custom journal
-  const handleCreateJournal = () => {
-    if (!newJournalTitle.trim()) {
-      toast.error("Введите название журнала");
-      return;
-    }
-
+  // Create new custom journal from wizard
+  const handleCreateJournal = (data: { title: string; description: string; fields: string[] }) => {
     const newJournal: CustomJournal = {
       id: `custom_${Date.now()}`,
-      title: newJournalTitle.trim(),
-      description: newJournalDescription.trim() || "Пользовательский журнал",
+      title: data.title,
+      description: data.description,
+      fields: data.fields,
       createdAt: new Date().toISOString(),
     };
 
     saveCustomJournals([...customJournals, newJournal]);
-    setNewJournalTitle("");
-    setNewJournalDescription("");
-    setShowCreateDialog(false);
+    setShowCreateWizard(false);
     toast.success("Журнал создан");
   };
 
@@ -384,7 +378,7 @@ export function JournalsManager({ organizationId }: JournalsManagerProps) {
             </div>
           </div>
           <Button
-            onClick={() => setShowCreateDialog(true)}
+            onClick={() => setShowCreateWizard(true)}
             className="rounded-xl"
           >
             <Plus className="w-4 h-4 mr-2" />
@@ -731,48 +725,12 @@ export function JournalsManager({ organizationId }: JournalsManagerProps) {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Create Journal Dialog */}
-      <AlertDialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Создать журнал</AlertDialogTitle>
-            <AlertDialogDescription>
-              Введите название и описание для нового журнала
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Название журнала *</label>
-              <Input
-                placeholder="Например: Журнал учёта консультаций"
-                value={newJournalTitle}
-                onChange={(e) => setNewJournalTitle(e.target.value)}
-                className="rounded-lg"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Описание</label>
-              <Input
-                placeholder="Краткое описание назначения журнала"
-                value={newJournalDescription}
-                onChange={(e) => setNewJournalDescription(e.target.value)}
-                className="rounded-lg"
-              />
-            </div>
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => {
-              setNewJournalTitle("");
-              setNewJournalDescription("");
-            }}>
-              Отмена
-            </AlertDialogCancel>
-            <AlertDialogAction onClick={handleCreateJournal}>
-              Создать
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Create Journal Wizard */}
+      <JournalCreationWizard
+        open={showCreateWizard}
+        onClose={() => setShowCreateWizard(false)}
+        onComplete={handleCreateJournal}
+      />
     </div>
   );
 }
