@@ -40,6 +40,7 @@ import {
   Edit,
   FolderOpen,
   ArrowLeft,
+  HardDrive,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -631,7 +632,7 @@ export function LibraryManager({ organizationId }: LibraryManagerProps) {
       </div>
 
       {/* Statistics */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div className="bg-card rounded-xl border border-border p-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
@@ -665,7 +666,7 @@ export function LibraryManager({ organizationId }: LibraryManagerProps) {
               <div className="text-xl font-bold">
                 {documents.filter(d => d.type === 'spreadsheet').length}
               </div>
-              <div className="text-xs text-muted-foreground">Нормативных документов</div>
+              <div className="text-xs text-muted-foreground">Нормативных</div>
             </div>
           </div>
         </div>
@@ -678,7 +679,26 @@ export function LibraryManager({ organizationId }: LibraryManagerProps) {
               <div className="text-xl font-bold">
                 {documents.filter(d => d.type === 'other').length}
               </div>
-              <div className="text-xs text-muted-foreground">Документы организации</div>
+              <div className="text-xs text-muted-foreground">Документов орг.</div>
+            </div>
+          </div>
+        </div>
+        <div className="bg-card rounded-xl border border-border p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-cyan-500/10 flex items-center justify-center">
+              <HardDrive className="w-5 h-5 text-cyan-500" />
+            </div>
+            <div>
+              <div className="text-xl font-bold">
+                {(() => {
+                  const totalBytes = documents.reduce((acc, doc) => acc + (doc.file_size || 0), 0);
+                  if (totalBytes < 1024) return `${totalBytes} B`;
+                  if (totalBytes < 1024 * 1024) return `${(totalBytes / 1024).toFixed(1)} KB`;
+                  if (totalBytes < 1024 * 1024 * 1024) return `${(totalBytes / (1024 * 1024)).toFixed(1)} MB`;
+                  return `${(totalBytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+                })()}
+              </div>
+              <div className="text-xs text-muted-foreground">Хранилище</div>
             </div>
           </div>
         </div>
