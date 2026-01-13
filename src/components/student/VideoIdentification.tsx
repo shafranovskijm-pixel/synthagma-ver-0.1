@@ -98,44 +98,55 @@ export function VideoIdentification({
         throw new Error("NotSupportedError");
       }
 
-      // Request camera with mobile-friendly constraints
-      const constraints: MediaStreamConstraints = {
-        video: {
-          facingMode: "user",
-          width: { ideal: 640, max: 1280 },
-          height: { ideal: 480, max: 720 },
-        },
-        audio: false,
-      };
-
-      console.log("Requesting camera access...");
-      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
-      console.log("Camera access granted, tracks:", mediaStream.getVideoTracks().length);
+      // Try simple constraints first for better mobile compatibility
+      let mediaStream: MediaStream;
       
+      try {
+        // First try with specific constraints
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: "user",
+            width: { ideal: 640 },
+            height: { ideal: 480 },
+          },
+          audio: false,
+        });
+      } catch (constraintError) {
+        console.warn("Specific constraints failed, trying simple:", constraintError);
+        // Fallback to simple video: true
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: false,
+        });
+      }
+      
+      console.log("Camera access granted, tracks:", mediaStream.getVideoTracks().length);
       setStream(mediaStream);
       setIsCapturing(true);
+      // Keep isCameraLoading true until video is ready
       
     } catch (error: any) {
       console.error("Camera error:", error);
       setStep("intro");
+      setIsCameraLoading(false);
       
       if (error.message === "NotSupportedError") {
         setCameraError("Ваш браузер не поддерживает доступ к камере. Попробуйте использовать Chrome или Safari.");
       } else if (error.name === "NotAllowedError" || error.name === "PermissionDeniedError") {
-        setCameraError("Доступ к камере запрещен. Пожалуйста, разрешите доступ в настройках браузера и обновите страницу.");
+        setCameraError("Доступ к камере запрещен. Разрешите доступ к камере в настройках браузера.");
       } else if (error.name === "NotFoundError" || error.name === "DevicesNotFoundError") {
-        setCameraError("Камера не найдена. Проверьте подключение устройства.");
+        setCameraError("Камера не найдена на устройстве.");
       } else if (error.name === "NotReadableError" || error.name === "TrackStartError") {
-        setCameraError("Камера занята другим приложением. Закройте другие приложения и попробуйте снова.");
+        setCameraError("Камера занята другим приложением.");
       } else if (error.name === "OverconstrainedError") {
-        setCameraError("Камера не поддерживает требуемые параметры. Попробуйте еще раз.");
+        setCameraError("Камера не поддерживает требуемые параметры.");
       } else if (error.name === "SecurityError") {
-        setCameraError("Доступ к камере заблокирован. Убедитесь, что сайт использует HTTPS.");
+        setCameraError("Доступ к камере заблокирован. Используйте HTTPS.");
+      } else if (error.name === "AbortError") {
+        setCameraError("Запрос камеры был прерван. Попробуйте снова.");
       } else {
-        setCameraError(`Не удалось запустить камеру: ${error.message || "неизвестная ошибка"}. Попробуйте обновить страницу.`);
+        setCameraError(`Ошибка камеры: ${error.message || error.name || "неизвестная ошибка"}`);
       }
-    } finally {
-      setIsCameraLoading(false);
     }
   };
   
@@ -148,28 +159,45 @@ export function VideoIdentification({
       const handleCanPlay = () => {
         console.log("Video can play");
         setIsVideoReady(true);
-        video.play().catch(err => console.warn("Play failed:", err));
+        setIsCameraLoading(false);
       };
       
       const handleLoadedMetadata = () => {
         console.log("Video metadata loaded:", video.videoWidth, "x", video.videoHeight);
+        // Also try to play here for iOS
+        video.play().catch(err => console.warn("Play on metadata failed:", err));
+      };
+      
+      const handlePlaying = () => {
+        console.log("Video is playing");
+        setIsVideoReady(true);
+        setIsCameraLoading(false);
       };
       
       video.addEventListener("canplay", handleCanPlay);
       video.addEventListener("loadedmetadata", handleLoadedMetadata);
+      video.addEventListener("playing", handlePlaying);
       
-      // Try to play immediately if already ready
-      if (video.readyState >= 3) {
-        setIsVideoReady(true);
-        video.play().catch(err => console.warn("Play failed:", err));
-      }
+      // Try to play immediately
+      video.play().catch(err => console.warn("Initial play failed:", err));
+      
+      // Fallback: if video doesn't fire events in 3 seconds, assume it's ready
+      const fallbackTimer = setTimeout(() => {
+        if (!isVideoReady && stream) {
+          console.log("Fallback: assuming video is ready");
+          setIsVideoReady(true);
+          setIsCameraLoading(false);
+        }
+      }, 3000);
       
       return () => {
+        clearTimeout(fallbackTimer);
         video.removeEventListener("canplay", handleCanPlay);
         video.removeEventListener("loadedmetadata", handleLoadedMetadata);
+        video.removeEventListener("playing", handlePlaying);
       };
     }
-  }, [stream, step]);
+  }, [stream, step, isVideoReady]);
 
   const stopCamera = () => {
     if (stream) {
