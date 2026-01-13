@@ -37,6 +37,7 @@ import {
 } from "lucide-react";
 import { ContentBlock, jsonToBlocks, BlockRenderer } from "@/components/course-builder/BlockEditor";
 import { cn } from "@/lib/utils";
+import { generateAttestationProtocol } from "@/utils/generateAttestationProtocol";
 
 // Helper to get text from option (handles both string and {text: string} formats)
 const getOptionText = (option: unknown): string => {
@@ -168,6 +169,7 @@ interface Course {
   id: string;
   title: string;
   description: string | null;
+  duration: string | null;
 }
 
 interface LessonProgress {
@@ -575,6 +577,60 @@ const CourseLearning = () => {
     setTestQuestions(selected);
   };
 
+  // Handle course completion - generate attestation protocol
+  const handleCourseCompletion = async (testScoreData?: { score: number; max: number }) => {
+    if (!course || !user || !courseId) return;
+
+    try {
+      // Get student profile
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name, organization_id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!profile?.organization_id) return;
+
+      // Get organization data
+      const { data: org } = await supabase
+        .from('organizations')
+        .select('id, name, director_name, director_position')
+        .eq('id', profile.organization_id)
+        .single();
+
+      if (!org) return;
+
+      // Update enrollment as completed
+      await supabase
+        .from('enrollments')
+        .update({ 
+          status: 'completed',
+          completed_at: new Date().toISOString()
+        })
+        .eq('id', enrollmentId);
+
+      // Generate attestation protocol
+      const protocolName = await generateAttestationProtocol({
+        organizationId: org.id,
+        organizationName: org.name,
+        directorName: org.director_name,
+        directorPosition: org.director_position,
+        studentName: profile.full_name || 'Слушатель',
+        courseName: course.title,
+        courseDuration: course.duration,
+        completedAt: new Date(),
+        testScore: testScoreData?.score,
+        testMaxScore: testScoreData?.max,
+      });
+
+      if (protocolName) {
+        toast.success('Курс завершён! Протокол аттестационной комиссии создан.');
+      }
+    } catch (error) {
+      console.error('Error handling course completion:', error);
+    }
+  };
+
   const markLessonComplete = async () => {
     if (!currentLesson || !user) return;
 
@@ -624,7 +680,13 @@ const CourseLearning = () => {
       .update({ progress: newProgress })
       .eq('id', enrollmentId);
 
-    toast.success('Урок завершён!');
+    // Check if course is now complete
+    if (newProgress >= 100) {
+      await handleCourseCompletion();
+    } else {
+      toast.success('Урок завершён!');
+    }
+    
     goToNextLesson();
   };
 
@@ -707,7 +769,19 @@ const CourseLearning = () => {
         { lesson_id: currentLesson.id, completed: true }
       ]);
 
-      toast.success(`Тест пройден! ${score}/${maxScore}`);
+      // Update enrollment progress
+      const newProgress = Math.round(((completedCount + 1) / lessons.length) * 100);
+      await supabase
+        .from('enrollments')
+        .update({ progress: newProgress })
+        .eq('id', enrollmentId);
+
+      // Check if course is now complete
+      if (newProgress >= 100) {
+        await handleCourseCompletion({ score, max: maxScore });
+      } else {
+        toast.success(`Тест пройден! ${score}/${maxScore}`);
+      }
     } else {
       toast.error(`Тест не пройден. ${score}/${maxScore}. Попробуйте снова.`);
     }
