@@ -765,6 +765,14 @@ const CourseLearning = () => {
     minSwipeDistance: 40,
   });
 
+  // Separate swipe ref for progress bar with lower threshold for quicker response
+  const progressBarSwipeRef = useSwipeGesture<HTMLDivElement>({
+    onSwipeLeft: isMobile ? handleSwipeLeft : undefined,
+    onSwipeRight: isMobile ? handleSwipeRight : undefined,
+    threshold: 30,
+    minSwipeDistance: 20,
+  });
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -1253,7 +1261,10 @@ const CourseLearning = () => {
 
         {/* Mobile Lesson Progress Bar */}
         {isMobile && (
-          <div className="border-t border-border bg-muted/30 px-3 py-2 shrink-0 relative">
+          <div 
+            ref={progressBarSwipeRef}
+            className="border-t border-border bg-muted/30 px-3 py-2 shrink-0 relative touch-pan-y"
+          >
             {/* Tooltip */}
             {tooltipLesson && (
               <div 
