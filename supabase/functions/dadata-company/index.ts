@@ -60,6 +60,32 @@ serve(async (req) => {
 
     if (data.suggestions && data.suggestions.length > 0) {
       const company = data.suggestions[0];
+      
+      // Получаем учредителей
+      const founders = company.data.founders?.map((f: any) => {
+        if (f.type === 'LEGAL') {
+          return f.name?.full || f.name?.short || 'Юридическое лицо';
+        }
+        return f.fio?.surname 
+          ? `${f.fio.surname} ${f.fio.name || ''} ${f.fio.patronymic || ''}`.trim()
+          : f.name || 'Физическое лицо';
+      }) || [];
+      
+      // Получаем лицензии на образовательную деятельность
+      const licenses = company.data.licenses?.filter((l: any) => 
+        l.activities?.some((a: string) => 
+          a.toLowerCase().includes('образовательн') || 
+          a.toLowerCase().includes('обучени')
+        ) || l.number?.includes('Л035')
+      ) || [];
+      
+      // Берём первую образовательную лицензию или любую другую
+      const educationLicense = licenses[0] || company.data.licenses?.[0];
+      
+      console.log('Founders found:', founders.length);
+      console.log('Licenses found:', company.data.licenses?.length || 0);
+      console.log('Education licenses found:', licenses.length);
+      
       return new Response(
         JSON.stringify({
           success: true,
@@ -72,9 +98,24 @@ serve(async (req) => {
             ogrn: company.data.ogrn,
             address: company.data.address?.unrestricted_value || null,
             management: company.data.management?.name || null,
+            managementPosition: company.data.management?.post || null,
             status: company.data.state?.status || null,
             type: company.data.type, // LEGAL or INDIVIDUAL
             opf: company.data.opf?.short || null, // ООО, АО, ИП, etc.
+            founders: founders,
+            license: educationLicense ? {
+              number: educationLicense.number || null,
+              issueDate: educationLicense.issue_date || null,
+              issueAuthority: educationLicense.issue_authority || null,
+              activities: educationLicense.activities || [],
+              validFrom: educationLicense.valid_from || null,
+              validTo: educationLicense.valid_to || null,
+            } : null,
+            allLicenses: company.data.licenses?.map((l: any) => ({
+              number: l.number,
+              issueDate: l.issue_date,
+              activities: l.activities,
+            })) || [],
           }
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
