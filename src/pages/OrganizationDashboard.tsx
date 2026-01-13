@@ -23,6 +23,7 @@ import { DocumentIssuanceLog } from "@/components/organization/DocumentIssuanceL
 import { BulkFRDOExport } from "@/components/organization/BulkFRDOExport";
 import { FRDOManager } from "@/components/organization/FRDOManager";
 import { OrgRequisitesForm } from "@/components/organization/OrgRequisitesForm";
+import { generateEnrollmentOrder } from "@/utils/generateEnrollmentOrder";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -1165,6 +1166,29 @@ export default function OrganizationDashboard() {
           status: "active"
         };
         setStudents(prev => [...prev, newEnrollment]);
+
+        // Generate enrollment order for single student
+        if (organizationId) {
+          const { data: orgData } = await supabase
+            .from("organizations")
+            .select("name, director_name, director_position")
+            .eq("id", organizationId)
+            .single();
+
+          const orderName = await generateEnrollmentOrder({
+            organizationId,
+            organizationName: orgData?.name || organizationName,
+            directorName: orgData?.director_name,
+            directorPosition: orgData?.director_position,
+            studentNames: [student.name],
+            courseName: course.title,
+            orderType: "enrollment",
+          });
+
+          if (orderName) {
+            toast.success(`Приказ о зачислении создан`);
+          }
+        }
       }
       toast.success("Ученик зачислен на курс");
       setShowAddStudentDialog(false);
@@ -1260,6 +1284,38 @@ export default function OrganizationDashboard() {
         error
       } = await supabase.from("enrollments").insert(enrollmentsToInsert);
       if (error) throw error;
+
+      // Generate enrollment order
+      if (organizationId) {
+        const enrolledStudentNames = newUserIds
+          .map(userId => {
+            const student = [...students, ...allProfiles].find(s => s.user_id === userId);
+            return student?.name || "Неизвестный";
+          });
+        const course = courses.find(c => c.id === enrollCourseId);
+        
+        // Fetch organization details for the order
+        const { data: orgData } = await supabase
+          .from("organizations")
+          .select("name, director_name, director_position")
+          .eq("id", organizationId)
+          .single();
+
+        const orderName = await generateEnrollmentOrder({
+          organizationId,
+          organizationName: orgData?.name || organizationName,
+          directorName: orgData?.director_name,
+          directorPosition: orgData?.director_position,
+          studentNames: enrolledStudentNames,
+          courseName: course?.title || "Курс",
+          orderType: "enrollment",
+        });
+
+        if (orderName) {
+          toast.success(`Приказ о зачислении создан: ${orderName}`);
+        }
+      }
+
       toast.success(`Зачислено ${newUserIds.length} учеников`);
       setShowEnrollDialog(false);
       setSelectedStudentIds(new Set());
@@ -1288,10 +1344,57 @@ export default function OrganizationDashboard() {
     }
     setIsUnenrolling(true);
     try {
+      // Collect student names and courses before deletion
+      const studentsToUnenroll = enrollmentIds.map(enrollmentId => {
+        const student = students.find(s => s.enrollment_id === enrollmentId);
+        return {
+          name: student?.name || "Неизвестный",
+          courseName: student?.course || "Курс",
+          courseId: student?.course_id
+        };
+      });
+
       const {
         error
       } = await supabase.from("enrollments").delete().in("id", enrollmentIds);
       if (error) throw error;
+
+      // Generate expulsion orders grouped by course
+      if (organizationId) {
+        const { data: orgData } = await supabase
+          .from("organizations")
+          .select("name, director_name, director_position")
+          .eq("id", organizationId)
+          .single();
+
+        // Group students by course
+        const studentsByCourse = studentsToUnenroll.reduce((acc, student) => {
+          const key = student.courseId || "unknown";
+          if (!acc[key]) {
+            acc[key] = { courseName: student.courseName, names: [] };
+          }
+          acc[key].names.push(student.name);
+          return acc;
+        }, {} as Record<string, { courseName: string; names: string[] }>);
+
+        // Create an order for each course
+        for (const courseData of Object.values(studentsByCourse)) {
+          const orderName = await generateEnrollmentOrder({
+            organizationId,
+            organizationName: orgData?.name || organizationName,
+            directorName: orgData?.director_name,
+            directorPosition: orgData?.director_position,
+            studentNames: courseData.names,
+            courseName: courseData.courseName,
+            orderType: "expulsion",
+          });
+
+          if (orderName) {
+            toast.success(`Приказ об отчислении создан: ${orderName}`);
+          }
+        }
+      }
+
       toast.success(`Отчислено ${enrollmentIds.length} учеников`);
       setShowUnenrollConfirm(false);
       setSelectedStudentIds(new Set());
