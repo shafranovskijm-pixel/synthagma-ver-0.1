@@ -29,13 +29,13 @@ export function DocumentsTab({ organizationId, onShowBulkUploadDialog, isOrdersE
   }
 
   const tabs: { id: DocumentSubTab; label: string; shortLabel: string; icon: React.ReactNode }[] = [
-    { id: "programs", label: "Программы", shortLabel: "Прогр.", icon: <BookOpen className="w-4 h-4" /> },
     { id: "org", label: "Документы орг.", shortLabel: "Орг.", icon: <FileText className="w-4 h-4" /> },
     ...(isOrdersEnabled ? [{ id: "orders" as DocumentSubTab, label: "Приказы", shortLabel: "Приказы", icon: <Users className="w-4 h-4" /> }] : []),
     { id: "protocols", label: "Протоколы АК", shortLabel: "Протоколы", icon: <ClipboardList className="w-4 h-4" /> },
     { id: "certificates", label: "Удостоверения", shortLabel: "Удост.", icon: <Award className="w-4 h-4" /> },
     { id: "diplomas", label: "Дипломы", shortLabel: "Дипломы", icon: <GraduationCap className="w-4 h-4" /> },
     { id: "testimonials", label: "Свидетельства", shortLabel: "Свид.", icon: <FileCheck className="w-4 h-4" /> },
+    { id: "programs", label: "Программы", shortLabel: "Прогр.", icon: <BookOpen className="w-4 h-4" /> },
   ];
 
   return (
