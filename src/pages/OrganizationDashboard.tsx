@@ -1,8 +1,9 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { AnimatedTabContent } from "@/components/ui/AnimatedTabContent";
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useNavigate } from "react-router-dom";
+import { useTabNavigation } from "@/hooks/useTabNavigation";
 import { OrgDocumentsManager } from "@/components/organization/OrgDocumentsManager";
 import { CourseDocumentsManager } from "@/components/organization/CourseDocumentsManager";
 import { StudentDocumentsManager } from "@/components/organization/StudentDocumentsManager";
@@ -91,13 +92,9 @@ export default function OrganizationDashboard() {
   } = useAuth();
   const isMobile = useIsMobile();
   
-  const [activeTab, setActiveTab] = useState<TabType>("courses");
   const [isDocumentsMenuOpen, setIsDocumentsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showImportDialog, setShowImportDialog] = useState(false);
-  const [courseFilter, setCourseFilter] = useState<"all" | "published" | "draft">("all");
-  const [courseViewMode, setCourseViewMode] = useState<"grid" | "list">("grid");
-  const [courseSearchQuery, setCourseSearchQuery] = useState("");
 
   // Category management hook - initialize before data loader
   const categoryActions = useCategoryActions(null);
@@ -154,11 +151,6 @@ export default function OrganizationDashboard() {
     isCreatingLink,
     createLink: handleCreateRegistrationLink,
   } = useRegistrationLinks(organizationId);
-
-  // Organizations tab hook
-  const organizationsTab = useOrganizationsTab({ activeTab });
-  const { allOrganizations, isLoadingOrgs, selectedOrg, showOrgDetails, setShowOrgDetails, orgStudents, isLoadingOrgDetails, handleViewOrg, filterOrganizations } = organizationsTab;
-  
   // Company management hook
   const companyActions = useCompanyActions();
   
@@ -232,59 +224,21 @@ export default function OrganizationDashboard() {
   const dashboardSettings = useDashboardSettings(organizationId);
   const { isDarkMode, setIsDarkMode, studentDashboardSettings, setStudentDashboardSettings, menuSettings, setMenuSettings, isSavingSettings, setIsSavingSettings, previewStudentDashboard } = dashboardSettings;
 
-  // Swipe navigation for mobile tabs
-  
-  const getVisibleTabs = useCallback((): TabType[] => {
-    const baseTabs: TabType[] = [];
-    
-    // Add tabs based on org feature access
-    if (isEnabled("courses")) baseTabs.push("courses");
-    if (isEnabled("companies")) baseTabs.push("organizations");
-    if (isEnabled("students")) baseTabs.push("students");
-    if (menuSettings.showLibrary && isEnabled("library")) baseTabs.push("library");
-    if (menuSettings.showStats) baseTabs.push("stats");
-    if (menuSettings.showLinks && isEnabled("links")) baseTabs.push("links");
-    if (menuSettings.showDocuments && isEnabled("documents")) baseTabs.push("documents");
-    if (isEnabled("journals")) baseTabs.push("journals");
-    if (isFrdoEnabled && isEnabled("frdo")) baseTabs.push("frdo");
-    if (menuSettings.showServices && isEnabled("services")) baseTabs.push("services");
-    if (isEnabled("settings")) baseTabs.push("settings");
-    
-    return baseTabs;
-  }, [menuSettings.showLibrary, menuSettings.showStats, menuSettings.showLinks, menuSettings.showDocuments, menuSettings.showServices, isFrdoEnabled, isEnabled]);
+  // Tab navigation hook
+  const tabNavigation = useTabNavigation({
+    isMobile,
+    menuSettings,
+    isFrdoEnabled,
+    isEnabled,
+  });
+  const { activeTab, setActiveTab, swipeDirection, setSwipeDirection, getVisibleTabs, handleSwipeLeft, handleSwipeRight, triggerHapticFeedback } = tabNavigation;
 
-  // Animation direction for tab transitions (1 = swipe left/go right, -1 = swipe right/go left)
-  const [swipeDirection, setSwipeDirection] = useState(0);
+  // Organizations tab hook (needs activeTab)
+  const organizationsTab = useOrganizationsTab({ activeTab });
+  const { allOrganizations, isLoadingOrgs, selectedOrg, showOrgDetails, setShowOrgDetails, orgStudents, isLoadingOrgDetails, handleViewOrg, filterOrganizations } = organizationsTab;
 
-  // Haptic feedback helper
-  const triggerHapticFeedback = useCallback(() => {
-    if ('vibrate' in navigator) {
-      navigator.vibrate(10); // Short 10ms vibration
-    }
-  }, []);
 
-  const handleSwipeLeft = useCallback(() => {
-    if (!isMobile) return;
-    const tabs = getVisibleTabs();
-    const currentIndex = tabs.indexOf(activeTab);
-    if (currentIndex < tabs.length - 1) {
-      triggerHapticFeedback();
-      setSwipeDirection(1);
-      setActiveTab(tabs[currentIndex + 1]);
-    }
-  }, [activeTab, getVisibleTabs, isMobile, triggerHapticFeedback]);
-
-  const handleSwipeRight = useCallback(() => {
-    if (!isMobile) return;
-    const tabs = getVisibleTabs();
-    const currentIndex = tabs.indexOf(activeTab);
-    if (currentIndex > 0) {
-      triggerHapticFeedback();
-      setSwipeDirection(-1);
-      setActiveTab(tabs[currentIndex - 1]);
-    }
-  }, [activeTab, getVisibleTabs, isMobile, triggerHapticFeedback]);
-
+  // Swipe gesture for mobile navigation
   const swipeRef = useSwipeGesture<HTMLDivElement>({
     onSwipeLeft: handleSwipeLeft,
     onSwipeRight: handleSwipeRight,
@@ -425,48 +379,6 @@ export default function OrganizationDashboard() {
 
   // Filter organizations - using hook method
   const filteredOrganizations = filterOrganizations(searchQuery);
-  
-  // Filter students - inline filter (could be moved to hook in future)
-  const filteredStudents = useMemo(() => students.filter(s => {
-    const matchesSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase()) || s.email.toLowerCase().includes(searchQuery.toLowerCase());
-    if (!matchesSearch) return false;
-
-    if (studentCourseFilter !== "all") {
-      if (studentStatusFilter === "not_enrolled") {
-        if (s.course_id === studentCourseFilter) return false;
-      } else {
-        if (s.course_id !== studentCourseFilter) return false;
-      }
-    }
-    
-    if (studentDocsFilter !== "all") {
-      const userDocs = studentDocsByUser.get(s.user_id) || [];
-      const hasPassport = userDocs.some(t => t === "passport" || t === "birth_certificate");
-      const hasSnils = userDocs.includes("snils");
-      const hasEducation = userDocs.some(t => t === "education_document" || t === "diploma" || t === "attestat");
-      const isComplete = hasPassport && hasSnils && hasEducation;
-      
-      if (studentDocsFilter === "complete" && !isComplete) return false;
-      if (studentDocsFilter === "incomplete" && isComplete) return false;
-      if (studentDocsFilter === "no_passport" && hasPassport) return false;
-      if (studentDocsFilter === "no_snils" && hasSnils) return false;
-      if (studentDocsFilter === "no_education" && hasEducation) return false;
-    }
-    
-    if (studentStatusFilter === "all") return true;
-    if (studentStatusFilter === "active") return s.status === "active";
-    if (studentStatusFilter === "completed") return s.status === "completed";
-    if (studentStatusFilter === "not_enrolled") return !s.course_id;
-    return true;
-  }), [students, searchQuery, studentCourseFilter, studentStatusFilter, studentDocsFilter, studentDocsByUser]);
-
-  // Filter courses - memoized
-  const filteredCourses = useMemo(() => courses.filter(course => {
-    const matchesSearch = course.title.toLowerCase().includes(courseSearchQuery.toLowerCase());
-    const matchesFilter = courseFilter === "all" || (courseFilter === "published" && course.is_published) || (courseFilter === "draft" && !course.is_published);
-    const matchesCategory = selectedCategoryFilter === "all" || (selectedCategoryFilter === "none" && !course.category_id) || course.category_id === selectedCategoryFilter;
-    return matchesSearch && matchesFilter && matchesCategory;
-  }), [courses, courseSearchQuery, courseFilter, selectedCategoryFilter]);
   const exitAdminView = () => {
     localStorage.removeItem("adminViewAsOrg");
     navigate("/admin");
