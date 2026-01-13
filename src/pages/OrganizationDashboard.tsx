@@ -23,11 +23,18 @@ import { DocumentIssuanceLog } from "@/components/organization/DocumentIssuanceL
 import { BulkFRDOExport } from "@/components/organization/BulkFRDOExport";
 import { FRDOManager } from "@/components/organization/FRDOManager";
 import { OrgRequisitesForm } from "@/components/organization/OrgRequisitesForm";
+import { OrdersArchive } from "@/components/organization/OrdersArchive";
+import { DocumentArchiveView } from "@/components/organization/DocumentArchiveView";
 import { generateEnrollmentOrder } from "@/utils/generateEnrollmentOrder";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
-import { GraduationCap, BookOpen, Users, BarChart3, Settings, LogOut, Plus, Upload, FileSpreadsheet, Search, Eye, TrendingUp, Clock, CheckCircle2, XCircle, Loader2, Edit, Trash2, FileText, Download, X, ChevronRight, Link, Copy, Building2, Save, Send, FileCheck, Receipt, CheckSquare, LayoutGrid, List, Filter, Tag, Palette, History, Moon, Sun, Library, Trophy, MessageCircle, Image, ExternalLink, ShoppingBag, Mail, Key, Menu, AlertCircle } from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { GraduationCap, BookOpen, Users, BarChart3, Settings, LogOut, Plus, Upload, FileSpreadsheet, Search, Eye, TrendingUp, Clock, CheckCircle2, XCircle, Loader2, Edit, Trash2, FileText, Download, X, ChevronRight, ChevronDown, Link, Copy, Building2, Save, Send, FileCheck, Receipt, CheckSquare, LayoutGrid, List, Filter, Tag, Palette, History, Moon, Sun, Library, Trophy, MessageCircle, Image, ExternalLink, ShoppingBag, Mail, Key, Menu, AlertCircle, Award, ClipboardList } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -126,7 +133,8 @@ export default function OrganizationDashboard() {
     user
   } = useAuth();
   const isMobile = useIsMobile();
-  const [activeTab, setActiveTab] = useState<"courses" | "organizations" | "students" | "library" | "stats" | "links" | "documents" | "services" | "settings" | "frdo">("courses");
+  const [activeTab, setActiveTab] = useState<"courses" | "organizations" | "students" | "library" | "stats" | "links" | "documents" | "documents-orders" | "documents-protocols" | "documents-certificates" | "documents-diplomas" | "documents-testimonials" | "services" | "settings" | "frdo">("courses");
+  const [isDocumentsMenuOpen, setIsDocumentsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [showAddStudentDialog, setShowAddStudentDialog] = useState(false);
@@ -358,8 +366,10 @@ export default function OrganizationDashboard() {
   });
 
   // Swipe navigation for mobile tabs
-  const getVisibleTabs = useCallback(() => {
-    const baseTabs: Array<"courses" | "organizations" | "students" | "library" | "stats" | "links" | "documents" | "services" | "settings" | "frdo"> = [
+  type TabType = "courses" | "organizations" | "students" | "library" | "stats" | "links" | "documents" | "documents-orders" | "documents-protocols" | "documents-certificates" | "documents-diplomas" | "documents-testimonials" | "services" | "settings" | "frdo";
+  
+  const getVisibleTabs = useCallback((): TabType[] => {
+    const baseTabs: TabType[] = [
       "courses",
       "organizations",
       "students",
@@ -2510,13 +2520,71 @@ export default function OrganizationDashboard() {
                 <Link className="w-5 h-5" />
                 Ссылки регистрации
               </button>}
-            {menuSettings.showDocuments && <button onClick={() => {
-            setActiveTab("documents");
-            setIsMobileSidebarOpen(false);
-          }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === "documents" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary"}`}>
-              <FileText className="w-5 h-5" />
-              Документы
-            </button>}
+            {menuSettings.showDocuments && (
+              <Collapsible open={isDocumentsMenuOpen} onOpenChange={setIsDocumentsMenuOpen}>
+                <CollapsibleTrigger asChild>
+                  <button 
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-xl font-medium transition-colors ${
+                      activeTab.startsWith("documents") ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <FileText className="w-5 h-5" />
+                      Документы
+                    </div>
+                    {isDocumentsMenuOpen ? (
+                      <ChevronDown className="w-4 h-4" />
+                    ) : (
+                      <ChevronRight className="w-4 h-4" />
+                    )}
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pl-4 space-y-1 mt-1">
+                  <button onClick={() => {
+                    setActiveTab("documents");
+                    setIsMobileSidebarOpen(false);
+                  }} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm transition-colors ${activeTab === "documents" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary"}`}>
+                    <FileCheck className="w-4 h-4" />
+                    Обзор документов
+                  </button>
+                  <button onClick={() => {
+                    setActiveTab("documents-orders");
+                    setIsMobileSidebarOpen(false);
+                  }} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm transition-colors ${activeTab === "documents-orders" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary"}`}>
+                    <Users className="w-4 h-4" />
+                    Приказы зач./отч.
+                  </button>
+                  <button onClick={() => {
+                    setActiveTab("documents-protocols");
+                    setIsMobileSidebarOpen(false);
+                  }} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm transition-colors ${activeTab === "documents-protocols" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary"}`}>
+                    <ClipboardList className="w-4 h-4" />
+                    Протоколы АК
+                  </button>
+                  <button onClick={() => {
+                    setActiveTab("documents-certificates");
+                    setIsMobileSidebarOpen(false);
+                  }} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm transition-colors ${activeTab === "documents-certificates" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary"}`}>
+                    <Award className="w-4 h-4" />
+                    Удостоверения
+                  </button>
+                  <button onClick={() => {
+                    setActiveTab("documents-diplomas");
+                    setIsMobileSidebarOpen(false);
+                  }} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm transition-colors ${activeTab === "documents-diplomas" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary"}`}>
+                    <GraduationCap className="w-4 h-4" />
+                    Дипломы
+                  </button>
+                  <button onClick={() => {
+                    setActiveTab("documents-testimonials");
+                    setIsMobileSidebarOpen(false);
+                  }} className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm transition-colors ${activeTab === "documents-testimonials" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary"}`}>
+                    <FileCheck className="w-4 h-4" />
+                    Свидетельства
+                  </button>
+                </CollapsibleContent>
+              </Collapsible>
+            )}
             {isFrdoEnabled && <button onClick={() => {
             setActiveTab("frdo");
             setIsMobileSidebarOpen(false);
@@ -2567,6 +2635,11 @@ export default function OrganizationDashboard() {
                     {activeTab === "stats" && "Статистика обучения"}
                     {activeTab === "links" && "Ссылки для регистрации"}
                     {activeTab === "documents" && "Документооборот"}
+                    {activeTab === "documents-orders" && "Приказы о зачислении / отчислении"}
+                    {activeTab === "documents-protocols" && "Протоколы аттестационной комиссии"}
+                    {activeTab === "documents-certificates" && "Удостоверения"}
+                    {activeTab === "documents-diplomas" && "Дипломы"}
+                    {activeTab === "documents-testimonials" && "Свидетельства"}
                     {activeTab === "services" && "Услуги"}
                     {activeTab === "settings" && "Настройки"}
                   </h1>
@@ -3428,6 +3501,56 @@ export default function OrganizationDashboard() {
               </div>
               <OrgDocumentsManager organizationId={organizationId} />
             </div>}
+
+          {/* Documents Orders Tab */}
+          {activeTab === "documents-orders" && organizationId && (
+            <DocumentArchiveView
+              organizationId={organizationId}
+              categoryId="enrollment_orders"
+              title="Приказы о зачислении / отчислении"
+              docTypes={["enrollment_order", "expulsion_order"]}
+            />
+          )}
+
+          {/* Documents Protocols Tab */}
+          {activeTab === "documents-protocols" && organizationId && (
+            <DocumentArchiveView
+              organizationId={organizationId}
+              categoryId="attestation_protocols"
+              title="Протоколы аттестационной комиссии"
+              docTypes={["attestation_protocol"]}
+            />
+          )}
+
+          {/* Documents Certificates Tab */}
+          {activeTab === "documents-certificates" && organizationId && (
+            <DocumentArchiveView
+              organizationId={organizationId}
+              categoryId="certificates"
+              title="Удостоверения"
+              docTypes={["certificate_qualification"]}
+            />
+          )}
+
+          {/* Documents Diplomas Tab */}
+          {activeTab === "documents-diplomas" && organizationId && (
+            <DocumentArchiveView
+              organizationId={organizationId}
+              categoryId="diplomas"
+              title="Дипломы"
+              docTypes={["diploma_retraining"]}
+            />
+          )}
+
+          {/* Documents Testimonials Tab */}
+          {activeTab === "documents-testimonials" && organizationId && (
+            <DocumentArchiveView
+              organizationId={organizationId}
+              categoryId="testimonials"
+              title="Свидетельства"
+              docTypes={["testimonial_profession", "testimonial_position"]}
+            />
+          )}
 
           {/* FRDO Tab */}
           {activeTab === "frdo" && organizationId && <FRDOManager organizationId={organizationId} />}
