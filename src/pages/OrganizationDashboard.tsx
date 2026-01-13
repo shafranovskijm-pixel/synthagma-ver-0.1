@@ -58,6 +58,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useOrgFeatures } from "@/hooks/useOrgFeatures";
 import { useOrganizationData } from "@/hooks/useOrganizationData";
 import { useRegistrationLinks } from "@/hooks/useRegistrationLinks";
+import { useCompanyActions } from "@/hooks/useCompanyActions";
+import { useStudentCoursesDialog } from "@/hooks/useStudentCoursesDialog";
 import { Button } from "@/components/ui/button";
 import { GraduationCap, BookOpen, Users, BarChart3, Settings, LogOut, Plus, Upload, FileSpreadsheet, Search, Eye, TrendingUp, Clock, CheckCircle2, XCircle, Loader2, Edit, Trash2, FileText, Download, X, ChevronRight, ChevronDown, Link, Copy, Building2, Save, Send, FileCheck, Receipt, CheckSquare, LayoutGrid, List, Filter, Tag, Palette, History, Moon, Sun, Library, Trophy, MessageCircle, Image, ExternalLink, ShoppingBag, Mail, Key, Menu, AlertCircle, Award, ClipboardList } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -205,21 +207,8 @@ export default function OrganizationDashboard() {
   }[]>([]);
   const [orgStudents, setOrgStudents] = useState<Student[]>([]);
   const [isLoadingOrgDetails, setIsLoadingOrgDetails] = useState(false);
-  const [showAddCompanyDialog, setShowAddCompanyDialog] = useState(false);
-  const [newCompanyName, setNewCompanyName] = useState("");
-  const [newCompanyEmail, setNewCompanyEmail] = useState("");
-  const [newCompanyInn, setNewCompanyInn] = useState("");
-  const [newCompanyContactName, setNewCompanyContactName] = useState("");
-  const [newCompanyPhone, setNewCompanyPhone] = useState("");
-  const [isCreatingCompany, setIsCreatingCompany] = useState(false);
-  const [showEditCompanyDialog, setShowEditCompanyDialog] = useState(false);
-  const [editingCompany, setEditingCompany] = useState<Organization | null>(null);
-  const [editCompanyName, setEditCompanyName] = useState("");
-  const [editCompanyEmail, setEditCompanyEmail] = useState("");
-  const [editCompanyInn, setEditCompanyInn] = useState("");
-  const [editCompanyContactName, setEditCompanyContactName] = useState("");
-  const [editCompanyPhone, setEditCompanyPhone] = useState("");
-  const [isSavingCompany, setIsSavingCompany] = useState(false);
+  // Company management hook
+  const companyActions = useCompanyActions();
 
   // Student details dialog
   const [selectedStudent, setSelectedStudent] = useState<StudentDetails | null>(null);
@@ -286,20 +275,12 @@ export default function OrganizationDashboard() {
   const [inviteEmail, setInviteEmail] = useState("");
   const [isSendingInvitation, setIsSendingInvitation] = useState(false);
 
-  // Student course assignment dialog
-  const [showStudentCoursesDialog, setShowStudentCoursesDialog] = useState(false);
-  const [selectedStudentForCourses, setSelectedStudentForCourses] = useState<Student | null>(null);
-  const [studentEnrollments, setStudentEnrollments] = useState<{
-    course: Course;
-    enrollment_id: string;
-    progress: number;
-    status: string;
-  }[]>([]);
-  const [availableCoursesForStudent, setAvailableCoursesForStudent] = useState<Course[]>([]);
-  const [selectedCoursesToAdd, setSelectedCoursesToAdd] = useState<Set<string>>(new Set());
-  const [isLoadingStudentCourses, setIsLoadingStudentCourses] = useState(false);
-  const [isAddingCoursesToStudent, setIsAddingCoursesToStudent] = useState(false);
-  const [studentCoursesSearchQuery, setStudentCoursesSearchQuery] = useState("");
+  // Student course assignment hook - refresh callback will be set after data loading setup
+  const refreshData = useCallback(() => {
+    setRefreshKey(prev => prev + 1);
+  }, []);
+  
+  const studentCoursesDialog = useStudentCoursesDialog(courses, refreshData);
 
   // All profiles (students without enrollments)
   const [allProfiles, setAllProfiles] = useState<Student[]>([]);
@@ -1493,107 +1474,11 @@ export default function OrganizationDashboard() {
     }
   };
 
-  // Open student courses management dialog
-  const handleOpenStudentCourses = async (student: Student) => {
-    setSelectedStudentForCourses(student);
-    setShowStudentCoursesDialog(true);
-    setIsLoadingStudentCourses(true);
-    setSelectedCoursesToAdd(new Set());
-    setStudentCoursesSearchQuery("");
-    try {
-      // Get all enrollments for this student
-      const {
-        data: enrollmentsData,
-        error: enrollmentsError
-      } = await supabase.from("enrollments").select("id, course_id, progress, status").eq("user_id", student.user_id);
-      if (enrollmentsError) throw enrollmentsError;
-      const enrolledCourseIds = new Set((enrollmentsData || []).map(e => e.course_id));
+  // Open student courses management dialog - using hook
+  const handleOpenStudentCourses = studentCoursesDialog.openDialog;
 
-      // Get course details for enrolled courses
-      const enrolledList: {
-        course: Course;
-        enrollment_id: string;
-        progress: number;
-        status: string;
-      }[] = [];
-      for (const enrollment of enrollmentsData || []) {
-        const course = courses.find(c => c.id === enrollment.course_id);
-        if (course) {
-          enrolledList.push({
-            course,
-            enrollment_id: enrollment.id,
-            progress: enrollment.progress || 0,
-            status: enrollment.status || "active"
-          });
-        }
-      }
-      setStudentEnrollments(enrolledList);
-
-      // Get available courses (not enrolled yet)
-      const availableCourses = courses.filter(c => c.is_published && !enrolledCourseIds.has(c.id));
-      setAvailableCoursesForStudent(availableCourses);
-    } catch (error) {
-      console.error("Error loading student courses:", error);
-      toast.error("Ошибка загрузки данных");
-    } finally {
-      setIsLoadingStudentCourses(false);
-    }
-  };
-
-  // Add multiple courses to student
-  const handleAddCoursesToStudent = async () => {
-    if (!selectedStudentForCourses || selectedCoursesToAdd.size === 0) return;
-    setIsAddingCoursesToStudent(true);
-    try {
-      const enrollmentsToInsert = Array.from(selectedCoursesToAdd).map(courseId => ({
-        user_id: selectedStudentForCourses.user_id,
-        course_id: courseId,
-        status: "active",
-        progress: 0
-      }));
-      const {
-        error
-      } = await supabase.from("enrollments").insert(enrollmentsToInsert);
-      if (error) throw error;
-      toast.success(`Зачислено на ${selectedCoursesToAdd.size} курсов`);
-      setSelectedCoursesToAdd(new Set());
-
-      // Refresh data
-      handleOpenStudentCourses(selectedStudentForCourses);
-    } catch (error) {
-      console.error("Error adding courses to student:", error);
-      toast.error("Ошибка зачисления");
-    } finally {
-      setIsAddingCoursesToStudent(false);
-    }
-  };
-
-  // Remove student from a course (from student courses dialog)
-  const handleRemoveStudentFromCourse = async (enrollmentId: string) => {
-    if (!selectedStudentForCourses) return;
-    try {
-      const {
-        error
-      } = await supabase.from("enrollments").delete().eq("id", enrollmentId);
-      if (error) throw error;
-      toast.success("Отчислен с курса");
-      handleOpenStudentCourses(selectedStudentForCourses);
-    } catch (error) {
-      console.error("Error removing enrollment:", error);
-      toast.error("Ошибка отчисления");
-    }
-  };
-
-  // Toggle course selection for bulk enrollment
-  const toggleCourseSelection = (courseId: string) => {
-    const newSelected = new Set(selectedCoursesToAdd);
-    if (newSelected.has(courseId)) {
-      newSelected.delete(courseId);
-    } else {
-      newSelected.add(courseId);
-    }
-    setSelectedCoursesToAdd(newSelected);
-  };
+  // Toggle course selection for bulk enrollment - using hook
+  const toggleCourseSelection = studentCoursesDialog.toggleCourseSelection;
 
   // Send course invitation by email
   const handleSendInvitation = async () => {
@@ -2238,77 +2123,24 @@ export default function OrganizationDashboard() {
     setShowStudentDetailCard(true);
   };
 
-  // Company management
+  // Company management - using hooks
   const handleCreateCompany = async () => {
-    if (!newCompanyName.trim() || !newCompanyEmail.trim()) {
-      toast.error("Заполните название и email");
-      return;
-    }
-    setIsCreatingCompany(true);
-    try {
-      const {
-        error
-      } = await supabase.from("organizations").insert({
-        name: newCompanyName.trim(),
-        email: newCompanyEmail.trim(),
-        inn: newCompanyInn || null,
-        contact_name: newCompanyContactName || null,
-        phone: newCompanyPhone || null
-      });
-      if (error) throw error;
-      toast.success("Компания создана");
-      setShowAddCompanyDialog(false);
-      setNewCompanyName("");
-      setNewCompanyEmail("");
-      setNewCompanyInn("");
-      setNewCompanyContactName("");
-      setNewCompanyPhone("");
-
+    const success = await companyActions.createCompany();
+    if (success) {
       // Refresh
       setActiveTab("courses");
       setTimeout(() => setActiveTab("organizations"), 100);
-    } catch (error) {
-      console.error("Error creating company:", error);
-      toast.error("Ошибка создания компании");
-    } finally {
-      setIsCreatingCompany(false);
     }
   };
-  const handleEditCompany = (org: Organization) => {
-    setEditingCompany(org);
-    setEditCompanyName(org.name);
-    setEditCompanyEmail(org.email);
-    setEditCompanyInn(org.inn || "");
-    setEditCompanyContactName(org.contact_name || "");
-    setEditCompanyPhone(org.phone || "");
-    setShowEditCompanyDialog(true);
-  };
+  
+  const handleEditCompany = companyActions.openEditDialog;
+  
   const handleSaveCompany = async () => {
-    if (!editingCompany) return;
-    setIsSavingCompany(true);
-    try {
-      const {
-        error
-      } = await supabase.from("organizations").update({
-        name: editCompanyName.trim(),
-        email: editCompanyEmail.trim(),
-        inn: editCompanyInn || null,
-        contact_name: editCompanyContactName || null,
-        phone: editCompanyPhone || null
-      }).eq("id", editingCompany.id);
-      if (error) throw error;
-      toast.success("Компания обновлена");
-      setShowEditCompanyDialog(false);
-      setEditingCompany(null);
-
+    const success = await companyActions.saveCompany();
+    if (success) {
       // Refresh
       setActiveTab("courses");
       setTimeout(() => setActiveTab("organizations"), 100);
-    } catch (error) {
-      console.error("Error saving company:", error);
-      toast.error("Ошибка сохранения");
-    } finally {
-      setIsSavingCompany(false);
     }
   };
   const handleViewOrg = async (org: Organization) => {
@@ -2946,36 +2778,36 @@ export default function OrganizationDashboard() {
       />
 
       <AddCompanyDialog
-        open={showAddCompanyDialog}
-        onOpenChange={setShowAddCompanyDialog}
-        name={newCompanyName}
-        onNameChange={setNewCompanyName}
-        email={newCompanyEmail}
-        onEmailChange={setNewCompanyEmail}
-        inn={newCompanyInn}
-        onInnChange={setNewCompanyInn}
-        contactName={newCompanyContactName}
-        onContactNameChange={setNewCompanyContactName}
-        phone={newCompanyPhone}
-        onPhoneChange={setNewCompanyPhone}
-        isCreating={isCreatingCompany}
+        open={companyActions.showAddCompanyDialog}
+        onOpenChange={companyActions.setShowAddCompanyDialog}
+        name={companyActions.newCompanyName}
+        onNameChange={companyActions.setNewCompanyName}
+        email={companyActions.newCompanyEmail}
+        onEmailChange={companyActions.setNewCompanyEmail}
+        inn={companyActions.newCompanyInn}
+        onInnChange={companyActions.setNewCompanyInn}
+        contactName={companyActions.newCompanyContactName}
+        onContactNameChange={companyActions.setNewCompanyContactName}
+        phone={companyActions.newCompanyPhone}
+        onPhoneChange={companyActions.setNewCompanyPhone}
+        isCreating={companyActions.isCreatingCompany}
         onCreate={handleCreateCompany}
       />
 
       <EditCompanyDialog
-        open={showEditCompanyDialog}
-        onOpenChange={setShowEditCompanyDialog}
-        name={editCompanyName}
-        onNameChange={setEditCompanyName}
-        email={editCompanyEmail}
-        onEmailChange={setEditCompanyEmail}
-        inn={editCompanyInn}
-        onInnChange={setEditCompanyInn}
-        contactName={editCompanyContactName}
-        onContactNameChange={setEditCompanyContactName}
-        phone={editCompanyPhone}
-        onPhoneChange={setEditCompanyPhone}
-        isSaving={isSavingCompany}
+        open={companyActions.showEditCompanyDialog}
+        onOpenChange={companyActions.setShowEditCompanyDialog}
+        name={companyActions.editCompanyName}
+        onNameChange={companyActions.setEditCompanyName}
+        email={companyActions.editCompanyEmail}
+        onEmailChange={companyActions.setEditCompanyEmail}
+        inn={companyActions.editCompanyInn}
+        onInnChange={companyActions.setEditCompanyInn}
+        contactName={companyActions.editCompanyContactName}
+        onContactNameChange={companyActions.setEditCompanyContactName}
+        phone={companyActions.editCompanyPhone}
+        onPhoneChange={companyActions.setEditCompanyPhone}
+        isSaving={companyActions.isSavingCompany}
         onSave={handleSaveCompany}
       />
 
@@ -2988,19 +2820,19 @@ export default function OrganizationDashboard() {
       />
 
       <StudentCoursesDialog
-        open={showStudentCoursesDialog}
-        onOpenChange={setShowStudentCoursesDialog}
-        student={selectedStudentForCourses}
-        isLoading={isLoadingStudentCourses}
-        studentEnrollments={studentEnrollments}
-        availableCourses={availableCoursesForStudent}
-        selectedCoursesToAdd={selectedCoursesToAdd}
-        searchQuery={studentCoursesSearchQuery}
-        onSearchQueryChange={setStudentCoursesSearchQuery}
+        open={studentCoursesDialog.showStudentCoursesDialog}
+        onOpenChange={studentCoursesDialog.setShowStudentCoursesDialog}
+        student={studentCoursesDialog.selectedStudentForCourses}
+        isLoading={studentCoursesDialog.isLoadingStudentCourses}
+        studentEnrollments={studentCoursesDialog.studentEnrollments}
+        availableCourses={studentCoursesDialog.availableCoursesForStudent}
+        selectedCoursesToAdd={studentCoursesDialog.selectedCoursesToAdd}
+        searchQuery={studentCoursesDialog.studentCoursesSearchQuery}
+        onSearchQueryChange={studentCoursesDialog.setStudentCoursesSearchQuery}
         onToggleCourseSelection={toggleCourseSelection}
-        isAddingCourses={isAddingCoursesToStudent}
-        onAddCourses={handleAddCoursesToStudent}
-        onRemoveEnrollment={handleRemoveStudentFromCourse}
+        isAddingCourses={studentCoursesDialog.isAddingCoursesToStudent}
+        onAddCourses={studentCoursesDialog.addCourses}
+        onRemoveEnrollment={studentCoursesDialog.removeEnrollment}
         getCategoryById={getCategoryById}
       />
 
