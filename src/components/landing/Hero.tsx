@@ -62,6 +62,9 @@ export function Hero() {
             <Link to="/about" className="text-muted-foreground hover:text-primary transition-colors font-medium">
               О нас
             </Link>
+            <Link to="/blog" className="text-muted-foreground hover:text-primary transition-colors font-medium">
+              Блог
+            </Link>
           </div>
           <div className="flex items-center gap-3">
             <ThemeToggle />
