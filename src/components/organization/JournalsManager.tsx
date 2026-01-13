@@ -55,6 +55,13 @@ interface JournalItem {
   required: boolean;
 }
 
+interface CustomJournal {
+  id: string;
+  title: string;
+  description: string;
+  createdAt: string;
+}
+
 interface JournalCategory {
   id: string;
   title: string;
@@ -168,8 +175,58 @@ export function JournalsManager({ organizationId }: JournalsManagerProps) {
   const [deletingJournal, setDeletingJournal] = useState<{
     type: string;
     title: string;
+    isRequired: boolean;
   } | null>(null);
   const [journalCounts, setJournalCounts] = useState<Record<string, number>>({});
+  
+  // Custom journals state
+  const [customJournals, setCustomJournals] = useState<CustomJournal[]>([]);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [newJournalTitle, setNewJournalTitle] = useState("");
+  const [newJournalDescription, setNewJournalDescription] = useState("");
+
+  // Load custom journals from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem(`custom_journals_${organizationId}`);
+    if (saved) {
+      setCustomJournals(JSON.parse(saved));
+    }
+  }, [organizationId]);
+
+  // Save custom journals to localStorage
+  const saveCustomJournals = (journals: CustomJournal[]) => {
+    localStorage.setItem(`custom_journals_${organizationId}`, JSON.stringify(journals));
+    setCustomJournals(journals);
+  };
+
+  // Create new custom journal
+  const handleCreateJournal = () => {
+    if (!newJournalTitle.trim()) {
+      toast.error("Введите название журнала");
+      return;
+    }
+
+    const newJournal: CustomJournal = {
+      id: `custom_${Date.now()}`,
+      title: newJournalTitle.trim(),
+      description: newJournalDescription.trim() || "Пользовательский журнал",
+      createdAt: new Date().toISOString(),
+    };
+
+    saveCustomJournals([...customJournals, newJournal]);
+    setNewJournalTitle("");
+    setNewJournalDescription("");
+    setShowCreateDialog(false);
+    toast.success("Журнал создан");
+  };
+
+  // Delete custom journal
+  const handleDeleteCustomJournal = (journalId: string) => {
+    const updated = customJournals.filter((j) => j.id !== journalId);
+    saveCustomJournals(updated);
+    localStorage.removeItem(`journal_${journalId}_${organizationId}`);
+    toast.success("Журнал удалён");
+  };
 
   // Fetch journal counts for each type
   useEffect(() => {
@@ -314,16 +371,25 @@ export function JournalsManager({ organizationId }: JournalsManagerProps) {
     <div className="space-y-6">
       {/* Header Card */}
       <div className="bg-card rounded-2xl border border-border p-6">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-            <ClipboardList className="w-6 h-6 text-primary" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+              <ClipboardList className="w-6 h-6 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold">Журналы учёта</h2>
+              <p className="text-sm text-muted-foreground">
+                Обязательные и рекомендуемые журналы для организаций ДПО
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-lg font-semibold">Журналы учёта</h2>
-            <p className="text-sm text-muted-foreground">
-              Обязательные и рекомендуемые журналы для организаций ДПО
-            </p>
-          </div>
+          <Button
+            onClick={() => setShowCreateDialog(true)}
+            className="rounded-xl"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Создать журнал
+          </Button>
         </div>
       </div>
 
@@ -551,18 +617,21 @@ export function JournalsManager({ organizationId }: JournalsManagerProps) {
                             <Download className="w-4 h-4 mr-2" />
                             Шаблон
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="rounded-lg text-destructive hover:text-destructive hover:bg-destructive/10"
-                            onClick={() => setDeletingJournal({
-                              type: journal.id,
-                              title: journal.title,
-                            })}
-                            title="Удалить журнал"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                          {!journal.required && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="rounded-lg text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={() => setDeletingJournal({
+                                type: journal.id,
+                                title: journal.title,
+                                isRequired: journal.required,
+                              })}
+                              title="Удалить журнал"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -573,6 +642,68 @@ export function JournalsManager({ organizationId }: JournalsManagerProps) {
           );
         })}
       </div>
+
+      {/* Custom Journals Section */}
+      {customJournals.length > 0 && (
+        <div className="bg-card rounded-2xl border border-border overflow-hidden">
+          <div className="flex items-center gap-3 p-4 border-b border-border">
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <FileText className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <h3 className="font-semibold">Пользовательские журналы</h3>
+              <p className="text-sm text-muted-foreground">
+                {customJournals.length} журналов
+              </p>
+            </div>
+          </div>
+          <div>
+            {customJournals.map((journal) => (
+              <div
+                key={journal.id}
+                className="flex items-start justify-between p-4 border-b border-border last:border-b-0 hover:bg-secondary/30 transition-colors"
+              >
+                <div className="flex items-start gap-3 flex-1 min-w-0">
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <FileText className="w-4 h-4 text-primary" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <span className="font-medium">{journal.title}</span>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {journal.description}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0 ml-4">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="rounded-lg"
+                    onClick={() =>
+                      setActiveJournal({
+                        type: journal.id,
+                        title: journal.title,
+                      })
+                    }
+                  >
+                    <Edit className="w-4 h-4 mr-2" />
+                    Вести онлайн
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="rounded-lg text-destructive hover:text-destructive hover:bg-destructive/10"
+                    onClick={() => handleDeleteCustomJournal(journal.id)}
+                    title="Удалить журнал"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!deletingJournal} onOpenChange={() => setDeletingJournal(null)}>
@@ -595,6 +726,49 @@ export function JournalsManager({ organizationId }: JournalsManagerProps) {
               className="bg-destructive hover:bg-destructive/90"
             >
               Удалить
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Create Journal Dialog */}
+      <AlertDialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Создать журнал</AlertDialogTitle>
+            <AlertDialogDescription>
+              Введите название и описание для нового журнала
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Название журнала *</label>
+              <Input
+                placeholder="Например: Журнал учёта консультаций"
+                value={newJournalTitle}
+                onChange={(e) => setNewJournalTitle(e.target.value)}
+                className="rounded-lg"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Описание</label>
+              <Input
+                placeholder="Краткое описание назначения журнала"
+                value={newJournalDescription}
+                onChange={(e) => setNewJournalDescription(e.target.value)}
+                className="rounded-lg"
+              />
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setNewJournalTitle("");
+              setNewJournalDescription("");
+            }}>
+              Отмена
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleCreateJournal}>
+              Создать
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
