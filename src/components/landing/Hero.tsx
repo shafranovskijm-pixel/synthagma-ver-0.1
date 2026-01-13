@@ -53,11 +53,11 @@ export function Hero() {
             <a href="#features" className="text-muted-foreground hover:text-primary transition-colors font-medium">
               Возможности
             </a>
-            <a href="#for-students" className="text-muted-foreground hover:text-primary transition-colors font-medium">
-              Для учеников
+            <a href="#roadmap" className="text-muted-foreground hover:text-primary transition-colors font-medium">
+              Дорожная карта
             </a>
             <a href="#pricing" className="text-muted-foreground hover:text-primary transition-colors font-medium">
-              Тарифы
+              Калькулятор стоимости
             </a>
           </div>
           <div className="flex items-center gap-3">
