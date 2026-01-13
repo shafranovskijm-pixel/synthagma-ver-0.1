@@ -10,7 +10,12 @@ interface CourseCategory {
 
 export function useCategoryActions(organizationId: string | null) {
   const [categories, setCategories] = useState<CourseCategory[]>([]);
+  const [showCategoryDialog, setShowCategoryDialog] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [newCategoryColor, setNewCategoryColor] = useState("#6366f1");
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<CourseCategory | null>(null);
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>("all");
 
   const fetchCategories = useCallback(async () => {
     if (!organizationId) return;
@@ -26,8 +31,8 @@ export function useCategoryActions(organizationId: string | null) {
     }
   }, [organizationId]);
 
-  const createCategory = useCallback(async (name: string, color: string) => {
-    if (!organizationId || !name.trim()) {
+  const createCategory = useCallback(async () => {
+    if (!organizationId || !newCategoryName.trim()) {
       toast.error("Введите название категории");
       return null;
     }
@@ -38,14 +43,17 @@ export function useCategoryActions(organizationId: string | null) {
         .from("course_categories")
         .insert({
           organization_id: organizationId,
-          name: name.trim(),
-          color
+          name: newCategoryName.trim(),
+          color: newCategoryColor
         })
         .select()
         .single();
 
       if (error) throw error;
       setCategories(prev => [...prev, data]);
+      setNewCategoryName("");
+      setNewCategoryColor("#6366f1");
+      setShowCategoryDialog(false);
       toast.success("Категория создана");
       return data;
     } catch (error) {
@@ -55,9 +63,9 @@ export function useCategoryActions(organizationId: string | null) {
     } finally {
       setIsCreatingCategory(false);
     }
-  }, [organizationId]);
+  }, [organizationId, newCategoryName, newCategoryColor]);
 
-  const setCourseCategory = useCallback(async (courseId: string, categoryId: string | null) => {
+  const setCourseCategory = useCallback(async (courseId: string, categoryId: string | null, setCourses: React.Dispatch<React.SetStateAction<any[]>>) => {
     try {
       const { error } = await supabase
         .from("courses")
@@ -65,6 +73,7 @@ export function useCategoryActions(organizationId: string | null) {
         .eq("id", courseId);
 
       if (error) throw error;
+      setCourses(prev => prev.map(c => c.id === courseId ? { ...c, category_id: categoryId } : c));
       toast.success("Категория назначена");
       return true;
     } catch (error) {
@@ -82,7 +91,17 @@ export function useCategoryActions(organizationId: string | null) {
   return {
     categories,
     setCategories,
+    showCategoryDialog,
+    setShowCategoryDialog,
+    newCategoryName,
+    setNewCategoryName,
+    newCategoryColor,
+    setNewCategoryColor,
     isCreatingCategory,
+    editingCategory,
+    setEditingCategory,
+    selectedCategoryFilter,
+    setSelectedCategoryFilter,
     fetchCategories,
     createCategory,
     setCourseCategory,

@@ -38,6 +38,10 @@ export function useEnrollmentActions(
   const [isEnrolling, setIsEnrolling] = useState(false);
   const [isUnenrolling, setIsUnenrolling] = useState(false);
   const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
+  const [showEnrollDialog, setShowEnrollDialog] = useState(false);
+  const [showUnenrollConfirm, setShowUnenrollConfirm] = useState(false);
+  const [showBulkFRDOExport, setShowBulkFRDOExport] = useState(false);
+  const [enrollCourseId, setEnrollCourseId] = useState<string>("");
 
   const toggleStudentSelection = useCallback((uniqueId: string) => {
     const newSet = new Set(selectedStudentIds);
@@ -105,6 +109,7 @@ export function useEnrollmentActions(
 
       if (newUserIds.length === 0) {
         toast.info("Все выбранные ученики уже зачислены на этот курс");
+        setShowEnrollDialog(false);
         return false;
       }
 
@@ -132,7 +137,7 @@ export function useEnrollmentActions(
           .eq("id", organizationId)
           .single();
 
-        await generateEnrollmentOrder({
+        const orderName = await generateEnrollmentOrder({
           organizationId,
           organizationName: orgData?.name || organizationName,
           directorName: orgData?.director_name,
@@ -141,10 +146,16 @@ export function useEnrollmentActions(
           courseName: course?.title || "Курс",
           orderType: "enrollment",
         });
+
+        if (orderName) {
+          toast.success(`Приказ о зачислении создан: ${orderName}`);
+        }
       }
 
       toast.success(`Зачислено ${newUserIds.length} учеников`);
+      setShowEnrollDialog(false);
       setSelectedStudentIds(new Set());
+      setEnrollCourseId("");
       onRefresh();
       return true;
     } catch (error) {
@@ -164,6 +175,7 @@ export function useEnrollmentActions(
 
     if (enrollmentIds.length === 0) {
       toast.error("Нет выбранных зачислений для отчисления");
+      setShowUnenrollConfirm(false);
       return false;
     }
 
@@ -199,7 +211,7 @@ export function useEnrollmentActions(
         }, {} as Record<string, { courseName: string; names: string[] }>);
 
         for (const courseData of Object.values(studentsByCourse)) {
-          await generateEnrollmentOrder({
+          const orderName = await generateEnrollmentOrder({
             organizationId,
             organizationName: orgData?.name || organizationName,
             directorName: orgData?.director_name,
@@ -208,10 +220,15 @@ export function useEnrollmentActions(
             courseName: courseData.courseName,
             orderType: "expulsion",
           });
+
+          if (orderName) {
+            toast.success(`Приказ об отчислении создан: ${orderName}`);
+          }
         }
       }
 
       toast.success(`Отчислено ${enrollmentIds.length} записей`);
+      setShowUnenrollConfirm(false);
       setSelectedStudentIds(new Set());
       onRefresh();
       return true;
@@ -231,16 +248,41 @@ export function useEnrollmentActions(
     }).length;
   }, [selectedStudentIds]);
 
+  const deleteEnrollment = useCallback(async (enrollmentId: string | null, setStudents: React.Dispatch<React.SetStateAction<Student[]>>) => {
+    if (!enrollmentId) {
+      toast.error("Нельзя удалить — нет зачисления");
+      return;
+    }
+    try {
+      const { error } = await supabase.from("enrollments").delete().eq("id", enrollmentId);
+      if (error) throw error;
+      setStudents(prev => prev.filter(s => s.enrollment_id !== enrollmentId));
+      toast.success("Ученик удалён из курса");
+    } catch (error) {
+      console.error("Error deleting enrollment:", error);
+      toast.error("Ошибка удаления");
+    }
+  }, []);
+
   return {
     isEnrolling,
     isUnenrolling,
     selectedStudentIds,
     setSelectedStudentIds,
+    showEnrollDialog,
+    setShowEnrollDialog,
+    showUnenrollConfirm,
+    setShowUnenrollConfirm,
+    showBulkFRDOExport,
+    setShowBulkFRDOExport,
+    enrollCourseId,
+    setEnrollCourseId,
     toggleStudentSelection,
     toggleSelectAll,
     getSelectedUserIds,
     bulkEnroll,
     bulkUnenroll,
     getSelectedEnrollmentsCount,
+    deleteEnrollment,
   };
 }

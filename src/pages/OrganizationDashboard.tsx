@@ -63,6 +63,8 @@ import { useStudentCoursesDialog } from "@/hooks/useStudentCoursesDialog";
 import { useStudentManagement } from "@/hooks/useStudentManagement";
 import { useCourseStudentsManager } from "@/hooks/useCourseStudentsManager";
 import { useStudentActions } from "@/hooks/useStudentActions";
+import { useCategoryActions } from "@/hooks/useCategoryActions";
+import { useEnrollmentActions } from "@/hooks/useEnrollmentActions";
 import { Button } from "@/components/ui/button";
 import { GraduationCap, BookOpen, Users, BarChart3, Settings, LogOut, Plus, Upload, FileSpreadsheet, Search, Eye, TrendingUp, Clock, CheckCircle2, XCircle, Loader2, Edit, Trash2, FileText, Download, X, ChevronRight, ChevronDown, Link, Copy, Building2, Save, Send, FileCheck, Receipt, CheckSquare, LayoutGrid, List, Filter, Tag, Palette, History, Moon, Sun, Library, Trophy, MessageCircle, Image, ExternalLink, ShoppingBag, Mail, Key, Menu, AlertCircle, Award, ClipboardList } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -236,14 +238,16 @@ export default function OrganizationDashboard() {
   const [isSavingStudentCompany, setIsSavingStudentCompany] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
-  // Student selection for bulk actions
-  const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
-  const [showEnrollDialog, setShowEnrollDialog] = useState(false);
-  const [showBulkFRDOExport, setShowBulkFRDOExport] = useState(false);
-  const [enrollCourseId, setEnrollCourseId] = useState<string>("");
-  const [isEnrolling, setIsEnrolling] = useState(false);
-  const [isUnenrolling, setIsUnenrolling] = useState(false);
-  const [showUnenrollConfirm, setShowUnenrollConfirm] = useState(false);
+  // Refresh trigger for data reload
+  const [refreshKey, setRefreshKey] = useState(0);
+  
+  // Student course assignment hook - refresh callback will be set after data loading setup
+  const refreshData = useCallback(() => {
+    setRefreshKey(prev => prev + 1);
+  }, []);
+
+  // Enrollment actions hook
+  const enrollmentActions = useEnrollmentActions(organizationId, organizationName, refreshData);
 
   // Course students manager hook
   const courseStudentsManager = useCourseStudentsManager(organizationId);
@@ -252,11 +256,6 @@ export default function OrganizationDashboard() {
   const [showInviteEmailDialog, setShowInviteEmailDialog] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [isSendingInvitation, setIsSendingInvitation] = useState(false);
-
-  // Student course assignment hook - refresh callback will be set after data loading setup
-  const refreshData = useCallback(() => {
-    setRefreshKey(prev => prev + 1);
-  }, []);
   
   const studentCoursesDialog = useStudentCoursesDialog(courses, refreshData);
 
@@ -298,14 +297,12 @@ export default function OrganizationDashboard() {
     complete: number;
   }>({ total: 0, withPassport: 0, withSnils: 0, withEducation: 0, complete: 0 });
 
-  // Categories state
-  const [categories, setCategories] = useState<CourseCategory[]>([]);
-  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>("all");
-  const [showCategoryDialog, setShowCategoryDialog] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState("");
-  const [newCategoryColor, setNewCategoryColor] = useState("#6366f1");
-  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
-  const [editingCategory, setEditingCategory] = useState<CourseCategory | null>(null);
+  // Category management hook
+  const categoryActions = useCategoryActions(organizationId);
+  const { categories, setCategories, showCategoryDialog, setShowCategoryDialog, newCategoryName, setNewCategoryName, newCategoryColor, setNewCategoryColor, isCreatingCategory, selectedCategoryFilter, getCategoryById, createCategory } = categoryActions;
+  
+  // Enrollment actions aliases
+  const { selectedStudentIds, setSelectedStudentIds, showEnrollDialog, setShowEnrollDialog, showUnenrollConfirm, setShowUnenrollConfirm, showBulkFRDOExport, setShowBulkFRDOExport, enrollCourseId, setEnrollCourseId, isEnrolling, isUnenrolling } = enrollmentActions;
 
   // Student filter state - default to not_enrolled
   const [studentStatusFilter, setStudentStatusFilter] = useState<"all" | "active" | "completed" | "not_enrolled">("not_enrolled");
@@ -322,8 +319,6 @@ export default function OrganizationDashboard() {
     missingFields: string[] 
   }>>(new Map());
 
-  // Refresh trigger for data reload
-  const [refreshKey, setRefreshKey] = useState(0);
 
   // Course details modal state
   const [showCourseDetailsModal, setShowCourseDetailsModal] = useState(false);
@@ -839,7 +834,7 @@ export default function OrganizationDashboard() {
         const {
           data: categoriesData
         } = await supabase.from("course_categories").select("*").eq("organization_id", orgId).order("name");
-        setCategories(categoriesData || []);
+        categoryActions.setCategories(categoriesData || []);
 
         // Fetch companies
         const {
@@ -950,202 +945,14 @@ export default function OrganizationDashboard() {
       toast.error("Ошибка удаления");
     }
   };
-  const toggleStudentSelection = (uniqueId: string) => {
-    const newSet = new Set(selectedStudentIds);
-    if (newSet.has(uniqueId)) {
-      newSet.delete(uniqueId);
-    } else {
-      newSet.add(uniqueId);
-    }
-    setSelectedStudentIds(newSet);
-  };
-  const toggleSelectAll = (filteredList: Student[]) => {
-    const filteredIds = filteredList.map(s => s.enrollment_id || s.user_id);
-    const allSelected = filteredIds.every(id => selectedStudentIds.has(id)) && filteredIds.length > 0;
-    if (allSelected) {
-      // Deselect all filtered
-      const newSet = new Set(selectedStudentIds);
-      filteredIds.forEach(id => newSet.delete(id));
-      setSelectedStudentIds(newSet);
-    } else {
-      // Select all filtered
-      const newSet = new Set(selectedStudentIds);
-      filteredIds.forEach(id => newSet.add(id));
-      setSelectedStudentIds(newSet);
-    }
-  };
-  const getSelectedUserIds = (): string[] => {
-    const userIds = new Set<string>();
-    for (const student of students) {
-      const uniqueId = student.enrollment_id || student.user_id;
-      if (selectedStudentIds.has(uniqueId)) {
-        userIds.add(student.user_id);
-      }
-    }
-    return Array.from(userIds);
-  };
-  const handleBulkEnroll = async () => {
-    if (!enrollCourseId) {
-      toast.error("Выберите курс");
-      return;
-    }
-    const userIds = getSelectedUserIds();
-    if (userIds.length === 0) {
-      toast.error("Выберите учеников");
-      return;
-    }
-    setIsEnrolling(true);
-    try {
-      const {
-        data: existingEnrollments
-      } = await supabase.from("enrollments").select("user_id").eq("course_id", enrollCourseId).in("user_id", userIds);
-      const existingUserIds = new Set((existingEnrollments || []).map(e => e.user_id));
-      const newUserIds = userIds.filter(id => !existingUserIds.has(id));
-      if (newUserIds.length === 0) {
-        toast.info("Все выбранные ученики уже зачислены на этот курс");
-        setShowEnrollDialog(false);
-        return;
-      }
-      const enrollmentsToInsert = newUserIds.map(userId => ({
-        user_id: userId,
-        course_id: enrollCourseId,
-        status: "active",
-        progress: 0
-      }));
-      const {
-        error
-      } = await supabase.from("enrollments").insert(enrollmentsToInsert);
-      if (error) throw error;
-
-      // Generate enrollment order
-      if (organizationId) {
-        const enrolledStudentNames = newUserIds
-          .map(userId => {
-            const student = [...students, ...allProfiles].find(s => s.user_id === userId);
-            return student?.name || "Неизвестный";
-          });
-        const course = courses.find(c => c.id === enrollCourseId);
-        
-        // Fetch organization details for the order
-        const { data: orgData } = await supabase
-          .from("organizations")
-          .select("name, director_name, director_position")
-          .eq("id", organizationId)
-          .single();
-
-        const orderName = await generateEnrollmentOrder({
-          organizationId,
-          organizationName: orgData?.name || organizationName,
-          directorName: orgData?.director_name,
-          directorPosition: orgData?.director_position,
-          studentNames: enrolledStudentNames,
-          courseName: course?.title || "Курс",
-          orderType: "enrollment",
-        });
-
-        if (orderName) {
-          toast.success(`Приказ о зачислении создан: ${orderName}`);
-        }
-      }
-
-      toast.success(`Зачислено ${newUserIds.length} учеников`);
-      setShowEnrollDialog(false);
-      setSelectedStudentIds(new Set());
-      setEnrollCourseId("");
-      window.location.reload();
-    } catch (error) {
-      console.error("Error enrolling students:", error);
-      toast.error("Ошибка зачисления");
-    } finally {
-      setIsEnrolling(false);
-    }
-  };
-
-  // Bulk unenroll selected students
-  const handleBulkUnenroll = async () => {
-    // Get enrollment IDs from selected students
-    const enrollmentIds = Array.from(selectedStudentIds).filter(id => {
-      // Check if it's an enrollment_id (not user_id)
-      const student = students.find(s => s.enrollment_id === id);
-      return student !== undefined;
-    });
-    if (enrollmentIds.length === 0) {
-      toast.error("Нет выбранных зачислений для отчисления");
-      setShowUnenrollConfirm(false);
-      return;
-    }
-    setIsUnenrolling(true);
-    try {
-      // Collect student names and courses before deletion
-      const studentsToUnenroll = enrollmentIds.map(enrollmentId => {
-        const student = students.find(s => s.enrollment_id === enrollmentId);
-        return {
-          name: student?.name || "Неизвестный",
-          courseName: student?.course || "Курс",
-          courseId: student?.course_id
-        };
-      });
-
-      const {
-        error
-      } = await supabase.from("enrollments").delete().in("id", enrollmentIds);
-      if (error) throw error;
-
-      // Generate expulsion orders grouped by course
-      if (organizationId) {
-        const { data: orgData } = await supabase
-          .from("organizations")
-          .select("name, director_name, director_position")
-          .eq("id", organizationId)
-          .single();
-
-        // Group students by course
-        const studentsByCourse = studentsToUnenroll.reduce((acc, student) => {
-          const key = student.courseId || "unknown";
-          if (!acc[key]) {
-            acc[key] = { courseName: student.courseName, names: [] };
-          }
-          acc[key].names.push(student.name);
-          return acc;
-        }, {} as Record<string, { courseName: string; names: string[] }>);
-
-        // Create an order for each course
-        for (const courseData of Object.values(studentsByCourse)) {
-          const orderName = await generateEnrollmentOrder({
-            organizationId,
-            organizationName: orgData?.name || organizationName,
-            directorName: orgData?.director_name,
-            directorPosition: orgData?.director_position,
-            studentNames: courseData.names,
-            courseName: courseData.courseName,
-            orderType: "expulsion",
-          });
-
-          if (orderName) {
-            toast.success(`Приказ об отчислении создан: ${orderName}`);
-          }
-        }
-      }
-
-      toast.success(`Отчислено ${enrollmentIds.length} учеников`);
-      setShowUnenrollConfirm(false);
-      setSelectedStudentIds(new Set());
-      window.location.reload();
-    } catch (error) {
-      console.error("Error unenrolling students:", error);
-      toast.error("Ошибка отчисления");
-    } finally {
-      setIsUnenrolling(false);
-    }
-  };
-
-  // Get count of selected enrollments (not just profiles)
-  const getSelectedEnrollmentsCount = () => {
-    return Array.from(selectedStudentIds).filter(id => {
-      const student = students.find(s => s.enrollment_id === id);
-      return student !== undefined;
-    }).length;
-  };
+  // Use enrollment actions from hook
+  const toggleStudentSelection = enrollmentActions.toggleStudentSelection;
+  const toggleSelectAll = enrollmentActions.toggleSelectAll;
+  const getSelectedUserIds = () => enrollmentActions.getSelectedUserIds(students);
+  const getSelectedEnrollmentsCount = () => enrollmentActions.getSelectedEnrollmentsCount(students);
+  // Use enrollment actions from hook for bulk operations
+  const handleBulkEnroll = () => enrollmentActions.bulkEnroll(enrollmentActions.enrollCourseId, students, allProfiles, courses);
+  const handleBulkUnenroll = () => enrollmentActions.bulkUnenroll(students);
 
   // Open course details to assign students - using hook
   const handleOpenCourseStudents = courseStudentsManager.openCourseStudents;
@@ -1195,56 +1002,9 @@ export default function OrganizationDashboard() {
   };
 
   // Category management
-  const handleCreateCategory = async () => {
-    if (!organizationId || !newCategoryName.trim()) {
-      toast.error("Введите название категории");
-      return;
-    }
-    setIsCreatingCategory(true);
-    try {
-      const {
-        data,
-        error
-      } = await supabase.from("course_categories").insert({
-        organization_id: organizationId,
-        name: newCategoryName.trim(),
-        color: newCategoryColor
-      }).select().single();
-      if (error) throw error;
-      setCategories([...categories, data]);
-      setNewCategoryName("");
-      setNewCategoryColor("#6366f1");
-      setShowCategoryDialog(false);
-      toast.success("Категория создана");
-    } catch (error) {
-      console.error("Error creating category:", error);
-      toast.error("Ошибка создания категории");
-    } finally {
-      setIsCreatingCategory(false);
-    }
-  };
-  const handleSetCourseCategory = async (courseId: string, categoryId: string | null) => {
-    try {
-      const {
-        error
-      } = await supabase.from("courses").update({
-        category_id: categoryId
-      }).eq("id", courseId);
-      if (error) throw error;
-      setCourses(courses.map(c => c.id === courseId ? {
-        ...c,
-        category_id: categoryId
-      } : c));
-      toast.success("Категория назначена");
-    } catch (error) {
-      console.error("Error setting category:", error);
-      toast.error("Ошибка назначения категории");
-    }
-  };
-  const getCategoryById = (categoryId: string | null | undefined): CourseCategory | undefined => {
-    if (!categoryId) return undefined;
-    return categories.find(c => c.id === categoryId);
-  };
+  // Category management - use hook
+  const handleCreateCategory = createCategory;
+  const handleSetCourseCategory = (courseId: string, categoryId: string | null) => categoryActions.setCourseCategory(courseId, categoryId, setCourses);
 
   // Copy credentials to clipboard
   const handleCopyCredentials = (login: string, password: string) => {
@@ -1844,47 +1604,8 @@ export default function OrganizationDashboard() {
         getCategoryById={getCategoryById}
         isEnrolling={isEnrolling}
         onEnroll={async (courseId) => {
-          if (!courseId) {
-            toast.error("Выберите курс");
-            return;
-          }
-          const userIds = getSelectedUserIds();
-          if (userIds.length === 0) {
-            toast.error("Выберите учеников");
-            return;
-          }
-          setIsEnrolling(true);
-          try {
-            const { data: existingEnrollments } = await supabase
-              .from("enrollments")
-              .select("user_id")
-              .eq("course_id", courseId)
-              .in("user_id", userIds);
-            const existingUserIds = new Set((existingEnrollments || []).map(e => e.user_id));
-            const newUserIds = userIds.filter(id => !existingUserIds.has(id));
-            if (newUserIds.length === 0) {
-              toast.info("Все выбранные ученики уже зачислены на этот курс");
-              setShowEnrollDialog(false);
-              return;
-            }
-            const enrollmentsToInsert = newUserIds.map(userId => ({
-              user_id: userId,
-              course_id: courseId,
-              status: "active",
-              progress: 0
-            }));
-            const { error } = await supabase.from("enrollments").insert(enrollmentsToInsert);
-            if (error) throw error;
-            toast.success(`Зачислено ${newUserIds.length} учеников`);
-            setShowEnrollDialog(false);
-            setSelectedStudentIds(new Set());
-            setRefreshKey(prev => prev + 1);
-          } catch (error) {
-            console.error("Error enrolling:", error);
-            toast.error("Ошибка зачисления");
-          } finally {
-            setIsEnrolling(false);
-          }
+          enrollmentActions.setEnrollCourseId(courseId);
+          await enrollmentActions.bulkEnroll(courseId, students, allProfiles, courses);
         }}
       />
 
@@ -1893,24 +1614,9 @@ export default function OrganizationDashboard() {
         onOpenChange={setShowCategoryDialog}
         isCreating={isCreatingCategory}
         onCreate={async (name, color) => {
-          if (!organizationId || !name.trim()) return;
-          setIsCreatingCategory(true);
-          try {
-            const { error } = await supabase.from("course_categories").insert({
-              name: name.trim(),
-              color,
-              organization_id: organizationId
-            });
-            if (error) throw error;
-            toast.success("Категория создана");
-            setShowCategoryDialog(false);
-            setRefreshKey(prev => prev + 1);
-          } catch (error) {
-            console.error("Error creating category:", error);
-            toast.error("Ошибка создания категории");
-          } finally {
-            setIsCreatingCategory(false);
-          }
+          categoryActions.setNewCategoryName(name);
+          categoryActions.setNewCategoryColor(color);
+          await categoryActions.createCategory();
         }}
       />
 
