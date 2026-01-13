@@ -26,8 +26,10 @@ import {
   Download,
   Plus,
   Edit,
+  BarChart3,
 } from "lucide-react";
 import { JournalEditor } from "./JournalEditor";
+import { AutoAttendanceJournal } from "./AutoAttendanceJournal";
 
 interface JournalItem {
   id: string;
@@ -139,6 +141,7 @@ export function JournalsManager({ organizationId }: JournalsManagerProps) {
     type: string;
     title: string;
   } | null>(null);
+  const [showAutoAttendance, setShowAutoAttendance] = useState(false);
 
   const toggleCategory = (categoryId: string) => {
     setExpandedCategories((prev) =>
@@ -157,6 +160,16 @@ export function JournalsManager({ organizationId }: JournalsManagerProps) {
         journal.description.toLowerCase().includes(searchQuery.toLowerCase())
     ),
   })).filter((cat) => cat.journals.length > 0);
+
+  // Show automatic attendance journal
+  if (showAutoAttendance) {
+    return (
+      <AutoAttendanceJournal
+        organizationId={organizationId}
+        onClose={() => setShowAutoAttendance(false)}
+      />
+    );
+  }
 
   // Show journal editor if active
   if (activeJournal) {
@@ -273,20 +286,48 @@ export function JournalsManager({ organizationId }: JournalsManagerProps) {
                           </div>
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0 ml-4">
-                          <Button
-                            variant="default"
-                            size="sm"
-                            className="rounded-lg"
-                            onClick={() =>
-                              setActiveJournal({
-                                type: journal.id,
-                                title: journal.title,
-                              })
-                            }
-                          >
-                            <Edit className="w-4 h-4 mr-2" />
-                            Вести онлайн
-                          </Button>
+                          {journal.id === "attendance" ? (
+                            <>
+                              <Button
+                                variant="default"
+                                size="sm"
+                                className="rounded-lg"
+                                onClick={() => setShowAutoAttendance(true)}
+                              >
+                                <BarChart3 className="w-4 h-4 mr-2" />
+                                Автоматический
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="rounded-lg"
+                                onClick={() =>
+                                  setActiveJournal({
+                                    type: journal.id,
+                                    title: journal.title,
+                                  })
+                                }
+                              >
+                                <Edit className="w-4 h-4 mr-2" />
+                                Ручной
+                              </Button>
+                            </>
+                          ) : (
+                            <Button
+                              variant="default"
+                              size="sm"
+                              className="rounded-lg"
+                              onClick={() =>
+                                setActiveJournal({
+                                  type: journal.id,
+                                  title: journal.title,
+                                })
+                              }
+                            >
+                              <Edit className="w-4 h-4 mr-2" />
+                              Вести онлайн
+                            </Button>
+                          )}
                           <Button
                             variant="outline"
                             size="sm"
