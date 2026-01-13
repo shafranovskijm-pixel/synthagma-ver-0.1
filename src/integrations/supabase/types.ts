@@ -800,6 +800,123 @@ export type Database = {
           },
         ]
       }
+      marketplace_courses: {
+        Row: {
+          course_id: string
+          created_at: string
+          description_short: string | null
+          id: string
+          is_active: boolean
+          organization_id: string
+          preview_image_url: string | null
+          price_organization: number
+          price_student: number
+          updated_at: string
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          description_short?: string | null
+          id?: string
+          is_active?: boolean
+          organization_id: string
+          preview_image_url?: string | null
+          price_organization?: number
+          price_student?: number
+          updated_at?: string
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          description_short?: string | null
+          id?: string
+          is_active?: boolean
+          organization_id?: string
+          preview_image_url?: string | null
+          price_organization?: number
+          price_student?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_courses_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: true
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_courses_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketplace_orders: {
+        Row: {
+          buyer_organization_id: string | null
+          buyer_type: string
+          buyer_user_id: string | null
+          created_at: string
+          id: string
+          marketplace_course_id: string
+          notes: string | null
+          paid_at: string | null
+          payment_method: string | null
+          price: number
+          status: string
+          students_count: number | null
+          updated_at: string
+        }
+        Insert: {
+          buyer_organization_id?: string | null
+          buyer_type: string
+          buyer_user_id?: string | null
+          created_at?: string
+          id?: string
+          marketplace_course_id: string
+          notes?: string | null
+          paid_at?: string | null
+          payment_method?: string | null
+          price: number
+          status?: string
+          students_count?: number | null
+          updated_at?: string
+        }
+        Update: {
+          buyer_organization_id?: string | null
+          buyer_type?: string
+          buyer_user_id?: string | null
+          created_at?: string
+          id?: string
+          marketplace_course_id?: string
+          notes?: string | null
+          paid_at?: string | null
+          payment_method?: string | null
+          price?: number
+          status?: string
+          students_count?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_orders_buyer_organization_id_fkey"
+            columns: ["buyer_organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_orders_marketplace_course_id_fkey"
+            columns: ["marketplace_course_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       org_documents: {
         Row: {
           created_at: string
