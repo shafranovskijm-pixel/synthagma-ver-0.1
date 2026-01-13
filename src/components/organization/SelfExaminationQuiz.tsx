@@ -252,6 +252,21 @@ export function SelfExaminationQuiz({
           }
         }
 
+        // Форматируем учредителей
+        const foundersText = company.founders?.length > 0 
+          ? company.founders.join(", ") 
+          : data.founders;
+
+        // Форматируем дату лицензии
+        let licenseDate = data.licenseDate;
+        if (company.license?.issueDate) {
+          // DaData возвращает дату в формате timestamp (миллисекунды)
+          const date = new Date(company.license.issueDate);
+          if (!isNaN(date.getTime())) {
+            licenseDate = date.toISOString().split('T')[0];
+          }
+        }
+
         updateData({
           fullName: company.fullName || company.name || data.fullName,
           shortName: company.shortName || company.name || data.shortName,
@@ -260,14 +275,27 @@ export function SelfExaminationQuiz({
           ogrn: company.ogrn || data.ogrn,
           kpp: company.kpp || data.kpp,
           directorFio: company.management || data.directorFio,
+          directorPosition: company.managementPosition || data.directorPosition,
           commissionChairman: {
             fio: company.management || data.commissionChairman.fio,
-            position: data.commissionChairman.position
-          }
+            position: company.managementPosition || data.commissionChairman.position
+          },
+          founders: foundersText,
+          licenseNumber: company.license?.number || data.licenseNumber,
+          licenseDate: licenseDate,
         });
 
         setInnLoaded(true);
-        toast.success("Данные организации загружены");
+        
+        // Формируем сообщение о загруженных данных
+        const loadedItems = [];
+        if (company.fullName) loadedItems.push("название");
+        if (company.address) loadedItems.push("адрес");
+        if (company.management) loadedItems.push("руководитель");
+        if (company.founders?.length > 0) loadedItems.push("учредители");
+        if (company.license?.number) loadedItems.push("лицензия");
+        
+        toast.success(`Загружено: ${loadedItems.join(", ")}`);
       } else {
         toast.error(result.message || "Компания не найдена");
       }
