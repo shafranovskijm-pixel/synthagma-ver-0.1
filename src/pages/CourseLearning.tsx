@@ -722,6 +722,12 @@ const CourseLearning = () => {
 
   const submitTest = async () => {
     if (!currentLesson || !user) return;
+    
+    // Don't submit if no questions loaded
+    if (testQuestions.length === 0) {
+      toast.error('Нет вопросов для теста. Попробуйте обновить страницу.');
+      return;
+    }
 
     let score = 0;
     testQuestions.forEach(q => {
@@ -754,7 +760,9 @@ const CourseLearning = () => {
     setTestSubmitted(true);
     setTestScore({ score, max: maxScore });
 
-    if (score / maxScore >= 0.6) {
+    const isPassed = maxScore > 0 && (score / maxScore >= 0.6);
+
+    if (isPassed) {
       await supabase
         .from('lesson_progress')
         .upsert({
