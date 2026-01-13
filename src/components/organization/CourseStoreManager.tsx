@@ -345,6 +345,44 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
 
       if (error) throw error;
 
+      // Send email notification to seller
+      try {
+        // Get buyer name
+        let buyerName = 'Неизвестный покупатель';
+        if (userRole === 'student' && userId) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('user_id', userId)
+            .single();
+          buyerName = profile?.full_name || 'Студент';
+        } else if (userRole === 'organization') {
+          const { data: org } = await supabase
+            .from('organizations')
+            .select('name')
+            .eq('id', organizationId)
+            .single();
+          buyerName = org?.name || 'Организация';
+        }
+
+        await supabase.functions.invoke('notify-course-order', {
+          body: {
+            orderId: 'new',
+            courseName: selectedCourseForOrder.course?.title || 'Курс',
+            buyerName,
+            buyerType: userRole,
+            studentsCount: userRole === 'organization' ? studentsCount : 1,
+            price,
+            notes: orderNotes || undefined,
+            sellerOrganizationId: selectedCourseForOrder.organization_id,
+          },
+        });
+        console.log('Order notification sent');
+      } catch (notifyError) {
+        console.error('Failed to send notification:', notifyError);
+        // Don't fail the order if notification fails
+      }
+
       setShowOrderDialog(false);
       setShowSuccessDialog(true);
       setOrderNotes("");
