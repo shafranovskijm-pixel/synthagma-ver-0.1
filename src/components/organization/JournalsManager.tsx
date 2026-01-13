@@ -48,6 +48,7 @@ import { AutoGradesJournal } from "./AutoGradesJournal";
 import { AutoFinalAttestationJournal } from "./AutoFinalAttestationJournal";
 import { AutoDocumentRegistrationJournal } from "./AutoDocumentRegistrationJournal";
 import { CopiesDuplicatesJournal } from "./CopiesDuplicatesJournal";
+import { EducationDocumentsJournal } from "./EducationDocumentsJournal";
 import { JournalCreationWizard } from "./JournalCreationWizard";
 
 interface JournalItem {
@@ -112,6 +113,12 @@ const JOURNAL_CATEGORIES: JournalCategory[] = [
         description: "Приход-расход бланков удостоверений / дипломов до момента их заполнения и регистрации",
         required: true,
       },
+      {
+        id: "education_documents",
+        title: "Журнал регистрации документов об образовании",
+        description: "Учёт выданных удостоверений, дипломов, свидетельств: ФИО, дата рождения, серия/номер, специальность, квалификация, протокол ГЭК, приказ",
+        required: true,
+      },
     ],
   },
   {
@@ -173,6 +180,7 @@ export function JournalsManager({ organizationId }: JournalsManagerProps) {
   const [showAutoFinalAttestation, setShowAutoFinalAttestation] = useState(false);
   const [showAutoDocumentRegistration, setShowAutoDocumentRegistration] = useState(false);
   const [showCopiesDuplicates, setShowCopiesDuplicates] = useState(false);
+  const [showEducationDocuments, setShowEducationDocuments] = useState(false);
   
   // Delete dialog state
   const [deletingJournal, setDeletingJournal] = useState<{
@@ -364,6 +372,16 @@ export function JournalsManager({ organizationId }: JournalsManagerProps) {
       <CopiesDuplicatesJournal
         organizationId={organizationId}
         onClose={() => setShowCopiesDuplicates(false)}
+      />
+    );
+  }
+
+  // Show education documents journal
+  if (showEducationDocuments) {
+    return (
+      <EducationDocumentsJournal
+        organizationId={organizationId}
+        onClose={() => setShowEducationDocuments(false)}
       />
     );
   }
@@ -602,6 +620,16 @@ export function JournalsManager({ organizationId }: JournalsManagerProps) {
                               size="sm"
                               className="rounded-lg"
                               onClick={() => setShowCopiesDuplicates(true)}
+                            >
+                              <Edit className="w-4 h-4 mr-2" />
+                              Вести журнал
+                            </Button>
+                          ) : journal.id === "education_documents" ? (
+                            <Button
+                              variant="default"
+                              size="sm"
+                              className="rounded-lg"
+                              onClick={() => setShowEducationDocuments(true)}
                             >
                               <Edit className="w-4 h-4 mr-2" />
                               Вести журнал
