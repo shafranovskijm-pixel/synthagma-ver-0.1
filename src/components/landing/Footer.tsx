@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Mail, Phone, ArrowUpRight } from "lucide-react";
 
@@ -46,39 +47,66 @@ export function Footer() {
           <div>
             <h4 className="font-display font-bold text-lg mb-6">Платформа</h4>
             <ul className="space-y-4 text-background/70">
-              {[
-                { label: "Возможности", href: "#features" },
-                { label: "Дорожная карта", href: "#roadmap" },
-                { label: "Калькулятор стоимости", href: "#pricing" },
-                { label: "О нас", href: "/about" },
-                { label: "Блог", href: "/blog" },
-              ].map((link) => (
-                <li key={link.label}>
-                  <a href={link.href} className="hover:text-background transition-colors flex items-center gap-1 group">
-                    {link.label}
-                    <ArrowUpRight className="w-4 h-4 opacity-0 -translate-y-1 translate-x-1 group-hover:opacity-100 group-hover:translate-y-0 group-hover:translate-x-0 transition-all" />
-                  </a>
-                </li>
-              ))}
+              <li>
+                <a href="#features" className="hover:text-background transition-colors flex items-center gap-1 group">
+                  Возможности
+                  <ArrowUpRight className="w-4 h-4 opacity-0 -translate-y-1 translate-x-1 group-hover:opacity-100 group-hover:translate-y-0 group-hover:translate-x-0 transition-all" />
+                </a>
+              </li>
+              <li>
+                <a href="#roadmap" className="hover:text-background transition-colors flex items-center gap-1 group">
+                  Дорожная карта
+                  <ArrowUpRight className="w-4 h-4 opacity-0 -translate-y-1 translate-x-1 group-hover:opacity-100 group-hover:translate-y-0 group-hover:translate-x-0 transition-all" />
+                </a>
+              </li>
+              <li>
+                <a href="#calculator" className="hover:text-background transition-colors flex items-center gap-1 group">
+                  Калькулятор стоимости
+                  <ArrowUpRight className="w-4 h-4 opacity-0 -translate-y-1 translate-x-1 group-hover:opacity-100 group-hover:translate-y-0 group-hover:translate-x-0 transition-all" />
+                </a>
+              </li>
+              <li>
+                <Link to="/about" className="hover:text-background transition-colors flex items-center gap-1 group">
+                  О нас
+                  <ArrowUpRight className="w-4 h-4 opacity-0 -translate-y-1 translate-x-1 group-hover:opacity-100 group-hover:translate-y-0 group-hover:translate-x-0 transition-all" />
+                </Link>
+              </li>
+              <li>
+                <Link to="/blog" className="hover:text-background transition-colors flex items-center gap-1 group">
+                  Блог
+                  <ArrowUpRight className="w-4 h-4 opacity-0 -translate-y-1 translate-x-1 group-hover:opacity-100 group-hover:translate-y-0 group-hover:translate-x-0 transition-all" />
+                </Link>
+              </li>
             </ul>
           </div>
 
           <div>
             <h4 className="font-display font-bold text-lg mb-6">Компания</h4>
             <ul className="space-y-4 text-background/70">
-              {[
-                { label: "О нас", href: "#" },
-                { label: "Блог", href: "#" },
-                { label: "Контакты", href: "#" },
-                { label: "Поддержка", href: "#" },
-              ].map((link) => (
-                <li key={link.label}>
-                  <a href={link.href} className="hover:text-background transition-colors flex items-center gap-1 group">
-                    {link.label}
-                    <ArrowUpRight className="w-4 h-4 opacity-0 -translate-y-1 translate-x-1 group-hover:opacity-100 group-hover:translate-y-0 group-hover:translate-x-0 transition-all" />
-                  </a>
-                </li>
-              ))}
+              <li>
+                <Link to="/about" className="hover:text-background transition-colors flex items-center gap-1 group">
+                  О нас
+                  <ArrowUpRight className="w-4 h-4 opacity-0 -translate-y-1 translate-x-1 group-hover:opacity-100 group-hover:translate-y-0 group-hover:translate-x-0 transition-all" />
+                </Link>
+              </li>
+              <li>
+                <Link to="/blog" className="hover:text-background transition-colors flex items-center gap-1 group">
+                  Блог
+                  <ArrowUpRight className="w-4 h-4 opacity-0 -translate-y-1 translate-x-1 group-hover:opacity-100 group-hover:translate-y-0 group-hover:translate-x-0 transition-all" />
+                </Link>
+              </li>
+              <li>
+                <a href="mailto:shafranovskij.m@gmail.com" className="hover:text-background transition-colors flex items-center gap-1 group">
+                  Контакты
+                  <ArrowUpRight className="w-4 h-4 opacity-0 -translate-y-1 translate-x-1 group-hover:opacity-100 group-hover:translate-y-0 group-hover:translate-x-0 transition-all" />
+                </a>
+              </li>
+              <li>
+                <a href="tel:89147213424" className="hover:text-background transition-colors flex items-center gap-1 group">
+                  Поддержка
+                  <ArrowUpRight className="w-4 h-4 opacity-0 -translate-y-1 translate-x-1 group-hover:opacity-100 group-hover:translate-y-0 group-hover:translate-x-0 transition-all" />
+                </a>
+              </li>
             </ul>
           </div>
         </div>
