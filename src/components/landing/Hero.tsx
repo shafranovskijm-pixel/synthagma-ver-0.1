@@ -56,7 +56,7 @@ export function Hero() {
             <a href="#roadmap" className="text-muted-foreground hover:text-primary transition-colors font-medium">
               Дорожная карта
             </a>
-            <a href="#pricing" className="text-muted-foreground hover:text-primary transition-colors font-medium">
+            <a href="#calculator" className="text-muted-foreground hover:text-primary transition-colors font-medium">
               Калькулятор стоимости
             </a>
             <Link to="/about" className="text-muted-foreground hover:text-primary transition-colors font-medium">
