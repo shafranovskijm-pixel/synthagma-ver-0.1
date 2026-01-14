@@ -52,17 +52,116 @@ const iconMap: Record<string, React.ElementType> = {
 };
 
 const defaultModules: FeatureModule[] = [
-  { id: "courses", title: "Управление курсами", icon: BookOpen, color: "#6366f1", basePrice: 3000, description: "Современный редактор вместе с ИИ поможет превратить даже скучную лекцию в удобный и интерактивный формат. Удобный импорт с других платформ", featuresCount: 8, isEnabled: true },
-  { id: "students", title: "Слушатели", icon: Users, color: "#10b981", basePrice: 2500, description: "Импортируй большими файлами, автоматическая рассылка логинов и паролей. Получай документы: СНИЛС, документ об образовании, паспорт. Отправляй напоминания", featuresCount: 10, isEnabled: true },
-  { id: "companies", title: "Компании", icon: Building2, color: "#f59e0b", basePrice: 1500, description: "Создавайте ссылки и привязывайте группы учеников к компании. Храните договоры, счета, акты в одном месте", featuresCount: 6, isEnabled: true },
-  { id: "documents", title: "Документооборот", icon: FileCheck, color: "#ec4899", basePrice: 4000, description: "Автоматическое создание договоров, счетов, актов. Сбор согласий на обработку ПД, журналы выдачи документов, приказы о зачислении/отчислении", featuresCount: 10, isEnabled: true },
-  { id: "journals", title: "Журналы", icon: ClipboardList, color: "#8b5cf6", basePrice: 2000, description: "Все ваши журналы в одном месте с возможностью выгрузки в Excel. Журналы посещаемости, оценок, выдачи документов", featuresCount: 13, isEnabled: true },
-  { id: "frdo", title: "ФРДО", icon: Database, color: "#06b6d4", basePrice: 5000, description: "Устали вносить вручную? Система заполнит за вас. Готовы к интеграции с ЕР ЦРДО", featuresCount: 4, isEnabled: true },
-  { id: "links", title: "Ссылки регистрации", icon: LinkIcon, color: "#14b8a6", basePrice: 1000, description: "Уникальные ссылки для быстрой регистрации учеников", featuresCount: 5, isEnabled: true },
-  { id: "library", title: "Библиотека", icon: Library, color: "#f97316", basePrice: 1500, description: "Храните учебные материалы, программы и методички", featuresCount: 4, isEnabled: true },
-  { id: "services", title: "Магазин курсов", icon: ShoppingBag, color: "#84cc16", basePrice: 500, description: "Продавайте свои курсы или закажите готовую программу", featuresCount: 3, isEnabled: true },
-  { id: "settings", title: "Настройки", icon: Settings, color: "#64748b", basePrice: 0, description: "Настройки системы и брендирование", featuresCount: 5, isEnabled: true },
-  { id: "student_cabinet", title: "Кабинет слушателя", icon: GraduationCap, color: "#0ea5e9", basePrice: 2000, description: "ИИ-помощник проконсультирует учеников, озвучивание лекций, удобное прохождение курсов", featuresCount: 8, isEnabled: true },
+  { 
+    id: "courses", 
+    title: "Управление курсами", 
+    icon: BookOpen, 
+    color: "#6366f1", 
+    basePrice: 3000, 
+    description: "Современный редактор с ИИ-помощником превратит даже скучную лекцию в интерактивный формат. Drag & Drop конструктор уроков, автогенерация тестов, импорт курсов с iSpring, Moodle и других платформ. Видео, презентации, документы в одном месте", 
+    featuresCount: 8, 
+    isEnabled: true 
+  },
+  { 
+    id: "students", 
+    title: "Слушатели", 
+    icon: Users, 
+    color: "#10b981", 
+    basePrice: 2500, 
+    description: "Массовый импорт учеников из Excel/CSV. Автоматическая рассылка логинов и паролей на email. Сбор документов через личный кабинет: СНИЛС, паспорт, диплом. Напоминания о сроках обучения и недостающих документах", 
+    featuresCount: 10, 
+    isEnabled: true 
+  },
+  { 
+    id: "companies", 
+    title: "Компании", 
+    icon: Building2, 
+    color: "#f59e0b", 
+    basePrice: 1500, 
+    description: "Привязка групп учеников к компаниям. Уникальные ссылки для самостоятельной регистрации сотрудников. Хранение договоров, счетов, актов. Автозаполнение реквизитов по ИНН через DaData. Отслеживание оплат", 
+    featuresCount: 6, 
+    isEnabled: true 
+  },
+  { 
+    id: "documents", 
+    title: "Документооборот", 
+    icon: FileCheck, 
+    color: "#ec4899", 
+    basePrice: 4000, 
+    description: "Автоматическое создание договоров, счетов, актов с подстановкой данных. Электронный сбор согласий на обработку ПД. Приказы о зачислении/отчислении. Шаблоны с вашим фирменным стилем. Журнал выдачи документов об образовании", 
+    featuresCount: 10, 
+    isEnabled: true 
+  },
+  { 
+    id: "journals", 
+    title: "Журналы", 
+    icon: ClipboardList, 
+    color: "#8b5cf6", 
+    basePrice: 2000, 
+    description: "Все журналы организации в одном месте: посещаемость с автозаполнением, успеваемость и оценки, протоколы итоговой аттестации, учёт выдачи документов, регистрация копий и дубликатов. Экспорт в Excel одним кликом", 
+    featuresCount: 13, 
+    isEnabled: true 
+  },
+  { 
+    id: "frdo", 
+    title: "ФРДО / ЕР ЦРДО", 
+    icon: Database, 
+    color: "#06b6d4", 
+    basePrice: 5000, 
+    description: "Устали вносить данные вручную? Система автоматически формирует XML для ФРДО. Массовая выгрузка выпускников, проверка корректности данных. Полная готовность к интеграции с ЕР ЦРДО. Экономия до 10 часов работы в месяц", 
+    featuresCount: 4, 
+    isEnabled: true 
+  },
+  { 
+    id: "links", 
+    title: "Ссылки регистрации", 
+    icon: LinkIcon, 
+    color: "#14b8a6", 
+    basePrice: 1000, 
+    description: "Уникальные ссылки для быстрой регистрации учеников. Автоматическая привязка к курсу и компании. Срок действия ссылки. Статистика переходов и регистраций", 
+    featuresCount: 5, 
+    isEnabled: true 
+  },
+  { 
+    id: "library", 
+    title: "Библиотека", 
+    icon: Library, 
+    color: "#f97316", 
+    basePrice: 1500, 
+    description: "Централизованное хранилище учебных материалов, образовательных программ и методических пособий. Структура папок, быстрый поиск, совместный доступ для сотрудников", 
+    featuresCount: 4, 
+    isEnabled: true 
+  },
+  { 
+    id: "services", 
+    title: "Магазин курсов", 
+    icon: ShoppingBag, 
+    color: "#84cc16", 
+    basePrice: 500, 
+    description: "Продавайте свои курсы другим организациям и физлицам. Каталог готовых программ от партнёров. Закажите разработку курса под ваши нужды. Статистика продаж и заявок", 
+    featuresCount: 3, 
+    isEnabled: true 
+  },
+  { 
+    id: "settings", 
+    title: "Настройки", 
+    icon: Settings, 
+    color: "#64748b", 
+    basePrice: 0, 
+    description: "Полная настройка системы под ваш бренд: логотип, цвета, шаблоны документов. Управление сотрудниками и правами доступа. Интеграции с внешними сервисами", 
+    featuresCount: 5, 
+    isEnabled: true 
+  },
+  { 
+    id: "student_cabinet", 
+    title: "Кабинет слушателя", 
+    icon: GraduationCap, 
+    color: "#0ea5e9", 
+    basePrice: 2000, 
+    description: "Личный кабинет ученика с ИИ-консультантом, который отвечает на вопросы по материалу курса. Озвучивание лекций голосом (TTS). Загрузка документов, отслеживание прогресса, скачивание сертификатов", 
+    featuresCount: 8, 
+    isEnabled: true 
+  },
 ];
 
 export function CostCalculator() {
@@ -182,10 +281,15 @@ export function CostCalculator() {
           </p>
           
           {/* Billing toggle */}
-          <div className="inline-flex items-center gap-4 p-2 rounded-2xl bg-card/80 border border-border backdrop-blur-sm">
+          <div className="inline-flex items-center gap-4 p-2 rounded-2xl bg-card/80 border border-border backdrop-blur-sm relative z-20">
             <button
-              onClick={() => setIsYearly(false)}
-              className={`px-6 py-2.5 rounded-xl font-medium transition-all ${
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsYearly(false);
+              }}
+              className={`px-6 py-2.5 rounded-xl font-medium transition-all cursor-pointer select-none ${
                 !isYearly 
                   ? "bg-primary text-primary-foreground shadow-md" 
                   : "text-muted-foreground hover:text-foreground"
@@ -194,8 +298,13 @@ export function CostCalculator() {
               Помесячно
             </button>
             <button
-              onClick={() => setIsYearly(true)}
-              className={`px-6 py-2.5 rounded-xl font-medium transition-all flex items-center gap-2 ${
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsYearly(true);
+              }}
+              className={`px-6 py-2.5 rounded-xl font-medium transition-all flex items-center gap-2 cursor-pointer select-none ${
                 isYearly 
                   ? "bg-primary text-primary-foreground shadow-md" 
                   : "text-muted-foreground hover:text-foreground"
