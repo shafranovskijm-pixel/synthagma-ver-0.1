@@ -66,8 +66,8 @@ export function OrgSidebar({
   return (
     <aside className={`
       fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border 
-      flex flex-col transform transition-transform duration-300
-      lg:translate-x-0 ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+      flex flex-col transition-transform duration-300
+      ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
     `}>
       {/* Logo */}
       <div className="p-6 border-b border-border flex-shrink-0">
