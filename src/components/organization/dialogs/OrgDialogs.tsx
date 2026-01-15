@@ -44,14 +44,14 @@ interface ImportStudentsDialogProps {
 export function ImportStudentsDialog({ open, onOpenChange, organizationId, courses, companies }: ImportStudentsDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl rounded-2xl">
+      <DialogContent className="max-w-2xl rounded-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-display">Импорт учеников</DialogTitle>
           <DialogDescription>
             Загрузите файл Excel или CSV со списком учеников
           </DialogDescription>
         </DialogHeader>
-        {organizationId && (
+        {organizationId ? (
           <ImportStudentsForm 
             organizationId={organizationId} 
             courses={courses.filter(c => c.is_published)} 
@@ -61,6 +61,10 @@ export function ImportStudentsDialog({ open, onOpenChange, organizationId, cours
               window.location.reload();
             }} 
           />
+        ) : (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+          </div>
         )}
       </DialogContent>
     </Dialog>
