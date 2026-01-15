@@ -87,7 +87,6 @@ export default function CourseImport() {
   const validateAndSetFile = (file: File) => {
     const validTypes = [
       'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-      'application/vnd.ms-powerpoint',
       'application/msword',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       'text/plain',
@@ -96,14 +95,13 @@ export default function CourseImport() {
     
     const fileName = file.name.toLowerCase();
     const isPptx = fileName.endsWith('.pptx');
-    const isPpt = fileName.endsWith('.ppt');
     const isDocx = fileName.endsWith('.docx');
     const isDoc = fileName.endsWith('.doc');
     const isTxt = fileName.endsWith('.txt');
     const isHtml = fileName.endsWith('.html') || fileName.endsWith('.htm');
     
-    if (!isPptx && !isPpt && !isDocx && !isDoc && !isTxt && !isHtml) {
-      toast.error('Поддерживаются только PPTX, PPT, DOC, DOCX, TXT, HTML файлы');
+    if (!isPptx && !isDocx && !isDoc && !isTxt && !isHtml) {
+      toast.error('Поддерживаются только PPTX, DOC, DOCX, TXT, HTML файлы');
       return;
     }
     
@@ -306,7 +304,7 @@ export default function CourseImport() {
               <input
                 id="file-input"
                 type="file"
-                accept=".pptx,.ppt,.doc,.docx,.txt,.html,.htm"
+                accept=".pptx,.doc,.docx,.txt,.html,.htm"
                 onChange={handleFileSelect}
                 className="hidden"
               />
@@ -314,7 +312,7 @@ export default function CourseImport() {
               {selectedFile ? (
                 <div className="space-y-4">
                   <div className="w-16 h-16 mx-auto rounded-2xl bg-green-500/10 flex items-center justify-center">
-                    {selectedFile.name.endsWith('.pptx') || selectedFile.name.endsWith('.ppt') ? (
+                    {selectedFile.name.endsWith('.pptx') ? (
                       <Presentation className="w-8 h-8 text-green-500" />
                     ) : (
                       <FileText className="w-8 h-8 text-green-500" />
@@ -347,7 +345,7 @@ export default function CourseImport() {
                       Перетащите файл сюда или нажмите для выбора
                     </p>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Поддерживаются: PPTX, PPT, DOC, DOCX, TXT, HTML (до 50 МБ)
+                      Поддерживаются: PPTX, DOC, DOCX, TXT, HTML (до 50 МБ)
                     </p>
                   </div>
                 </div>
@@ -364,7 +362,7 @@ export default function CourseImport() {
                 <div className="flex items-start gap-3">
                   <Presentation className="w-5 h-5 text-muted-foreground mt-0.5" />
                   <div>
-                    <p className="font-medium">PPTX / PPT (презентации)</p>
+                    <p className="font-medium">PPTX (презентации)</p>
                     <p className="text-muted-foreground">
                       Каждый слайд станет отдельным уроком
                     </p>

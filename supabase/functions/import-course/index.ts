@@ -254,39 +254,47 @@ async function parsePptx(buffer: ArrayBuffer): Promise<Array<{ title: string; ht
       const slideXml = await zip.file(slideFile.path)?.async('string');
       if (!slideXml) continue;
       
-      // Extract paragraphs (<a:p>) with their text runs (<a:r> -> <a:t>)
-      const paragraphs: string[] = [];
+      // Extract all text from shapes (<p:sp>) which contain text frames (<p:txBody>)
+      const textBlocks: string[] = [];
       
-      // Match each paragraph
-      const paragraphRegex = /<a:p[^>]*>([\s\S]*?)<\/a:p>/g;
-      let pMatch;
+      // Match each text body (contains paragraphs)
+      const txBodyRegex = /<p:txBody[^>]*>([\s\S]*?)<\/p:txBody>/g;
+      let txMatch;
       
-      while ((pMatch = paragraphRegex.exec(slideXml)) !== null) {
-        const paragraphContent = pMatch[1];
+      while ((txMatch = txBodyRegex.exec(slideXml)) !== null) {
+        const txBodyContent = txMatch[1];
         
-        // Extract all text runs from this paragraph
-        const textParts: string[] = [];
-        const textRegex = /<a:t>([^<]*)<\/a:t>/g;
-        let tMatch;
+        // Extract paragraphs from this text body
+        const paragraphRegex = /<a:p[^>]*>([\s\S]*?)<\/a:p>/g;
+        let pMatch;
         
-        while ((tMatch = textRegex.exec(paragraphContent)) !== null) {
-          if (tMatch[1]) {
-            textParts.push(tMatch[1]);
+        while ((pMatch = paragraphRegex.exec(txBodyContent)) !== null) {
+          const paragraphContent = pMatch[1];
+          
+          // Extract all text runs, handling both <a:t> and potential nested structures
+          const textParts: string[] = [];
+          const textRegex = /<a:t[^>]*>([^<]*)<\/a:t>/g;
+          let tMatch;
+          
+          while ((tMatch = textRegex.exec(paragraphContent)) !== null) {
+            if (tMatch[1]) {
+              textParts.push(tMatch[1]);
+            }
           }
-        }
-        
-        const paragraphText = textParts.join('').trim();
-        if (paragraphText) {
-          paragraphs.push(paragraphText);
+          
+          const paragraphText = textParts.join('').trim();
+          if (paragraphText) {
+            textBlocks.push(paragraphText);
+          }
         }
       }
       
-      console.log(`Slide ${slideFile.index}: extracted ${paragraphs.length} paragraphs`);
+      console.log(`Slide ${slideFile.index}: extracted ${textBlocks.length} text blocks`);
       
-      if (paragraphs.length > 0) {
-        // First paragraph is usually the title
-        const title = paragraphs[0];
-        const content = paragraphs.slice(1);
+      if (textBlocks.length > 0) {
+        // First text block is usually the title
+        const title = textBlocks[0];
+        const content = textBlocks.slice(1);
         
         let html = `<h2>${escapeHtml(title)}</h2>`;
         
@@ -343,15 +351,9 @@ async function processFile(file: File): Promise<Array<{ title: string; html: str
     }));
   }
   
-  // Handle PPT (old format) - extract as text
+  // PPT (old binary format) - not supported, show error
   if (fileName.endsWith('.ppt')) {
-    const text = await file.text();
-    const cleanText = text.replace(/[^\x20-\x7E\u0400-\u04FF\n\r\t]/g, ' ').replace(/\s+/g, ' ').trim();
-    return [{
-      title: courseTitle,
-      html: txtToHtml(cleanText || 'Содержимое PPT не удалось извлечь'),
-      fileName: file.name
-    }];
+    throw new Error('Формат PPT (PowerPoint 97-2003) не поддерживается. Пожалуйста, сохраните файл в формате PPTX.');
   }
 
   let sourceHtml = '';
