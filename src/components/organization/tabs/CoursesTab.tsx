@@ -204,6 +204,13 @@ export function CoursesTab({ organizationId, onCourseClick, onOpenCourseDetails,
             >
               <List className="w-4 h-4" />
             </Button>
+            <Button 
+              className="rounded-xl gap-2"
+              onClick={() => navigate("/course-builder")}
+            >
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline">Добавить курс</span>
+            </Button>
           </div>
         </div>
       </div>
