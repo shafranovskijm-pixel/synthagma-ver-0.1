@@ -1001,7 +1001,7 @@ function SortableLessonItem({
                   }}
                 />
               </div>
-              {lesson.content && lesson.content.startsWith('http') && (
+              {lesson.content && (lesson.content.startsWith('http') || lesson.content.startsWith('data:image')) && (
                 <div className="mt-3 rounded-xl overflow-hidden border border-border">
                   <img 
                     src={lesson.content} 
@@ -1812,6 +1812,7 @@ export default function CourseBuilder() {
               <Button
                 variant="outline"
                 className="rounded-xl gap-2"
+                disabled={!courseId}
                 onClick={() => {
                   if (courseId) {
                     navigate(`/course-preview/${courseId}`);
@@ -1819,6 +1820,7 @@ export default function CourseBuilder() {
                     toast.error("Сначала сохраните курс");
                   }
                 }}
+                title={!courseId ? "Сначала сохраните курс" : "Открыть предпросмотр курса"}
               >
                 <Eye className="w-4 h-4" />
                 Предпросмотр
