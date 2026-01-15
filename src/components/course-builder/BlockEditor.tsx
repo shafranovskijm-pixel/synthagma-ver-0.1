@@ -449,8 +449,8 @@ function VideoBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updat
     const rutubeMatch = content.match(/rutube\.ru\/video\/([a-zA-Z0-9]+)/);
     if (rutubeMatch) return { type: 'url', value: `https://rutube.ru/play/embed/${rutubeMatch[1]}` };
     
-    // VK Video
-    const vkMatch = content.match(/vk\.com\/video(-?\d+)_(\d+)/);
+    // VK Video (vk.com and vkvideo.ru)
+    const vkMatch = content.match(/(?:vk\.com|vkvideo\.ru)\/video(-?\d+)_(\d+)/);
     if (vkMatch) return { type: 'url', value: `https://vk.com/video_ext.php?oid=${vkMatch[1]}&id=${vkMatch[2]}` };
     
     // Яндекс Дзен (dzen.ru)
