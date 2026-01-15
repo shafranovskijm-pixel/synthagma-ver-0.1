@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import DOMPurify from "dompurify";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import {
   ArrowLeft,
   Plus,
@@ -1019,7 +1020,40 @@ export default function CourseBuilder() {
   const [isImporting, setIsImporting] = useState(false);
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [showExitDialog, setShowExitDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Track unsaved changes
+  const markAsChanged = useCallback(() => {
+    setHasUnsavedChanges(true);
+  }, []);
+
+  // Wrapper for setLessons that marks changes
+  const updateLessons = useCallback((updater: Lesson[] | ((prev: Lesson[]) => Lesson[])) => {
+    setLessons(updater);
+    markAsChanged();
+  }, [markAsChanged]);
+
+  // Handle back button click
+  const handleBackClick = () => {
+    if (hasUnsavedChanges) {
+      setShowExitDialog(true);
+    } else {
+      navigate("/organization");
+    }
+  };
+
+  const handleSaveAndExit = async () => {
+    await saveCourse();
+    setShowExitDialog(false);
+    navigate("/organization");
+  };
+
+  const handleExitWithoutSave = () => {
+    setShowExitDialog(false);
+    navigate("/organization");
+  };
 
   // Import multiple files - chunked to avoid backend worker limits
   const handleFileImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1175,7 +1209,7 @@ export default function CourseBuilder() {
       expanded: true,
       blocks: type === "text" ? [] : undefined,
     };
-    setLessons([...lessons, newLesson]);
+    updateLessons([...lessons, newLesson]);
   };
 
   const handleGenerateStructure = async () => {
@@ -1358,7 +1392,7 @@ export default function CourseBuilder() {
       }
 
       toast.success(courseId ? "Курс обновлён" : "Курс создан");
-      navigate("/organization");
+      setHasUnsavedChanges(false);
     } catch (error: any) {
       console.error("Error saving course:", error);
       toast.error("Ошибка сохранения: " + error.message);
@@ -1461,7 +1495,7 @@ export default function CourseBuilder() {
                 variant="ghost"
                 size="sm"
                 className="rounded-xl"
-                onClick={() => navigate("/organization")}
+                onClick={handleBackClick}
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Назад
@@ -1508,7 +1542,7 @@ export default function CourseBuilder() {
                   <Label>Название курса</Label>
                   <Input
                     value={courseTitle}
-                    onChange={(e) => setCourseTitle(e.target.value)}
+                    onChange={(e) => { setCourseTitle(e.target.value); markAsChanged(); }}
                     placeholder="Например: Основы безопасности на производстве"
                     className="rounded-xl h-12"
                   />
@@ -1517,7 +1551,7 @@ export default function CourseBuilder() {
                   <Label>Описание</Label>
                   <Textarea
                     value={courseDescription}
-                    onChange={(e) => setCourseDescription(e.target.value)}
+                    onChange={(e) => { setCourseDescription(e.target.value); markAsChanged(); }}
                     placeholder="Краткое описание курса..."
                     className="rounded-xl min-h-[100px]"
                   />
@@ -1675,6 +1709,27 @@ export default function CourseBuilder() {
           </div>
         </div>
       </div>
+      
+      {/* Exit Confirmation Dialog */}
+      <AlertDialog open={showExitDialog} onOpenChange={setShowExitDialog}>
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Несохранённые изменения</AlertDialogTitle>
+            <AlertDialogDescription>
+              У вас есть несохранённые изменения. Хотите сохранить курс перед выходом?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleExitWithoutSave}>
+              Выйти без сохранения
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleSaveAndExit} disabled={isSaving}>
+              {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Сохранить и выйти
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
