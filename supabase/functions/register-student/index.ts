@@ -101,11 +101,10 @@ serve(async (req) => {
 
       userId = authData.user.id;
       
-      // Create profile with login and password
+      // Create/update profile with login and password (upsert to handle existing profiles from trigger)
       const { error: profileError } = await supabaseAdmin
         .from("profiles")
-        .insert({
-          id: crypto.randomUUID(),
+        .upsert({
           user_id: userId,
           full_name,
           email: email?.toLowerCase() || null,
@@ -113,7 +112,7 @@ serve(async (req) => {
           generated_password: generatedPassword,
           organization_id,
           company_id: company_id || null
-        });
+        }, { onConflict: "user_id" });
 
       if (profileError) {
         console.error("Profile error:", profileError);
