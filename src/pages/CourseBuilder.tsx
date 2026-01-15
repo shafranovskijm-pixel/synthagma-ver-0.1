@@ -1413,10 +1413,10 @@ export default function CourseBuilder() {
       }
     }
 
-    // For slides - generate with AI
+    // For slides - generate with AI (with images)
     if (type === "slides") {
       try {
-        toast.info("Генерация слайдов с AI...");
+        toast.info("Генерация слайдов с иллюстрациями... Это может занять минуту.");
         
         const { data, error } = await supabase.functions.invoke("generate-course-content", {
           body: {
@@ -1430,43 +1430,88 @@ export default function CourseBuilder() {
         if (error) throw error;
         
         if (data?.content) {
-          // Try to parse as JSON slides
           try {
             const parsedSlides = JSON.parse(data.content);
             if (Array.isArray(parsedSlides)) {
-              newLesson.content = data.content;
+              // Create a slider block with the generated slides
+              const sliderBlock = {
+                id: crypto.randomUUID(),
+                type: "slider" as const,
+                content: prompt,
+                sliderSlides: parsedSlides.map((s: any) => ({
+                  id: s.id || crypto.randomUUID(),
+                  title: s.title || "Слайд",
+                  content: s.content || "",
+                  imageUrl: s.imageUrl || undefined
+                })),
+                sliderCurrentIndex: 0
+              };
+              newLesson.blocks = [sliderBlock];
+              newLesson.content = JSON.stringify(parsedSlides);
+              const imagesCount = parsedSlides.filter((s: any) => s.imageUrl).length;
+              toast.success(`Слайды сгенерированы! (${imagesCount} иллюстраций)`);
             } else {
-              // If not array, create slides from text
               const slides = [
                 { id: crypto.randomUUID(), title: "Введение", content: data.content },
               ];
+              const sliderBlock = {
+                id: crypto.randomUUID(),
+                type: "slider" as const,
+                content: prompt,
+                sliderSlides: slides,
+                sliderCurrentIndex: 0
+              };
+              newLesson.blocks = [sliderBlock];
               newLesson.content = JSON.stringify(slides);
+              toast.success("Слайды сгенерированы!");
             }
           } catch {
-            // Create slides from text content
             const slides = [
               { id: crypto.randomUUID(), title: prompt.slice(0, 50), content: data.content },
             ];
+            const sliderBlock = {
+              id: crypto.randomUUID(),
+              type: "slider" as const,
+              content: prompt,
+              sliderSlides: slides,
+              sliderCurrentIndex: 0
+            };
+            newLesson.blocks = [sliderBlock];
             newLesson.content = JSON.stringify(slides);
+            toast.success("Слайды сгенерированы!");
           }
         } else {
-          // Fallback to basic structure
           const slides = [
             { id: crypto.randomUUID(), title: "Введение", content: prompt },
             { id: crypto.randomUUID(), title: "Основные понятия", content: "" },
             { id: crypto.randomUUID(), title: "Заключение", content: "" },
           ];
+          const sliderBlock = {
+            id: crypto.randomUUID(),
+            type: "slider" as const,
+            content: prompt,
+            sliderSlides: slides,
+            sliderCurrentIndex: 0
+          };
+          newLesson.blocks = [sliderBlock];
           newLesson.content = JSON.stringify(slides);
+          toast.warning("Слайды созданы с базовой структурой");
         }
-        toast.success("Слайды сгенерированы!");
       } catch (error: any) {
         console.error("Slides generation error:", error);
-        // Fallback to basic structure
         const slides = [
           { id: crypto.randomUUID(), title: "Введение", content: prompt },
           { id: crypto.randomUUID(), title: "Основные понятия", content: "" },
           { id: crypto.randomUUID(), title: "Заключение", content: "" },
         ];
+        const sliderBlock = {
+          id: crypto.randomUUID(),
+          type: "slider" as const,
+          content: prompt,
+          sliderSlides: slides,
+          sliderCurrentIndex: 0
+        };
+        newLesson.blocks = [sliderBlock];
         newLesson.content = JSON.stringify(slides);
         toast.warning("Слайды созданы с базовой структурой");
       }
@@ -1489,6 +1534,15 @@ export default function CourseBuilder() {
         if (error) throw error;
         
         if (data?.imageUrl) {
+          // Create an image block
+          const imageBlock = {
+            id: crypto.randomUUID(),
+            type: "image" as const,
+            content: "",
+            imageSrc: data.imageUrl,
+            imageAlt: prompt
+          };
+          newLesson.blocks = [imageBlock];
           newLesson.content = data.imageUrl;
           toast.success("Изображение сгенерировано!");
         } else {

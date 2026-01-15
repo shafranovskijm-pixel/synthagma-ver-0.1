@@ -207,13 +207,50 @@ async function generateTestQuestions(lessonTitle: string, courseTitle: string): 
   return result.questions || [];
 }
 
+async function generateImage(prompt: string): Promise<string | null> {
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+
+  console.log("Generating image for:", prompt);
+
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "google/gemini-2.5-flash-image-preview",
+      messages: [
+        {
+          role: "user",
+          content: `Generate an educational illustration for: ${prompt}. Style: clean, professional, suitable for educational materials. High quality, detailed.`
+        }
+      ],
+      modalities: ["image", "text"]
+    }),
+  });
+
+  if (!response.ok) {
+    console.error("Image generation error:", response.status, await response.text());
+    return null;
+  }
+
+  const result = await response.json();
+  const imageUrl = result.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+  
+  console.log("Image generated:", imageUrl ? "success" : "no image in response");
+  return imageUrl || null;
+}
+
 async function generateSlides(topic: string, courseTitle: string): Promise<any[]> {
   const systemPrompt = `Ты эксперт по созданию презентаций. Создай структуру слайдов.
 Правила:
 1. 5-8 слайдов
 2. Каждый слайд с заголовком и контентом
 3. Логическая структура: введение, основная часть, заключение
-4. Ключевые тезисы и примеры`;
+4. Ключевые тезисы и примеры
+5. Для каждого слайда укажи описание изображения для генерации`;
 
   const tool = {
     type: "function",
@@ -228,9 +265,10 @@ async function generateSlides(topic: string, courseTitle: string): Promise<any[]
               type: "object",
               properties: {
                 title: { type: "string" },
-                content: { type: "string" }
+                content: { type: "string" },
+                imagePrompt: { type: "string", description: "Description for AI image generation" }
               },
-              required: ["title", "content"],
+              required: ["title", "content", "imagePrompt"],
               additionalProperties: false
             }
           }
@@ -247,11 +285,29 @@ async function generateSlides(topic: string, courseTitle: string): Promise<any[]
     tool
   );
 
-  return (result.slides || []).map((s: any) => ({
-    id: crypto.randomUUID(),
-    title: s.title,
-    content: s.content,
-  }));
+  const slides = result.slides || [];
+  
+  // Generate images for slides
+  const slidesWithImages = [];
+  for (const s of slides) {
+    let imageUrl = null;
+    if (s.imagePrompt) {
+      try {
+        imageUrl = await generateImage(s.imagePrompt);
+        await new Promise(r => setTimeout(r, 1500)); // Rate limit delay
+      } catch (e) {
+        console.error("Failed to generate image for slide:", e);
+      }
+    }
+    slidesWithImages.push({
+      id: crypto.randomUUID(),
+      title: s.title,
+      content: s.content,
+      imageUrl: imageUrl
+    });
+  }
+
+  return slidesWithImages;
 }
 
 async function generateTextContent(topic: string, courseTitle: string): Promise<string> {
@@ -400,12 +456,12 @@ serve(async (req) => {
         }
         
         case "image": {
-          // For image, we return a prompt for external generation
+          const imageUrl = await generateImage(`${lessonTitle}. Context: ${courseTitle || "educational course"}`);
           return new Response(
             JSON.stringify({ 
               success: true, 
-              content: "",
-              prompt: `Создай изображение для: ${lessonTitle}. Контекст: ${courseTitle || "образовательный курс"}`
+              imageUrl: imageUrl,
+              content: imageUrl || ""
             }),
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
