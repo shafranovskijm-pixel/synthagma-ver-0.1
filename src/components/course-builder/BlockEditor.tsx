@@ -15,10 +15,13 @@ import {
   HelpCircle,
   ChevronDown,
   ChevronRight,
+  ChevronLeft,
   BookOpen,
   Image as ImageIcon,
   Video,
   Upload,
+  Presentation,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -70,11 +73,18 @@ export type BlockType =
   | "accordion"
   | "quiz"
   | "image"
-  | "video";
+  | "video"
+  | "slider";
 
 export interface QuizOption {
   text: string;
   isCorrect: boolean;
+}
+
+export interface SliderSlide {
+  id: string;
+  content: string;
+  title?: string;
 }
 
 export interface ContentBlock {
@@ -89,6 +99,8 @@ export interface ContentBlock {
   imageSrc?: string;
   imageAlt?: string;
   videoUrl?: string;
+  sliderSlides?: SliderSlide[];
+  sliderCurrentIndex?: number;
 }
 
 interface BlockEditorProps {
@@ -111,6 +123,7 @@ const blockTypeConfig: Record<BlockType, { icon: any; label: string; color: stri
   quiz: { icon: HelpCircle, label: "Мини-квиз", color: "text-primary" },
   image: { icon: ImageIcon, label: "Изображение", color: "text-green-500" },
   video: { icon: Video, label: "Видео", color: "text-red-500" },
+  slider: { icon: Presentation, label: "Слайдер презентации", color: "text-orange-500" },
 };
 
 const createBlock = (type: BlockType): ContentBlock => ({
@@ -128,6 +141,7 @@ const createBlock = (type: BlockType): ContentBlock => ({
   }),
   ...(type === "image" && { imageSrc: "", imageAlt: "" }),
   ...(type === "video" && { videoUrl: "" }),
+  ...(type === "slider" && { sliderSlides: [], sliderCurrentIndex: 0 }),
 });
 
 export function BlockEditor({ blocks, onChange, readOnly = false }: BlockEditorProps) {
@@ -261,6 +275,9 @@ function AddBlockButton({ onAdd }: { onAdd: (type: BlockType) => void }) {
         <DropdownMenuItem onClick={() => onAdd("video")}>
           <Video className="w-4 h-4 mr-2 text-red-500" />Видео
         </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onAdd("slider")}>
+          <Presentation className="w-4 h-4 mr-2 text-orange-500" />Слайдер презентации
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -371,6 +388,9 @@ function BlockContent({ block, onUpdate }: { block: ContentBlock; onUpdate: (upd
 
     case "video":
       return <VideoBlock block={block} onUpdate={onUpdate} />;
+
+    case "slider":
+      return <SliderBlock block={block} onUpdate={onUpdate} />;
 
     default:
       return null;
@@ -504,6 +524,208 @@ function VideoBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updat
   );
 }
 
+function SliderBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void }) {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const slides = block.sliderSlides || [];
+  const currentIndex = block.sliderCurrentIndex || 0;
+
+  const parsePptxFile = async (file: File): Promise<SliderSlide[]> => {
+    const JSZip = (await import('jszip')).default;
+    const arrayBuffer = await file.arrayBuffer();
+    const zip = await JSZip.loadAsync(arrayBuffer);
+    
+    const slidesArray: SliderSlide[] = [];
+    
+    // Find all slide XML files
+    const slideFiles = Object.keys(zip.files)
+      .filter(name => name.match(/ppt\/slides\/slide\d+\.xml$/))
+      .sort((a, b) => {
+        const numA = parseInt(a.match(/slide(\d+)\.xml$/)?.[1] || '0');
+        const numB = parseInt(b.match(/slide(\d+)\.xml$/)?.[1] || '0');
+        return numA - numB;
+      });
+
+    for (const slideFile of slideFiles) {
+      const content = await zip.files[slideFile].async('string');
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(content, 'application/xml');
+      
+      // Extract text from slide
+      const textNodes = doc.querySelectorAll('a\\:t, t');
+      const texts: string[] = [];
+      textNodes.forEach(node => {
+        const text = node.textContent?.trim();
+        if (text) texts.push(text);
+      });
+      
+      if (texts.length > 0) {
+        const title = texts[0];
+        const content = texts.slice(1).join('\n');
+        slidesArray.push({
+          id: crypto.randomUUID(),
+          title,
+          content
+        });
+      }
+    }
+    
+    return slidesArray;
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const ext = file.name.toLowerCase().split('.').pop();
+    if (ext !== 'pptx') {
+      setError('Поддерживается только формат PPTX');
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const parsedSlides = await parsePptxFile(file);
+      if (parsedSlides.length === 0) {
+        setError('Не удалось извлечь слайды из презентации');
+        return;
+      }
+      onUpdate({ 
+        sliderSlides: parsedSlides, 
+        sliderCurrentIndex: 0,
+        content: file.name
+      });
+    } catch (err) {
+      console.error('Error parsing PPTX:', err);
+      setError('Ошибка при обработке файла');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const goToSlide = (index: number) => {
+    if (index >= 0 && index < slides.length) {
+      onUpdate({ sliderCurrentIndex: index });
+    }
+  };
+
+  const removeSlider = () => {
+    onUpdate({ sliderSlides: [], sliderCurrentIndex: 0, content: '' });
+  };
+
+  if (slides.length === 0) {
+    return (
+      <div className="py-2">
+        <div className="bg-muted rounded-xl p-6 space-y-4">
+          <div className="text-center">
+            <Presentation className="w-8 h-8 mx-auto mb-2 text-orange-500" />
+            <p className="text-sm text-muted-foreground mb-2">Загрузите презентацию PPTX</p>
+            <p className="text-xs text-muted-foreground/70">Слайды будут отображаться как интерактивный слайдер</p>
+          </div>
+          {error && (
+            <div className="text-sm text-destructive text-center">{error}</div>
+          )}
+          <label className="flex items-center justify-center gap-2 p-3 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-primary/50 transition-colors">
+            {isLoading ? (
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            ) : (
+              <Upload className="w-5 h-5 text-muted-foreground" />
+            )}
+            <span className="text-sm text-muted-foreground">
+              {isLoading ? 'Обработка...' : 'Выбрать файл PPTX'}
+            </span>
+            <input
+              type="file"
+              accept=".pptx"
+              onChange={handleFileUpload}
+              className="hidden"
+              disabled={isLoading}
+            />
+          </label>
+        </div>
+      </div>
+    );
+  }
+
+  const currentSlide = slides[currentIndex];
+
+  return (
+    <div className="py-2">
+      <div className="rounded-xl border border-orange-500/30 bg-orange-500/5 overflow-hidden">
+        <div className="flex items-center justify-between p-3 border-b border-orange-500/20">
+          <div className="flex items-center gap-2 text-orange-500">
+            <Presentation className="w-5 h-5" />
+            <span className="font-medium text-sm">{block.content || 'Презентация'}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">
+              {currentIndex + 1} / {slides.length}
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-destructive hover:text-destructive"
+              onClick={removeSlider}
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+        
+        <div className="p-6 min-h-[200px]">
+          {currentSlide && (
+            <div className="space-y-3">
+              <h3 className="text-lg font-semibold">{currentSlide.title}</h3>
+              <div className="text-sm text-muted-foreground whitespace-pre-wrap">
+                {currentSlide.content}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between p-3 border-t border-orange-500/20 bg-orange-500/5">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => goToSlide(currentIndex - 1)}
+            disabled={currentIndex === 0}
+            className="gap-1"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            Назад
+          </Button>
+          
+          <div className="flex gap-1">
+            {slides.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => goToSlide(i)}
+                className={cn(
+                  "w-2 h-2 rounded-full transition-colors",
+                  i === currentIndex ? "bg-orange-500" : "bg-orange-500/30 hover:bg-orange-500/50"
+                )}
+              />
+            ))}
+          </div>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => goToSlide(currentIndex + 1)}
+            disabled={currentIndex === slides.length - 1}
+            className="gap-1"
+          >
+            Далее
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CalloutBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void }) {
   const styles = {
     "callout-info": { bg: "bg-blue-500/10", border: "border-blue-500/30", icon: AlertCircle, iconColor: "text-blue-500" },
@@ -580,6 +802,7 @@ function QuizBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (update
 export function BlockRenderer({ blocks }: { blocks: ContentBlock[] }) {
   const [quizAnswers, setQuizAnswers] = useState<Record<string, number>>({});
   const [quizSubmitted, setQuizSubmitted] = useState<Record<string, boolean>>({});
+  const [sliderIndices, setSliderIndices] = useState<Record<string, number>>({});
 
   return (
     <div className="prose prose-sm max-w-none dark:prose-invert space-y-4">
@@ -591,13 +814,23 @@ export function BlockRenderer({ blocks }: { blocks: ContentBlock[] }) {
           quizSubmitted={quizSubmitted[block.id]}
           onQuizAnswer={(index) => setQuizAnswers(prev => ({ ...prev, [block.id]: index }))}
           onQuizSubmit={() => setQuizSubmitted(prev => ({ ...prev, [block.id]: true }))}
+          sliderIndex={sliderIndices[block.id] ?? (block.sliderCurrentIndex || 0)}
+          onSliderChange={(index) => setSliderIndices(prev => ({ ...prev, [block.id]: index }))}
         />
       ))}
     </div>
   );
 }
 
-function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSubmit }: { block: ContentBlock; quizAnswer?: number; quizSubmitted?: boolean; onQuizAnswer: (index: number) => void; onQuizSubmit: () => void }) {
+function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSubmit, sliderIndex, onSliderChange }: { 
+  block: ContentBlock; 
+  quizAnswer?: number; 
+  quizSubmitted?: boolean; 
+  onQuizAnswer: (index: number) => void; 
+  onQuizSubmit: () => void;
+  sliderIndex?: number;
+  onSliderChange?: (index: number) => void;
+}) {
   const [accordionOpen, setAccordionOpen] = useState(false);
 
   switch (block.type) {
@@ -653,6 +886,68 @@ function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSub
     case "video":
       const embedUrl = block.videoUrl?.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1];
       return embedUrl ? <div className="aspect-video not-prose"><iframe src={`https://www.youtube.com/embed/${embedUrl}`} className="w-full h-full rounded-lg" allowFullScreen /></div> : null;
+    case "slider":
+      const slides = block.sliderSlides || [];
+      const currentIdx = sliderIndex ?? 0;
+      const currentSlide = slides[currentIdx];
+      if (slides.length === 0) return null;
+      return (
+        <div className="rounded-xl border border-orange-500/30 bg-orange-500/5 overflow-hidden not-prose">
+          <div className="flex items-center justify-between p-3 border-b border-orange-500/20">
+            <div className="flex items-center gap-2 text-orange-500">
+              <Presentation className="w-5 h-5" />
+              <span className="font-medium text-sm">{block.content || 'Презентация'}</span>
+            </div>
+            <span className="text-xs text-muted-foreground">
+              {currentIdx + 1} / {slides.length}
+            </span>
+          </div>
+          <div className="p-6 min-h-[200px]">
+            {currentSlide && (
+              <div className="space-y-3">
+                <h3 className="text-lg font-semibold">{currentSlide.title}</h3>
+                <div className="text-sm text-muted-foreground whitespace-pre-wrap">
+                  {currentSlide.content}
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="flex items-center justify-between p-3 border-t border-orange-500/20 bg-orange-500/5">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onSliderChange?.(currentIdx - 1)}
+              disabled={currentIdx === 0}
+              className="gap-1"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              Назад
+            </Button>
+            <div className="flex gap-1">
+              {slides.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => onSliderChange?.(i)}
+                  className={cn(
+                    "w-2 h-2 rounded-full transition-colors",
+                    i === currentIdx ? "bg-orange-500" : "bg-orange-500/30 hover:bg-orange-500/50"
+                  )}
+                />
+              ))}
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onSliderChange?.(currentIdx + 1)}
+              disabled={currentIdx === slides.length - 1}
+              className="gap-1"
+            >
+              Далее
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      );
     default:
       return null;
   }
