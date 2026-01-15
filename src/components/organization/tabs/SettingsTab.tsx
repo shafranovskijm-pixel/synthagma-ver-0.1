@@ -3,7 +3,7 @@ import {
   Palette, Sun, Moon, FileText, Building2, LayoutGrid, 
   Library, BarChart3, Link, ShoppingBag, Save, Settings,
   Trophy, MessageCircle, ChevronRight, Loader2, Upload,
-  X, ExternalLink, Image, Eye, AlertCircle
+  X, ExternalLink, Image, Eye, AlertCircle, LogIn
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,7 @@ import { ContractTemplateEditor } from "@/components/organization/ContractTempla
 import { ConsentGenerator } from "@/components/organization/ConsentGenerator";
 import { SystemFeaturesReport } from "@/components/organization/SystemFeaturesReport";
 import { SystemDiagnostics } from "@/components/organization/SystemDiagnostics";
+import { LoginBrandingSettings } from "@/components/organization/LoginBrandingSettings";
 import type { MenuSettings } from "@/types";
 
 interface BrandingSettings {
@@ -34,6 +35,7 @@ interface StudentDashboardSettings {
 interface SettingsTabProps {
   organizationId: string | null;
   organizationName: string;
+  userId?: string;
   isDarkMode: boolean;
   setIsDarkMode: (value: boolean) => void;
   menuSettings: MenuSettings;
@@ -56,6 +58,7 @@ interface SettingsTabProps {
 export function SettingsTab({
   organizationId,
   organizationName,
+  userId,
   isDarkMode,
   setIsDarkMode,
   menuSettings,
@@ -475,6 +478,29 @@ export function SettingsTab({
               Предпросмотр
             </Button>
           </div>
+        </div>
+      </details>
+
+      {/* Login Page Branding */}
+      <details className="bg-card rounded-2xl border border-border group">
+        <summary className="p-6 cursor-pointer list-none flex items-center justify-between">
+          <h3 className="font-display font-semibold text-lg flex items-center gap-2">
+            <LogIn className="w-5 h-5" />
+            Брендирование страницы входа
+          </h3>
+          <ChevronRight className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90" />
+        </summary>
+        <div className="px-6 pb-6">
+          <p className="text-sm text-muted-foreground mb-4">
+            Создайте индивидуальную страницу входа с вашим брендом и уникальной ссылкой
+          </p>
+          {organizationId && userId && (
+            <LoginBrandingSettings 
+              organizationId={organizationId} 
+              organizationName={organizationName}
+              userId={userId}
+            />
+          )}
         </div>
       </details>
 

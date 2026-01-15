@@ -1567,6 +1567,8 @@ export type Database = {
           is_paid: boolean
           kpp: string | null
           legal_address: string | null
+          login_branding: Json | null
+          login_slug: string | null
           monthly_price: number | null
           name: string
           notify_on_limit_80: boolean
@@ -1580,6 +1582,7 @@ export type Database = {
           student_dashboard_settings: Json | null
           tariff_type: string | null
           updated_at: string
+          website_url: string | null
         }
         Insert: {
           actual_address?: string | null
@@ -1602,6 +1605,8 @@ export type Database = {
           is_paid?: boolean
           kpp?: string | null
           legal_address?: string | null
+          login_branding?: Json | null
+          login_slug?: string | null
           monthly_price?: number | null
           name: string
           notify_on_limit_80?: boolean
@@ -1615,6 +1620,7 @@ export type Database = {
           student_dashboard_settings?: Json | null
           tariff_type?: string | null
           updated_at?: string
+          website_url?: string | null
         }
         Update: {
           actual_address?: string | null
@@ -1637,6 +1643,8 @@ export type Database = {
           is_paid?: boolean
           kpp?: string | null
           legal_address?: string | null
+          login_branding?: Json | null
+          login_slug?: string | null
           monthly_price?: number | null
           name?: string
           notify_on_limit_80?: boolean
@@ -1650,6 +1658,7 @@ export type Database = {
           student_dashboard_settings?: Json | null
           tariff_type?: string | null
           updated_at?: string
+          website_url?: string | null
         }
         Relationships: []
       }
