@@ -538,6 +538,39 @@ function SliderBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (upda
     
     const slidesArray: SliderSlide[] = [];
     
+    // Extract all images from ppt/media folder and create data URLs
+    const mediaFiles: Record<string, string> = {};
+    const mediaEntries = Object.keys(zip.files).filter(name => name.startsWith('ppt/media/'));
+    
+    for (const mediaPath of mediaEntries) {
+      try {
+        const mediaFile = zip.files[mediaPath];
+        if (mediaFile && !mediaFile.dir) {
+          const blob = await mediaFile.async('blob');
+          const fileName = mediaPath.split('/').pop() || '';
+          const ext = fileName.split('.').pop()?.toLowerCase();
+          
+          // Determine MIME type
+          let mimeType = 'image/png';
+          if (ext === 'jpg' || ext === 'jpeg') mimeType = 'image/jpeg';
+          else if (ext === 'gif') mimeType = 'image/gif';
+          else if (ext === 'svg') mimeType = 'image/svg+xml';
+          else if (ext === 'webp') mimeType = 'image/webp';
+          
+          // Convert to data URL
+          const dataUrl = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.readAsDataURL(new Blob([blob], { type: mimeType }));
+          });
+          
+          mediaFiles[fileName] = dataUrl;
+        }
+      } catch (err) {
+        console.warn('Failed to extract media:', mediaPath, err);
+      }
+    }
+    
     // Find all slide XML files
     const slideFiles = Object.keys(zip.files)
       .filter(name => name.match(/ppt\/slides\/slide\d+\.xml$/))
@@ -548,6 +581,7 @@ function SliderBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (upda
       });
 
     for (const slideFile of slideFiles) {
+      const slideNum = slideFile.match(/slide(\d+)\.xml$/)?.[1] || '1';
       const content = await zip.files[slideFile].async('string');
       const parser = new DOMParser();
       const doc = parser.parseFromString(content, 'application/xml');
@@ -560,13 +594,44 @@ function SliderBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (upda
         if (text) texts.push(text);
       });
       
-      if (texts.length > 0) {
-        const title = texts[0];
-        const content = texts.slice(1).join('\n');
+      // Try to find image references in slide relationships
+      let slideImageUrl: string | undefined;
+      
+      // Check slide relationships file for image references
+      const relsPath = `ppt/slides/_rels/slide${slideNum}.xml.rels`;
+      if (zip.files[relsPath]) {
+        try {
+          const relsContent = await zip.files[relsPath].async('string');
+          const relsDoc = parser.parseFromString(relsContent, 'application/xml');
+          const relationships = relsDoc.querySelectorAll('Relationship');
+          
+          for (const rel of Array.from(relationships)) {
+            const target = rel.getAttribute('Target');
+            const type = rel.getAttribute('Type');
+            
+            // Check if it's an image relationship
+            if (type?.includes('/image') && target) {
+              const imageName = target.replace('../media/', '');
+              if (mediaFiles[imageName]) {
+                slideImageUrl = mediaFiles[imageName];
+                break; // Use the first image found
+              }
+            }
+          }
+        } catch (err) {
+          console.warn('Failed to parse rels for slide:', slideNum, err);
+        }
+      }
+      
+      // Create slide even if no text (might have image)
+      if (texts.length > 0 || slideImageUrl) {
+        const title = texts[0] || `Слайд ${slideNum}`;
+        const slideContent = texts.slice(1).join('\n');
         slidesArray.push({
           id: crypto.randomUUID(),
           title,
-          content
+          content: slideContent,
+          imageUrl: slideImageUrl
         });
       }
     }
