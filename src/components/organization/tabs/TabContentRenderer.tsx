@@ -220,6 +220,7 @@ export function TabContentRenderer({
         <SettingsTab
           organizationId={organizationId}
           organizationName={organizationName}
+          userId={userId}
           isDarkMode={isDarkMode}
           setIsDarkMode={setIsDarkMode}
           menuSettings={menuSettings}
