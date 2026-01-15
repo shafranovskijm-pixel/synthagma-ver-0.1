@@ -54,73 +54,85 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
+// Helper function to check if URL can be embedded in iframe
+const canEmbedInIframe = (url: string): boolean => {
+  // These services don't allow iframe embedding
+  const noEmbedPatterns = [
+    /ktalk\.ru/i,
+    /zoom\.us/i,
+    /teams\.microsoft/i,
+    /meet\.google/i
+  ];
+  return !noEmbedPatterns.some(pattern => pattern.test(url));
+};
+
 // Helper function to get embed URL from video content
-const getVideoEmbedUrl = (content: string): string | null => {
+const getVideoEmbedUrl = (content: string): { url: string; canEmbed: boolean } | null => {
   if (!content) return null;
   
   // Check if it's an iframe embed code
   const iframeSrcMatch = content.match(/<iframe[^>]*src=["']([^"']+)["']/i);
   if (iframeSrcMatch) {
-    return iframeSrcMatch[1];
+    return { url: iframeSrcMatch[1], canEmbed: true };
   }
   
   // YouTube
   const youtubeMatch = content.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/);
   if (youtubeMatch) {
-    return `https://www.youtube.com/embed/${youtubeMatch[1]}`;
+    return { url: `https://www.youtube.com/embed/${youtubeMatch[1]}`, canEmbed: true };
   }
   
   // Vimeo
   const vimeoMatch = content.match(/vimeo\.com\/(?:video\/)?(\d+)/);
   if (vimeoMatch) {
-    return `https://player.vimeo.com/video/${vimeoMatch[1]}`;
+    return { url: `https://player.vimeo.com/video/${vimeoMatch[1]}`, canEmbed: true };
   }
   
   // Rutube
   const rutubeMatch = content.match(/rutube\.ru\/video\/([a-zA-Z0-9]+)/);
   if (rutubeMatch) {
-    return `https://rutube.ru/play/embed/${rutubeMatch[1]}`;
+    return { url: `https://rutube.ru/play/embed/${rutubeMatch[1]}`, canEmbed: true };
   }
   
   // VK Video (vk.com and vkvideo.ru)
   const vkMatch = content.match(/(?:vk\.com|vkvideo\.ru)\/video(-?\d+)_(\d+)/);
   if (vkMatch) {
-    return `https://vk.com/video_ext.php?oid=${vkMatch[1]}&id=${vkMatch[2]}&hd=2`;
+    return { url: `https://vk.com/video_ext.php?oid=${vkMatch[1]}&id=${vkMatch[2]}&hd=2`, canEmbed: true };
   }
   
-  // KTalk recordings (ktalk.ru)
+  // KTalk recordings (ktalk.ru) - can't embed, return original URL
   const ktalkMatch = content.match(/([a-zA-Z0-9]+)\.ktalk\.ru\/recordings\/([a-zA-Z0-9_-]+)/);
   if (ktalkMatch) {
-    return `https://${ktalkMatch[1]}.ktalk.ru/recordings/${ktalkMatch[2]}`;
+    return { url: content, canEmbed: false };
   }
   
   // Одноклассники
   const okMatch = content.match(/ok\.ru\/video\/(\d+)/);
   if (okMatch) {
-    return `https://ok.ru/videoembed/${okMatch[1]}`;
+    return { url: `https://ok.ru/videoembed/${okMatch[1]}`, canEmbed: true };
   }
   
   // Mail.ru
   const mailMatch = content.match(/my\.mail\.ru\/video\/embed\/(\d+)/);
   if (mailMatch) {
-    return `https://my.mail.ru/video/embed/${mailMatch[1]}`;
+    return { url: `https://my.mail.ru/video/embed/${mailMatch[1]}`, canEmbed: true };
   }
   
   // Дзен
   const dzenMatch = content.match(/dzen\.ru\/video\/watch\/([a-zA-Z0-9]+)/);
   if (dzenMatch) {
-    return `https://dzen.ru/embed/${dzenMatch[1]}`;
+    return { url: `https://dzen.ru/embed/${dzenMatch[1]}`, canEmbed: true };
   }
   
   // Яндекс Видео
   const yandexMatch = content.match(/yandex\.ru\/video\/preview\/(\d+)/);
   if (yandexMatch) {
-    return `https://yandex.ru/video/preview/${yandexMatch[1]}`;
+    return { url: `https://yandex.ru/video/preview/${yandexMatch[1]}`, canEmbed: true };
   }
   
-  // Generic video URLs - try direct embed for recording services
-  if (content.match(/^https?:\/\/.*\/recordings?\//i) || content.match(/^https?:\/\/.*\/video\//i)) {
-    return content;
+  // Generic video URLs - check if can embed
+  if (content.match(/^https?:\/\/.+/i)) {
+    return { url: content, canEmbed: canEmbedInIframe(content) };
   }
   
   return null;
@@ -150,13 +162,35 @@ const VideoPreviewInline = ({ content }: { content: string }) => {
   }
   
   // Try to get embed URL from link
-  const embedUrl = getVideoEmbedUrl(content);
+  const embedResult = getVideoEmbedUrl(content);
   
-  if (embedUrl) {
+  if (embedResult) {
+    // If can't embed, show a card with link to open video
+    if (!embedResult.canEmbed) {
+      return (
+        <div className="aspect-video w-full rounded-xl overflow-hidden bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 flex flex-col items-center justify-center gap-4">
+          <Video className="w-16 h-16 text-primary/60" />
+          <div className="text-center px-4">
+            <p className="text-sm font-medium text-foreground mb-1">Видеозапись</p>
+            <p className="text-xs text-muted-foreground mb-3">Этот сервис не поддерживает встраивание</p>
+            <a
+              href={embedResult.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+            >
+              <Play className="w-4 h-4" />
+              Открыть видео
+            </a>
+          </div>
+        </div>
+      );
+    }
+    
     return (
       <div className="aspect-video w-full rounded-xl overflow-hidden bg-muted">
         <iframe
-          src={embedUrl}
+          src={embedResult.url}
           className="w-full h-full"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
           allowFullScreen
