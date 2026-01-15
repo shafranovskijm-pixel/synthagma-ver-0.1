@@ -79,7 +79,7 @@ export default function OrganizationDashboard() {
 
   // Enrollment actions hook
   const enrollmentActions = useEnrollmentActions(organizationId, organizationName, refreshData);
-  const { selectedStudentIds, setSelectedStudentIds, showEnrollDialog, setShowEnrollDialog, showUnenrollConfirm, setShowUnenrollConfirm, showBulkFRDOExport, setShowBulkFRDOExport, enrollCourseId, setEnrollCourseId, isEnrolling, isUnenrolling } = enrollmentActions;
+  const { selectedStudentIds, setSelectedStudentIds, showEnrollDialog, setShowEnrollDialog, showUnenrollConfirm, setShowUnenrollConfirm, showBulkFRDOExport, setShowBulkFRDOExport, showBulkDeleteConfirm, setShowBulkDeleteConfirm, enrollCourseId, setEnrollCourseId, isEnrolling, isUnenrolling, isBulkDeleting, bulkDelete } = enrollmentActions;
 
   // Course students manager hook
   const courseStudentsManager = useCourseStudentsManager(organizationId);
@@ -359,6 +359,15 @@ export default function OrganizationDashboard() {
                 }
                 setShowBulkFRDOExport(true);
               }}
+              onShowBulkDeleteConfirm={(selectedUserIds) => {
+                if (selectedUserIds && selectedUserIds.length > 0) {
+                  // Convert userIds to selection format
+                  const selectionIds = students.filter(s => selectedUserIds.includes(s.user_id))
+                    .map(s => s.enrollment_id || s.user_id);
+                  setSelectedStudentIds(new Set(selectionIds));
+                }
+                setShowBulkDeleteConfirm(true);
+              }}
               isCreatingBulkCredentials={studentActions.isCreatingBulkCredentials}
               isSendingBulkCredentials={studentActions.isSendingBulkCredentials}
               isSendingBulkDocReminders={studentActions.isSendingBulkDocReminders}
@@ -564,6 +573,10 @@ export default function OrganizationDashboard() {
         showBulkFRDOExport={showBulkFRDOExport}
         setShowBulkFRDOExport={setShowBulkFRDOExport}
         selectedStudentIds={selectedStudentIds}
+        showBulkDeleteConfirm={showBulkDeleteConfirm}
+        setShowBulkDeleteConfirm={setShowBulkDeleteConfirm}
+        isBulkDeleting={isBulkDeleting}
+        onBulkDelete={() => bulkDelete(students)}
       />
     </div>
   );

@@ -19,6 +19,8 @@ import { StudentDocumentsManager } from "@/components/organization/StudentDocume
 import { BulkDocumentUpload } from "@/components/organization/BulkDocumentUpload";
 import { StudentDetailCard } from "@/components/organization/StudentDetailCard";
 import { BulkFRDOExport } from "@/components/organization/BulkFRDOExport";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Loader2 } from "lucide-react";
 import type { Course, Company, Student, CourseCategory } from "@/types/shared";
 
 // Local organization interface for admin view
@@ -211,6 +213,12 @@ interface DialogsContainerProps {
   showBulkFRDOExport: boolean;
   setShowBulkFRDOExport: (v: boolean) => void;
   selectedStudentIds: Set<string>;
+  
+  // Bulk delete
+  showBulkDeleteConfirm: boolean;
+  setShowBulkDeleteConfirm: (v: boolean) => void;
+  isBulkDeleting: boolean;
+  onBulkDelete: () => void;
 }
 
 export function DialogsContainer(props: DialogsContainerProps) {
@@ -435,6 +443,36 @@ export function DialogsContainer(props: DialogsContainerProps) {
         selectedStudentIds={props.selectedStudentIds}
         students={props.students}
       />
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <AlertDialog open={props.showBulkDeleteConfirm} onOpenChange={props.setShowBulkDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить учеников?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Вы уверены, что хотите удалить {props.selectedStudentIds.size} учеников?
+              Это действие нельзя отменить. Все данные учеников, включая зачисления и документы, будут удалены.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={props.isBulkDeleting}>Отмена</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={props.onBulkDelete} 
+              disabled={props.isBulkDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {props.isBulkDeleting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Удаление...
+                </>
+              ) : (
+                "Удалить"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

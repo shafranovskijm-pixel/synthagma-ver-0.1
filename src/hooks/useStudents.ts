@@ -32,6 +32,7 @@ interface UseStudentsReturn {
   unenrollFromCourse: (enrollmentId: string) => Promise<boolean>;
   bulkEnroll: (courseId: string) => Promise<{ success: number; failed: number }>;
   bulkUnenroll: () => Promise<{ success: number; failed: number }>;
+  bulkDelete: () => Promise<{ success: number; failed: number }>;
   updateCompany: (userId: string, companyId: string | null) => Promise<boolean>;
   removeStudent: (userId: string) => Promise<boolean>;
   toggleSelection: (uniqueId: string) => void;
@@ -284,6 +285,32 @@ export function useStudents(
     return result;
   }, [selectedStudentIds, students]);
 
+  const bulkDelete = useCallback(async (): Promise<{ success: number; failed: number }> => {
+    const userIds = getSelectedUserIds();
+    let success = 0;
+    let failed = 0;
+
+    for (const userId of userIds) {
+      const result = await deleteStudent(userId);
+      if (result) {
+        success++;
+      } else {
+        failed++;
+      }
+    }
+    
+    if (success > 0) {
+      toast.success(`Удалено: ${success} учеников`);
+    }
+    if (failed > 0) {
+      toast.error(`Ошибок: ${failed}`);
+    }
+    
+    setSelectedStudentIds(new Set());
+    setRefreshKey(prev => prev + 1);
+    return { success, failed };
+  }, [getSelectedUserIds]);
+
   const updateCompany = useCallback(async (userId: string, companyId: string | null): Promise<boolean> => {
     const success = await updateStudentCompany(userId, companyId);
     if (!success) {
@@ -322,6 +349,7 @@ export function useStudents(
     unenrollFromCourse,
     bulkEnroll,
     bulkUnenroll,
+    bulkDelete,
     updateCompany,
     removeStudent,
     toggleSelection,
