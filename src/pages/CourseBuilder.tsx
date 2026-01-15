@@ -342,7 +342,7 @@ function SliderLessonEditor({ lesson, courseId, onUpdate }: SliderLessonEditorPr
 
     const ext = file.name.toLowerCase().split('.').pop();
     if (ext !== 'pptx') {
-      setError('Поддерживается только формат PPTX');
+      setError('Формат .ppt не поддерживается браузером. Откройте файл в PowerPoint и сохраните как .pptx (Файл → Сохранить как → Формат: PowerPoint)');
       return;
     }
 
