@@ -1226,7 +1226,7 @@ export default function CourseBuilder() {
                 <div className="flex-1">
                     <h3 className="font-display font-semibold text-lg mb-1">Импорт лекций из файлов</h3>
                     <p className="text-muted-foreground text-sm mb-2">
-                      Загрузите DOC, DOCX, HTML или TXT — каждый файл станет лекцией
+                      Загрузите PPTX, PPT, DOC, DOCX, HTML или TXT — каждый файл станет лекцией
                     </p>
                   {lessons.length > 0 && (
                     <p className="text-xs text-primary mb-3">
@@ -1236,7 +1236,7 @@ export default function CourseBuilder() {
                     <input
                       ref={fileInputRef}
                       type="file"
-                      accept=".doc,.docx,.html,.htm,.txt"
+                      accept=".pptx,.ppt,.doc,.docx,.html,.htm,.txt"
                       onChange={handleFileImport}
                       multiple
                       className="hidden"

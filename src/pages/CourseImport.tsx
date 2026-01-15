@@ -1,9 +1,9 @@
 import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
-  Upload, FileArchive, FileText, Loader2, CheckCircle2, 
-  AlertCircle, ArrowLeft, FolderTree, BookOpen, Sparkles,
-  File, ChevronRight
+  Upload, FileText, Loader2, CheckCircle2, 
+  AlertCircle, ArrowLeft, BookOpen, Sparkles,
+  File, Presentation
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -86,21 +86,24 @@ export default function CourseImport() {
 
   const validateAndSetFile = (file: File) => {
     const validTypes = [
-      'application/zip',
-      'application/x-zip-compressed',
-      'application/x-zip',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'application/vnd.ms-powerpoint',
+      'application/msword',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       'text/plain',
       'text/html',
     ];
     
-    const isZip = file.name.toLowerCase().endsWith('.zip');
-    const isDocx = file.name.toLowerCase().endsWith('.docx');
-    const isTxt = file.name.toLowerCase().endsWith('.txt');
-    const isHtml = file.name.toLowerCase().endsWith('.html') || file.name.toLowerCase().endsWith('.htm');
+    const fileName = file.name.toLowerCase();
+    const isPptx = fileName.endsWith('.pptx');
+    const isPpt = fileName.endsWith('.ppt');
+    const isDocx = fileName.endsWith('.docx');
+    const isDoc = fileName.endsWith('.doc');
+    const isTxt = fileName.endsWith('.txt');
+    const isHtml = fileName.endsWith('.html') || fileName.endsWith('.htm');
     
-    if (!isZip && !isDocx && !isTxt && !isHtml) {
-      toast.error('Поддерживаются только ZIP, DOCX, TXT, HTML файлы');
+    if (!isPptx && !isPpt && !isDocx && !isDoc && !isTxt && !isHtml) {
+      toast.error('Поддерживаются только PPTX, PPT, DOC, DOCX, TXT, HTML файлы');
       return;
     }
     
@@ -280,7 +283,7 @@ export default function CourseImport() {
             <div className="text-center">
               <h1 className="font-display text-2xl font-bold mb-2">Загрузите учебные материалы</h1>
               <p className="text-muted-foreground">
-                Загрузите ZIP-архив с документами или отдельный файл
+                Загрузите презентацию или документ для создания курса
               </p>
             </div>
 
@@ -303,7 +306,7 @@ export default function CourseImport() {
               <input
                 id="file-input"
                 type="file"
-                accept=".zip,.docx,.txt,.html,.htm"
+                accept=".pptx,.ppt,.doc,.docx,.txt,.html,.htm"
                 onChange={handleFileSelect}
                 className="hidden"
               />
@@ -311,8 +314,8 @@ export default function CourseImport() {
               {selectedFile ? (
                 <div className="space-y-4">
                   <div className="w-16 h-16 mx-auto rounded-2xl bg-green-500/10 flex items-center justify-center">
-                    {selectedFile.name.endsWith('.zip') ? (
-                      <FileArchive className="w-8 h-8 text-green-500" />
+                    {selectedFile.name.endsWith('.pptx') || selectedFile.name.endsWith('.ppt') ? (
+                      <Presentation className="w-8 h-8 text-green-500" />
                     ) : (
                       <FileText className="w-8 h-8 text-green-500" />
                     )}
@@ -344,7 +347,7 @@ export default function CourseImport() {
                       Перетащите файл сюда или нажмите для выбора
                     </p>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Поддерживаются: ZIP, DOCX, TXT, HTML (до 50 МБ)
+                      Поддерживаются: PPTX, PPT, DOC, DOCX, TXT, HTML (до 50 МБ)
                     </p>
                   </div>
                 </div>
@@ -354,23 +357,23 @@ export default function CourseImport() {
             {/* Supported formats */}
             <div className="bg-card rounded-2xl border border-border p-6">
               <h3 className="font-semibold mb-4 flex items-center gap-2">
-                <FolderTree className="w-5 h-5 text-primary" />
+                <BookOpen className="w-5 h-5 text-primary" />
                 Как работает импорт
               </h3>
               <div className="grid gap-4 text-sm">
                 <div className="flex items-start gap-3">
-                  <FileArchive className="w-5 h-5 text-muted-foreground mt-0.5" />
+                  <Presentation className="w-5 h-5 text-muted-foreground mt-0.5" />
                   <div>
-                    <p className="font-medium">ZIP-архив</p>
+                    <p className="font-medium">PPTX / PPT (презентации)</p>
                     <p className="text-muted-foreground">
-                      Папки станут разделами курса, файлы — уроками
+                      Каждый слайд станет отдельным уроком
                     </p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
                   <FileText className="w-5 h-5 text-muted-foreground mt-0.5" />
                   <div>
-                    <p className="font-medium">DOCX / TXT / HTML</p>
+                    <p className="font-medium">DOC / DOCX / TXT / HTML</p>
                     <p className="text-muted-foreground">
                       Документ будет разбит на уроки по заголовкам
                     </p>
@@ -397,25 +400,6 @@ export default function CourseImport() {
                 Обработать файл
               </Button>
             )}
-          </div>
-        )}
-
-        {/* Processing step */}
-        {step === 'processing' && (
-          <div className="text-center space-y-6 py-12">
-            <div className="w-20 h-20 mx-auto rounded-2xl bg-primary/10 flex items-center justify-center">
-              <Loader2 className="w-10 h-10 text-primary animate-spin" />
-            </div>
-            <div>
-              <h2 className="font-display text-xl font-bold mb-2">Обработка файла...</h2>
-              <p className="text-muted-foreground">
-                Извлекаем и структурируем содержимое
-              </p>
-            </div>
-            <div className="max-w-xs mx-auto">
-              <Progress value={progress} className="h-2" />
-              <p className="text-sm text-muted-foreground mt-2">{progress}%</p>
-            </div>
           </div>
         )}
 
@@ -533,7 +517,6 @@ export default function CourseImport() {
                 onClick={() => navigate(`/course-builder/${createdCourseId}`)}
               >
                 Редактировать курс
-                <ChevronRight className="w-4 h-4 ml-2" />
               </Button>
             </div>
           </div>
