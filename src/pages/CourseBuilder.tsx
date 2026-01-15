@@ -217,6 +217,8 @@ interface Lesson {
   content: string;
   expanded: boolean;
   blocks?: ContentBlock[];
+  thumbnailUrl?: string;
+  videoScript?: string;
 }
 
 const lessonIcons: Record<LessonType, any> = {
@@ -885,7 +887,39 @@ function SortableLessonItem({
             </div>
           )}
           {lesson.type === "video" && (
-            <div className="space-y-3">
+            <div className="space-y-4">
+              {/* AI Generated Preview and Script */}
+              {(lesson.thumbnailUrl || lesson.videoScript) && (
+                <div className="bg-gradient-to-r from-sigma-purple/10 to-primary/10 rounded-xl p-4 border border-sigma-purple/20">
+                  <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-sigma-purple" />
+                    AI-сгенерированный контент
+                  </h4>
+                  {lesson.thumbnailUrl && (
+                    <div className="mb-3">
+                      <p className="text-xs text-muted-foreground mb-2">Превью:</p>
+                      <img 
+                        src={lesson.thumbnailUrl} 
+                        alt="Превью видео" 
+                        className="rounded-lg max-h-48 object-contain border border-border"
+                      />
+                    </div>
+                  )}
+                  {lesson.videoScript && (
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-2">Сценарий:</p>
+                      <div className="bg-background/50 rounded-lg p-3 text-sm max-h-40 overflow-y-auto">
+                        {lesson.videoScript}
+                      </div>
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground mt-3">
+                    💡 Для создания видео используйте: Runway ML, Pika Labs, или загрузите готовое видео
+                  </p>
+                </div>
+              )}
+
+              {/* Video URL Input */}
               <div className="space-y-2">
                 <Label>Ссылка на видео или код для встраивания</Label>
                 <Textarea
@@ -898,7 +932,7 @@ function SortableLessonItem({
                   Поддерживаются: YouTube, Vimeo, Rutube, VK Video, Одноклассники, Mail.ru, Дзен, Яндекс Видео
                 </p>
               </div>
-              {lesson.content && (
+              {lesson.content && !lesson.content.startsWith('data:') && (
                 <VideoPreviewInline content={lesson.content} />
               )}
             </div>
@@ -1560,7 +1594,7 @@ export default function CourseBuilder() {
         toast.info("Генерация превью и сценария для видео...");
         
         // Generate a thumbnail image
-        const { data: imageData, error: imageError } = await supabase.functions.invoke("generate-course-content", {
+        const { data: imageData } = await supabase.functions.invoke("generate-course-content", {
           body: {
             lessonTitle: `Video thumbnail: ${prompt}`,
             courseTitle: courseTitle || "Курс",
@@ -1570,7 +1604,7 @@ export default function CourseBuilder() {
         });
 
         // Generate video script/description
-        const { data: scriptData, error: scriptError } = await supabase.functions.invoke("generate-course-content", {
+        const { data: scriptData } = await supabase.functions.invoke("generate-course-content", {
           body: {
             lessonTitle: prompt,
             courseTitle: courseTitle || "Курс",
@@ -1579,29 +1613,18 @@ export default function CourseBuilder() {
           },
         });
 
-        let thumbnailUrl = imageData?.imageUrl || "";
-        let script = scriptData?.content || "";
+        const thumbnailUrl = imageData?.imageUrl || "";
+        const script = scriptData?.content || "";
 
-        // Create video block with thumbnail and script
-        const videoBlock = {
-          id: crypto.randomUUID(),
-          type: "paragraph" as const,
-          content: `<div class="video-placeholder">
-            <h3>🎬 Видео: ${prompt}</h3>
-            ${thumbnailUrl ? `<img src="${thumbnailUrl}" alt="Превью видео" style="max-width: 100%; border-radius: 8px; margin: 10px 0;" />` : ""}
-            <h4>Сценарий видео:</h4>
-            <p>${script || "Сценарий будет добавлен позже..."}</p>
-            <p><em>💡 Для создания видео используйте сервисы: Runway ML, Pika Labs, или загрузите готовое видео.</em></p>
-          </div>`
-        };
-        
-        newLesson.blocks = [videoBlock];
-        newLesson.content = thumbnailUrl || script || prompt;
+        // Store thumbnail separately, keep content empty for actual video URL
+        newLesson.thumbnailUrl = thumbnailUrl;
+        newLesson.videoScript = script;
+        newLesson.content = ""; // Keep empty for user to add video URL
         
         if (thumbnailUrl || script) {
-          toast.success("Превью и сценарий видео созданы!");
+          toast.success("Превью и сценарий созданы! Добавьте ссылку на видео.");
         } else {
-          toast.info("Добавьте ссылку на видео или загрузите файл");
+          toast.info("Добавьте ссылку на видео");
         }
       } catch (error: any) {
         console.error("Video generation error:", error);
