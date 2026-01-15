@@ -202,6 +202,7 @@ interface SliderSlide {
   id: string;
   content: string;
   title?: string;
+  imageUrl?: string;
 }
 
 interface SliderLessonEditorProps {
@@ -214,6 +215,7 @@ function SliderLessonEditor({ lesson, courseId, onUpdate }: SliderLessonEditorPr
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [uploadProgress, setUploadProgress] = useState<string>("");
 
   // Parse slides from content
   const slides: SliderSlide[] = (() => {
@@ -233,6 +235,42 @@ function SliderLessonEditor({ lesson, courseId, onUpdate }: SliderLessonEditorPr
     
     const slidesArray: SliderSlide[] = [];
     
+    // Get all media files (images)
+    const mediaFiles: Record<string, string> = {};
+    const mediaEntries = Object.keys(zip.files).filter(name => name.startsWith('ppt/media/'));
+    
+    setUploadProgress(`Извлечение ${mediaEntries.length} изображений...`);
+    
+    // Upload media files to storage
+    for (const mediaPath of mediaEntries) {
+      try {
+        const mediaBlob = await zip.files[mediaPath].async('blob');
+        const fileName = mediaPath.split('/').pop() || '';
+        const ext = fileName.split('.').pop()?.toLowerCase() || 'png';
+        const mimeType = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : 
+                         ext === 'png' ? 'image/png' : 
+                         ext === 'gif' ? 'image/gif' : 
+                         ext === 'webp' ? 'image/webp' : 'image/png';
+        
+        const mediaFile = new File([mediaBlob], fileName, { type: mimeType });
+        const uploadPath = `${courseId || 'temp'}/slides/${lesson.id}_${fileName}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('course-files')
+          .upload(uploadPath, mediaFile, { upsert: true });
+          
+        if (!uploadError) {
+          const { data: { publicUrl } } = supabase.storage
+            .from('course-files')
+            .getPublicUrl(uploadPath);
+          mediaFiles[fileName] = publicUrl;
+        }
+      } catch (err) {
+        console.error('Error uploading media:', mediaPath, err);
+      }
+    }
+    
+    // Get slide files
     const slideFiles = Object.keys(zip.files)
       .filter(name => name.match(/ppt\/slides\/slide\d+\.xml$/))
       .sort((a, b) => {
@@ -241,11 +279,17 @@ function SliderLessonEditor({ lesson, courseId, onUpdate }: SliderLessonEditorPr
         return numA - numB;
       });
 
-    for (const slideFile of slideFiles) {
+    setUploadProgress(`Обработка ${slideFiles.length} слайдов...`);
+
+    for (let i = 0; i < slideFiles.length; i++) {
+      const slideFile = slideFiles[i];
+      const slideNum = parseInt(slideFile.match(/slide(\d+)\.xml$/)?.[1] || '0');
+      
       const content = await zip.files[slideFile].async('string');
       const parser = new DOMParser();
       const doc = parser.parseFromString(content, 'application/xml');
       
+      // Extract text
       const textNodes = doc.querySelectorAll('a\\:t, t');
       const texts: string[] = [];
       textNodes.forEach(node => {
@@ -253,11 +297,38 @@ function SliderLessonEditor({ lesson, courseId, onUpdate }: SliderLessonEditorPr
         if (text) texts.push(text);
       });
       
-      if (texts.length > 0) {
+      // Find image references in slide relationships
+      let slideImageUrl: string | undefined;
+      const relsPath = `ppt/slides/_rels/slide${slideNum}.xml.rels`;
+      if (zip.files[relsPath]) {
+        try {
+          const relsContent = await zip.files[relsPath].async('string');
+          const relsDoc = parser.parseFromString(relsContent, 'application/xml');
+          const relationships = relsDoc.querySelectorAll('Relationship');
+          
+          relationships.forEach(rel => {
+            const type = rel.getAttribute('Type') || '';
+            const target = rel.getAttribute('Target') || '';
+            
+            if (type.includes('/image') && target.includes('media/')) {
+              const mediaName = target.split('/').pop() || '';
+              if (mediaFiles[mediaName] && !slideImageUrl) {
+                slideImageUrl = mediaFiles[mediaName];
+              }
+            }
+          });
+        } catch (err) {
+          console.error('Error parsing rels:', err);
+        }
+      }
+      
+      // Create slide even if no text (may have only image)
+      if (texts.length > 0 || slideImageUrl) {
         slidesArray.push({
           id: crypto.randomUUID(),
-          title: texts[0],
-          content: texts.slice(1).join('\n')
+          title: texts[0] || `Слайд ${slideNum}`,
+          content: texts.slice(1).join('\n'),
+          imageUrl: slideImageUrl
         });
       }
     }
@@ -315,9 +386,12 @@ function SliderLessonEditor({ lesson, courseId, onUpdate }: SliderLessonEditorPr
         <div className="border-2 border-dashed border-border rounded-xl p-8 text-center">
           <Presentation className="w-8 h-8 mx-auto mb-2 text-amber-500" />
           <p className="text-sm text-muted-foreground mb-2">Загрузите презентацию PPTX</p>
-          <p className="text-xs text-muted-foreground/70 mb-4">Слайды будут отображаться как интерактивный слайдер</p>
+          <p className="text-xs text-muted-foreground/70 mb-4">Слайды с изображениями будут отображаться как интерактивный слайдер</p>
           {error && (
             <p className="text-sm text-destructive mb-4">{error}</p>
+          )}
+          {isLoading && uploadProgress && (
+            <p className="text-xs text-amber-500 mb-4">{uploadProgress}</p>
           )}
           <label className="inline-flex items-center gap-2 px-4 py-2 border border-border rounded-lg cursor-pointer hover:border-amber-500 hover:bg-amber-500/5 transition-colors">
             {isLoading ? (
@@ -366,13 +440,24 @@ function SliderLessonEditor({ lesson, courseId, onUpdate }: SliderLessonEditorPr
           </div>
         </div>
         
-        <div className="p-6 min-h-[200px]">
+        <div className="p-6 min-h-[250px]">
           {currentSlide && (
-            <div className="space-y-3">
+            <div className="space-y-4">
+              {currentSlide.imageUrl && (
+                <div className="rounded-lg overflow-hidden border border-border bg-secondary/20">
+                  <img 
+                    src={currentSlide.imageUrl} 
+                    alt={currentSlide.title || 'Слайд'} 
+                    className="w-full max-h-[400px] object-contain"
+                  />
+                </div>
+              )}
               <h3 className="text-lg font-semibold">{currentSlide.title}</h3>
-              <div className="text-sm text-muted-foreground whitespace-pre-wrap">
-                {currentSlide.content}
-              </div>
+              {currentSlide.content && (
+                <div className="text-sm text-muted-foreground whitespace-pre-wrap">
+                  {currentSlide.content}
+                </div>
+              )}
             </div>
           )}
         </div>

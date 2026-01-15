@@ -85,6 +85,7 @@ export interface SliderSlide {
   id: string;
   content: string;
   title?: string;
+  imageUrl?: string;
 }
 
 export interface ContentBlock {
@@ -674,13 +675,24 @@ function SliderBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (upda
           </div>
         </div>
         
-        <div className="p-6 min-h-[200px]">
+        <div className="p-6 min-h-[250px]">
           {currentSlide && (
-            <div className="space-y-3">
+            <div className="space-y-4">
+              {currentSlide.imageUrl && (
+                <div className="rounded-lg overflow-hidden border border-border bg-secondary/20">
+                  <img 
+                    src={currentSlide.imageUrl} 
+                    alt={currentSlide.title || 'Слайд'} 
+                    className="w-full max-h-[400px] object-contain"
+                  />
+                </div>
+              )}
               <h3 className="text-lg font-semibold">{currentSlide.title}</h3>
-              <div className="text-sm text-muted-foreground whitespace-pre-wrap">
-                {currentSlide.content}
-              </div>
+              {currentSlide.content && (
+                <div className="text-sm text-muted-foreground whitespace-pre-wrap">
+                  {currentSlide.content}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -902,13 +914,24 @@ function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSub
               {currentIdx + 1} / {slides.length}
             </span>
           </div>
-          <div className="p-6 min-h-[200px]">
+          <div className="p-6 min-h-[250px]">
             {currentSlide && (
-              <div className="space-y-3">
+              <div className="space-y-4">
+                {currentSlide.imageUrl && (
+                  <div className="rounded-lg overflow-hidden border border-border bg-secondary/20">
+                    <img 
+                      src={currentSlide.imageUrl} 
+                      alt={currentSlide.title || 'Слайд'} 
+                      className="w-full max-h-[400px] object-contain"
+                    />
+                  </div>
+                )}
                 <h3 className="text-lg font-semibold">{currentSlide.title}</h3>
-                <div className="text-sm text-muted-foreground whitespace-pre-wrap">
-                  {currentSlide.content}
-                </div>
+                {currentSlide.content && (
+                  <div className="text-sm text-muted-foreground whitespace-pre-wrap">
+                    {currentSlide.content}
+                  </div>
+                )}
               </div>
             )}
           </div>
