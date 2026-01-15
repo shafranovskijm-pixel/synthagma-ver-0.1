@@ -118,16 +118,15 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
 
       for (const student of students) {
         try {
-          const password = generatePassword();
-
+          // Use no_login mode to allow duplicate emails - students get unique logins
           const { data, error } = await supabase.functions.invoke("register-student", {
             body: {
               email: student.email,
-              password,
               full_name: student.name,
               organization_id: organizationId,
               course_id: selectedCourseId || null,
-              company_id: selectedCompanyId || null
+              company_id: selectedCompanyId || null,
+              no_login: true // This allows duplicate emails by generating unique logins
             }
           });
 
@@ -138,7 +137,7 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
             success: true,
             email: student.email,
             name: student.name,
-            password
+            password: data.password || "см. карточку ученика"
           });
         } catch (err: any) {
           importResults.push({
