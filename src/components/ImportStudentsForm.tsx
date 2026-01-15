@@ -96,8 +96,12 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
   };
 
   const handleImport = async () => {
-    if (!file || !organizationId) {
+    if (!file) {
       toast({ title: "Ошибка", description: "Выберите файл для импорта", variant: "destructive" });
+      return;
+    }
+    if (!organizationId) {
+      toast({ title: "Ошибка", description: "Организация не определена. Попробуйте обновить страницу.", variant: "destructive" });
       return;
     }
 
