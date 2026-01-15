@@ -28,8 +28,10 @@ import {
   Pause,
   Play,
   Square,
-  Presentation
+  Presentation,
+  Wand2,
 } from "lucide-react";
+import { AIGenerateDialog, AIGenerateType } from "@/components/course-builder/AIGenerateDialog";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -1067,6 +1069,7 @@ export default function CourseBuilder() {
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showExitDialog, setShowExitDialog] = useState(false);
+  const [showAIGenerateDialog, setShowAIGenerateDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Track unsaved changes
@@ -1301,6 +1304,139 @@ export default function CourseBuilder() {
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  // Handle AI generation from dialog
+  const handleAIGenerate = async (type: AIGenerateType, prompt: string) => {
+    const typeNames: Record<AIGenerateType, string> = {
+      audio: "аудиолекция",
+      slides: "презентация",
+      video: "видео",
+      image: "изображение",
+      test: "тест",
+    };
+
+    const lessonTypeMap: Record<AIGenerateType, LessonType> = {
+      audio: "audio",
+      slides: "slider",
+      video: "video",
+      image: "image",
+      test: "test",
+    };
+
+    const newLesson: Lesson = {
+      id: crypto.randomUUID(),
+      type: lessonTypeMap[type],
+      title: `AI ${typeNames[type]}: ${prompt.slice(0, 50)}${prompt.length > 50 ? "..." : ""}`,
+      content: "",
+      expanded: true,
+      blocks: type === "slides" ? [] : undefined,
+    };
+
+    // For audio - generate with ElevenLabs TTS
+    if (type === "audio") {
+      try {
+        toast.info("Генерация аудио с ElevenLabs...");
+        
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            },
+            body: JSON.stringify({ text: prompt, voiceId: "JBFqnCBsd6RMkjVDRZzb" }),
+          }
+        );
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || `Ошибка: ${response.status}`);
+        }
+
+        const audioBlob = await response.blob();
+        
+        // Upload to Supabase Storage
+        const fileName = `audio-${Date.now()}.mp3`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from("course-assets")
+          .upload(fileName, audioBlob, {
+            contentType: "audio/mpeg",
+          });
+
+        if (uploadError) {
+          console.error("Upload error:", uploadError);
+          // Still create lesson with blob URL for preview
+          const blobUrl = URL.createObjectURL(audioBlob);
+          newLesson.content = blobUrl;
+          toast.warning("Аудио создано, но не сохранено в хранилище");
+        } else {
+          const { data: publicUrl } = supabase.storage
+            .from("course-assets")
+            .getPublicUrl(fileName);
+          newLesson.content = publicUrl.publicUrl;
+          toast.success("Аудиолекция сгенерирована!");
+        }
+      } catch (error: any) {
+        console.error("TTS error:", error);
+        toast.error(error.message || "Ошибка генерации аудио");
+        return;
+      }
+    }
+
+    // For test - generate with AI
+    if (type === "test") {
+      try {
+        toast.info("Генерация тестовых вопросов...");
+        
+        const { data, error } = await supabase.functions.invoke("generate-course-content", {
+          body: {
+            lessonTitle: prompt,
+            courseTitle: courseTitle || "Курс",
+            courseDescription: courseDescription || "",
+            contentType: "test",
+          },
+        });
+
+        if (error) throw error;
+        
+        if (data?.content) {
+          newLesson.content = data.content;
+        }
+        toast.success("Тест сгенерирован!");
+      } catch (error: any) {
+        console.error("Test generation error:", error);
+        toast.error("Ошибка генерации теста");
+        return;
+      }
+    }
+
+    // For slides - generate structure
+    if (type === "slides") {
+      const slides = [
+        { id: crypto.randomUUID(), title: "Введение", content: prompt },
+        { id: crypto.randomUUID(), title: "Основные понятия", content: "" },
+        { id: crypto.randomUUID(), title: "Заключение", content: "" },
+      ];
+      newLesson.content = JSON.stringify(slides);
+      toast.success("Слайды созданы! Добавьте контент.");
+    }
+
+    // For image - placeholder (can integrate with AI image gen later)
+    if (type === "image") {
+      newLesson.content = "";
+      toast.info("Добавьте изображение вручную или сгенерируйте через внешний сервис");
+    }
+
+    // For video - placeholder
+    if (type === "video") {
+      newLesson.content = "";
+      toast.info("Добавьте ссылку на видео");
+    }
+
+    updateLessons([...lessons, newLesson]);
   };
 
   const updateLesson = (id: string, updates: Partial<Lesson>) => {
@@ -1750,11 +1886,34 @@ export default function CourseBuilder() {
                   </div>
                   <span className="text-sm font-medium">Слайдер</span>
                 </button>
+                
+                {/* AI Generate Button - spans full width */}
+                <button
+                  onClick={() => setShowAIGenerateDialog(true)}
+                  className="col-span-2 flex items-center justify-center gap-3 p-4 rounded-xl border-2 border-dashed border-primary/50 hover:border-primary hover:bg-primary/5 transition-all bg-gradient-to-r from-primary/5 to-sigma-purple/5"
+                >
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-sigma-purple flex items-center justify-center">
+                    <Wand2 className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="text-left">
+                    <span className="text-sm font-semibold block">Сгенерировать с ИИ</span>
+                    <span className="text-xs text-muted-foreground">Аудио, слайды, тесты и др.</span>
+                  </div>
+                </button>
               </div>
             </div>
           </div>
         </div>
       </div>
+      
+      {/* AI Generate Dialog */}
+      <AIGenerateDialog
+        open={showAIGenerateDialog}
+        onOpenChange={setShowAIGenerateDialog}
+        onGenerate={handleAIGenerate}
+        courseTitle={courseTitle}
+        courseDescription={courseDescription}
+      />
       
       {/* Exit Confirmation Dialog */}
       <AlertDialog open={showExitDialog} onOpenChange={setShowExitDialog}>
