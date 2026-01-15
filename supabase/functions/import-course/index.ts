@@ -254,24 +254,45 @@ async function parsePptx(buffer: ArrayBuffer): Promise<Array<{ title: string; ht
       const slideXml = await zip.file(slideFile.path)?.async('string');
       if (!slideXml) continue;
       
-      // Extract text from slide XML
-      const textParts: string[] = [];
-      const textRegex = /<a:t>([^<]*)<\/a:t>/g;
-      let match;
-      while ((match = textRegex.exec(slideXml)) !== null) {
-        if (match[1].trim()) {
-          textParts.push(match[1]);
+      // Extract paragraphs (<a:p>) with their text runs (<a:r> -> <a:t>)
+      const paragraphs: string[] = [];
+      
+      // Match each paragraph
+      const paragraphRegex = /<a:p[^>]*>([\s\S]*?)<\/a:p>/g;
+      let pMatch;
+      
+      while ((pMatch = paragraphRegex.exec(slideXml)) !== null) {
+        const paragraphContent = pMatch[1];
+        
+        // Extract all text runs from this paragraph
+        const textParts: string[] = [];
+        const textRegex = /<a:t>([^<]*)<\/a:t>/g;
+        let tMatch;
+        
+        while ((tMatch = textRegex.exec(paragraphContent)) !== null) {
+          if (tMatch[1]) {
+            textParts.push(tMatch[1]);
+          }
+        }
+        
+        const paragraphText = textParts.join('').trim();
+        if (paragraphText) {
+          paragraphs.push(paragraphText);
         }
       }
       
-      if (textParts.length > 0) {
-        // First text element is usually the title
-        const title = textParts[0];
-        const content = textParts.slice(1);
+      console.log(`Slide ${slideFile.index}: extracted ${paragraphs.length} paragraphs`);
+      
+      if (paragraphs.length > 0) {
+        // First paragraph is usually the title
+        const title = paragraphs[0];
+        const content = paragraphs.slice(1);
         
         let html = `<h2>${escapeHtml(title)}</h2>`;
+        
         if (content.length > 0) {
-          html += `<ul>${content.map(t => `<li>${escapeHtml(t)}</li>`).join('')}</ul>`;
+          // Create paragraphs for each text block
+          html += content.map(text => `<p>${escapeHtml(text)}</p>`).join('\n');
         }
         
         slides.push({
@@ -280,6 +301,11 @@ async function parsePptx(buffer: ArrayBuffer): Promise<Array<{ title: string; ht
           index: slideFile.index
         });
       }
+    }
+    
+    // If no slides found with content, return empty
+    if (slides.length === 0) {
+      console.log('No text content found in PPTX slides');
     }
     
     return slides.map(s => ({ title: s.title, html: s.html }));
