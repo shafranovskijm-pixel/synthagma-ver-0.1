@@ -82,10 +82,16 @@ const getVideoEmbedUrl = (content: string): string | null => {
     return `https://rutube.ru/play/embed/${rutubeMatch[1]}`;
   }
   
-  // VK Video
-  const vkMatch = content.match(/vk\.com\/video(-?\d+)_(\d+)/);
+  // VK Video (vk.com and vkvideo.ru)
+  const vkMatch = content.match(/(?:vk\.com|vkvideo\.ru)\/video(-?\d+)_(\d+)/);
   if (vkMatch) {
-    return `https://vk.com/video_ext.php?oid=${vkMatch[1]}&id=${vkMatch[2]}`;
+    return `https://vk.com/video_ext.php?oid=${vkMatch[1]}&id=${vkMatch[2]}&hd=2`;
+  }
+  
+  // KTalk recordings (ktalk.ru)
+  const ktalkMatch = content.match(/([a-zA-Z0-9]+)\.ktalk\.ru\/recordings\/([a-zA-Z0-9_-]+)/);
+  if (ktalkMatch) {
+    return `https://${ktalkMatch[1]}.ktalk.ru/recordings/${ktalkMatch[2]}`;
   }
   
   // Одноклассники
@@ -110,6 +116,11 @@ const getVideoEmbedUrl = (content: string): string | null => {
   const yandexMatch = content.match(/yandex\.ru\/video\/preview\/(\d+)/);
   if (yandexMatch) {
     return `https://yandex.ru/video/preview/${yandexMatch[1]}`;
+  }
+  
+  // Generic video URLs - try direct embed for recording services
+  if (content.match(/^https?:\/\/.*\/recordings?\//i) || content.match(/^https?:\/\/.*\/video\//i)) {
+    return content;
   }
   
   return null;
