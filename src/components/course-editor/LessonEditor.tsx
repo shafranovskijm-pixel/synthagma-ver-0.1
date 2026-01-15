@@ -49,7 +49,11 @@ function VideoPreview({ videoUrl }: { videoUrl: string }) {
     
     // VK Video (vk.com and vkvideo.ru)
     const vkMatch = content.match(/(?:vk\.com|vkvideo\.ru)\/video(-?\d+)_(\d+)/);
-    if (vkMatch) return { type: 'url', value: `https://vk.com/video_ext.php?oid=${vkMatch[1]}&id=${vkMatch[2]}` };
+    if (vkMatch) return { type: 'url', value: `https://vk.com/video_ext.php?oid=${vkMatch[1]}&id=${vkMatch[2]}&hd=2` };
+    
+    // KTalk recordings (ktalk.ru)
+    const ktalkMatch = content.match(/([a-zA-Z0-9]+)\.ktalk\.ru\/recordings\/([a-zA-Z0-9_-]+)/);
+    if (ktalkMatch) return { type: 'url', value: `https://${ktalkMatch[1]}.ktalk.ru/recordings/${ktalkMatch[2]}` };
     
     // Яндекс Дзен (dzen.ru)
     const dzenMatch = content.match(/dzen\.ru\/(?:video\/watch|embed)\/([a-zA-Z0-9_-]+)/);
@@ -66,6 +70,11 @@ function VideoPreview({ videoUrl }: { videoUrl: string }) {
     // Yandex Video (yandex.ru/video)
     const yandexMatch = content.match(/yandex\.ru\/video\/preview\/(\d+)/);
     if (yandexMatch) return { type: 'url', value: `https://yandex.ru/video/preview/${yandexMatch[1]}` };
+    
+    // Generic video URLs - try direct embed for recording services
+    if (content.match(/^https?:\/\/.*\/recordings?\//i) || content.match(/^https?:\/\/.*\/video\//i)) {
+      return { type: 'url', value: content };
+    }
     
     return { type: null, value: null };
   };
