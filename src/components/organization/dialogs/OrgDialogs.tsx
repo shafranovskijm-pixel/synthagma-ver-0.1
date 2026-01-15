@@ -51,21 +51,15 @@ export function ImportStudentsDialog({ open, onOpenChange, organizationId, cours
             Загрузите файл Excel или CSV со списком учеников
           </DialogDescription>
         </DialogHeader>
-        {organizationId ? (
-          <ImportStudentsForm 
-            organizationId={organizationId} 
-            courses={courses.filter(c => c.is_published)} 
-            companies={companies} 
-            onSuccess={() => {
-              onOpenChange(false);
-              window.location.reload();
-            }} 
-          />
-        ) : (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="w-6 h-6 animate-spin text-primary" />
-          </div>
-        )}
+        <ImportStudentsForm 
+          organizationId={organizationId} 
+          courses={courses.filter(c => c.is_published)} 
+          companies={companies} 
+          onSuccess={() => {
+            onOpenChange(false);
+            window.location.reload();
+          }} 
+        />
       </DialogContent>
     </Dialog>
   );
