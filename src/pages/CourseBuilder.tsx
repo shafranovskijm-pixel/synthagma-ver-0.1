@@ -1289,8 +1289,9 @@ export default function CourseBuilder() {
       }));
 
       if (generatedLessons.length > 0) {
-        setLessons(generatedLessons);
-        toast.success(`Создано ${generatedLessons.length} уроков`);
+        // Дополняем существующие уроки, а не заменяем
+        setLessons(prev => [...prev, ...generatedLessons]);
+        toast.success(`Добавлено ${generatedLessons.length} уроков`);
       } else {
         toast.error("AI не вернул уроки");
       }
