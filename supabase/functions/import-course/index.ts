@@ -18,7 +18,7 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
 
 // Supported file extensions for content extraction
-const SUPPORTED_EXTENSIONS = ['.docx', '.doc', '.txt', '.html', '.htm', '.md'];
+const SUPPORTED_EXTENSIONS = ['.pptx', '.ppt', '.docx', '.doc', '.txt', '.html', '.htm', '.md'];
 
 // Convert plain text to HTML paragraphs
 function txtToHtml(text: string): string {
@@ -230,13 +230,105 @@ async function parseDocxLight(buffer: ArrayBuffer): Promise<string> {
   }
 }
 
+// Parse PPTX using JSZip (extract text from slides)
+async function parsePptx(buffer: ArrayBuffer): Promise<Array<{ title: string; html: string }>> {
+  try {
+    const zip = await JSZip.loadAsync(buffer);
+    const slides: Array<{ title: string; html: string; index: number }> = [];
+    
+    // Find all slide XML files
+    const slideFiles: Array<{ path: string; index: number }> = [];
+    zip.forEach((path: string) => {
+      const match = path.match(/ppt\/slides\/slide(\d+)\.xml$/);
+      if (match) {
+        slideFiles.push({ path, index: parseInt(match[1]) });
+      }
+    });
+    
+    // Sort by slide number
+    slideFiles.sort((a, b) => a.index - b.index);
+    
+    console.log(`Found ${slideFiles.length} slides in PPTX`);
+    
+    for (const slideFile of slideFiles) {
+      const slideXml = await zip.file(slideFile.path)?.async('string');
+      if (!slideXml) continue;
+      
+      // Extract text from slide XML
+      const textParts: string[] = [];
+      const textRegex = /<a:t>([^<]*)<\/a:t>/g;
+      let match;
+      while ((match = textRegex.exec(slideXml)) !== null) {
+        if (match[1].trim()) {
+          textParts.push(match[1]);
+        }
+      }
+      
+      if (textParts.length > 0) {
+        // First text element is usually the title
+        const title = textParts[0];
+        const content = textParts.slice(1);
+        
+        let html = `<h2>${escapeHtml(title)}</h2>`;
+        if (content.length > 0) {
+          html += `<ul>${content.map(t => `<li>${escapeHtml(t)}</li>`).join('')}</ul>`;
+        }
+        
+        slides.push({
+          title: title,
+          html: html,
+          index: slideFile.index
+        });
+      }
+    }
+    
+    return slides.map(s => ({ title: s.title, html: s.html }));
+  } catch (e) {
+    console.error('PPTX parse error:', e);
+    throw new Error('Не удалось распарсить PPTX: ' + (e as Error).message);
+  }
+}
+
+// Helper function to escape HTML
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 // Process single file and return its content
-async function processFile(file: File): Promise<{ title: string; html: string; fileName: string; folderPath?: string }> {
+async function processFile(file: File): Promise<Array<{ title: string; html: string; fileName: string; folderPath?: string }>> {
   const fileName = file.name.toLowerCase();
-  let sourceHtml = '';
   let courseTitle = file.name.replace(/\.[^.]+$/, '');
 
   console.log(`Processing file: ${fileName}, size: ${file.size}`);
+
+  // Handle PPTX - returns multiple lessons (one per slide)
+  if (fileName.endsWith('.pptx')) {
+    const buffer = await file.arrayBuffer();
+    const slides = await parsePptx(buffer);
+    return slides.map((slide, index) => ({
+      title: slide.title || `Слайд ${index + 1}`,
+      html: slide.html,
+      fileName: file.name
+    }));
+  }
+  
+  // Handle PPT (old format) - extract as text
+  if (fileName.endsWith('.ppt')) {
+    const text = await file.text();
+    const cleanText = text.replace(/[^\x20-\x7E\u0400-\u04FF\n\r\t]/g, ' ').replace(/\s+/g, ' ').trim();
+    return [{
+      title: courseTitle,
+      html: txtToHtml(cleanText || 'Содержимое PPT не удалось извлечь'),
+      fileName: file.name
+    }];
+  }
+
+  let sourceHtml = '';
 
   if (fileName.endsWith('.txt') || fileName.endsWith('.md')) {
     const text = await file.text();
@@ -264,7 +356,7 @@ async function processFile(file: File): Promise<{ title: string; html: string; f
     throw new Error(`Неподдерживаемый формат: ${file.name}`);
   }
 
-  return { title: courseTitle, html: sourceHtml, fileName: file.name };
+  return [{ title: courseTitle, html: sourceHtml, fileName: file.name }];
 }
 
 // Process file from ZIP buffer (uses light parser to avoid timeout)
@@ -597,9 +689,10 @@ serve(async (req) => {
 
       for (const file of files) {
         try {
-          const result = await processFile(file);
-          processedFiles.push(result);
-          console.log(`Completed: ${file.name}`);
+          const results = await processFile(file);
+          // processFile now returns an array (for PPTX with multiple slides)
+          processedFiles.push(...results);
+          console.log(`Completed: ${file.name}, extracted ${results.length} lessons`);
         } catch (e) {
           console.error(`Error processing ${file.name}:`, e);
         }
