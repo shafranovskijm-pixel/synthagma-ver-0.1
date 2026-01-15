@@ -23,9 +23,22 @@ interface ContentBlock {
   content: string;
 }
 
-async function generateWithAI(prompt: string, systemPrompt: string, tool: any): Promise<any> {
+async function generateWithAI(prompt: string, systemPrompt: string, tool?: any): Promise<any> {
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+
+  const body: any = {
+    model: "google/gemini-3-flash-preview",
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: prompt }
+    ],
+  };
+
+  if (tool) {
+    body.tools = [tool];
+    body.tool_choice = { type: "function", function: { name: tool.function.name } };
+  }
 
   const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
@@ -33,28 +46,30 @@ async function generateWithAI(prompt: string, systemPrompt: string, tool: any): 
       Authorization: `Bearer ${LOVABLE_API_KEY}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      model: "google/gemini-3-flash-preview",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: prompt }
-      ],
-      tools: [tool],
-      tool_choice: { type: "function", function: { name: tool.function.name } }
-    }),
+    body: JSON.stringify(body),
   });
 
   if (!response.ok) {
+    if (response.status === 429) {
+      throw new Error("Rate limit exceeded, please try again later");
+    }
+    if (response.status === 402) {
+      throw new Error("Payment required, please add credits");
+    }
     const errorText = await response.text();
     console.error("AI error:", response.status, errorText);
     throw new Error(`AI error: ${response.status}`);
   }
 
   const result = await response.json();
-  const toolCall = result.choices?.[0]?.message?.tool_calls?.[0];
-  if (!toolCall) throw new Error("No tool call in response");
   
-  return JSON.parse(toolCall.function.arguments);
+  if (tool) {
+    const toolCall = result.choices?.[0]?.message?.tool_calls?.[0];
+    if (!toolCall) throw new Error("No tool call in response");
+    return JSON.parse(toolCall.function.arguments);
+  } else {
+    return { content: result.choices?.[0]?.message?.content || "" };
+  }
 }
 
 async function generateCourseStructure(courseTitle: string): Promise<Lesson[]> {
@@ -192,6 +207,69 @@ async function generateTestQuestions(lessonTitle: string, courseTitle: string): 
   return result.questions || [];
 }
 
+async function generateSlides(topic: string, courseTitle: string): Promise<any[]> {
+  const systemPrompt = `Ты эксперт по созданию презентаций. Создай структуру слайдов.
+Правила:
+1. 5-8 слайдов
+2. Каждый слайд с заголовком и контентом
+3. Логическая структура: введение, основная часть, заключение
+4. Ключевые тезисы и примеры`;
+
+  const tool = {
+    type: "function",
+    function: {
+      name: "create_slides",
+      parameters: {
+        type: "object",
+        properties: {
+          slides: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                title: { type: "string" },
+                content: { type: "string" }
+              },
+              required: ["title", "content"],
+              additionalProperties: false
+            }
+          }
+        },
+        required: ["slides"],
+        additionalProperties: false
+      }
+    }
+  };
+
+  const result = await generateWithAI(
+    `Создай презентацию на тему "${topic}" для курса "${courseTitle}"`,
+    systemPrompt,
+    tool
+  );
+
+  return (result.slides || []).map((s: any) => ({
+    id: crypto.randomUUID(),
+    title: s.title,
+    content: s.content,
+  }));
+}
+
+async function generateTextContent(topic: string, courseTitle: string): Promise<string> {
+  const systemPrompt = `Ты эксперт по созданию образовательного контента. Напиши подробный текст для лекции.
+Правила:
+1. Структурированный текст с заголовками
+2. Минимум 300 слов
+3. Практические примеры
+4. Понятный язык`;
+
+  const result = await generateWithAI(
+    `Напиши лекцию на тему "${topic}" для курса "${courseTitle}"`,
+    systemPrompt
+  );
+
+  return result.content || "";
+}
+
 function blocksToMarkdown(blocks: ContentBlock[]): string {
   return blocks.map(block => {
     switch (block.type) {
@@ -209,11 +287,9 @@ async function processOneCourse(supabase: any, courseId: string, courseTitle: st
   console.log(`Starting generation for course: ${courseTitle}`);
   
   try {
-    // Generate structure
     const lessons = await generateCourseStructure(courseTitle);
     console.log(`Generated ${lessons.length} lessons for ${courseTitle}`);
 
-    // Insert lessons
     for (const lesson of lessons) {
       const { data: lessonData, error: lessonError } = await supabase
         .from("lessons")
@@ -232,11 +308,9 @@ async function processOneCourse(supabase: any, courseId: string, courseTitle: st
         continue;
       }
 
-      // Add small delay to avoid rate limiting
       await new Promise(r => setTimeout(r, 2000));
 
       if (lesson.type === "lesson") {
-        // Generate lesson content
         const blocks = await generateLessonContent(lesson.title, courseTitle);
         const markdown = blocksToMarkdown(blocks);
         
@@ -247,7 +321,6 @@ async function processOneCourse(supabase: any, courseId: string, courseTitle: st
           
         console.log(`Generated content for lesson: ${lesson.title}`);
       } else {
-        // Generate test questions
         const questions = await generateTestQuestions(lesson.title, courseTitle);
         
         for (let i = 0; i < questions.length; i++) {
@@ -269,7 +342,6 @@ async function processOneCourse(supabase: any, courseId: string, courseTitle: st
         console.log(`Generated ${questions.length} questions for test: ${lesson.title}`);
       }
 
-      // Delay between lessons
       await new Promise(r => setTimeout(r, 3000));
     }
 
@@ -285,8 +357,69 @@ serve(async (req) => {
   }
 
   try {
-    const { courseId, organizationId } = await req.json();
+    const body = await req.json();
+    const { courseId, organizationId, lessonTitle, courseTitle, courseDescription, contentType } = body;
 
+    // Handle individual content generation requests
+    if (contentType && lessonTitle) {
+      console.log(`Generating ${contentType} for: ${lessonTitle}`);
+      
+      switch (contentType) {
+        case "test": {
+          const questions = await generateTestQuestions(lessonTitle, courseTitle || "Курс");
+          return new Response(
+            JSON.stringify({ 
+              success: true, 
+              content: JSON.stringify(questions) 
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        
+        case "slides": {
+          const slides = await generateSlides(lessonTitle, courseTitle || "Курс");
+          return new Response(
+            JSON.stringify({ 
+              success: true, 
+              content: JSON.stringify(slides) 
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        
+        case "text":
+        case "lesson": {
+          const content = await generateTextContent(lessonTitle, courseTitle || "Курс");
+          return new Response(
+            JSON.stringify({ 
+              success: true, 
+              content 
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        
+        case "image": {
+          // For image, we return a prompt for external generation
+          return new Response(
+            JSON.stringify({ 
+              success: true, 
+              content: "",
+              prompt: `Создай изображение для: ${lessonTitle}. Контекст: ${courseTitle || "образовательный курс"}`
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        
+        default:
+          return new Response(
+            JSON.stringify({ error: `Unknown content type: ${contentType}` }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+      }
+    }
+
+    // Handle full course generation
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -294,7 +427,6 @@ serve(async (req) => {
     let coursesToProcess: Array<{ id: string; title: string }> = [];
 
     if (courseId) {
-      // Single course mode
       const { data: course } = await supabase
         .from("courses")
         .select("id, title")
@@ -305,14 +437,12 @@ serve(async (req) => {
         coursesToProcess = [course];
       }
     } else if (organizationId) {
-      // All courses for organization that have no lessons
       const { data: courses } = await supabase
         .from("courses")
         .select("id, title")
         .eq("organization_id", organizationId);
 
       if (courses) {
-        // Filter courses without lessons
         for (const course of courses) {
           const { count } = await supabase
             .from("lessons")
@@ -333,17 +463,14 @@ serve(async (req) => {
       );
     }
 
-    // Start background processing
     const backgroundTask = async () => {
       for (const course of coursesToProcess) {
         await processOneCourse(supabase, course.id, course.title);
-        // Delay between courses to avoid rate limiting
         await new Promise(r => setTimeout(r, 5000));
       }
       console.log(`Completed processing all ${coursesToProcess.length} courses`);
     };
 
-    // Use waitUntil for background processing
     (globalThis as any).EdgeRuntime?.waitUntil?.(backgroundTask());
 
     return new Response(

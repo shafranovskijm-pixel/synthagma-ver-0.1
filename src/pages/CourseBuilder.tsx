@@ -1361,7 +1361,7 @@ export default function CourseBuilder() {
         // Upload to Supabase Storage
         const fileName = `audio-${Date.now()}.mp3`;
         const { data: uploadData, error: uploadError } = await supabase.storage
-          .from("course-assets")
+          .from("course-files")
           .upload(fileName, audioBlob, {
             contentType: "audio/mpeg",
           });
@@ -1374,7 +1374,7 @@ export default function CourseBuilder() {
           toast.warning("Аудио создано, но не сохранено в хранилище");
         } else {
           const { data: publicUrl } = supabase.storage
-            .from("course-assets")
+            .from("course-files")
             .getPublicUrl(fileName);
           newLesson.content = publicUrl.publicUrl;
           toast.success("Аудиолекция сгенерирована!");
@@ -1413,24 +1413,94 @@ export default function CourseBuilder() {
       }
     }
 
-    // For slides - generate structure
+    // For slides - generate with AI
     if (type === "slides") {
-      const slides = [
-        { id: crypto.randomUUID(), title: "Введение", content: prompt },
-        { id: crypto.randomUUID(), title: "Основные понятия", content: "" },
-        { id: crypto.randomUUID(), title: "Заключение", content: "" },
-      ];
-      newLesson.content = JSON.stringify(slides);
-      toast.success("Слайды созданы! Добавьте контент.");
+      try {
+        toast.info("Генерация слайдов с AI...");
+        
+        const { data, error } = await supabase.functions.invoke("generate-course-content", {
+          body: {
+            lessonTitle: prompt,
+            courseTitle: courseTitle || "Курс",
+            courseDescription: courseDescription || "",
+            contentType: "slides",
+          },
+        });
+
+        if (error) throw error;
+        
+        if (data?.content) {
+          // Try to parse as JSON slides
+          try {
+            const parsedSlides = JSON.parse(data.content);
+            if (Array.isArray(parsedSlides)) {
+              newLesson.content = data.content;
+            } else {
+              // If not array, create slides from text
+              const slides = [
+                { id: crypto.randomUUID(), title: "Введение", content: data.content },
+              ];
+              newLesson.content = JSON.stringify(slides);
+            }
+          } catch {
+            // Create slides from text content
+            const slides = [
+              { id: crypto.randomUUID(), title: prompt.slice(0, 50), content: data.content },
+            ];
+            newLesson.content = JSON.stringify(slides);
+          }
+        } else {
+          // Fallback to basic structure
+          const slides = [
+            { id: crypto.randomUUID(), title: "Введение", content: prompt },
+            { id: crypto.randomUUID(), title: "Основные понятия", content: "" },
+            { id: crypto.randomUUID(), title: "Заключение", content: "" },
+          ];
+          newLesson.content = JSON.stringify(slides);
+        }
+        toast.success("Слайды сгенерированы!");
+      } catch (error: any) {
+        console.error("Slides generation error:", error);
+        // Fallback to basic structure
+        const slides = [
+          { id: crypto.randomUUID(), title: "Введение", content: prompt },
+          { id: crypto.randomUUID(), title: "Основные понятия", content: "" },
+          { id: crypto.randomUUID(), title: "Заключение", content: "" },
+        ];
+        newLesson.content = JSON.stringify(slides);
+        toast.warning("Слайды созданы с базовой структурой");
+      }
     }
 
-    // For image - placeholder (can integrate with AI image gen later)
+    // For image - generate with AI
     if (type === "image") {
-      newLesson.content = "";
-      toast.info("Добавьте изображение вручную или сгенерируйте через внешний сервис");
+      try {
+        toast.info("Генерация изображения с AI...");
+        
+        const { data, error } = await supabase.functions.invoke("generate-course-content", {
+          body: {
+            lessonTitle: prompt,
+            courseTitle: courseTitle || "Курс",
+            courseDescription: courseDescription || "",
+            contentType: "image",
+          },
+        });
+
+        if (error) throw error;
+        
+        if (data?.imageUrl) {
+          newLesson.content = data.imageUrl;
+          toast.success("Изображение сгенерировано!");
+        } else {
+          toast.info("Добавьте изображение вручную");
+        }
+      } catch (error: any) {
+        console.error("Image generation error:", error);
+        toast.info("Добавьте изображение вручную");
+      }
     }
 
-    // For video - placeholder
+    // For video - placeholder with AI description
     if (type === "video") {
       newLesson.content = "";
       toast.info("Добавьте ссылку на видео");
