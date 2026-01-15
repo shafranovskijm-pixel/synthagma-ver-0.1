@@ -26,6 +26,7 @@ interface StudentsTabProps {
   onShowEnrollDialog?: (selectedIds: string[]) => void;
   onShowUnenrollConfirm?: (selectedIds: string[]) => void;
   onShowBulkFRDOExport?: (selectedIds: string[]) => void;
+  onShowBulkDeleteConfirm?: (selectedUserIds: string[]) => void;
   isCreatingBulkCredentials?: boolean;
   isSendingBulkCredentials?: boolean;
   isSendingBulkDocReminders?: boolean;
@@ -43,6 +44,7 @@ export function StudentsTab({
   onShowEnrollDialog,
   onShowUnenrollConfirm,
   onShowBulkFRDOExport,
+  onShowBulkDeleteConfirm,
   isCreatingBulkCredentials = false,
   isSendingBulkCredentials = false,
   isSendingBulkDocReminders = false,
@@ -238,6 +240,14 @@ export function StudentsTab({
               >
                 <FileSpreadsheet className="w-4 h-4" />
                 <span className="hidden sm:inline">ФРДО</span> ({selectedStudentIds.size})
+              </Button>
+              <Button 
+                onClick={() => onShowBulkDeleteConfirm?.(getSelectedUserIds())} 
+                variant="outline" 
+                className="rounded-xl gap-2 text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0 text-xs lg:text-sm"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span className="hidden sm:inline">Удалить</span> ({selectedStudentIds.size})
               </Button>
             </>
           )}

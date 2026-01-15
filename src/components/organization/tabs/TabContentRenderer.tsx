@@ -54,6 +54,7 @@ interface TabContentRendererProps {
   onShowEnrollDialog?: (selectedIds: string[]) => void;
   onShowUnenrollConfirm?: (selectedIds: string[]) => void;
   onShowBulkFRDOExport?: (selectedIds: string[]) => void;
+  onShowBulkDeleteConfirm?: (selectedUserIds: string[]) => void;
   isCreatingBulkCredentials: boolean;
   isSendingBulkCredentials: boolean;
   isSendingBulkDocReminders: boolean;
@@ -100,6 +101,7 @@ export function TabContentRenderer({
   onShowEnrollDialog,
   onShowUnenrollConfirm,
   onShowBulkFRDOExport,
+  onShowBulkDeleteConfirm,
   isCreatingBulkCredentials,
   isSendingBulkCredentials,
   isSendingBulkDocReminders,
@@ -164,6 +166,7 @@ export function TabContentRenderer({
           onShowEnrollDialog={onShowEnrollDialog}
           onShowUnenrollConfirm={onShowUnenrollConfirm}
           onShowBulkFRDOExport={onShowBulkFRDOExport}
+          onShowBulkDeleteConfirm={onShowBulkDeleteConfirm}
           isCreatingBulkCredentials={isCreatingBulkCredentials}
           isSendingBulkCredentials={isSendingBulkCredentials}
           isSendingBulkDocReminders={isSendingBulkDocReminders}

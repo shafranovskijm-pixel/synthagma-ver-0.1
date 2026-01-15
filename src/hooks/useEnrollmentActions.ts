@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { generateEnrollmentOrder } from "@/utils/generateEnrollmentOrder";
 import { Student, Course } from "@/types/shared";
+import { deleteStudent } from "@/api/students";
 
 export function useEnrollmentActions(
   organizationId: string | null,
@@ -15,6 +16,8 @@ export function useEnrollmentActions(
   const [showEnrollDialog, setShowEnrollDialog] = useState(false);
   const [showUnenrollConfirm, setShowUnenrollConfirm] = useState(false);
   const [showBulkFRDOExport, setShowBulkFRDOExport] = useState(false);
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [enrollCourseId, setEnrollCourseId] = useState<string>("");
 
   const toggleStudentSelection = useCallback((uniqueId: string) => {
@@ -238,9 +241,53 @@ export function useEnrollmentActions(
     }
   }, []);
 
+  const bulkDelete = useCallback(async (students: Student[]) => {
+    const userIds = getSelectedUserIds(students);
+    
+    if (userIds.length === 0) {
+      toast.error("Выберите учеников для удаления");
+      setShowBulkDeleteConfirm(false);
+      return false;
+    }
+
+    setIsBulkDeleting(true);
+    let success = 0;
+    let failed = 0;
+
+    try {
+      for (const userId of userIds) {
+        const result = await deleteStudent(userId);
+        if (result) {
+          success++;
+        } else {
+          failed++;
+        }
+      }
+
+      if (success > 0) {
+        toast.success(`Удалено: ${success} учеников`);
+      }
+      if (failed > 0) {
+        toast.error(`Ошибок: ${failed}`);
+      }
+
+      setShowBulkDeleteConfirm(false);
+      setSelectedStudentIds(new Set());
+      onRefresh();
+      return true;
+    } catch (error) {
+      console.error("Error bulk deleting:", error);
+      toast.error("Ошибка удаления");
+      return false;
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  }, [getSelectedUserIds, onRefresh]);
+
   return {
     isEnrolling,
     isUnenrolling,
+    isBulkDeleting,
     selectedStudentIds,
     setSelectedStudentIds,
     showEnrollDialog,
@@ -249,6 +296,8 @@ export function useEnrollmentActions(
     setShowUnenrollConfirm,
     showBulkFRDOExport,
     setShowBulkFRDOExport,
+    showBulkDeleteConfirm,
+    setShowBulkDeleteConfirm,
     enrollCourseId,
     setEnrollCourseId,
     toggleStudentSelection,
@@ -256,6 +305,7 @@ export function useEnrollmentActions(
     getSelectedUserIds,
     bulkEnroll,
     bulkUnenroll,
+    bulkDelete,
     getSelectedEnrollmentsCount,
     deleteEnrollment,
   };
