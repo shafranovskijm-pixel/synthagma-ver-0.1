@@ -1554,10 +1554,60 @@ export default function CourseBuilder() {
       }
     }
 
-    // For video - placeholder with AI description
+    // For video - generate thumbnail image and script with AI
     if (type === "video") {
-      newLesson.content = "";
-      toast.info("Добавьте ссылку на видео");
+      try {
+        toast.info("Генерация превью и сценария для видео...");
+        
+        // Generate a thumbnail image
+        const { data: imageData, error: imageError } = await supabase.functions.invoke("generate-course-content", {
+          body: {
+            lessonTitle: `Video thumbnail: ${prompt}`,
+            courseTitle: courseTitle || "Курс",
+            courseDescription: courseDescription || "",
+            contentType: "image",
+          },
+        });
+
+        // Generate video script/description
+        const { data: scriptData, error: scriptError } = await supabase.functions.invoke("generate-course-content", {
+          body: {
+            lessonTitle: prompt,
+            courseTitle: courseTitle || "Курс",
+            courseDescription: courseDescription || "",
+            contentType: "video_script",
+          },
+        });
+
+        let thumbnailUrl = imageData?.imageUrl || "";
+        let script = scriptData?.content || "";
+
+        // Create video block with thumbnail and script
+        const videoBlock = {
+          id: crypto.randomUUID(),
+          type: "paragraph" as const,
+          content: `<div class="video-placeholder">
+            <h3>🎬 Видео: ${prompt}</h3>
+            ${thumbnailUrl ? `<img src="${thumbnailUrl}" alt="Превью видео" style="max-width: 100%; border-radius: 8px; margin: 10px 0;" />` : ""}
+            <h4>Сценарий видео:</h4>
+            <p>${script || "Сценарий будет добавлен позже..."}</p>
+            <p><em>💡 Для создания видео используйте сервисы: Runway ML, Pika Labs, или загрузите готовое видео.</em></p>
+          </div>`
+        };
+        
+        newLesson.blocks = [videoBlock];
+        newLesson.content = thumbnailUrl || script || prompt;
+        
+        if (thumbnailUrl || script) {
+          toast.success("Превью и сценарий видео созданы!");
+        } else {
+          toast.info("Добавьте ссылку на видео или загрузите файл");
+        }
+      } catch (error: any) {
+        console.error("Video generation error:", error);
+        newLesson.content = "";
+        toast.info("Добавьте ссылку на видео вручную");
+      }
     }
 
     updateLessons([...lessons, newLesson]);

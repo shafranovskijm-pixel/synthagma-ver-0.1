@@ -326,6 +326,23 @@ async function generateTextContent(topic: string, courseTitle: string): Promise<
   return result.content || "";
 }
 
+async function generateVideoScript(topic: string, courseTitle: string): Promise<string> {
+  const systemPrompt = `Ты эксперт по созданию образовательных видео. Напиши сценарий для короткого обучающего видео (1-2 минуты).
+Правила:
+1. Чёткая структура: вступление, основная часть, заключение
+2. Визуальные указания для каждой сцены
+3. Текст для озвучки
+4. Длительность каждой сцены
+5. Практичный и понятный язык`;
+
+  const result = await generateWithAI(
+    `Напиши сценарий короткого обучающего видео на тему "${topic}" для курса "${courseTitle}"`,
+    systemPrompt
+  );
+
+  return result.content || "";
+}
+
 function blocksToMarkdown(blocks: ContentBlock[]): string {
   return blocks.map(block => {
     switch (block.type) {
@@ -462,6 +479,17 @@ serve(async (req) => {
               success: true, 
               imageUrl: imageUrl,
               content: imageUrl || ""
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        
+        case "video_script": {
+          const script = await generateVideoScript(lessonTitle, courseTitle || "Курс");
+          return new Response(
+            JSON.stringify({ 
+              success: true, 
+              content: script
             }),
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
