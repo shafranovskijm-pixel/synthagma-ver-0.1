@@ -41,6 +41,7 @@ import {
   MessageSquare,
   ShieldOff,
   Puzzle,
+  History,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -49,6 +50,7 @@ import { OrgDocumentsTab } from "./OrgDocumentsTab";
 import { OrgCommentsTab } from "./OrgCommentsTab";
 import { OrgRemindersTab } from "./OrgRemindersTab";
 import { OrgFeaturesTab } from "./OrgFeaturesTab";
+import { OrgAuditLogsTab } from "./OrgAuditLogsTab";
 
 interface Organization {
   id: string;
@@ -550,7 +552,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full max-w-4xl grid-cols-8">
+        <TabsList className="grid w-full max-w-5xl grid-cols-9">
           <TabsTrigger value="overview" className="flex items-center gap-1">
             <BarChart3 className="w-4 h-4" />
             <span className="hidden sm:inline">Обзор</span>
@@ -570,6 +572,10 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
           <TabsTrigger value="features" className="flex items-center gap-1">
             <Puzzle className="w-4 h-4" />
             <span className="hidden sm:inline">Функции</span>
+          </TabsTrigger>
+          <TabsTrigger value="history" className="flex items-center gap-1">
+            <History className="w-4 h-4" />
+            <span className="hidden sm:inline">История</span>
           </TabsTrigger>
           <TabsTrigger value="comments" className="flex items-center gap-1">
             <MessageSquare className="w-4 h-4" />
@@ -933,6 +939,11 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
             organizationId={organization.id}
             organizationName={organization.name}
           />
+        </TabsContent>
+
+        {/* History/Audit Logs Tab */}
+        <TabsContent value="history" className="space-y-4">
+          <OrgAuditLogsTab organizationId={organization.id} />
         </TabsContent>
 
         {/* Comments Tab */}
