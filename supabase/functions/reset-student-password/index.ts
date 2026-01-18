@@ -12,6 +12,52 @@ serve(async (req) => {
   }
 
   try {
+    // SECURITY: Verify authentication
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: "Authentication required" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Create authenticated client to verify the caller
+    const supabaseAuth = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    // Verify user identity
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: "Invalid authentication" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Verify user has organization or admin role
+    const { data: roleData } = await supabaseAuth
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .single();
+
+    if (!roleData || (roleData.role !== 'organization' && roleData.role !== 'admin')) {
+      return new Response(
+        JSON.stringify({ error: "Insufficient permissions. Organization or admin role required." }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Get caller's organization
+    const { data: callerProfile } = await supabaseAuth
+      .from('profiles')
+      .select('organization_id')
+      .eq('user_id', user.id)
+      .single();
+
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
@@ -27,6 +73,27 @@ serve(async (req) => {
       );
     }
 
+    // SECURITY: Verify the target user belongs to the caller's organization
+    const { data: targetProfile } = await supabaseAdmin
+      .from('profiles')
+      .select('organization_id')
+      .eq('user_id', user_id)
+      .single();
+
+    if (!targetProfile) {
+      return new Response(
+        JSON.stringify({ error: "User not found" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (roleData.role !== 'admin' && callerProfile?.organization_id !== targetProfile.organization_id) {
+      return new Response(
+        JSON.stringify({ error: "You can only reset passwords for users in your organization" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Generate password if not provided
     const password = new_password || (() => {
       const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -38,20 +105,20 @@ serve(async (req) => {
     })();
 
     // Update password in auth.users
-    const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(
+    const { error: updateAuthError } = await supabaseAdmin.auth.admin.updateUserById(
       user_id,
       { password }
     );
 
-    if (authError) {
-      console.error("Auth error:", authError);
+    if (updateAuthError) {
+      console.error("Auth error:", updateAuthError);
       return new Response(
-        JSON.stringify({ error: "Ошибка обновления пароля: " + authError.message }),
+        JSON.stringify({ error: "Ошибка обновления пароля: " + updateAuthError.message }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Update password in profiles
+    // Update password in profiles (for display purposes - this is stored temporarily)
     const { error: profileError } = await supabaseAdmin
       .from("profiles")
       .update({ generated_password: password })
@@ -61,7 +128,7 @@ serve(async (req) => {
       console.error("Profile error:", profileError);
     }
 
-    console.log(`Password reset for user: ${user_id}`);
+    console.log(`Password reset for user: ${user_id} by: ${user.id}`);
 
     return new Response(
       JSON.stringify({ 

@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 
 const corsHeaders = {
@@ -22,6 +23,45 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    // SECURITY: Verify authentication
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: "Authentication required" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Create authenticated client to verify the caller
+    const supabaseAuth = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    // Verify user identity
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: "Invalid authentication" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Verify user has organization or admin role
+    const { data: roleData } = await supabaseAuth
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .single();
+
+    if (!roleData || (roleData.role !== 'organization' && roleData.role !== 'admin')) {
+      return new Response(
+        JSON.stringify({ error: "Insufficient permissions. Organization or admin role required." }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const SMTP_HOST = Deno.env.get("SMTP_HOST");
     const SMTP_PORT = Deno.env.get("SMTP_PORT");
     const SMTP_USER = Deno.env.get("SMTP_USER");
@@ -41,6 +81,26 @@ const handler = async (req: Request): Promise<Response> => {
     if (!email || !login || !password) {
       return new Response(
         JSON.stringify({ error: "Missing required fields" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // SECURITY: Validate loginUrl is from allowed domains
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const projectUrl = supabaseUrl.replace('.supabase.co', '');
+    
+    // Allow only URLs from the same project or lovable.app domains
+    const allowedPatterns = [
+      /^https:\/\/[a-z0-9-]+\.lovable\.app/,
+      /^https:\/\/[a-z0-9-]+\.lovable\.dev/,
+      /^http:\/\/localhost/,
+    ];
+    
+    const isAllowedUrl = allowedPatterns.some(pattern => pattern.test(loginUrl));
+    if (!isAllowedUrl) {
+      console.error("Invalid loginUrl domain:", loginUrl);
+      return new Response(
+        JSON.stringify({ error: "Invalid login URL domain" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -73,7 +133,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     await client.close();
 
-    console.log("Email sent successfully to:", email);
+    console.log("Email sent successfully to:", email, "by user:", user.id);
 
     return new Response(
       JSON.stringify({ success: true }),

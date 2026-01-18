@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,6 +13,31 @@ serve(async (req) => {
   }
 
   try {
+    // SECURITY: Verify authentication
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: "Authentication required" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Create authenticated client to verify the caller
+    const supabaseAuth = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    // Verify user identity (any authenticated user can use chat)
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: "Invalid authentication" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const { messages, context } = await req.json();
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -20,7 +46,7 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    console.log("Processing student chat request with", messages?.length || 0, "messages");
+    console.log("Processing student chat request for user", user.id, "with", messages?.length || 0, "messages");
 
     // Build context-aware system prompt
     let contextInfo = '';
@@ -97,7 +123,7 @@ ${contextInfo}`;
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || "Извините, не удалось получить ответ.";
 
-    console.log("Successfully generated response");
+    console.log("Successfully generated response for user", user.id);
 
     return new Response(
       JSON.stringify({ content }),

@@ -13,6 +13,52 @@ serve(async (req) => {
   }
 
   try {
+    // SECURITY: Verify authentication
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: "Authentication required" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Create authenticated client to verify the caller
+    const supabaseAuth = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    // Verify user identity
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: "Invalid authentication" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Verify user has organization or admin role
+    const { data: roleData } = await supabaseAuth
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .single();
+
+    if (!roleData || (roleData.role !== 'organization' && roleData.role !== 'admin')) {
+      return new Response(
+        JSON.stringify({ error: "Insufficient permissions. Organization or admin role required." }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Get caller's organization
+    const { data: callerProfile } = await supabaseAuth
+      .from('profiles')
+      .select('organization_id')
+      .eq('user_id', user.id)
+      .single();
+
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
@@ -22,6 +68,14 @@ serve(async (req) => {
     const { email, password, full_name, organization_id, course_id, company_id, no_login } = await req.json();
 
     console.log(`Registering student: ${full_name} (${email}) for org: ${organization_id}, no_login: ${no_login}`);
+
+    // SECURITY: Verify the caller has access to the target organization
+    if (roleData.role !== 'admin' && callerProfile?.organization_id !== organization_id) {
+      return new Response(
+        JSON.stringify({ error: "You can only register students in your own organization" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     if (!full_name || !organization_id) {
       return new Response(
@@ -101,7 +155,7 @@ serve(async (req) => {
 
       userId = authData.user.id;
       
-      // Create/update profile with login and password (upsert to handle existing profiles from trigger)
+      // Create/update profile with login (password stored temporarily for display, not persisted long-term)
       const { error: profileError } = await supabaseAdmin
         .from("profiles")
         .upsert({
@@ -109,7 +163,7 @@ serve(async (req) => {
           full_name,
           email: email?.toLowerCase() || null,
           login: generatedLogin,
-          generated_password: generatedPassword,
+          generated_password: generatedPassword, // Stored for initial credential display only
           organization_id,
           company_id: company_id || null
         }, { onConflict: "user_id" });
@@ -178,7 +232,7 @@ serve(async (req) => {
             // Generate login for credential storage
             const loginForStorage = await generateLogin();
             
-            // Create profile for existing auth user
+            // Create profile for existing auth user (no password stored)
             const { error: profileError } = await supabaseAdmin
               .from("profiles")
               .insert({
@@ -187,8 +241,7 @@ serve(async (req) => {
                 email: email.toLowerCase(),
                 organization_id,
                 company_id: company_id || null,
-                login: loginForStorage,
-                generated_password: password || null
+                login: loginForStorage
               });
 
             if (profileError) {
@@ -244,7 +297,7 @@ serve(async (req) => {
         // Generate login for credential storage
         const loginForStorage = await generateLogin();
         
-        // Upsert profile (trigger may have already created one)
+        // Upsert profile (trigger may have already created one) - store password temporarily for display
         const { error: profileError } = await supabaseAdmin
           .from("profiles")
           .upsert({
@@ -254,7 +307,7 @@ serve(async (req) => {
             organization_id,
             company_id: company_id || null,
             login: loginForStorage,
-            generated_password: password
+            generated_password: password // Stored for initial credential display only
           }, { onConflict: "user_id" });
 
         if (profileError) {

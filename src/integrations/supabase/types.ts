@@ -2562,6 +2562,17 @@ export type Database = {
             Returns: string
           }
       current_organization_id: { Args: never; Returns: string }
+      get_registration_link_by_token: {
+        Args: { link_token: string }
+        Returns: {
+          company_id: string
+          course_id: string
+          expires_at: string
+          id: string
+          name: string
+          organization_id: string
+        }[]
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
