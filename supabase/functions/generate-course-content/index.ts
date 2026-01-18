@@ -430,12 +430,58 @@ serve(async (req) => {
   }
 
   try {
+    // SECURITY: Verify authentication
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: "Authentication required" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Create authenticated client to verify the caller
+    const supabaseAuth = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    // Verify user identity
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: "Invalid authentication" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Verify user has appropriate role (organization or admin)
+    const { data: roleData } = await supabaseAuth
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .single();
+
+    if (!roleData || (roleData.role !== 'organization' && roleData.role !== 'admin')) {
+      return new Response(
+        JSON.stringify({ error: "Insufficient permissions. Organization or admin role required." }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Get caller's organization for authorization
+    const { data: callerProfile } = await supabaseAuth
+      .from('profiles')
+      .select('organization_id')
+      .eq('user_id', user.id)
+      .single();
+
     const body = await req.json();
     const { courseId, organizationId, lessonTitle, courseTitle, courseDescription, contentType } = body;
 
     // Handle individual content generation requests
     if (contentType && lessonTitle) {
-      console.log(`Generating ${contentType} for: ${lessonTitle}`);
+      console.log(`Generating ${contentType} for: ${lessonTitle} (user: ${user.id})`);
       
       switch (contentType) {
         case "test": {
@@ -503,7 +549,17 @@ serve(async (req) => {
       }
     }
 
-    // Handle full course generation
+    // Handle full course generation - verify authorization
+    const targetOrgId = organizationId || callerProfile?.organization_id;
+    
+    // SECURITY: Verify the caller has access to the target organization
+    if (roleData.role !== 'admin' && callerProfile?.organization_id !== targetOrgId) {
+      return new Response(
+        JSON.stringify({ error: "You can only generate content for your own organization" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -511,20 +567,27 @@ serve(async (req) => {
     let coursesToProcess: Array<{ id: string; title: string }> = [];
 
     if (courseId) {
+      // Verify the course belongs to the caller's organization
       const { data: course } = await supabase
         .from("courses")
-        .select("id, title")
+        .select("id, title, organization_id")
         .eq("id", courseId)
         .single();
       
       if (course) {
-        coursesToProcess = [course];
+        if (roleData.role !== 'admin' && course.organization_id !== callerProfile?.organization_id) {
+          return new Response(
+            JSON.stringify({ error: "You can only generate content for courses in your organization" }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        coursesToProcess = [{ id: course.id, title: course.title }];
       }
-    } else if (organizationId) {
+    } else if (targetOrgId) {
       const { data: courses } = await supabase
         .from("courses")
         .select("id, title")
-        .eq("organization_id", organizationId);
+        .eq("organization_id", targetOrgId);
 
       if (courses) {
         for (const course of courses) {
@@ -552,7 +615,7 @@ serve(async (req) => {
         await processOneCourse(supabase, course.id, course.title);
         await new Promise(r => setTimeout(r, 5000));
       }
-      console.log(`Completed processing all ${coursesToProcess.length} courses`);
+      console.log(`Completed processing all ${coursesToProcess.length} courses for user ${user.id}`);
     };
 
     (globalThis as any).EdgeRuntime?.waitUntil?.(backgroundTask());
