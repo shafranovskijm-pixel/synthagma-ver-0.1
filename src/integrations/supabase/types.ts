@@ -2522,7 +2522,57 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      profiles_safe: {
+        Row: {
+          avatar_url: string | null
+          company_id: string | null
+          created_at: string | null
+          full_name: string | null
+          id: string | null
+          last_visit_at: string | null
+          organization_id: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          company_id?: string | null
+          created_at?: string | null
+          full_name?: string | null
+          id?: string | null
+          last_visit_at?: string | null
+          organization_id?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          company_id?: string | null
+          created_at?: string | null
+          full_name?: string | null
+          id?: string | null
+          last_visit_at?: string | null
+          organization_id?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       admin_update_user_role: {
@@ -2583,6 +2633,14 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      lookup_profile_by_login: {
+        Args: { p_login: string }
+        Returns: {
+          full_name: string
+          organization_id: string
+          user_id: string
+        }[]
       }
       track_user_visit: { Args: { p_user_id: string }; Returns: undefined }
       upgrade_to_organization_role: {
