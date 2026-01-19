@@ -3,7 +3,7 @@ import {
   Palette, Sun, Moon, FileText, Building2, LayoutGrid, 
   Library, BarChart3, Link, ShoppingBag, Save, Settings,
   Trophy, MessageCircle, ChevronRight, Loader2, Upload,
-  X, ExternalLink, Image, Eye, AlertCircle, LogIn
+  X, ExternalLink, Image, Eye, AlertCircle, LogIn, KeyRound
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,7 @@ import { ConsentGenerator } from "@/components/organization/ConsentGenerator";
 import { SystemFeaturesReport } from "@/components/organization/SystemFeaturesReport";
 import { SystemDiagnostics } from "@/components/organization/SystemDiagnostics";
 import { LoginBrandingSettings } from "@/components/organization/LoginBrandingSettings";
+import { OrgCredentialsSettings } from "@/components/organization/OrgCredentialsSettings";
 import type { MenuSettings } from "@/types";
 
 interface BrandingSettings {
@@ -596,6 +597,23 @@ export function SettingsTab({
               )}
             </Button>
           </div>
+        </div>
+      </details>
+
+      {/* Organization Credentials Settings */}
+      <details className="bg-card rounded-xl lg:rounded-2xl border border-border group">
+        <summary className="p-4 lg:p-6 cursor-pointer list-none flex items-center justify-between">
+          <h3 className="font-display font-semibold text-base lg:text-lg flex items-center gap-2">
+            <KeyRound className="w-4 h-4 lg:w-5 lg:h-5" />
+            Данные для входа
+          </h3>
+          <ChevronRight className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90" />
+        </summary>
+        <div className="px-4 lg:px-6 pb-4 lg:pb-6">
+          <p className="text-xs lg:text-sm text-muted-foreground mb-4">
+            Измените логин и пароль для входа в личный кабинет организации
+          </p>
+          {organizationId && <OrgCredentialsSettings organizationId={organizationId} />}
         </div>
       </details>
 
