@@ -72,7 +72,7 @@ const Login = () => {
     if (loginMode === "login") {
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
-        .select("user_id, login, email")
+        .select("user_id, login")
         .eq("login", login)
         .maybeSingle();
       
@@ -86,8 +86,9 @@ const Login = () => {
         return;
       }
       
-      // Use the real email from profile, or fallback to fake email format
-      signInEmail = profile.email || `${login}@student.local`;
+      // For login-based students, always use the generated email format
+      // This matches how students are created in register-student function
+      signInEmail = `${login}@student.local`;
     }
     
     const { error } = await signIn(signInEmail, password);
