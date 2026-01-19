@@ -60,6 +60,7 @@ interface Course {
   totalLessons: number;
   completedLessons: number;
   status: "in_progress" | "completed" | "locked";
+  skip_video_identification?: boolean;
 }
 
 interface Profile {
@@ -258,7 +259,7 @@ export default function StudentDashboard() {
           status,
           time_spent,
           course_id,
-          courses(id, title, description, duration)
+          courses(id, title, description, duration, skip_video_identification)
         `)
         .eq("user_id", user.id);
 
@@ -308,7 +309,8 @@ export default function StudentDashboard() {
             totalLessons: totalLessons || 0,
             completedLessons: completedLessons,
             status: enrollment.status === "completed" ? "completed" :
-                   enrollment.progress > 0 ? "in_progress" : "in_progress"
+                   enrollment.progress > 0 ? "in_progress" : "in_progress",
+            skip_video_identification: course.skip_video_identification || false
           });
         }
 
@@ -835,11 +837,12 @@ export default function StudentDashboard() {
                   }}
                 >
                 {courses.map((course) => {
-                    // Skip video identification check for demo account
+                    // Skip video identification check for demo account or if course has skip_video_identification enabled
                     const isDemoAccount = user?.email === "demo-student@lovable.dev" || 
                                           user?.email?.includes("demo") ||
                                           profile?.full_name?.toLowerCase().includes("demo");
-                    const isLocked = !isDemoAccount && !isVideoIdentified;
+                    const skipVideoId = course.skip_video_identification === true;
+                    const isLocked = !isDemoAccount && !skipVideoId && !isVideoIdentified;
                     const effectiveStatus = isLocked ? "locked" : course.status;
                     
                     return (
