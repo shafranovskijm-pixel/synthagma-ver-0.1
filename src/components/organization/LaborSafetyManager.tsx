@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -21,15 +21,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Download, Trash2, Edit, FolderPlus, Users, Loader2 } from "lucide-react";
+import { Plus, Download, Trash2, Edit, FolderPlus, Users, Loader2, Search, CheckCircle, FileText, X } from "lucide-react";
 import { format } from "date-fns";
 
 interface LaborSafetyGroup {
@@ -51,6 +44,7 @@ interface LaborSafetyRecord {
   program_name: string | null;
   exam_date: string | null;
   is_passed: boolean;
+  created_at?: string;
 }
 
 interface LaborSafetyManagerProps {
@@ -63,6 +57,14 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
   const [records, setRecords] = useState<LaborSafetyRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingRecords, setIsLoadingRecords] = useState(false);
+  
+  // Search and filters
+  const [searchName, setSearchName] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  
+  // Selection
+  const [selectedRecordIds, setSelectedRecordIds] = useState<Set<string>>(new Set());
   
   // Group dialog
   const [showGroupDialog, setShowGroupDialog] = useState(false);
@@ -85,6 +87,40 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
     is_passed: false,
   });
   const [isSavingRecord, setIsSavingRecord] = useState(false);
+  
+  // Bulk actions loading
+  const [isBulkUpdating, setIsBulkUpdating] = useState(false);
+
+  // Filtered records based on search
+  const filteredRecords = useMemo(() => {
+    return records.filter((record) => {
+      // Filter by name
+      if (searchName && !record.full_name.toLowerCase().includes(searchName.toLowerCase())) {
+        return false;
+      }
+      
+      // Filter by created_at date range
+      if (record.created_at) {
+        const createdDate = new Date(record.created_at);
+        if (dateFrom) {
+          const fromDate = new Date(dateFrom);
+          fromDate.setHours(0, 0, 0, 0);
+          if (createdDate < fromDate) return false;
+        }
+        if (dateTo) {
+          const toDate = new Date(dateTo);
+          toDate.setHours(23, 59, 59, 999);
+          if (createdDate > toDate) return false;
+        }
+      }
+      
+      return true;
+    });
+  }, [records, searchName, dateFrom, dateTo]);
+
+  // Check if all filtered records are selected
+  const allFilteredSelected = filteredRecords.length > 0 && 
+    filteredRecords.every(r => selectedRecordIds.has(r.id));
 
   useEffect(() => {
     fetchGroups();
@@ -93,8 +129,10 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
   useEffect(() => {
     if (selectedGroupId) {
       fetchRecords(selectedGroupId);
+      setSelectedRecordIds(new Set()); // Clear selection when switching groups
     } else {
       setRecords([]);
+      setSelectedRecordIds(new Set());
     }
   }, [selectedGroupId]);
 
@@ -269,6 +307,8 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
       
       if (error) throw error;
       toast.success("Запись удалена");
+      selectedRecordIds.delete(recordId);
+      setSelectedRecordIds(new Set(selectedRecordIds));
       if (selectedGroupId) fetchRecords(selectedGroupId);
     } catch (error) {
       console.error("Error deleting record:", error);
@@ -307,19 +347,57 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
     setShowRecordDialog(true);
   };
 
-  const exportToXML = () => {
-    if (records.length === 0) {
+  // Toggle selection of a single record
+  const toggleRecordSelection = (recordId: string) => {
+    const newSelection = new Set(selectedRecordIds);
+    if (newSelection.has(recordId)) {
+      newSelection.delete(recordId);
+    } else {
+      newSelection.add(recordId);
+    }
+    setSelectedRecordIds(newSelection);
+  };
+
+  // Toggle all filtered records
+  const toggleAllFiltered = () => {
+    if (allFilteredSelected) {
+      // Deselect all filtered
+      const newSelection = new Set(selectedRecordIds);
+      filteredRecords.forEach(r => newSelection.delete(r.id));
+      setSelectedRecordIds(newSelection);
+    } else {
+      // Select all filtered
+      const newSelection = new Set(selectedRecordIds);
+      filteredRecords.forEach(r => newSelection.add(r.id));
+      setSelectedRecordIds(newSelection);
+    }
+  };
+
+  // Clear search filters
+  const clearFilters = () => {
+    setSearchName("");
+    setDateFrom("");
+    setDateTo("");
+  };
+
+  // Export selected records to XML
+  const exportSelectedToXML = () => {
+    const recordsToExport = selectedRecordIds.size > 0 
+      ? records.filter(r => selectedRecordIds.has(r.id))
+      : filteredRecords;
+    
+    if (recordsToExport.length === 0) {
       toast.error("Нет данных для экспорта");
       return;
     }
 
     const selectedGroup = groups.find(g => g.id === selectedGroupId);
-    const groupName = selectedGroup?.name || "Группа";
+    const groupNameValue = selectedGroup?.name || "Группа";
 
     let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
-    xml += `<LaborSafetyRecords group="${escapeXml(groupName)}" exportDate="${format(new Date(), 'yyyy-MM-dd')}">\n`;
+    xml += `<LaborSafetyRecords group="${escapeXml(groupNameValue)}" exportDate="${format(new Date(), 'yyyy-MM-dd')}">\n`;
     
-    records.forEach((record, index) => {
+    recordsToExport.forEach((record, index) => {
       xml += `  <Record number="${index + 1}">\n`;
       xml += `    <FullName>${escapeXml(record.full_name)}</FullName>\n`;
       xml += `    <SNILS>${escapeXml(record.snils || "")}</SNILS>\n`;
@@ -342,7 +420,128 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
     a.download = `labor_safety_${format(new Date(), 'yyyy-MM-dd')}.xml`;
     a.click();
     URL.revokeObjectURL(url);
-    toast.success("XML файл экспортирован");
+    toast.success(`Экспортировано ${recordsToExport.length} записей`);
+  };
+
+  // Set is_passed = true for selected records
+  const markSelectedAsPassed = async () => {
+    if (selectedRecordIds.size === 0) {
+      toast.error("Выберите записи");
+      return;
+    }
+
+    try {
+      setIsBulkUpdating(true);
+      
+      const { error } = await supabase
+        .from("labor_safety_records")
+        .update({ is_passed: true })
+        .in("id", Array.from(selectedRecordIds));
+      
+      if (error) throw error;
+      toast.success(`Отмечено как пройдено: ${selectedRecordIds.size} записей`);
+      if (selectedGroupId) fetchRecords(selectedGroupId);
+    } catch (error) {
+      console.error("Error updating records:", error);
+      toast.error("Ошибка обновления записей");
+    } finally {
+      setIsBulkUpdating(false);
+    }
+  };
+
+  // Generate protocol for selected records
+  const generateProtocolForSelected = () => {
+    const recordsToExport = selectedRecordIds.size > 0 
+      ? records.filter(r => selectedRecordIds.has(r.id))
+      : filteredRecords;
+    
+    if (recordsToExport.length === 0) {
+      toast.error("Выберите записи для протокола");
+      return;
+    }
+
+    const selectedGroup = groups.find(g => g.id === selectedGroupId);
+    const groupNameValue = selectedGroup?.name || "Группа";
+    const currentDate = format(new Date(), 'dd.MM.yyyy');
+
+    // Generate a simple protocol document
+    let protocolHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Протокол проверки знаний по охране труда</title>
+  <style>
+    body { font-family: 'Times New Roman', serif; padding: 40px; font-size: 14px; }
+    h1 { text-align: center; font-size: 16px; margin-bottom: 20px; }
+    h2 { text-align: center; font-size: 14px; margin-bottom: 30px; font-weight: normal; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid black; padding: 8px; text-align: left; }
+    th { background-color: #f0f0f0; }
+    .header { margin-bottom: 20px; }
+    .date { text-align: right; margin-bottom: 20px; }
+    .footer { margin-top: 40px; }
+    .signature-line { margin-top: 40px; display: flex; justify-content: space-between; }
+    .signature-item { text-align: center; }
+    .signature-item .line { border-top: 1px solid black; width: 200px; margin: 0 auto; }
+    @media print { body { padding: 20px; } }
+  </style>
+</head>
+<body>
+  <h1>ПРОТОКОЛ</h1>
+  <h2>заседания комиссии по проверке знаний требований охраны труда</h2>
+  
+  <div class="header">
+    <p><strong>Группа:</strong> ${escapeXml(groupNameValue)}</p>
+    <p><strong>Дата формирования:</strong> ${currentDate}</p>
+    <p><strong>Количество слушателей:</strong> ${recordsToExport.length}</p>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>№</th>
+        <th>ФИО</th>
+        <th>Должность</th>
+        <th>Организация</th>
+        <th>Программа обучения</th>
+        <th>Результат</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${recordsToExport.map((record, index) => `
+        <tr>
+          <td>${index + 1}</td>
+          <td>${escapeXml(record.full_name)}</td>
+          <td>${escapeXml(record.position || '-')}</td>
+          <td>${escapeXml(record.organization_name || '-')}</td>
+          <td>${escapeXml(record.program_name || '-')}</td>
+          <td>${record.is_passed ? 'Сдал' : 'Не сдал'}</td>
+        </tr>
+      `).join('')}
+    </tbody>
+  </table>
+
+  <div class="footer">
+    <p>Председатель комиссии: _________________________________ / ___________________ /</p>
+    <p style="margin-top: 20px;">Члены комиссии:</p>
+    <p>1. _________________________________ / ___________________ /</p>
+    <p>2. _________________________________ / ___________________ /</p>
+    <p>3. _________________________________ / ___________________ /</p>
+  </div>
+</body>
+</html>`;
+
+    // Open in new window for printing
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(protocolHtml);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => printWindow.print(), 500);
+    }
+    
+    toast.success(`Протокол сформирован для ${recordsToExport.length} записей`);
   };
 
   const escapeXml = (str: string) => {
@@ -458,133 +657,227 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
       {/* Records table */}
       {selectedGroupId && (
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4">
-            <CardTitle>
-              Записи: {groups.find(g => g.id === selectedGroupId)?.name}
-            </CardTitle>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={exportToXML} className="gap-2">
-                <Download className="w-4 h-4" />
-                Экспорт в XML
-              </Button>
-              <Dialog open={showRecordDialog} onOpenChange={(open) => {
-                setShowRecordDialog(open);
-                if (!open) resetRecordForm();
-              }}>
-                <DialogTrigger asChild>
-                  <Button className="gap-2">
-                    <Plus className="w-4 h-4" />
-                    Добавить запись
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>{editingRecord ? "Редактировать запись" : "Добавить запись"}</DialogTitle>
-                  </DialogHeader>
-                  <div className="grid grid-cols-2 gap-4 py-4">
-                    <div className="space-y-2 col-span-2">
-                      <Label>ФИО *</Label>
-                      <Input
-                        value={recordForm.full_name}
-                        onChange={(e) => setRecordForm({ ...recordForm, full_name: e.target.value })}
-                        placeholder="Иванов Иван Иванович"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>СНИЛС</Label>
-                      <Input
-                        value={recordForm.snils}
-                        onChange={(e) => setRecordForm({ ...recordForm, snils: e.target.value })}
-                        placeholder="123-456-789 00"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Должность</Label>
-                      <Input
-                        value={recordForm.position}
-                        onChange={(e) => setRecordForm({ ...recordForm, position: e.target.value })}
-                        placeholder="Инженер"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>ИНН</Label>
-                      <Input
-                        value={recordForm.inn}
-                        onChange={(e) => setRecordForm({ ...recordForm, inn: e.target.value })}
-                        placeholder="1234567890"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Организация</Label>
-                      <Input
-                        value={recordForm.organization_name}
-                        onChange={(e) => setRecordForm({ ...recordForm, organization_name: e.target.value })}
-                        placeholder="ООО 'Компания'"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Номер протокола</Label>
-                      <Input
-                        value={recordForm.protocol_number}
-                        onChange={(e) => setRecordForm({ ...recordForm, protocol_number: e.target.value })}
-                        placeholder="20"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Программа обучения</Label>
-                      <Input
-                        value={recordForm.program_name}
-                        onChange={(e) => setRecordForm({ ...recordForm, program_name: e.target.value })}
-                        placeholder="Охрана труда и безопасность"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Дата экзамена</Label>
-                      <Input
-                        type="date"
-                        value={recordForm.exam_date}
-                        onChange={(e) => setRecordForm({ ...recordForm, exam_date: e.target.value })}
-                      />
-                    </div>
-                    <div className="flex items-center gap-2 col-span-2">
-                      <Checkbox
-                        id="is_passed"
-                        checked={recordForm.is_passed}
-                        onCheckedChange={(checked) => setRecordForm({ ...recordForm, is_passed: !!checked })}
-                      />
-                      <Label htmlFor="is_passed" className="cursor-pointer">Пройдено</Label>
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => {
-                      setShowRecordDialog(false);
-                      resetRecordForm();
-                    }}>
-                      Отмена
+          <CardHeader className="space-y-4">
+            <div className="flex flex-row items-center justify-between flex-wrap gap-4">
+              <CardTitle>
+                Записи: {groups.find(g => g.id === selectedGroupId)?.name}
+              </CardTitle>
+              <div className="flex gap-2 flex-wrap">
+                <Dialog open={showRecordDialog} onOpenChange={(open) => {
+                  setShowRecordDialog(open);
+                  if (!open) resetRecordForm();
+                }}>
+                  <DialogTrigger asChild>
+                    <Button className="gap-2">
+                      <Plus className="w-4 h-4" />
+                      Добавить запись
                     </Button>
-                    <Button onClick={handleSaveRecord} disabled={isSavingRecord}>
-                      {isSavingRecord && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                      {editingRecord ? "Сохранить" : "Добавить"}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>{editingRecord ? "Редактировать запись" : "Добавить запись"}</DialogTitle>
+                    </DialogHeader>
+                    <div className="grid grid-cols-2 gap-4 py-4">
+                      <div className="space-y-2 col-span-2">
+                        <Label>ФИО *</Label>
+                        <Input
+                          value={recordForm.full_name}
+                          onChange={(e) => setRecordForm({ ...recordForm, full_name: e.target.value })}
+                          placeholder="Иванов Иван Иванович"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>СНИЛС</Label>
+                        <Input
+                          value={recordForm.snils}
+                          onChange={(e) => setRecordForm({ ...recordForm, snils: e.target.value })}
+                          placeholder="123-456-789 00"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Должность</Label>
+                        <Input
+                          value={recordForm.position}
+                          onChange={(e) => setRecordForm({ ...recordForm, position: e.target.value })}
+                          placeholder="Инженер"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>ИНН</Label>
+                        <Input
+                          value={recordForm.inn}
+                          onChange={(e) => setRecordForm({ ...recordForm, inn: e.target.value })}
+                          placeholder="1234567890"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Организация</Label>
+                        <Input
+                          value={recordForm.organization_name}
+                          onChange={(e) => setRecordForm({ ...recordForm, organization_name: e.target.value })}
+                          placeholder="ООО 'Компания'"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Номер протокола</Label>
+                        <Input
+                          value={recordForm.protocol_number}
+                          onChange={(e) => setRecordForm({ ...recordForm, protocol_number: e.target.value })}
+                          placeholder="20"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Программа обучения</Label>
+                        <Input
+                          value={recordForm.program_name}
+                          onChange={(e) => setRecordForm({ ...recordForm, program_name: e.target.value })}
+                          placeholder="Охрана труда и безопасность"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Дата экзамена</Label>
+                        <Input
+                          type="date"
+                          value={recordForm.exam_date}
+                          onChange={(e) => setRecordForm({ ...recordForm, exam_date: e.target.value })}
+                        />
+                      </div>
+                      <div className="flex items-center gap-2 col-span-2">
+                        <Checkbox
+                          id="is_passed"
+                          checked={recordForm.is_passed}
+                          onCheckedChange={(checked) => setRecordForm({ ...recordForm, is_passed: !!checked })}
+                        />
+                        <Label htmlFor="is_passed" className="cursor-pointer">Пройдено</Label>
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => {
+                        setShowRecordDialog(false);
+                        resetRecordForm();
+                      }}>
+                        Отмена
+                      </Button>
+                      <Button onClick={handleSaveRecord} disabled={isSavingRecord}>
+                        {isSavingRecord && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                        {editingRecord ? "Сохранить" : "Добавить"}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
             </div>
+            
+            {/* Search and filters */}
+            <div className="flex flex-wrap gap-3 items-end">
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Поиск по ФИО</Label>
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Введите имя..."
+                    value={searchName}
+                    onChange={(e) => setSearchName(e.target.value)}
+                    className="pl-8 w-[200px]"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Дата создания от</Label>
+                <Input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="w-[150px]"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Дата создания до</Label>
+                <Input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="w-[150px]"
+                />
+              </div>
+              {(searchName || dateFrom || dateTo) && (
+                <Button variant="ghost" size="icon" onClick={clearFilters} title="Сбросить фильтры">
+                  <X className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
+
+            {/* Bulk actions */}
+            {selectedRecordIds.size > 0 && (
+              <div className="flex flex-wrap gap-2 items-center p-3 bg-primary/5 rounded-lg border border-primary/20">
+                <span className="text-sm font-medium">
+                  Выбрано: {selectedRecordIds.size}
+                </span>
+                <div className="h-4 w-px bg-border" />
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={exportSelectedToXML}
+                  className="gap-1"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  Экспорт XML
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={markSelectedAsPassed}
+                  disabled={isBulkUpdating}
+                  className="gap-1"
+                >
+                  {isBulkUpdating ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <CheckCircle className="w-3.5 h-3.5" />
+                  )}
+                  Отметить пройдено
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={generateProtocolForSelected}
+                  className="gap-1"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  Сформировать протокол
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setSelectedRecordIds(new Set())}
+                >
+                  Снять выделение
+                </Button>
+              </div>
+            )}
           </CardHeader>
           <CardContent>
             {isLoadingRecords ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="w-6 h-6 animate-spin text-primary" />
               </div>
-            ) : records.length === 0 ? (
+            ) : filteredRecords.length === 0 ? (
               <p className="text-muted-foreground text-center py-8">
-                Нет записей в этой группе. Добавьте первую запись.
+                {records.length === 0 
+                  ? "Нет записей в этой группе. Добавьте первую запись."
+                  : "Нет записей, соответствующих фильтрам."}
               </p>
             ) : (
               <div className="rounded-lg border overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-12">
+                        <Checkbox
+                          checked={allFilteredSelected}
+                          onCheckedChange={toggleAllFiltered}
+                        />
+                      </TableHead>
                       <TableHead className="w-12">№</TableHead>
                       <TableHead>ФИО</TableHead>
                       <TableHead>СНИЛС</TableHead>
@@ -599,8 +892,17 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {records.map((record, index) => (
-                      <TableRow key={record.id}>
+                    {filteredRecords.map((record, index) => (
+                      <TableRow 
+                        key={record.id}
+                        className={selectedRecordIds.has(record.id) ? "bg-primary/5" : ""}
+                      >
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedRecordIds.has(record.id)}
+                            onCheckedChange={() => toggleRecordSelection(record.id)}
+                          />
+                        </TableCell>
                         <TableCell>{index + 1}</TableCell>
                         <TableCell className="font-medium">{record.full_name}</TableCell>
                         <TableCell>{record.snils || "-"}</TableCell>
