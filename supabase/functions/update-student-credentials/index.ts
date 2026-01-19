@@ -94,6 +94,20 @@ serve(async (req) => {
       );
     }
 
+    // SECURITY: Check target user's role - only students can have credentials updated
+    const { data: targetRoleData } = await supabaseAdmin
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user_id)
+      .single();
+
+    if (targetRoleData && (targetRoleData.role === 'organization' || targetRoleData.role === 'admin')) {
+      return new Response(
+        JSON.stringify({ error: "Нельзя изменить учетные данные администратора или организации" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     if (roleData.role !== 'admin' && callerProfile?.organization_id !== targetProfile.organization_id) {
       return new Response(
         JSON.stringify({ error: "You can only update credentials for users in your organization" }),
