@@ -881,6 +881,94 @@ export type Database = {
           },
         ]
       }
+      labor_safety_groups: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          organization_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          organization_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          organization_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "labor_safety_groups_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      labor_safety_records: {
+        Row: {
+          created_at: string
+          exam_date: string | null
+          full_name: string
+          group_id: string
+          id: string
+          inn: string | null
+          is_passed: boolean | null
+          organization_name: string | null
+          position: string | null
+          program_name: string | null
+          protocol_number: string | null
+          snils: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          exam_date?: string | null
+          full_name: string
+          group_id: string
+          id?: string
+          inn?: string | null
+          is_passed?: boolean | null
+          organization_name?: string | null
+          position?: string | null
+          program_name?: string | null
+          protocol_number?: string | null
+          snils?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          exam_date?: string | null
+          full_name?: string
+          group_id?: string
+          id?: string
+          inn?: string | null
+          is_passed?: boolean | null
+          organization_name?: string | null
+          position?: string | null
+          program_name?: string | null
+          protocol_number?: string | null
+          snils?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "labor_safety_records_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "labor_safety_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lesson_progress: {
         Row: {
           completed: boolean

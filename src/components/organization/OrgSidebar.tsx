@@ -2,7 +2,7 @@ import { useCallback, useMemo } from "react";
 import { 
   BookOpen, Users, BarChart3, Settings, LogOut, 
   Link, Library, FileText, FileSpreadsheet, ShoppingBag, 
-  Building2, ClipboardList
+  Building2, ClipboardList, HardHat
 } from "lucide-react";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import type { MenuSettings } from "@/types";
@@ -21,6 +21,7 @@ export type TabType =
   | "documents-diplomas" 
   | "documents-testimonials" 
   | "journals" 
+  | "labor-safety"
   | "services" 
   | "settings" 
   | "frdo";
@@ -144,6 +145,14 @@ export function OrgSidebar({
             <button onClick={() => handleTabClick("journals")} className={tabButtonClass("journals")}>
               <ClipboardList className="w-5 h-5" />
               Журналы
+            </button>
+          )}
+          
+          {/* Labor Safety */}
+          {isEnabled("labor_safety") && (
+            <button onClick={() => handleTabClick("labor-safety")} className={tabButtonClass("labor-safety")}>
+              <HardHat className="w-5 h-5" />
+              Охрана труда
             </button>
           )}
           

@@ -257,7 +257,7 @@ export default function OrganizationDashboard() {
                 <Menu className="w-6 h-6" />
               </button>
               <div>
-                {activeTab !== "organizations" && activeTab !== "frdo" && (
+                {activeTab !== "organizations" && activeTab !== "frdo" && activeTab !== "labor-safety" && (
                   <h1 className="font-display text-xl lg:text-2xl font-bold">
                     {activeTab === "courses" && "Управление курсами"}
                     {activeTab === "students" && "Все ученики"}
@@ -270,7 +270,10 @@ export default function OrganizationDashboard() {
                     {activeTab === "settings" && "Настройки"}
                   </h1>
                 )}
-                {activeTab !== "organizations" && activeTab !== "frdo" && (
+                {activeTab === "labor-safety" && (
+                  <h1 className="font-display text-xl lg:text-2xl font-bold">Охрана труда</h1>
+                )}
+                {activeTab !== "organizations" && activeTab !== "frdo" && activeTab !== "labor-safety" && (
                   <p className="text-muted-foreground text-sm lg:text-base">{organizationName}</p>
                 )}
               </div>
