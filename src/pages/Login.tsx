@@ -70,13 +70,11 @@ const Login = () => {
     
     // If login mode, find the user's email by login
     if (loginMode === "login") {
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("user_id, login")
-        .eq("login", login)
-        .maybeSingle();
+      // Use secure RPC to lookup user by login
+      const { data: lookupResult, error: lookupError } = await supabase
+        .rpc('public_lookup_user_by_login', { login_input: login });
       
-      if (profileError || !profile) {
+      if (lookupError || !lookupResult || lookupResult.length === 0) {
         toast({
           title: "Ошибка входа",
           description: "Неверный логин или пароль",
@@ -86,8 +84,8 @@ const Login = () => {
         return;
       }
       
-      // For login-based students, always use the generated email format
-      // This matches how students are created in register-student function
+      // For login-based students, use the standardized email format
+      // The reset-student-password function ensures auth email matches this format
       signInEmail = `${login}@student.local`;
     }
     
