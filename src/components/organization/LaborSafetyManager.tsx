@@ -21,9 +21,23 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Download, Trash2, Edit, FolderPlus, Users, Loader2, Search, CheckCircle, FileText, X } from "lucide-react";
+import { Plus, Download, Trash2, Edit, FolderPlus, Users, Loader2, Search, CheckCircle, FileText, X, GraduationCap } from "lucide-react";
 import { format } from "date-fns";
+
+interface Course {
+  id: string;
+  title: string;
+  description: string | null;
+  is_published: boolean;
+}
 
 interface LaborSafetyGroup {
   id: string;
@@ -90,6 +104,13 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
   
   // Bulk actions loading
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
+  
+  // Course enrollment dialog
+  const [showEnrollDialog, setShowEnrollDialog] = useState(false);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [selectedCourseId, setSelectedCourseId] = useState<string>("");
+  const [isLoadingCourses, setIsLoadingCourses] = useState(false);
+  const [isEnrolling, setIsEnrolling] = useState(false);
 
   // Filtered records based on search
   const filteredRecords = useMemo(() => {
@@ -553,6 +574,154 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
       .replace(/'/g, '&apos;');
   };
 
+  // Fetch courses for enrollment
+  const fetchCourses = async () => {
+    try {
+      setIsLoadingCourses(true);
+      const { data, error } = await supabase
+        .from("courses")
+        .select("id, title, description, is_published")
+        .eq("organization_id", organizationId)
+        .order("title");
+      
+      if (error) throw error;
+      setCourses(data || []);
+    } catch (error) {
+      console.error("Error fetching courses:", error);
+      toast.error("Ошибка загрузки курсов");
+    } finally {
+      setIsLoadingCourses(false);
+    }
+  };
+
+  // Handle opening enrollment dialog
+  const openEnrollDialog = () => {
+    if (selectedRecordIds.size === 0) {
+      toast.error("Выберите записи для зачисления");
+      return;
+    }
+    setShowEnrollDialog(true);
+    setSelectedCourseId("");
+    fetchCourses();
+  };
+
+  // Enroll selected records to course
+  const enrollSelectedToCourse = async () => {
+    if (!selectedCourseId) {
+      toast.error("Выберите курс");
+      return;
+    }
+
+    const recordsToEnroll = records.filter(r => selectedRecordIds.has(r.id));
+    if (recordsToEnroll.length === 0) {
+      toast.error("Нет выбранных записей");
+      return;
+    }
+
+    try {
+      setIsEnrolling(true);
+
+      let successCount = 0;
+      let failCount = 0;
+      let alreadyEnrolledCount = 0;
+
+      for (const record of recordsToEnroll) {
+        // Create or find profile for this record
+        const { data: existingProfiles, error: profileError } = await supabase
+          .from("profiles")
+          .select("user_id")
+          .eq("organization_id", organizationId)
+          .eq("full_name", record.full_name)
+          .limit(1);
+
+        if (profileError) {
+          console.error("Error checking profile:", profileError);
+          failCount++;
+          continue;
+        }
+
+        let userId: string | null = null;
+
+        if (existingProfiles && existingProfiles.length > 0) {
+          userId = existingProfiles[0].user_id;
+        } else {
+          // Create a new user/profile via edge function
+          const { data: registerData, error: registerError } = await supabase.functions.invoke(
+            "register-student",
+            {
+              body: {
+                organization_id: organizationId,
+                full_name: record.full_name,
+                email: `${record.full_name.replace(/\s+/g, '_').toLowerCase()}_${Date.now()}@temp.local`,
+                no_login: true
+              }
+            }
+          );
+
+          if (registerError || !registerData?.user_id) {
+            console.error("Error registering student:", registerError);
+            failCount++;
+            continue;
+          }
+
+          userId = registerData.user_id;
+        }
+
+        if (!userId) {
+          failCount++;
+          continue;
+        }
+
+        // Check if already enrolled
+        const { data: existingEnrollment } = await supabase
+          .from("enrollments")
+          .select("id")
+          .eq("user_id", userId)
+          .eq("course_id", selectedCourseId)
+          .limit(1);
+
+        if (existingEnrollment && existingEnrollment.length > 0) {
+          alreadyEnrolledCount++;
+          continue;
+        }
+
+        // Create enrollment
+        const { error: enrollError } = await supabase
+          .from("enrollments")
+          .insert({
+            user_id: userId,
+            course_id: selectedCourseId,
+            status: "active"
+          });
+
+        if (enrollError) {
+          console.error("Error enrolling:", enrollError);
+          failCount++;
+        } else {
+          successCount++;
+        }
+      }
+
+      if (successCount > 0) {
+        toast.success(`Зачислено на курс: ${successCount} чел.`);
+      }
+      if (alreadyEnrolledCount > 0) {
+        toast.info(`Уже зачислены: ${alreadyEnrolledCount} чел.`);
+      }
+      if (failCount > 0) {
+        toast.error(`Ошибка зачисления: ${failCount} чел.`);
+      }
+
+      setShowEnrollDialog(false);
+      setSelectedRecordIds(new Set());
+    } catch (error) {
+      console.error("Error enrolling records:", error);
+      toast.error("Ошибка зачисления на курс");
+    } finally {
+      setIsEnrolling(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -847,6 +1016,15 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
                   Сформировать протокол
                 </Button>
                 <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={openEnrollDialog}
+                  className="gap-1"
+                >
+                  <GraduationCap className="w-3.5 h-3.5" />
+                  Зачислить на курс
+                </Button>
+                <Button 
                   variant="ghost" 
                   size="sm" 
                   onClick={() => setSelectedRecordIds(new Set())}
@@ -855,6 +1033,58 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
                 </Button>
               </div>
             )}
+
+            {/* Enroll to Course Dialog */}
+            <Dialog open={showEnrollDialog} onOpenChange={setShowEnrollDialog}>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Зачислить на курс</DialogTitle>
+                </DialogHeader>
+                <div className="py-4 space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Будет зачислено: <strong>{selectedRecordIds.size}</strong> чел.
+                  </p>
+                  <div className="space-y-2">
+                    <Label>Выберите курс</Label>
+                    {isLoadingCourses ? (
+                      <div className="flex items-center justify-center py-4">
+                        <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                      </div>
+                    ) : courses.length === 0 ? (
+                      <p className="text-sm text-muted-foreground py-2">
+                        Нет доступных курсов
+                      </p>
+                    ) : (
+                      <Select value={selectedCourseId} onValueChange={setSelectedCourseId}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Выберите курс" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {courses.map((course) => (
+                            <SelectItem key={course.id} value={course.id}>
+                              {course.title}
+                              {!course.is_published && " (черновик)"}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setShowEnrollDialog(false)}>
+                    Отмена
+                  </Button>
+                  <Button 
+                    onClick={enrollSelectedToCourse} 
+                    disabled={isEnrolling || !selectedCourseId || courses.length === 0}
+                  >
+                    {isEnrolling && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                    Зачислить
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </CardHeader>
           <CardContent>
             {isLoadingRecords ? (
