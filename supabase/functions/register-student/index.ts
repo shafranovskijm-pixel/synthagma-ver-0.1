@@ -98,11 +98,10 @@ serve(async (req) => {
     let userId: string = "";
     let isExisting = false;
     let existingName = "";
-    let isNoLogin = no_login === true;
     let generatedLogin = "";
     let generatedPassword = "";
 
-    // Generate unique login for no-login students
+    // Generate unique login
     const generateLogin = async (): Promise<string> => {
       const randomNum = Math.floor(10000 + Math.random() * 90000);
       const login = `student_${randomNum}`;
@@ -122,31 +121,60 @@ serve(async (req) => {
 
     // Generate random password
     const generatePassword = (): string => {
-      const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-      let password = '';
-      for (let i = 0; i < 8; i++) {
-        password += chars.charAt(Math.floor(Math.random() * chars.length));
+      const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      let pwd = '';
+      for (let i = 0; i < 10; i++) {
+        pwd += chars.charAt(Math.floor(Math.random() * chars.length));
       }
-      return password;
+      return pwd;
     };
 
-    if (isNoLogin) {
-      // Create student with auto-generated login (allows duplicate emails)
-      userId = crypto.randomUUID();
+    // Check if user already exists by email in profiles
+    if (email) {
+      const { data: existingProfile } = await supabaseAdmin
+        .from("profiles")
+        .select("user_id, full_name, organization_id, login")
+        .eq("email", email.toLowerCase())
+        .maybeSingle();
+
+      if (existingProfile) {
+        // User already exists
+        userId = existingProfile.user_id;
+        isExisting = true;
+        existingName = existingProfile.full_name || full_name;
+        generatedLogin = existingProfile.login || "";
+        
+        // Update org if different
+        if (existingProfile.organization_id !== organization_id) {
+          await supabaseAdmin
+            .from("profiles")
+            .update({
+              organization_id,
+              company_id: company_id || null
+            })
+            .eq("user_id", userId);
+          console.log(`Updated user ${email} to org ${organization_id}`);
+        }
+      }
+    }
+
+    if (!isExisting) {
+      // Create new student - ALWAYS use login-based auth email
       generatedLogin = await generateLogin();
-      generatedPassword = generatePassword();
+      generatedPassword = password || generatePassword();
       
-      // Create auth user with generated email
-      const fakeEmail = `${generatedLogin}@student.local`;
+      // Auth email is always login@student.local for consistent login
+      const authEmail = `${generatedLogin}@student.local`;
+      
       const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-        email: fakeEmail,
+        email: authEmail,
         password: generatedPassword,
         email_confirm: true,
-        user_metadata: { full_name, is_login_user: true }
+        user_metadata: { full_name }
       });
 
       if (authError) {
-        console.error("Auth error for login user:", authError);
+        console.error("Auth error:", authError);
         return new Response(
           JSON.stringify({ error: "Ошибка создания пользователя: " + authError.message }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -155,15 +183,15 @@ serve(async (req) => {
 
       userId = authData.user.id;
       
-      // Create/update profile with login (password stored temporarily for display, not persisted long-term)
+      // Create profile with login credentials and optional real email for contact
       const { error: profileError } = await supabaseAdmin
         .from("profiles")
         .upsert({
           user_id: userId,
           full_name,
-          email: email?.toLowerCase() || null,
+          email: email?.toLowerCase() || null, // Real email for contact only
           login: generatedLogin,
-          generated_password: generatedPassword, // Stored for initial credential display only
+          generated_password: generatedPassword,
           organization_id,
           company_id: company_id || null
         }, { onConflict: "user_id" });
@@ -184,148 +212,7 @@ serve(async (req) => {
           role: "student"
         });
 
-      console.log(`Created login-based student: ${full_name}, login: ${generatedLogin}`);
-    } else {
-      // Check if user already exists by email in profiles
-      if (email) {
-        const { data: existingProfile } = await supabaseAdmin
-          .from("profiles")
-          .select("user_id, full_name, organization_id")
-          .eq("email", email.toLowerCase())
-          .maybeSingle();
-
-        if (existingProfile) {
-          // User already exists - use existing user and update their org if needed
-          userId = existingProfile.user_id;
-          isExisting = true;
-          existingName = existingProfile.full_name || full_name;
-          
-          // If user is in a different org, update to current org
-          if (existingProfile.organization_id !== organization_id) {
-            const { error: updateError } = await supabaseAdmin
-              .from("profiles")
-              .update({
-                organization_id,
-                company_id: company_id || null
-              })
-              .eq("user_id", userId);
-            
-            if (updateError) {
-              console.error("Profile update error:", updateError);
-            } else {
-              console.log(`Updated user ${email} to org ${organization_id}`);
-            }
-          } else {
-            console.log(`User already exists in this org: ${email}`);
-          }
-        } else {
-          // Check if user exists in auth but not in profiles
-          const { data: authUsers } = await supabaseAdmin.auth.admin.listUsers();
-          const existingAuthUser = authUsers?.users?.find(u => u.email?.toLowerCase() === email.toLowerCase());
-          
-          if (existingAuthUser) {
-            // User exists in auth but not in profiles - create profile
-            userId = existingAuthUser.id;
-            isExisting = true;
-            existingName = (existingAuthUser.user_metadata?.full_name as string) || full_name;
-            
-            // Generate login for credential storage
-            const loginForStorage = await generateLogin();
-            
-            // Create profile for existing auth user (no password stored)
-            const { error: profileError } = await supabaseAdmin
-              .from("profiles")
-              .insert({
-                user_id: userId,
-                full_name: existingName,
-                email: email.toLowerCase(),
-                organization_id,
-                company_id: company_id || null,
-                login: loginForStorage
-              });
-
-            if (profileError) {
-              console.error("Profile creation error for existing auth user:", profileError);
-            } else {
-              console.log(`Created profile for existing auth user: ${email}`);
-            }
-
-            // Assign student role if not exists
-            await supabaseAdmin
-              .from("user_roles")
-              .upsert({
-                user_id: userId,
-                role: "student"
-              }, { onConflict: "user_id" });
-          }
-        }
-      }
-
-      if (!isExisting) {
-        // Create new user with auth
-        if (!password) {
-          return new Response(
-            JSON.stringify({ error: "Пароль обязателен для ученика с доступом в систему" }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-
-        if (!email) {
-          return new Response(
-            JSON.stringify({ error: "Email обязателен для ученика с доступом в систему" }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-
-        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-          email,
-          password,
-          email_confirm: true,
-          user_metadata: { full_name }
-        });
-
-        if (authError) {
-          console.error("Auth error:", authError);
-          return new Response(
-            JSON.stringify({ error: authError.message }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-
-        userId = authData.user.id;
-
-        // Generate login for credential storage
-        const loginForStorage = await generateLogin();
-        
-        // Upsert profile (trigger may have already created one) - store password temporarily for display
-        const { error: profileError } = await supabaseAdmin
-          .from("profiles")
-          .upsert({
-            user_id: userId,
-            full_name,
-            email: email.toLowerCase(),
-            organization_id,
-            company_id: company_id || null,
-            login: loginForStorage,
-            generated_password: password // Stored for initial credential display only
-          }, { onConflict: "user_id" });
-
-        if (profileError) {
-          console.error("Profile error:", profileError);
-        }
-
-        // Assign student role
-        const { error: roleError } = await supabaseAdmin
-          .from("user_roles")
-          .insert({
-            user_id: userId,
-            role: "student"
-          });
-
-        if (roleError) {
-          console.error("Role error:", roleError);
-        }
-      }
+      console.log(`Created student: ${full_name}, login: ${generatedLogin}`);
     }
 
     // Enroll in course if specified
@@ -363,10 +250,8 @@ serve(async (req) => {
     }
 
     let message: string;
-    if (isNoLogin) {
-      message = course_id 
-        ? `Ученик ${full_name} добавлен. Логин: ${generatedLogin}, Пароль: ${generatedPassword}`
-        : `Ученик ${full_name} добавлен. Логин: ${generatedLogin}, Пароль: ${generatedPassword}`;
+    if (!isExisting && generatedLogin) {
+      message = `Ученик ${full_name} добавлен. Логин: ${generatedLogin}, Пароль: ${generatedPassword}`;
     } else if (isExisting) {
       if (!course_id) {
         message = `Ученик ${existingName} уже существует в системе`;
@@ -388,7 +273,6 @@ serve(async (req) => {
         success: true, 
         user_id: userId!, 
         is_existing: isExisting,
-        is_no_login: isNoLogin,
         enrollment_created: enrollmentCreated,
         login: generatedLogin || undefined,
         password: generatedPassword || undefined,
