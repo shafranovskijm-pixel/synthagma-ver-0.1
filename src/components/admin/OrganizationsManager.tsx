@@ -71,6 +71,7 @@ export function OrganizationsManager() {
   const [resetPasswordOrg, setResetPasswordOrg] = useState<Organization | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [resettingPassword, setResettingPassword] = useState(false);
+  const [generatingCredentials, setGeneratingCredentials] = useState<string | null>(null);
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -359,6 +360,32 @@ export function OrganizationsManager() {
       });
     } finally {
       setResettingPassword(false);
+    }
+  };
+
+  const handleGenerateCredentials = async (org: Organization) => {
+    setGeneratingCredentials(org.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-org-credentials", {
+        body: { organization_id: org.id }
+      });
+
+      if (error) throw error;
+
+      toast({ 
+        title: "Успешно", 
+        description: `Учётные данные созданы: ${data.login_email}` 
+      });
+      fetchOrganizations();
+    } catch (error) {
+      console.error("Error generating credentials:", error);
+      toast({
+        title: "Ошибка",
+        description: "Не удалось создать учётные данные",
+        variant: "destructive",
+      });
+    } finally {
+      setGeneratingCredentials(null);
     }
   };
 
@@ -726,7 +753,20 @@ export function OrganizationsManager() {
                           </div>
                         </div>
                       ) : (
-                        <span className="text-sm text-muted-foreground">Не задано</span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleGenerateCredentials(org)}
+                          disabled={generatingCredentials === org.id}
+                          className="text-xs"
+                        >
+                          {generatingCredentials === org.id ? (
+                            <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                          ) : (
+                            <Key className="w-3 h-3 mr-1" />
+                          )}
+                          Создать
+                        </Button>
                       )}
                     </TableCell>
                     <TableCell className="text-center">
