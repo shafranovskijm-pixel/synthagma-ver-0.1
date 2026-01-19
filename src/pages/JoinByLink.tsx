@@ -73,7 +73,16 @@ const JoinByLink = () => {
         return;
       }
 
-      const link = linkResult[0];
+      const link = linkResult[0] as {
+        id: string;
+        token: string;
+        organization_id: string;
+        company_id: string | null;
+        course_id: string | null;
+        name: string | null;
+        expires_at: string | null;
+        used_count: number;
+      };
 
       // Check expiration
       if (link.expires_at && new Date(link.expires_at) < new Date()) {
