@@ -8,6 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import DOMPurify from "dompurify";
 import { 
   ArrowLeft, 
   Circle, 
@@ -22,7 +23,8 @@ import {
   Loader2,
   Edit,
   Headphones,
-  Image
+  Image,
+  Play
 } from "lucide-react";
 import { ContentBlock, jsonToBlocks, BlockRenderer } from "@/components/course-builder/BlockEditor";
 import { cn } from "@/lib/utils";
@@ -62,6 +64,145 @@ function parseContentToBlocks(content: string): ContentBlock[] {
     return jsonToBlocks(content);
   }
 }
+
+// Helper function to check if URL can be embedded in iframe
+const canEmbedInIframe = (url: string): boolean => {
+  const noEmbedPatterns = [
+    /ktalk\.ru/i,
+    /zoom\.us/i,
+    /teams\.microsoft/i,
+    /meet\.google/i
+  ];
+  return !noEmbedPatterns.some(pattern => pattern.test(url));
+};
+
+// Helper function to get embed URL from video content
+const getVideoEmbedUrl = (content: string): { url: string; canEmbed: boolean } | null => {
+  if (!content) return null;
+  
+  // Check if it's an iframe embed code
+  const iframeSrcMatch = content.match(/<iframe[^>]*src=["']([^"']+)["']/i);
+  if (iframeSrcMatch) {
+    return { url: iframeSrcMatch[1], canEmbed: true };
+  }
+  
+  // YouTube
+  const youtubeMatch = content.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/);
+  if (youtubeMatch) {
+    return { url: `https://www.youtube.com/embed/${youtubeMatch[1]}`, canEmbed: true };
+  }
+  
+  // Vimeo
+  const vimeoMatch = content.match(/vimeo\.com\/(?:video\/)?(\d+)/);
+  if (vimeoMatch) {
+    return { url: `https://player.vimeo.com/video/${vimeoMatch[1]}`, canEmbed: true };
+  }
+  
+  // Rutube
+  const rutubeMatch = content.match(/rutube\.ru\/video\/([a-zA-Z0-9]+)/);
+  if (rutubeMatch) {
+    return { url: `https://rutube.ru/play/embed/${rutubeMatch[1]}`, canEmbed: true };
+  }
+  
+  // VK Video
+  const vkMatch = content.match(/(?:vk\.com|vkvideo\.ru)\/video(-?\d+)_(\d+)/);
+  if (vkMatch) {
+    return { url: `https://vk.com/video_ext.php?oid=${vkMatch[1]}&id=${vkMatch[2]}&hd=2`, canEmbed: true };
+  }
+  
+  // KTalk recordings
+  const ktalkMatch = content.match(/([a-zA-Z0-9]+)\.ktalk\.ru\/recordings\/([a-zA-Z0-9_-]+)/);
+  if (ktalkMatch) {
+    return { url: content, canEmbed: false };
+  }
+  
+  // Одноклассники
+  const okMatch = content.match(/ok\.ru\/video\/(\d+)/);
+  if (okMatch) {
+    return { url: `https://ok.ru/videoembed/${okMatch[1]}`, canEmbed: true };
+  }
+  
+  // Дзен
+  const dzenMatch = content.match(/dzen\.ru\/video\/watch\/([a-zA-Z0-9]+)/);
+  if (dzenMatch) {
+    return { url: `https://dzen.ru/embed/${dzenMatch[1]}`, canEmbed: true };
+  }
+  
+  // Generic video URLs
+  if (content.match(/^https?:\/\/.+/i)) {
+    return { url: content, canEmbed: canEmbedInIframe(content) };
+  }
+  
+  return null;
+};
+
+// Check if content is an iframe embed
+const isIframeEmbed = (content: string): boolean => {
+  return content.trim().startsWith('<iframe');
+};
+
+// Video preview component
+const VideoPreview = ({ content }: { content: string }) => {
+  if (!content) return null;
+  
+  // If it's a full iframe embed code, render it directly
+  if (isIframeEmbed(content)) {
+    const sanitized = DOMPurify.sanitize(content, {
+      ADD_TAGS: ['iframe'],
+      ADD_ATTR: ['allow', 'allowfullscreen', 'frameborder', 'src', 'width', 'height', 'title', 'referrerpolicy']
+    });
+    return (
+      <div 
+        className="aspect-video w-full rounded-2xl overflow-hidden bg-black"
+        dangerouslySetInnerHTML={{ __html: sanitized }}
+      />
+    );
+  }
+  
+  // Try to get embed URL from link
+  const embedResult = getVideoEmbedUrl(content);
+  
+  if (embedResult) {
+    // If can't embed, show a card with link to open video
+    if (!embedResult.canEmbed) {
+      return (
+        <div className="aspect-video w-full rounded-2xl overflow-hidden bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 flex flex-col items-center justify-center gap-4">
+          <Video className="w-16 h-16 text-primary/60" />
+          <div className="text-center px-4">
+            <p className="text-sm font-medium text-foreground mb-1">Видеозапись</p>
+            <p className="text-xs text-muted-foreground mb-3">Этот сервис не поддерживает встраивание</p>
+            <a
+              href={embedResult.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+            >
+              <Play className="w-4 h-4" />
+              Открыть видео
+            </a>
+          </div>
+        </div>
+      );
+    }
+    
+    return (
+      <div className="aspect-video w-full rounded-2xl overflow-hidden bg-black">
+        <iframe
+          src={embedResult.url}
+          className="w-full h-full"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+        />
+      </div>
+    );
+  }
+  
+  return (
+    <div className="aspect-video w-full rounded-2xl overflow-hidden bg-muted flex items-center justify-center">
+      <p className="text-sm text-muted-foreground">Неподдерживаемый формат видео</p>
+    </div>
+  );
+};
 
 const CoursePreview = () => {
   const { courseId } = useParams();
@@ -392,13 +533,7 @@ const CoursePreview = () => {
             {currentLesson?.type === 'video' && (
               <div className="space-y-6">
                 {currentLesson.content ? (
-                  <div className="aspect-video rounded-2xl overflow-hidden bg-black">
-                    <iframe
-                      src={currentLesson.content.replace('watch?v=', 'embed/')}
-                      className="w-full h-full"
-                      allowFullScreen
-                    />
-                  </div>
+                  <VideoPreview content={currentLesson.content} />
                 ) : (
                   <div className="aspect-video rounded-2xl border-2 border-dashed border-border flex items-center justify-center">
                     <div className="text-center text-muted-foreground">
