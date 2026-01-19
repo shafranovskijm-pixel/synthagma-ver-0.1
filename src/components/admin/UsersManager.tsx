@@ -31,7 +31,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, Search, Loader2, Users, Shield, Building2, GraduationCap } from "lucide-react";
+import { Trash2, Search, Loader2, Users, Shield, Building2, GraduationCap, Copy, Eye, EyeOff } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 
@@ -45,6 +45,8 @@ interface UserWithRole {
   organization_name?: string | null;
   role: string | null;
   created_at: string;
+  login: string | null;
+  generated_password: string | null;
 }
 
 const ROLE_LABELS: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
@@ -60,7 +62,26 @@ export function UsersManager() {
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [deleteUser, setDeleteUser] = useState<UserWithRole | null>(null);
+  const [visiblePasswords, setVisiblePasswords] = useState<Set<string>>(new Set());
   const { toast } = useToast();
+
+  const togglePasswordVisibility = (userId: string) => {
+    setVisiblePasswords(prev => {
+      const next = new Set(prev);
+      if (next.has(userId)) {
+        next.delete(userId);
+      } else {
+        next.add(userId);
+      }
+      return next;
+    });
+  };
+
+  const copyCredentials = (login: string, password: string) => {
+    const text = `Логин: ${login}\nПароль: ${password}`;
+    navigator.clipboard.writeText(text);
+    toast({ title: "Скопировано", description: "Логин и пароль скопированы в буфер обмена" });
+  };
 
   useEffect(() => {
     fetchData();
@@ -297,6 +318,7 @@ export function UsersManager() {
             <TableHeader>
               <TableRow>
                 <TableHead>Пользователь</TableHead>
+                <TableHead>Учётные данные</TableHead>
                 <TableHead>Роль</TableHead>
                 <TableHead>Организация</TableHead>
                 <TableHead>Дата регистрации</TableHead>
@@ -306,7 +328,7 @@ export function UsersManager() {
             <TableBody>
               {filteredUsers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                     <Users className="w-12 h-12 mx-auto mb-2 opacity-50" />
                     Пользователи не найдены
                   </TableCell>
@@ -327,6 +349,46 @@ export function UsersManager() {
                           <div className="text-sm text-muted-foreground">{user.email}</div>
                         </div>
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      {user.role === 'student' && user.login ? (
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground">Логин:</span>
+                            <span className="text-sm font-mono">{user.login}</span>
+                          </div>
+                          {user.generated_password && (
+                            <div className="flex items-center gap-1">
+                              <span className="text-xs text-muted-foreground">Пароль:</span>
+                              <span className="text-sm font-mono">
+                                {visiblePasswords.has(user.user_id) ? user.generated_password : '••••••••'}
+                              </span>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-5 w-5"
+                                onClick={() => togglePasswordVisibility(user.user_id)}
+                              >
+                                {visiblePasswords.has(user.user_id) ? (
+                                  <EyeOff className="w-3 h-3" />
+                                ) : (
+                                  <Eye className="w-3 h-3" />
+                                )}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-5 w-5"
+                                onClick={() => copyCredentials(user.login!, user.generated_password!)}
+                              >
+                                <Copy className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Select
