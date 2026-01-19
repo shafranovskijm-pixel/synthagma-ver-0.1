@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
@@ -27,6 +29,11 @@ import {
   Download,
   Bell,
   FileSpreadsheet,
+  Key,
+  Lock,
+  Pencil,
+  Copy,
+  Check,
 } from "lucide-react";
 import { FRDOExportDialog } from "./FRDOExportDialog";
 import { format } from "date-fns";
@@ -42,8 +49,10 @@ interface StudentDetailCardProps {
     email: string;
     login?: string | null;
     company_name?: string | null;
+    generated_password?: string | null;
   } | null;
   organizationId: string;
+  onStudentUpdated?: () => void;
   enrollments?: {
     id: string;
     course_id: string;
@@ -111,6 +120,7 @@ export function StudentDetailCard({
   student,
   organizationId,
   enrollments = [],
+  onStudentUpdated,
 }: StudentDetailCardProps) {
   const [activeTab, setActiveTab] = useState("profile");
   const [consents, setConsents] = useState<ConsentRecord[]>([]);
@@ -127,6 +137,13 @@ export function StudentDetailCard({
   const [isFRDODialogOpen, setIsFRDODialogOpen] = useState(false);
   const [selectedEnrollmentForFRDO, setSelectedEnrollmentForFRDO] = useState<typeof enrollments[0] | null>(null);
   const [viewConsentDialog, setViewConsentDialog] = useState<GeneratedConsentRecord | null>(null);
+  
+  // Credentials editing state
+  const [isEditingCredentials, setIsEditingCredentials] = useState(false);
+  const [newLogin, setNewLogin] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [isUpdatingCredentials, setIsUpdatingCredentials] = useState(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen && student) {
@@ -179,6 +196,53 @@ export function StudentDetailCard({
       console.error("Error loading student data:", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Copy to clipboard helper
+  const copyToClipboard = async (text: string, field: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 2000);
+      toast.success("Скопировано в буфер обмена");
+    } catch {
+      toast.error("Не удалось скопировать");
+    }
+  };
+
+  // Handle credentials update
+  const handleUpdateCredentials = async () => {
+    if (!student) return;
+    
+    if (!newLogin && !newPassword) {
+      toast.error("Укажите новый логин или пароль");
+      return;
+    }
+
+    setIsUpdatingCredentials(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('update-student-credentials', {
+        body: {
+          user_id: student.user_id,
+          new_login: newLogin || undefined,
+          new_password: newPassword || undefined,
+        }
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast.success("Учетные данные обновлены");
+      setIsEditingCredentials(false);
+      setNewLogin("");
+      setNewPassword("");
+      onStudentUpdated?.();
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Ошибка обновления";
+      toast.error(message);
+    } finally {
+      setIsUpdatingCredentials(false);
     }
   };
 
@@ -586,6 +650,136 @@ export function StudentDetailCard({
                         <div className="font-medium">{enrollments.length}</div>
                       </div>
                     </div>
+
+                    {/* Credentials Management - only for login-based students */}
+                    {student.login && (
+                      <div className="bg-card rounded-2xl border border-border p-6">
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="font-semibold flex items-center gap-2">
+                            <Key className="w-5 h-5 text-primary" />
+                            Учетные данные для входа
+                          </h3>
+                          {!isEditingCredentials && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="rounded-lg gap-2"
+                              onClick={() => {
+                                setNewLogin(student.login || "");
+                                setNewPassword("");
+                                setIsEditingCredentials(true);
+                              }}
+                            >
+                              <Pencil className="w-4 h-4" />
+                              Изменить
+                            </Button>
+                          )}
+                        </div>
+
+                        {isEditingCredentials ? (
+                          <div className="space-y-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="newLogin">Новый логин</Label>
+                              <Input
+                                id="newLogin"
+                                value={newLogin}
+                                onChange={(e) => setNewLogin(e.target.value)}
+                                placeholder="Логин (латинские буквы, цифры, _)"
+                                className="rounded-lg"
+                              />
+                              <p className="text-xs text-muted-foreground">
+                                3-30 символов: латинские буквы, цифры, подчёркивание
+                              </p>
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="newPassword">Новый пароль</Label>
+                              <Input
+                                id="newPassword"
+                                type="text"
+                                value={newPassword}
+                                onChange={(e) => setNewPassword(e.target.value)}
+                                placeholder="Оставьте пустым, чтобы не менять"
+                                className="rounded-lg"
+                              />
+                              <p className="text-xs text-muted-foreground">
+                                Минимум 6 символов. Оставьте пустым, чтобы не менять пароль.
+                              </p>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                className="rounded-lg gap-2"
+                                onClick={handleUpdateCredentials}
+                                disabled={isUpdatingCredentials}
+                              >
+                                {isUpdatingCredentials ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <Check className="w-4 h-4" />
+                                )}
+                                Сохранить
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="rounded-lg"
+                                onClick={() => {
+                                  setIsEditingCredentials(false);
+                                  setNewLogin("");
+                                  setNewPassword("");
+                                }}
+                                disabled={isUpdatingCredentials}
+                              >
+                                Отмена
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="p-3 rounded-lg bg-muted/50">
+                              <div className="text-xs text-muted-foreground mb-1">Логин</div>
+                              <div className="flex items-center justify-between">
+                                <code className="font-mono text-sm">{student.login}</code>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-6 w-6"
+                                  onClick={() => copyToClipboard(student.login || "", "login")}
+                                >
+                                  {copiedField === "login" ? (
+                                    <Check className="w-3 h-3 text-green-500" />
+                                  ) : (
+                                    <Copy className="w-3 h-3" />
+                                  )}
+                                </Button>
+                              </div>
+                            </div>
+                            <div className="p-3 rounded-lg bg-muted/50">
+                              <div className="text-xs text-muted-foreground mb-1">Пароль</div>
+                              <div className="flex items-center justify-between">
+                                <code className="font-mono text-sm">
+                                  {student.generated_password || "••••••••"}
+                                </code>
+                                {student.generated_password && (
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-6 w-6"
+                                    onClick={() => copyToClipboard(student.generated_password || "", "password")}
+                                  >
+                                    {copiedField === "password" ? (
+                                      <Check className="w-3 h-3 text-green-500" />
+                                    ) : (
+                                      <Copy className="w-3 h-3" />
+                                    )}
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {/* Hidden file input */}
                     <input
