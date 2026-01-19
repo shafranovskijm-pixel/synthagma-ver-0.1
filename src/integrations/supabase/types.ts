@@ -2694,8 +2694,12 @@ export type Database = {
         Returns: {
           company_id: string
           course_id: string
+          expires_at: string
+          id: string
           name: string
           organization_id: string
+          token: string
+          used_count: number
         }[]
       }
       track_user_visit: { Args: { p_user_id: string }; Returns: undefined }
