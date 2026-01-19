@@ -2573,6 +2573,47 @@ export type Database = {
           },
         ]
       }
+      test_questions_for_students: {
+        Row: {
+          correct_answer: number | null
+          explanation: string | null
+          id: string | null
+          is_bank_question: boolean | null
+          lesson_id: string | null
+          options: Json | null
+          order_index: number | null
+          question: string | null
+        }
+        Insert: {
+          correct_answer?: never
+          explanation?: string | null
+          id?: string | null
+          is_bank_question?: boolean | null
+          lesson_id?: string | null
+          options?: Json | null
+          order_index?: number | null
+          question?: string | null
+        }
+        Update: {
+          correct_answer?: never
+          explanation?: string | null
+          id?: string | null
+          is_bank_question?: boolean | null
+          lesson_id?: string | null
+          options?: Json | null
+          order_index?: number | null
+          question?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "test_questions_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       admin_update_user_role: {
@@ -2640,6 +2681,21 @@ export type Database = {
           full_name: string
           organization_id: string
           user_id: string
+        }[]
+      }
+      public_lookup_user_by_login: {
+        Args: { login_input: string }
+        Returns: {
+          user_id: string
+        }[]
+      }
+      public_validate_registration_link: {
+        Args: { token_input: string }
+        Returns: {
+          company_id: string
+          course_id: string
+          name: string
+          organization_id: string
         }[]
       }
       track_user_visit: { Args: { p_user_id: string }; Returns: undefined }
