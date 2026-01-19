@@ -34,7 +34,8 @@ import {
   Send,
   Menu,
   List,
-  Play
+  Play,
+  Presentation
 } from "lucide-react";
 import { ContentBlock, jsonToBlocks, BlockRenderer } from "@/components/course-builder/BlockEditor";
 import { cn } from "@/lib/utils";
@@ -200,6 +201,169 @@ const VideoPlayerInline = ({ content }: { content: string }) => {
       className="w-full h-full rounded-2xl"
       src={content}
     />
+  );
+};
+
+// Slider Lesson Viewer Component
+interface SliderSlide {
+  id: string;
+  content: string;
+  title?: string;
+  imageUrl?: string;
+}
+
+interface SliderLessonViewerProps {
+  content: string | null;
+  title: string;
+  lessonIndex: number;
+  isMobile: boolean;
+}
+
+const SliderLessonViewer = ({ content, title, lessonIndex, isMobile }: SliderLessonViewerProps) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  
+  // Parse slides from content
+  const slides: SliderSlide[] = (() => {
+    try {
+      if (!content) return [];
+      const parsed = JSON.parse(content);
+      if (Array.isArray(parsed)) return parsed;
+      return [];
+    } catch {
+      return [];
+    }
+  })();
+
+  const goToSlide = (index: number) => {
+    if (index >= 0 && index < slides.length) {
+      setCurrentIndex(index);
+    }
+  };
+
+  if (slides.length === 0) {
+    return (
+      <div className="space-y-4 md:space-y-6 animate-fade-in">
+        <div className="flex items-center gap-3 pb-3 md:pb-4 border-b border-border">
+          <div className={cn(
+            "rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0",
+            isMobile ? "w-8 h-8" : "w-10 h-10"
+          )}>
+            <Presentation className={cn(isMobile ? "w-4 h-4" : "w-5 h-5", "text-amber-500")} />
+          </div>
+          <div className="min-w-0">
+            <h1 className={cn(
+              "font-display font-bold line-clamp-2",
+              isMobile ? "text-lg" : "text-2xl"
+            )}>{title}</h1>
+            <p className="text-xs md:text-sm text-muted-foreground">Презентация {lessonIndex + 1}</p>
+          </div>
+        </div>
+        <div className="flex items-center justify-center py-12 text-muted-foreground">
+          <div className="text-center">
+            <Presentation className="w-16 h-16 mx-auto mb-4 opacity-50" />
+            <p>Презентация не загружена</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const currentSlide = slides[currentIndex];
+
+  return (
+    <div className="space-y-4 md:space-y-6 animate-fade-in">
+      {/* Header */}
+      <div className="flex items-center gap-3 pb-3 md:pb-4 border-b border-border">
+        <div className={cn(
+          "rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0",
+          isMobile ? "w-8 h-8" : "w-10 h-10"
+        )}>
+          <Presentation className={cn(isMobile ? "w-4 h-4" : "w-5 h-5", "text-amber-500")} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h1 className={cn(
+            "font-display font-bold line-clamp-2",
+            isMobile ? "text-lg" : "text-2xl"
+          )}>{title}</h1>
+          <p className="text-xs md:text-sm text-muted-foreground">
+            Презентация • Слайд {currentIndex + 1} из {slides.length}
+          </p>
+        </div>
+      </div>
+
+      {/* Slider Content */}
+      <div className="rounded-2xl border border-amber-500/30 bg-card overflow-hidden shadow-lg">
+        <div className={cn(
+          "min-h-[300px] md:min-h-[400px]",
+          isMobile ? "p-4" : "p-6"
+        )}>
+          {currentSlide && (
+            <div className="space-y-4">
+              {currentSlide.imageUrl && (
+                <div className="rounded-xl overflow-hidden border border-border bg-secondary/20">
+                  <img 
+                    src={currentSlide.imageUrl} 
+                    alt={currentSlide.title || 'Слайд'} 
+                    className="w-full max-h-[400px] object-contain mx-auto"
+                  />
+                </div>
+              )}
+              {currentSlide.title && (
+                <h3 className={cn(
+                  "font-semibold",
+                  isMobile ? "text-lg" : "text-xl"
+                )}>{currentSlide.title}</h3>
+              )}
+              {currentSlide.content && (
+                <div className="text-sm md:text-base text-muted-foreground whitespace-pre-wrap">
+                  {currentSlide.content}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Navigation */}
+        <div className="flex items-center justify-between p-3 md:p-4 border-t border-amber-500/20 bg-amber-500/5">
+          <Button
+            variant="ghost"
+            size={isMobile ? "sm" : "default"}
+            onClick={() => goToSlide(currentIndex - 1)}
+            disabled={currentIndex === 0}
+            className="gap-1"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            {!isMobile && "Назад"}
+          </Button>
+          
+          <div className="flex gap-1.5 overflow-x-auto max-w-[200px] md:max-w-none">
+            {slides.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => goToSlide(i)}
+                className={cn(
+                  "w-2 h-2 rounded-full transition-all shrink-0",
+                  i === currentIndex 
+                    ? "bg-amber-500 scale-125" 
+                    : "bg-amber-500/30 hover:bg-amber-500/50"
+                )}
+              />
+            ))}
+          </div>
+          
+          <Button
+            variant="ghost"
+            size={isMobile ? "sm" : "default"}
+            onClick={() => goToSlide(currentIndex + 1)}
+            disabled={currentIndex === slides.length - 1}
+            className="gap-1"
+          >
+            {!isMobile && "Далее"}
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 };
 
@@ -862,6 +1026,7 @@ const CourseLearning = () => {
       case 'video': return Video;
       case 'test': return ClipboardList;
       case 'audio': return Headphones;
+      case 'slider': return Presentation;
       default: return FileText;
     }
   };
@@ -1393,6 +1558,10 @@ const CourseLearning = () => {
                   );
                 })}
               </div>
+            )}
+
+            {currentLesson?.type === 'slider' && (
+              <SliderLessonViewer content={currentLesson.content} title={currentLesson.title} lessonIndex={currentLessonIndex} isMobile={isMobile} />
             )}
           </div>
         </ScrollArea>
