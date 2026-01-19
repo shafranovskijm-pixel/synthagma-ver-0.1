@@ -64,7 +64,7 @@ serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    const { user_id, new_password } = await req.json();
+    const { user_id, new_password, new_email } = await req.json();
 
     if (!user_id) {
       return new Response(
@@ -76,7 +76,7 @@ serve(async (req) => {
     // SECURITY: Verify the target user belongs to the caller's organization
     const { data: targetProfile } = await supabaseAdmin
       .from('profiles')
-      .select('organization_id')
+      .select('organization_id, login')
       .eq('user_id', user_id)
       .single();
 
@@ -104,10 +104,19 @@ serve(async (req) => {
       return pwd;
     })();
 
-    // Update password in auth.users
+    // Determine if we need to update email to login-based format
+    const emailToUpdate = new_email || (targetProfile.login ? `${targetProfile.login}@student.local` : undefined);
+
+    // Update password (and optionally email) in auth.users
+    const updateData: { password: string; email?: string; email_confirm?: boolean } = { password };
+    if (emailToUpdate) {
+      updateData.email = emailToUpdate;
+      updateData.email_confirm = true;
+    }
+
     const { error: updateAuthError } = await supabaseAdmin.auth.admin.updateUserById(
       user_id,
-      { password }
+      updateData
     );
 
     if (updateAuthError) {
