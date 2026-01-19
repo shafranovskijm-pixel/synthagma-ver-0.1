@@ -11,6 +11,7 @@ import { LibraryManager } from "@/components/organization/LibraryManager";
 import { CourseStoreManager } from "@/components/organization/CourseStoreManager";
 import { FRDOManager } from "@/components/organization/FRDOManager";
 import { JournalsManager } from "@/components/organization/JournalsManager";
+import { LaborSafetyManager } from "@/components/organization/LaborSafetyManager";
 import type { TabType } from "../OrgSidebar";
 import type { OrganizationStats, DocumentsStats, Course, MenuSettings } from "@/types";
 
@@ -130,6 +131,7 @@ export function TabContentRenderer({
     activeTab !== "frdo" && 
     activeTab !== "library" && 
     activeTab !== "journals" && 
+    activeTab !== "labor-safety" &&
     !activeTab.startsWith("documents");
 
   return (
@@ -202,6 +204,11 @@ export function TabContentRenderer({
       {/* Journals Tab */}
       {activeTab === "journals" && organizationId && (
         <JournalsManager organizationId={organizationId} />
+      )}
+
+      {/* Labor Safety Tab */}
+      {activeTab === "labor-safety" && organizationId && (
+        <LaborSafetyManager organizationId={organizationId} />
       )}
 
       {/* FRDO Tab */}
