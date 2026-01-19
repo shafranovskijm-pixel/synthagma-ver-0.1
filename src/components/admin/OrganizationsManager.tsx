@@ -32,7 +32,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Building2, Loader2, Users, BookOpen, Key, Eye, EyeOff, Copy, Check, Download, ExternalLink, Search, X, FolderOpen, DollarSign, Calendar } from "lucide-react";
+import { Plus, Pencil, Trash2, Building2, Loader2, Users, BookOpen, Key, Eye, EyeOff, Copy, Check, Download, ExternalLink, Search, X, FolderOpen, DollarSign, Calendar, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import * as XLSX from "xlsx";
@@ -68,6 +68,9 @@ export function OrganizationsManager() {
   const [deleteOrg, setDeleteOrg] = useState<Organization | null>(null);
   const [editOrg, setEditOrg] = useState<Organization | null>(null);
   const [viewingOrg, setViewingOrg] = useState<Organization | null>(null);
+  const [resetPasswordOrg, setResetPasswordOrg] = useState<Organization | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [resettingPassword, setResettingPassword] = useState(false);
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -302,6 +305,61 @@ export function OrganizationsManager() {
     await navigator.clipboard.writeText(text);
     setCopiedField(fieldId);
     setTimeout(() => setCopiedField(null), 2000);
+  };
+
+  const generatePassword = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+    let password = '';
+    for (let i = 0; i < 10; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return password;
+  };
+
+  const handleResetPassword = async () => {
+    if (!resetPasswordOrg || !newPassword) {
+      toast({
+        title: "Ошибка",
+        description: "Введите новый пароль",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      toast({
+        title: "Ошибка",
+        description: "Пароль должен быть не менее 6 символов",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setResettingPassword(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("reset-org-password", {
+        body: {
+          organization_id: resetPasswordOrg.id,
+          new_password: newPassword,
+        }
+      });
+
+      if (error) throw error;
+
+      toast({ title: "Успешно", description: "Пароль изменён" });
+      setResetPasswordOrg(null);
+      setNewPassword("");
+      fetchOrganizations();
+    } catch (error) {
+      console.error("Error resetting password:", error);
+      toast({
+        title: "Ошибка",
+        description: "Не удалось сбросить пароль",
+        variant: "destructive",
+      });
+    } finally {
+      setResettingPassword(false);
+    }
   };
 
   const exportToExcel = () => {
@@ -688,6 +746,19 @@ export function OrganizationsManager() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
+                        {org.credentials && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => {
+                              setResetPasswordOrg(org);
+                              setNewPassword(generatePassword());
+                            }}
+                            title="Сбросить пароль"
+                          >
+                            <RefreshCw className="w-4 h-4 text-orange-500" />
+                          </Button>
+                        )}
                         <Button 
                           variant="ghost" 
                           size="icon" 
@@ -799,6 +870,56 @@ export function OrganizationsManager() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Reset Password Dialog */}
+      <Dialog open={!!resetPasswordOrg} onOpenChange={() => { setResetPasswordOrg(null); setNewPassword(""); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Сброс пароля организации</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div className="p-3 bg-muted rounded-lg">
+              <p className="text-sm font-medium">{resetPasswordOrg?.name}</p>
+              <p className="text-xs text-muted-foreground">{resetPasswordOrg?.credentials?.login_email}</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-password">Новый пароль</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="new-password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Минимум 6 символов"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setNewPassword(generatePassword())}
+                  title="Сгенерировать пароль"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => copyToClipboard(newPassword, 'new-pass')}
+                  title="Копировать"
+                >
+                  {copiedField === 'new-pass' ? (
+                    <Check className="w-4 h-4 text-green-500" />
+                  ) : (
+                    <Copy className="w-4 h-4" />
+                  )}
+                </Button>
+              </div>
+            </div>
+            <Button onClick={handleResetPassword} disabled={resettingPassword} className="w-full">
+              {resettingPassword ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Сохранить новый пароль
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
