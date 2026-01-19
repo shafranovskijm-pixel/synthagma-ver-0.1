@@ -2390,6 +2390,51 @@ export type Database = {
         }
         Relationships: []
       }
+      system_patches: {
+        Row: {
+          applied_at: string | null
+          applied_by: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_applied: boolean
+          migrations: Json | null
+          name: string
+          patch_data: Json
+          patch_type: string
+          source_project_url: string | null
+          version: string
+        }
+        Insert: {
+          applied_at?: string | null
+          applied_by?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_applied?: boolean
+          migrations?: Json | null
+          name: string
+          patch_data: Json
+          patch_type?: string
+          source_project_url?: string | null
+          version: string
+        }
+        Update: {
+          applied_at?: string | null
+          applied_by?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_applied?: boolean
+          migrations?: Json | null
+          name?: string
+          patch_data?: Json
+          patch_type?: string
+          source_project_url?: string | null
+          version?: string
+        }
+        Relationships: []
+      }
       system_settings: {
         Row: {
           created_at: string
