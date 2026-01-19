@@ -9,6 +9,7 @@ export interface Course {
   organization_id?: string;
   category_id?: string | null;
   duration?: string | null;
+  skip_video_identification?: boolean;
   // Computed fields
   lessonsCount?: number;
   studentsCount?: number;

@@ -37,7 +37,7 @@ interface Organization {
   studentsCount?: number;
 }
 
-type CourseDetailsTabType = "students" | "materials" | "history" | "tests";
+type CourseDetailsTabType = "students" | "materials" | "history" | "tests" | "settings";
 
 interface DialogsContainerProps {
   organizationId: string | null;
@@ -87,6 +87,7 @@ interface DialogsContainerProps {
   onTabChange: (tab: CourseDetailsTabType) => void;
   onEnrollStudent: () => void;
   onCourseDeleted?: () => void;
+  onCourseUpdated?: () => void;
   
   // Course students dialog
   showCourseStudentsDialog: boolean;
@@ -277,6 +278,7 @@ export function DialogsContainer(props: DialogsContainerProps) {
         onTabChange={props.onTabChange}
         onEnrollStudent={props.onEnrollStudent}
         onCourseDeleted={props.onCourseDeleted}
+        onCourseUpdated={props.onCourseUpdated}
       />
 
       <CourseStudentsDialog

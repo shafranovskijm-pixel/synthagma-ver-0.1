@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { CourseDocumentsManager } from "@/components/organization/CourseDocumentsManager";
 import { EnrollmentHistory } from "@/components/organization/EnrollmentHistory";
 import { CourseTestReport } from "@/components/organization/CourseTestReport";
@@ -21,7 +23,9 @@ import {
   CheckSquare,
   Plus,
   Trash2,
-  Loader2
+  Loader2,
+  Settings,
+  Video
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -35,6 +39,7 @@ interface Course {
   studentsCount?: number;
   duration?: string;
   category_id?: string | null;
+  skip_video_identification?: boolean;
 }
 
 interface Student {
@@ -53,10 +58,11 @@ interface CourseDetailsModalProps {
   course: Course | null;
   courseStudents: Student[];
   organizationId: string | null;
-  activeTab: "students" | "materials" | "history" | "tests";
-  onTabChange: (tab: "students" | "materials" | "history" | "tests") => void;
+  activeTab: "students" | "materials" | "history" | "tests" | "settings";
+  onTabChange: (tab: "students" | "materials" | "history" | "tests" | "settings") => void;
   onEnrollStudent: () => void;
   onCourseDeleted?: () => void;
+  onCourseUpdated?: () => void;
 }
 
 export function CourseDetailsModal({
@@ -68,13 +74,43 @@ export function CourseDetailsModal({
   activeTab,
   onTabChange,
   onEnrollStudent,
-  onCourseDeleted
+  onCourseDeleted,
+  onCourseUpdated
 }: CourseDetailsModalProps) {
   const navigate = useNavigate();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [skipVideoId, setSkipVideoId] = useState(course?.skip_video_identification || false);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+
+  useEffect(() => {
+    if (course) {
+      setSkipVideoId(course.skip_video_identification || false);
+    }
+  }, [course]);
 
   if (!course) return null;
+
+  const handleToggleSkipVideoId = async (value: boolean) => {
+    setIsSavingSettings(true);
+    try {
+      const { error } = await supabase
+        .from("courses")
+        .update({ skip_video_identification: value })
+        .eq("id", course.id);
+      
+      if (error) throw error;
+      
+      setSkipVideoId(value);
+      toast.success(value ? "Видеоидентификация отключена для этого курса" : "Видеоидентификация включена для этого курса");
+      onCourseUpdated?.();
+    } catch (error) {
+      console.error("Error updating course:", error);
+      toast.error("Ошибка сохранения настроек");
+    } finally {
+      setIsSavingSettings(false);
+    }
+  };
 
   const handleDeleteCourse = async () => {
     setIsDeleting(true);
@@ -232,6 +268,10 @@ export function CourseDetailsModal({
                 <CheckSquare className="w-4 h-4" />
                 Тесты
               </TabsTrigger>
+              <TabsTrigger value="settings" className="rounded-lg gap-2">
+                <Settings className="w-4 h-4" />
+                Настройки
+              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -301,6 +341,36 @@ export function CourseDetailsModal({
                 courseName={course.title} 
                 organizationId={organizationId || ""} 
               />
+            </TabsContent>
+
+            <TabsContent value="settings" className="mt-0 h-full">
+              <div className="space-y-6">
+                <h3 className="font-semibold">Настройки курса</h3>
+                
+                <div className="bg-secondary/30 rounded-xl p-4 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-lg bg-primary/10 mt-0.5">
+                        <Video className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <Label htmlFor="skip-video-id" className="text-sm font-medium">
+                          Отключить видеоидентификацию
+                        </Label>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Если включено, слушатели этого курса смогут начать обучение без прохождения видеоидентификации
+                        </p>
+                      </div>
+                    </div>
+                    <Switch
+                      id="skip-video-id"
+                      checked={skipVideoId}
+                      onCheckedChange={handleToggleSkipVideoId}
+                      disabled={isSavingSettings}
+                    />
+                  </div>
+                </div>
+              </div>
             </TabsContent>
           </div>
         </Tabs>

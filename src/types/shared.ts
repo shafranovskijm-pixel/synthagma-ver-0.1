@@ -25,6 +25,7 @@ export interface Course {
   studentsCount?: number;
   duration?: string;
   category_id?: string | null;
+  skip_video_identification?: boolean;
 }
 
 export interface CourseCategory {

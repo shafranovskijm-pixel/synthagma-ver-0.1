@@ -515,6 +515,7 @@ export type Database = {
           id: string
           is_published: boolean
           organization_id: string
+          skip_video_identification: boolean | null
           title: string
           updated_at: string
         }
@@ -526,6 +527,7 @@ export type Database = {
           id?: string
           is_published?: boolean
           organization_id: string
+          skip_video_identification?: boolean | null
           title: string
           updated_at?: string
         }
@@ -537,6 +539,7 @@ export type Database = {
           id?: string
           is_published?: boolean
           organization_id?: string
+          skip_video_identification?: boolean | null
           title?: string
           updated_at?: string
         }

@@ -41,7 +41,8 @@ export async function fetchCourses(organizationId: string): Promise<Course[]> {
       category_id: course.category_id,
       duration: course.duration,
       lessonsCount: course.lessons?.[0]?.count || 0,
-      studentsCount: courseEnrollments.length
+      studentsCount: courseEnrollments.length,
+      skip_video_identification: course.skip_video_identification || false
     };
   });
 }
