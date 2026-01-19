@@ -63,18 +63,17 @@ const JoinByLink = () => {
 
   const validateLink = async () => {
     try {
-      // Fetch link data
-      const { data: link, error: linkError } = await supabase
-        .from('registration_links')
-        .select('*')
-        .eq('token', token)
-        .single();
+      // Use secure RPC to validate link (doesn't expose sensitive data)
+      const { data: linkResult, error: linkError } = await supabase
+        .rpc('public_validate_registration_link', { token_input: token });
 
-      if (linkError || !link) {
+      if (linkError || !linkResult || linkResult.length === 0) {
         setError('Ссылка не найдена или недействительна');
         setLoading(false);
         return;
       }
+
+      const link = linkResult[0];
 
       // Check expiration
       if (link.expires_at && new Date(link.expires_at) < new Date()) {
