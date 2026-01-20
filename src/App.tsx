@@ -9,6 +9,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import BrandedLogin from "./pages/BrandedLogin";
+import ResetPassword from "./pages/ResetPassword";
 import Register from "./pages/Register";
 import RegisterOrganization from "./pages/RegisterOrganization";
 import StudentDashboard from "./pages/StudentDashboard";
@@ -40,6 +41,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
             <Route path="/login/:slug" element={<BrandedLogin />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/register" element={<RegisterOrganization />} />
             <Route path="/register-organization" element={<RegisterOrganization />} />
             <Route path="/student" element={

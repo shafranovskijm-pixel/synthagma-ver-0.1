@@ -9,6 +9,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const DEMO_ACCOUNTS = {
   admin: { email: "admin@demo.sigma", password: "demo123456", role: "admin", label: "Админ", icon: Shield, color: "bg-sigma-purple" },
@@ -23,6 +30,9 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [demoLoading, setDemoLoading] = useState<string | null>(null);
   const [loginMode, setLoginMode] = useState<"email" | "login">("email");
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [isResetting, setIsResetting] = useState(false);
   
   const { signIn, user, userRole, loading } = useAuth();
   const navigate = useNavigate();
@@ -108,6 +118,40 @@ const Login = () => {
     }
     
     setIsLoading(false);
+  };
+
+  const handleForgotPassword = async () => {
+    if (!resetEmail) {
+      toast({
+        title: "Ошибка",
+        description: "Введите email",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsResetting(true);
+    
+    const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+
+    if (error) {
+      toast({
+        title: "Ошибка",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Письмо отправлено",
+        description: "Проверьте почту для восстановления пароля",
+      });
+      setShowForgotPassword(false);
+      setResetEmail("");
+    }
+    
+    setIsResetting(false);
   };
 
   const handleDemoLogin = async (accountType: keyof typeof DEMO_ACCOUNTS) => {
@@ -301,6 +345,16 @@ const Login = () => {
               </div>
             </div>
 
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowForgotPassword(true)}
+                className="text-sm text-muted-foreground hover:text-primary transition-colors"
+              >
+                Забыли пароль?
+              </button>
+            </div>
+
             <Button 
               type="submit" 
               className="w-full btn-gradient h-12 rounded-xl text-lg"
@@ -316,6 +370,49 @@ const Login = () => {
               )}
             </Button>
           </form>
+
+          {/* Forgot Password Dialog */}
+          <Dialog open={showForgotPassword} onOpenChange={setShowForgotPassword}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Восстановление пароля</DialogTitle>
+                <DialogDescription>
+                  Введите email, на который зарегистрирован аккаунт
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 pt-4">
+                <div className="space-y-2">
+                  <Label htmlFor="reset-email">Email</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <Input 
+                      id="reset-email" 
+                      type="email" 
+                      placeholder="your@email.com" 
+                      className="pl-10"
+                      value={resetEmail}
+                      onChange={(e) => setResetEmail(e.target.value)}
+                      disabled={isResetting}
+                    />
+                  </div>
+                </div>
+                <Button 
+                  onClick={handleForgotPassword}
+                  className="w-full"
+                  disabled={isResetting}
+                >
+                  {isResetting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Отправка...
+                    </>
+                  ) : (
+                    "Отправить ссылку"
+                  )}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
 
           <p className="text-center text-muted-foreground mt-8">
             Нет аккаунта?{" "}
