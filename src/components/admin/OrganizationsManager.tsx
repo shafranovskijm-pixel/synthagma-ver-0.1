@@ -750,6 +750,18 @@ export function OrganizationsManager() {
                                 <Copy className="w-3 h-3" />
                               )}
                             </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() => {
+                                setResetPasswordOrg(org);
+                                setNewPassword(generatePassword());
+                              }}
+                              title="Сбросить пароль (если текущий не работает)"
+                            >
+                              <RefreshCw className="w-3 h-3 text-orange-500" />
+                            </Button>
                           </div>
                         </div>
                       ) : (
@@ -786,19 +798,6 @@ export function OrganizationsManager() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
-                        {org.credentials && (
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => {
-                              setResetPasswordOrg(org);
-                              setNewPassword(generatePassword());
-                            }}
-                            title="Сбросить пароль"
-                          >
-                            <RefreshCw className="w-4 h-4 text-orange-500" />
-                          </Button>
-                        )}
                         <Button 
                           variant="ghost" 
                           size="icon" 
@@ -922,6 +921,12 @@ export function OrganizationsManager() {
               <p className="text-sm font-medium">{resetPasswordOrg?.name}</p>
               <p className="text-xs text-muted-foreground">{resetPasswordOrg?.credentials?.login_email}</p>
             </div>
+            <div className="p-3 bg-orange-500/10 border border-orange-500/30 rounded-lg">
+              <p className="text-xs text-orange-700 dark:text-orange-400">
+                Если текущий пароль не работает — сбросьте его здесь. 
+                Новый пароль будет синхронизирован с системой авторизации.
+              </p>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="new-password">Новый пароль</Label>
               <div className="flex gap-2">
@@ -955,7 +960,7 @@ export function OrganizationsManager() {
             </div>
             <Button onClick={handleResetPassword} disabled={resettingPassword} className="w-full">
               {resettingPassword ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-              Сохранить новый пароль
+              Сохранить и синхронизировать пароль
             </Button>
           </div>
         </DialogContent>

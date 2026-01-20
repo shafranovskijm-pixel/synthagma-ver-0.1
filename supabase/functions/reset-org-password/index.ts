@@ -73,34 +73,36 @@ serve(async (req) => {
       );
     }
 
-    // Get organization credentials
-    const { data: credentials, error: credError } = await supabaseAdmin
-      .from('organization_credentials')
-      .select('login_email')
-      .eq('organization_id', organization_id)
-      .single();
+    // First, find the user with organization role for this org
+    const { data: orgProfiles } = await supabaseAdmin
+      .from('profiles')
+      .select('user_id')
+      .eq('organization_id', organization_id);
 
-    if (credError || !credentials) {
-      return new Response(
-        JSON.stringify({ error: "Учётные данные организации не найдены" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Find the user by email
-    const { data: usersList, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+    let orgUserId = null;
+    let orgUserEmail = null;
     
-    if (listError) {
-      console.error("List users error:", listError);
-      return new Response(
-        JSON.stringify({ error: "Ошибка получения пользователей" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if (orgProfiles && orgProfiles.length > 0) {
+      for (const profile of orgProfiles) {
+        const { data: userRole } = await supabaseAdmin
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', profile.user_id)
+          .single();
+        
+        if (userRole?.role === 'organization') {
+          orgUserId = profile.user_id;
+          // Get the actual email from auth.users
+          const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(profile.user_id);
+          if (authUser?.user?.email) {
+            orgUserEmail = authUser.user.email;
+          }
+          break;
+        }
+      }
     }
-
-    const orgUser = usersList.users.find(u => u.email === credentials.login_email);
     
-    if (!orgUser) {
+    if (!orgUserId || !orgUserEmail) {
       return new Response(
         JSON.stringify({ error: "Пользователь организации не найден в системе" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -109,7 +111,7 @@ serve(async (req) => {
 
     // Update password in auth.users
     const { error: updateAuthError } = await supabaseAdmin.auth.admin.updateUserById(
-      orgUser.id,
+      orgUserId,
       { password: new_password }
     );
 
@@ -121,18 +123,34 @@ serve(async (req) => {
       );
     }
 
-    // Update password in organization_credentials
-    const { error: credUpdateError } = await supabaseAdmin
+    // Update/upsert organization_credentials with correct email and password
+    const { data: existingCreds } = await supabaseAdmin
       .from('organization_credentials')
-      .update({ login_password: new_password })
-      .eq('organization_id', organization_id);
+      .select('id')
+      .eq('organization_id', organization_id)
+      .maybeSingle();
 
-    if (credUpdateError) {
-      console.error("Credentials update error:", credUpdateError);
-      return new Response(
-        JSON.stringify({ error: "Ошибка обновления учётных данных: " + credUpdateError.message }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if (existingCreds) {
+      const { error: credUpdateError } = await supabaseAdmin
+        .from('organization_credentials')
+        .update({ login_email: orgUserEmail, login_password: new_password })
+        .eq('organization_id', organization_id);
+
+      if (credUpdateError) {
+        console.error("Credentials update error:", credUpdateError);
+      }
+    } else {
+      const { error: credInsertError } = await supabaseAdmin
+        .from('organization_credentials')
+        .insert({ 
+          organization_id: organization_id, 
+          login_email: orgUserEmail, 
+          login_password: new_password 
+        });
+
+      if (credInsertError) {
+        console.error("Credentials insert error:", credInsertError);
+      }
     }
 
     console.log(`Password reset for organization: ${organization_id} by admin: ${user.id}`);
