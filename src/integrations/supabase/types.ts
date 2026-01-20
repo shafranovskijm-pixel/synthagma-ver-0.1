@@ -1561,6 +1561,7 @@ export type Database = {
           organization_id: string
           reminder_date: string
           send_email: boolean
+          telegram_chat_id: string | null
           title: string
           updated_at: string
         }
@@ -1573,6 +1574,7 @@ export type Database = {
           organization_id: string
           reminder_date: string
           send_email?: boolean
+          telegram_chat_id?: string | null
           title: string
           updated_at?: string
         }
@@ -1585,6 +1587,7 @@ export type Database = {
           organization_id?: string
           reminder_date?: string
           send_email?: boolean
+          telegram_chat_id?: string | null
           title?: string
           updated_at?: string
         }
@@ -1672,6 +1675,7 @@ export type Database = {
           storage_limit_bytes: number
           student_dashboard_settings: Json | null
           tariff_type: string | null
+          telegram_chat_id: string | null
           updated_at: string
           website_url: string | null
         }
@@ -1710,6 +1714,7 @@ export type Database = {
           storage_limit_bytes?: number
           student_dashboard_settings?: Json | null
           tariff_type?: string | null
+          telegram_chat_id?: string | null
           updated_at?: string
           website_url?: string | null
         }
@@ -1748,6 +1753,7 @@ export type Database = {
           storage_limit_bytes?: number
           student_dashboard_settings?: Json | null
           tariff_type?: string | null
+          telegram_chat_id?: string | null
           updated_at?: string
           website_url?: string | null
         }

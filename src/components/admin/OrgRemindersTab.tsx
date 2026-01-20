@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { Bell, Plus, Trash2, Loader2, Calendar, Mail, CheckCircle2 } from "lucide-react";
+import { Bell, Plus, Trash2, Loader2, Calendar, Mail, CheckCircle2, Send } from "lucide-react";
 import { format, isPast, isToday } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useAuth } from "@/hooks/useAuth";
@@ -29,6 +29,7 @@ interface Reminder {
   send_email: boolean;
   is_completed: boolean;
   created_at: string;
+  telegram_chat_id: string | null;
 }
 
 interface OrgRemindersTabProps {
@@ -46,6 +47,7 @@ export function OrgRemindersTab({ organizationId }: OrgRemindersTabProps) {
     description: "",
     reminder_date: "",
     send_email: true,
+    telegram_chat_id: "",
   });
 
   useEffect(() => {
@@ -85,13 +87,14 @@ export function OrgRemindersTab({ organizationId }: OrgRemindersTabProps) {
           description: formData.description.trim() || null,
           reminder_date: formData.reminder_date,
           send_email: formData.send_email,
+          telegram_chat_id: formData.telegram_chat_id.trim() || null,
           created_by: user?.id,
         });
 
       if (error) throw error;
 
       toast.success("Напоминание создано");
-      setFormData({ title: "", description: "", reminder_date: "", send_email: true });
+      setFormData({ title: "", description: "", reminder_date: "", send_email: true, telegram_chat_id: "" });
       setIsCreateOpen(false);
       fetchReminders();
     } catch (error) {
@@ -201,7 +204,14 @@ export function OrgRemindersTab({ organizationId }: OrgRemindersTabProps) {
                       <p className="font-medium">{reminder.title}</p>
                       {getStatusBadge(reminder)}
                       {reminder.send_email && (
-                        <Mail className="w-3 h-3 text-muted-foreground" />
+                        <span title="Email уведомление">
+                          <Mail className="w-3 h-3 text-muted-foreground" />
+                        </span>
+                      )}
+                      {reminder.telegram_chat_id && (
+                        <span title="Telegram уведомление">
+                          <Send className="w-3 h-3 text-blue-500" />
+                        </span>
                       )}
                     </div>
                     {reminder.description && (
@@ -317,6 +327,20 @@ export function OrgRemindersTab({ organizationId }: OrgRemindersTabProps) {
                 checked={formData.send_email}
                 onCheckedChange={(checked) => setFormData({ ...formData, send_email: checked })}
               />
+            </div>
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Send className="w-4 h-4 text-blue-500" />
+                Telegram Chat ID
+              </Label>
+              <Input
+                value={formData.telegram_chat_id}
+                onChange={(e) => setFormData({ ...formData, telegram_chat_id: e.target.value })}
+                placeholder="Например: 123456789"
+              />
+              <p className="text-xs text-muted-foreground">
+                Получите ID через @userinfobot в Telegram
+              </p>
             </div>
             <Button onClick={handleCreate} disabled={saving} className="w-full">
               {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
