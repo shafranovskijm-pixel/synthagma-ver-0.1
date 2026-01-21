@@ -1,18 +1,30 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Table,
   TableBody,
@@ -28,8 +40,49 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Download, Trash2, Edit, FolderPlus, Users, Loader2, Search, CheckCircle, FileText, X, GraduationCap } from "lucide-react";
+import { 
+  Plus, 
+  Download, 
+  Trash2, 
+  Edit, 
+  FolderPlus, 
+  Users, 
+  Loader2, 
+  Search, 
+  CheckCircle, 
+  FileText, 
+  X, 
+  GraduationCap,
+  ArrowLeft,
+  MoreHorizontal,
+  SortAsc,
+  SortDesc,
+  FolderOpen,
+  Calendar,
+  Shield,
+  ChevronRight
+} from "lucide-react";
 import { format } from "date-fns";
 
 interface Course {
@@ -44,6 +97,7 @@ interface LaborSafetyGroup {
   name: string;
   organization_id: string;
   created_at: string;
+  records_count?: number;
 }
 
 interface LaborSafetyRecord {
@@ -65,14 +119,24 @@ interface LaborSafetyManagerProps {
   organizationId: string;
 }
 
+type SortField = 'name' | 'created_at' | 'records_count';
+type SortDirection = 'asc' | 'desc';
+
 export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) {
+  // Groups state
   const [groups, setGroups] = useState<LaborSafetyGroup[]>([]);
-  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [selectedGroup, setSelectedGroup] = useState<LaborSafetyGroup | null>(null);
   const [records, setRecords] = useState<LaborSafetyRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingRecords, setIsLoadingRecords] = useState(false);
   
-  // Search and filters
+  // Groups navigation
+  const [groupSearch, setGroupSearch] = useState("");
+  const [groupSortField, setGroupSortField] = useState<SortField>('created_at');
+  const [groupSortDirection, setGroupSortDirection] = useState<SortDirection>('desc');
+  const [isGroupSearchOpen, setIsGroupSearchOpen] = useState(false);
+  
+  // Records search and filters
   const [searchName, setSearchName] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -83,8 +147,11 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
   // Group dialog
   const [showGroupDialog, setShowGroupDialog] = useState(false);
   const [groupName, setGroupName] = useState("");
+  const [groupDescription, setGroupDescription] = useState("");
   const [isCreatingGroup, setIsCreatingGroup] = useState(false);
   const [editingGroup, setEditingGroup] = useState<LaborSafetyGroup | null>(null);
+  const [showDeleteGroupConfirm, setShowDeleteGroupConfirm] = useState(false);
+  const [groupToDelete, setGroupToDelete] = useState<LaborSafetyGroup | null>(null);
   
   // Record dialog
   const [showRecordDialog, setShowRecordDialog] = useState(false);
@@ -112,15 +179,43 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
   const [isLoadingCourses, setIsLoadingCourses] = useState(false);
   const [isEnrolling, setIsEnrolling] = useState(false);
 
+  // Filtered and sorted groups
+  const filteredGroups = useMemo(() => {
+    let result = [...groups];
+    
+    // Filter by search
+    if (groupSearch) {
+      const search = groupSearch.toLowerCase();
+      result = result.filter(g => g.name.toLowerCase().includes(search));
+    }
+
+    // Sort
+    result.sort((a, b) => {
+      let comparison = 0;
+      switch (groupSortField) {
+        case 'name':
+          comparison = a.name.localeCompare(b.name, 'ru');
+          break;
+        case 'created_at':
+          comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+          break;
+        case 'records_count':
+          comparison = (a.records_count || 0) - (b.records_count || 0);
+          break;
+      }
+      return groupSortDirection === 'asc' ? comparison : -comparison;
+    });
+
+    return result;
+  }, [groups, groupSearch, groupSortField, groupSortDirection]);
+
   // Filtered records based on search
   const filteredRecords = useMemo(() => {
     return records.filter((record) => {
-      // Filter by name
       if (searchName && !record.full_name.toLowerCase().includes(searchName.toLowerCase())) {
         return false;
       }
       
-      // Filter by created_at date range
       if (record.created_at) {
         const createdDate = new Date(record.created_at);
         if (dateFrom) {
@@ -143,52 +238,40 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
   const allFilteredSelected = filteredRecords.length > 0 && 
     filteredRecords.every(r => selectedRecordIds.has(r.id));
 
-  useEffect(() => {
-    fetchGroups();
-  }, [organizationId]);
-
-  useEffect(() => {
-    if (selectedGroupId) {
-      fetchRecords(selectedGroupId);
-      setSelectedRecordIds(new Set()); // Clear selection when switching groups
-    } else {
-      setRecords([]);
-      setSelectedRecordIds(new Set());
-    }
-  }, [selectedGroupId]);
-
-  const fetchGroups = async () => {
+  // Fetch groups with record counts
+  const fetchGroups = useCallback(async () => {
     try {
       setIsLoading(true);
       const { data, error } = await supabase
         .from("labor_safety_groups")
-        .select("*")
+        .select("*, labor_safety_records(count)")
         .eq("organization_id", organizationId)
         .order("created_at", { ascending: false });
       
       if (error) throw error;
-      setGroups(data || []);
       
-      // Auto-select first group
-      if (data && data.length > 0 && !selectedGroupId) {
-        setSelectedGroupId(data[0].id);
-      }
+      const groupsWithCount = (data || []).map(g => ({
+        ...g,
+        records_count: g.labor_safety_records?.[0]?.count || 0
+      }));
+      
+      setGroups(groupsWithCount);
     } catch (error) {
       console.error("Error fetching groups:", error);
       toast.error("Ошибка загрузки групп");
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [organizationId]);
 
-  const fetchRecords = async (groupId: string) => {
+  const fetchRecords = useCallback(async (groupId: string) => {
     try {
       setIsLoadingRecords(true);
       const { data, error } = await supabase
         .from("labor_safety_records")
         .select("*")
         .eq("group_id", groupId)
-        .order("created_at", { ascending: true });
+        .order("full_name", { ascending: true });
       
       if (error) throw error;
       setRecords(data || []);
@@ -198,7 +281,21 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
     } finally {
       setIsLoadingRecords(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchGroups();
+  }, [fetchGroups]);
+
+  useEffect(() => {
+    if (selectedGroup) {
+      fetchRecords(selectedGroup.id);
+      setSelectedRecordIds(new Set());
+    } else {
+      setRecords([]);
+      setSelectedRecordIds(new Set());
+    }
+  }, [selectedGroup, fetchRecords]);
 
   const handleCreateGroup = async () => {
     if (!groupName.trim()) {
@@ -229,11 +326,16 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
         
         if (error) throw error;
         toast.success("Группа создана");
-        setSelectedGroupId(data.id);
+        
+        // Navigate to new group
+        if (data) {
+          setSelectedGroup({ ...data, records_count: 0 });
+        }
       }
       
       setShowGroupDialog(false);
       setGroupName("");
+      setGroupDescription("");
       setEditingGroup(null);
       fetchGroups();
     } catch (error) {
@@ -244,21 +346,30 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
     }
   };
 
-  const handleDeleteGroup = async (groupId: string) => {
-    if (!confirm("Удалить группу и все её записи?")) return;
+  const handleDeleteGroup = async () => {
+    if (!groupToDelete) return;
     
     try {
+      // First delete all records in the group
+      await supabase
+        .from("labor_safety_records")
+        .delete()
+        .eq("group_id", groupToDelete.id);
+      
       const { error } = await supabase
         .from("labor_safety_groups")
         .delete()
-        .eq("id", groupId);
+        .eq("id", groupToDelete.id);
       
       if (error) throw error;
       toast.success("Группа удалена");
       
-      if (selectedGroupId === groupId) {
-        setSelectedGroupId(null);
+      if (selectedGroup?.id === groupToDelete.id) {
+        setSelectedGroup(null);
       }
+      
+      setShowDeleteGroupConfirm(false);
+      setGroupToDelete(null);
       fetchGroups();
     } catch (error) {
       console.error("Error deleting group:", error);
@@ -271,13 +382,13 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
       toast.error("Введите ФИО");
       return;
     }
-    if (!selectedGroupId) return;
+    if (!selectedGroup) return;
 
     try {
       setIsSavingRecord(true);
       
       const recordData = {
-        group_id: selectedGroupId,
+        group_id: selectedGroup.id,
         full_name: recordForm.full_name.trim(),
         snils: recordForm.snils.trim() || null,
         position: recordForm.position.trim() || null,
@@ -308,7 +419,8 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
       
       setShowRecordDialog(false);
       resetRecordForm();
-      fetchRecords(selectedGroupId);
+      fetchRecords(selectedGroup.id);
+      fetchGroups(); // Update counts
     } catch (error) {
       console.error("Error saving record:", error);
       toast.error("Ошибка сохранения записи");
@@ -318,8 +430,6 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
   };
 
   const handleDeleteRecord = async (recordId: string) => {
-    if (!confirm("Удалить запись?")) return;
-    
     try {
       const { error } = await supabase
         .from("labor_safety_records")
@@ -330,7 +440,10 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
       toast.success("Запись удалена");
       selectedRecordIds.delete(recordId);
       setSelectedRecordIds(new Set(selectedRecordIds));
-      if (selectedGroupId) fetchRecords(selectedGroupId);
+      if (selectedGroup) {
+        fetchRecords(selectedGroup.id);
+        fetchGroups();
+      }
     } catch (error) {
       console.error("Error deleting record:", error);
       toast.error("Ошибка удаления записи");
@@ -368,7 +481,6 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
     setShowRecordDialog(true);
   };
 
-  // Toggle selection of a single record
   const toggleRecordSelection = (recordId: string) => {
     const newSelection = new Set(selectedRecordIds);
     if (newSelection.has(recordId)) {
@@ -379,29 +491,33 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
     setSelectedRecordIds(newSelection);
   };
 
-  // Toggle all filtered records
   const toggleAllFiltered = () => {
     if (allFilteredSelected) {
-      // Deselect all filtered
       const newSelection = new Set(selectedRecordIds);
       filteredRecords.forEach(r => newSelection.delete(r.id));
       setSelectedRecordIds(newSelection);
     } else {
-      // Select all filtered
       const newSelection = new Set(selectedRecordIds);
       filteredRecords.forEach(r => newSelection.add(r.id));
       setSelectedRecordIds(newSelection);
     }
   };
 
-  // Clear search filters
   const clearFilters = () => {
     setSearchName("");
     setDateFrom("");
     setDateTo("");
   };
 
-  // Export selected records to XML
+  const escapeXml = (str: string) => {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&apos;');
+  };
+
   const exportSelectedToXML = () => {
     const recordsToExport = selectedRecordIds.size > 0 
       ? records.filter(r => selectedRecordIds.has(r.id))
@@ -412,7 +528,6 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
       return;
     }
 
-    const selectedGroup = groups.find(g => g.id === selectedGroupId);
     const groupNameValue = selectedGroup?.name || "Группа";
 
     let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
@@ -444,7 +559,6 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
     toast.success(`Экспортировано ${recordsToExport.length} записей`);
   };
 
-  // Set is_passed = true for selected records
   const markSelectedAsPassed = async () => {
     if (selectedRecordIds.size === 0) {
       toast.error("Выберите записи");
@@ -461,7 +575,7 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
       
       if (error) throw error;
       toast.success(`Отмечено как пройдено: ${selectedRecordIds.size} записей`);
-      if (selectedGroupId) fetchRecords(selectedGroupId);
+      if (selectedGroup) fetchRecords(selectedGroup.id);
     } catch (error) {
       console.error("Error updating records:", error);
       toast.error("Ошибка обновления записей");
@@ -470,7 +584,6 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
     }
   };
 
-  // Generate protocol for selected records
   const generateProtocolForSelected = () => {
     const recordsToExport = selectedRecordIds.size > 0 
       ? records.filter(r => selectedRecordIds.has(r.id))
@@ -481,11 +594,9 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
       return;
     }
 
-    const selectedGroup = groups.find(g => g.id === selectedGroupId);
     const groupNameValue = selectedGroup?.name || "Группа";
     const currentDate = format(new Date(), 'dd.MM.yyyy');
 
-    // Generate a simple protocol document
     let protocolHtml = `
 <!DOCTYPE html>
 <html>
@@ -500,11 +611,7 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
     th, td { border: 1px solid black; padding: 8px; text-align: left; }
     th { background-color: #f0f0f0; }
     .header { margin-bottom: 20px; }
-    .date { text-align: right; margin-bottom: 20px; }
     .footer { margin-top: 40px; }
-    .signature-line { margin-top: 40px; display: flex; justify-content: space-between; }
-    .signature-item { text-align: center; }
-    .signature-item .line { border-top: 1px solid black; width: 200px; margin: 0 auto; }
     @media print { body { padding: 20px; } }
   </style>
 </head>
@@ -553,7 +660,6 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
 </body>
 </html>`;
 
-    // Open in new window for printing
     const printWindow = window.open('', '_blank');
     if (printWindow) {
       printWindow.document.write(protocolHtml);
@@ -565,17 +671,8 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
     toast.success(`Протокол сформирован для ${recordsToExport.length} записей`);
   };
 
-  const escapeXml = (str: string) => {
-    return str
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&apos;');
-  };
-
   // Fetch courses for enrollment
-  const fetchCourses = async () => {
+  const fetchCourses = useCallback(async () => {
     try {
       setIsLoadingCourses(true);
       const { data, error } = await supabase
@@ -592,9 +689,8 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
     } finally {
       setIsLoadingCourses(false);
     }
-  };
+  }, [organizationId]);
 
-  // Handle opening enrollment dialog
   const openEnrollDialog = () => {
     if (selectedRecordIds.size === 0) {
       toast.error("Выберите записи для зачисления");
@@ -605,7 +701,6 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
     fetchCourses();
   };
 
-  // Enroll selected records to course
   const enrollSelectedToCourse = async () => {
     if (!selectedCourseId) {
       toast.error("Выберите курс");
@@ -626,7 +721,6 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
       let alreadyEnrolledCount = 0;
 
       for (const record of recordsToEnroll) {
-        // Create or find profile for this record
         const { data: existingProfiles, error: profileError } = await supabase
           .from("profiles")
           .select("user_id")
@@ -645,7 +739,6 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
         if (existingProfiles && existingProfiles.length > 0) {
           userId = existingProfiles[0].user_id;
         } else {
-          // Create a new user/profile via edge function
           const { data: registerData, error: registerError } = await supabase.functions.invoke(
             "register-student",
             {
@@ -672,7 +765,6 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
           continue;
         }
 
-        // Check if already enrolled
         const { data: existingEnrollment } = await supabase
           .from("enrollments")
           .select("id")
@@ -685,7 +777,6 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
           continue;
         }
 
-        // Create enrollment
         const { error: enrollError } = await supabase
           .from("enrollments")
           .insert({
@@ -722,6 +813,7 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
     }
   };
 
+  // Loading state
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -730,455 +822,630 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
     );
   }
 
-  return (
-    <div className="space-y-6">
-      {/* Groups management */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <Users className="w-5 h-5" />
-            Группы охраны труда
-          </CardTitle>
-          <Dialog open={showGroupDialog} onOpenChange={setShowGroupDialog}>
-            <DialogTrigger asChild>
-              <Button 
-                className="gap-2"
-                onClick={() => {
-                  setGroupName("");
-                  setEditingGroup(null);
-                }}
-              >
-                <FolderPlus className="w-4 h-4" />
-                Создать группу
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>{editingGroup ? "Редактировать группу" : "Создать группу"}</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label>Название группы</Label>
-                  <Input
-                    value={groupName}
-                    onChange={(e) => setGroupName(e.target.value)}
-                    placeholder="Введите название группы"
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setShowGroupDialog(false)}>
-                  Отмена
-                </Button>
-                <Button onClick={handleCreateGroup} disabled={isCreatingGroup}>
-                  {isCreatingGroup && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                  {editingGroup ? "Сохранить" : "Создать"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </CardHeader>
-        <CardContent>
-          {groups.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">
-              Нет групп. Создайте первую группу для начала работы.
+  // Groups list view (when no group selected)
+  if (!selectedGroup) {
+    return (
+      <div className="space-y-4">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              <Shield className="h-5 w-5 text-primary" />
+              Охрана труда
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {groups.length} {groups.length === 1 ? 'группа' : groups.length < 5 ? 'группы' : 'групп'}
             </p>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {groups.map((group) => (
-                <div
-                  key={group.id}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors ${
-                    selectedGroupId === group.id
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "bg-card hover:bg-secondary border-border"
-                  }`}
-                  onClick={() => setSelectedGroupId(group.id)}
-                >
-                  <span>{group.name}</span>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setGroupName(group.name);
-                      setEditingGroup(group);
-                      setShowGroupDialog(true);
-                    }}
-                    className="p-1 hover:bg-secondary/50 rounded"
-                  >
-                    <Edit className="w-3 h-3" />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteGroup(group.id);
-                    }}
-                    className="p-1 hover:bg-destructive/20 rounded text-destructive"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          </div>
 
-      {/* Records table */}
-      {selectedGroupId && (
-        <Card>
-          <CardHeader className="space-y-4">
-            <div className="flex flex-row items-center justify-between flex-wrap gap-4">
-              <CardTitle>
-                Записи: {groups.find(g => g.id === selectedGroupId)?.name}
-              </CardTitle>
-              <div className="flex gap-2 flex-wrap">
-                <Dialog open={showRecordDialog} onOpenChange={(open) => {
-                  setShowRecordDialog(open);
-                  if (!open) resetRecordForm();
-                }}>
-                  <DialogTrigger asChild>
-                    <Button className="gap-2">
-                      <Plus className="w-4 h-4" />
-                      Добавить запись
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                      <DialogTitle>{editingRecord ? "Редактировать запись" : "Добавить запись"}</DialogTitle>
-                    </DialogHeader>
-                    <div className="grid grid-cols-2 gap-4 py-4">
-                      <div className="space-y-2 col-span-2">
-                        <Label>ФИО *</Label>
-                        <Input
-                          value={recordForm.full_name}
-                          onChange={(e) => setRecordForm({ ...recordForm, full_name: e.target.value })}
-                          placeholder="Иванов Иван Иванович"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>СНИЛС</Label>
-                        <Input
-                          value={recordForm.snils}
-                          onChange={(e) => setRecordForm({ ...recordForm, snils: e.target.value })}
-                          placeholder="123-456-789 00"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Должность</Label>
-                        <Input
-                          value={recordForm.position}
-                          onChange={(e) => setRecordForm({ ...recordForm, position: e.target.value })}
-                          placeholder="Инженер"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>ИНН</Label>
-                        <Input
-                          value={recordForm.inn}
-                          onChange={(e) => setRecordForm({ ...recordForm, inn: e.target.value })}
-                          placeholder="1234567890"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Организация</Label>
-                        <Input
-                          value={recordForm.organization_name}
-                          onChange={(e) => setRecordForm({ ...recordForm, organization_name: e.target.value })}
-                          placeholder="ООО 'Компания'"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Номер протокола</Label>
-                        <Input
-                          value={recordForm.protocol_number}
-                          onChange={(e) => setRecordForm({ ...recordForm, protocol_number: e.target.value })}
-                          placeholder="20"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Программа обучения</Label>
-                        <Input
-                          value={recordForm.program_name}
-                          onChange={(e) => setRecordForm({ ...recordForm, program_name: e.target.value })}
-                          placeholder="Охрана труда и безопасность"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Дата экзамена</Label>
-                        <Input
-                          type="date"
-                          value={recordForm.exam_date}
-                          onChange={(e) => setRecordForm({ ...recordForm, exam_date: e.target.value })}
-                        />
-                      </div>
-                      <div className="flex items-center gap-2 col-span-2">
-                        <Checkbox
-                          id="is_passed"
-                          checked={recordForm.is_passed}
-                          onCheckedChange={(checked) => setRecordForm({ ...recordForm, is_passed: !!checked })}
-                        />
-                        <Label htmlFor="is_passed" className="cursor-pointer">Пройдено</Label>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            {/* Quick search with Command */}
+            <Popover open={isGroupSearchOpen} onOpenChange={setIsGroupSearchOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="w-full sm:w-[260px] justify-start">
+                  <Search className="mr-2 h-4 w-4 shrink-0" />
+                  <span className="truncate text-muted-foreground">
+                    {groupSearch || "Найти группу..."}
+                  </span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="p-0 w-[300px]" align="end">
+                <Command>
+                  <CommandInput 
+                    placeholder="Поиск по названию..." 
+                    value={groupSearch}
+                    onValueChange={setGroupSearch}
+                  />
+                  <CommandList>
+                    <CommandEmpty>Группы не найдены</CommandEmpty>
+                    <CommandGroup heading={`Найдено: ${filteredGroups.length}`}>
+                      {filteredGroups.slice(0, 15).map(group => (
+                        <CommandItem
+                          key={group.id}
+                          onSelect={() => {
+                            setSelectedGroup(group);
+                            setIsGroupSearchOpen(false);
+                            setGroupSearch("");
+                          }}
+                          className="cursor-pointer"
+                        >
+                          <FolderOpen className="mr-2 h-4 w-4 shrink-0" />
+                          <span className="flex-1 truncate">{group.name}</span>
+                          <Badge variant="secondary" className="ml-2 shrink-0">
+                            {group.records_count || 0}
+                          </Badge>
+                        </CommandItem>
+                      ))}
+                      {filteredGroups.length > 15 && (
+                        <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                          И ещё {filteredGroups.length - 15}...
+                        </div>
+                      )}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+
+            <Button onClick={() => {
+              setEditingGroup(null);
+              setGroupName("");
+              setGroupDescription("");
+              setShowGroupDialog(true);
+            }}>
+              <Plus className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">Создать группу</span>
+              <span className="sm:hidden">Создать</span>
+            </Button>
+          </div>
+        </div>
+
+        {/* Sorting controls */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm text-muted-foreground">Сортировка:</span>
+          <Button
+            variant={groupSortField === 'name' ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={() => {
+              if (groupSortField === 'name') {
+                setGroupSortDirection(d => d === 'asc' ? 'desc' : 'asc');
+              } else {
+                setGroupSortField('name');
+                setGroupSortDirection('asc');
+              }
+            }}
+          >
+            По названию
+            {groupSortField === 'name' && (
+              groupSortDirection === 'asc' ? <SortAsc className="ml-1 h-3 w-3" /> : <SortDesc className="ml-1 h-3 w-3" />
+            )}
+          </Button>
+          <Button
+            variant={groupSortField === 'created_at' ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={() => {
+              if (groupSortField === 'created_at') {
+                setGroupSortDirection(d => d === 'asc' ? 'desc' : 'asc');
+              } else {
+                setGroupSortField('created_at');
+                setGroupSortDirection('desc');
+              }
+            }}
+          >
+            По дате
+            {groupSortField === 'created_at' && (
+              groupSortDirection === 'asc' ? <SortAsc className="ml-1 h-3 w-3" /> : <SortDesc className="ml-1 h-3 w-3" />
+            )}
+          </Button>
+          <Button
+            variant={groupSortField === 'records_count' ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={() => {
+              if (groupSortField === 'records_count') {
+                setGroupSortDirection(d => d === 'asc' ? 'desc' : 'asc');
+              } else {
+                setGroupSortField('records_count');
+                setGroupSortDirection('desc');
+              }
+            }}
+          >
+            По кол-ву записей
+            {groupSortField === 'records_count' && (
+              groupSortDirection === 'asc' ? <SortAsc className="ml-1 h-3 w-3" /> : <SortDesc className="ml-1 h-3 w-3" />
+            )}
+          </Button>
+
+          {groupSearch && (
+            <Button variant="ghost" size="sm" onClick={() => setGroupSearch("")}>
+              <X className="h-3 w-3 mr-1" />
+              Сбросить фильтр
+            </Button>
+          )}
+        </div>
+
+        {/* Groups grid */}
+        {filteredGroups.length === 0 ? (
+          <Card className="border-dashed">
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <FolderOpen className="h-12 w-12 text-muted-foreground/50 mb-4" />
+              <p className="text-muted-foreground text-center">
+                {groups.length === 0 
+                  ? "Нет групп. Создайте первую группу для учёта сотрудников."
+                  : "Группы не найдены по заданным критериям."}
+              </p>
+              {groups.length === 0 && (
+                <Button 
+                  className="mt-4"
+                  onClick={() => setShowGroupDialog(true)}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Создать группу
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {filteredGroups.map(group => (
+              <Card 
+                key={group.id}
+                className="cursor-pointer hover:border-primary/50 hover:shadow-md transition-all group"
+                onClick={() => setSelectedGroup(group)}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium truncate group-hover:text-primary transition-colors flex items-center gap-2">
+                        {group.name}
+                        <ChevronRight className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </h3>
+                      <div className="flex items-center gap-3 mt-2 text-sm text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Users className="h-3.5 w-3.5" />
+                          {group.records_count || 0}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-3.5 w-3.5" />
+                          {format(new Date(group.created_at), 'dd.MM.yyyy')}
+                        </span>
                       </div>
                     </div>
-                    <DialogFooter>
-                      <Button variant="outline" onClick={() => {
-                        setShowRecordDialog(false);
-                        resetRecordForm();
-                      }}>
-                        Отмена
-                      </Button>
-                      <Button onClick={handleSaveRecord} disabled={isSavingRecord}>
-                        {isSavingRecord && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                        {editingRecord ? "Сохранить" : "Добавить"}
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingGroup(group);
+                          setGroupName(group.name);
+                          setShowGroupDialog(true);
+                        }}>
+                          <Edit className="h-4 w-4 mr-2" />
+                          Редактировать
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem 
+                          className="text-destructive focus:text-destructive"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setGroupToDelete(group);
+                            setShowDeleteGroupConfirm(true);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Удалить
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {/* Group Dialog */}
+        <Dialog open={showGroupDialog} onOpenChange={setShowGroupDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {editingGroup ? 'Редактировать группу' : 'Создать группу'}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label>Название группы *</Label>
+                <Input
+                  value={groupName}
+                  onChange={e => setGroupName(e.target.value)}
+                  placeholder="Например: Инженеры 2024"
+                />
               </div>
             </div>
-            
-            {/* Search and filters */}
-            <div className="flex flex-wrap gap-3 items-end">
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Поиск по ФИО</Label>
-                <div className="relative">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Введите имя..."
-                    value={searchName}
-                    onChange={(e) => setSearchName(e.target.value)}
-                    className="pl-8 w-[200px]"
-                  />
-                </div>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Дата создания от</Label>
-                <Input
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                  className="w-[150px]"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Дата создания до</Label>
-                <Input
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                  className="w-[150px]"
-                />
-              </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowGroupDialog(false)}>
+                Отмена
+              </Button>
+              <Button onClick={handleCreateGroup} disabled={isCreatingGroup}>
+                {isCreatingGroup && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                {editingGroup ? 'Сохранить' : 'Создать'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Confirm */}
+        <AlertDialog open={showDeleteGroupConfirm} onOpenChange={setShowDeleteGroupConfirm}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Удалить группу?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Группа "{groupToDelete?.name}" и все записи ({groupToDelete?.records_count || 0}) в ней будут удалены. Это действие нельзя отменить.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Отмена</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteGroup} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                Удалить
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    );
+  }
+
+  // Records view (when group is selected)
+  return (
+    <div className="space-y-4">
+      {/* Header with back button */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={() => setSelectedGroup(null)}
+            className="shrink-0"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <h2 className="text-xl font-semibold">{selectedGroup.name}</h2>
+            <p className="text-sm text-muted-foreground">
+              {records.length} {records.length === 1 ? 'запись' : records.length < 5 ? 'записи' : 'записей'}
+            </p>
+          </div>
+        </div>
+
+        <Button onClick={() => {
+          resetRecordForm();
+          setShowRecordDialog(true);
+        }}>
+          <Plus className="h-4 w-4 mr-2" />
+          Добавить запись
+        </Button>
+      </div>
+
+      {/* Filters */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex-1 relative">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Поиск по ФИО..."
+                value={searchName}
+                onChange={e => setSearchName(e.target.value)}
+                className="pl-8 w-full"
+              />
+            </div>
+            <div className="flex gap-2 items-center">
+              <Input
+                type="date"
+                value={dateFrom}
+                onChange={e => setDateFrom(e.target.value)}
+                className="w-[130px]"
+              />
+              <span className="text-muted-foreground">—</span>
+              <Input
+                type="date"
+                value={dateTo}
+                onChange={e => setDateTo(e.target.value)}
+                className="w-[130px]"
+              />
               {(searchName || dateFrom || dateTo) && (
-                <Button variant="ghost" size="icon" onClick={clearFilters} title="Сбросить фильтры">
-                  <X className="w-4 h-4" />
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={clearFilters}
+                >
+                  <X className="h-4 w-4" />
                 </Button>
               )}
             </div>
+          </div>
+        </CardContent>
+      </Card>
 
-            {/* Bulk actions */}
-            {selectedRecordIds.size > 0 && (
-              <div className="flex flex-wrap gap-2 items-center p-3 bg-primary/5 rounded-lg border border-primary/20">
-                <span className="text-sm font-medium">
-                  Выбрано: {selectedRecordIds.size}
-                </span>
-                <div className="h-4 w-px bg-border" />
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={exportSelectedToXML}
-                  className="gap-1"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  Экспорт XML
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={markSelectedAsPassed}
-                  disabled={isBulkUpdating}
-                  className="gap-1"
-                >
-                  {isBulkUpdating ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <CheckCircle className="w-3.5 h-3.5" />
-                  )}
-                  Отметить пройдено
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={generateProtocolForSelected}
-                  className="gap-1"
-                >
-                  <FileText className="w-3.5 h-3.5" />
-                  Сформировать протокол
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={openEnrollDialog}
-                  className="gap-1"
-                >
-                  <GraduationCap className="w-3.5 h-3.5" />
-                  Зачислить на курс
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => setSelectedRecordIds(new Set())}
-                >
-                  Снять выделение
-                </Button>
-              </div>
-            )}
-
-            {/* Enroll to Course Dialog */}
-            <Dialog open={showEnrollDialog} onOpenChange={setShowEnrollDialog}>
-              <DialogContent className="max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Зачислить на курс</DialogTitle>
-                </DialogHeader>
-                <div className="py-4 space-y-4">
-                  <p className="text-sm text-muted-foreground">
-                    Будет зачислено: <strong>{selectedRecordIds.size}</strong> чел.
-                  </p>
-                  <div className="space-y-2">
-                    <Label>Выберите курс</Label>
-                    {isLoadingCourses ? (
-                      <div className="flex items-center justify-center py-4">
-                        <Loader2 className="w-5 h-5 animate-spin text-primary" />
-                      </div>
-                    ) : courses.length === 0 ? (
-                      <p className="text-sm text-muted-foreground py-2">
-                        Нет доступных курсов
-                      </p>
-                    ) : (
-                      <Select value={selectedCourseId} onValueChange={setSelectedCourseId}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Выберите курс" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {courses.map((course) => (
-                            <SelectItem key={course.id} value={course.id}>
-                              {course.title}
-                              {!course.is_published && " (черновик)"}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setShowEnrollDialog(false)}>
-                    Отмена
-                  </Button>
-                  <Button 
-                    onClick={enrollSelectedToCourse} 
-                    disabled={isEnrolling || !selectedCourseId || courses.length === 0}
-                  >
-                    {isEnrolling && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                    Зачислить
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </CardHeader>
-          <CardContent>
-            {isLoadingRecords ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="w-6 h-6 animate-spin text-primary" />
-              </div>
-            ) : filteredRecords.length === 0 ? (
-              <p className="text-muted-foreground text-center py-8">
-                {records.length === 0 
-                  ? "Нет записей в этой группе. Добавьте первую запись."
-                  : "Нет записей, соответствующих фильтрам."}
-              </p>
-            ) : (
-              <div className="rounded-lg border overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-12">
-                        <Checkbox
-                          checked={allFilteredSelected}
-                          onCheckedChange={toggleAllFiltered}
-                        />
-                      </TableHead>
-                      <TableHead className="w-12">№</TableHead>
-                      <TableHead>ФИО</TableHead>
-                      <TableHead>СНИЛС</TableHead>
-                      <TableHead>Должность</TableHead>
-                      <TableHead>ИНН</TableHead>
-                      <TableHead>Организация</TableHead>
-                      <TableHead>Протокол</TableHead>
-                      <TableHead>Программа</TableHead>
-                      <TableHead>Дата</TableHead>
-                      <TableHead>Пройдено</TableHead>
-                      <TableHead className="w-20">Действия</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredRecords.map((record, index) => (
-                      <TableRow 
-                        key={record.id}
-                        className={selectedRecordIds.has(record.id) ? "bg-primary/5" : ""}
-                      >
-                        <TableCell>
-                          <Checkbox
-                            checked={selectedRecordIds.has(record.id)}
-                            onCheckedChange={() => toggleRecordSelection(record.id)}
-                          />
-                        </TableCell>
-                        <TableCell>{index + 1}</TableCell>
-                        <TableCell className="font-medium">{record.full_name}</TableCell>
-                        <TableCell>{record.snils || "-"}</TableCell>
-                        <TableCell>{record.position || "-"}</TableCell>
-                        <TableCell>{record.inn || "-"}</TableCell>
-                        <TableCell>{record.organization_name || "-"}</TableCell>
-                        <TableCell>{record.protocol_number || "-"}</TableCell>
-                        <TableCell className="max-w-[200px] truncate" title={record.program_name || ""}>
-                          {record.program_name || "-"}
-                        </TableCell>
-                        <TableCell>
-                          {record.exam_date ? format(new Date(record.exam_date), "dd.MM.yyyy") : "-"}
-                        </TableCell>
-                        <TableCell>
-                          <span className={record.is_passed ? "text-green-600" : "text-muted-foreground"}>
-                            {record.is_passed ? "Да" : "Нет"}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => openEditRecord(record)}
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDeleteRecord(record.id)}
-                              className="text-destructive hover:text-destructive"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
+      {/* Bulk actions */}
+      {selectedRecordIds.size > 0 && (
+        <Card className="border-primary/50 bg-primary/5">
+          <CardContent className="p-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="secondary">
+                Выбрано: {selectedRecordIds.size}
+              </Badge>
+              <Separator orientation="vertical" className="h-6" />
+              <Button variant="outline" size="sm" onClick={exportSelectedToXML} disabled={isBulkUpdating}>
+                <Download className="h-4 w-4 mr-2" />
+                Экспорт XML
+              </Button>
+              <Button variant="outline" size="sm" onClick={markSelectedAsPassed} disabled={isBulkUpdating}>
+                {isBulkUpdating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
+                Отметить сдано
+              </Button>
+              <Button variant="outline" size="sm" onClick={generateProtocolForSelected}>
+                <FileText className="h-4 w-4 mr-2" />
+                Протокол
+              </Button>
+              <Button variant="outline" size="sm" onClick={openEnrollDialog}>
+                <GraduationCap className="h-4 w-4 mr-2" />
+                На курс
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setSelectedRecordIds(new Set())}
+              >
+                <X className="h-4 w-4 mr-1" />
+                Сбросить
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}
+
+      {/* Records table */}
+      {isLoadingRecords ? (
+        <div className="flex items-center justify-center h-32">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : filteredRecords.length === 0 ? (
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <Users className="h-12 w-12 text-muted-foreground/50 mb-4" />
+            <p className="text-muted-foreground text-center">
+              {records.length === 0 
+                ? "Нет записей. Добавьте первого сотрудника."
+                : "Записи не найдены по заданным критериям."}
+            </p>
+            {records.length === 0 && (
+              <Button 
+                className="mt-4"
+                onClick={() => {
+                  resetRecordForm();
+                  setShowRecordDialog(true);
+                }}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Добавить запись
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <ScrollArea className="w-full">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-10">
+                    <Checkbox
+                      checked={allFilteredSelected}
+                      onCheckedChange={toggleAllFiltered}
+                    />
+                  </TableHead>
+                  <TableHead>ФИО</TableHead>
+                  <TableHead className="hidden md:table-cell">Должность</TableHead>
+                  <TableHead className="hidden lg:table-cell">Организация</TableHead>
+                  <TableHead className="hidden lg:table-cell">СНИЛС</TableHead>
+                  <TableHead className="hidden sm:table-cell">Дата экзамена</TableHead>
+                  <TableHead className="w-24">Статус</TableHead>
+                  <TableHead className="w-16"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredRecords.map(record => (
+                  <TableRow key={record.id}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedRecordIds.has(record.id)}
+                        onCheckedChange={() => toggleRecordSelection(record.id)}
+                      />
+                    </TableCell>
+                    <TableCell className="font-medium">{record.full_name}</TableCell>
+                    <TableCell className="hidden md:table-cell">{record.position || '-'}</TableCell>
+                    <TableCell className="hidden lg:table-cell">{record.organization_name || '-'}</TableCell>
+                    <TableCell className="hidden lg:table-cell">{record.snils || '-'}</TableCell>
+                    <TableCell className="hidden sm:table-cell">
+                      {record.exam_date 
+                        ? format(new Date(record.exam_date), 'dd.MM.yyyy')
+                        : '-'}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={record.is_passed ? "default" : "secondary"}>
+                        {record.is_passed ? 'Сдано' : 'Не сдано'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => openEditRecord(record)}>
+                            <Edit className="h-4 w-4 mr-2" />
+                            Редактировать
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem 
+                            className="text-destructive focus:text-destructive"
+                            onClick={() => handleDeleteRecord(record.id)}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Удалить
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </ScrollArea>
+        </Card>
+      )}
+
+      {/* Record Dialog */}
+      <Dialog open={showRecordDialog} onOpenChange={(open) => {
+        setShowRecordDialog(open);
+        if (!open) resetRecordForm();
+      }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingRecord ? "Редактировать запись" : "Добавить запись"}</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4 py-4">
+            <div className="space-y-2 col-span-2">
+              <Label>ФИО *</Label>
+              <Input
+                value={recordForm.full_name}
+                onChange={(e) => setRecordForm({ ...recordForm, full_name: e.target.value })}
+                placeholder="Иванов Иван Иванович"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>СНИЛС</Label>
+              <Input
+                value={recordForm.snils}
+                onChange={(e) => setRecordForm({ ...recordForm, snils: e.target.value })}
+                placeholder="123-456-789 00"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Должность</Label>
+              <Input
+                value={recordForm.position}
+                onChange={(e) => setRecordForm({ ...recordForm, position: e.target.value })}
+                placeholder="Инженер"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>ИНН</Label>
+              <Input
+                value={recordForm.inn}
+                onChange={(e) => setRecordForm({ ...recordForm, inn: e.target.value })}
+                placeholder="1234567890"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Организация</Label>
+              <Input
+                value={recordForm.organization_name}
+                onChange={(e) => setRecordForm({ ...recordForm, organization_name: e.target.value })}
+                placeholder="ООО 'Компания'"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Номер протокола</Label>
+              <Input
+                value={recordForm.protocol_number}
+                onChange={(e) => setRecordForm({ ...recordForm, protocol_number: e.target.value })}
+                placeholder="20"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Программа обучения</Label>
+              <Input
+                value={recordForm.program_name}
+                onChange={(e) => setRecordForm({ ...recordForm, program_name: e.target.value })}
+                placeholder="Охрана труда"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Дата экзамена</Label>
+              <Input
+                type="date"
+                value={recordForm.exam_date}
+                onChange={(e) => setRecordForm({ ...recordForm, exam_date: e.target.value })}
+              />
+            </div>
+            <div className="flex items-center gap-2 col-span-2">
+              <Checkbox
+                id="is_passed"
+                checked={recordForm.is_passed}
+                onCheckedChange={(checked) => setRecordForm({ ...recordForm, is_passed: !!checked })}
+              />
+              <Label htmlFor="is_passed" className="cursor-pointer">Пройдено</Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setShowRecordDialog(false);
+              resetRecordForm();
+            }}>
+              Отмена
+            </Button>
+            <Button onClick={handleSaveRecord} disabled={isSavingRecord}>
+              {isSavingRecord && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {editingRecord ? "Сохранить" : "Добавить"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Enroll Dialog */}
+      <Dialog open={showEnrollDialog} onOpenChange={setShowEnrollDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Записать на курс</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-muted-foreground">
+              Будет создан профиль и зачисление для {selectedRecordIds.size} сотрудников.
+            </p>
+            <div className="space-y-2">
+              <Label>Выберите курс</Label>
+              <Select value={selectedCourseId} onValueChange={setSelectedCourseId}>
+                <SelectTrigger>
+                  <SelectValue placeholder={isLoadingCourses ? "Загрузка..." : "Выберите курс"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {courses.map(course => (
+                    <SelectItem key={course.id} value={course.id}>
+                      {course.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEnrollDialog(false)}>
+              Отмена
+            </Button>
+            <Button onClick={enrollSelectedToCourse} disabled={isEnrolling || !selectedCourseId}>
+              {isEnrolling && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Записать
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
