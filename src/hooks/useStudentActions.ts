@@ -169,15 +169,18 @@ export function useStudentActions(
     }
   }, [organizationName]);
 
-  const bulkCreateCredentials = useCallback(async (students: Student[]) => {
+  const bulkCreateCredentials = useCallback(async (students: Student[], sendEmails: boolean = false) => {
     const studentsToCreate = students.filter(s => !s.login || !s.generated_password);
     if (studentsToCreate.length === 0) {
       toast.info("У всех выбранных учеников уже есть логин и пароль");
-      return;
+      return { successCount: 0, errorCount: 0, emailsSent: 0 };
     }
     setIsCreatingBulkCredentials(true);
     let successCount = 0;
     let errorCount = 0;
+    let emailsSent = 0;
+    const createdCredentials: { student: Student; login: string; password: string }[] = [];
+    
     try {
       for (const student of studentsToCreate) {
         try {
@@ -195,22 +198,59 @@ export function useStudentActions(
           
           if (error) throw error;
           if (data?.error) throw new Error(data.error);
+          
+          createdCredentials.push({ student, login, password });
           successCount++;
         } catch {
           errorCount++;
         }
       }
+      
+      // Send emails if requested
+      if (sendEmails && createdCredentials.length > 0) {
+        const loginUrl = `${window.location.origin}/login`;
+        
+        for (const { student, login, password } of createdCredentials) {
+          if (!student.email) continue;
+          
+          try {
+            const { error } = await supabase.functions.invoke("send-credentials", {
+              body: {
+                email: student.email,
+                name: student.name,
+                login,
+                password,
+                loginUrl,
+                organizationName
+              }
+            });
+            
+            if (!error) {
+              emailsSent++;
+            }
+          } catch (e) {
+            console.error("Error sending email to", student.email, e);
+          }
+        }
+      }
+      
       if (successCount > 0) {
-        toast.success(`Создано логинов: ${successCount}`);
+        let message = `Создано логинов: ${successCount}`;
+        if (sendEmails && emailsSent > 0) {
+          message += `. Отправлено писем: ${emailsSent}`;
+        }
+        toast.success(message);
         onRefresh();
       }
       if (errorCount > 0) {
         toast.error(`Ошибки: ${errorCount}`);
       }
+      
+      return { successCount, errorCount, emailsSent };
     } finally {
       setIsCreatingBulkCredentials(false);
     }
-  }, [onRefresh]);
+  }, [onRefresh, organizationName]);
 
   const bulkSendDocReminders = useCallback(async () => {
     if (!organizationId) return;
