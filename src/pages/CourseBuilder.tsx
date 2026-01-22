@@ -430,6 +430,12 @@ function SliderLessonEditor({ lesson, courseId, onUpdate }: SliderLessonEditorPr
 
   const currentSlide = slides[currentIndex];
 
+  // Generate Google Docs Viewer URL
+  const getViewerUrl = (fileUrl: string): string => {
+    const encodedUrl = encodeURIComponent(fileUrl);
+    return `https://docs.google.com/gview?url=${encodedUrl}&embedded=true`;
+  };
+
   return (
     <div className="space-y-3">
       <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 overflow-hidden">
@@ -439,9 +445,16 @@ function SliderLessonEditor({ lesson, courseId, onUpdate }: SliderLessonEditorPr
             <span className="font-medium text-sm">{slides.length} слайдов</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">
-              {currentIndex + 1} / {slides.length}
-            </span>
+            {pptxFileUrl && (
+              <a
+                href={pptxFileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-amber-500 hover:underline"
+              >
+                Скачать
+              </a>
+            )}
             <Button
               variant="ghost"
               size="sm"
@@ -453,63 +466,79 @@ function SliderLessonEditor({ lesson, courseId, onUpdate }: SliderLessonEditorPr
           </div>
         </div>
         
-        <div className="p-6 min-h-[250px]">
-          {currentSlide && (
-            <div className="space-y-4">
-              {currentSlide.imageUrl && (
-                <div className="rounded-lg overflow-hidden border border-border bg-secondary/20">
-                  <img 
-                    src={currentSlide.imageUrl} 
-                    alt={currentSlide.title || 'Слайд'} 
-                    className="w-full max-h-[400px] object-contain"
-                  />
-                </div>
-              )}
-              <h3 className="text-lg font-semibold">{currentSlide.title}</h3>
-              {currentSlide.content && (
-                <div className="text-sm text-muted-foreground whitespace-pre-wrap">
-                  {currentSlide.content}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center justify-between p-3 border-t border-amber-500/20 bg-amber-500/5">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => goToSlide(currentIndex - 1)}
-            disabled={currentIndex === 0}
-            className="gap-1"
-          >
-            <ChevronDown className="w-4 h-4 rotate-90" />
-            Назад
-          </Button>
-          
-          <div className="flex gap-1 overflow-x-auto max-w-[200px]">
-            {slides.map((_, i) => (
-              <button
-                key={i}
-                onClick={() => goToSlide(i)}
-                className={`w-2 h-2 rounded-full transition-colors flex-shrink-0 ${
-                  i === currentIndex ? "bg-amber-500" : "bg-amber-500/30 hover:bg-amber-500/50"
-                }`}
-              />
-            ))}
+        {/* PPTX Preview via Google Docs Viewer */}
+        {pptxFileUrl ? (
+          <div className="relative bg-white">
+            <iframe
+              src={getViewerUrl(pptxFileUrl)}
+              className="w-full border-0"
+              style={{ height: '450px' }}
+              title="Предпросмотр презентации"
+              sandbox="allow-scripts allow-same-origin allow-popups"
+            />
           </div>
+        ) : (
+          <div className="p-6 min-h-[250px]">
+            {currentSlide && (
+              <div className="space-y-4">
+                {currentSlide.imageUrl && (
+                  <div className="rounded-lg overflow-hidden border border-border bg-secondary/20">
+                    <img 
+                      src={currentSlide.imageUrl} 
+                      alt={currentSlide.title || 'Слайд'} 
+                      className="w-full max-h-[400px] object-contain"
+                    />
+                  </div>
+                )}
+                <h3 className="text-lg font-semibold">{currentSlide.title}</h3>
+                {currentSlide.content && (
+                  <div className="text-sm text-muted-foreground whitespace-pre-wrap">
+                    {currentSlide.content}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => goToSlide(currentIndex + 1)}
-            disabled={currentIndex === slides.length - 1}
-            className="gap-1"
-          >
-            Далее
-            <ChevronDown className="w-4 h-4 -rotate-90" />
-          </Button>
-        </div>
+        {/* Navigation only for legacy slides without PPTX viewer */}
+        {!pptxFileUrl && slides.length > 0 && (
+          <div className="flex items-center justify-between p-3 border-t border-amber-500/20 bg-amber-500/5">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => goToSlide(currentIndex - 1)}
+              disabled={currentIndex === 0}
+              className="gap-1"
+            >
+              <ChevronDown className="w-4 h-4 rotate-90" />
+              Назад
+            </Button>
+            
+            <div className="flex gap-1 overflow-x-auto max-w-[200px]">
+              {slides.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => goToSlide(i)}
+                  className={`w-2 h-2 rounded-full transition-colors flex-shrink-0 ${
+                    i === currentIndex ? "bg-amber-500" : "bg-amber-500/30 hover:bg-amber-500/50"
+                  }`}
+                />
+              ))}
+            </div>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => goToSlide(currentIndex + 1)}
+              disabled={currentIndex === slides.length - 1}
+              className="gap-1"
+            >
+              Далее
+              <ChevronDown className="w-4 h-4 -rotate-90" />
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );
