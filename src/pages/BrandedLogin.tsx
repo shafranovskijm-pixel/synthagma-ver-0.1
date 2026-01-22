@@ -112,19 +112,19 @@ const BrandedLogin = () => {
     let signInEmail = email;
     
     if (loginMode === "login") {
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("user_id, login, email")
-        .eq("login", login)
-        .maybeSingle();
+      // Verify login exists using secure RPC
+      const { data: lookupResult, error: lookupError } = await supabase
+        .rpc('public_lookup_user_by_login', { login_input: login });
       
-      if (profileError || !profile) {
+      if (lookupError || !lookupResult || lookupResult.length === 0) {
         toast({ title: "Ошибка входа", description: "Неверный логин или пароль", variant: "destructive" });
         setIsLoading(false);
         return;
       }
       
-      signInEmail = profile.email || `${login}@student.local`;
+      // Always use standardized email format for login-based auth
+      // The auth.users email is always {login}@student.local
+      signInEmail = `${login}@student.local`;
     }
     
     const { error } = await signIn(signInEmail, password);
