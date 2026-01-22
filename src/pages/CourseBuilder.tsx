@@ -255,6 +255,33 @@ interface SliderSlide {
   imageUrl?: string;
 }
 
+interface SliderContent {
+  slides: SliderSlide[];
+  pptxFileUrl?: string; // URL to the uploaded PPTX file for online viewing
+}
+
+// Parse slider content - supports both old array format and new object format
+const parseSliderContent = (content: string | null): SliderContent => {
+  try {
+    if (!content) return { slides: [] };
+    const parsed = JSON.parse(content);
+    // Support old format (array of slides)
+    if (Array.isArray(parsed)) {
+      return { slides: parsed };
+    }
+    // New format with pptxFileUrl
+    if (typeof parsed === 'object' && parsed !== null) {
+      return {
+        slides: Array.isArray(parsed.slides) ? parsed.slides : [],
+        pptxFileUrl: parsed.pptxFileUrl
+      };
+    }
+    return { slides: [] };
+  } catch {
+    return { slides: [] };
+  }
+};
+
 interface SliderLessonEditorProps {
   lesson: Lesson;
   courseId: string | undefined;
@@ -267,124 +294,10 @@ function SliderLessonEditor({ lesson, courseId, onUpdate }: SliderLessonEditorPr
   const [currentIndex, setCurrentIndex] = useState(0);
   const [uploadProgress, setUploadProgress] = useState<string>("");
 
-  // Parse slides from content
-  const slides: SliderSlide[] = (() => {
-    try {
-      const parsed = JSON.parse(lesson.content || '[]');
-      if (Array.isArray(parsed)) return parsed;
-      return [];
-    } catch {
-      return [];
-    }
-  })();
-
-  const parsePptxFile = async (file: File): Promise<SliderSlide[]> => {
-    const JSZip = (await import('jszip')).default;
-    const arrayBuffer = await file.arrayBuffer();
-    const zip = await JSZip.loadAsync(arrayBuffer);
-    
-    const slidesArray: SliderSlide[] = [];
-    
-    // Get all media files (images)
-    const mediaFiles: Record<string, string> = {};
-    const mediaEntries = Object.keys(zip.files).filter(name => name.startsWith('ppt/media/'));
-    
-    setUploadProgress(`Извлечение ${mediaEntries.length} изображений...`);
-    
-    // Upload media files to storage
-    for (const mediaPath of mediaEntries) {
-      try {
-        const mediaBlob = await zip.files[mediaPath].async('blob');
-        const fileName = mediaPath.split('/').pop() || '';
-        const ext = fileName.split('.').pop()?.toLowerCase() || 'png';
-        const mimeType = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : 
-                         ext === 'png' ? 'image/png' : 
-                         ext === 'gif' ? 'image/gif' : 
-                         ext === 'webp' ? 'image/webp' : 'image/png';
-        
-        const mediaFile = new File([mediaBlob], fileName, { type: mimeType });
-        const uploadPath = `${courseId || 'temp'}/slides/${lesson.id}_${fileName}`;
-        
-        const { error: uploadError } = await supabase.storage
-          .from('course-files')
-          .upload(uploadPath, mediaFile, { upsert: true });
-          
-        if (!uploadError) {
-          const { data: { publicUrl } } = supabase.storage
-            .from('course-files')
-            .getPublicUrl(uploadPath);
-          mediaFiles[fileName] = publicUrl;
-        }
-      } catch (err) {
-        console.error('Error uploading media:', mediaPath, err);
-      }
-    }
-    
-    // Get slide files
-    const slideFiles = Object.keys(zip.files)
-      .filter(name => name.match(/ppt\/slides\/slide\d+\.xml$/))
-      .sort((a, b) => {
-        const numA = parseInt(a.match(/slide(\d+)\.xml$/)?.[1] || '0');
-        const numB = parseInt(b.match(/slide(\d+)\.xml$/)?.[1] || '0');
-        return numA - numB;
-      });
-
-    setUploadProgress(`Обработка ${slideFiles.length} слайдов...`);
-
-    for (let i = 0; i < slideFiles.length; i++) {
-      const slideFile = slideFiles[i];
-      const slideNum = parseInt(slideFile.match(/slide(\d+)\.xml$/)?.[1] || '0');
-      
-      const content = await zip.files[slideFile].async('string');
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(content, 'application/xml');
-      
-      // Extract text
-      const textNodes = doc.querySelectorAll('a\\:t, t');
-      const texts: string[] = [];
-      textNodes.forEach(node => {
-        const text = node.textContent?.trim();
-        if (text) texts.push(text);
-      });
-      
-      // Find image references in slide relationships
-      let slideImageUrl: string | undefined;
-      const relsPath = `ppt/slides/_rels/slide${slideNum}.xml.rels`;
-      if (zip.files[relsPath]) {
-        try {
-          const relsContent = await zip.files[relsPath].async('string');
-          const relsDoc = parser.parseFromString(relsContent, 'application/xml');
-          const relationships = relsDoc.querySelectorAll('Relationship');
-          
-          relationships.forEach(rel => {
-            const type = rel.getAttribute('Type') || '';
-            const target = rel.getAttribute('Target') || '';
-            
-            if (type.includes('/image') && target.includes('media/')) {
-              const mediaName = target.split('/').pop() || '';
-              if (mediaFiles[mediaName] && !slideImageUrl) {
-                slideImageUrl = mediaFiles[mediaName];
-              }
-            }
-          });
-        } catch (err) {
-          console.error('Error parsing rels:', err);
-        }
-      }
-      
-      // Create slide even if no text (may have only image)
-      if (texts.length > 0 || slideImageUrl) {
-        slidesArray.push({
-          id: crypto.randomUUID(),
-          title: texts[0] || `Слайд ${slideNum}`,
-          content: texts.slice(1).join('\n'),
-          imageUrl: slideImageUrl
-        });
-      }
-    }
-    
-    return slidesArray;
-  };
+  // Parse slides from content using new helper
+  const sliderContent = parseSliderContent(lesson.content);
+  const slides = sliderContent.slides;
+  const pptxFileUrl = sliderContent.pptxFileUrl;
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -392,30 +305,72 @@ function SliderLessonEditor({ lesson, courseId, onUpdate }: SliderLessonEditorPr
 
     const ext = file.name.toLowerCase().split('.').pop();
     if (ext !== 'pptx') {
-      setError('Формат .ppt не поддерживается браузером. Откройте файл в PowerPoint и сохраните как .pptx (Файл → Сохранить как → Формат: PowerPoint)');
+      setError('Формат .ppt не поддерживается. Откройте файл в PowerPoint и сохраните как .pptx');
       return;
     }
 
     setIsLoading(true);
     setError(null);
+    setUploadProgress('Загрузка файла...');
 
     try {
-      const parsedSlides = await parsePptxFile(file);
-      if (parsedSlides.length === 0) {
-        setError('Не удалось извлечь слайды из презентации');
-        return;
+      // Upload the PPTX file to PUBLIC presentations bucket (required for Google Docs Viewer)
+      const uploadPath = `${courseId || 'temp'}/${lesson.id}_${Date.now()}_${file.name}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('presentations')
+        .upload(uploadPath, file, { upsert: true });
+        
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        throw new Error('Ошибка загрузки файла');
       }
+      
+      const { data: { publicUrl } } = supabase.storage
+        .from('presentations')
+        .getPublicUrl(uploadPath);
+
+      setUploadProgress('Обработка презентации...');
+
+      // Also parse PPTX for slide count info
+      const JSZip = (await import('jszip')).default;
+      const arrayBuffer = await file.arrayBuffer();
+      const zip = await JSZip.loadAsync(arrayBuffer);
+      
+      // Get slide files count
+      const slideFiles = Object.keys(zip.files)
+        .filter(name => name.match(/ppt\/slides\/slide\d+\.xml$/));
+      
+      const slidesArray: SliderSlide[] = [];
+      
+      // Create placeholder slides for navigation
+      for (let i = 0; i < slideFiles.length; i++) {
+        slidesArray.push({
+          id: crypto.randomUUID(),
+          title: `Слайд ${i + 1}`,
+          content: ''
+        });
+      }
+      
+      // Save both the file URL and slides info
+      const newContent: SliderContent = {
+        slides: slidesArray,
+        pptxFileUrl: publicUrl
+      };
+      
       onUpdate({ 
-        content: JSON.stringify(parsedSlides),
+        content: JSON.stringify(newContent),
         title: lesson.title || file.name.replace(/\.pptx$/i, '')
       });
+      
       setCurrentIndex(0);
-      toast.success(`Загружено ${parsedSlides.length} слайдов`);
+      toast.success(`Загружена презентация с ${slideFiles.length} слайдами`);
     } catch (err) {
-      console.error('Error parsing PPTX:', err);
-      setError('Ошибка при обработке файла');
+      console.error('Error uploading PPTX:', err);
+      setError('Ошибка при загрузке файла');
     } finally {
       setIsLoading(false);
+      setUploadProgress('');
     }
   };
 

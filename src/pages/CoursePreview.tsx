@@ -24,7 +24,8 @@ import {
   Edit,
   Headphones,
   Image,
-  Play
+  Play,
+  Presentation
 } from "lucide-react";
 import { ContentBlock, jsonToBlocks, BlockRenderer } from "@/components/course-builder/BlockEditor";
 import { cn } from "@/lib/utils";
@@ -204,6 +205,138 @@ const VideoPreview = ({ content }: { content: string }) => {
   );
 };
 
+// Slider content types and helper
+interface SliderSlide {
+  id: string;
+  content: string;
+  title?: string;
+  imageUrl?: string;
+}
+
+interface SliderContent {
+  slides: SliderSlide[];
+  pptxFileUrl?: string;
+}
+
+const parseSliderContent = (content: string | null): SliderContent => {
+  try {
+    if (!content) return { slides: [] };
+    const parsed = JSON.parse(content);
+    if (Array.isArray(parsed)) {
+      return { slides: parsed };
+    }
+    if (typeof parsed === 'object' && parsed !== null) {
+      return {
+        slides: Array.isArray(parsed.slides) ? parsed.slides : [],
+        pptxFileUrl: parsed.pptxFileUrl
+      };
+    }
+    return { slides: [] };
+  } catch {
+    return { slides: [] };
+  }
+};
+
+// Slider Preview Component
+const SliderPreview = ({ content, title }: { content: string | null; title: string }) => {
+  const [isLoading, setIsLoading] = useState(true);
+  const [viewerError, setViewerError] = useState(false);
+  
+  const sliderContent = parseSliderContent(content);
+  const slides = sliderContent.slides;
+  const pptxFileUrl = sliderContent.pptxFileUrl;
+
+  const getViewerUrl = (fileUrl: string): string => {
+    const encodedUrl = encodeURIComponent(fileUrl);
+    return `https://docs.google.com/gview?url=${encodedUrl}&embedded=true`;
+  };
+
+  const handleIframeLoad = () => setIsLoading(false);
+  const handleIframeError = () => {
+    setIsLoading(false);
+    setViewerError(true);
+  };
+
+  if (pptxFileUrl) {
+    const viewerUrl = getViewerUrl(pptxFileUrl);
+    
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center">
+            <Presentation className="w-6 h-6 text-amber-500" />
+          </div>
+          <div className="flex-1">
+            <h3 className="font-display font-bold text-lg">{title}</h3>
+            <p className="text-sm text-muted-foreground">{slides.length} слайдов</p>
+          </div>
+          <a
+            href={pptxFileUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium bg-amber-500/10 text-amber-600 rounded-lg hover:bg-amber-500/20 transition-colors"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            Скачать
+          </a>
+        </div>
+        
+        <div className="rounded-2xl border border-amber-500/30 bg-card overflow-hidden shadow-lg">
+          <div className="relative w-full" style={{ minHeight: '600px' }}>
+            {isLoading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-secondary/50 z-10">
+                <div className="flex flex-col items-center gap-3">
+                  <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
+                  <p className="text-sm text-muted-foreground">Загрузка презентации...</p>
+                </div>
+              </div>
+            )}
+            {viewerError ? (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="text-center p-6">
+                  <Presentation className="w-16 h-16 mx-auto mb-4 text-amber-500/50" />
+                  <p className="text-muted-foreground mb-4">Не удалось загрузить просмотрщик</p>
+                  <a
+                    href={pptxFileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+                  >
+                    <FileText className="w-4 h-4" />
+                    Скачать презентацию
+                  </a>
+                </div>
+              </div>
+            ) : (
+              <iframe
+                src={viewerUrl}
+                className="w-full h-full border-0"
+                style={{ minHeight: '600px' }}
+                onLoad={handleIframeLoad}
+                onError={handleIframeError}
+                title={title}
+                allowFullScreen
+              />
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // No PPTX URL available
+  return (
+    <div className="space-y-6">
+      <div className="rounded-2xl border-2 border-dashed border-border p-8 flex items-center justify-center min-h-[300px]">
+        <div className="text-center text-muted-foreground">
+          <Presentation className="w-12 h-12 mx-auto mb-4 opacity-50" />
+          <p>Презентация не загружена</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const CoursePreview = () => {
   const { courseId } = useParams();
   const { user } = useAuth();
@@ -325,6 +458,7 @@ const CoursePreview = () => {
       case 'test': return ClipboardList;
       case 'audio': return Headphones;
       case 'image': return Image;
+      case 'slider': return Presentation;
       default: return FileText;
     }
   };
@@ -335,6 +469,7 @@ const CoursePreview = () => {
       case 'test': return 'Тест';
       case 'audio': return 'Аудио';
       case 'image': return 'Изображение';
+      case 'slider': return 'Презентация';
       default: return 'Текст';
     }
   };
@@ -585,6 +720,10 @@ const CoursePreview = () => {
                   </div>
                 </div>
               </div>
+            )}
+
+            {currentLesson?.type === 'slider' && (
+              <SliderPreview content={currentLesson.content} title={currentLesson.title} />
             )}
 
             {currentLesson?.type === 'test' && (

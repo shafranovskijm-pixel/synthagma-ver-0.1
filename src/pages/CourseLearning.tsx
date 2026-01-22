@@ -212,6 +212,33 @@ interface SliderSlide {
   imageUrl?: string;
 }
 
+interface SliderContent {
+  slides: SliderSlide[];
+  pptxFileUrl?: string;
+}
+
+// Parse slider content - supports both old array format and new object format
+const parseSliderContent = (content: string | null): SliderContent => {
+  try {
+    if (!content) return { slides: [] };
+    const parsed = JSON.parse(content);
+    // Support old format (array of slides)
+    if (Array.isArray(parsed)) {
+      return { slides: parsed };
+    }
+    // New format with pptxFileUrl
+    if (typeof parsed === 'object' && parsed !== null) {
+      return {
+        slides: Array.isArray(parsed.slides) ? parsed.slides : [],
+        pptxFileUrl: parsed.pptxFileUrl
+      };
+    }
+    return { slides: [] };
+  } catch {
+    return { slides: [] };
+  }
+};
+
 interface SliderLessonViewerProps {
   content: string | null;
   title: string;
@@ -220,19 +247,110 @@ interface SliderLessonViewerProps {
 }
 
 const SliderLessonViewer = ({ content, title, lessonIndex, isMobile }: SliderLessonViewerProps) => {
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [viewerError, setViewerError] = useState(false);
   
-  // Parse slides from content
-  const slides: SliderSlide[] = (() => {
-    try {
-      if (!content) return [];
-      const parsed = JSON.parse(content);
-      if (Array.isArray(parsed)) return parsed;
-      return [];
-    } catch {
-      return [];
-    }
-  })();
+  // Parse slides from content using new helper
+  const sliderContent = parseSliderContent(content);
+  const slides = sliderContent.slides;
+  const pptxFileUrl = sliderContent.pptxFileUrl;
+
+  // Generate Google Docs Viewer URL for PPTX
+  const getViewerUrl = (fileUrl: string): string => {
+    const encodedUrl = encodeURIComponent(fileUrl);
+    return `https://docs.google.com/gview?url=${encodedUrl}&embedded=true`;
+  };
+
+  // Handle iframe load
+  const handleIframeLoad = () => {
+    setIsLoading(false);
+  };
+
+  const handleIframeError = () => {
+    setIsLoading(false);
+    setViewerError(true);
+  };
+
+  // If we have a PPTX file URL, show it in an online viewer
+  if (pptxFileUrl) {
+    const viewerUrl = getViewerUrl(pptxFileUrl);
+    
+    return (
+      <div className="space-y-4 md:space-y-6 animate-fade-in">
+        {/* Header */}
+        <div className="flex items-center gap-3 pb-3 md:pb-4 border-b border-border">
+          <div className={cn(
+            "rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0",
+            isMobile ? "w-8 h-8" : "w-10 h-10"
+          )}>
+            <Presentation className={cn(isMobile ? "w-4 h-4" : "w-5 h-5", "text-amber-500")} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h1 className={cn(
+              "font-display font-bold line-clamp-2",
+              isMobile ? "text-lg" : "text-2xl"
+            )}>{title}</h1>
+            <p className="text-xs md:text-sm text-muted-foreground">
+              Презентация • {slides.length} слайдов
+            </p>
+          </div>
+          <a
+            href={pptxFileUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium bg-amber-500/10 text-amber-600 rounded-lg hover:bg-amber-500/20 transition-colors"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            {!isMobile && "Скачать"}
+          </a>
+        </div>
+
+        {/* PPTX Viewer */}
+        <div className="rounded-2xl border border-amber-500/30 bg-card overflow-hidden shadow-lg">
+          <div className="relative w-full" style={{ minHeight: isMobile ? '400px' : '600px' }}>
+            {isLoading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-secondary/50 z-10">
+                <div className="flex flex-col items-center gap-3">
+                  <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
+                  <p className="text-sm text-muted-foreground">Загрузка презентации...</p>
+                </div>
+              </div>
+            )}
+            {viewerError ? (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="text-center p-6">
+                  <Presentation className="w-16 h-16 mx-auto mb-4 text-amber-500/50" />
+                  <p className="text-muted-foreground mb-4">Не удалось загрузить просмотрщик</p>
+                  <a
+                    href={pptxFileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors"
+                  >
+                    <FileText className="w-4 h-4" />
+                    Скачать презентацию
+                  </a>
+                </div>
+              </div>
+            ) : (
+              <iframe
+                src={viewerUrl}
+                className="w-full h-full border-0"
+                style={{ minHeight: isMobile ? '400px' : '600px' }}
+                onLoad={handleIframeLoad}
+                onError={handleIframeError}
+                title={title}
+                allowFullScreen
+              />
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Fallback to old slide-by-slide view if no PPTX URL
+  const [currentIndex, setCurrentIndex] = useState(0);
 
   const goToSlide = (index: number) => {
     if (index >= 0 && index < slides.length) {
