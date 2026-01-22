@@ -294,17 +294,17 @@ const SliderLessonViewer = ({ content, title, lessonIndex, isMobile }: SliderLes
       {/* Slider Content */}
       <div className="rounded-2xl border border-amber-500/30 bg-card overflow-hidden shadow-lg">
         <div className={cn(
-          "min-h-[300px] md:min-h-[400px]",
           isMobile ? "p-4" : "p-6"
         )}>
           {currentSlide && (
             <div className="space-y-4">
               {currentSlide.imageUrl && (
-                <div className="rounded-xl overflow-hidden border border-border bg-secondary/20">
+                <div className="rounded-xl overflow-hidden border border-border bg-white flex items-center justify-center">
                   <img 
                     src={currentSlide.imageUrl} 
                     alt={currentSlide.title || 'Слайд'} 
-                    className="w-full max-h-[400px] object-contain mx-auto"
+                    className="w-full h-auto object-contain"
+                    style={{ maxHeight: 'calc(100vh - 350px)', minHeight: '300px' }}
                   />
                 </div>
               )}
