@@ -7,6 +7,7 @@ import { useTabNavigation } from "@/hooks/useTabNavigation";
 import { OrgSidebar, TabType } from "@/components/organization/OrgSidebar";
 import { TabContentRenderer } from "@/components/organization/tabs/TabContentRenderer";
 import { DialogsContainer } from "@/components/organization/dialogs/DialogsContainer";
+import { MissingCredentialsAlert } from "@/components/organization/MissingCredentialsAlert";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrgFeatures } from "@/hooks/useOrgFeatures";
 import { useRegistrationLinks } from "@/hooks/useRegistrationLinks";
@@ -319,6 +320,13 @@ export default function OrganizationDashboard() {
         </header>
 
         <div className="p-4 lg:p-8 overflow-hidden">
+          {/* Alert for students without credentials */}
+          <MissingCredentialsAlert 
+            students={students}
+            isCreating={studentActions.isCreatingBulkCredentials}
+            onCreateCredentials={handleBulkCreateCredentials}
+          />
+          
           <AnimatedTabContent tabKey={activeTab} direction={swipeDirection} isMobile={isMobile}>
             <TabContentRenderer
               activeTab={activeTab}
