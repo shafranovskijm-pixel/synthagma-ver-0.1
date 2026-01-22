@@ -315,7 +315,15 @@ function SliderLessonEditor({ lesson, courseId, onUpdate }: SliderLessonEditorPr
 
     try {
       // Upload the PPTX file to PUBLIC presentations bucket (required for Google Docs Viewer)
-      const uploadPath = `${courseId || 'temp'}/${lesson.id}_${Date.now()}_${file.name}`;
+      // Sanitize filename: remove non-ASCII characters and spaces (Supabase Storage limitation)
+      const safeFileName = file.name
+        .replace(/[^\x00-\x7F]/g, '') // Remove non-ASCII (Cyrillic, etc.)
+        .replace(/\s+/g, '_')         // Replace spaces with underscores
+        .replace(/_{2,}/g, '_')       // Collapse multiple underscores
+        .replace(/^_|_$/g, '')        // Trim leading/trailing underscores
+        || 'presentation.pptx';       // Fallback if name becomes empty
+      
+      const uploadPath = `${courseId || 'temp'}/${lesson.id}_${Date.now()}_${safeFileName}`;
       
       const { error: uploadError } = await supabase.storage
         .from('presentations')
