@@ -83,21 +83,27 @@ export function useStudentActions(
     }
     setIsCreatingCredentials(true);
     try {
-      const login = generateLogin(student.name);
+      const login = student.login || generateLogin(student.name);
       const password = generateSimplePassword();
 
-      const { error } = await supabase.from("profiles").update({
-        login,
-        generated_password: password
-      }).eq("user_id", student.user_id);
+      // Use edge function to update both auth.users and profiles
+      const { data, error } = await supabase.functions.invoke("update-student-credentials", {
+        body: {
+          user_id: student.user_id,
+          new_login: login,
+          new_password: password
+        }
+      });
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      
       toast.success(`Создан логин: ${login}`);
       onRefresh();
       return { login, password };
     } catch (error) {
       console.error("Error creating credentials:", error);
-      toast.error("Ошибка создания логина");
+      toast.error(error instanceof Error ? error.message : "Ошибка создания логина");
       return null;
     } finally {
       setIsCreatingCredentials(false);
@@ -164,9 +170,9 @@ export function useStudentActions(
   }, [organizationName]);
 
   const bulkCreateCredentials = useCallback(async (students: Student[]) => {
-    const studentsToCreate = students.filter(s => !s.login);
+    const studentsToCreate = students.filter(s => !s.login || !s.generated_password);
     if (studentsToCreate.length === 0) {
-      toast.info("У всех выбранных учеников уже есть логин");
+      toast.info("У всех выбранных учеников уже есть логин и пароль");
       return;
     }
     setIsCreatingBulkCredentials(true);
@@ -175,13 +181,20 @@ export function useStudentActions(
     try {
       for (const student of studentsToCreate) {
         try {
-          const login = generateLogin(student.name);
+          const login = student.login || generateLogin(student.name);
           const password = generateSimplePassword();
-          const { error } = await supabase.from("profiles").update({
-            login,
-            generated_password: password
-          }).eq("user_id", student.user_id);
+          
+          // Use edge function to update both auth.users and profiles
+          const { data, error } = await supabase.functions.invoke("update-student-credentials", {
+            body: {
+              user_id: student.user_id,
+              new_login: login,
+              new_password: password
+            }
+          });
+          
           if (error) throw error;
+          if (data?.error) throw new Error(data.error);
           successCount++;
         } catch {
           errorCount++;

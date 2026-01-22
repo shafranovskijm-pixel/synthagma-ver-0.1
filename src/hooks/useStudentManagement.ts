@@ -212,15 +212,20 @@ export function useStudentManagement({
     }
     
     try {
-      const login = generateLogin(student.name);
+      const login = student.login || generateLogin(student.name);
       const password = generateSimplePassword();
 
-      const { error } = await supabase.from("profiles").update({
-        login,
-        generated_password: password
-      }).eq("user_id", student.user_id);
+      // Use edge function to update both auth.users and profiles
+      const { data, error } = await supabase.functions.invoke("update-student-credentials", {
+        body: {
+          user_id: student.user_id,
+          new_login: login,
+          new_password: password
+        }
+      });
       
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
       // Update lists
       setStudents(prev => prev.map(s => s.user_id === student.user_id ? {
@@ -238,7 +243,7 @@ export function useStudentManagement({
       return { login, password };
     } catch (error) {
       console.error("Error creating credentials:", error);
-      toast.error("Ошибка создания логина и пароля");
+      toast.error(error instanceof Error ? error.message : "Ошибка создания логина и пароля");
       return null;
     }
   }, [setStudents, setAllProfiles]);
@@ -256,15 +261,20 @@ export function useStudentManagement({
 
     for (const student of studentsToCreate) {
       try {
-        const login = generateLogin(student.name);
+        const login = student.login || generateLogin(student.name);
         const password = generateSimplePassword();
 
-        const { error } = await supabase.from("profiles").update({
-          login,
-          generated_password: password
-        }).eq("user_id", student.user_id);
+        // Use edge function to update both auth.users and profiles
+        const { data, error } = await supabase.functions.invoke("update-student-credentials", {
+          body: {
+            user_id: student.user_id,
+            new_login: login,
+            new_password: password
+          }
+        });
         
         if (error) throw error;
+        if (data?.error) throw new Error(data.error);
         
         createdCredentials.push({ name: student.name, login, password });
         successCount++;
