@@ -1551,6 +1551,44 @@ export type Database = {
           },
         ]
       }
+      organization_offer_acceptances: {
+        Row: {
+          accepted_at: string
+          id: string
+          ip_address: string | null
+          offer_version: string | null
+          organization_id: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          accepted_at?: string
+          id?: string
+          ip_address?: string | null
+          offer_version?: string | null
+          organization_id: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          accepted_at?: string
+          id?: string
+          ip_address?: string | null
+          offer_version?: string | null
+          organization_id?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_offer_acceptances_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_reminders: {
         Row: {
           created_at: string
