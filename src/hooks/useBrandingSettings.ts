@@ -9,6 +9,8 @@ interface BrandingSettings {
   secondaryColor: string;
   logoUrl: string;
   showOrgName: boolean;
+  coverPosition: 'cover' | 'contain' | 'center' | 'top' | 'bottom';
+  customName: string;
 }
 
 export function useBrandingSettings(organizationId: string | null, userId: string | undefined) {
@@ -17,7 +19,9 @@ export function useBrandingSettings(organizationId: string | null, userId: strin
     primaryColor: '#6366f1',
     secondaryColor: '#8b5cf6',
     logoUrl: '',
-    showOrgName: true
+    showOrgName: true,
+    coverPosition: 'cover',
+    customName: ''
   });
   const [isUploadingCover, setIsUploadingCover] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
@@ -41,7 +45,9 @@ export function useBrandingSettings(organizationId: string | null, userId: strin
             primaryColor: branding.primaryColor as string || '#6366f1',
             secondaryColor: branding.secondaryColor as string || '#8b5cf6',
             logoUrl: branding.logoUrl as string || '',
-            showOrgName: branding.showOrgName !== false
+            showOrgName: branding.showOrgName !== false,
+            coverPosition: (branding.coverPosition as BrandingSettings['coverPosition']) || 'cover',
+            customName: branding.customName as string || ''
           });
         }
       } catch (error) {

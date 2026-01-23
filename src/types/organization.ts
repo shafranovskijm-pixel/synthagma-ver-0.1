@@ -37,6 +37,8 @@ export interface BrandingSettings {
   secondaryColor?: string;
   logoUrl?: string;
   showOrgName?: boolean;
+  coverPosition?: 'cover' | 'contain' | 'center' | 'top' | 'bottom';
+  customName?: string;
 }
 
 export interface StudentDashboardSettings {
