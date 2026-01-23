@@ -194,41 +194,27 @@ export function PatchUpdatesManager() {
     }
   };
 
-  const exportPatchTemplate = () => {
-    const template = {
-      version: "1.0.0",
-      name: "Название обновления",
-      description: "Описание изменений",
-      patch_type: "full",
-      source_project_url: "https://example.lovable.app",
-      data: {
-        files: [
-          {
-            path: "src/components/Example.tsx",
-            content: "// Содержимое файла",
-            action: "create"
-          }
-        ],
-        config: {},
-        metadata: {
-          createdAt: new Date().toISOString(),
-          author: "Developer"
-        }
-      },
-      migrations: [
-        "-- SQL миграция (опционально)"
-      ]
-    };
-
-    const blob = new Blob([JSON.stringify(template, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'patch-template.json';
-    a.click();
-    URL.revokeObjectURL(url);
-    
-    toast.success('Шаблон патча скачан');
+  const exportPatchTemplate = async () => {
+    try {
+      const response = await fetch('/templates/sintagma-patch-v2-full.json');
+      if (!response.ok) {
+        throw new Error('Не удалось загрузить шаблон');
+      }
+      const template = await response.json();
+      
+      const blob = new Blob([JSON.stringify(template, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'sintagma-patch-v2-template.json';
+      a.click();
+      URL.revokeObjectURL(url);
+      
+      toast.success('Расширенный шаблон патча v2 скачан');
+    } catch (error) {
+      console.error('Error downloading template:', error);
+      toast.error('Ошибка загрузки шаблона');
+    }
   };
 
   const getStatusBadge = (patch: SystemPatch) => {
