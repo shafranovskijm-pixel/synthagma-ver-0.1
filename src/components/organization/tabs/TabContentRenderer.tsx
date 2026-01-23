@@ -21,6 +21,8 @@ export interface BrandingSettings {
   primaryColor: string;
   secondaryColor: string;
   showOrgName: boolean;
+  coverPosition: 'cover' | 'contain' | 'center' | 'top' | 'bottom';
+  customName: string;
 }
 
 export interface StudentDashboardSettings {

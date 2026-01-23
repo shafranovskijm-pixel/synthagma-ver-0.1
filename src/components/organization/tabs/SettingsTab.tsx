@@ -25,6 +25,8 @@ interface BrandingSettings {
   primaryColor: string;
   secondaryColor: string;
   showOrgName: boolean;
+  coverPosition: 'cover' | 'contain' | 'center' | 'top' | 'bottom';
+  customName: string;
 }
 
 interface StudentDashboardSettings {
@@ -336,7 +338,20 @@ export function SettingsTab({
               <div className="relative">
                 {brandingSettings.coverUrl ? (
                   <div className="relative rounded-xl overflow-hidden border border-border">
-                    <img src={brandingSettings.coverUrl} alt="Обложка" className="w-full h-32 object-cover" />
+                    <img 
+                      src={brandingSettings.coverUrl} 
+                      alt="Обложка" 
+                      className="w-full h-32"
+                      style={{
+                        objectFit: brandingSettings.coverPosition === 'contain' ? 'contain' : 'cover',
+                        objectPosition: brandingSettings.coverPosition === 'top' 
+                          ? 'center top' 
+                          : brandingSettings.coverPosition === 'bottom' 
+                            ? 'center bottom' 
+                            : 'center center',
+                        backgroundColor: 'hsl(var(--muted))'
+                      }}
+                    />
                     <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                       <label className="cursor-pointer">
                         <input type="file" accept="image/*" className="hidden" onChange={onCoverUpload} />
@@ -368,6 +383,32 @@ export function SettingsTab({
                       )}
                     </div>
                   </label>
+                )}
+                
+                {/* Cover Position Selector */}
+                {brandingSettings.coverUrl && (
+                  <div className="mt-3">
+                    <Label className="text-xs text-muted-foreground mb-2 block">Позиционирование обложки</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { value: 'cover' as const, label: 'Заполнить' },
+                        { value: 'contain' as const, label: 'Вписать' },
+                        { value: 'center' as const, label: 'По центру' },
+                        { value: 'top' as const, label: 'Сверху' },
+                        { value: 'bottom' as const, label: 'Снизу' }
+                      ].map(pos => (
+                        <Button
+                          key={pos.value}
+                          size="sm"
+                          variant={brandingSettings.coverPosition === pos.value ? 'default' : 'outline'}
+                          className="rounded-lg text-xs"
+                          onClick={() => setBrandingSettings(prev => ({ ...prev, coverPosition: pos.value }))}
+                        >
+                          {pos.label}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
@@ -419,6 +460,20 @@ export function SettingsTab({
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* Custom Organization Name */}
+            <div>
+              <Label className="text-sm font-medium mb-2 block">Кастомное название</Label>
+              <p className="text-sm text-muted-foreground mb-3">
+                Отображается вместо официального названия организации (оставьте пустым для использования официального)
+              </p>
+              <Input
+                value={brandingSettings.customName || ''}
+                onChange={e => setBrandingSettings(prev => ({ ...prev, customName: e.target.value }))}
+                className="rounded-xl"
+                placeholder="Введите название для отображения..."
+              />
             </div>
 
             {/* Colors */}
