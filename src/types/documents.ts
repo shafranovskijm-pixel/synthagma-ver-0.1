@@ -121,3 +121,13 @@ export type DocumentType =
   | "act"
   | "consent"
   | "other";
+
+export interface OrganizationOfferAcceptance {
+  id: string;
+  organization_id: string;
+  user_id: string;
+  accepted_at: string;
+  ip_address: string | null;
+  user_agent: string | null;
+  offer_version: string | null;
+}
