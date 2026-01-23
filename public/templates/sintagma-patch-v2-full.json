@@ -1,0 +1,140 @@
+{
+  "$schema": "sintagma-patch-v2",
+  "version": "2.0.0",
+  "name": "Название патча",
+  "description": "Подробное описание всей функциональности патча",
+  "patch_type": "full",
+  "source_project": {
+    "url": "https://id-preview--xxx.lovable.app",
+    "name": "Sintagma Remix",
+    "branch": "main"
+  },
+  "created_at": "2026-01-23T12:00:00.000Z",
+  "author": "Developer Name",
+
+  "ai_instructions": {
+    "apply_prompt": "Ты получил патч для переноса функциональности из ремикса Синтагмы в основной проект. Следуй этим инструкциям СТРОГО:\n\n## ПОРЯДОК ПРИМЕНЕНИЯ:\n\n### 1. ПРОВЕРКА СЕКРЕТОВ\nПроверь, все ли секреты из required_secrets настроены в проекте. Если нет — запроси их у пользователя через add_secret ПЕРЕД продолжением.\n\n### 2. ПРОВЕРКА ЗАВИСИМОСТЕЙ\nУбедись, что все пакеты из dependencies установлены. Если нет — установи через lov-add-dependency.\n\n### 3. ПРИМЕНЕНИЕ МИГРАЦИЙ\nВыполни ВСЕ SQL миграции из раздела migrations через supabase--migration. Дождись подтверждения пользователя.\n\n### 4. СОЗДАНИЕ ФАЙЛОВ\nСоздай ВСЕ файлы из раздела files с action='create'. Используй ТОЧНОЕ содержимое из поля content. НЕ МЕНЯЙ КОД!\n\n### 5. ОБНОВЛЕНИЕ ФАЙЛОВ\nДля файлов с action='update' — примени изменения через lov-line-replace, сохраняя существующую логику.\n\n### 6. ОБНОВЛЕНИЕ SUPABASE CONFIG\nЕсли есть supabase_config — добавь настройки в supabase/config.toml.\n\n### 7. ИНТЕГРАЦИЯ\nСледуй инструкциям из integration_points для подключения компонентов к существующему коду.\n\n### 8. ВАЛИДАЦИЯ\nПроверь, что все файлы созданы и миграции применены успешно.\n\n## ВАЖНО:\n- НЕ ИЗМЕНЯЙ код из content — копируй как есть\n- При конфликтах — спроси пользователя\n- Создавай файлы ПАРАЛЛЕЛЬНО для скорости\n- После применения — кратко отчитайся о результате",
+
+    "export_prompt": "Пользователь хочет экспортировать функциональность в патч v2. Следуй этим шагам:\n\n1. Спроси, какие файлы/компоненты нужно включить в патч\n2. Прочитай ВСЕ указанные файлы\n3. Сформируй JSON-патч по шаблону sintagma-patch-v2:\n   - Заполни files с полным content каждого файла\n   - Добавь все необходимые миграции\n   - Укажи required_secrets и dependencies\n   - Опиши integration_points\n4. Сохрани патч в public/patches/[name]-v[version].json\n5. Предложи скачать файл",
+
+    "conflict_resolution": {
+      "file_exists": "Если файл уже существует и action='create', спроси пользователя: заменить, объединить или пропустить",
+      "table_exists": "Если таблица существует, пропусти CREATE TABLE но примени ALTER если есть новые колонки",
+      "secret_missing": "Если секрет не настроен, запроси через add_secret и ДОЖДИСЬ подтверждения"
+    }
+  },
+
+  "data": {
+    "files": [
+      {
+        "path": "src/components/example/Component.tsx",
+        "action": "create",
+        "description": "Описание компонента и его назначения",
+        "content": "// =============================================\n// ПОЛНЫЙ КОД КОМПОНЕНТА - КОПИРУЙ КАК ЕСТЬ\n// =============================================\n\nimport React from 'react';\n\nexport const Component = () => {\n  return (\n    <div>\n      <h1>Example Component</h1>\n    </div>\n  );\n};\n\nexport default Component;",
+        "dependencies": ["react"],
+        "imports_required": []
+      },
+      {
+        "path": "src/hooks/useExample.ts",
+        "action": "create",
+        "description": "Кастомный хук",
+        "content": "import { useState, useCallback } from 'react';\n\nexport const useExample = () => {\n  const [data, setData] = useState(null);\n  \n  const fetchData = useCallback(async () => {\n    // Logic here\n  }, []);\n  \n  return { data, fetchData };\n};",
+        "dependencies": [],
+        "imports_required": []
+      },
+      {
+        "path": "supabase/functions/example-function/index.ts",
+        "action": "create",
+        "description": "Edge Function для API",
+        "content": "import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';\n\nconst corsHeaders = {\n  'Access-Control-Allow-Origin': '*',\n  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',\n};\n\nserve(async (req) => {\n  if (req.method === 'OPTIONS') {\n    return new Response(null, { headers: corsHeaders });\n  }\n\n  try {\n    const { param } = await req.json();\n    \n    // Your logic here\n    \n    return new Response(\n      JSON.stringify({ success: true }),\n      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }\n    );\n  } catch (error) {\n    return new Response(\n      JSON.stringify({ error: error.message }),\n      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }\n    );\n  }\n});",
+        "required_secrets": ["API_KEY"],
+        "verify_jwt": false
+      }
+    ],
+
+    "config": {
+      "required_secrets": [
+        {
+          "name": "API_KEY",
+          "description": "API ключ для внешнего сервиса",
+          "required": true
+        }
+      ],
+      "dependencies": {
+        "package-name": "^1.0.0"
+      },
+      "supabase_config": {
+        "functions": {
+          "example-function": {
+            "verify_jwt": false
+          }
+        }
+      }
+    },
+
+    "metadata": {
+      "features": [
+        "Функция 1: описание",
+        "Функция 2: описание"
+      ],
+      "screenshots": [],
+      "demo_url": "",
+      "documentation": ""
+    },
+
+    "integration_points": [
+      {
+        "file": "src/pages/Dashboard.tsx",
+        "location": "после импортов",
+        "action": "add_import",
+        "code": "import { Component } from '@/components/example/Component';"
+      },
+      {
+        "file": "src/pages/Dashboard.tsx", 
+        "location": "внутри return JSX",
+        "action": "add_component",
+        "code": "<Component />"
+      }
+    ]
+  },
+
+  "migrations": [
+    {
+      "order": 1,
+      "name": "001_create_example_table",
+      "description": "Создание таблицы для хранения данных",
+      "sql": "-- Создание таблицы\nCREATE TABLE IF NOT EXISTS public.example_table (\n  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,\n  user_id UUID NOT NULL,\n  name TEXT NOT NULL,\n  data JSONB DEFAULT '{}',\n  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),\n  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()\n);\n\n-- Включение RLS\nALTER TABLE public.example_table ENABLE ROW LEVEL SECURITY;\n\n-- Политики безопасности\nCREATE POLICY \"Users can view own data\" ON public.example_table\n  FOR SELECT USING (auth.uid() = user_id);\n\nCREATE POLICY \"Users can insert own data\" ON public.example_table\n  FOR INSERT WITH CHECK (auth.uid() = user_id);\n\nCREATE POLICY \"Users can update own data\" ON public.example_table\n  FOR UPDATE USING (auth.uid() = user_id);\n\nCREATE POLICY \"Users can delete own data\" ON public.example_table\n  FOR DELETE USING (auth.uid() = user_id);\n\n-- Триггер обновления updated_at\nCREATE TRIGGER update_example_table_updated_at\n  BEFORE UPDATE ON public.example_table\n  FOR EACH ROW\n  EXECUTE FUNCTION public.update_updated_at_column();",
+      "rollback": "DROP TABLE IF EXISTS public.example_table CASCADE;"
+    }
+  ],
+
+  "validation": {
+    "pre_apply": [
+      {
+        "type": "secret_exists",
+        "name": "API_KEY",
+        "on_fail": "request_secret"
+      },
+      {
+        "type": "dependency_installed",
+        "package": "package-name",
+        "on_fail": "install_dependency"
+      }
+    ],
+    "post_apply": [
+      {
+        "type": "file_exists",
+        "path": "src/components/example/Component.tsx"
+      },
+      {
+        "type": "table_exists",
+        "table": "example_table"
+      }
+    ]
+  },
+
+  "rollback": {
+    "instructions": "Для отката изменений:\n1. Удалите созданные файлы\n2. Выполните rollback SQL из миграций\n3. Удалите добавленные секреты",
+    "auto_rollback_supported": false
+  }
+}
