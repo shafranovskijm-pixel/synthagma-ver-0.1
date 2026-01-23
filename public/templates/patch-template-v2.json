@@ -1,0 +1,88 @@
+{
+  "version": "2.0.0",
+  "schema_version": "2",
+  "name": "Название патча",
+  "description": "Подробное описание функциональности",
+  "patch_type": "full",
+  "source_project_url": "https://id-preview--xxx.lovable.app",
+  "created_at": "2026-01-23T10:00:00.000Z",
+  "author": "Developer Name",
+  
+  "data": {
+    "files": [
+      {
+        "path": "src/components/example/MyComponent.tsx",
+        "action": "create",
+        "description": "Описание компонента",
+        "content": "// Полный код компонента\nimport React from 'react';\n\nexport const MyComponent = () => {\n  return <div>Hello</div>;\n};"
+      },
+      {
+        "path": "src/hooks/useMyHook.ts",
+        "action": "create", 
+        "description": "Кастомный хук",
+        "content": "import { useState } from 'react';\n\nexport const useMyHook = () => {\n  const [state, setState] = useState(null);\n  return { state, setState };\n};"
+      },
+      {
+        "path": "supabase/functions/my-function/index.ts",
+        "action": "create",
+        "description": "Edge Function",
+        "content": "import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';\n\nconst corsHeaders = {\n  'Access-Control-Allow-Origin': '*',\n  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',\n};\n\nserve(async (req) => {\n  if (req.method === 'OPTIONS') {\n    return new Response(null, { headers: corsHeaders });\n  }\n  \n  // Function logic here\n  return new Response(JSON.stringify({ success: true }), {\n    headers: { ...corsHeaders, 'Content-Type': 'application/json' },\n  });\n});"
+      }
+    ],
+    
+    "config": {
+      "required_secrets": ["API_KEY_1", "API_KEY_2"],
+      "dependencies": {
+        "package-name": "^1.0.0"
+      },
+      "supabase_config": {
+        "functions": {
+          "my-function": {
+            "verify_jwt": false
+          }
+        }
+      }
+    },
+    
+    "metadata": {
+      "features": [
+        "Функция 1",
+        "Функция 2"
+      ],
+      "integration_points": [
+        "Где интегрировать: Component.tsx строка X"
+      ],
+      "breaking_changes": [],
+      "rollback_instructions": "Как откатить изменения"
+    }
+  },
+  
+  "migrations": [
+    {
+      "name": "001_create_table",
+      "description": "Создание основной таблицы",
+      "sql": "CREATE TABLE IF NOT EXISTS public.my_table (\n  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,\n  name TEXT NOT NULL,\n  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()\n);\n\nALTER TABLE public.my_table ENABLE ROW LEVEL SECURITY;\n\nCREATE POLICY \"Users can view\" ON public.my_table FOR SELECT USING (true);"
+    }
+  ],
+  
+  "validation": {
+    "pre_checks": [
+      {
+        "type": "table_not_exists",
+        "table": "my_table",
+        "message": "Таблица my_table уже существует"
+      },
+      {
+        "type": "file_not_exists", 
+        "path": "src/components/example/MyComponent.tsx",
+        "message": "Компонент уже существует"
+      }
+    ],
+    "post_checks": [
+      {
+        "type": "file_exists",
+        "path": "src/components/example/MyComponent.tsx"
+      }
+    ]
+  }
+}
