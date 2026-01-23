@@ -240,6 +240,8 @@ export default function OrganizationDashboard() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         organizationName={organizationName}
+        customName={brandingSettings.customName}
+        logoUrl={brandingSettings.logoUrl}
         isFrdoEnabled={isFrdoEnabled}
         menuSettings={menuSettings}
         isEnabled={isEnabled}
@@ -250,6 +252,26 @@ export default function OrganizationDashboard() {
 
       {/* Main content */}
       <main ref={swipeRef} className={`flex-1 overflow-auto lg:ml-64 ${isAdminView ? 'mt-10' : ''}`}>
+        {/* Cover Image */}
+        {brandingSettings.coverUrl && (
+          <div className="relative w-full h-32 lg:h-48 overflow-hidden">
+            <img 
+              src={brandingSettings.coverUrl} 
+              alt="Обложка организации" 
+              className="w-full h-full"
+              style={{
+                objectFit: brandingSettings.coverPosition === 'contain' ? 'contain' : 'cover',
+                objectPosition: brandingSettings.coverPosition === 'top' 
+                  ? 'center top' 
+                  : brandingSettings.coverPosition === 'bottom' 
+                    ? 'center bottom' 
+                    : 'center center',
+                backgroundColor: 'hsl(var(--muted))'
+              }}
+            />
+          </div>
+        )}
+        
         {/* Header */}
         <header className="bg-card border-b border-border px-4 lg:px-8 py-4 lg:py-6">
           <div className="flex items-center justify-between">
@@ -275,7 +297,7 @@ export default function OrganizationDashboard() {
                   <h1 className="font-display text-xl lg:text-2xl font-bold">Охрана труда</h1>
                 )}
                 {activeTab !== "organizations" && activeTab !== "frdo" && activeTab !== "labor-safety" && (
-                  <p className="text-muted-foreground text-sm lg:text-base">{organizationName}</p>
+                  <p className="text-muted-foreground text-sm lg:text-base">{brandingSettings.customName || organizationName}</p>
                 )}
               </div>
             </div>
