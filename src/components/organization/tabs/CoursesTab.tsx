@@ -267,15 +267,24 @@ export function CoursesTab({ organizationId, onCourseClick, onOpenCourseDetails,
   const handleToggleCourseSetting = async (course: Course, setting: 'skip_video_identification' | 'sequential_lessons' | 'allow_video_seek', e: React.MouseEvent) => {
     e.stopPropagation();
     const currentValue = course[setting] ?? (setting === 'allow_video_seek' ? true : false);
-    const success = await update(course.id, { [setting]: !currentValue });
-    if (success) {
+    const newValue = !currentValue;
+    
+    const { error } = await supabase
+      .from('courses')
+      .update({ [setting]: newValue })
+      .eq('id', course.id);
+    
+    if (!error) {
       const messages: Record<string, [string, string]> = {
         skip_video_identification: ['Видеоидентификация отключена', 'Видеоидентификация включена'],
         sequential_lessons: ['Последовательность уроков включена', 'Последовательность уроков отключена'],
         allow_video_seek: ['Перемотка видео отключена', 'Перемотка видео включена'],
       };
       const [onMsg, offMsg] = messages[setting];
-      toast.success(!currentValue ? onMsg : offMsg);
+      toast.success(newValue ? onMsg : offMsg);
+      refresh(); // Refresh data to update UI
+    } else {
+      toast.error('Ошибка сохранения');
     }
   };
 
