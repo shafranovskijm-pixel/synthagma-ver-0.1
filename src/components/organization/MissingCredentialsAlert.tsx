@@ -1,10 +1,11 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { AlertTriangle, KeyRound, X, Users, Mail, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Student } from "@/types/shared";
+import { supabase } from "@/integrations/supabase/client";
 
 interface MissingCredentialsAlertProps {
   students: Student[];
@@ -19,10 +20,33 @@ export function MissingCredentialsAlert({
 }: MissingCredentialsAlertProps) {
   const [isDismissed, setIsDismissed] = useState(false);
   const [sendEmails, setSendEmails] = useState(true);
+  const [excludedUserIds, setExcludedUserIds] = useState<Set<string>>(new Set());
+
+  // Fetch organization/admin users to exclude them
+  useEffect(() => {
+    const fetchExcludedUsers = async () => {
+      const userIds = students.map(s => s.user_id);
+      if (userIds.length === 0) return;
+
+      const { data: rolesData } = await supabase
+        .from("user_roles")
+        .select("user_id, role")
+        .in("user_id", userIds)
+        .in("role", ["organization", "admin"]);
+
+      const excluded = new Set((rolesData || []).map(r => r.user_id));
+      setExcludedUserIds(excluded);
+    };
+
+    fetchExcludedUsers();
+  }, [students]);
 
   const studentsWithoutCredentials = useMemo(() => {
-    return students.filter(s => !s.login || !s.generated_password);
-  }, [students]);
+    return students.filter(s => 
+      (!s.login || !s.generated_password) && 
+      !excludedUserIds.has(s.user_id)
+    );
+  }, [students, excludedUserIds]);
 
   const studentsWithEmail = useMemo(() => {
     return studentsWithoutCredentials.filter(s => s.email);
