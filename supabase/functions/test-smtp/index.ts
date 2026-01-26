@@ -1,11 +1,20 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
 };
+
+// Base64 encode for UTF-8 strings
+function base64Encode(str: string): string {
+  return btoa(unescape(encodeURIComponent(str)));
+}
+
+// Encode subject for email (RFC 2047)
+function encodeSubject(subject: string): string {
+  return `=?UTF-8?B?${base64Encode(subject)}?=`;
+}
 
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
@@ -23,7 +32,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (!SMTP_HOST || !SMTP_PORT || !SMTP_USER || !SMTP_PASS || !SMTP_FROM) {
       return new Response(
-        JSON.stringify({ error: "SMTP credentials are not fully configured", config: { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_FROM } }),
+        JSON.stringify({ error: "SMTP credentials are not fully configured" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -43,7 +52,6 @@ const handler = async (req: Request): Promise<Response> => {
 <html>
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 </head>
 <body>
   <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -59,30 +67,82 @@ const handler = async (req: Request): Promise<Response> => {
 </body>
 </html>`;
 
-    const client = new SMTPClient({
-      connection: {
-        hostname: SMTP_HOST,
-        port: parseInt(SMTP_PORT, 10),
-        tls: true,
-        auth: {
-          username: SMTP_USER,
-          password: SMTP_PASS,
-        },
-      },
+    // Build raw email with proper encoding
+    const boundary = "----=_Part_" + Date.now();
+    const encodedSubject = encodeSubject("Тестовое письмо - SMTP проверка");
+    const encodedHtml = base64Encode(htmlContent);
+    
+    const rawEmail = [
+      `From: ${SMTP_FROM}`,
+      `To: ${to}`,
+      `Subject: ${encodedSubject}`,
+      `MIME-Version: 1.0`,
+      `Content-Type: text/html; charset=UTF-8`,
+      `Content-Transfer-Encoding: base64`,
+      ``,
+      encodedHtml.match(/.{1,76}/g)?.join('\r\n') || encodedHtml,
+    ].join('\r\n');
+
+    // Connect via TLS
+    const conn = await Deno.connectTls({
+      hostname: SMTP_HOST,
+      port: parseInt(SMTP_PORT, 10),
     });
 
-    await client.send({
-      from: SMTP_FROM,
-      to: to,
-      subject: "=?UTF-8?B?" + btoa(unescape(encodeURIComponent("Тестовое письмо - SMTP проверка"))) + "?=",
-      html: htmlContent,
-      headers: {
-        "Content-Type": "text/html; charset=UTF-8",
-        "Content-Transfer-Encoding": "base64",
-      },
-    });
+    const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
 
-    await client.close();
+    async function readResponse(): Promise<string> {
+      const buffer = new Uint8Array(1024);
+      const n = await conn.read(buffer);
+      if (n === null) return "";
+      return decoder.decode(buffer.subarray(0, n));
+    }
+
+    async function sendCommand(cmd: string): Promise<string> {
+      await conn.write(encoder.encode(cmd + "\r\n"));
+      return await readResponse();
+    }
+
+    // SMTP handshake
+    let response = await readResponse();
+    console.log("Server greeting:", response);
+
+    response = await sendCommand(`EHLO localhost`);
+    console.log("EHLO response:", response);
+
+    // AUTH LOGIN
+    response = await sendCommand(`AUTH LOGIN`);
+    console.log("AUTH response:", response);
+
+    response = await sendCommand(btoa(SMTP_USER));
+    console.log("User response:", response);
+
+    response = await sendCommand(btoa(SMTP_PASS));
+    console.log("Pass response:", response);
+
+    // MAIL FROM
+    response = await sendCommand(`MAIL FROM:<${SMTP_FROM}>`);
+    console.log("MAIL FROM response:", response);
+
+    // RCPT TO
+    response = await sendCommand(`RCPT TO:<${to}>`);
+    console.log("RCPT TO response:", response);
+
+    // DATA
+    response = await sendCommand(`DATA`);
+    console.log("DATA response:", response);
+
+    // Send email content
+    await conn.write(encoder.encode(rawEmail + "\r\n.\r\n"));
+    response = await readResponse();
+    console.log("Email data response:", response);
+
+    // QUIT
+    response = await sendCommand(`QUIT`);
+    console.log("QUIT response:", response);
+
+    conn.close();
 
     console.log("Test email sent successfully to:", to);
 
