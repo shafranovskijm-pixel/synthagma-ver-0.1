@@ -39,6 +39,26 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("Sending test email to:", to);
 
+    const htmlContent = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+</head>
+<body>
+  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <h1 style="color: #6366f1;">SMTP работает!</h1>
+    <p>Это тестовое письмо для проверки настроек SMTP.</p>
+    <p>Если вы видите это сообщение, значит конфигурация корректна.</p>
+    <hr style="border: 1px solid #e2e8f0; margin: 20px 0;">
+    <p style="color: #64748b; font-size: 12px;">
+      Отправлено: ${new Date().toLocaleString('ru-RU')}<br>
+      SMTP сервер: ${SMTP_HOST}:${SMTP_PORT}
+    </p>
+  </div>
+</body>
+</html>`;
+
     const client = new SMTPClient({
       connection: {
         hostname: SMTP_HOST,
@@ -54,19 +74,12 @@ const handler = async (req: Request): Promise<Response> => {
     await client.send({
       from: SMTP_FROM,
       to: to,
-      subject: "Тестовое письмо - SMTP проверка",
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #6366f1;">✅ SMTP работает!</h1>
-          <p>Это тестовое письмо для проверки настроек SMTP.</p>
-          <p>Если вы видите это сообщение, значит конфигурация корректна.</p>
-          <hr style="border: 1px solid #e2e8f0; margin: 20px 0;">
-          <p style="color: #64748b; font-size: 12px;">
-            Отправлено: ${new Date().toLocaleString('ru-RU')}<br>
-            SMTP сервер: ${SMTP_HOST}:${SMTP_PORT}
-          </p>
-        </div>
-      `,
+      subject: "=?UTF-8?B?" + btoa(unescape(encodeURIComponent("Тестовое письмо - SMTP проверка"))) + "?=",
+      html: htmlContent,
+      headers: {
+        "Content-Type": "text/html; charset=UTF-8",
+        "Content-Transfer-Encoding": "base64",
+      },
     });
 
     await client.close();
