@@ -30,6 +30,7 @@ import {
   Square,
   Presentation,
   Wand2,
+  FileSpreadsheet,
 } from "lucide-react";
 import { AIGenerateDialog, AIGenerateType } from "@/components/course-builder/AIGenerateDialog";
 import { Label } from "@/components/ui/label";
@@ -38,6 +39,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { BlockEditor, ContentBlock, htmlToBlocks, blocksToJson, jsonToBlocks } from "@/components/course-builder/BlockEditor";
 import { TestQuestionEditor } from "@/components/course-builder/TestQuestionEditor";
+import { TestImportDialog } from "@/components/course-builder/TestImportDialog";
 import {
   DndContext,
   closestCenter,
@@ -1247,7 +1249,33 @@ function SortableLessonItem({
           )}
           {lesson.type === "test" && (
             <div className="space-y-3">
-              <div className="flex justify-end">
+              <div className="flex justify-end gap-2">
+                <TestImportDialog
+                  onImport={(imported) => {
+                    // Convert imported questions to the format expected by TestQuestionEditor
+                    const newQuestions = imported.map((q, idx) => ({
+                      question: q.question,
+                      options: q.options,
+                      correctAnswer: q.correctAnswer,
+                    }));
+                    // Set generatedQuestions in content to trigger TestQuestionEditor to pick them up
+                    onUpdate({ 
+                      content: JSON.stringify({ 
+                        generatedQuestions: newQuestions 
+                      }) 
+                    });
+                    toast.success(`Импортировано ${imported.length} вопросов`);
+                  }}
+                >
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-lg text-xs gap-1"
+                  >
+                    <FileSpreadsheet className="w-3 h-3" />
+                    Импорт из Excel
+                  </Button>
+                </TestImportDialog>
                 <Button
                   variant="outline"
                   size="sm"
