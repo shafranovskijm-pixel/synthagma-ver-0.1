@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   ArrowLeft,
   Plus,
@@ -62,6 +63,8 @@ interface Course {
   description: string | null;
   duration: string | null;
   is_published: boolean;
+  sequential_lessons: boolean;
+  allow_video_seek: boolean;
 }
 
 interface Lesson {
@@ -99,6 +102,8 @@ const CourseEditor = () => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [duration, setDuration] = useState("");
+  const [sequentialLessons, setSequentialLessons] = useState(false);
+  const [allowVideoSeek, setAllowVideoSeek] = useState(true);
 
   // Lesson editor
   const [isLessonEditorOpen, setIsLessonEditorOpen] = useState(false);
@@ -141,6 +146,8 @@ const CourseEditor = () => {
       setTitle(courseResult.data.title);
       setDescription(courseResult.data.description || "");
       setDuration(courseResult.data.duration || "");
+      setSequentialLessons(courseResult.data.sequential_lessons ?? false);
+      setAllowVideoSeek(courseResult.data.allow_video_seek ?? true);
     }
 
     if (lessonsResult.data) {
@@ -160,6 +167,8 @@ const CourseEditor = () => {
         title,
         description: description || null,
         duration: duration || null,
+        sequential_lessons: sequentialLessons,
+        allow_video_seek: allowVideoSeek,
       })
       .eq("id", courseId);
 
@@ -536,6 +545,45 @@ const CourseEditor = () => {
                 )}
               </div>
             </div>
+          </div>
+          
+          {/* Sequential lessons settings */}
+          <div className="mt-6 pt-6 border-t border-border space-y-4">
+            <h3 className="font-medium text-sm text-muted-foreground">Настройки прохождения</h3>
+            
+            <div className="flex items-center justify-between gap-4 p-4 bg-muted/50 rounded-xl">
+              <div className="space-y-0.5">
+                <Label htmlFor="sequential-lessons" className="font-medium">
+                  Последовательное прохождение
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Студенты должны пройти все уроки по порядку
+                </p>
+              </div>
+              <Switch
+                id="sequential-lessons"
+                checked={sequentialLessons}
+                onCheckedChange={setSequentialLessons}
+              />
+            </div>
+            
+            {sequentialLessons && (
+              <div className="flex items-center justify-between gap-4 p-4 bg-muted/50 rounded-xl">
+                <div className="space-y-0.5">
+                  <Label htmlFor="allow-video-seek" className="font-medium">
+                    Разрешить перемотку видео
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Если выключено, студенты не смогут перематывать видео
+                  </p>
+                </div>
+                <Switch
+                  id="allow-video-seek"
+                  checked={allowVideoSeek}
+                  onCheckedChange={setAllowVideoSeek}
+                />
+              </div>
+            )}
           </div>
         </div>
 
