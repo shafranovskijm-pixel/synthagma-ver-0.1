@@ -152,14 +152,48 @@ ${description ? `Описание: ${description}` : ""}
 
     const result = await response.json();
     
-    // Extract lessons from tool call
+    console.log("AI response structure:", JSON.stringify(result, null, 2).substring(0, 500));
+    
+    let lessons = [];
+    
+    // Try to extract from tool call first
     const toolCall = result.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall || toolCall.function.name !== "create_course_structure") {
-      throw new Error("Неверный формат ответа AI");
+    if (toolCall && toolCall.function?.name === "create_course_structure") {
+      try {
+        const args = JSON.parse(toolCall.function.arguments);
+        lessons = args.lessons || [];
+      } catch (e) {
+        console.error("Failed to parse tool call arguments:", e);
+      }
     }
-
-    const args = JSON.parse(toolCall.function.arguments);
-    const lessons = args.lessons || [];
+    
+    // Fallback: try to parse from message content if tool call didn't work
+    if (lessons.length === 0) {
+      const content = result.choices?.[0]?.message?.content;
+      if (content) {
+        console.log("Trying to parse from content:", content.substring(0, 300));
+        try {
+          // Try to find JSON in the content
+          const jsonMatch = content.match(/\[[\s\S]*\]/);
+          if (jsonMatch) {
+            lessons = JSON.parse(jsonMatch[0]);
+          } else {
+            const objMatch = content.match(/\{[\s\S]*"lessons"[\s\S]*\}/);
+            if (objMatch) {
+              const parsed = JSON.parse(objMatch[0]);
+              lessons = parsed.lessons || [];
+            }
+          }
+        } catch (e) {
+          console.error("Failed to parse content as JSON:", e);
+        }
+      }
+    }
+    
+    if (lessons.length === 0) {
+      console.error("No lessons extracted. Full response:", JSON.stringify(result));
+      throw new Error("Не удалось сгенерировать структуру курса. Попробуйте ещё раз.");
+    }
 
     console.log(`Generated course structure for user ${user.id}: ${lessons.length} lessons`);
 
