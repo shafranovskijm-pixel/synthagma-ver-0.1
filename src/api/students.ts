@@ -23,6 +23,20 @@ export async function fetchStudents(
     .select("id, user_id, full_name, email, login, generated_password, company_id")
     .eq("organization_id", organizationId);
 
+  // Fetch user roles to exclude organization/admin users from student list
+  const userIds = (allProfilesData || []).map(p => p.user_id);
+  let orgAdminUserIds = new Set<string>();
+  
+  if (userIds.length > 0) {
+    const { data: rolesData } = await supabase
+      .from("user_roles")
+      .select("user_id, role")
+      .in("user_id", userIds)
+      .in("role", ["organization", "admin"]);
+    
+    orgAdminUserIds = new Set((rolesData || []).map(r => r.user_id));
+  }
+
   // Fetch courses for mapping
   const { data: coursesData } = await supabase
     .from("courses")
@@ -42,6 +56,11 @@ export async function fetchStudents(
   const profilesWithoutEnrollments: Student[] = [];
 
   for (const profile of allProfilesData || []) {
+    // Skip organization and admin users - they are not students
+    if (orgAdminUserIds.has(profile.user_id)) {
+      continue;
+    }
+
     const userEnrollments = userEnrollmentsMap[profile.user_id] || [];
     
     if (userEnrollments.length === 0) {
