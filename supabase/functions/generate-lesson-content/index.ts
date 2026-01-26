@@ -203,6 +203,31 @@ ${courseDescription ? `Описание курса: ${courseDescription}` : ""}
     const result = await response.json();
     console.log("AI response structure:", JSON.stringify(result, null, 2).substring(0, 800));
     
+    // Check if the response contains an error (gateway may return 200 with error body)
+    if (result.error) {
+      console.error("AI gateway returned error in body:", result.error);
+      const errorMessage = result.error.message || "Ошибка AI сервиса";
+      const errorCode = result.error.code || 500;
+      
+      if (errorCode === 429) {
+        return new Response(
+          JSON.stringify({ error: "Превышен лимит запросов. Попробуйте позже." }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      if (errorCode === 402) {
+        return new Response(
+          JSON.stringify({ error: "Требуется пополнение баланса." }),
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      return new Response(
+        JSON.stringify({ error: "Временная ошибка AI сервиса. Попробуйте ещё раз через несколько секунд." }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
     // Try to get tool call first
     let args: any = null;
     const toolCall = result.choices?.[0]?.message?.tool_calls?.[0];
