@@ -58,6 +58,57 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
+// Helper function to get external storage config
+const getExternalStorageConfig = async (): Promise<{ configured: boolean; url: string | null; key: string | null }> => {
+  try {
+    const { data } = await supabase.functions.invoke('get-external-storage-config');
+    return data || { configured: false, url: null, key: null };
+  } catch {
+    return { configured: false, url: null, key: null };
+  }
+};
+
+// Helper function to upload file to external or internal storage
+const uploadToStorage = async (
+  file: File | Blob, 
+  bucket: string, 
+  path: string,
+  contentType?: string
+): Promise<{ url: string; storage: 'external' | 'internal' } | null> => {
+  const config = await getExternalStorageConfig();
+  const useExternal = config.configured && config.url && config.key;
+  
+  const baseUrl = useExternal ? config.url : import.meta.env.VITE_SUPABASE_URL;
+  const apiKey = useExternal ? config.key : import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  
+  // Get auth token for internal storage
+  let authToken = apiKey;
+  if (!useExternal) {
+    const { data: session } = await supabase.auth.getSession();
+    authToken = session?.session?.access_token || apiKey;
+  }
+  
+  const uploadUrl = `${baseUrl}/storage/v1/object/${bucket}/${path}`;
+  
+  const response = await fetch(uploadUrl, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${authToken}`,
+      'apikey': apiKey!,
+      'x-upsert': 'true',
+      ...(contentType ? { 'Content-Type': contentType } : {}),
+    },
+    body: file,
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Upload failed: ${response.statusText}`);
+  }
+  
+  const publicUrl = `${baseUrl}/storage/v1/object/public/${bucket}/${path}`;
+  return { url: publicUrl, storage: useExternal ? 'external' : 'internal' };
+};
+
 // Helper function to check if URL can be embedded in iframe
 const canEmbedInIframe = (url: string): boolean => {
   // These services don't allow iframe embedding
@@ -1013,15 +1064,31 @@ function SortableLessonItem({
                             const fileName = `video_${lesson.id}_${Date.now()}.${fileExt}`;
                             const filePath = `${courseId}/${fileName}`;
                             
-                            // Get upload URL using Supabase API
-                            const { data: session } = await supabase.auth.getSession();
-                            const token = session?.session?.access_token;
+                            // Check for external storage configuration
+                            let externalConfig: { configured: boolean; url: string | null; key: string | null } | null = null;
+                            try {
+                              const { data } = await supabase.functions.invoke('get-external-storage-config');
+                              externalConfig = data;
+                            } catch {
+                              // Fallback to internal
+                            }
+                            
+                            const useExternal = externalConfig?.configured && externalConfig?.url && externalConfig?.key;
+                            const baseUrl = useExternal ? externalConfig.url : import.meta.env.VITE_SUPABASE_URL;
+                            const apiKey = useExternal ? externalConfig.key : import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+                            
+                            // Get auth token
+                            let authToken = apiKey;
+                            if (!useExternal) {
+                              const { data: session } = await supabase.auth.getSession();
+                              authToken = session?.session?.access_token || apiKey;
+                            }
                             
                             // Use XMLHttpRequest for progress tracking
                             const xhr = new XMLHttpRequest();
                             videoUploadXhrRef.current = xhr;
                             
-                            const uploadUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/course-files/${filePath}`;
+                            const uploadUrl = `${baseUrl}/storage/v1/object/course-files/${filePath}`;
                             
                             xhr.upload.addEventListener('progress', (event) => {
                               if (event.lengthComputable) {
@@ -1033,12 +1100,10 @@ function SortableLessonItem({
                             xhr.addEventListener('load', () => {
                               videoUploadXhrRef.current = null;
                               if (xhr.status >= 200 && xhr.status < 300) {
-                                const { data: { publicUrl } } = supabase.storage
-                                  .from('course-files')
-                                  .getPublicUrl(filePath);
+                                const publicUrl = `${baseUrl}/storage/v1/object/public/course-files/${filePath}`;
                                   
                                 onUpdate({ content: publicUrl });
-                                toast.success("Видео загружено!");
+                                toast.success(useExternal ? "Видео загружено во внешнее хранилище!" : "Видео загружено!");
                               } else {
                                 toast.error(`Ошибка загрузки: ${xhr.statusText || 'Неизвестная ошибка'}`);
                               }
@@ -1066,8 +1131,8 @@ function SortableLessonItem({
                             });
                             
                             xhr.open('POST', uploadUrl, true);
-                            xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-                            xhr.setRequestHeader('apikey', import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
+                            xhr.setRequestHeader('Authorization', `Bearer ${authToken}`);
+                            xhr.setRequestHeader('apikey', apiKey!);
                             xhr.setRequestHeader('x-upsert', 'true');
                             xhr.send(file);
                             
@@ -1162,18 +1227,11 @@ function SortableLessonItem({
                         const fileName = `audio_${lesson.id}_${Date.now()}.${fileExt}`;
                         const filePath = `${courseId}/${fileName}`;
                         
-                        const { error: uploadError } = await supabase.storage
-                          .from('course-files')
-                          .upload(filePath, file);
+                        const result = await uploadToStorage(file, 'course-files', filePath);
+                        if (!result) throw new Error('Upload failed');
                           
-                        if (uploadError) throw uploadError;
-                        
-                        const { data: { publicUrl } } = supabase.storage
-                          .from('course-files')
-                          .getPublicUrl(filePath);
-                          
-                        onUpdate({ content: publicUrl });
-                        toast.success("Аудио загружено!", { id: toastId });
+                        onUpdate({ content: result.url });
+                        toast.success(result.storage === 'external' ? "Аудио загружено во внешнее хранилище!" : "Аудио загружено!", { id: toastId });
                       } catch (error: any) {
                         console.error("Audio upload error:", error);
                         toast.error(`Ошибка загрузки: ${error.message}`, { id: toastId });
@@ -1216,18 +1274,11 @@ function SortableLessonItem({
                         const fileName = `image_${lesson.id}_${Date.now()}.${fileExt}`;
                         const filePath = `${courseId}/${fileName}`;
                         
-                        const { error: uploadError } = await supabase.storage
-                          .from('course-files')
-                          .upload(filePath, file);
+                        const result = await uploadToStorage(file, 'course-files', filePath);
+                        if (!result) throw new Error('Upload failed');
                           
-                        if (uploadError) throw uploadError;
-                        
-                        const { data: { publicUrl } } = supabase.storage
-                          .from('course-files')
-                          .getPublicUrl(filePath);
-                          
-                        onUpdate({ content: publicUrl });
-                        toast.success("Изображение загружено!", { id: toastId });
+                        onUpdate({ content: result.url });
+                        toast.success(result.storage === 'external' ? "Изображение загружено во внешнее хранилище!" : "Изображение загружено!", { id: toastId });
                       } catch (error: any) {
                         console.error("Image upload error:", error);
                         toast.error(`Ошибка загрузки: ${error.message}`, { id: toastId });
@@ -1619,26 +1670,23 @@ export default function CourseBuilder() {
 
         const audioBlob = await response.blob();
         
-        // Upload to Supabase Storage
+        // Upload to storage (external or internal)
         const fileName = `audio-${Date.now()}.mp3`;
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from("course-files")
-          .upload(fileName, audioBlob, {
-            contentType: "audio/mpeg",
-          });
-
-        if (uploadError) {
-          console.error("Upload error:", uploadError);
+        
+        try {
+          const result = await uploadToStorage(audioBlob, 'course-files', fileName, 'audio/mpeg');
+          if (result) {
+            newLesson.content = result.url;
+            toast.success(result.storage === 'external' ? "Аудиолекция загружена во внешнее хранилище!" : "Аудиолекция сгенерирована!");
+          } else {
+            throw new Error('Upload failed');
+          }
+        } catch (uploadErr) {
+          console.error("Upload error:", uploadErr);
           // Still create lesson with blob URL for preview
           const blobUrl = URL.createObjectURL(audioBlob);
           newLesson.content = blobUrl;
           toast.warning("Аудио создано, но не сохранено в хранилище");
-        } else {
-          const { data: publicUrl } = supabase.storage
-            .from("course-files")
-            .getPublicUrl(fileName);
-          newLesson.content = publicUrl.publicUrl;
-          toast.success("Аудиолекция сгенерирована!");
         }
       } catch (error: any) {
         console.error("TTS error:", error);
