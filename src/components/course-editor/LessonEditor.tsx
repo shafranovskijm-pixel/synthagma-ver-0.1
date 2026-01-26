@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import DOMPurify from "dompurify";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,11 +17,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { FileText, Video, HelpCircle, Plus, Trash2, Sparkles, Loader2, Settings } from "lucide-react";
+import { FileText, Video, HelpCircle, Plus, Trash2, Sparkles, Loader2, Settings, Upload, Cloud } from "lucide-react";
 import { BlockEditor, ContentBlock } from "@/components/course-builder/BlockEditor";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-
+import { useExternalStorage } from "@/hooks/useExternalStorage";
+import { Badge } from "@/components/ui/badge";
 // Video preview component for lesson editor
 function VideoPreview({ videoUrl }: { videoUrl: string }) {
   const isIframeEmbed = (content: string): boolean => {
@@ -167,7 +168,10 @@ export const LessonEditor = ({
   const [questions, setQuestions] = useState<TestQuestion[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [testQuestionsCount, setTestQuestionsCount] = useState(5);
-
+  
+  // Video upload
+  const videoInputRef = useRef<HTMLInputElement>(null);
+  const { uploadFile, isUploading, isExternalConfigured } = useExternalStorage();
   // Parse content to blocks or use as video URL
   const parseContent = useCallback((content: string | null, lessonType: string) => {
     if (!content) {
@@ -433,8 +437,59 @@ export const LessonEditor = ({
             {type === "video" && (
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Ссылка на видео или embed код</Label>
-                  <p className="text-xs text-muted-foreground">YouTube, Vimeo, Rutube, VK, Дзен, OK.ru, Mail.ru или &lt;iframe&gt;</p>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label>Ссылка на видео или embed код</Label>
+                      <p className="text-xs text-muted-foreground">YouTube, Vimeo, Rutube, VK, Дзен, OK.ru, Mail.ru или &lt;iframe&gt;</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {isExternalConfigured && (
+                        <Badge variant="outline" className="text-xs">
+                          <Cloud className="w-3 h-3 mr-1" />
+                          Внешнее хранилище
+                        </Badge>
+                      )}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => videoInputRef.current?.click()}
+                        disabled={isUploading}
+                        className="gap-2"
+                      >
+                        {isUploading ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Upload className="w-4 h-4" />
+                        )}
+                        {isUploading ? "Загрузка..." : "Загрузить видео"}
+                      </Button>
+                      <input
+                        ref={videoInputRef}
+                        type="file"
+                        accept="video/mp4,video/webm,video/ogg"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          
+                          const fileName = `${courseId}/${Date.now()}-${file.name}`;
+                          const result = await uploadFile(file, 'course-videos', fileName);
+                          
+                          if (result) {
+                            setVideoUrl(result.url);
+                            toast({
+                              title: "Видео загружено",
+                              description: `Файл успешно загружен в ${result.storage === 'external' ? 'внешнее' : 'внутреннее'} хранилище`,
+                            });
+                          }
+                          
+                          // Reset input
+                          e.target.value = '';
+                        }}
+                      />
+                    </div>
+                  </div>
                   <Textarea
                     placeholder="https://youtube.com/watch?v=... или <iframe>...</iframe>"
                     value={videoUrl}
@@ -443,7 +498,15 @@ export const LessonEditor = ({
                   />
                 </div>
                 {videoUrl && (
-                  <VideoPreview videoUrl={videoUrl} />
+                  videoUrl.startsWith('http') && !videoUrl.includes('youtube') && !videoUrl.includes('vimeo') && !videoUrl.includes('rutube') && !videoUrl.includes('vk.') && !videoUrl.includes('dzen') && !videoUrl.includes('ok.ru') && !videoUrl.includes('mail.ru') && !videoUrl.includes('<iframe') ? (
+                    <video
+                      src={videoUrl}
+                      controls
+                      className="w-full aspect-video rounded-xl bg-black"
+                    />
+                  ) : (
+                    <VideoPreview videoUrl={videoUrl} />
+                  )
                 )}
               </div>
             )}
