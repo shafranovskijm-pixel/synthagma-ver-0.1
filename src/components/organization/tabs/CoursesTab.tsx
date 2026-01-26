@@ -51,6 +51,7 @@ export function CoursesTab({ organizationId, onCourseClick, onOpenCourseDetails,
     updateCat,
     removeCat,
     refresh,
+    updateCourseLocally,
   } = useCourses(organizationId);
 
   // Category dialog state
@@ -263,11 +264,14 @@ export function CoursesTab({ organizationId, onCourseClick, onOpenCourseDetails,
     }
   };
 
-  // Toggle course settings
+  // Toggle course settings with optimistic update
   const handleToggleCourseSetting = async (course: Course, setting: 'skip_video_identification' | 'sequential_lessons' | 'allow_video_seek', e: React.MouseEvent) => {
     e.stopPropagation();
     const currentValue = course[setting] ?? (setting === 'allow_video_seek' ? true : false);
     const newValue = !currentValue;
+    
+    // Optimistic update for instant UI feedback
+    updateCourseLocally(course.id, { [setting]: newValue });
     
     const { error } = await supabase
       .from('courses')
@@ -282,9 +286,10 @@ export function CoursesTab({ organizationId, onCourseClick, onOpenCourseDetails,
       };
       const [onMsg, offMsg] = messages[setting];
       toast.success(newValue ? onMsg : offMsg);
-      refresh(); // Refresh data to update UI
     } else {
       toast.error('Ошибка сохранения');
+      // Revert on error
+      updateCourseLocally(course.id, { [setting]: currentValue });
     }
   };
 

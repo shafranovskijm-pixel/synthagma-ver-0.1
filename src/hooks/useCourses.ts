@@ -39,6 +39,7 @@ interface UseCoursesReturn {
   updateCat: (categoryId: string, updates: Partial<CourseCategory>) => Promise<boolean>;
   removeCat: (categoryId: string) => Promise<boolean>;
   refresh: () => void;
+  updateCourseLocally: (courseId: string, updates: Partial<Course>) => void;
 }
 
 export function useCourses(organizationId: string | null): UseCoursesReturn {
@@ -210,6 +211,12 @@ export function useCourses(organizationId: string | null): UseCoursesReturn {
     setRefreshKey(prev => prev + 1);
   }, []);
 
+  const updateCourseLocally = useCallback((courseId: string, updates: Partial<Course>) => {
+    setCourses(prev => prev.map(course => 
+      course.id === courseId ? { ...course, ...updates } : course
+    ));
+  }, []);
+
   return {
     courses,
     categories,
@@ -231,6 +238,7 @@ export function useCourses(organizationId: string | null): UseCoursesReturn {
     createCat,
     updateCat,
     removeCat,
-    refresh
+    refresh,
+    updateCourseLocally
   };
 }
