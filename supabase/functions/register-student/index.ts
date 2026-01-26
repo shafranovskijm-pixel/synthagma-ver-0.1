@@ -52,18 +52,21 @@ serve(async (req) => {
       );
     }
 
-    // Get caller's organization
-    const { data: callerProfile } = await supabaseAuth
-      .from('profiles')
-      .select('organization_id')
-      .eq('user_id', user.id)
-      .single();
-
+    // Create admin client FIRST (bypasses RLS)
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
+
+    // Get caller's organization using admin client (bypasses RLS)
+    const { data: callerProfile, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('organization_id')
+      .eq('user_id', user.id)
+      .single();
+
+    console.log(`Caller profile lookup for user ${user.id}:`, callerProfile, profileError);
 
     const { email, password, full_name, organization_id, course_id, company_id, no_login } = await req.json();
 
