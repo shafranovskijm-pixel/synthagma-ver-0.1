@@ -10,11 +10,12 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { 
   Search, Filter, Tag, Plus, LayoutGrid, List, Loader2, 
   BookOpen, Users, Edit, Eye, Trash2, FolderOpen, Folder,
   ChevronDown, ChevronRight, MoreVertical, FolderPlus, 
-  MoveRight, Pencil
+  MoveRight, Pencil, Video, VideoOff, Lock, Unlock, FastForward
 } from "lucide-react";
 import { useCourses } from "@/hooks/useCourses";
 import { supabase } from "@/integrations/supabase/client";
@@ -262,86 +263,188 @@ export function CoursesTab({ organizationId, onCourseClick, onOpenCourseDetails,
     }
   };
 
+  // Toggle course settings
+  const handleToggleCourseSetting = async (course: Course, setting: 'skip_video_identification' | 'sequential_lessons' | 'allow_video_seek', e: React.MouseEvent) => {
+    e.stopPropagation();
+    const currentValue = course[setting] ?? (setting === 'allow_video_seek' ? true : false);
+    const success = await update(course.id, { [setting]: !currentValue });
+    if (success) {
+      const messages: Record<string, [string, string]> = {
+        skip_video_identification: ['Видеоидентификация отключена', 'Видеоидентификация включена'],
+        sequential_lessons: ['Последовательность уроков включена', 'Последовательность уроков отключена'],
+        allow_video_seek: ['Перемотка видео отключена', 'Перемотка видео включена'],
+      };
+      const [onMsg, offMsg] = messages[setting];
+      toast.success(!currentValue ? onMsg : offMsg);
+    }
+  };
+
   // Render course card
   const renderCourseCard = (course: Course, compact = false) => (
-    <div 
-      key={course.id} 
-      className={`bg-card rounded-xl border overflow-hidden hover:shadow-md transition-all cursor-pointer relative group ${
-        selectedCourseIds.has(course.id) ? 'border-primary ring-2 ring-primary/20' : 'border-border'
-      } ${compact ? 'flex items-center gap-3 p-3' : ''}`}
-      onClick={() => handleCourseClick(course)}
-    >
-      {/* Selection Checkbox */}
+    <TooltipProvider delayDuration={200}>
       <div 
-        className={`${compact ? '' : 'absolute top-3 left-3'} z-10`}
-        onClick={e => toggleCourseSelection(course.id, e)}
+        key={course.id} 
+        className={`bg-card rounded-xl border overflow-hidden hover:shadow-md transition-all cursor-pointer relative group ${
+          selectedCourseIds.has(course.id) ? 'border-primary ring-2 ring-primary/20' : 'border-border'
+        } ${compact ? 'flex items-center gap-3 p-3' : ''}`}
+        onClick={() => handleCourseClick(course)}
       >
-        <Checkbox 
-          checked={selectedCourseIds.has(course.id)}
-          className="bg-background/80 backdrop-blur-sm"
-        />
-      </div>
-      
-      {!compact && (
-        <div className="h-24 bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
-          <BookOpen className="w-10 h-10 text-primary/50" />
-        </div>
-      )}
-      
-      <div className={compact ? "flex-1 min-w-0" : "p-4"}>
-        <div className="flex items-start justify-between gap-2 mb-1">
-          <h3 className={`font-medium line-clamp-1 ${compact ? 'text-sm' : 'text-base'}`}>{course.title}</h3>
-          <div className="flex items-center gap-1 shrink-0">
-            <span className={`text-xs px-2 py-0.5 rounded-full ${
-              course.is_published ? 'bg-sigma-green/10 text-sigma-green' : 'bg-muted text-muted-foreground'
-            }`}>
-              {course.is_published ? 'Опубликован' : 'Черновик'}
-            </span>
-          </div>
+        {/* Selection Checkbox */}
+        <div 
+          className={`${compact ? '' : 'absolute top-3 left-3'} z-10`}
+          onClick={e => toggleCourseSelection(course.id, e)}
+        >
+          <Checkbox 
+            checked={selectedCourseIds.has(course.id)}
+            className="bg-background/80 backdrop-blur-sm"
+          />
         </div>
         
-        {!compact && course.description && (
-          <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{course.description}</p>
+        {!compact && (
+          <div className="h-24 bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+            <BookOpen className="w-10 h-10 text-primary/50" />
+          </div>
         )}
         
-        <div className={`flex items-center gap-3 text-xs text-muted-foreground ${compact ? '' : 'mt-2'}`}>
-          <div className="flex items-center gap-1">
-            <Users className="w-3 h-3" />
-            {course.studentsCount || 0}
+        <div className={compact ? "flex-1 min-w-0" : "p-4"}>
+          <div className="flex items-start justify-between gap-2 mb-1">
+            <h3 className={`font-medium line-clamp-1 ${compact ? 'text-sm' : 'text-base'}`}>{course.title}</h3>
+            <div className="flex items-center gap-1 shrink-0">
+              <span className={`text-xs px-2 py-0.5 rounded-full ${
+                course.is_published ? 'bg-sigma-green/10 text-sigma-green' : 'bg-muted text-muted-foreground'
+              }`}>
+                {course.is_published ? 'Опубликован' : 'Черновик'}
+              </span>
+            </div>
           </div>
-          <div className="flex items-center gap-1">
-            <BookOpen className="w-3 h-3" />
-            {course.lessonsCount || 0}
+          
+          {!compact && course.description && (
+            <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{course.description}</p>
+          )}
+          
+          <div className={`flex items-center gap-3 text-xs text-muted-foreground ${compact ? '' : 'mt-2'}`}>
+            <div className="flex items-center gap-1">
+              <Users className="w-3 h-3" />
+              {course.studentsCount || 0}
+            </div>
+            <div className="flex items-center gap-1">
+              <BookOpen className="w-3 h-3" />
+              {course.lessonsCount || 0}
+            </div>
           </div>
         </div>
+        
+        {/* Quick action buttons - always visible for compact mode */}
+        <div className={`flex items-center gap-1 ${compact ? '' : 'absolute top-3 right-12 opacity-0 group-hover:opacity-100 transition-opacity'}`}>
+          {/* Edit button */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-7 w-7 bg-background/80 backdrop-blur-sm"
+                onClick={e => { e.stopPropagation(); navigate(`/course-builder/${course.id}`); }}
+              >
+                <Edit className="w-3.5 h-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Редактировать</TooltipContent>
+          </Tooltip>
+          
+          {/* Preview button */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-7 w-7 bg-background/80 backdrop-blur-sm"
+                onClick={e => { e.stopPropagation(); navigate(`/course-preview/${course.id}`); }}
+              >
+                <Eye className="w-3.5 h-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Просмотр</TooltipContent>
+          </Tooltip>
+
+          {/* Skip video identification toggle */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className={`h-7 w-7 bg-background/80 backdrop-blur-sm ${course.skip_video_identification ? 'text-muted-foreground' : 'text-sigma-green'}`}
+                onClick={e => handleToggleCourseSetting(course, 'skip_video_identification', e)}
+              >
+                {course.skip_video_identification ? <VideoOff className="w-3.5 h-3.5" /> : <Video className="w-3.5 h-3.5" />}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {course.skip_video_identification ? 'Видеоидентификация выкл.' : 'Видеоидентификация вкл.'}
+            </TooltipContent>
+          </Tooltip>
+
+          {/* Sequential lessons toggle */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className={`h-7 w-7 bg-background/80 backdrop-blur-sm ${course.sequential_lessons ? 'text-amber-500' : 'text-muted-foreground'}`}
+                onClick={e => handleToggleCourseSetting(course, 'sequential_lessons', e)}
+              >
+                {course.sequential_lessons ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {course.sequential_lessons ? 'Последовательность уроков вкл.' : 'Последовательность уроков выкл.'}
+            </TooltipContent>
+          </Tooltip>
+
+          {/* Allow video seek toggle */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className={`h-7 w-7 bg-background/80 backdrop-blur-sm ${course.allow_video_seek === false ? 'text-destructive' : 'text-muted-foreground'}`}
+                onClick={e => handleToggleCourseSetting(course, 'allow_video_seek', e)}
+              >
+                <FastForward className={`w-3.5 h-3.5 ${course.allow_video_seek === false ? 'line-through' : ''}`} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {course.allow_video_seek === false ? 'Перемотка видео запрещена' : 'Перемотка видео разрешена'}
+            </TooltipContent>
+          </Tooltip>
+        </div>
+        
+        {/* Context menu */}
+        <div className={`${compact ? '' : 'absolute top-3 right-3'} opacity-0 group-hover:opacity-100 transition-opacity`}>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
+              <Button variant="ghost" size="icon" className="h-7 w-7 bg-background/80 backdrop-blur-sm">
+                <MoreVertical className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={e => { e.stopPropagation(); navigate(`/course-builder/${course.id}`); }}>
+                <Edit className="w-4 h-4 mr-2" />
+                Редактировать
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={e => { e.stopPropagation(); navigate(`/course-preview/${course.id}`); }}>
+                <Eye className="w-4 h-4 mr-2" />
+                Просмотр
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={e => openMoveCourseDialog(course, e)}>
+                <MoveRight className="w-4 h-4 mr-2" />
+                Переместить в категорию
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
-      
-      {/* Context menu */}
-      <div className={`${compact ? '' : 'absolute top-3 right-3'} opacity-0 group-hover:opacity-100 transition-opacity`}>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
-            <Button variant="ghost" size="icon" className="h-7 w-7 bg-background/80 backdrop-blur-sm">
-              <MoreVertical className="w-4 h-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={e => { e.stopPropagation(); navigate(`/course-builder/${course.id}`); }}>
-              <Edit className="w-4 h-4 mr-2" />
-              Редактировать
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={e => { e.stopPropagation(); navigate(`/course-preview/${course.id}`); }}>
-              <Eye className="w-4 h-4 mr-2" />
-              Просмотр
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={e => openMoveCourseDialog(course, e)}>
-              <MoveRight className="w-4 h-4 mr-2" />
-              Переместить в категорию
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    </div>
+    </TooltipProvider>
   );
 
   // Render folder with courses
