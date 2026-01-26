@@ -201,7 +201,7 @@ ${courseDescription ? `Описание курса: ${courseDescription}` : ""}
     }
 
     const result = await response.json();
-    console.log("AI response for user", user.id);
+    console.log("AI response structure:", JSON.stringify(result, null, 2).substring(0, 800));
     
     // Try to get tool call first
     let args: any = null;
@@ -210,6 +210,7 @@ ${courseDescription ? `Описание курса: ${courseDescription}` : ""}
     if (toolCall?.function?.arguments) {
       try {
         args = JSON.parse(toolCall.function.arguments);
+        console.log("Parsed from tool call successfully");
       } catch (e) {
         console.error("Failed to parse tool call arguments:", e);
       }
@@ -219,25 +220,68 @@ ${courseDescription ? `Описание курса: ${courseDescription}` : ""}
     if (!args) {
       const content = result.choices?.[0]?.message?.content;
       if (content) {
-        console.log("No tool call, trying to parse content as JSON");
+        console.log("No tool call, trying to parse content. Content preview:", content.substring(0, 300));
         try {
-          // Try to extract JSON from content
-          const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/) || 
-                           content.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            const jsonStr = jsonMatch[1] || jsonMatch[0];
-            args = JSON.parse(jsonStr);
+          // Try to extract JSON from markdown code block
+          const jsonCodeBlockMatch = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+          if (jsonCodeBlockMatch) {
+            args = JSON.parse(jsonCodeBlockMatch[1]);
+            console.log("Parsed from markdown code block");
           }
         } catch (e) {
-          console.error("Failed to parse content as JSON:", e);
+          console.error("Failed to parse markdown code block:", e);
+        }
+        
+        // Try direct JSON object
+        if (!args) {
+          try {
+            const objectMatch = content.match(/\{[\s\S]*"(?:blocks|questions)"[\s\S]*\}/);
+            if (objectMatch) {
+              args = JSON.parse(objectMatch[0]);
+              console.log("Parsed from JSON object in content");
+            }
+          } catch (e) {
+            console.error("Failed to parse JSON object:", e);
+          }
+        }
+        
+        // Try array format for blocks/questions
+        if (!args) {
+          try {
+            const arrayMatch = content.match(/\[[\s\S]*\]/);
+            if (arrayMatch) {
+              const parsed = JSON.parse(arrayMatch[0]);
+              if (Array.isArray(parsed)) {
+                // Determine if it's blocks or questions based on content
+                if (lessonType === "test") {
+                  args = { questions: parsed };
+                } else {
+                  args = { blocks: parsed };
+                }
+                console.log("Parsed from array in content");
+              }
+            }
+          } catch (e) {
+            console.error("Failed to parse array:", e);
+          }
         }
       }
     }
     
+    // If still no args, provide helpful error
     if (!args) {
-      console.error("Could not extract structured data from AI response");
-      throw new Error("Неверный формат ответа AI");
+      console.error("Could not extract structured data. Full response:", JSON.stringify(result));
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: "Не удалось сгенерировать контент. Попробуйте ещё раз.",
+          [lessonType === "test" ? "questions" : "blocks"]: []
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
+    
+    console.log("AI response for user", user.id, "- extracted", lessonType === "test" ? "questions" : "blocks");
 
     if (lessonType === "test") {
       return new Response(
