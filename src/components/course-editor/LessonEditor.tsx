@@ -17,8 +17,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { FileText, Video, HelpCircle, Plus, Trash2, Sparkles, Loader2, Settings, Upload, Cloud } from "lucide-react";
+import { FileText, Video, HelpCircle, Plus, Trash2, Sparkles, Loader2, Settings, Upload, Cloud, FileSpreadsheet } from "lucide-react";
 import { BlockEditor, ContentBlock } from "@/components/course-builder/BlockEditor";
+import { TestImportDialog } from "@/components/course-builder/TestImportDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useExternalStorage } from "@/hooks/useExternalStorage";
@@ -544,6 +545,27 @@ export const LessonEditor = ({
                     Банк вопросов ({questions.length})
                   </Label>
                   <div className="flex items-center gap-2">
+                    <TestImportDialog
+                      onImport={(imported) => {
+                        const newQuestions = imported.map((q, idx) => ({
+                          question: q.question,
+                          options: q.options,
+                          correct_answer: q.correctAnswer,
+                          order_index: questions.length + idx,
+                        }));
+                        setQuestions([...questions, ...newQuestions]);
+                      }}
+                    >
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="gap-2"
+                      >
+                        <FileSpreadsheet className="w-4 h-4" />
+                        Импорт из Excel
+                      </Button>
+                    </TestImportDialog>
                     <Button
                       type="button"
                       variant="outline"
