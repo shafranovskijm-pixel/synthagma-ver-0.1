@@ -508,6 +508,7 @@ export type Database = {
       }
       courses: {
         Row: {
+          allow_video_seek: boolean
           category_id: string | null
           created_at: string
           description: string | null
@@ -515,11 +516,13 @@ export type Database = {
           id: string
           is_published: boolean
           organization_id: string
+          sequential_lessons: boolean
           skip_video_identification: boolean | null
           title: string
           updated_at: string
         }
         Insert: {
+          allow_video_seek?: boolean
           category_id?: string | null
           created_at?: string
           description?: string | null
@@ -527,11 +530,13 @@ export type Database = {
           id?: string
           is_published?: boolean
           organization_id: string
+          sequential_lessons?: boolean
           skip_video_identification?: boolean | null
           title: string
           updated_at?: string
         }
         Update: {
+          allow_video_seek?: boolean
           category_id?: string | null
           created_at?: string
           description?: string | null
@@ -539,6 +544,7 @@ export type Database = {
           id?: string
           is_published?: boolean
           organization_id?: string
+          sequential_lessons?: boolean
           skip_video_identification?: boolean | null
           title?: string
           updated_at?: string

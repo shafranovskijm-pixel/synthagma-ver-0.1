@@ -35,7 +35,8 @@ import {
   Menu,
   List,
   Play,
-  Presentation
+  Presentation,
+  Lock
 } from "lucide-react";
 import { ContentBlock, jsonToBlocks, BlockRenderer } from "@/components/course-builder/BlockEditor";
 import { cn } from "@/lib/utils";
@@ -138,11 +139,22 @@ const getVideoEmbedUrl = (content: string): { url: string; canEmbed: boolean } |
   return null;
 };
 
-// Video preview component for learning
-const VideoPlayerInline = ({ content }: { content: string }) => {
+// Video preview component for learning with optional seek control
+interface VideoPlayerInlineProps {
+  content: string;
+  allowSeek?: boolean;
+  onVideoComplete?: () => void;
+}
+
+const VideoPlayerInline = ({ content, allowSeek = true, onVideoComplete }: VideoPlayerInlineProps) => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [watchedProgress, setWatchedProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const maxWatchedRef = useRef(0);
+  
   if (!content) return null;
   
-  // If it's a full iframe embed code, render it directly
+  // If it's a full iframe embed code, render it directly (can't control seeking)
   if (isIframeEmbed(content)) {
     const sanitized = DOMPurify.sanitize(content, {
       ADD_TAGS: ['iframe'],
@@ -182,6 +194,7 @@ const VideoPlayerInline = ({ content }: { content: string }) => {
       );
     }
     
+    // External embeds (YouTube, etc.) - can't control seeking
     return (
       <div className="aspect-video w-full rounded-2xl overflow-hidden bg-black">
         <iframe
@@ -194,13 +207,68 @@ const VideoPlayerInline = ({ content }: { content: string }) => {
     );
   }
   
-  // Fallback to video tag
+  // Native video player with seek control
+  const handleTimeUpdate = () => {
+    if (!videoRef.current) return;
+    const currentTime = videoRef.current.currentTime;
+    
+    if (!allowSeek) {
+      // Track max watched position
+      if (currentTime > maxWatchedRef.current) {
+        maxWatchedRef.current = currentTime;
+      }
+      // If user tries to seek ahead, snap back
+      if (currentTime > maxWatchedRef.current + 1) {
+        videoRef.current.currentTime = maxWatchedRef.current;
+      }
+    }
+    
+    if (duration > 0) {
+      const progress = (currentTime / duration) * 100;
+      setWatchedProgress(progress);
+      
+      // Mark as complete when 90% watched
+      if (progress >= 90 && onVideoComplete) {
+        onVideoComplete();
+      }
+    }
+  };
+  
+  const handleLoadedMetadata = () => {
+    if (videoRef.current) {
+      setDuration(videoRef.current.duration);
+    }
+  };
+  
+  const handleSeeking = () => {
+    if (!allowSeek && videoRef.current) {
+      const currentTime = videoRef.current.currentTime;
+      if (currentTime > maxWatchedRef.current + 1) {
+        videoRef.current.currentTime = maxWatchedRef.current;
+        toast.info('Перемотка заблокирована. Посмотрите видео полностью.');
+      }
+    }
+  };
+  
   return (
-    <video 
-      controls 
-      className="w-full h-full rounded-2xl"
-      src={content}
-    />
+    <div className="relative">
+      <video 
+        ref={videoRef}
+        controls 
+        className="w-full h-full rounded-2xl"
+        src={content}
+        onTimeUpdate={handleTimeUpdate}
+        onLoadedMetadata={handleLoadedMetadata}
+        onSeeking={handleSeeking}
+        controlsList={!allowSeek ? "noplaybackrate" : undefined}
+      />
+      {!allowSeek && (
+        <div className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm text-xs px-2 py-1 rounded-lg flex items-center gap-1">
+          <Video className="w-3 h-3" />
+          Просмотрено: {Math.round(watchedProgress)}%
+        </div>
+      )}
+    </div>
   );
 };
 
@@ -498,6 +566,8 @@ interface Course {
   title: string;
   description: string | null;
   duration: string | null;
+  sequential_lessons?: boolean;
+  allow_video_seek?: boolean;
 }
 
 interface LessonProgress {
@@ -1024,10 +1094,15 @@ const CourseLearning = () => {
   };
 
   const goToNextLesson = () => {
-    if (currentLessonIndex < lessons.length - 1) {
+    const nextIndex = currentLessonIndex + 1;
+    if (nextIndex < lessons.length) {
+      if (!isLessonAccessible(nextIndex)) {
+        toast.error('Сначала завершите текущий урок');
+        return;
+      }
       setIsTransitioning(true);
       setTimeout(() => {
-        setCurrentLessonIndex(prev => prev + 1);
+        setCurrentLessonIndex(nextIndex);
         setIsTransitioning(false);
       }, 300);
     }
@@ -1045,6 +1120,10 @@ const CourseLearning = () => {
 
   const goToLesson = (index: number) => {
     if (index !== currentLessonIndex) {
+      if (!isLessonAccessible(index)) {
+        toast.error('Этот урок пока недоступен. Пройдите предыдущие уроки.');
+        return;
+      }
       setIsTransitioning(true);
       setTimeout(() => {
         setCurrentLessonIndex(index);
@@ -1153,6 +1232,20 @@ const CourseLearning = () => {
     return lessonProgress.some(p => p.lesson_id === lessonId && p.completed);
   };
 
+  // Check if lesson is accessible based on sequential lessons setting
+  const isLessonAccessible = (index: number): boolean => {
+    if (!course?.sequential_lessons) return true;
+    if (index === 0) return true;
+    
+    // All previous lessons must be completed
+    for (let i = 0; i < index; i++) {
+      if (!isLessonCompleted(lessons[i].id)) {
+        return false;
+      }
+    }
+    return true;
+  };
+
   // Swipe gesture handlers with haptic feedback
   const triggerHapticFeedback = useCallback(() => {
     if (navigator.vibrate) {
@@ -1243,21 +1336,29 @@ const CourseLearning = () => {
             const Icon = getLessonIcon(lesson.type);
             const completed = isLessonCompleted(lesson.id);
             const isCurrent = index === currentLessonIndex;
+            const isAccessible = isLessonAccessible(index);
             
             return (
               <button
                 key={lesson.id}
                 onClick={() => { goToLesson(index); onNavigate?.(); }}
+                disabled={!isAccessible}
                 className={cn(
                   "w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all duration-200",
                   isCurrent 
                     ? "bg-primary/10 text-primary shadow-sm" 
-                    : "hover:bg-muted"
+                    : isAccessible 
+                      ? "hover:bg-muted" 
+                      : "opacity-50 cursor-not-allowed"
                 )}
               >
                 {completed ? (
                   <div className="w-8 h-8 rounded-full bg-sigma-green/10 flex items-center justify-center shrink-0">
                     <CheckCircle2 className="w-5 h-5 text-sigma-green" />
+                  </div>
+                ) : !isAccessible ? (
+                  <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+                    <Lock className="w-4 h-4 text-muted-foreground" />
                   </div>
                 ) : (
                   <div className={cn(
@@ -1275,6 +1376,7 @@ const CourseLearning = () => {
                     {lesson.type === 'video' && 'Видео'}
                     {lesson.type === 'test' && 'Тест'}
                     {lesson.type === 'audio' && 'Аудио'}
+                    {!isAccessible && <span className="ml-1">• Заблокировано</span>}
                   </div>
                 </div>
               </button>
@@ -1465,7 +1567,10 @@ const CourseLearning = () => {
 
                 <div className="aspect-video bg-muted rounded-2xl flex items-center justify-center overflow-hidden shadow-lg">
                   {currentLesson.content ? (
-                    <VideoPlayerInline content={currentLesson.content} />
+                    <VideoPlayerInline 
+                      content={currentLesson.content} 
+                      allowSeek={course?.allow_video_seek !== false}
+                    />
                   ) : (
                     <div className="text-center text-muted-foreground">
                       <Video className="w-16 h-16 mx-auto mb-4" />

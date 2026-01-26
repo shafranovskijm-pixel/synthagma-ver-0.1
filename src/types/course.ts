@@ -10,6 +10,8 @@ export interface Course {
   category_id?: string | null;
   duration?: string | null;
   skip_video_identification?: boolean;
+  sequential_lessons?: boolean;
+  allow_video_seek?: boolean;
   // Computed fields
   lessonsCount?: number;
   studentsCount?: number;
