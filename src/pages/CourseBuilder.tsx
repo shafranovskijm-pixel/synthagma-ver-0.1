@@ -926,6 +926,77 @@ function SortableLessonItem({
                 </div>
               )}
 
+              {/* Video Upload Section */}
+              <div className="border-2 border-dashed border-border rounded-xl p-6 text-center hover:border-sigma-purple/50 transition-colors">
+                <Video className="w-10 h-10 mx-auto mb-3 text-sigma-purple" />
+                <p className="text-sm font-medium mb-1">Загрузить видео на сервер</p>
+                <p className="text-xs text-muted-foreground mb-4">
+                  MP4, WebM, MOV — до 500 МБ
+                </p>
+                <label className="inline-flex items-center gap-2 px-4 py-2 bg-sigma-purple text-white rounded-lg cursor-pointer hover:bg-sigma-purple/90 transition-colors">
+                  <Upload className="w-4 h-4" />
+                  <span className="text-sm font-medium">Выбрать файл</span>
+                  <input
+                    type="file"
+                    accept="video/mp4,video/webm,video/quicktime,video/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      
+                      // Check file size (500MB limit)
+                      const maxSize = 500 * 1024 * 1024;
+                      if (file.size > maxSize) {
+                        toast.error("Файл слишком большой. Максимум 500 МБ");
+                        return;
+                      }
+                      
+                      if (!courseId) {
+                        toast.error("Сначала сохраните курс");
+                        return;
+                      }
+                      
+                      const toastId = toast.loading("Загрузка видео...");
+                      
+                      try {
+                        const fileExt = file.name.split('.').pop()?.toLowerCase() || 'mp4';
+                        const fileName = `video_${lesson.id}_${Date.now()}.${fileExt}`;
+                        const filePath = `${courseId}/${fileName}`;
+                        
+                        const { error: uploadError } = await supabase.storage
+                          .from('course-files')
+                          .upload(filePath, file, {
+                            cacheControl: '3600',
+                            upsert: true
+                          });
+                          
+                        if (uploadError) throw uploadError;
+                        
+                        const { data: { publicUrl } } = supabase.storage
+                          .from('course-files')
+                          .getPublicUrl(filePath);
+                          
+                        onUpdate({ content: publicUrl });
+                        toast.success("Видео загружено!", { id: toastId });
+                      } catch (error: any) {
+                        console.error("Video upload error:", error);
+                        toast.error(`Ошибка загрузки: ${error.message}`, { id: toastId });
+                      }
+                    }}
+                  />
+                </label>
+              </div>
+
+              {/* Divider */}
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-border" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-card px-2 text-muted-foreground">или вставьте ссылку</span>
+                </div>
+              </div>
+
               {/* Video URL Input */}
               <div className="space-y-2">
                 <Label>Ссылка на видео или код для встраивания</Label>
@@ -939,8 +1010,33 @@ function SortableLessonItem({
                   Поддерживаются: YouTube, Vimeo, Rutube, VK Video, Одноклассники, Mail.ru, Дзен, Яндекс Видео
                 </p>
               </div>
-              {lesson.content && !lesson.content.startsWith('data:') && (
-                <VideoPreviewInline content={lesson.content} />
+
+              {/* Video Preview */}
+              {lesson.content && (
+                <div className="space-y-2">
+                  <Label className="text-sm">Предпросмотр</Label>
+                  {lesson.content.includes('supabase') || lesson.content.includes('.mp4') || lesson.content.includes('.webm') || lesson.content.includes('.mov') ? (
+                    <div className="relative">
+                      <video 
+                        controls 
+                        className="w-full rounded-xl border border-border"
+                        src={lesson.content}
+                      >
+                        Ваш браузер не поддерживает видео.
+                      </video>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="absolute top-2 right-2 h-8 text-destructive hover:text-destructive bg-background/80 backdrop-blur-sm"
+                        onClick={() => onUpdate({ content: '' })}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <VideoPreviewInline content={lesson.content} />
+                  )}
+                </div>
               )}
             </div>
           )}
