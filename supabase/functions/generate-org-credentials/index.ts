@@ -145,37 +145,100 @@ serve(async (req) => {
         );
       }
     } else {
-      // No org user found - create one
-      const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-        email: org.email,
-        password: password,
-        email_confirm: true,
-      });
+      // No org user found - check if user with this email already exists
+      const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
+      const existingUser = existingUsers?.users?.find(u => u.email === org.email);
 
-      if (createError) {
-        console.error("Error creating user:", createError);
-        return new Response(
-          JSON.stringify({ error: "Ошибка создания пользователя: " + createError.message }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      if (existingUser) {
+        // User exists - update password and link to organization
+        orgUserId = existingUser.id;
+        loginEmail = org.email;
+
+        const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+          orgUserId,
+          { password: password }
         );
+
+        if (updateError) {
+          console.error("Error updating existing user password:", updateError);
+          return new Response(
+            JSON.stringify({ error: "Ошибка обновления пароля: " + updateError.message }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        // Update profile to link to organization
+        const { data: existingProfile } = await supabaseAdmin
+          .from('profiles')
+          .select('id')
+          .eq('user_id', orgUserId)
+          .maybeSingle();
+
+        if (existingProfile) {
+          await supabaseAdmin
+            .from('profiles')
+            .update({ organization_id: organization_id })
+            .eq('user_id', orgUserId);
+        } else {
+          await supabaseAdmin.from('profiles').insert({
+            user_id: orgUserId,
+            organization_id: organization_id,
+            full_name: 'Администратор',
+            email: org.email,
+          });
+        }
+
+        // Update or create user role
+        const { data: existingRole } = await supabaseAdmin
+          .from('user_roles')
+          .select('id')
+          .eq('user_id', orgUserId)
+          .maybeSingle();
+
+        if (existingRole) {
+          await supabaseAdmin
+            .from('user_roles')
+            .update({ role: 'organization' })
+            .eq('user_id', orgUserId);
+        } else {
+          await supabaseAdmin.from('user_roles').insert({
+            user_id: orgUserId,
+            role: 'organization',
+          });
+        }
+      } else {
+        // Create new user
+        const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+          email: org.email,
+          password: password,
+          email_confirm: true,
+        });
+
+        if (createError) {
+          console.error("Error creating user:", createError);
+          return new Response(
+            JSON.stringify({ error: "Ошибка создания пользователя: " + createError.message }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        orgUserId = newUser.user.id;
+        loginEmail = org.email;
+
+        // Create profile
+        await supabaseAdmin.from('profiles').insert({
+          user_id: orgUserId,
+          organization_id: organization_id,
+          full_name: 'Администратор',
+          email: org.email,
+        });
+
+        // Create user role
+        await supabaseAdmin.from('user_roles').insert({
+          user_id: orgUserId,
+          role: 'organization',
+        });
       }
-
-      orgUserId = newUser.user.id;
-      loginEmail = org.email;
-
-      // Create profile
-      await supabaseAdmin.from('profiles').insert({
-        user_id: orgUserId,
-        organization_id: organization_id,
-        full_name: 'Администратор',
-        email: org.email,
-      });
-
-      // Create user role
-      await supabaseAdmin.from('user_roles').insert({
-        user_id: orgUserId,
-        role: 'organization',
-      });
     }
 
     // Save credentials
