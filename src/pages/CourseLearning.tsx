@@ -151,6 +151,7 @@ const VideoPlayerInline = ({ content, allowSeek = true, onVideoComplete }: Video
   const [watchedProgress, setWatchedProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const maxWatchedRef = useRef(0);
+  const completedRef = useRef(false);
   
   if (!content) return null;
   
@@ -227,8 +228,9 @@ const VideoPlayerInline = ({ content, allowSeek = true, onVideoComplete }: Video
       const progress = (currentTime / duration) * 100;
       setWatchedProgress(progress);
       
-      // Mark as complete when 90% watched
-      if (progress >= 90 && onVideoComplete) {
+      // Mark as complete when 90% watched (only once)
+      if (progress >= 90 && onVideoComplete && !completedRef.current) {
+        completedRef.current = true;
         onVideoComplete();
       }
     }
@@ -1570,6 +1572,32 @@ const CourseLearning = () => {
                     <VideoPlayerInline 
                       content={currentLesson.content} 
                       allowSeek={course?.allow_video_seek !== false}
+                      onVideoComplete={async () => {
+                        // Auto-complete video lesson when 90% watched
+                        if (!isLessonCompleted(currentLesson.id) && user) {
+                          await supabase
+                            .from('lesson_progress')
+                            .upsert({
+                              lesson_id: currentLesson.id,
+                              user_id: user.id,
+                              completed: true,
+                              completed_at: new Date().toISOString()
+                            }, { onConflict: 'lesson_id,user_id' });
+                          
+                          setLessonProgress(prev => [
+                            ...prev.filter(p => p.lesson_id !== currentLesson.id),
+                            { lesson_id: currentLesson.id, completed: true }
+                          ]);
+                          
+                          const newProgress = Math.round(((completedCount + 1) / lessons.length) * 100);
+                          await supabase
+                            .from('enrollments')
+                            .update({ progress: newProgress })
+                            .eq('id', enrollmentId);
+                          
+                          toast.success('Видео просмотрено!');
+                        }
+                      }}
                     />
                   ) : (
                     <div className="text-center text-muted-foreground">
