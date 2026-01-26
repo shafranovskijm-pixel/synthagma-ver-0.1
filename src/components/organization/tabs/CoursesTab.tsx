@@ -282,7 +282,7 @@ export function CoursesTab({ organizationId, onCourseClick, onOpenCourseDetails,
       const messages: Record<string, [string, string]> = {
         skip_video_identification: ['Видеоидентификация отключена', 'Видеоидентификация включена'],
         sequential_lessons: ['Последовательность уроков включена', 'Последовательность уроков отключена'],
-        allow_video_seek: ['Перемотка видео отключена', 'Перемотка видео включена'],
+        allow_video_seek: ['Перемотка видео включена', 'Перемотка видео отключена'],
       };
       const [onMsg, offMsg] = messages[setting];
       toast.success(newValue ? onMsg : offMsg);
