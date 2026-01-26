@@ -68,6 +68,18 @@ serve(async (req) => {
 
     console.log(`Caller profile lookup for user ${user.id}:`, callerProfile, profileError);
 
+    // Verify profile exists
+    if (!callerProfile) {
+      console.error(`Profile not found for user ${user.id}. This usually means the user session is stale.`);
+      return new Response(
+        JSON.stringify({ 
+          error: "Ваша сессия устарела. Пожалуйста, выйдите и войдите снова.",
+          code: "PROFILE_NOT_FOUND"
+        }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const { email, password, full_name, organization_id, course_id, company_id, no_login } = await req.json();
 
     console.log(`Registering student: ${full_name} (${email}) for org: ${organization_id}, no_login: ${no_login}`);
