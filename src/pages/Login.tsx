@@ -397,14 +397,6 @@ const Login = () => {
                   </div>
                 </div>
 
-                {/* Telegram hint */}
-                <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                  <p className="text-sm text-blue-400">
-                    💡 <strong>Совет:</strong> Вы можете получать напоминания о восстановлении пароля в Telegram. 
-                    Напишите боту <span className="font-mono">@userinfobot</span> чтобы узнать ваш Chat ID, 
-                    и попросите администратора добавить его в настройках.
-                  </p>
-                </div>
                 <Button 
                   onClick={handleForgotPassword}
                   className="w-full"
