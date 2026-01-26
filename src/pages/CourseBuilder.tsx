@@ -591,6 +591,11 @@ function SortableLessonItem({
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isSpeechPaused, setIsSpeechPaused] = useState(false);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  
+  // Video upload state
+  const [videoUploadProgress, setVideoUploadProgress] = useState<number | null>(null);
+  const videoUploadXhrRef = useRef<XMLHttpRequest | null>(null);
+  const videoInputRef = useRef<HTMLInputElement | null>(null);
 
   const {
     attributes,
@@ -928,66 +933,157 @@ function SortableLessonItem({
 
               {/* Video Upload Section */}
               <div className="border-2 border-dashed border-border rounded-xl p-6 text-center hover:border-sigma-purple/50 transition-colors">
-                <Video className="w-10 h-10 mx-auto mb-3 text-sigma-purple" />
-                <p className="text-sm font-medium mb-1">Загрузить видео на сервер</p>
-                <p className="text-xs text-muted-foreground mb-4">
-                  MP4, WebM, MOV — до 500 МБ
-                </p>
-                <label className="inline-flex items-center gap-2 px-4 py-2 bg-sigma-purple text-white rounded-lg cursor-pointer hover:bg-sigma-purple/90 transition-colors">
-                  <Upload className="w-4 h-4" />
-                  <span className="text-sm font-medium">Выбрать файл</span>
-                  <input
-                    type="file"
-                    accept="video/mp4,video/webm,video/quicktime,video/*"
-                    className="hidden"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      
-                      // Check file size (500MB limit)
-                      const maxSize = 500 * 1024 * 1024;
-                      if (file.size > maxSize) {
-                        toast.error("Файл слишком большой. Максимум 500 МБ");
-                        return;
-                      }
-                      
-                      if (!courseId) {
-                        toast.error("Сначала сохраните курс");
-                        return;
-                      }
-                      
-                      const toastId = toast.loading("Загрузка видео...");
-                      
-                      try {
-                        const fileExt = file.name.split('.').pop()?.toLowerCase() || 'mp4';
-                        const fileName = `video_${lesson.id}_${Date.now()}.${fileExt}`;
-                        const filePath = `${courseId}/${fileName}`;
-                        
-                        const { error: uploadError } = await supabase.storage
-                          .from('course-files')
-                          .upload(filePath, file, {
-                            cacheControl: '3600',
-                            upsert: true
-                          });
+                {videoUploadProgress !== null ? (
+                  // Upload in progress
+                  <div className="space-y-4">
+                    <Video className="w-10 h-10 mx-auto text-sigma-purple animate-pulse" />
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-center gap-2">
+                        <Loader2 className="w-4 h-4 animate-spin text-sigma-purple" />
+                        <span className="text-sm font-medium">Загрузка видео...</span>
+                      </div>
+                      <div className="w-full max-w-xs mx-auto">
+                        <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-sigma-purple transition-all duration-300 ease-out"
+                            style={{ width: `${videoUploadProgress}%` }}
+                          />
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-1">{videoUploadProgress}%</p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-2 gap-1 text-destructive hover:text-destructive border-destructive/50 hover:bg-destructive/10"
+                        onClick={() => {
+                          if (videoUploadXhrRef.current) {
+                            videoUploadXhrRef.current.abort();
+                            videoUploadXhrRef.current = null;
+                          }
+                          setVideoUploadProgress(null);
+                          if (videoInputRef.current) {
+                            videoInputRef.current.value = '';
+                          }
+                          toast.info("Загрузка отменена");
+                        }}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        Отменить
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  // Upload button
+                  <>
+                    <Video className="w-10 h-10 mx-auto mb-3 text-sigma-purple" />
+                    <p className="text-sm font-medium mb-1">Загрузить видео на сервер</p>
+                    <p className="text-xs text-muted-foreground mb-4">
+                      MP4, WebM, MOV — до 500 МБ
+                    </p>
+                    <label className="inline-flex items-center gap-2 px-4 py-2 bg-sigma-purple text-white rounded-lg cursor-pointer hover:bg-sigma-purple/90 transition-colors">
+                      <Upload className="w-4 h-4" />
+                      <span className="text-sm font-medium">Выбрать файл</span>
+                      <input
+                        ref={videoInputRef}
+                        type="file"
+                        accept="video/mp4,video/webm,video/quicktime,video/*"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
                           
-                        if (uploadError) throw uploadError;
-                        
-                        const { data: { publicUrl } } = supabase.storage
-                          .from('course-files')
-                          .getPublicUrl(filePath);
+                          // Check file size (500MB limit)
+                          const maxSize = 500 * 1024 * 1024;
+                          if (file.size > maxSize) {
+                            toast.error("Файл слишком большой. Максимум 500 МБ");
+                            return;
+                          }
                           
-                        onUpdate({ content: publicUrl });
-                        toast.success("Видео загружено!", { id: toastId });
-                      } catch (error: any) {
-                        console.error("Video upload error:", error);
-                        toast.error(`Ошибка загрузки: ${error.message}`, { id: toastId });
-                      }
-                    }}
-                  />
-                </label>
+                          if (!courseId) {
+                            toast.error("Сначала сохраните курс");
+                            return;
+                          }
+                          
+                          setVideoUploadProgress(0);
+                          
+                          try {
+                            const fileExt = file.name.split('.').pop()?.toLowerCase() || 'mp4';
+                            const fileName = `video_${lesson.id}_${Date.now()}.${fileExt}`;
+                            const filePath = `${courseId}/${fileName}`;
+                            
+                            // Get upload URL using Supabase API
+                            const { data: session } = await supabase.auth.getSession();
+                            const token = session?.session?.access_token;
+                            
+                            // Use XMLHttpRequest for progress tracking
+                            const xhr = new XMLHttpRequest();
+                            videoUploadXhrRef.current = xhr;
+                            
+                            const uploadUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/course-files/${filePath}`;
+                            
+                            xhr.upload.addEventListener('progress', (event) => {
+                              if (event.lengthComputable) {
+                                const percent = Math.round((event.loaded / event.total) * 100);
+                                setVideoUploadProgress(percent);
+                              }
+                            });
+                            
+                            xhr.addEventListener('load', () => {
+                              videoUploadXhrRef.current = null;
+                              if (xhr.status >= 200 && xhr.status < 300) {
+                                const { data: { publicUrl } } = supabase.storage
+                                  .from('course-files')
+                                  .getPublicUrl(filePath);
+                                  
+                                onUpdate({ content: publicUrl });
+                                toast.success("Видео загружено!");
+                              } else {
+                                toast.error(`Ошибка загрузки: ${xhr.statusText || 'Неизвестная ошибка'}`);
+                              }
+                              setVideoUploadProgress(null);
+                              if (videoInputRef.current) {
+                                videoInputRef.current.value = '';
+                              }
+                            });
+                            
+                            xhr.addEventListener('error', () => {
+                              videoUploadXhrRef.current = null;
+                              toast.error("Ошибка соединения при загрузке");
+                              setVideoUploadProgress(null);
+                              if (videoInputRef.current) {
+                                videoInputRef.current.value = '';
+                              }
+                            });
+                            
+                            xhr.addEventListener('abort', () => {
+                              videoUploadXhrRef.current = null;
+                              setVideoUploadProgress(null);
+                              if (videoInputRef.current) {
+                                videoInputRef.current.value = '';
+                              }
+                            });
+                            
+                            xhr.open('POST', uploadUrl, true);
+                            xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+                            xhr.setRequestHeader('apikey', import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
+                            xhr.setRequestHeader('x-upsert', 'true');
+                            xhr.send(file);
+                            
+                          } catch (error: any) {
+                            console.error("Video upload error:", error);
+                            toast.error(`Ошибка загрузки: ${error.message}`);
+                            setVideoUploadProgress(null);
+                            videoUploadXhrRef.current = null;
+                            if (videoInputRef.current) {
+                              videoInputRef.current.value = '';
+                            }
+                          }
+                        }}
+                      />
+                    </label>
+                  </>
+                )}
               </div>
-
-              {/* Divider */}
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
                   <span className="w-full border-t border-border" />
