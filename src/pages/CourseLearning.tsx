@@ -144,9 +144,10 @@ interface VideoPlayerInlineProps {
   content: string;
   allowSeek?: boolean;
   onVideoComplete?: () => void;
+  onProgressChange?: (progress: number) => void;
 }
 
-const VideoPlayerInline = ({ content, allowSeek = true, onVideoComplete }: VideoPlayerInlineProps) => {
+const VideoPlayerInline = ({ content, allowSeek = true, onVideoComplete, onProgressChange }: VideoPlayerInlineProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [watchedProgress, setWatchedProgress] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -227,6 +228,7 @@ const VideoPlayerInline = ({ content, allowSeek = true, onVideoComplete }: Video
     if (duration > 0) {
       const progress = (currentTime / duration) * 100;
       setWatchedProgress(progress);
+      onProgressChange?.(progress);
       
       // Mark as complete when 90% watched (only once)
       if (progress >= 90 && onVideoComplete && !completedRef.current) {
@@ -262,7 +264,7 @@ const VideoPlayerInline = ({ content, allowSeek = true, onVideoComplete }: Video
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
         onSeeking={handleSeeking}
-        controlsList={!allowSeek ? "noplaybackrate" : undefined}
+        controlsList={`nodownload${!allowSeek ? " noplaybackrate" : ""}`}
       />
       {!allowSeek && (
         <div className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm text-xs px-2 py-1 rounded-lg flex items-center gap-1">
@@ -621,6 +623,9 @@ const CourseLearning = () => {
   // Text-to-speech state
   const [isSpeaking, setIsSpeaking] = useState(false);
   const speechSynthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
+
+  // Video watch progress state (for controlling "Complete lesson" button visibility)
+  const [videoWatchProgress, setVideoWatchProgress] = useState(0);
 
   // AI Chat state
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -1103,6 +1108,7 @@ const CourseLearning = () => {
         return;
       }
       setIsTransitioning(true);
+      setVideoWatchProgress(0); // Reset video progress when changing lesson
       setTimeout(() => {
         setCurrentLessonIndex(nextIndex);
         setIsTransitioning(false);
@@ -1113,6 +1119,7 @@ const CourseLearning = () => {
   const goToPrevLesson = () => {
     if (currentLessonIndex > 0) {
       setIsTransitioning(true);
+      setVideoWatchProgress(0); // Reset video progress when changing lesson
       setTimeout(() => {
         setCurrentLessonIndex(prev => prev - 1);
         setIsTransitioning(false);
@@ -1127,6 +1134,7 @@ const CourseLearning = () => {
         return;
       }
       setIsTransitioning(true);
+      setVideoWatchProgress(0); // Reset video progress when changing lesson
       setTimeout(() => {
         setCurrentLessonIndex(index);
         setIsTransitioning(false);
@@ -1572,6 +1580,7 @@ const CourseLearning = () => {
                     <VideoPlayerInline 
                       content={currentLesson.content} 
                       allowSeek={course?.allow_video_seek !== false}
+                      onProgressChange={(progress) => setVideoWatchProgress(progress)}
                       onVideoComplete={async () => {
                         // Auto-complete video lesson when 90% watched
                         if (!isLessonCompleted(currentLesson.id) && user) {
@@ -1942,11 +1951,23 @@ const CourseLearning = () => {
                 {isMobile ? "Отправить" : "Отправить ответы"}
               </Button>
             )}
-            {currentLesson?.type !== 'test' && !isLessonCompleted(currentLesson?.id || '') && (
+            {currentLesson?.type !== 'test' && currentLesson?.type !== 'video' && !isLessonCompleted(currentLesson?.id || '') && (
               <Button onClick={markLessonComplete} className={cn("btn-gradient rounded-xl", isMobile && "text-sm px-3")}>
                 {isMobile ? "Завершить" : "Завершить урок"}
                 <ChevronRight className="w-4 h-4 ml-1 md:ml-2" />
               </Button>
+            )}
+            {currentLesson?.type === 'video' && !isLessonCompleted(currentLesson?.id || '') && videoWatchProgress >= 90 && (
+              <Button onClick={markLessonComplete} className={cn("btn-gradient rounded-xl", isMobile && "text-sm px-3")}>
+                {isMobile ? "Завершить" : "Завершить урок"}
+                <ChevronRight className="w-4 h-4 ml-1 md:ml-2" />
+              </Button>
+            )}
+            {currentLesson?.type === 'video' && !isLessonCompleted(currentLesson?.id || '') && videoWatchProgress < 90 && (
+              <div className="text-xs text-muted-foreground flex items-center gap-2">
+                <Video className="w-4 h-4" />
+                Просмотрите видео полностью ({Math.round(videoWatchProgress)}%)
+              </div>
             )}
             {isLessonCompleted(currentLesson?.id || '') && currentLessonIndex < lessons.length - 1 && (
               <Button onClick={goToNextLesson} className={cn("btn-gradient rounded-xl", isMobile && "text-sm px-3")}>
