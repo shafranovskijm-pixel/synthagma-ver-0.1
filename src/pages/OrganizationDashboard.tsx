@@ -324,18 +324,11 @@ export default function OrganizationDashboard() {
                 </>
               )}
               {activeTab === "courses" && (
-                <>
-                  <Button variant="outline" className="rounded-xl gap-2 text-xs lg:text-sm" onClick={() => navigate("/course-import")}>
-                    <Upload className="w-4 h-4" />
-                    <span className="hidden sm:inline">Импорт курса</span>
-                    <span className="sm:hidden">Импорт</span>
-                  </Button>
-                  <Button className="btn-gradient rounded-xl gap-2 text-xs lg:text-sm" onClick={() => navigate("/course-builder")}>
-                    <Plus className="w-4 h-4" />
-                    <span className="hidden sm:inline">Создать курс</span>
-                    <span className="sm:hidden">Создать</span>
-                  </Button>
-                </>
+                <Button className="btn-gradient rounded-xl gap-2 text-xs lg:text-sm" onClick={() => navigate("/course-builder")}>
+                  <Plus className="w-4 h-4" />
+                  <span className="hidden sm:inline">Создать курс</span>
+                  <span className="sm:hidden">Создать</span>
+                </Button>
               )}
             </div>
           </div>
