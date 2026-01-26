@@ -1,6 +1,5 @@
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Dialog,
@@ -9,11 +8,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Upload, Image, FileText, Video, X, Loader2, CheckCircle } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { Upload, Image, FileText, Video, X, Loader2, CheckCircle, Cloud } from "lucide-react";
+import { useExternalStorage } from "@/hooks/useExternalStorage";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-
+import { Badge } from "@/components/ui/badge";
 interface FileUploadDialogProps {
   isOpen: boolean;
   onClose: () => void;
@@ -51,9 +50,12 @@ export const FileUploadDialog = ({
     return "file";
   };
 
+  const { uploadFile: externalUpload, isExternalConfigured } = useExternalStorage();
+
   const uploadFile = async (file: File) => {
     const fileType = getFileType(file.type);
     const fileName = `${courseId}/${Date.now()}-${file.name}`;
+    const bucket = fileType === 'video' ? 'course-videos' : 'course-files';
 
     // Add to list with uploading status
     const uploadingFile: UploadedFile = {
@@ -65,24 +67,17 @@ export const FileUploadDialog = ({
     setFiles((prev) => [...prev, uploadingFile]);
 
     try {
-      const { data, error } = await supabase.storage
-        .from("course-files")
-        .upload(fileName, file, {
-          cacheControl: "3600",
-          upsert: false,
-        });
+      const result = await externalUpload(file, bucket, fileName);
 
-      if (error) throw error;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from("course-files")
-        .getPublicUrl(fileName);
+      if (!result) {
+        throw new Error('Не удалось загрузить файл');
+      }
 
       // Update status to success
       setFiles((prev) =>
         prev.map((f) =>
           f.name === file.name
-            ? { ...f, url: publicUrl, status: "success" as const }
+            ? { ...f, url: result.url, status: "success" as const }
             : f
         )
       );
@@ -151,6 +146,12 @@ export const FileUploadDialog = ({
           <DialogTitle className="flex items-center gap-2 font-display">
             <Upload className="w-5 h-5" />
             Загрузка файлов
+            {isExternalConfigured && (
+              <Badge variant="outline" className="ml-2 text-xs">
+                <Cloud className="w-3 h-3 mr-1" />
+                Внешнее хранилище
+              </Badge>
+            )}
           </DialogTitle>
           <DialogDescription>
             Загрузите изображения, видео или документы для урока
