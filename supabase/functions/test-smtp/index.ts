@@ -121,8 +121,12 @@ const handler = async (req: Request): Promise<Response> => {
     response = await sendCommand(btoa(SMTP_PASS));
     console.log("Pass response:", response);
 
+    // Extract email from SMTP_FROM (may contain display name)
+    const emailMatch = SMTP_FROM.match(/<([^>]+)>/) || [null, SMTP_FROM];
+    const fromEmail = emailMatch[1] || SMTP_FROM;
+
     // MAIL FROM
-    response = await sendCommand(`MAIL FROM:<${SMTP_FROM}>`);
+    response = await sendCommand(`MAIL FROM:<${fromEmail}>`);
     console.log("MAIL FROM response:", response);
 
     // RCPT TO
