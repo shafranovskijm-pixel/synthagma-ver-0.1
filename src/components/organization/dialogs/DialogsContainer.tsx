@@ -100,6 +100,7 @@ interface DialogsContainerProps {
   onAddStudentsToCourse: () => void;
   isAddingStudentsToCourse: boolean;
   onRemoveFromCourse: (enrollmentId: string) => void;
+  onCourseStudentsRefresh?: () => void;
   
   // Email invitation dialog
   showInviteEmailDialog: boolean;
@@ -297,6 +298,7 @@ export function DialogsContainer(props: DialogsContainerProps) {
         onRemoveFromCourse={props.onRemoveFromCourse}
         onShowInviteEmailDialog={() => props.setShowInviteEmailDialog(true)}
         onShowStudentDocs={props.openStudentDocs}
+        onRefresh={props.onCourseStudentsRefresh}
       />
 
       <InviteEmailDialog

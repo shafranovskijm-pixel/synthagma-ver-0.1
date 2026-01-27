@@ -1,8 +1,20 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Loader2, Link, Copy, Send, FileText, Trash2, BarChart3, History } from "lucide-react";
+import { Loader2, Link, Copy, Send, FileText, Trash2, BarChart3, History, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import { CourseTestReport } from "@/components/organization/CourseTestReport";
 import { EnrollmentHistory } from "@/components/organization/EnrollmentHistory";
 
@@ -35,6 +47,7 @@ interface CourseStudentsDialogProps {
   onRemoveFromCourse: (enrollmentId: string) => void;
   onShowInviteEmailDialog: () => void;
   onShowStudentDocs: (enrollmentId: string, studentName: string, courseName: string) => void;
+  onRefresh?: () => void;
 }
 
 export function CourseStudentsDialog({
@@ -52,7 +65,53 @@ export function CourseStudentsDialog({
   onRemoveFromCourse,
   onShowInviteEmailDialog,
   onShowStudentDocs,
+  onRefresh,
 }: CourseStudentsDialogProps) {
+  const handleResetProgress = async (student: Student) => {
+    if (!student.enrollment_id || !course) return;
+
+    try {
+      // Get all lesson IDs for this course
+      const { data: lessons } = await supabase
+        .from("lessons")
+        .select("id")
+        .eq("course_id", course.id);
+
+      const lessonIds = (lessons || []).map(l => l.id);
+
+      // Delete lesson progress
+      if (lessonIds.length > 0) {
+        await supabase
+          .from("lesson_progress")
+          .delete()
+          .eq("user_id", student.user_id)
+          .in("lesson_id", lessonIds);
+
+        // Delete test attempts
+        await supabase
+          .from("test_attempts")
+          .delete()
+          .eq("user_id", student.user_id)
+          .in("lesson_id", lessonIds);
+      }
+
+      // Reset enrollment progress
+      await supabase
+        .from("enrollments")
+        .update({ 
+          progress: 0, 
+          status: "active",
+          completed_at: null 
+        })
+        .eq("id", student.enrollment_id);
+
+      toast.success(`Прогресс ученика "${student.name}" сброшен`);
+      onRefresh?.();
+    } catch (error) {
+      console.error("Error resetting progress:", error);
+      toast.error("Ошибка сброса прогресса");
+    }
+  };
   const handleCopyLink = () => {
     if (course) {
       const url = `${window.location.origin}/course/${course.id}`;
@@ -106,11 +165,39 @@ export function CourseStudentsDialog({
                         <div className="font-medium">{s.name}</div>
                         <div className="text-sm text-muted-foreground">{s.email}</div>
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
                         <div className="flex items-center gap-2">
                           <Progress value={s.progress} className="w-20 h-2" />
                           <span className="text-sm">{s.progress}%</span>
                         </div>
+                        {s.progress > 0 && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                title="Сбросить прогресс"
+                              >
+                                <RotateCcw className="w-4 h-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Сбросить прогресс?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Все результаты тестов и отметки о прохождении уроков ученика "{s.name}" будут удалены.
+                                  Ему придётся пройти курс заново с самого начала.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Отмена</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleResetProgress(s)}>
+                                  Сбросить
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
                         <Button
                           variant="ghost"
                           size="sm"
@@ -128,6 +215,7 @@ export function CourseStudentsDialog({
                           size="sm"
                           className="text-destructive hover:text-destructive"
                           onClick={() => s.enrollment_id && onRemoveFromCourse(s.enrollment_id)}
+                          title="Отчислить"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
