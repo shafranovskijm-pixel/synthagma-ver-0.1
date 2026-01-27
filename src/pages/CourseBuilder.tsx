@@ -1963,6 +1963,7 @@ export default function CourseBuilder() {
 
   const updateLesson = (id: string, updates: Partial<Lesson>) => {
     setLessons(lessons.map(l => l.id === id ? { ...l, ...updates } : l));
+    markAsChanged();
   };
 
   const deleteLesson = (id: string) => {
