@@ -168,6 +168,7 @@ const VideoPlayerInline = ({ content, allowSeek = true, onVideoComplete, onProgr
   const [isMuted, setIsMuted] = useState(false);
   const maxWatchedRef = useRef(0);
   const completedRef = useRef(false);
+  const seekGuardRef = useRef(false);
   
   if (!content) return null;
   
@@ -287,14 +288,13 @@ const VideoPlayerInline = ({ content, allowSeek = true, onVideoComplete, onProgr
     setCurrentTime(currentTime);
     
     if (!allowSeek) {
-      // Allow natural progress, block jumps forward.
-      // If user jumps ahead (time > maxWatched + 1s), snap back.
-      if (currentTime > maxWatchedRef.current + 1) {
-        videoRef.current.currentTime = maxWatchedRef.current;
-        return;
-      }
-      // Otherwise, update max watched.
+      // Block ANY forward seek beyond the furthest watched point.
+      // No tolerance: prevents inching forward.
+      if (seekGuardRef.current) return;
+
       if (currentTime > maxWatchedRef.current) {
+        // Natural playback increases currentTime gradually; that's allowed.
+        // But if user attempted a jump forward, onSeeking handler will revert.
         maxWatchedRef.current = currentTime;
       }
     }
@@ -363,14 +363,26 @@ const VideoPlayerInline = ({ content, allowSeek = true, onVideoComplete, onProgr
   };
   
   const handleSeeking = () => {
-    if (!allowSeek && videoRef.current) {
-      const currentTime = videoRef.current.currentTime;
-      if (currentTime > maxWatchedRef.current + 1) {
-        videoRef.current.currentTime = maxWatchedRef.current;
-        toast.info('Перемотка заблокирована. Посмотрите видео полностью.');
-      } else {
-        // Seeking backwards is fine; keep maxWatched as-is.
-      }
+    if (allowSeek || !videoRef.current) return;
+    const v = videoRef.current;
+
+    // Allow seeking backwards, forbid seeking forward at all.
+    if (v.currentTime > maxWatchedRef.current) {
+      seekGuardRef.current = true;
+      v.currentTime = maxWatchedRef.current;
+      // Let the browser settle the seek, then release guard.
+      window.setTimeout(() => {
+        seekGuardRef.current = false;
+      }, 0);
+      toast.info('Перемотка заблокирована. Посмотрите видео полностью.');
+    }
+  };
+
+  const handleRateChange = () => {
+    if (allowSeek || !videoRef.current) return;
+    // Prevent speeding up playback as a form of skipping.
+    if (videoRef.current.playbackRate !== 1) {
+      videoRef.current.playbackRate = 1;
     }
   };
   
@@ -378,15 +390,20 @@ const VideoPlayerInline = ({ content, allowSeek = true, onVideoComplete, onProgr
     <div className="relative">
       <video 
         ref={videoRef}
+        // IMPORTANT: when seeking is disabled we must remove native controls entirely.
         controls={allowSeek}
         className="w-full h-full rounded-2xl"
         src={content}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
         onSeeking={handleSeeking}
+        onRateChange={handleRateChange}
         onPlay={handlePlay}
         onPause={handlePause}
-        controlsList={`nodownload${!allowSeek ? " noplaybackrate" : ""}`}
+        controlsList={`nodownload${!allowSeek ? " noplaybackrate noremoteplayback" : ""}`}
+        disablePictureInPicture={!allowSeek}
+        disableRemotePlayback={!allowSeek}
+        playsInline
       />
       {!allowSeek && (
         <div className="absolute inset-x-0 bottom-0 p-3">
