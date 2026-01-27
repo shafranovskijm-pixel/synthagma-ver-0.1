@@ -79,6 +79,21 @@ const canEmbedInIframe = (url: string): boolean => {
   return !noEmbedPatterns.some(pattern => pattern.test(url));
 };
 
+// Direct video files can (and should) be rendered with a native <video> tag so we can enforce restrictions.
+const isDirectVideoFileUrl = (url: string): boolean => {
+  try {
+    const u = new URL(url);
+    const path = u.pathname.toLowerCase();
+    // Common video file extensions
+    if (/(\.mp4|\.webm|\.ogg|\.ogv|\.mov|\.m4v)(\?|$)/.test(path)) return true;
+    // Some storage providers use extension-less object paths; still treat known video mime-style names as direct.
+    // (best-effort; if it's not a direct video file the <video> tag will fail and the user will see it)
+    return false;
+  } catch {
+    return false;
+  }
+};
+
 // Helper function to get embed URL from video content
 const getVideoEmbedUrl = (content: string): { url: string; canEmbed: boolean } | null => {
   if (!content) return null;
@@ -219,8 +234,13 @@ const VideoPlayerInline = ({ content, allowSeek = true, onVideoComplete, onProgr
   
   // Try to get embed URL from link
   const embedResult = getVideoEmbedUrl(content);
+
+  // If the parsed URL points to a direct video file, always render it via native <video>
+  // so we can reliably remove controls / disable seeking.
+  const directVideoSrc = embedResult?.url && isDirectVideoFileUrl(embedResult.url) ? embedResult.url : null;
+  const resolvedContent = directVideoSrc ?? content;
   
-  if (embedResult) {
+  if (embedResult && !directVideoSrc) {
     // When seeking is forbidden, we cannot reliably enforce it inside embedded players.
     // So we avoid embedding and provide an external link instead.
     if (!allowSeek) {
@@ -394,7 +414,7 @@ const VideoPlayerInline = ({ content, allowSeek = true, onVideoComplete, onProgr
         // IMPORTANT: when seeking is disabled we must remove native controls entirely.
         controls={allowSeek}
         className="w-full h-full rounded-2xl"
-        src={content}
+        src={resolvedContent}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
         onSeeking={handleSeeking}
