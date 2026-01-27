@@ -986,6 +986,8 @@ export type Database = {
           lesson_id: string
           time_spent: number
           user_id: string
+          video_duration: number | null
+          video_position: number | null
         }
         Insert: {
           completed?: boolean
@@ -994,6 +996,8 @@ export type Database = {
           lesson_id: string
           time_spent?: number
           user_id: string
+          video_duration?: number | null
+          video_position?: number | null
         }
         Update: {
           completed?: boolean
@@ -1002,6 +1006,8 @@ export type Database = {
           lesson_id?: string
           time_spent?: number
           user_id?: string
+          video_duration?: number | null
+          video_position?: number | null
         }
         Relationships: [
           {
