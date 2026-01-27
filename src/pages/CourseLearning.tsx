@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
+import { useVideoProgress } from "@/hooks/useVideoProgress";
 import { supabase } from "@/integrations/supabase/client";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Button } from "@/components/ui/button";
@@ -172,18 +173,32 @@ interface VideoPlayerInlineProps {
   allowSeek?: boolean;
   onVideoComplete?: () => void;
   onProgressChange?: (progress: number) => void;
+  userId?: string;
+  lessonId?: string;
+  savedPosition?: number;
+  onSavePosition?: (position: number, duration: number) => void;
 }
 
-const VideoPlayerInline = ({ content, allowSeek = true, onVideoComplete, onProgressChange }: VideoPlayerInlineProps) => {
+const VideoPlayerInline = ({ 
+  content, 
+  allowSeek = true, 
+  onVideoComplete, 
+  onProgressChange,
+  userId,
+  lessonId,
+  savedPosition = 0,
+  onSavePosition
+}: VideoPlayerInlineProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [watchedProgress, setWatchedProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
-  const maxWatchedRef = useRef(0);
+  const maxWatchedRef = useRef(savedPosition);
   const completedRef = useRef(false);
   const seekGuardRef = useRef(false);
+  const hasRestoredPositionRef = useRef(false);
   
   if (!content) return null;
   
@@ -324,6 +339,9 @@ const VideoPlayerInline = ({ content, allowSeek = true, onVideoComplete, onProgr
       setWatchedProgress(progress);
       onProgressChange?.(progress);
       
+      // Save position periodically
+      onSavePosition?.(currentTime, duration);
+      
       // Mark as complete when 90% watched (only once)
       if (progress >= 90 && onVideoComplete && !completedRef.current) {
         completedRef.current = true;
@@ -334,7 +352,23 @@ const VideoPlayerInline = ({ content, allowSeek = true, onVideoComplete, onProgr
   
   const handleLoadedMetadata = () => {
     if (videoRef.current) {
-      setDuration(videoRef.current.duration);
+      const videoDuration = videoRef.current.duration;
+      setDuration(videoDuration);
+      
+      // Restore saved position after metadata loads (only once)
+      if (!hasRestoredPositionRef.current && savedPosition > 0 && savedPosition < videoDuration - 1) {
+        console.log('[VideoPlayer] Restoring position to:', savedPosition);
+        hasRestoredPositionRef.current = true;
+        videoRef.current.currentTime = savedPosition;
+        maxWatchedRef.current = savedPosition;
+        setCurrentTime(savedPosition);
+        
+        if (videoDuration > 0) {
+          const progress = (savedPosition / videoDuration) * 100;
+          setWatchedProgress(progress);
+          onProgressChange?.(progress);
+        }
+      }
     }
   };
 
@@ -846,6 +880,14 @@ const CourseLearning = () => {
   const currentLesson = lessons[currentLessonIndex];
   const completedCount = lessonProgress.filter(p => p.completed).length;
   const progressPercent = lessons.length > 0 ? (completedCount / lessons.length) * 100 : 0;
+  
+  // Video position persistence (must be after currentLesson is defined)
+  const videoLessonId = currentLesson?.type === 'video' ? currentLesson.id : undefined;
+  const { 
+    savedPosition, 
+    isLoading: isVideoProgressLoading,
+    savePosition: saveVideoPosition,
+  } = useVideoProgress(user?.id, videoLessonId);
 
   // Parse content blocks
   const contentBlocks: ContentBlock[] = currentLesson?.content 
@@ -1880,11 +1922,19 @@ const CourseLearning = () => {
                 </div>
 
                 <div className="aspect-video bg-muted rounded-2xl flex items-center justify-center overflow-hidden shadow-lg">
-                  {currentLesson.content ? (
+                  {isVideoProgressLoading ? (
+                    <div className="flex items-center justify-center">
+                      <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : currentLesson.content ? (
                     <VideoPlayerInline 
-                      key={course?.allow_video_seek !== false ? "vp-seek-enabled" : "vp-seek-disabled"}
+                      key={`${currentLesson.id}-${course?.allow_video_seek !== false ? "seek" : "no-seek"}`}
                       content={currentLesson.content} 
                       allowSeek={course?.allow_video_seek !== false}
+                      userId={user?.id}
+                      lessonId={currentLesson.id}
+                      savedPosition={savedPosition}
+                      onSavePosition={saveVideoPosition}
                       onProgressChange={(progress) => setVideoWatchProgress(progress)}
                       onVideoComplete={async () => {
                         // Auto-complete video lesson when 90% watched
