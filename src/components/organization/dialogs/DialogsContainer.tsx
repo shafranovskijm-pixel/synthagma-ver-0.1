@@ -178,6 +178,7 @@ interface DialogsContainerProps {
   isAddingCoursesToStudent: boolean;
   onAddCourses: () => void;
   onRemoveEnrollment: (enrollmentId: string) => void;
+  onResetProgress: (enrollmentId: string, courseTitle: string) => void;
   
   // Create link dialog
   showCreateLinkDialog: boolean;
@@ -383,6 +384,7 @@ export function DialogsContainer(props: DialogsContainerProps) {
         isAddingCourses={props.isAddingCoursesToStudent}
         onAddCourses={props.onAddCourses}
         onRemoveEnrollment={props.onRemoveEnrollment}
+        onResetProgress={props.onResetProgress}
         getCategoryById={props.getCategoryById}
       />
 

@@ -1,9 +1,19 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
-import { Loader2, GraduationCap, Plus, X, Search } from "lucide-react";
-
+import { Loader2, GraduationCap, Plus, X, Search, RotateCcw } from "lucide-react";
 interface CourseCategory {
   id: string;
   name: string;
@@ -58,6 +68,7 @@ interface StudentCoursesDialogProps {
   isAddingCourses: boolean;
   onAddCourses: () => void;
   onRemoveEnrollment: (enrollmentId: string) => void;
+  onResetProgress: (enrollmentId: string, courseTitle: string) => void;
   getCategoryById: (id?: string | null) => CourseCategory | undefined;
 }
 
@@ -75,6 +86,7 @@ export function StudentCoursesDialog({
   isAddingCourses,
   onAddCourses,
   onRemoveEnrollment,
+  onResetProgress,
   getCategoryById,
 }: StudentCoursesDialogProps) {
   const filteredCourses = availableCourses.filter(c => 
@@ -125,14 +137,46 @@ export function StudentCoursesDialog({
                           </span>
                         </div>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="rounded-lg text-destructive hover:text-destructive ml-3"
-                        onClick={() => onRemoveEnrollment(enrollment_id)}
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
+                      <div className="flex items-center gap-2 ml-3">
+                        {progress > 0 && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="rounded-lg"
+                                title="Сбросить прогресс"
+                              >
+                                <RotateCcw className="w-4 h-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Сбросить прогресс?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Все результаты тестов и отметки о прохождении уроков курса "{course.title}" будут удалены.
+                                  Ученику придётся пройти курс заново с самого начала.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Отмена</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => onResetProgress(enrollment_id, course.title)}>
+                                  Сбросить
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="rounded-lg text-destructive hover:text-destructive"
+                          onClick={() => onRemoveEnrollment(enrollment_id)}
+                          title="Отчислить с курса"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>

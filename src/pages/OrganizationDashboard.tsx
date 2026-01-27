@@ -576,6 +576,7 @@ export default function OrganizationDashboard() {
         isAddingCoursesToStudent={studentCoursesDialog.isAddingCoursesToStudent}
         onAddCourses={studentCoursesDialog.addCourses}
         onRemoveEnrollment={studentCoursesDialog.removeEnrollment}
+        onResetProgress={studentCoursesDialog.resetProgress}
         showCreateLinkDialog={showCreateLinkDialog}
         setShowCreateLinkDialog={setShowCreateLinkDialog}
         newLinkCompanyName={newLinkCompanyName}
