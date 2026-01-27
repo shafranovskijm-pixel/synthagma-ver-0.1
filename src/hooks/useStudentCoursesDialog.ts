@@ -133,6 +133,62 @@ export function useStudentCoursesDialog(courses: Course[], onRefresh: () => void
     }
   }, [selectedStudentForCourses, openDialog, onRefresh]);
 
+  const resetProgress = useCallback(async (enrollmentId: string, courseTitle: string) => {
+    if (!selectedStudentForCourses) return;
+
+    try {
+      // Get course_id from enrollment
+      const { data: enrollment } = await supabase
+        .from("enrollments")
+        .select("course_id")
+        .eq("id", enrollmentId)
+        .single();
+
+      if (!enrollment) throw new Error("Enrollment not found");
+
+      // Get all lesson IDs for this course
+      const { data: lessons } = await supabase
+        .from("lessons")
+        .select("id")
+        .eq("course_id", enrollment.course_id);
+
+      const lessonIds = (lessons || []).map(l => l.id);
+
+      // Delete lesson progress
+      if (lessonIds.length > 0) {
+        await supabase
+          .from("lesson_progress")
+          .delete()
+          .eq("user_id", selectedStudentForCourses.user_id)
+          .in("lesson_id", lessonIds);
+
+        // Delete test attempts
+        await supabase
+          .from("test_attempts")
+          .delete()
+          .eq("user_id", selectedStudentForCourses.user_id)
+          .in("lesson_id", lessonIds);
+      }
+
+      // Reset enrollment progress
+      await supabase
+        .from("enrollments")
+        .update({ 
+          progress: 0, 
+          status: "active",
+          completed_at: null 
+        })
+        .eq("id", enrollmentId);
+
+      toast.success(`Прогресс курса "${courseTitle}" сброшен`);
+      openDialog(selectedStudentForCourses);
+      onRefresh();
+    } catch (error) {
+      console.error("Error resetting progress:", error);
+      toast.error("Ошибка сброса прогресса");
+    }
+  }, [selectedStudentForCourses, openDialog, onRefresh]);
+
   const toggleCourseSelection = useCallback((courseId: string) => {
     const newSelected = new Set(selectedCoursesToAdd);
     if (newSelected.has(courseId)) {
@@ -157,6 +213,7 @@ export function useStudentCoursesDialog(courses: Course[], onRefresh: () => void
     openDialog,
     addCourses,
     removeEnrollment,
+    resetProgress,
     toggleCourseSelection,
   };
 }
