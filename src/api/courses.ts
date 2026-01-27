@@ -42,7 +42,11 @@ export async function fetchCourses(organizationId: string): Promise<Course[]> {
       duration: course.duration,
       lessonsCount: course.lessons?.[0]?.count || 0,
       studentsCount: courseEnrollments.length,
-      skip_video_identification: course.skip_video_identification || false
+      // Course settings (must be present so UI toggles don't reset on refresh)
+      skip_video_identification: course.skip_video_identification ?? false,
+      sequential_lessons: course.sequential_lessons ?? false,
+      // DB default is true; treat NULL/undefined as true
+      allow_video_seek: course.allow_video_seek ?? true,
     };
   });
 }
