@@ -1120,6 +1120,8 @@ const CourseLearning = () => {
     const questionsToShow = (lessonData as any)?.test_questions_to_show ?? null;
     const passingScore = (lessonData as any)?.test_passing_score ?? 60;
     
+    console.log('[Test Settings]', { lessonId, questionsToShow, passingScore, lessonData });
+    
     setTestQuestionsCount(questionsToShow);
     setTestPassingScore(passingScore);
 
@@ -1178,6 +1180,7 @@ const CourseLearning = () => {
       }
     } else {
       // First attempt - select random questions from bank
+      console.log('[First Attempt] Selecting', questionsToShow, 'random questions from', allQuestions.length, 'total');
       selectRandomQuestions(allQuestions, questionsToShow, []);
       setUsedQuestionIds([]);
       setAnswers({});
@@ -1185,8 +1188,11 @@ const CourseLearning = () => {
   };
 
   const selectRandomQuestions = (allQuestions: TestQuestion[], count: number | null, excludeIds: string[]) => {
+    console.log('[selectRandomQuestions] count:', count, 'allQuestions:', allQuestions.length);
+    
     // If count is null, show all questions
     if (count === null || count <= 0 || count >= allQuestions.length) {
+      console.log('[selectRandomQuestions] Showing all questions');
       setTestQuestions(allQuestions);
       return;
     }
@@ -1203,6 +1209,7 @@ const CourseLearning = () => {
     const shuffled = [...availableQuestions].sort(() => Math.random() - 0.5);
     const selected = shuffled.slice(0, Math.min(count, shuffled.length));
     
+    console.log('[selectRandomQuestions] Selected', selected.length, 'questions');
     setTestQuestions(selected);
   };
 
