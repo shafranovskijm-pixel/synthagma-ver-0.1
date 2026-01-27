@@ -168,8 +168,39 @@ const VideoPlayerInline = ({ content, allowSeek = true, onVideoComplete, onProgr
   
   if (!content) return null;
   
-  // If it's a full iframe embed code, render it directly (can't control seeking)
+  // If it's a full iframe embed code, render it directly ONLY when seeking is allowed.
+  // When seeking is forbidden, we cannot enforce it inside iframe – show an "open video" card instead.
   if (isIframeEmbed(content)) {
+    const iframeSrcMatch = content.match(/<iframe[^>]*src=["']([^"']+)["']/i);
+    const iframeSrc = iframeSrcMatch?.[1];
+
+    if (!allowSeek) {
+      return (
+        <div className="aspect-video w-full rounded-2xl overflow-hidden bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 flex flex-col items-center justify-center gap-4">
+          <Video className="w-16 h-16 text-primary/60" />
+          <div className="text-center px-4">
+            <p className="text-sm font-medium text-foreground mb-1">Видео</p>
+            <p className="text-xs text-muted-foreground mb-3">
+              Перемотка запрещена, а встроенный плеер не позволяет это контролировать.
+            </p>
+            {iframeSrc ? (
+              <a
+                href={iframeSrc}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+              >
+                <Play className="w-4 h-4" />
+                Открыть видео
+              </a>
+            ) : (
+              <p className="text-xs text-muted-foreground">Ссылка на видео не найдена в коде вставки.</p>
+            )}
+          </div>
+        </div>
+      );
+    }
+
     const sanitized = DOMPurify.sanitize(content, {
       ADD_TAGS: ['iframe'],
       ADD_ATTR: ['allow', 'allowfullscreen', 'frameborder', 'src', 'width', 'height', 'title', 'referrerpolicy']
@@ -186,6 +217,31 @@ const VideoPlayerInline = ({ content, allowSeek = true, onVideoComplete, onProgr
   const embedResult = getVideoEmbedUrl(content);
   
   if (embedResult) {
+    // When seeking is forbidden, we cannot reliably enforce it inside embedded players.
+    // So we avoid embedding and provide an external link instead.
+    if (!allowSeek) {
+      return (
+        <div className="aspect-video w-full rounded-2xl overflow-hidden bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 flex flex-col items-center justify-center gap-4">
+          <Video className="w-16 h-16 text-primary/60" />
+          <div className="text-center px-4">
+            <p className="text-sm font-medium text-foreground mb-1">Видеозапись</p>
+            <p className="text-xs text-muted-foreground mb-3">
+              Перемотка запрещена. Чтобы ограничение работало, откройте видео по кнопке ниже.
+            </p>
+            <a
+              href={embedResult.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+            >
+              <Play className="w-4 h-4" />
+              Открыть видео
+            </a>
+          </div>
+        </div>
+      );
+    }
+
     // If can't embed, show a card with link to open video
     if (!embedResult.canEmbed) {
       return (
@@ -227,13 +283,15 @@ const VideoPlayerInline = ({ content, allowSeek = true, onVideoComplete, onProgr
     const currentTime = videoRef.current.currentTime;
     
     if (!allowSeek) {
-      // Track max watched position
-      if (currentTime > maxWatchedRef.current) {
-        maxWatchedRef.current = currentTime;
-      }
-      // If user tries to seek ahead, snap back
+      // Allow natural progress, block jumps forward.
+      // If user jumps ahead (time > maxWatched + 1s), snap back.
       if (currentTime > maxWatchedRef.current + 1) {
         videoRef.current.currentTime = maxWatchedRef.current;
+        return;
+      }
+      // Otherwise, update max watched.
+      if (currentTime > maxWatchedRef.current) {
+        maxWatchedRef.current = currentTime;
       }
     }
     
@@ -262,6 +320,8 @@ const VideoPlayerInline = ({ content, allowSeek = true, onVideoComplete, onProgr
       if (currentTime > maxWatchedRef.current + 1) {
         videoRef.current.currentTime = maxWatchedRef.current;
         toast.info('Перемотка заблокирована. Посмотрите видео полностью.');
+      } else {
+        // Seeking backwards is fine; keep maxWatched as-is.
       }
     }
   };
