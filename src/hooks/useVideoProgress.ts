@@ -20,6 +20,9 @@ export const useVideoProgress = (
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedPositionRef = useRef<number>(0);
   
+  // Current position ref for beforeunload
+  const currentPositionRef = useRef<{ position: number; duration: number }>({ position: 0, duration: 0 });
+  
   // Load saved position on mount
   useEffect(() => {
     if (!userId || !lessonId) {
@@ -66,6 +69,9 @@ export const useVideoProgress = (
   const savePosition = useCallback(
     async (position: number, duration: number) => {
       if (!userId || !lessonId) return;
+      
+      // Update current position ref for beforeunload
+      currentPositionRef.current = { position, duration };
       
       // Only save if position changed significantly (at least 3 seconds)
       if (Math.abs(position - lastSavedPositionRef.current) < 3) return;
@@ -130,14 +136,82 @@ export const useVideoProgress = (
     [userId, lessonId]
   );
   
-  // Cleanup on unmount
+  // Save on visibility change (tab switch, minimize) and cleanup
   useEffect(() => {
+    if (!userId || !lessonId) return;
+    
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'hidden') {
+        const { position, duration } = currentPositionRef.current;
+        if (position > 0 && Math.abs(position - lastSavedPositionRef.current) >= 1) {
+          console.log('[useVideoProgress] Saving on visibility hidden:', position);
+          
+          // Clear any pending timeout
+          if (saveTimeoutRef.current) {
+            clearTimeout(saveTimeoutRef.current);
+          }
+          
+          lastSavedPositionRef.current = position;
+          
+          // Use async IIFE for save
+          (async () => {
+            try {
+              await supabase
+                .from('lesson_progress')
+                .upsert(
+                  {
+                    user_id: userId,
+                    lesson_id: lessonId,
+                    video_position: position,
+                    video_duration: duration,
+                  },
+                  { onConflict: 'lesson_id,user_id' }
+                );
+              console.log('[useVideoProgress] Saved on visibility change');
+            } catch (err) {
+              console.error('[useVideoProgress] Visibility save error:', err);
+            }
+          })();
+        }
+      }
+    };
+    
+    const handleBeforeUnload = () => {
+      const { position, duration } = currentPositionRef.current;
+      if (position > 0 && Math.abs(position - lastSavedPositionRef.current) >= 1) {
+        // Synchronous XHR as last resort for page close
+        // Note: This may not always complete, but visibilitychange should handle most cases
+        try {
+          const xhr = new XMLHttpRequest();
+          xhr.open('POST', `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/lesson_progress?on_conflict=lesson_id,user_id`, false);
+          xhr.setRequestHeader('Content-Type', 'application/json');
+          xhr.setRequestHeader('apikey', import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
+          xhr.setRequestHeader('Authorization', `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`);
+          xhr.setRequestHeader('Prefer', 'resolution=merge-duplicates');
+          xhr.send(JSON.stringify({
+            user_id: userId,
+            lesson_id: lessonId,
+            video_position: position,
+            video_duration: duration,
+          }));
+          console.log('[useVideoProgress] Sync save on unload:', position);
+        } catch (err) {
+          console.error('[useVideoProgress] Sync save error:', err);
+        }
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
     return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, []);
+  }, [userId, lessonId]);
   
   return {
     savedPosition: state.position,
