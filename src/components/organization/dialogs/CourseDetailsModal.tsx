@@ -26,7 +26,9 @@ import {
   Loader2,
   Settings,
   Video,
-  RotateCcw
+  RotateCcw,
+  Lock,
+  FastForward
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -41,6 +43,8 @@ interface Course {
   duration?: string;
   category_id?: string | null;
   skip_video_identification?: boolean;
+  sequential_lessons?: boolean;
+  allow_video_seek?: boolean;
 }
 
 interface Student {
@@ -84,6 +88,8 @@ export function CourseDetailsModal({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [skipVideoId, setSkipVideoId] = useState(course?.skip_video_identification || false);
+  const [sequentialLessons, setSequentialLessons] = useState(course?.sequential_lessons || false);
+  const [allowVideoSeek, setAllowVideoSeek] = useState(course?.allow_video_seek !== false);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [resetConfirmStudent, setResetConfirmStudent] = useState<Student | null>(null);
   const [isResetting, setIsResetting] = useState(false);
@@ -91,6 +97,8 @@ export function CourseDetailsModal({
   useEffect(() => {
     if (course) {
       setSkipVideoId(course.skip_video_identification || false);
+      setSequentialLessons(course.sequential_lessons || false);
+      setAllowVideoSeek(course.allow_video_seek !== false);
     }
   }, [course]);
 
@@ -108,6 +116,48 @@ export function CourseDetailsModal({
       
       setSkipVideoId(value);
       toast.success(value ? "Видеоидентификация отключена для этого курса" : "Видеоидентификация включена для этого курса");
+      onCourseUpdated?.();
+    } catch (error) {
+      console.error("Error updating course:", error);
+      toast.error("Ошибка сохранения настроек");
+    } finally {
+      setIsSavingSettings(false);
+    }
+  };
+
+  const handleToggleSequentialLessons = async (value: boolean) => {
+    setIsSavingSettings(true);
+    try {
+      const { error } = await supabase
+        .from("courses")
+        .update({ sequential_lessons: value })
+        .eq("id", course.id);
+      
+      if (error) throw error;
+      
+      setSequentialLessons(value);
+      toast.success(value ? "Последовательность уроков включена" : "Последовательность уроков отключена");
+      onCourseUpdated?.();
+    } catch (error) {
+      console.error("Error updating course:", error);
+      toast.error("Ошибка сохранения настроек");
+    } finally {
+      setIsSavingSettings(false);
+    }
+  };
+
+  const handleToggleAllowVideoSeek = async (value: boolean) => {
+    setIsSavingSettings(true);
+    try {
+      const { error } = await supabase
+        .from("courses")
+        .update({ allow_video_seek: value })
+        .eq("id", course.id);
+      
+      if (error) throw error;
+      
+      setAllowVideoSeek(value);
+      toast.success(value ? "Перемотка видео разрешена" : "Перемотка видео запрещена");
       onCourseUpdated?.();
     } catch (error) {
       console.error("Error updating course:", error);
@@ -411,7 +461,8 @@ export function CourseDetailsModal({
               <div className="space-y-6">
                 <h3 className="font-semibold">Настройки курса</h3>
                 
-                <div className="bg-secondary/30 rounded-xl p-4 space-y-4">
+                <div className="bg-secondary/30 rounded-xl p-4 space-y-6">
+                  {/* Skip video identification */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-start gap-3">
                       <div className="p-2 rounded-lg bg-primary/10 mt-0.5">
@@ -430,6 +481,52 @@ export function CourseDetailsModal({
                       id="skip-video-id"
                       checked={skipVideoId}
                       onCheckedChange={handleToggleSkipVideoId}
+                      disabled={isSavingSettings}
+                    />
+                  </div>
+
+                  {/* Sequential lessons */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-lg bg-amber-500/10 mt-0.5">
+                        <Lock className="w-5 h-5 text-amber-500" />
+                      </div>
+                      <div>
+                        <Label htmlFor="sequential-lessons" className="text-sm font-medium">
+                          Последовательное прохождение уроков
+                        </Label>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Если включено, ученики смогут открывать следующий урок только после завершения предыдущего
+                        </p>
+                      </div>
+                    </div>
+                    <Switch
+                      id="sequential-lessons"
+                      checked={sequentialLessons}
+                      onCheckedChange={handleToggleSequentialLessons}
+                      disabled={isSavingSettings}
+                    />
+                  </div>
+
+                  {/* Allow video seek */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-lg bg-destructive/10 mt-0.5">
+                        <FastForward className="w-5 h-5 text-destructive" />
+                      </div>
+                      <div>
+                        <Label htmlFor="allow-video-seek" className="text-sm font-medium">
+                          Разрешить перемотку видео
+                        </Label>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Если выключено, ученики не смогут перематывать видео вперёд (только назад)
+                        </p>
+                      </div>
+                    </div>
+                    <Switch
+                      id="allow-video-seek"
+                      checked={allowVideoSeek}
+                      onCheckedChange={handleToggleAllowVideoSeek}
                       disabled={isSavingSettings}
                     />
                   </div>
