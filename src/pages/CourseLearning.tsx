@@ -163,6 +163,9 @@ const VideoPlayerInline = ({ content, allowSeek = true, onVideoComplete, onProgr
   const videoRef = useRef<HTMLVideoElement>(null);
   const [watchedProgress, setWatchedProgress] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
   const maxWatchedRef = useRef(0);
   const completedRef = useRef(false);
   
@@ -281,6 +284,7 @@ const VideoPlayerInline = ({ content, allowSeek = true, onVideoComplete, onProgr
   const handleTimeUpdate = () => {
     if (!videoRef.current) return;
     const currentTime = videoRef.current.currentTime;
+    setCurrentTime(currentTime);
     
     if (!allowSeek) {
       // Allow natural progress, block jumps forward.
@@ -313,6 +317,50 @@ const VideoPlayerInline = ({ content, allowSeek = true, onVideoComplete, onProgr
       setDuration(videoRef.current.duration);
     }
   };
+
+  const handlePlay = () => setIsPlaying(true);
+  const handlePause = () => setIsPlaying(false);
+
+  const togglePlay = () => {
+    const v = videoRef.current;
+    if (!v) return;
+    if (v.paused) v.play();
+    else v.pause();
+  };
+
+  const toggleMute = () => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.muted = !v.muted;
+    setIsMuted(v.muted);
+  };
+
+  const requestFullscreen = async () => {
+    const v = videoRef.current;
+    if (!v) return;
+    try {
+      // @ts-expect-error - older Safari uses webkitEnterFullscreen
+      if (typeof v.webkitEnterFullscreen === 'function') {
+        // @ts-expect-error
+        v.webkitEnterFullscreen();
+        return;
+      }
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else {
+        await v.requestFullscreen();
+      }
+    } catch {
+      // ignore
+    }
+  };
+
+  const formatTime = (seconds: number) => {
+    if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m}:${String(s).padStart(2, '0')}`;
+  };
   
   const handleSeeking = () => {
     if (!allowSeek && videoRef.current) {
@@ -330,14 +378,60 @@ const VideoPlayerInline = ({ content, allowSeek = true, onVideoComplete, onProgr
     <div className="relative">
       <video 
         ref={videoRef}
-        controls 
+        controls={allowSeek}
         className="w-full h-full rounded-2xl"
         src={content}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
         onSeeking={handleSeeking}
+        onPlay={handlePlay}
+        onPause={handlePause}
         controlsList={`nodownload${!allowSeek ? " noplaybackrate" : ""}`}
       />
+      {!allowSeek && (
+        <div className="absolute inset-x-0 bottom-0 p-3">
+          <div className="rounded-xl border border-border bg-background/80 backdrop-blur-md px-3 py-2 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={togglePlay}
+              className="inline-flex items-center justify-center h-9 w-9 rounded-lg bg-primary text-primary-foreground"
+              aria-label={isPlaying ? "Пауза" : "Воспроизвести"}
+            >
+              {isPlaying ? <Square className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+            </button>
+
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>{formatTime(currentTime)}</span>
+                <span>{formatTime(duration)}</span>
+              </div>
+              <div className="mt-1 h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full bg-primary"
+                  style={{ width: `${Math.min(100, Math.max(0, watchedProgress))}%` }}
+                />
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={toggleMute}
+              className="inline-flex items-center justify-center h-9 w-9 rounded-lg bg-muted text-foreground"
+              aria-label={isMuted ? "Включить звук" : "Выключить звук"}
+            >
+              {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+            </button>
+            <button
+              type="button"
+              onClick={requestFullscreen}
+              className="inline-flex items-center justify-center h-9 w-9 rounded-lg bg-muted text-foreground"
+              aria-label="Во весь экран"
+            >
+              <Presentation className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
       {!allowSeek && (
         <div className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm text-xs px-2 py-1 rounded-lg flex items-center gap-1">
           <Video className="w-3 h-3" />
