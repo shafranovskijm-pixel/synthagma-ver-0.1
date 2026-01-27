@@ -389,6 +389,7 @@ const VideoPlayerInline = ({ content, allowSeek = true, onVideoComplete, onProgr
   return (
     <div className="relative">
       <video 
+        key={allowSeek ? "video-seek-enabled" : "video-seek-disabled"}
         ref={videoRef}
         // IMPORTANT: when seeking is disabled we must remove native controls entirely.
         controls={allowSeek}
@@ -400,6 +401,10 @@ const VideoPlayerInline = ({ content, allowSeek = true, onVideoComplete, onProgr
         onRateChange={handleRateChange}
         onPlay={handlePlay}
         onPause={handlePause}
+        onContextMenu={(e) => {
+          // Prevent the browser's right-click menu (e.g., "Скачать") when restrictions are enabled.
+          if (!allowSeek) e.preventDefault();
+        }}
         controlsList={`nodownload${!allowSeek ? " noplaybackrate noremoteplayback" : ""}`}
         disablePictureInPicture={!allowSeek}
         disableRemotePlayback={!allowSeek}
@@ -1838,6 +1843,7 @@ const CourseLearning = () => {
                 <div className="aspect-video bg-muted rounded-2xl flex items-center justify-center overflow-hidden shadow-lg">
                   {currentLesson.content ? (
                     <VideoPlayerInline 
+                      key={course?.allow_video_seek !== false ? "vp-seek-enabled" : "vp-seek-disabled"}
                       content={currentLesson.content} 
                       allowSeek={course?.allow_video_seek !== false}
                       onProgressChange={(progress) => setVideoWatchProgress(progress)}
