@@ -313,7 +313,12 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
             lessonsCount: course.lessons?.[0]?.count || 0,
             studentsCount: courseEnrollments.length,
             duration: course.duration || "—",
-            category_id: course.category_id
+            category_id: course.category_id,
+            // Course settings (IMPORTANT: keep in sync with UI toggles)
+            skip_video_identification: course.skip_video_identification ?? false,
+            sequential_lessons: course.sequential_lessons ?? false,
+            // DB default is true; treat NULL/undefined as true
+            allow_video_seek: course.allow_video_seek ?? true,
           };
         });
         
