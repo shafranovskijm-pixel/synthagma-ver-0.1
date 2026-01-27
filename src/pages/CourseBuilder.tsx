@@ -272,6 +272,9 @@ interface Lesson {
   blocks?: ContentBlock[];
   thumbnailUrl?: string;
   videoScript?: string;
+  // Test-specific settings
+  testPassingScore?: number; // 0-100, default 60
+  testQuestionsToShow?: number | null; // null = show all
 }
 
 const lessonIcons: Record<LessonType, any> = {
@@ -1299,7 +1302,51 @@ function SortableLessonItem({
             </div>
           )}
           {lesson.type === "test" && (
-            <div className="space-y-3">
+            <div className="space-y-4">
+              {/* Test Settings */}
+              <div className="bg-secondary/30 rounded-xl p-4 border border-border">
+                <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
+                  <FileQuestion className="w-4 h-4 text-sigma-orange" />
+                  Настройки теста
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm">Проходной балл (%)</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={lesson.testPassingScore ?? 60}
+                      onChange={(e) => onUpdate({ testPassingScore: parseInt(e.target.value) || 60 })}
+                      className="rounded-lg"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Минимальный % правильных ответов для прохождения теста
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm">Показывать вопросов</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={lesson.testQuestionsToShow ?? ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        onUpdate({ 
+                          testQuestionsToShow: val ? parseInt(val) : null 
+                        });
+                      }}
+                      placeholder="Все"
+                      className="rounded-lg"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Оставьте пустым, чтобы показать все вопросы. Или укажите число — система выберет случайные.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Import and AI Generation buttons */}
               <div className="flex justify-end gap-2">
                 <TestImportDialog
                   onImport={(imported) => {
@@ -1536,7 +1583,10 @@ export default function CourseBuilder() {
               title: l.title,
               content: l.content || "",
               blocks: blocks.length > 0 ? blocks : undefined,
-              expanded: false
+              expanded: false,
+              // Test settings from DB
+              testPassingScore: (l as any).test_passing_score ?? 60,
+              testQuestionsToShow: (l as any).test_questions_to_show ?? null,
             };
           }));
         }
@@ -2036,6 +2086,9 @@ export default function CourseBuilder() {
               type: lesson.type,
               content: lesson.content || null,
               order_index: index,
+              // Test-specific settings
+              test_passing_score: lesson.testPassingScore ?? 60,
+              test_questions_to_show: lesson.testQuestionsToShow ?? null,
             }, { onConflict: "id" });
 
           if (upsertError) {
@@ -2102,6 +2155,9 @@ export default function CourseBuilder() {
             type: lesson.type,
             content: lesson.content || null,
             order_index: orderIndex,
+            // Test-specific settings
+            test_passing_score: lesson.testPassingScore ?? 60,
+            test_questions_to_show: lesson.testQuestionsToShow ?? null,
           })
           .eq("id", lesson.id);
 
@@ -2117,6 +2173,9 @@ export default function CourseBuilder() {
             type: lesson.type,
             content: lesson.content || null,
             order_index: orderIndex,
+            // Test-specific settings
+            test_passing_score: lesson.testPassingScore ?? 60,
+            test_questions_to_show: lesson.testQuestionsToShow ?? null,
           });
 
         if (error) throw error;

@@ -826,7 +826,8 @@ const CourseLearning = () => {
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [testSubmitted, setTestSubmitted] = useState(false);
   const [testScore, setTestScore] = useState<{ score: number; max: number } | null>(null);
-  const [testQuestionsCount, setTestQuestionsCount] = useState<number>(5);
+  const [testQuestionsCount, setTestQuestionsCount] = useState<number | null>(null);
+  const [testPassingScore, setTestPassingScore] = useState<number>(60); // Default 60%
 
   // Text-to-speech state
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -1108,15 +1109,19 @@ const CourseLearning = () => {
   };
 
   const fetchTestQuestions = async (lessonId: string) => {
-    // Get lesson settings for questions count
+    // Get lesson settings for questions count and passing score
     const { data: lessonData } = await supabase
       .from('lessons')
-      .select('test_questions_count')
+      .select('test_questions_to_show, test_passing_score')
       .eq('id', lessonId)
       .single();
     
-    const questionsCount = (lessonData as any)?.test_questions_count || 5;
-    setTestQuestionsCount(questionsCount);
+    // test_questions_to_show: null = show all, number = random N questions
+    const questionsToShow = (lessonData as any)?.test_questions_to_show ?? null;
+    const passingScore = (lessonData as any)?.test_passing_score ?? 60;
+    
+    setTestQuestionsCount(questionsToShow);
+    setTestPassingScore(passingScore);
 
     // Get all questions for the bank
     const { data, error } = await supabase
@@ -1173,13 +1178,19 @@ const CourseLearning = () => {
       }
     } else {
       // First attempt - select random questions from bank
-      selectRandomQuestions(allQuestions, questionsCount, []);
+      selectRandomQuestions(allQuestions, questionsToShow, []);
       setUsedQuestionIds([]);
       setAnswers({});
     }
   };
 
-  const selectRandomQuestions = (allQuestions: TestQuestion[], count: number, excludeIds: string[]) => {
+  const selectRandomQuestions = (allQuestions: TestQuestion[], count: number | null, excludeIds: string[]) => {
+    // If count is null, show all questions
+    if (count === null || count <= 0 || count >= allQuestions.length) {
+      setTestQuestions(allQuestions);
+      return;
+    }
+
     // Filter out already used questions if possible
     let availableQuestions = allQuestions.filter(q => !excludeIds.includes(q.id));
     
@@ -1440,7 +1451,8 @@ const CourseLearning = () => {
     setTestSubmitted(true);
     setTestScore({ score, max: maxScore });
 
-    const isPassed = maxScore > 0 && (score / maxScore >= 0.6);
+    const isPassed = maxScore > 0 && ((score / maxScore) * 100 >= testPassingScore);
+    const scorePercent = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
 
     if (isPassed) {
       await supabase
@@ -1468,10 +1480,10 @@ const CourseLearning = () => {
       if (newProgress >= 100) {
         await handleCourseCompletion({ score, max: maxScore });
       } else {
-        toast.success(`Тест пройден! ${score}/${maxScore}`);
+        toast.success(`Тест пройден! ${score}/${maxScore} (${scorePercent}%)`);
       }
     } else {
-      toast.error(`Тест не пройден. ${score}/${maxScore}. Попробуйте снова.`);
+      toast.error(`Тест не пройден. ${score}/${maxScore} (${scorePercent}%). Нужно: ${testPassingScore}%. Попробуйте снова.`);
     }
   };
 
@@ -1959,12 +1971,14 @@ const CourseLearning = () => {
                       "font-display font-bold line-clamp-2",
                       isMobile ? "text-lg" : "text-2xl"
                     )}>{currentLesson.title}</h1>
-                    <p className="text-xs md:text-sm text-muted-foreground">Тестирование • {testQuestions.length} вопросов</p>
+                    <p className="text-xs md:text-sm text-muted-foreground">
+                      Тестирование • {testQuestions.length}{allBankQuestions.length > testQuestions.length ? ` из ${allBankQuestions.length}` : ''} вопросов • Проходной балл: {testPassingScore}%
+                    </p>
                   </div>
                 </div>
 
                 {testScore && (() => {
-                  const isPassed = testScore.max > 0 && (testScore.score / testScore.max >= 0.6);
+                  const isPassed = testScore.max > 0 && ((testScore.score / testScore.max) * 100 >= testPassingScore);
                   const percentage = testScore.max > 0 ? Math.round(testScore.score / testScore.max * 100) : 0;
                   
                   return (
@@ -1994,14 +2008,22 @@ const CourseLearning = () => {
                           </h3>
                           <p className="text-muted-foreground">
                             Результат: {testScore.score} из {testScore.max} ({percentage}%)
+                            {!isPassed && <span className="ml-1">• Нужно: {testPassingScore}%</span>}
                           </p>
                         </div>
                       </div>
                       {!isPassed && (
-                        <Button className="mt-4" onClick={retryTest}>
-                          <Sparkles className="w-4 h-4 mr-2" />
-                          Попробовать снова
-                        </Button>
+                        <div className="mt-4 flex items-center gap-3">
+                          <Button onClick={retryTest}>
+                            <Sparkles className="w-4 h-4 mr-2" />
+                            Попробовать снова
+                          </Button>
+                          {allBankQuestions.length > testQuestions.length && (
+                            <p className="text-xs text-muted-foreground">
+                              Будут выбраны новые случайные вопросы
+                            </p>
+                          )}
+                        </div>
                       )}
                     </div>
                   );

@@ -1020,7 +1020,9 @@ export type Database = {
           created_at: string
           id: string
           order_index: number
+          test_passing_score: number
           test_questions_count: number | null
+          test_questions_to_show: number | null
           title: string
           type: string
           updated_at: string
@@ -1031,7 +1033,9 @@ export type Database = {
           created_at?: string
           id?: string
           order_index?: number
+          test_passing_score?: number
           test_questions_count?: number | null
+          test_questions_to_show?: number | null
           title: string
           type?: string
           updated_at?: string
@@ -1042,7 +1046,9 @@ export type Database = {
           created_at?: string
           id?: string
           order_index?: number
+          test_passing_score?: number
           test_questions_count?: number | null
+          test_questions_to_show?: number | null
           title?: string
           type?: string
           updated_at?: string
