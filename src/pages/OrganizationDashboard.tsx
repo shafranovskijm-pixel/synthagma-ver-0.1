@@ -509,6 +509,7 @@ export default function OrganizationDashboard() {
         onAddStudentsToCourse={courseStudentsManager.addStudentsToCourse}
         isAddingStudentsToCourse={courseStudentsManager.isAddingStudentsToCourse}
         onRemoveFromCourse={courseStudentsManager.removeStudentFromCourse}
+        onCourseStudentsRefresh={refreshData}
         showInviteEmailDialog={emailInvitation.showInviteEmailDialog}
         setShowInviteEmailDialog={emailInvitation.setShowInviteEmailDialog}
         isSendingInvitation={emailInvitation.isSendingInvitation}
