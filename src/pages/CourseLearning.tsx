@@ -36,8 +36,20 @@ import {
   List,
   Play,
   Presentation,
-  Lock
+  Lock,
+  RotateCcw
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { ContentBlock, jsonToBlocks, BlockRenderer } from "@/components/course-builder/BlockEditor";
 import { cn } from "@/lib/utils";
 import { generateAttestationProtocol } from "@/utils/generateAttestationProtocol";
@@ -1127,6 +1139,56 @@ const CourseLearning = () => {
     }
   };
 
+  // Reset course progress function
+  const resetCourseProgress = async () => {
+    if (!user || !courseId) return;
+
+    try {
+      // Get all lesson IDs for this course
+      const lessonIds = lessons.map(l => l.id);
+      
+      // Delete lesson progress
+      if (lessonIds.length > 0) {
+        await supabase
+          .from('lesson_progress')
+          .delete()
+          .eq('user_id', user.id)
+          .in('lesson_id', lessonIds);
+      }
+
+      // Delete test attempts
+      await supabase
+        .from('test_attempts')
+        .delete()
+        .eq('user_id', user.id)
+        .in('lesson_id', lessonIds);
+
+      // Reset enrollment progress
+      await supabase
+        .from('enrollments')
+        .update({ 
+          progress: 0, 
+          status: 'active',
+          completed_at: null 
+        })
+        .eq('user_id', user.id)
+        .eq('course_id', courseId);
+
+      // Reset local state
+      setLessonProgress([]);
+      setCurrentLessonIndex(0);
+      setTestSubmitted(false);
+      setTestScore(null);
+      setAnswers({});
+      setVideoWatchProgress(0);
+
+      toast.success('Прогресс курса сброшен. Начните прохождение заново!');
+    } catch (error) {
+      console.error('Error resetting progress:', error);
+      toast.error('Ошибка сброса прогресса');
+    }
+  };
+
   const goToLesson = (index: number) => {
     if (index !== currentLessonIndex) {
       if (!isLessonAccessible(index)) {
@@ -1395,8 +1457,8 @@ const CourseLearning = () => {
         </div>
       </ScrollArea>
 
-      {/* Sidebar footer with stats */}
-      <div className="p-4 border-t border-border">
+      {/* Sidebar footer with stats and reset button */}
+      <div className="p-4 border-t border-border space-y-3">
         <div className="flex items-center gap-3 text-sm text-muted-foreground">
           <div className="flex items-center gap-1">
             <Clock className="w-4 h-4" />
@@ -1407,6 +1469,33 @@ const CourseLearning = () => {
             <span>{completedCount} пройдено</span>
           </div>
         </div>
+        
+        {/* Reset progress button */}
+        {completedCount > 0 && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" size="sm" className="w-full text-muted-foreground">
+                <RotateCcw className="w-4 h-4 mr-2" />
+                Сбросить прогресс
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Сбросить прогресс курса?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Все результаты тестов и отметки о прохождении уроков будут удалены. 
+                  Вам придётся пройти курс заново с самого начала.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Отмена</AlertDialogCancel>
+                <AlertDialogAction onClick={resetCourseProgress}>
+                  Сбросить
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
       </div>
     </>
   );
