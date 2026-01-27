@@ -25,7 +25,8 @@ import {
   Trash2,
   Loader2,
   Settings,
-  Video
+  Video,
+  RotateCcw
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -63,6 +64,7 @@ interface CourseDetailsModalProps {
   onEnrollStudent: () => void;
   onCourseDeleted?: () => void;
   onCourseUpdated?: () => void;
+  onRefreshStudents?: () => void;
 }
 
 export function CourseDetailsModal({
@@ -75,13 +77,16 @@ export function CourseDetailsModal({
   onTabChange,
   onEnrollStudent,
   onCourseDeleted,
-  onCourseUpdated
+  onCourseUpdated,
+  onRefreshStudents
 }: CourseDetailsModalProps) {
   const navigate = useNavigate();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [skipVideoId, setSkipVideoId] = useState(course?.skip_video_identification || false);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [resetConfirmStudent, setResetConfirmStudent] = useState<Student | null>(null);
+  const [isResetting, setIsResetting] = useState(false);
 
   useEffect(() => {
     if (course) {
@@ -109,6 +114,54 @@ export function CourseDetailsModal({
       toast.error("Ошибка сохранения настроек");
     } finally {
       setIsSavingSettings(false);
+    }
+  };
+
+  const handleResetProgress = async (student: Student) => {
+    if (!course || !student.enrollment_id) return;
+    
+    setIsResetting(true);
+    try {
+      // Get all lessons for this course
+      const { data: lessons } = await supabase
+        .from("lessons")
+        .select("id")
+        .eq("course_id", course.id);
+      
+      const lessonIds = (lessons || []).map(l => l.id);
+      
+      if (lessonIds.length > 0) {
+        // Delete lesson progress
+        await supabase
+          .from("lesson_progress")
+          .delete()
+          .eq("user_id", student.user_id)
+          .in("lesson_id", lessonIds);
+        
+        // Delete test attempts
+        await supabase
+          .from("test_attempts")
+          .delete()
+          .eq("user_id", student.user_id)
+          .in("lesson_id", lessonIds);
+      }
+      
+      // Reset enrollment
+      const { error } = await supabase
+        .from("enrollments")
+        .update({ progress: 0, status: "active", completed_at: null })
+        .eq("id", student.enrollment_id);
+      
+      if (error) throw error;
+      
+      toast.success(`Прогресс ученика "${student.name}" сброшен`);
+      setResetConfirmStudent(null);
+      onRefreshStudents?.();
+    } catch (error) {
+      console.error("Error resetting progress:", error);
+      toast.error("Ошибка сброса прогресса");
+    } finally {
+      setIsResetting(false);
     }
   };
 
@@ -311,6 +364,17 @@ export function CourseDetailsModal({
                           }`}>
                             {student.status === 'completed' ? 'Завершил' : 'Активный'}
                           </span>
+                          {student.progress > 0 && student.enrollment_id && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                              onClick={() => setResetConfirmStudent(student)}
+                              title="Сбросить прогресс"
+                            >
+                              <RotateCcw className="w-4 h-4" />
+                            </Button>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -376,6 +440,41 @@ export function CourseDetailsModal({
         </Tabs>
       </DialogContent>
       
+      {/* Reset Progress Confirmation Dialog */}
+      <AlertDialog open={!!resetConfirmStudent} onOpenChange={(open) => !open && setResetConfirmStudent(null)}>
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Сбросить прогресс?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Вы уверены, что хотите сбросить прогресс ученика "{resetConfirmStudent?.name}"?
+              Все результаты тестов и отметки о прохождении уроков будут удалены.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-xl" disabled={isResetting}>
+              Отмена
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => resetConfirmStudent && handleResetProgress(resetConfirmStudent)}
+              disabled={isResetting}
+            >
+              {isResetting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Сброс...
+                </>
+              ) : (
+                <>
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  Сбросить
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent className="rounded-2xl">

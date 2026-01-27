@@ -88,6 +88,7 @@ interface DialogsContainerProps {
   onEnrollStudent: () => void;
   onCourseDeleted?: () => void;
   onCourseUpdated?: () => void;
+  onRefreshCourseStudents?: () => void;
   
   // Course students dialog
   showCourseStudentsDialog: boolean;
@@ -281,6 +282,7 @@ export function DialogsContainer(props: DialogsContainerProps) {
         onEnrollStudent={props.onEnrollStudent}
         onCourseDeleted={props.onCourseDeleted}
         onCourseUpdated={props.onCourseUpdated}
+        onRefreshStudents={props.onRefreshCourseStudents}
       />
 
       <CourseStudentsDialog

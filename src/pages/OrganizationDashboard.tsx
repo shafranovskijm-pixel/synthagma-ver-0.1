@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { AnimatedTabContent } from "@/components/ui/AnimatedTabContent";
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -139,51 +139,52 @@ export default function OrganizationDashboard() {
   const { brandingSettings, setBrandingSettings, isUploadingCover, isUploadingLogo, isSavingBranding, handleCoverUpload, handleLogoUpload, saveBranding: handleSaveBranding } = branding;
 
   // Load course students when course details modal opens (without opening second dialog)
+  const loadCourseStudentsForModal = useCallback(async () => {
+    if (!selectedCourseForDetails) return;
+    try {
+      const { data: enrollments } = await supabase
+        .from("enrollments")
+        .select("id, user_id, progress, status")
+        .eq("course_id", selectedCourseForDetails.id);
+      
+      const enrolledList: any[] = [];
+      
+      for (const enrollment of enrollments || []) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("id, user_id, full_name, email, login, generated_password")
+          .eq("user_id", enrollment.user_id)
+          .single();
+        
+        if (profile) {
+          enrolledList.push({
+            id: profile.id,
+            user_id: profile.user_id,
+            enrollment_id: enrollment.id,
+            name: profile.full_name || "Без имени",
+            email: profile.email || "",
+            login: profile.login || null,
+            generated_password: profile.generated_password || null,
+            course: selectedCourseForDetails.title,
+            course_id: selectedCourseForDetails.id,
+            progress: enrollment.progress,
+            lastActivity: null,
+            status: enrollment.status
+          });
+        }
+      }
+      
+      courseStudentsManager.setCourseStudentsDirectly(enrolledList);
+    } catch (error) {
+      console.error("Error loading course students:", error);
+    }
+  }, [selectedCourseForDetails]);
+
   useEffect(() => {
     if (showCourseDetailsModal && selectedCourseForDetails) {
-      // Only load students data, don't open another dialog
-      const loadStudents = async () => {
-        try {
-          const { data: enrollments } = await supabase
-            .from("enrollments")
-            .select("id, user_id, progress, status")
-            .eq("course_id", selectedCourseForDetails.id);
-          
-          const enrolledList: any[] = [];
-          
-          for (const enrollment of enrollments || []) {
-            const { data: profile } = await supabase
-              .from("profiles")
-              .select("id, user_id, full_name, email, login, generated_password")
-              .eq("user_id", enrollment.user_id)
-              .single();
-            
-            if (profile) {
-              enrolledList.push({
-                id: profile.id,
-                user_id: profile.user_id,
-                enrollment_id: enrollment.id,
-                name: profile.full_name || "Без имени",
-                email: profile.email || "",
-                login: profile.login || null,
-                generated_password: profile.generated_password || null,
-                course: selectedCourseForDetails.title,
-                course_id: selectedCourseForDetails.id,
-                progress: enrollment.progress,
-                lastActivity: null,
-                status: enrollment.status
-              });
-            }
-          }
-          
-          courseStudentsManager.setCourseStudentsDirectly(enrolledList);
-        } catch (error) {
-          console.error("Error loading course students:", error);
-        }
-      };
-      loadStudents();
+      loadCourseStudentsForModal();
     }
-  }, [showCourseDetailsModal, selectedCourseForDetails?.id]);
+  }, [showCourseDetailsModal, selectedCourseForDetails?.id, loadCourseStudentsForModal]);
 
   const handleLogout = async () => await signOut();
   const getSelectedEnrollmentsCount = () => enrollmentActions.getSelectedEnrollmentsCount(students);
@@ -499,6 +500,7 @@ export default function OrganizationDashboard() {
         }}
         onCourseDeleted={refreshData}
         onCourseUpdated={refreshData}
+        onRefreshCourseStudents={loadCourseStudentsForModal}
         showCourseStudentsDialog={courseStudentsManager.showCourseStudentsDialog}
         setShowCourseStudentsDialog={courseStudentsManager.setShowCourseStudentsDialog}
         selectedCourse={courseStudentsManager.selectedCourse}
