@@ -34,8 +34,9 @@ export const useExternalStorage = () => {
       
       // Try external Supabase first
       if (externalClient) {
-        // For external storage, use course-videos for videos, otherwise the provided bucket
-        const externalBucket = bucket === 'course-videos' ? 'course-videos' : bucket;
+        // For external storage: videos → course-videos, everything else → course-files
+        const isVideo = file.type.startsWith('video/');
+        const externalBucket = isVideo ? 'course-videos' : 'course-files';
         
         const { data, error } = await externalClient.storage
           .from(externalBucket)
