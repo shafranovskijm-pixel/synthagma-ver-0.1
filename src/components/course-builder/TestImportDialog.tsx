@@ -61,9 +61,19 @@ export function TestImportDialog({ onImport, children }: TestImportDialogProps) 
         let answerText = String(row[j] || "").trim();
         if (!answerText) continue;
 
-        if (answerText.startsWith("*")) {
+        // Check for asterisk at the beginning OR end of the answer
+        const startsWithAsterisk = answerText.startsWith("*");
+        const endsWithAsterisk = answerText.endsWith("*");
+        
+        if (startsWithAsterisk || endsWithAsterisk) {
           correctAnswer = options.length;
-          answerText = answerText.substring(1).trim();
+          // Remove asterisk from beginning or end
+          if (startsWithAsterisk) {
+            answerText = answerText.substring(1).trim();
+          }
+          if (endsWithAsterisk) {
+            answerText = answerText.slice(0, -1).trim();
+          }
         }
 
         if (answerText) {
