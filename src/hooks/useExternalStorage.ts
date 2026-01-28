@@ -34,17 +34,20 @@ export const useExternalStorage = () => {
       
       // Try external Supabase first
       if (externalClient) {
+        // For external storage, use course-videos for videos, otherwise the provided bucket
+        const externalBucket = bucket === 'course-videos' ? 'course-videos' : bucket;
+        
         const { data, error } = await externalClient.storage
-          .from(bucket)
+          .from(externalBucket)
           .upload(path, file, {
             cacheControl: '3600',
-            upsert: false,
+            upsert: true,
           });
 
         if (error) throw error;
 
         const { data: { publicUrl } } = externalClient.storage
-          .from(bucket)
+          .from(externalBucket)
           .getPublicUrl(path);
 
         return {
@@ -54,18 +57,20 @@ export const useExternalStorage = () => {
         };
       }
 
-      // Fallback to internal Supabase
+      // Fallback to internal Supabase - always use course-files
+      const internalBucket = 'course-files';
+      
       const { data, error } = await supabase.storage
-        .from(bucket)
+        .from(internalBucket)
         .upload(path, file, {
           cacheControl: '3600',
-          upsert: false,
+          upsert: true,
         });
 
       if (error) throw error;
 
       const { data: { publicUrl } } = supabase.storage
-        .from(bucket)
+        .from(internalBucket)
         .getPublicUrl(path);
 
       return {

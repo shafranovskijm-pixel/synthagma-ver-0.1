@@ -1079,6 +1079,8 @@ function SortableLessonItem({
                             const useExternal = externalConfig?.configured && externalConfig?.url && externalConfig?.key;
                             const baseUrl = useExternal ? externalConfig.url : import.meta.env.VITE_SUPABASE_URL;
                             const apiKey = useExternal ? externalConfig.key : import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+                            // Use course-videos bucket for external, course-files for internal
+                            const bucketName = useExternal ? 'course-videos' : 'course-files';
                             
                             // Get auth token
                             let authToken = apiKey;
@@ -1091,7 +1093,7 @@ function SortableLessonItem({
                             const xhr = new XMLHttpRequest();
                             videoUploadXhrRef.current = xhr;
                             
-                            const uploadUrl = `${baseUrl}/storage/v1/object/course-files/${filePath}`;
+                            const uploadUrl = `${baseUrl}/storage/v1/object/${bucketName}/${filePath}`;
                             
                             xhr.upload.addEventListener('progress', (event) => {
                               if (event.lengthComputable) {
@@ -1103,7 +1105,7 @@ function SortableLessonItem({
                             xhr.addEventListener('load', () => {
                               videoUploadXhrRef.current = null;
                               if (xhr.status >= 200 && xhr.status < 300) {
-                                const publicUrl = `${baseUrl}/storage/v1/object/public/course-files/${filePath}`;
+                                const publicUrl = `${baseUrl}/storage/v1/object/public/${bucketName}/${filePath}`;
                                   
                                 onUpdate({ content: publicUrl });
                                 toast.success(useExternal ? "Видео загружено во внешнее хранилище!" : "Видео загружено!");

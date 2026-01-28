@@ -67,6 +67,9 @@ export const useExternalStorageWithProgress = () => {
     const baseUrl = useExternal ? config.url : import.meta.env.VITE_SUPABASE_URL;
     const apiKey = useExternal ? config.key : import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
     
+    // For external storage, use course-videos for videos; internal uses course-files
+    const actualBucket = useExternal && bucket === 'course-videos' ? 'course-videos' : (useExternal ? bucket : 'course-files');
+    
     // Get auth token for internal storage
     let authToken = apiKey;
     if (!useExternal) {
@@ -78,7 +81,7 @@ export const useExternalStorageWithProgress = () => {
       const xhr = new XMLHttpRequest();
       xhrRef.current = xhr;
       
-      const uploadUrl = `${baseUrl}/storage/v1/object/${bucket}/${path}`;
+      const uploadUrl = `${baseUrl}/storage/v1/object/${actualBucket}/${path}`;
       
       xhr.upload.addEventListener('progress', (event) => {
         if (event.lengthComputable && onProgress) {
@@ -90,8 +93,8 @@ export const useExternalStorageWithProgress = () => {
       xhr.addEventListener('load', () => {
         xhrRef.current = null;
         if (xhr.status >= 200 && xhr.status < 300) {
-          // Get public URL
-          const publicUrl = `${baseUrl}/storage/v1/object/public/${bucket}/${path}`;
+          // Get public URL with the actual bucket name used
+          const publicUrl = `${baseUrl}/storage/v1/object/public/${actualBucket}/${path}`;
           resolve({
             url: publicUrl,
             path: path,

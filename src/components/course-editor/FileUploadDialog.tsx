@@ -55,7 +55,8 @@ export const FileUploadDialog = ({
   const uploadFile = async (file: File) => {
     const fileType = getFileType(file.type);
     const fileName = `${courseId}/${Date.now()}-${file.name}`;
-    const bucket = fileType === 'video' ? 'course-videos' : 'course-files';
+    // Use course-videos bucket for videos when external storage is configured
+    const bucket = fileType === 'video' && isExternalConfigured ? 'course-videos' : 'course-files';
 
     // Add to list with uploading status
     const uploadingFile: UploadedFile = {
