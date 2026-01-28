@@ -407,8 +407,9 @@ const CoursePreview = () => {
   };
 
   const fetchTestQuestions = async (lessonId: string) => {
+    // Use secure view that hides correct_answer from students
     const { data, error } = await supabase
-      .from('test_questions')
+      .from('test_questions_for_students')
       .select('*')
       .eq('lesson_id', lessonId)
       .order('order_index');

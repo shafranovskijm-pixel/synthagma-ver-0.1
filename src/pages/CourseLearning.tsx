@@ -1167,9 +1167,9 @@ const CourseLearning = () => {
     setTestQuestionsCount(questionsToShow);
     setTestPassingScore(passingScore);
 
-    // Get all questions for the bank
+    // Get all questions for the bank using secure view that hides correct_answer from students
     const { data, error } = await supabase
-      .from('test_questions')
+      .from('test_questions_for_students')
       .select('*')
       .eq('lesson_id', lessonId)
       .order('order_index');
