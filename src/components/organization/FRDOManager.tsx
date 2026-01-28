@@ -128,10 +128,27 @@ export function FRDOManager({ organizationId }: FRDOManagerProps) {
         return;
       }
 
+      // Filter out organization and admin users - they are not students
+      const { data: rolesData } = await supabase
+        .from("user_roles")
+        .select("user_id, role")
+        .in("user_id", userIds)
+        .in("role", ["organization", "admin"]);
+
+      const orgAdminUserIds = new Set((rolesData || []).map(r => r.user_id));
+      const studentUserIds = userIds.filter(id => !orgAdminUserIds.has(id));
+      const studentProfiles = (profilesData || []).filter(p => !orgAdminUserIds.has(p.user_id));
+
+      if (studentUserIds.length === 0) {
+        setStudents([]);
+        setIsLoading(false);
+        return;
+      }
+
       const { data: enrollmentsData } = await supabase
         .from("enrollments")
         .select("user_id, course_id, started_at, completed_at, time_spent, courses(id, title, duration)")
-        .in("user_id", userIds);
+        .in("user_id", studentUserIds);
 
       // Build enrollments map and courses list
       const enrollMap = new Map<string, EnrollmentData[]>();
@@ -165,8 +182,8 @@ export function FRDOManager({ organizationId }: FRDOManagerProps) {
       setEnrollmentsMap(enrollMap);
       setCourses(Array.from(courseSet.values()));
 
-      // Build students list
-      const studentsList: Student[] = (profilesData || []).map(p => ({
+      // Build students list (only from filtered student profiles)
+      const studentsList: Student[] = studentProfiles.map(p => ({
         user_id: p.user_id,
         name: p.full_name || "Без имени",
         email: p.email || "",
@@ -181,7 +198,7 @@ export function FRDOManager({ organizationId }: FRDOManagerProps) {
         .from("student_frdo_data")
         .select("*")
         .eq("organization_id", organizationId)
-        .in("user_id", userIds);
+        .in("user_id", studentUserIds);
 
       const dataMap = new Map<string, FRDOData>();
       for (const data of frdoData || []) {
