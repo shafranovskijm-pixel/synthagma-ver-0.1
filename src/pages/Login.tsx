@@ -132,23 +132,32 @@ const Login = () => {
 
     setIsResetting(true);
     
-    const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-
-    if (error) {
-      toast({
-        title: "Ошибка",
-        description: error.message,
-        variant: "destructive",
+    try {
+      // Use custom SMTP-based password reset
+      const response = await supabase.functions.invoke('send-password-reset', {
+        body: {
+          email: resetEmail,
+          redirectTo: `${window.location.origin}/reset-password`,
+        },
       });
-    } else {
+
+      if (response.error) {
+        throw response.error;
+      }
+
       toast({
         title: "Письмо отправлено",
         description: "Проверьте почту для восстановления пароля",
       });
       setShowForgotPassword(false);
       setResetEmail("");
+    } catch (error: any) {
+      console.error("Password reset error:", error);
+      toast({
+        title: "Ошибка",
+        description: error.message || "Не удалось отправить письмо",
+        variant: "destructive",
+      });
     }
     
     setIsResetting(false);
