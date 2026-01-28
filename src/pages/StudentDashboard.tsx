@@ -305,7 +305,7 @@ export default function StudentDashboard() {
             title: course.title,
             description: course.description,
             duration: course.duration,
-            progress: enrollment.progress || 0,
+            progress: Math.min(enrollment.progress || 0, 100),
             totalLessons: totalLessons || 0,
             completedLessons: completedLessons,
             status: enrollment.status === "completed" ? "completed" :
@@ -901,9 +901,9 @@ export default function StudentDashboard() {
                           <div className="mb-4">
                             <div className="flex justify-between text-sm mb-1">
                               <span className="text-muted-foreground">Прогресс</span>
-                              <span className="font-medium">{course.progress}%</span>
+                              <span className="font-medium">{Math.min(course.progress, 100)}%</span>
                             </div>
-                            <Progress value={course.progress} className="h-2" />
+                            <Progress value={Math.min(course.progress, 100)} className="h-2" />
                           </div>
                           <Button
                             className={`w-full rounded-xl gap-2 ${

@@ -177,10 +177,10 @@ export function ViewStudentsDialog({
                             </div>
                             <div className="flex items-center gap-3">
                               <div className="flex items-center gap-2 w-32">
-                                <Progress value={enrollment.progress} className="h-2 flex-1" />
-                                <span className="text-xs font-medium w-10 text-right">
-                                  {enrollment.progress}%
-                                </span>
+                              <Progress value={Math.min(enrollment.progress, 100)} className="h-2 flex-1" />
+                              <span className="text-xs font-medium w-10 text-right">
+                                {Math.min(enrollment.progress, 100)}%
+                              </span>
                               </div>
                               <span
                                 className={`text-xs px-2 py-0.5 rounded-full ${
