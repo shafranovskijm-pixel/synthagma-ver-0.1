@@ -67,8 +67,12 @@ export const useExternalStorageWithProgress = () => {
     const baseUrl = useExternal ? config.url : import.meta.env.VITE_SUPABASE_URL;
     const apiKey = useExternal ? config.key : import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
     
-    // For external storage, use course-videos for videos; internal uses course-files
-    const actualBucket = useExternal && bucket === 'course-videos' ? 'course-videos' : (useExternal ? bucket : 'course-files');
+    // For external storage: videos → course-videos, everything else → course-files
+    // For internal storage: always course-files
+    const isVideo = file.type.startsWith('video/');
+    const actualBucket = useExternal 
+      ? (isVideo ? 'course-videos' : 'course-files')
+      : 'course-files';
     
     // Get auth token for internal storage
     let authToken = apiKey;
