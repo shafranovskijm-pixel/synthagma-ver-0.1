@@ -826,8 +826,8 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                             <div className="space-y-1">
                               {student.enrollments.slice(0, 2).map((e, i) => (
                                 <div key={i} className="flex items-center gap-2">
-                                  <Progress value={e.progress} className="h-1.5 w-16" />
-                                  <span className="text-xs text-muted-foreground">{e.progress}%</span>
+                                  <Progress value={Math.min(e.progress, 100)} className="h-1.5 w-16" />
+                                  <span className="text-xs text-muted-foreground">{Math.min(e.progress, 100)}%</span>
                                 </div>
                               ))}
                             </div>

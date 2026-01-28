@@ -295,10 +295,10 @@ export function ClassJournalExport({ organizationId }: ClassJournalExportProps) 
                         <div className="w-16 h-2 rounded-full bg-muted overflow-hidden">
                           <div
                             className="h-full bg-primary rounded-full"
-                            style={{ width: `${e.progress}%` }}
+                            style={{ width: `${Math.min(e.progress, 100)}%` }}
                           />
                         </div>
-                        <span className="text-sm">{e.progress}%</span>
+                        <span className="text-sm">{Math.min(e.progress, 100)}%</span>
                       </div>
                     </td>
                     <td className="px-4 py-3">

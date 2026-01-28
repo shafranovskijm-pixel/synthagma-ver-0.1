@@ -1127,7 +1127,7 @@ export function StudentDetailCard({
                               <div className="grid grid-cols-3 gap-4 text-sm">
                                 <div>
                                   <span className="text-muted-foreground">Прогресс: </span>
-                                  <span className="font-medium">{e.progress}%</span>
+                                  <span className="font-medium">{Math.min(e.progress, 100)}%</span>
                                 </div>
                                 <div>
                                   <span className="text-muted-foreground">Время: </span>
