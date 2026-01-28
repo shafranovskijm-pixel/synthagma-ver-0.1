@@ -1,14 +1,21 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, FileSpreadsheet, CheckCircle2, XCircle, BarChart3, Filter, X, Calendar } from "lucide-react";
+import { Loader2, FileSpreadsheet, CheckCircle2, XCircle, BarChart3, Filter, X, Calendar, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+
+interface TestQuestion {
+  id: string;
+  question: string;
+  options: string[];
+  correct_answer: number;
+}
 
 interface TestAttemptData {
   id: string;
@@ -20,6 +27,8 @@ interface TestAttemptData {
   user_name: string;
   user_email: string;
   lesson_title: string;
+  answers: Record<string, number>;
+  shown_question_ids: string[];
 }
 
 interface CourseTestReportProps {
@@ -30,7 +39,9 @@ interface CourseTestReportProps {
 
 export function CourseTestReport({ courseId, courseName, organizationId }: CourseTestReportProps) {
   const [testData, setTestData] = useState<TestAttemptData[]>([]);
+  const [questionsMap, setQuestionsMap] = useState<Map<string, TestQuestion>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
+  const [expandedAttempts, setExpandedAttempts] = useState<Set<string>>(new Set());
   
   // Filters
   const [selectedStudent, setSelectedStudent] = useState<string>("all");
@@ -61,10 +72,10 @@ export function CourseTestReport({ courseId, courseName, organizationId }: Cours
       const lessonIds = lessons.map(l => l.id);
       const lessonsMap = new Map(lessons.map(l => [l.id, l.title]));
 
-      // Fetch test attempts
+      // Fetch test attempts with answers
       const { data: attempts } = await supabase
         .from("test_attempts")
-        .select("*")
+        .select("id, user_id, lesson_id, score, max_score, completed_at, answers, shown_question_ids")
         .in("lesson_id", lessonIds)
         .order("completed_at", { ascending: false });
 
@@ -72,6 +83,25 @@ export function CourseTestReport({ courseId, courseName, organizationId }: Cours
         setTestData([]);
         setIsLoading(false);
         return;
+      }
+
+      // Fetch all test questions for these lessons
+      const { data: questions } = await supabase
+        .from("test_questions")
+        .select("id, question, options, correct_answer")
+        .in("lesson_id", lessonIds);
+
+      if (questions) {
+        const qMap = new Map<string, TestQuestion>();
+        questions.forEach(q => {
+          qMap.set(q.id, {
+            id: q.id,
+            question: q.question,
+            options: (q.options as string[]) || [],
+            correct_answer: q.correct_answer
+          });
+        });
+        setQuestionsMap(qMap);
       }
 
       // Fetch profiles
@@ -93,7 +123,9 @@ export function CourseTestReport({ courseId, courseName, organizationId }: Cours
         completed_at: a.completed_at,
         user_name: profilesMap.get(a.user_id)?.name || "Неизвестный",
         user_email: profilesMap.get(a.user_id)?.email || "",
-        lesson_title: lessonsMap.get(a.lesson_id) || "Тест"
+        lesson_title: lessonsMap.get(a.lesson_id) || "Тест",
+        answers: (a.answers as Record<string, number>) || {},
+        shown_question_ids: (a.shown_question_ids as string[]) || []
       }));
 
       setTestData(enrichedData);
@@ -172,9 +204,60 @@ export function CourseTestReport({ courseId, courseName, organizationId }: Cours
     setDateTo(undefined);
   };
 
-  const handleExport = () => {
-    import('xlsx').then(XLSX => {
-      const exportData = filteredData.map(a => ({
+  const toggleExpanded = (attemptId: string) => {
+    setExpandedAttempts(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(attemptId)) {
+        newSet.delete(attemptId);
+      } else {
+        newSet.add(attemptId);
+      }
+      return newSet;
+    });
+  };
+
+  // Get question details for an attempt
+  const getAttemptQuestionDetails = (attempt: TestAttemptData) => {
+    const details: Array<{
+      questionText: string;
+      options: string[];
+      selectedAnswer: number;
+      correctAnswer: number;
+      isCorrect: boolean;
+    }> = [];
+
+    // Use shown_question_ids if available, otherwise use keys from answers
+    const questionIds = attempt.shown_question_ids.length > 0 
+      ? attempt.shown_question_ids 
+      : Object.keys(attempt.answers);
+
+    questionIds.forEach(qId => {
+      const question = questionsMap.get(qId);
+      if (question) {
+        const selectedAnswer = attempt.answers[qId];
+        const isCorrect = selectedAnswer === question.correct_answer;
+        details.push({
+          questionText: question.question,
+          options: question.options,
+          selectedAnswer: selectedAnswer ?? -1,
+          correctAnswer: question.correct_answer,
+          isCorrect
+        });
+      }
+    });
+
+    return details;
+  };
+
+  const handleExport = async () => {
+    const XLSX = await import('xlsx');
+    
+    // Create summary sheet
+    const summaryData = filteredData.map(a => {
+      const details = getAttemptQuestionDetails(a);
+      const incorrectCount = details.filter(d => !d.isCorrect).length;
+      
+      return {
         'ФИО': a.user_name,
         'Email': a.user_email,
         'Тест': a.lesson_title,
@@ -182,14 +265,76 @@ export function CourseTestReport({ courseId, courseName, organizationId }: Cours
         'Макс. баллы': a.max_score,
         'Процент': Math.round((a.score / a.max_score) * 100) + '%',
         'Результат': a.score >= a.max_score * 0.7 ? 'Пройден' : 'Не пройден',
+        'Правильных': details.filter(d => d.isCorrect).length,
+        'Неправильных': incorrectCount,
         'Дата': new Date(a.completed_at).toLocaleString('ru-RU')
-      }));
-      const ws = XLSX.utils.json_to_sheet(exportData);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Результаты тестов');
-      XLSX.writeFile(wb, `результаты_тестов_${courseName}_${new Date().toISOString().split('T')[0]}.xlsx`);
-      toast.success('Результаты тестов экспортированы');
+      };
     });
+
+    // Create detailed questions sheet
+    const detailedData: Array<Record<string, string | number>> = [];
+    
+    filteredData.forEach(a => {
+      const details = getAttemptQuestionDetails(a);
+      details.forEach((d, idx) => {
+        detailedData.push({
+          'ФИО': a.user_name,
+          'Тест': a.lesson_title,
+          'Дата': new Date(a.completed_at).toLocaleString('ru-RU'),
+          '№ вопроса': idx + 1,
+          'Вопрос': d.questionText.replace(/<[^>]*>/g, '').substring(0, 500), // Strip HTML, limit length
+          'Ответ студента': d.selectedAnswer >= 0 && d.options[d.selectedAnswer] 
+            ? d.options[d.selectedAnswer].replace(/<[^>]*>/g, '').substring(0, 200) 
+            : 'Нет ответа',
+          'Правильный ответ': d.options[d.correctAnswer] 
+            ? d.options[d.correctAnswer].replace(/<[^>]*>/g, '').substring(0, 200) 
+            : '',
+          'Результат': d.isCorrect ? '✓ Верно' : '✗ Неверно'
+        });
+      });
+    });
+
+    // Create wrong answers only sheet
+    const wrongAnswersData: Array<Record<string, string | number>> = [];
+    
+    filteredData.forEach(a => {
+      const details = getAttemptQuestionDetails(a);
+      details.filter(d => !d.isCorrect).forEach((d, idx) => {
+        wrongAnswersData.push({
+          'ФИО': a.user_name,
+          'Тест': a.lesson_title,
+          'Дата': new Date(a.completed_at).toLocaleString('ru-RU'),
+          'Вопрос': d.questionText.replace(/<[^>]*>/g, '').substring(0, 500),
+          'Ответ студента': d.selectedAnswer >= 0 && d.options[d.selectedAnswer] 
+            ? d.options[d.selectedAnswer].replace(/<[^>]*>/g, '').substring(0, 200) 
+            : 'Нет ответа',
+          'Правильный ответ': d.options[d.correctAnswer] 
+            ? d.options[d.correctAnswer].replace(/<[^>]*>/g, '').substring(0, 200) 
+            : ''
+        });
+      });
+    });
+
+    const wb = XLSX.utils.book_new();
+    
+    // Summary sheet
+    const wsSummary = XLSX.utils.json_to_sheet(summaryData);
+    XLSX.utils.book_append_sheet(wb, wsSummary, 'Сводка');
+    
+    // Detailed questions sheet
+    if (detailedData.length > 0) {
+      const wsDetailed = XLSX.utils.json_to_sheet(detailedData);
+      XLSX.utils.book_append_sheet(wb, wsDetailed, 'Все ответы');
+    }
+    
+    // Wrong answers sheet
+    if (wrongAnswersData.length > 0) {
+      const wsWrong = XLSX.utils.json_to_sheet(wrongAnswersData);
+      XLSX.utils.book_append_sheet(wb, wsWrong, 'Неправильные ответы');
+    }
+    
+    XLSX.writeFile(wb, `результаты_тестов_${courseName}_${new Date().toISOString().split('T')[0]}.xlsx`);
+    toast.success('Результаты тестов с вопросами экспортированы');
   };
 
   if (isLoading) {
@@ -326,7 +471,7 @@ export function CourseTestReport({ courseId, courseName, organizationId }: Cours
           disabled={filteredData.length === 0}
         >
           <FileSpreadsheet className="w-4 h-4" />
-          Экспорт в Excel ({filteredData.length})
+          Экспорт с вопросами ({filteredData.length})
         </Button>
       </div>
 
@@ -336,45 +481,117 @@ export function CourseTestReport({ courseId, courseName, organizationId }: Cours
           <p>Нет результатов по выбранным фильтрам</p>
         </div>
       ) : (
-        <div className="space-y-2 max-h-60 overflow-auto">
-          {filteredData.map(attempt => (
-            <div
-              key={attempt.id}
-              className={`flex items-center justify-between p-3 rounded-xl ${
-                attempt.score >= attempt.max_score * 0.7 ? "bg-sigma-green/10" : "bg-destructive/10"
-              }`}
-            >
-              <div className="flex items-center gap-3 min-w-0 flex-1">
-                <div className={`p-2 rounded-lg ${
-                  attempt.score >= attempt.max_score * 0.7 
-                    ? "bg-sigma-green/20 text-sigma-green" 
-                    : "bg-destructive/20 text-destructive"
-                }`}>
-                  {attempt.score >= attempt.max_score * 0.7 ? (
-                    <CheckCircle2 className="w-4 h-4" />
-                  ) : (
-                    <XCircle className="w-4 h-4" />
-                  )}
+        <div className="space-y-2 max-h-[400px] overflow-auto">
+          {filteredData.map(attempt => {
+            const isExpanded = expandedAttempts.has(attempt.id);
+            const details = getAttemptQuestionDetails(attempt);
+            const incorrectCount = details.filter(d => !d.isCorrect).length;
+            
+            return (
+              <Collapsible key={attempt.id} open={isExpanded}>
+                <div
+                  className={`rounded-xl ${
+                    attempt.score >= attempt.max_score * 0.7 ? "bg-sigma-green/10" : "bg-destructive/10"
+                  }`}
+                >
+                  <CollapsibleTrigger asChild>
+                    <div 
+                      className="flex items-center justify-between p-3 cursor-pointer hover:bg-black/5 transition-colors rounded-xl"
+                      onClick={() => toggleExpanded(attempt.id)}
+                    >
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className={`p-2 rounded-lg ${
+                          attempt.score >= attempt.max_score * 0.7 
+                            ? "bg-sigma-green/20 text-sigma-green" 
+                            : "bg-destructive/20 text-destructive"
+                        }`}>
+                          {attempt.score >= attempt.max_score * 0.7 ? (
+                            <CheckCircle2 className="w-4 h-4" />
+                          ) : (
+                            <XCircle className="w-4 h-4" />
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium truncate">{attempt.user_name}</div>
+                          <div className="text-sm text-muted-foreground truncate">{attempt.lesson_title}</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4 ml-3">
+                        <div className="text-right">
+                          <div className={`font-bold ${
+                            attempt.score >= attempt.max_score * 0.7 ? 'text-sigma-green' : 'text-destructive'
+                          }`}>
+                            {attempt.score}/{attempt.max_score}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {incorrectCount > 0 && (
+                              <span className="text-destructive">{incorrectCount} ошиб. </span>
+                            )}
+                            {new Date(attempt.completed_at).toLocaleDateString('ru-RU')}
+                          </div>
+                        </div>
+                        {isExpanded ? (
+                          <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                        )}
+                      </div>
+                    </div>
+                  </CollapsibleTrigger>
+                  
+                  <CollapsibleContent>
+                    <div className="px-3 pb-3 space-y-2">
+                      <div className="text-xs font-medium text-muted-foreground mb-2">
+                        Ответы на вопросы:
+                      </div>
+                      {details.map((d, idx) => (
+                        <div 
+                          key={idx} 
+                          className={`p-2 rounded-lg text-sm ${
+                            d.isCorrect ? 'bg-sigma-green/10' : 'bg-destructive/10'
+                          }`}
+                        >
+                          <div className="flex items-start gap-2">
+                            <span className={`font-medium ${d.isCorrect ? 'text-sigma-green' : 'text-destructive'}`}>
+                              {d.isCorrect ? '✓' : '✗'}
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <div 
+                                className="font-medium mb-1 line-clamp-2"
+                                dangerouslySetInnerHTML={{ 
+                                  __html: d.questionText.length > 150 
+                                    ? d.questionText.substring(0, 150) + '...' 
+                                    : d.questionText 
+                                }}
+                              />
+                              <div className="text-xs space-y-0.5">
+                                <div>
+                                  <span className="text-muted-foreground">Ответ: </span>
+                                  <span className={d.isCorrect ? 'text-sigma-green' : 'text-destructive'}>
+                                    {d.selectedAnswer >= 0 && d.options[d.selectedAnswer] 
+                                      ? d.options[d.selectedAnswer].replace(/<[^>]*>/g, '').substring(0, 100)
+                                      : 'Нет ответа'}
+                                  </span>
+                                </div>
+                                {!d.isCorrect && (
+                                  <div>
+                                    <span className="text-muted-foreground">Правильно: </span>
+                                    <span className="text-sigma-green">
+                                      {d.options[d.correctAnswer]?.replace(/<[^>]*>/g, '').substring(0, 100)}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CollapsibleContent>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <div className="font-medium truncate">{attempt.user_name}</div>
-                  <div className="text-sm text-muted-foreground truncate">{attempt.lesson_title}</div>
-                </div>
-              </div>
-              <div className="flex items-center gap-4 ml-3">
-                <div className="text-right">
-                  <div className={`font-bold ${
-                    attempt.score >= attempt.max_score * 0.7 ? 'text-sigma-green' : 'text-destructive'
-                  }`}>
-                    {attempt.score}/{attempt.max_score}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {new Date(attempt.completed_at).toLocaleDateString('ru-RU')}
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
+              </Collapsible>
+            );
+          })}
         </div>
       )}
     </div>
