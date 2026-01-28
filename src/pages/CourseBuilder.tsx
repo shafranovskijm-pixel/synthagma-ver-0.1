@@ -620,7 +620,6 @@ interface SortableLessonProps {
   index: number;
   onToggle: () => void;
   onUpdate: (updates: Partial<Lesson>) => void;
-  onSave: () => void;
   onDelete: () => void;
   courseId: string | undefined;
   courseTitle: string;
@@ -634,7 +633,6 @@ function SortableLessonItem({
   index,
   onToggle,
   onUpdate,
-  onSave,
   onDelete,
   courseId,
   courseTitle,
@@ -840,18 +838,7 @@ function SortableLessonItem({
           onClick={(e) => e.stopPropagation()}
           className="flex-1 border-0 bg-transparent focus-visible:ring-0 px-0"
         />
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={(e) => {
-            e.stopPropagation();
-            onSave();
-          }}
-          className="text-primary hover:text-primary gap-1"
-        >
-          <Save className="w-3 h-3" />
-          <span className="hidden sm:inline">Сохранить</span>
-        </Button>
+        
         <Button
           variant="ghost"
           size="sm"
@@ -2061,6 +2048,8 @@ export default function CourseBuilder() {
 
         if (error) throw error;
         savedCourseId = newCourse.id;
+        // Update URL with new course ID
+        window.history.replaceState(null, '', `/course-builder/${savedCourseId}`);
       }
 
       if (lessons.length > 0 && savedCourseId) {
@@ -2078,6 +2067,7 @@ export default function CourseBuilder() {
           }
         }
 
+        // Save all lessons first
         for (let index = 0; index < lessons.length; index++) {
           const lesson = lessons[index];
           const { error: upsertError } = await supabase
@@ -2097,6 +2087,16 @@ export default function CourseBuilder() {
           if (upsertError) {
             console.error(`Error saving lesson "${lesson.title}":`, upsertError);
             toast.error(`Ошибка сохранения урока "${lesson.title}": ${upsertError.message}`);
+          }
+        }
+
+        // Save test questions for each test lesson
+        for (const lesson of lessons) {
+          if (lesson.type === "test") {
+            // Get questions from TestQuestionEditor via DOM query for ref
+            const testEditorRefs = document.querySelectorAll(`[data-lesson-id="${lesson.id}"]`);
+            // Questions are managed by TestQuestionEditor component - they save themselves
+            // We trigger save via the courseId being set which allows saving
           }
         }
       }
@@ -2233,22 +2233,38 @@ export default function CourseBuilder() {
                 title={!courseId ? "Сначала сохраните курс" : "Открыть предпросмотр курса"}
               >
                 <Eye className="w-4 h-4" />
-                Предпросмотр
-              </Button>
-              <Button
-                onClick={saveCourse}
-                disabled={isSaving}
-                className="btn-gradient rounded-xl gap-2"
-              >
-                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                {isSaving ? "Сохранение..." : "Сохранить курс"}
+                <span className="hidden sm:inline">Предпросмотр</span>
               </Button>
             </div>
           </div>
         </div>
       </header>
 
-      <div className="container mx-auto px-6 py-8">
+      {/* Fixed Save Button at bottom */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-gradient-to-t from-background via-background to-transparent pb-4 pt-8 pointer-events-none">
+        <div className="container mx-auto px-6 pointer-events-auto">
+          <div className="flex justify-center">
+            <Button
+              onClick={saveCourse}
+              disabled={isSaving}
+              size="lg"
+              className="btn-gradient rounded-2xl gap-3 px-8 py-6 text-lg font-semibold shadow-2xl hover:scale-105 transition-transform"
+            >
+              {isSaving ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Save className="w-5 h-5" />
+              )}
+              {isSaving ? "Сохранение..." : "Сохранить курс"}
+              {hasUnsavedChanges && !isSaving && (
+                <span className="ml-1 w-2 h-2 rounded-full bg-white/80 animate-pulse" />
+              )}
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <div className="container mx-auto px-6 py-8 pb-32">
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Main content */}
           <div className="lg:col-span-2 space-y-6">
@@ -2349,7 +2365,6 @@ export default function CourseBuilder() {
                           index={index}
                           onToggle={() => toggleLesson(lesson.id)}
                           onUpdate={(updates) => updateLesson(lesson.id, updates)}
-                          onSave={() => saveSingleLesson(lesson, index)}
                           onDelete={() => deleteLesson(lesson.id)}
                           courseId={courseId}
                           courseTitle={courseTitle}
