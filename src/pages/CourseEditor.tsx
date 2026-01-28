@@ -465,33 +465,42 @@ const CourseEditor = () => {
               {course.is_published ? (
                 <>
                   <EyeOff className="w-4 h-4" />
-                  Снять с публикации
+                  <span className="hidden sm:inline">Снять с публикации</span>
                 </>
               ) : (
                 <>
                   <Eye className="w-4 h-4" />
-                  Опубликовать
+                  <span className="hidden sm:inline">Опубликовать</span>
                 </>
               )}
-            </Button>
-            <Button
-              onClick={handleSaveCourse}
-              disabled={isSaving}
-              className="btn-gradient gap-2"
-            >
-              {isSaving ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Save className="w-4 h-4" />
-              )}
-              Сохранить
             </Button>
           </div>
         </div>
       </header>
 
+      {/* Fixed Save Button at bottom */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-gradient-to-t from-background via-background to-transparent pb-4 pt-8 pointer-events-none">
+        <div className="max-w-5xl mx-auto px-6 pointer-events-auto">
+          <div className="flex justify-center">
+            <Button
+              onClick={handleSaveCourse}
+              disabled={isSaving}
+              size="lg"
+              className="btn-gradient rounded-2xl gap-3 px-8 py-6 text-lg font-semibold shadow-2xl hover:scale-105 transition-transform"
+            >
+              {isSaving ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Save className="w-5 h-5" />
+              )}
+              {isSaving ? "Сохранение..." : "Сохранить курс"}
+            </Button>
+          </div>
+        </div>
+      </div>
+
       {/* Content */}
-      <main className="max-w-5xl mx-auto p-6">
+      <main className="max-w-5xl mx-auto p-6 pb-32">
         {/* Course info */}
         <div className="feature-card rounded-2xl p-6 mb-8">
           <h2 className="font-display text-xl font-semibold mb-6">

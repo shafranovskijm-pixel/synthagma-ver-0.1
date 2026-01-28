@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useImperativeHandle, forwardRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,7 +20,7 @@ interface QuestionOption {
   text: string;
 }
 
-interface TestQuestion {
+export interface TestQuestion {
   id: string;
   question: string;
   options: QuestionOption[];
@@ -29,6 +29,11 @@ interface TestQuestion {
   explanation?: string;
   isNew?: boolean;
   isDeleted?: boolean;
+}
+
+export interface TestQuestionEditorRef {
+  getQuestions: () => TestQuestion[];
+  saveQuestions: () => Promise<boolean>;
 }
 
 interface TestQuestionEditorProps {
@@ -40,18 +45,33 @@ interface TestQuestionEditorProps {
     correctAnswer: number;
   }>;
   onQuestionsProcessed?: () => void;
+  onQuestionsChange?: (questions: TestQuestion[]) => void;
 }
 
-export function TestQuestionEditor({ 
+export const TestQuestionEditor = forwardRef<TestQuestionEditorRef, TestQuestionEditorProps>(({ 
   lessonId, 
   courseId, 
   generatedQuestions,
-  onQuestionsProcessed 
-}: TestQuestionEditorProps) {
+  onQuestionsProcessed,
+  onQuestionsChange 
+}, ref) => {
   const [questions, setQuestions] = useState<TestQuestion[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [generatingExplanationId, setGeneratingExplanationId] = useState<string | null>(null);
+
+  // Expose methods to parent via ref
+  useImperativeHandle(ref, () => ({
+    getQuestions: () => questions.filter(q => !q.isDeleted),
+    saveQuestions: async () => {
+      return await saveQuestions();
+    }
+  }));
+
+  // Notify parent of question changes
+  useEffect(() => {
+    onQuestionsChange?.(questions.filter(q => !q.isDeleted));
+  }, [questions, onQuestionsChange]);
 
   // Handle generated questions from AI
   useEffect(() => {
@@ -224,10 +244,10 @@ export function TestQuestionEditor({
     }
   };
 
-  const saveQuestions = async () => {
+  const saveQuestions = async (): Promise<boolean> => {
     if (!courseId) {
       toast.error("Сначала сохраните курс");
-      return;
+      return false;
     }
 
     const { data: lessonExists } = await supabase
@@ -237,20 +257,20 @@ export function TestQuestionEditor({
       .maybeSingle();
 
     if (!lessonExists) {
-      toast.error("Сначала сохраните урок");
-      return;
+      // Lesson not yet saved, skip validation - will be saved with course
+      return true;
     }
 
     const activeQuestions = questions.filter(q => !q.isDeleted);
     for (const q of activeQuestions) {
       if (!q.question.trim()) {
         toast.error("Заполните текст вопроса");
-        return;
+        return false;
       }
       const filledOptions = q.options.filter(o => o.text.trim());
       if (filledOptions.length < 2) {
         toast.error("Добавьте минимум 2 варианта ответа");
-        return;
+        return false;
       }
     }
 
@@ -291,10 +311,11 @@ export function TestQuestionEditor({
         isNew: false
       })));
 
-      toast.success("Вопросы сохранены");
+      return true;
     } catch (error: any) {
       console.error("Error saving questions:", error);
-      toast.error("Ошибка сохранения: " + error.message);
+      toast.error("Ошибка сохранения вопросов: " + error.message);
+      return false;
     } finally {
       setIsSaving(false);
     }
@@ -449,6 +470,8 @@ export function TestQuestionEditor({
             <Button
               onClick={saveQuestions}
               disabled={isSaving}
+              variant="outline"
+              size="sm"
               className="gap-2"
             >
               {isSaving ? (
@@ -463,4 +486,6 @@ export function TestQuestionEditor({
       )}
     </div>
   );
-}
+});
+
+TestQuestionEditor.displayName = "TestQuestionEditor";
