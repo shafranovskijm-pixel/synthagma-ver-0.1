@@ -26,11 +26,25 @@ export function useCourseStudentsManager(organizationId: string | null) {
         .from("enrollments")
         .select("id, user_id, progress, status")
         .eq("course_id", course.id);
+
+      // Exclude organization/admin accounts from student lists
+      const enrollmentUserIds = Array.from(new Set((enrollments || []).map(e => e.user_id)));
+      let excludedUserIds = new Set<string>();
+      if (enrollmentUserIds.length > 0) {
+        const { data: rolesData } = await supabase
+          .from("user_roles")
+          .select("user_id, role")
+          .in("user_id", enrollmentUserIds)
+          .in("role", ["organization", "admin"]);
+        excludedUserIds = new Set((rolesData || []).map(r => r.user_id));
+      }
+
+      const filteredEnrollments = (enrollments || []).filter(e => !excludedUserIds.has(e.user_id));
       
-      const enrolledStudentIds = new Set((enrollments || []).map(e => e.user_id));
+      const enrolledStudentIds = new Set(filteredEnrollments.map(e => e.user_id));
       const enrolledList: Student[] = [];
       
-      for (const enrollment of enrollments || []) {
+      for (const enrollment of filteredEnrollments) {
         const { data: profile } = await supabase
           .from("profiles")
           .select("id, user_id, full_name, email, login, generated_password")
@@ -62,9 +76,21 @@ export function useCourseStudentsManager(organizationId: string | null) {
           .from("profiles")
           .select("id, user_id, full_name, email, login, generated_password")
           .eq("organization_id", organizationId);
+
+        const profileUserIds = Array.from(new Set((allProfiles || []).map(p => p.user_id)));
+        let orgAdminUserIds = new Set<string>();
+        if (profileUserIds.length > 0) {
+          const { data: rolesData } = await supabase
+            .from("user_roles")
+            .select("user_id, role")
+            .in("user_id", profileUserIds)
+            .in("role", ["organization", "admin"]);
+          orgAdminUserIds = new Set((rolesData || []).map(r => r.user_id));
+        }
         
         const available = (allProfiles || [])
           .filter(p => !enrolledStudentIds.has(p.user_id))
+          .filter(p => !orgAdminUserIds.has(p.user_id))
           .map(p => ({
             id: p.id,
             user_id: p.user_id,

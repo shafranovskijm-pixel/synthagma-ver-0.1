@@ -27,9 +27,24 @@ export async function fetchCourses(organizationId: string): Promise<Course[]> {
     enrollments = (data || []) as Enrollment[];
   }
 
+  // Exclude organization/admin accounts from student counters
+  const enrollmentUserIds = Array.from(new Set(enrollments.map(e => e.user_id)));
+  let orgAdminUserIds = new Set<string>();
+  if (enrollmentUserIds.length > 0) {
+    const { data: rolesData } = await supabase
+      .from("user_roles")
+      .select("user_id, role")
+      .in("user_id", enrollmentUserIds)
+      .in("role", ["organization", "admin"]);
+    orgAdminUserIds = new Set((rolesData || []).map(r => r.user_id));
+  }
+
   // Build courses with stats
   return (coursesData || []).map((course: any) => {
-    const courseEnrollments = enrollments.filter(e => e.course_id === course.id);
+    const courseEnrollments = enrollments
+      .filter(e => e.course_id === course.id)
+      .filter(e => !orgAdminUserIds.has(e.user_id));
+    const uniqueStudentIds = new Set(courseEnrollments.map(e => e.user_id));
     return {
       id: course.id,
       title: course.title,
@@ -41,7 +56,7 @@ export async function fetchCourses(organizationId: string): Promise<Course[]> {
       category_id: course.category_id,
       duration: course.duration,
       lessonsCount: course.lessons?.[0]?.count || 0,
-      studentsCount: courseEnrollments.length,
+      studentsCount: uniqueStudentIds.size,
       // Course settings (must be present so UI toggles don't reset on refresh)
       skip_video_identification: course.skip_video_identification ?? false,
       sequential_lessons: course.sequential_lessons ?? false,
