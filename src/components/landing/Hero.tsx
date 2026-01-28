@@ -133,7 +133,7 @@ export function Hero() {
             ))}
           </div>
 
-          {/* CTA buttons with gold accent */}
+          {/* CTA button - single clear action */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-slide-up delay-200">
             <Link to="/register-organization">
               <Button size="lg" className="btn-gradient rounded-2xl px-10 h-16 text-lg gap-3 sigma-glow group">
@@ -143,10 +143,12 @@ export function Hero() {
                 </span>
               </Button>
             </Link>
-            <Button size="lg" variant="outline" className="rounded-2xl px-10 h-16 text-lg gap-3 border-2 border-accent/60 text-foreground bg-accent/10 group hover:bg-accent/20 hover:border-accent transition-all shadow-md">
-              <Play className="w-5 h-5 group-hover:scale-110 transition-transform text-accent" />
-              <span className="font-semibold">Попробовать бесплатно</span>
-            </Button>
+            <a href="#video-preview">
+              <Button size="lg" variant="outline" className="rounded-2xl px-10 h-16 text-lg gap-3 border-2 border-accent/60 text-foreground bg-accent/10 group hover:bg-accent/20 hover:border-accent transition-all shadow-md">
+                <Play className="w-5 h-5 group-hover:scale-110 transition-transform text-accent" />
+                <span className="font-semibold">Смотреть демо</span>
+              </Button>
+            </a>
           </div>
 
           {/* Trust text */}
