@@ -3,6 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Student, Course, Company, CourseCategory, Stats, DocumentsStats } from "@/types/shared";
 
+const uniq = <T,>(arr: T[]) => Array.from(new Set(arr));
+
 interface FrdoStatus {
   hasData: boolean;
   isComplete: boolean;
@@ -124,6 +126,22 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
           .from("profiles")
           .select("id, user_id, full_name, email, login, generated_password")
           .eq("organization_id", orgId);
+
+        // IMPORTANT: exclude organization/admin accounts from all student-related UI & stats
+        const profileUserIds = uniq((allProfilesData || []).map((p: any) => p.user_id));
+        let orgAdminUserIds = new Set<string>();
+        if (profileUserIds.length > 0) {
+          const { data: rolesData } = await supabase
+            .from("user_roles")
+            .select("user_id, role")
+            .in("user_id", profileUserIds)
+            .in("role", ["organization", "admin"]);
+          orgAdminUserIds = new Set((rolesData || []).map((r: any) => r.user_id));
+        }
+
+        const studentProfilesData = (allProfilesData || []).filter(
+          (p: any) => !orgAdminUserIds.has(p.user_id)
+        );
           
         const userEnrollmentsMap: Record<string, any[]> = {};
         for (const enrollment of allEnrollments) {
@@ -136,7 +154,7 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
         const studentsList: Student[] = [];
         const profilesWithoutEnrollments: Student[] = [];
         
-        for (const profile of allProfilesData || []) {
+        for (const profile of studentProfilesData) {
           const userEnrollments = userEnrollmentsMap[profile.user_id] || [];
           
           if (userEnrollments.length === 0) {
@@ -180,11 +198,13 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
         setIsLoadingStudents(false);
 
         // Calculate stats
-        const totalStudents = (allProfilesData || []).length;
+        const studentUserIdsSet = new Set(studentProfilesData.map((p: any) => p.user_id));
+        const totalStudents = studentProfilesData.length;
         const totalCourses = coursesData?.length || 0;
-        const completedCount = allEnrollments.filter(e => e.status === 'completed').length;
-        const averageProgress = allEnrollments.length > 0 
-          ? Math.round(allEnrollments.reduce((sum, e) => sum + (e.progress || 0), 0) / allEnrollments.length) 
+        const studentEnrollments = allEnrollments.filter(e => studentUserIdsSet.has(e.user_id));
+        const completedCount = studentEnrollments.filter(e => e.status === 'completed').length;
+        const averageProgress = studentEnrollments.length > 0 
+          ? Math.round(studentEnrollments.reduce((sum, e) => sum + (e.progress || 0), 0) / studentEnrollments.length) 
           : 0;
           
         setStats({
@@ -200,7 +220,7 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
           .select("user_id, type")
           .eq("organization_id", orgId);
 
-        if (identityDocs && allProfilesData) {
+        if (identityDocs && studentProfilesData) {
           const docsByUser = new Map<string, string[]>();
           identityDocs.forEach(doc => {
             const existing = docsByUser.get(doc.user_id) || [];
@@ -213,7 +233,7 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
           let withEducation = 0;
           let complete = 0;
 
-          for (const profile of allProfilesData) {
+          for (const profile of studentProfilesData) {
             const userDocs = docsByUser.get(profile.user_id) || [];
             const hasPassport = userDocs.some(t => t === "passport" || t === "birth_certificate");
             const hasSnils = userDocs.includes("snils");
@@ -227,7 +247,7 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
 
           setStudentDocsByUser(docsByUser);
           setDocumentsStats({
-            total: allProfilesData.length,
+            total: studentProfilesData.length,
             withPassport,
             withSnils,
             withEducation,
@@ -236,7 +256,7 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
         }
 
         // Fetch FRDO data status for all students
-        const userIds = (allProfilesData || []).map(p => p.user_id);
+        const userIds = studentProfilesData.map((p: any) => p.user_id);
         if (userIds.length > 0) {
           const { data: frdoData } = await supabase
             .from("student_frdo_data")
@@ -254,7 +274,7 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
             { key: "snils", label: "СНИЛС" },
           ];
 
-          for (const profile of allProfilesData || []) {
+          for (const profile of studentProfilesData) {
             const data = frdoData?.find(f => f.user_id === profile.user_id);
             const missing: string[] = [];
             
@@ -303,7 +323,8 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
 
         // Process courses with stats
         const coursesWithStats = (coursesData || []).map((course: any) => {
-          const courseEnrollments = allEnrollments.filter(e => e.course_id === course.id);
+          const courseEnrollments = studentEnrollments.filter(e => e.course_id === course.id);
+          const uniqueStudentIds = new Set(courseEnrollments.map(e => e.user_id));
           return {
             id: course.id,
             title: course.title,
@@ -311,7 +332,7 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
             is_published: course.is_published,
             created_at: course.created_at,
             lessonsCount: course.lessons?.[0]?.count || 0,
-            studentsCount: courseEnrollments.length,
+            studentsCount: uniqueStudentIds.size,
             duration: course.duration || "—",
             category_id: course.category_id,
             // Course settings (IMPORTANT: keep in sync with UI toggles)
