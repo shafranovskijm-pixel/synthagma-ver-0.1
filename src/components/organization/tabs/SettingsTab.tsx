@@ -27,6 +27,7 @@ interface BrandingSettings {
   showOrgName: boolean;
   coverPosition: 'cover' | 'contain' | 'center' | 'top' | 'bottom';
   customName: string;
+  customSubtitle: string;
 }
 
 interface StudentDashboardSettings {
@@ -466,13 +467,27 @@ export function SettingsTab({
             <div>
               <Label className="text-sm font-medium mb-2 block">Кастомное название</Label>
               <p className="text-sm text-muted-foreground mb-3">
-                Отображается вместо официального названия организации (оставьте пустым для использования официального)
+                Отображается вместо "СИНТАГМА" в первой строке сайдбара
               </p>
               <Input
                 value={brandingSettings.customName || ''}
                 onChange={e => setBrandingSettings(prev => ({ ...prev, customName: e.target.value }))}
                 className="rounded-xl"
                 placeholder="Введите название для отображения..."
+              />
+            </div>
+
+            {/* Custom Subtitle */}
+            <div>
+              <Label className="text-sm font-medium mb-2 block">Подзаголовок</Label>
+              <p className="text-sm text-muted-foreground mb-3">
+                Отображается во второй строке под названием (оставьте пустым для использования названия организации)
+              </p>
+              <Input
+                value={brandingSettings.customSubtitle || ''}
+                onChange={e => setBrandingSettings(prev => ({ ...prev, customSubtitle: e.target.value }))}
+                className="rounded-xl"
+                placeholder="Введите подзаголовок..."
               />
             </div>
 

@@ -31,6 +31,7 @@ interface OrgSidebarProps {
   setActiveTab: (tab: TabType) => void;
   organizationName: string;
   customName?: string;
+  customSubtitle?: string;
   logoUrl?: string;
   isFrdoEnabled: boolean;
   menuSettings: MenuSettings;
@@ -45,6 +46,7 @@ export function OrgSidebar({
   setActiveTab,
   organizationName,
   customName,
+  customSubtitle,
   logoUrl,
   isFrdoEnabled,
   menuSettings,
@@ -82,9 +84,9 @@ export function OrgSidebar({
           ) : (
             <SigmaLogo size="lg" showText={false} />
           )}
-          <div>
-            <span className="font-display font-bold text-lg">{customName || 'СИНТАГМА'}</span>
-            <div className="text-xs text-muted-foreground truncate max-w-[140px]">{organizationName}</div>
+          <div className="min-w-0">
+            <span className="font-display font-bold text-lg block truncate">{customName || 'СИНТАГМА'}</span>
+            <div className="text-xs text-muted-foreground truncate">{customSubtitle || organizationName}</div>
           </div>
         </div>
       </div>
