@@ -722,8 +722,12 @@ export default function StudentDashboard() {
             {/* Cover Image / Header */}
             {branding?.coverUrl ? (
               <div 
-                className="relative h-40 bg-cover bg-center"
-                style={{ backgroundImage: `url(${branding.coverUrl})` }}
+                className="relative h-40 overflow-hidden"
+                style={{ 
+                  backgroundImage: `url(${branding.coverUrl})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center top' // Preserve top of image
+                }}
               >
                 <div className="absolute inset-0 bg-gradient-to-b from-transparent to-background/80" />
                 <div className="absolute bottom-0 left-0 right-0 px-8 py-4">
