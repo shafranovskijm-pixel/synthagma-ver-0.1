@@ -21,7 +21,7 @@ export function useBrandingSettings(organizationId: string | null, userId: strin
     secondaryColor: '#8b5cf6',
     logoUrl: '',
     showOrgName: true,
-    coverPosition: 'cover',
+    coverPosition: 'center',
     customName: '',
     customSubtitle: ''
   });
