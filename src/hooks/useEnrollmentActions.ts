@@ -48,8 +48,10 @@ export function useEnrollmentActions(
   const getSelectedUserIds = useCallback((students: Student[]): string[] => {
     const userIds = new Set<string>();
     for (const student of students) {
-      const uniqueId = student.enrollment_id || student.user_id;
-      if (selectedStudentIds.has(uniqueId)) {
+      // Check both user_id and enrollment_id as selection can use either
+      const hasUserId = selectedStudentIds.has(student.user_id);
+      const hasEnrollmentId = student.enrollment_id && selectedStudentIds.has(student.enrollment_id);
+      if (hasUserId || hasEnrollmentId) {
         userIds.add(student.user_id);
       }
     }
