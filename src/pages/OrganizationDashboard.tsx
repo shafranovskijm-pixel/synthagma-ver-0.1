@@ -279,7 +279,7 @@ export default function OrganizationDashboard() {
                   brandingSettings.coverPosition === 'top' ? 'center top' 
                   : brandingSettings.coverPosition === 'bottom' ? 'center bottom' 
                   : brandingSettings.coverPosition === 'contain' ? 'center center'
-                  : 'center top', // Default to top for 'cover' and 'center' modes - preserves top of image
+                  : 'center center', // Default to center - balanced cropping for banners
                 backgroundColor: 'hsl(var(--muted))'
               }}
             />

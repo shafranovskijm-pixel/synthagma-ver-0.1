@@ -349,7 +349,7 @@ export function SettingsTab({
                           brandingSettings.coverPosition === 'top' ? 'center top' 
                           : brandingSettings.coverPosition === 'bottom' ? 'center bottom' 
                           : brandingSettings.coverPosition === 'contain' ? 'center center'
-                          : 'center top', // Default to top for 'cover' and 'center' modes
+                          : 'center center', // Default to center - balanced cropping
                         backgroundColor: 'hsl(var(--muted))'
                       }}
                     />
