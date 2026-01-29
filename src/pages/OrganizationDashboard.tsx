@@ -254,6 +254,7 @@ export default function OrganizationDashboard() {
         setActiveTab={setActiveTab}
         organizationName={organizationName}
         customName={brandingSettings.customName}
+        customSubtitle={brandingSettings.customSubtitle}
         logoUrl={brandingSettings.logoUrl}
         isFrdoEnabled={isFrdoEnabled}
         menuSettings={menuSettings}

@@ -11,6 +11,7 @@ interface BrandingSettings {
   showOrgName: boolean;
   coverPosition: 'cover' | 'contain' | 'center' | 'top' | 'bottom';
   customName: string;
+  customSubtitle: string;
 }
 
 export function useBrandingSettings(organizationId: string | null, userId: string | undefined) {
@@ -21,7 +22,8 @@ export function useBrandingSettings(organizationId: string | null, userId: strin
     logoUrl: '',
     showOrgName: true,
     coverPosition: 'cover',
-    customName: ''
+    customName: '',
+    customSubtitle: ''
   });
   const [isUploadingCover, setIsUploadingCover] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
@@ -47,7 +49,8 @@ export function useBrandingSettings(organizationId: string | null, userId: strin
             logoUrl: branding.logoUrl as string || '',
             showOrgName: branding.showOrgName !== false,
             coverPosition: (branding.coverPosition as BrandingSettings['coverPosition']) || 'cover',
-            customName: branding.customName as string || ''
+            customName: branding.customName as string || '',
+            customSubtitle: branding.customSubtitle as string || ''
           });
         }
       } catch (error) {

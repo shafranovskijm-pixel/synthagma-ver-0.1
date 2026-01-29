@@ -39,6 +39,7 @@ export interface BrandingSettings {
   showOrgName?: boolean;
   coverPosition?: 'cover' | 'contain' | 'center' | 'top' | 'bottom';
   customName?: string;
+  customSubtitle?: string;
 }
 
 export interface StudentDashboardSettings {
