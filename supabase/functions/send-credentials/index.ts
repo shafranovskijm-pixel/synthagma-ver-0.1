@@ -115,6 +115,9 @@ const handler = async (req: Request): Promise<Response> => {
       /^https:\/\/[a-z0-9-]+--[a-z0-9-]+\.lovable\.app/,
       /^https:\/\/[a-z0-9-]+\.lovableproject\.com/,
       /^http:\/\/localhost/,
+      // Production custom domains (punycode format)
+      /^https:\/\/xn--80aaiswd0ak\.xn--p1ai/, // синтагма.рф
+      /^https:\/\/синтагма\.рф/, // Unicode format
     ];
     
     const isAllowedUrl = allowedPatterns.some(pattern => pattern.test(loginUrl));
