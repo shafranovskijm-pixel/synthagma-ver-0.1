@@ -14,6 +14,7 @@ export interface Student {
   status: string | null;
   company_id?: string | null;
   company_name?: string | null;
+  enrollments?: StudentEnrollment[]; // All enrollments for this student
 }
 
 export interface StudentDocument {

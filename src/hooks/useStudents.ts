@@ -120,13 +120,17 @@ export function useStudents(
 
       // Status filter
       if (statusFilter !== "all") {
-        if (statusFilter === "not_enrolled" && student.enrollment_id) return false;
-        if (statusFilter === "active" && student.status !== "active") return false;
-        if (statusFilter === "completed" && student.status !== "completed") return false;
+        const enrollments = student.enrollments || [];
+        if (statusFilter === "not_enrolled" && enrollments.length > 0) return false;
+        if (statusFilter === "active" && !enrollments.some(e => e.status === "active")) return false;
+        if (statusFilter === "completed" && !enrollments.some(e => e.status === "completed")) return false;
       }
 
-      // Course filter
-      if (courseFilter !== "all" && student.course_id !== courseFilter) return false;
+      // Course filter - check if student is enrolled in selected course
+      if (courseFilter !== "all") {
+        const enrollments = student.enrollments || [];
+        if (!enrollments.some(e => e.course_id === courseFilter)) return false;
+      }
 
       // Documents filter
       if (docsFilter !== "all") {
@@ -146,7 +150,7 @@ export function useStudents(
     });
   }, [students, searchQuery, statusFilter, courseFilter, docsFilter, studentDocsByUser]);
 
-  // Selection helpers
+  // Selection helpers - use user_id for unique selection (one row per student)
   const toggleSelection = useCallback((uniqueId: string) => {
     setSelectedStudentIds(prev => {
       const newSet = new Set(prev);
@@ -160,7 +164,7 @@ export function useStudents(
   }, []);
 
   const toggleSelectAll = useCallback((filteredList: Student[]) => {
-    const filteredIds = filteredList.map(s => s.enrollment_id || s.user_id);
+    const filteredIds = filteredList.map(s => s.user_id); // Use user_id for unique selection
     setSelectedStudentIds(prev => {
       const allSelected = filteredIds.every(id => prev.has(id)) && filteredIds.length > 0;
       if (allSelected) {
@@ -176,15 +180,9 @@ export function useStudents(
   }, []);
 
   const getSelectedUserIds = useCallback((): string[] => {
-    const userIds = new Set<string>();
-    for (const student of students) {
-      const uniqueId = student.enrollment_id || student.user_id;
-      if (selectedStudentIds.has(uniqueId)) {
-        userIds.add(student.user_id);
-      }
-    }
-    return Array.from(userIds);
-  }, [students, selectedStudentIds]);
+    // selectedStudentIds now contains user_ids directly
+    return Array.from(selectedStudentIds);
+  }, [selectedStudentIds]);
 
   const createNewStudent = useCallback(async (params: {
     name: string;
