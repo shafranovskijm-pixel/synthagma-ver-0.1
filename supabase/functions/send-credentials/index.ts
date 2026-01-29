@@ -113,6 +113,7 @@ const handler = async (req: Request): Promise<Response> => {
       /^https:\/\/[a-z0-9-]+\.lovable\.app/,
       /^https:\/\/[a-z0-9-]+\.lovable\.dev/,
       /^https:\/\/[a-z0-9-]+--[a-z0-9-]+\.lovable\.app/,
+      /^https:\/\/[a-z0-9-]+\.lovableproject\.com/,
       /^http:\/\/localhost/,
     ];
     
