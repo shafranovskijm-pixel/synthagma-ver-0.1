@@ -69,14 +69,13 @@ export function StudentsTab({
     searchQuery,
     setSearchQuery,
     removeStudent,
-    unenrollFromCourse,
   } = useStudents(organizationId, courseIds, studentDocsByUser);
 
   const getSelectedEnrollmentsCount = useCallback(() => {
     let count = 0;
     for (const id of selectedStudentIds) {
-      const student = filteredStudents.find(s => s.enrollment_id === id);
-      if (student?.enrollment_id) count++;
+      const student = filteredStudents.find(s => s.user_id === id);
+      if (student?.enrollments && student.enrollments.length > 0) count += student.enrollments.length;
     }
     return count;
   }, [selectedStudentIds, filteredStudents]);
@@ -88,7 +87,7 @@ export function StudentsTab({
       'Email': s.email || '',
       'Логин': s.login || '',
       'Пароль': s.generated_password || '',
-      'Курс': s.course || 'Не зачислен',
+      'Курсы': s.course || 'Не зачислен',
       'Прогресс (%)': s.progress,
       'Статус': s.status === 'completed' ? 'Завершил' : s.status === 'active' ? 'Активный' : '—'
     }));
@@ -98,17 +97,6 @@ export function StudentsTab({
     XLSX.writeFile(wb, `ученики_${new Date().toISOString().split('T')[0]}.xlsx`);
     toast.success('Список учеников экспортирован');
   }, [filteredStudents]);
-
-  // If student has enrollment, unenroll from course; otherwise delete profile entirely
-  const handleDeleteOrUnenroll = useCallback(async (student: Student) => {
-    if (student.enrollment_id) {
-      // Student is enrolled in a course - just unenroll from this course
-      await unenrollFromCourse(student.enrollment_id);
-    } else {
-      // Student has no enrollments - delete the profile
-      await removeStudent(student.user_id);
-    }
-  }, [removeStudent, unenrollFromCourse]);
 
   const renderDocumentStatus = (student: Student) => {
     const userDocs = studentDocsByUser.get(student.user_id) || [];
@@ -340,16 +328,16 @@ export function StudentsTab({
           {/* Mobile view - cards */}
           <div className="lg:hidden divide-y divide-border">
             {filteredStudents.map(student => {
-              const uniqueId = student.enrollment_id || student.user_id;
-              const isSelected = selectedStudentIds.has(uniqueId);
+              const isSelected = selectedStudentIds.has(student.user_id);
               const userDocs = studentDocsByUser.get(student.user_id) || [];
               const hasPassport = userDocs.some(t => t === "passport" || t === "birth_certificate");
               const hasSnils = userDocs.includes("snils");
               const hasEducation = userDocs.some(t => t === "education_document" || t === "diploma" || t === "attestat");
+              const enrollmentsCount = student.enrollments?.length || 0;
               
               return (
                 <div 
-                  key={uniqueId} 
+                  key={student.user_id} 
                   className={`p-4 ${isSelected ? 'bg-primary/5' : ''}`}
                   onClick={() => onViewStudent(student)}
                 >
@@ -358,7 +346,7 @@ export function StudentsTab({
                       <input 
                         type="checkbox" 
                         checked={isSelected} 
-                        onChange={() => toggleSelection(uniqueId)} 
+                        onChange={() => toggleSelection(student.user_id)} 
                         className="w-4 h-4 rounded border-border mt-1" 
                       />
                     </div>
@@ -393,7 +381,11 @@ export function StudentsTab({
                       </div>
                       
                       <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                        <span className="truncate">{student.course || 'Не зачислен'}</span>
+                        <span className="truncate">
+                          {enrollmentsCount === 0 ? 'Не зачислен' : 
+                           enrollmentsCount === 1 ? student.course : 
+                           `${enrollmentsCount} курс(а)`}
+                        </span>
                         <span className="shrink-0">{student.progress}%</span>
                       </div>
                       
@@ -424,7 +416,7 @@ export function StudentsTab({
                   <th className="text-left px-4 py-4 text-sm font-medium text-muted-foreground w-12">
                     <input 
                       type="checkbox" 
-                      checked={filteredStudents.length > 0 && filteredStudents.every(s => selectedStudentIds.has(s.enrollment_id || s.user_id))} 
+                      checked={filteredStudents.length > 0 && filteredStudents.every(s => selectedStudentIds.has(s.user_id))} 
                       onChange={() => toggleSelectAll(filteredStudents)} 
                       className="w-4 h-4 rounded border-border" 
                     />
@@ -432,7 +424,7 @@ export function StudentsTab({
                   <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Ученик</th>
                   <th className="text-left px-4 py-4 text-sm font-medium text-muted-foreground">Документы</th>
                   <th className="text-left px-3 py-4 text-sm font-medium text-muted-foreground">ФРДО</th>
-                  <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Курс</th>
+                  <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Курсы</th>
                   <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Прогресс</th>
                   <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Статус</th>
                   <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Действия</th>
@@ -440,12 +432,12 @@ export function StudentsTab({
               </thead>
               <tbody>
                 {filteredStudents.map(student => {
-                  const uniqueId = student.enrollment_id || student.user_id;
-                  const isSelected = selectedStudentIds.has(uniqueId);
+                  const isSelected = selectedStudentIds.has(student.user_id);
+                  const enrollmentsCount = student.enrollments?.length || 0;
                   
                   return (
                     <tr 
-                      key={uniqueId} 
+                      key={student.user_id} 
                       className={`border-b border-border last:border-0 hover:bg-secondary/50 transition-colors cursor-pointer ${isSelected ? 'bg-primary/5' : ''}`} 
                       onClick={() => onViewStudent(student)}
                     >
@@ -453,7 +445,7 @@ export function StudentsTab({
                         <input 
                           type="checkbox" 
                           checked={isSelected} 
-                          onChange={() => toggleSelection(uniqueId)} 
+                          onChange={() => toggleSelection(student.user_id)} 
                           className="w-4 h-4 rounded border-border" 
                         />
                       </td>
@@ -495,8 +487,21 @@ export function StudentsTab({
                       <td className="px-3 py-4">
                         {renderFRDOStatus(student)}
                       </td>
-                      <td className="px-6 py-4 text-sm">
-                        {student.course || <span className="text-muted-foreground italic">Не зачислен</span>}
+                      <td className="px-6 py-4 text-sm max-w-[200px]">
+                        {enrollmentsCount === 0 ? (
+                          <span className="text-muted-foreground italic">Не зачислен</span>
+                        ) : enrollmentsCount === 1 ? (
+                          <span className="truncate block">{student.course}</span>
+                        ) : (
+                          <div className="space-y-1">
+                            {student.enrollments?.slice(0, 2).map((e, i) => (
+                              <span key={e.id} className="block truncate text-xs">{e.course_title}</span>
+                            ))}
+                            {enrollmentsCount > 2 && (
+                              <span className="text-xs text-muted-foreground">+{enrollmentsCount - 2} ещё</span>
+                            )}
+                          </div>
+                        )}
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
@@ -530,8 +535,8 @@ export function StudentsTab({
                             variant="outline" 
                             size="sm" 
                             className="rounded-lg text-destructive hover:text-destructive" 
-                            onClick={() => handleDeleteOrUnenroll(student)} 
-                            title={student.enrollment_id ? "Отчислить с курса" : "Удалить ученика"}
+                            onClick={() => removeStudent(student.user_id)} 
+                            title="Удалить ученика"
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>

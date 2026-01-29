@@ -53,7 +53,6 @@ export async function fetchStudents(
   }
 
   const studentsList: Student[] = [];
-  const profilesWithoutEnrollments: Student[] = [];
 
   for (const profile of allProfilesData || []) {
     // Skip organization and admin users - they are not students
@@ -63,45 +62,61 @@ export async function fetchStudents(
 
     const userEnrollments = userEnrollmentsMap[profile.user_id] || [];
     
-    if (userEnrollments.length === 0) {
-      profilesWithoutEnrollments.push({
-        id: profile.id,
-        user_id: profile.user_id,
-        enrollment_id: null,
-        name: profile.full_name || "Без имени",
-        email: profile.email || "",
-        login: profile.login || null,
-        generated_password: profile.generated_password || null,
-        course: null,
-        course_id: null,
-        progress: 0,
-        lastActivity: null,
-        status: null
-      });
-    } else {
-      for (const enrollment of userEnrollments) {
-        const course = coursesData?.find(c => c.id === enrollment.course_id);
-        studentsList.push({
-          id: profile.id,
-          user_id: profile.user_id,
-          enrollment_id: enrollment.id,
-          name: profile.full_name || "Без имени",
-          email: profile.email || "",
-          login: profile.login || null,
-          generated_password: profile.generated_password || null,
-          course: course?.title || "—",
-          course_id: enrollment.course_id,
-          progress: enrollment.progress || 0,
-          lastActivity: enrollment.started_at,
-          status: enrollment.status
-        });
-      }
-    }
+    // Build enrollments array for this student
+    const enrollments = userEnrollments.map(enrollment => {
+      const course = coursesData?.find(c => c.id === enrollment.course_id);
+      return {
+        id: enrollment.id,
+        course_id: enrollment.course_id,
+        course_title: course?.title || "—",
+        progress: enrollment.progress || 0,
+        status: enrollment.status,
+        started_at: enrollment.started_at,
+        completed_at: enrollment.completed_at,
+        time_spent: enrollment.time_spent
+      };
+    });
+
+    // Calculate aggregate progress and status
+    const totalProgress = enrollments.length > 0 
+      ? Math.round(enrollments.reduce((sum, e) => sum + e.progress, 0) / enrollments.length)
+      : 0;
+    
+    const hasCompleted = enrollments.some(e => e.status === 'completed');
+    const hasActive = enrollments.some(e => e.status === 'active');
+    const aggregateStatus = hasCompleted ? 'completed' : hasActive ? 'active' : null;
+
+    // Create course display string
+    const courseNames = enrollments.map(e => e.course_title);
+
+    studentsList.push({
+      id: profile.id,
+      user_id: profile.user_id,
+      enrollment_id: enrollments.length === 1 ? enrollments[0].id : null, // Only set if single enrollment
+      name: profile.full_name || "Без имени",
+      email: profile.email || "",
+      login: profile.login || null,
+      generated_password: profile.generated_password || null,
+      course: courseNames.length > 0 ? courseNames.join(", ") : null,
+      course_id: enrollments.length === 1 ? enrollments[0].course_id : null, // Only set if single enrollment
+      progress: totalProgress,
+      lastActivity: enrollments[0]?.started_at || null,
+      status: aggregateStatus,
+      enrollments: enrollments // Add all enrollments for detail view
+    });
   }
 
+  // Sort: enrolled students first, then by name
+  studentsList.sort((a, b) => {
+    const aEnrolled = (a.enrollments?.length || 0) > 0;
+    const bEnrolled = (b.enrollments?.length || 0) > 0;
+    if (aEnrolled !== bEnrolled) return bEnrolled ? 1 : -1;
+    return a.name.localeCompare(b.name);
+  });
+
   return {
-    students: [...studentsList, ...profilesWithoutEnrollments],
-    allProfiles: profilesWithoutEnrollments
+    students: studentsList,
+    allProfiles: studentsList.filter(s => !s.enrollments || s.enrollments.length === 0)
   };
 }
 
