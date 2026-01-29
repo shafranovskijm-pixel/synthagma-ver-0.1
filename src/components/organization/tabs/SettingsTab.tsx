@@ -345,11 +345,11 @@ export function SettingsTab({
                       className="w-full h-32"
                       style={{
                         objectFit: brandingSettings.coverPosition === 'contain' ? 'contain' : 'cover',
-                        objectPosition: brandingSettings.coverPosition === 'top' 
-                          ? 'center top' 
-                          : brandingSettings.coverPosition === 'bottom' 
-                            ? 'center bottom' 
-                            : 'center center',
+                        objectPosition: 
+                          brandingSettings.coverPosition === 'top' ? 'center top' 
+                          : brandingSettings.coverPosition === 'bottom' ? 'center bottom' 
+                          : brandingSettings.coverPosition === 'contain' ? 'center center'
+                          : 'center top', // Default to top for 'cover' and 'center' modes
                         backgroundColor: 'hsl(var(--muted))'
                       }}
                     />
