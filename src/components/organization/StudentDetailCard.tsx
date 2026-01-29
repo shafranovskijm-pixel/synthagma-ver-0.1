@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
@@ -568,6 +569,59 @@ export function StudentDetailCard({
     }
   };
 
+  // Manual verification toggle - creates/updates verification record
+  const handleManualVerification = async (verified: boolean) => {
+    if (!student) return;
+    
+    try {
+      if (verified) {
+        // Check if there's an existing record to update
+        if (latestVerification) {
+          const { error } = await supabase
+            .from("video_identifications")
+            .update({
+              status: "verified",
+              verified_at: new Date().toISOString(),
+            })
+            .eq("id", latestVerification.id);
+          if (error) throw error;
+        } else {
+          // Create new manual verification record
+          const { error } = await supabase
+            .from("video_identifications")
+            .insert({
+              user_id: student.user_id,
+              organization_id: organizationId,
+              status: "verified",
+              verified_at: new Date().toISOString(),
+            });
+          if (error) throw error;
+        }
+        
+        toast.success("Видеоидентификация отмечена как пройденная");
+      } else {
+        // If unchecking - update status to pending or remove record
+        if (latestVerification) {
+          const { error } = await supabase
+            .from("video_identifications")
+            .update({
+              status: "pending",
+              verified_at: null,
+            })
+            .eq("id", latestVerification.id);
+          if (error) throw error;
+          toast.success("Статус видеоидентификации сброшен");
+        }
+      }
+      
+      loadStudentData();
+      onStudentUpdated?.();
+    } catch (error) {
+      console.error("Error updating manual verification:", error);
+      toast.error("Ошибка обновления статуса");
+    }
+  };
+
   if (!student) return null;
 
   return (
@@ -1057,7 +1111,39 @@ export function StudentDetailCard({
                       )}
                     </div>
 
-                    {/* Consent History */}
+                    {/* Manual Verification Toggle */}
+                    <div className="bg-card rounded-2xl border border-border p-6">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                            latestVerification?.status === "verified" 
+                              ? "bg-green-500/10" 
+                              : "bg-muted"
+                          }`}>
+                            {latestVerification?.status === "verified" ? (
+                              <CheckCircle2 className="w-5 h-5 text-green-500" />
+                            ) : (
+                              <Video className="w-5 h-5 text-muted-foreground" />
+                            )}
+                          </div>
+                          <div>
+                            <Label htmlFor="manual-verification" className="font-medium cursor-pointer">
+                              Видеоидентификация пройдена
+                            </Label>
+                            <p className="text-xs text-muted-foreground">
+                              Отметить вручную, что ученик прошёл идентификацию
+                            </p>
+                          </div>
+                        </div>
+                        <Checkbox
+                          id="manual-verification"
+                          checked={latestVerification?.status === "verified"}
+                          onCheckedChange={(checked) => handleManualVerification(!!checked)}
+                          className="h-5 w-5"
+                        />
+                      </div>
+                    </div>
+
                     <div className="bg-card rounded-2xl border border-border p-6">
                       <h3 className="font-semibold mb-4 flex items-center gap-2">
                         <History className="w-5 h-5 text-primary" />
