@@ -51,22 +51,24 @@ const BrandedLogin = () => {
       }
 
       try {
-        const { data, error } = await supabase
-          .from('organizations')
-          .select('id, name, website_url, login_branding')
-          .eq('login_slug', slug)
-          .maybeSingle();
+        // Use a SECURITY DEFINER RPC to avoid exposing the full organizations table publicly.
+        // This function returns ONLY non-sensitive fields required for branded login.
+        const { data, error } = await supabase.rpc('public_get_organization_by_slug', {
+          p_slug: slug,
+        });
 
         if (error) throw error;
 
-        if (!data) {
+        const row = Array.isArray(data) ? data[0] : null;
+
+        if (!row) {
           setNotFound(true);
         } else {
-          const branding = data.login_branding as LoginBranding | null;
+          const branding = (row.login_branding as LoginBranding | null) ?? null;
           setOrganization({
-            id: data.id,
-            name: data.name,
-            website_url: data.website_url,
+            id: row.id,
+            name: row.name,
+            website_url: row.website_url,
             login_branding: branding
           });
         }

@@ -2881,6 +2881,15 @@ export type Database = {
           user_id: string
         }[]
       }
+      public_get_organization_by_slug: {
+        Args: { p_slug: string }
+        Returns: {
+          id: string
+          login_branding: Json
+          name: string
+          website_url: string
+        }[]
+      }
       public_lookup_user_by_login: {
         Args: { login_input: string }
         Returns: {
