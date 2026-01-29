@@ -338,14 +338,21 @@ export default function StudentDashboard() {
           });
         }
 
-        // Check video identification status
-        const { data: videoId } = await supabase
+        // Check video identification status (take the latest matching record)
+        // IMPORTANT: there can be multiple records; maybeSingle() would error and return null.
+        const { data: videoId, error: videoIdError } = await supabase
           .from("video_identifications")
           .select("status")
           .eq("user_id", user.id)
           .eq("organization_id", profileData.organization_id)
           .in("status", ["approved", "verified"])
+          .order("created_at", { ascending: false })
+          .limit(1)
           .maybeSingle();
+
+        if (videoIdError) {
+          console.error("Error checking video identification:", videoIdError);
+        }
 
         setIsVideoIdentified(!!videoId);
       }
