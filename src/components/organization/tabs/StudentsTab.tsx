@@ -69,6 +69,7 @@ export function StudentsTab({
     searchQuery,
     setSearchQuery,
     removeStudent,
+    unenrollFromCourse,
   } = useStudents(organizationId, courseIds, studentDocsByUser);
 
   const getSelectedEnrollmentsCount = useCallback(() => {
@@ -98,10 +99,16 @@ export function StudentsTab({
     toast.success('Список учеников экспортирован');
   }, [filteredStudents]);
 
-  const handleDeleteStudent = useCallback(async (userId: string) => {
-    if (!userId) return;
-    await removeStudent(userId);
-  }, [removeStudent]);
+  // If student has enrollment, unenroll from course; otherwise delete profile entirely
+  const handleDeleteOrUnenroll = useCallback(async (student: Student) => {
+    if (student.enrollment_id) {
+      // Student is enrolled in a course - just unenroll from this course
+      await unenrollFromCourse(student.enrollment_id);
+    } else {
+      // Student has no enrollments - delete the profile
+      await removeStudent(student.user_id);
+    }
+  }, [removeStudent, unenrollFromCourse]);
 
   const renderDocumentStatus = (student: Student) => {
     const userDocs = studentDocsByUser.get(student.user_id) || [];
@@ -523,8 +530,8 @@ export function StudentsTab({
                             variant="outline" 
                             size="sm" 
                             className="rounded-lg text-destructive hover:text-destructive" 
-                            onClick={() => handleDeleteStudent(student.user_id)} 
-                            title="Удалить ученика"
+                            onClick={() => handleDeleteOrUnenroll(student)} 
+                            title={student.enrollment_id ? "Отчислить с курса" : "Удалить ученика"}
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
