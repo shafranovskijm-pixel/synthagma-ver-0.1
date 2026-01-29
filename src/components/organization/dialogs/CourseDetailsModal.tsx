@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,10 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { CourseDocumentsManager } from "@/components/organization/CourseDocumentsManager";
 import { EnrollmentHistory } from "@/components/organization/EnrollmentHistory";
 import { CourseTestReport } from "@/components/organization/CourseTestReport";
@@ -28,7 +32,9 @@ import {
   Video,
   RotateCcw,
   Lock,
-  FastForward
+  FastForward,
+  Search,
+  UserPlus
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -55,6 +61,13 @@ interface Student {
   email: string;
   progress: number;
   status: string | null;
+}
+
+interface AvailableStudent {
+  id: string;
+  user_id: string;
+  name: string;
+  email: string;
 }
 
 interface CourseDetailsModalProps {
@@ -93,6 +106,14 @@ export function CourseDetailsModal({
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [resetConfirmStudent, setResetConfirmStudent] = useState<Student | null>(null);
   const [isResetting, setIsResetting] = useState(false);
+  
+  // Inline enrollment popover state
+  const [enrollPopoverOpen, setEnrollPopoverOpen] = useState(false);
+  const [availableStudents, setAvailableStudents] = useState<AvailableStudent[]>([]);
+  const [isLoadingAvailable, setIsLoadingAvailable] = useState(false);
+  const [enrollSearchQuery, setEnrollSearchQuery] = useState("");
+  const [selectedToEnroll, setSelectedToEnroll] = useState<Set<string>>(new Set());
+  const [isEnrolling, setIsEnrolling] = useState(false);
 
   useEffect(() => {
     if (course) {
@@ -101,6 +122,121 @@ export function CourseDetailsModal({
       setAllowVideoSeek(course.allow_video_seek !== false);
     }
   }, [course]);
+
+  // Load available students when popover opens
+  const loadAvailableStudents = useCallback(async () => {
+    if (!organizationId || !course) return;
+    
+    setIsLoadingAvailable(true);
+    try {
+      const enrolledUserIds = new Set(courseStudents.map(s => s.user_id));
+      
+      // Get all profiles in organization
+      const { data: allProfiles } = await supabase
+        .from("profiles")
+        .select("id, user_id, full_name, email")
+        .eq("organization_id", organizationId);
+      
+      // Filter out admin/org roles
+      const profileUserIds = (allProfiles || []).map(p => p.user_id);
+      let excludedUserIds = new Set<string>();
+      
+      if (profileUserIds.length > 0) {
+        const { data: rolesData } = await supabase
+          .from("user_roles")
+          .select("user_id, role")
+          .in("user_id", profileUserIds)
+          .in("role", ["organization", "admin"]);
+        excludedUserIds = new Set((rolesData || []).map(r => r.user_id));
+      }
+      
+      const available = (allProfiles || [])
+        .filter(p => !enrolledUserIds.has(p.user_id) && !excludedUserIds.has(p.user_id))
+        .map(p => ({
+          id: p.id,
+          user_id: p.user_id,
+          name: p.full_name || "Без имени",
+          email: p.email || ""
+        }));
+      
+      setAvailableStudents(available);
+    } catch (error) {
+      console.error("Error loading available students:", error);
+      toast.error("Ошибка загрузки списка учеников");
+    } finally {
+      setIsLoadingAvailable(false);
+    }
+  }, [organizationId, course, courseStudents]);
+
+  useEffect(() => {
+    if (enrollPopoverOpen) {
+      loadAvailableStudents();
+      setSelectedToEnroll(new Set());
+      setEnrollSearchQuery("");
+    }
+  }, [enrollPopoverOpen, loadAvailableStudents]);
+
+  const handleEnrollSelected = async () => {
+    if (!course || selectedToEnroll.size === 0) return;
+    
+    setIsEnrolling(true);
+    try {
+      const userIds = Array.from(selectedToEnroll);
+      
+      // Check for existing enrollments
+      const { data: existingEnrollments } = await supabase
+        .from("enrollments")
+        .select("user_id")
+        .eq("course_id", course.id)
+        .in("user_id", userIds);
+      
+      const existingUserIds = new Set((existingEnrollments || []).map(e => e.user_id));
+      const newUserIds = userIds.filter(id => !existingUserIds.has(id));
+      
+      if (newUserIds.length === 0) {
+        toast.info("Все выбранные ученики уже зачислены на этот курс");
+        setSelectedToEnroll(new Set());
+        return;
+      }
+      
+      const enrollmentsToInsert = newUserIds.map(userId => ({
+        user_id: userId,
+        course_id: course.id,
+        status: "active",
+        progress: 0
+      }));
+      
+      const { error } = await supabase.from("enrollments").insert(enrollmentsToInsert);
+      if (error) throw error;
+      
+      toast.success(`Зачислено ${newUserIds.length} ${newUserIds.length === 1 ? 'ученик' : newUserIds.length < 5 ? 'ученика' : 'учеников'}`);
+      setSelectedToEnroll(new Set());
+      setEnrollPopoverOpen(false);
+      onRefreshStudents?.();
+    } catch (error) {
+      console.error("Error enrolling students:", error);
+      toast.error("Ошибка зачисления");
+    } finally {
+      setIsEnrolling(false);
+    }
+  };
+
+  const toggleStudentToEnroll = (userId: string) => {
+    setSelectedToEnroll(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(userId)) {
+        newSet.delete(userId);
+      } else {
+        newSet.add(userId);
+      }
+      return newSet;
+    });
+  };
+
+  const filteredAvailableStudents = availableStudents.filter(s => 
+    s.name.toLowerCase().includes(enrollSearchQuery.toLowerCase()) ||
+    s.email.toLowerCase().includes(enrollSearchQuery.toLowerCase())
+  );
 
   if (!course) return null;
 
@@ -383,10 +519,83 @@ export function CourseDetailsModal({
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="font-semibold">Ученики курса</h3>
-                  <Button className="btn-gradient rounded-xl gap-2" onClick={onEnrollStudent}>
-                    <Plus className="w-4 h-4" />
-                    Зачислить ученика
-                  </Button>
+                  <Popover open={enrollPopoverOpen} onOpenChange={setEnrollPopoverOpen}>
+                    <PopoverTrigger asChild>
+                      <Button className="btn-gradient rounded-xl gap-2">
+                        <Plus className="w-4 h-4" />
+                        Зачислить ученика
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80 p-0" align="end">
+                      <div className="p-3 border-b border-border">
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                          <Input
+                            placeholder="Поиск учеников..."
+                            value={enrollSearchQuery}
+                            onChange={(e) => setEnrollSearchQuery(e.target.value)}
+                            className="pl-9 rounded-lg"
+                          />
+                        </div>
+                      </div>
+                      
+                      <ScrollArea className="h-64">
+                        {isLoadingAvailable ? (
+                          <div className="flex items-center justify-center py-8">
+                            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                          </div>
+                        ) : filteredAvailableStudents.length === 0 ? (
+                          <div className="text-center py-8 text-muted-foreground text-sm">
+                            {availableStudents.length === 0 
+                              ? "Нет доступных учеников для зачисления"
+                              : "Ученики не найдены"
+                            }
+                          </div>
+                        ) : (
+                          <div className="p-2 space-y-1">
+                            {filteredAvailableStudents.map(student => (
+                              <div 
+                                key={student.user_id}
+                                className="flex items-center gap-3 p-2 rounded-lg hover:bg-secondary/50 cursor-pointer transition-colors"
+                                onClick={() => toggleStudentToEnroll(student.user_id)}
+                              >
+                                <Checkbox 
+                                  checked={selectedToEnroll.has(student.user_id)}
+                                  onCheckedChange={() => toggleStudentToEnroll(student.user_id)}
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-medium text-sm truncate">{student.name}</div>
+                                  <div className="text-xs text-muted-foreground truncate">{student.email}</div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </ScrollArea>
+                      
+                      {selectedToEnroll.size > 0 && (
+                        <div className="p-3 border-t border-border">
+                          <Button 
+                            className="w-full btn-gradient rounded-lg gap-2"
+                            onClick={handleEnrollSelected}
+                            disabled={isEnrolling}
+                          >
+                            {isEnrolling ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Зачисление...
+                              </>
+                            ) : (
+                              <>
+                                <UserPlus className="w-4 h-4" />
+                                Зачислить ({selectedToEnroll.size})
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      )}
+                    </PopoverContent>
+                  </Popover>
                 </div>
                 
                 {courseStudents.length === 0 ? (
