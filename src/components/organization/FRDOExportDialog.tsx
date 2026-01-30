@@ -102,7 +102,13 @@ export function FRDOExportDialog({
   const [courseData, setCourseData] = useState<{
     title: string;
     duration: string | null;
-    program_type?: string;
+    frdo_program_type?: string | null;
+    frdo_document_type?: string | null;
+    frdo_professional_area?: string | null;
+    frdo_specialty_group?: string | null;
+    frdo_qualification_name?: string | null;
+    frdo_profession_name?: string | null;
+    frdo_qualification_rank?: string | null;
   } | null>(null);
 
   useEffect(() => {
@@ -173,12 +179,24 @@ export function FRDOExportDialog({
     try {
       const { data, error } = await supabase
         .from("courses")
-        .select("title, duration")
+        .select("title, duration, frdo_program_type, frdo_document_type, frdo_professional_area, frdo_specialty_group, frdo_qualification_name, frdo_profession_name, frdo_qualification_rank")
         .eq("id", courseId)
         .single();
 
       if (error) throw error;
       setCourseData(data);
+      
+      // Pre-fill FRDO data from course settings if student data is empty
+      if (data) {
+        setFrdoData((prev) => ({
+          ...prev,
+          professional_area: prev.professional_area || data.frdo_professional_area || "",
+          specialty_group: prev.specialty_group || data.frdo_specialty_group || "",
+          qualification_name: prev.qualification_name || data.frdo_qualification_name || "",
+          profession_name: prev.profession_name || data.frdo_profession_name || "",
+          qualification_rank: prev.qualification_rank || data.frdo_qualification_rank || "",
+        }));
+      }
     } catch (error) {
       console.error("Error loading course data:", error);
     }
@@ -266,8 +284,17 @@ export function FRDOExportDialog({
       ? parseInt(courseData.duration.replace(/\D/g, "")) || 0
       : Math.round(enrollment.time_spent / 3600);
 
+    // Use course FRDO settings as fallback if student data is empty
+    const professionalArea = frдоData.professional_area || courseData?.frdo_professional_area || "";
+    const specialtyGroup = frдоData.specialty_group || courseData?.frdo_specialty_group || "";
+    const qualificationName = frдоData.qualification_name || courseData?.frdo_qualification_name || "нет";
+    const documentType = courseData?.frdo_document_type || "Удостоверение о повышении квалификации";
+    const programType = courseData?.frdo_program_type === "professional_retraining" 
+      ? "Профессиональная переподготовка" 
+      : "Повышение квалификации";
+
     const row = {
-      "Вид документа": "Удостоверение о повышении квалификации",
+      "Вид документа": documentType,
       "Статус документа": "Оригинал",
       "Подтверждение утраты": "Нет",
       "Подтверждение обмена": "Нет",
@@ -276,11 +303,11 @@ export function FRDOExportDialog({
       "Номер документа": "",
       "Дата выдачи документа": formatDateForExport(enrollment.completed_at || ""),
       "Регистрационный номер": "",
-      "Дополнительная профессиональная программа (повышение квалификации/ профессиональная переподготовка)": "Повышение квалификации",
+      "Дополнительная профессиональная программа (повышение квалификации/ профессиональная переподготовка)": programType,
       "Наименование дополнительной профессиональной программы": courseData?.title || enrollment.course_title,
-      "Наименование области профессиональной деятельности": frдоData.professional_area,
-      "Укрупненные группы специальностей": frдоData.specialty_group,
-      "Наименование квалификации, профессии, специальности": frдоData.qualification_name || "нет",
+      "Наименование области профессиональной деятельности": professionalArea,
+      "Укрупненные группы специальностей": specialtyGroup,
+      "Наименование квалификации, профессии, специальности": qualificationName,
       "Уровень образования ВО/СПО": frдоData.education_level,
       "Фамилия указанная в дипломе о ВО или СПО": frдоData.education_doc_last_name,
       "Серия документа о ВО/СПО": frдоData.education_doc_series,
@@ -329,8 +356,13 @@ export function FRDOExportDialog({
       ? parseInt(courseData.duration.replace(/\D/g, "")) || 0
       : Math.round(enrollment.time_spent / 3600);
 
+    // Use course FRDO settings as fallback if student data is empty
+    const professionName = frдоData.profession_name || courseData?.frdo_profession_name || "";
+    const qualificationRank = frдоData.qualification_rank || courseData?.frdo_qualification_rank || "";
+    const documentType = courseData?.frdo_document_type || "Свидетельство о профессии рабочего, должности служащего";
+
     const row = {
-      "Вид документа": "Свидетельство о профессии рабочего, должности служащего",
+      "Вид документа": documentType,
       "Статус документа": "Оригинал",
       "Подтверждение утраты": "Нет",
       "Подтверждение обмена": "Нет",
@@ -341,8 +373,8 @@ export function FRDOExportDialog({
       "Регистрационный номер": "",
       "Программа профессионального обучения, направление подготовки": "Программа профессиональной подготовки по профессии рабочего, должности служащего",
       "Наименование программы профессионального обучения": courseData?.title || enrollment.course_title,
-      "Наименование профессий рабочих, должностей служащих": frдоData.profession_name,
-      "Присвоенный квалификационный разряд, класс, категория (при наличии)": frдоData.qualification_rank,
+      "Наименование профессий рабочих, должностей служащих": professionName,
+      "Присвоенный квалификационный разряд, класс, категория (при наличии)": qualificationRank,
       "Год начала обучения": startYear,
       "Год окончания обучения": endYear,
       "Срок обучения, часов": durationHours,
