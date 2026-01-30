@@ -75,6 +75,23 @@ interface EnrollmentData {
 interface Course {
   id: string;
   title: string;
+  frdo_program_type?: string | null;
+  frdo_document_type?: string | null;
+  frdo_professional_area?: string | null;
+  frdo_specialty_group?: string | null;
+  frdo_qualification_name?: string | null;
+  frdo_profession_name?: string | null;
+  frdo_qualification_rank?: string | null;
+}
+
+interface CourseFRDOSettings {
+  frdo_program_type?: string | null;
+  frdo_document_type?: string | null;
+  frdo_professional_area?: string | null;
+  frdo_specialty_group?: string | null;
+  frdo_qualification_name?: string | null;
+  frdo_profession_name?: string | null;
+  frdo_qualification_rank?: string | null;
 }
 
 type FRDOStatus = "all" | "complete" | "incomplete" | "empty";
@@ -147,7 +164,7 @@ export function FRDOManager({ organizationId }: FRDOManagerProps) {
 
       const { data: enrollmentsData } = await supabase
         .from("enrollments")
-        .select("user_id, course_id, started_at, completed_at, time_spent, courses(id, title, duration)")
+        .select("user_id, course_id, started_at, completed_at, time_spent, courses(id, title, duration, frdo_program_type, frdo_document_type, frdo_professional_area, frdo_specialty_group, frdo_qualification_name, frdo_profession_name, frdo_qualification_rank)")
         .in("user_id", studentUserIds);
 
       // Build enrollments map and courses list
@@ -155,7 +172,18 @@ export function FRDOManager({ organizationId }: FRDOManagerProps) {
       const courseSet = new Map<string, Course>();
 
       for (const e of enrollmentsData || []) {
-        const courseData = e.courses as { id: string; title: string; duration: string | null } | null;
+        const courseData = e.courses as { 
+          id: string; 
+          title: string; 
+          duration: string | null;
+          frdo_program_type?: string | null;
+          frdo_document_type?: string | null;
+          frdo_professional_area?: string | null;
+          frdo_specialty_group?: string | null;
+          frdo_qualification_name?: string | null;
+          frdo_profession_name?: string | null;
+          frdo_qualification_rank?: string | null;
+        } | null;
         const enrollment: EnrollmentData = {
           user_id: e.user_id,
           course_id: e.course_id,
@@ -175,6 +203,13 @@ export function FRDOManager({ organizationId }: FRDOManagerProps) {
           courseSet.set(courseData.id, {
             id: courseData.id,
             title: courseData.title,
+            frdo_program_type: courseData.frdo_program_type,
+            frdo_document_type: courseData.frdo_document_type,
+            frdo_professional_area: courseData.frdo_professional_area,
+            frdo_specialty_group: courseData.frdo_specialty_group,
+            frdo_qualification_name: courseData.frdo_qualification_name,
+            frdo_profession_name: courseData.frdo_profession_name,
+            frdo_qualification_rank: courseData.frdo_qualification_rank,
           });
         }
       }
@@ -355,16 +390,17 @@ export function FRDOManager({ organizationId }: FRDOManagerProps) {
         if (filteredEnrollments.length === 0) {
           // Add one row without course data
           if (exportType === "dpo") {
-            rows.push(createDPORow(data, null));
+            rows.push(createDPORow(data, null, null));
           } else {
-            rows.push(createPORow(data, null));
+            rows.push(createPORow(data, null, null));
           }
         } else {
           for (const enrollment of filteredEnrollments) {
+            const courseSettings = courses.find(c => c.id === enrollment.course_id) || null;
             if (exportType === "dpo") {
-              rows.push(createDPORow(data, enrollment));
+              rows.push(createDPORow(data, enrollment, courseSettings));
             } else {
-              rows.push(createPORow(data, enrollment));
+              rows.push(createPORow(data, enrollment, courseSettings));
             }
           }
         }
@@ -392,15 +428,24 @@ export function FRDOManager({ organizationId }: FRDOManagerProps) {
     }
   };
 
-  const createDPORow = (data: FRDOData, enrollment: EnrollmentData | null) => {
+  const createDPORow = (data: FRDOData, enrollment: EnrollmentData | null, courseSettings: Course | null) => {
     const startYear = enrollment?.started_at ? new Date(enrollment.started_at).getFullYear() : "";
     const endYear = enrollment?.completed_at ? new Date(enrollment.completed_at).getFullYear() : startYear;
     const durationHours = enrollment?.duration 
       ? parseInt(enrollment.duration.replace(/\D/g, "")) || 0 
       : Math.round((enrollment?.time_spent || 0) / 3600);
 
+    // Use course FRDO settings as fallback
+    const professionalArea = data.professional_area || courseSettings?.frdo_professional_area || "";
+    const specialtyGroup = data.specialty_group || courseSettings?.frdo_specialty_group || "";
+    const qualificationName = data.qualification_name || courseSettings?.frdo_qualification_name || "нет";
+    const documentType = courseSettings?.frdo_document_type || "Удостоверение о повышении квалификации";
+    const programType = courseSettings?.frdo_program_type === "professional_retraining" 
+      ? "Профессиональная переподготовка" 
+      : "Повышение квалификации";
+
     return {
-      "Вид документа": "Удостоверение о повышении квалификации",
+      "Вид документа": documentType,
       "Статус документа": "Оригинал",
       "Подтверждение утраты": "Нет",
       "Подтверждение обмена": "Нет",
@@ -409,11 +454,11 @@ export function FRDOManager({ organizationId }: FRDOManagerProps) {
       "Номер документа": "",
       "Дата выдачи документа": formatDateForExport(enrollment?.completed_at || ""),
       "Регистрационный номер": "",
-      "Дополнительная профессиональная программа": "Повышение квалификации",
+      "Дополнительная профессиональная программа": programType,
       "Наименование дополнительной профессиональной программы": enrollment?.course_title || "",
-      "Наименование области профессиональной деятельности": data.professional_area,
-      "Укрупненные группы специальностей": data.specialty_group,
-      "Наименование квалификации, профессии, специальности": data.qualification_name || "нет",
+      "Наименование области профессиональной деятельности": professionalArea,
+      "Укрупненные группы специальностей": specialtyGroup,
+      "Наименование квалификации, профессии, специальности": qualificationName,
       "Уровень образования ВО/СПО": data.education_level,
       "Фамилия указанная в дипломе о ВО или СПО": data.education_doc_last_name,
       "Серия документа о ВО/СПО": data.education_doc_series,
@@ -434,15 +479,20 @@ export function FRDOManager({ organizationId }: FRDOManagerProps) {
     };
   };
 
-  const createPORow = (data: FRDOData, enrollment: EnrollmentData | null) => {
+  const createPORow = (data: FRDOData, enrollment: EnrollmentData | null, courseSettings: Course | null) => {
     const startYear = enrollment?.started_at ? new Date(enrollment.started_at).getFullYear() : "";
     const endYear = enrollment?.completed_at ? new Date(enrollment.completed_at).getFullYear() : startYear;
     const durationHours = enrollment?.duration 
       ? parseInt(enrollment.duration.replace(/\D/g, "")) || 0 
       : Math.round((enrollment?.time_spent || 0) / 3600);
 
+    // Use course FRDO settings as fallback
+    const professionName = data.profession_name || courseSettings?.frdo_profession_name || "";
+    const qualificationRank = data.qualification_rank || courseSettings?.frdo_qualification_rank || "";
+    const documentType = courseSettings?.frdo_document_type || "Свидетельство о профессии рабочего, должности служащего";
+
     return {
-      "Вид документа": "Свидетельство о профессии рабочего, должности служащего",
+      "Вид документа": documentType,
       "Статус документа": "Оригинал",
       "Подтверждение утраты": "Нет",
       "Подтверждение обмена": "Нет",
@@ -453,8 +503,8 @@ export function FRDOManager({ organizationId }: FRDOManagerProps) {
       "Регистрационный номер": "",
       "Программа профессионального обучения": "Программа профессиональной подготовки",
       "Наименование программы профессионального обучения": enrollment?.course_title || "",
-      "Наименование профессии": data.profession_name,
-      "Квалификационный разряд": data.qualification_rank,
+      "Наименование профессии": professionName,
+      "Квалификационный разряд": qualificationRank,
       "Год начала обучения": startYear,
       "Год окончания обучения": endYear,
       "Срок обучения, часов": durationHours,

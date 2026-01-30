@@ -513,6 +513,13 @@ export type Database = {
           created_at: string
           description: string | null
           duration: string | null
+          frdo_document_type: string | null
+          frdo_profession_name: string | null
+          frdo_professional_area: string | null
+          frdo_program_type: string | null
+          frdo_qualification_name: string | null
+          frdo_qualification_rank: string | null
+          frdo_specialty_group: string | null
           id: string
           is_published: boolean
           organization_id: string
@@ -527,6 +534,13 @@ export type Database = {
           created_at?: string
           description?: string | null
           duration?: string | null
+          frdo_document_type?: string | null
+          frdo_profession_name?: string | null
+          frdo_professional_area?: string | null
+          frdo_program_type?: string | null
+          frdo_qualification_name?: string | null
+          frdo_qualification_rank?: string | null
+          frdo_specialty_group?: string | null
           id?: string
           is_published?: boolean
           organization_id: string
@@ -541,6 +555,13 @@ export type Database = {
           created_at?: string
           description?: string | null
           duration?: string | null
+          frdo_document_type?: string | null
+          frdo_profession_name?: string | null
+          frdo_professional_area?: string | null
+          frdo_program_type?: string | null
+          frdo_qualification_name?: string | null
+          frdo_qualification_rank?: string | null
+          frdo_specialty_group?: string | null
           id?: string
           is_published?: boolean
           organization_id?: string

@@ -10,6 +10,13 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { CourseDocumentsManager } from "@/components/organization/CourseDocumentsManager";
 import { EnrollmentHistory } from "@/components/organization/EnrollmentHistory";
 import { CourseTestReport } from "@/components/organization/CourseTestReport";
@@ -34,9 +41,17 @@ import {
   Lock,
   FastForward,
   Search,
-  UserPlus
+  UserPlus,
+  FileSpreadsheet
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import {
+  FRDO_PROGRAM_TYPES,
+  FRDO_DOCUMENT_TYPES,
+  FRDO_PROFESSIONAL_AREAS,
+  FRDO_SPECIALTY_GROUPS,
+  type CourseFRDOSettings,
+} from "@/constants/frdo";
 
 interface Course {
   id: string;
@@ -51,6 +66,14 @@ interface Course {
   skip_video_identification?: boolean;
   sequential_lessons?: boolean;
   allow_video_seek?: boolean;
+  // FRDO settings
+  frdo_program_type?: string | null;
+  frdo_document_type?: string | null;
+  frdo_professional_area?: string | null;
+  frdo_specialty_group?: string | null;
+  frdo_qualification_name?: string | null;
+  frdo_profession_name?: string | null;
+  frdo_qualification_rank?: string | null;
 }
 
 interface Student {
@@ -114,12 +137,33 @@ export function CourseDetailsModal({
   const [enrollSearchQuery, setEnrollSearchQuery] = useState("");
   const [selectedToEnroll, setSelectedToEnroll] = useState<Set<string>>(new Set());
   const [isEnrolling, setIsEnrolling] = useState(false);
+  
+  // FRDO settings state
+  const [frdoSettings, setFrdoSettings] = useState<CourseFRDOSettings>({
+    frdo_program_type: null,
+    frdo_document_type: null,
+    frdo_professional_area: null,
+    frdo_specialty_group: null,
+    frdo_qualification_name: null,
+    frdo_profession_name: null,
+    frdo_qualification_rank: null,
+  });
 
   useEffect(() => {
     if (course) {
       setSkipVideoId(course.skip_video_identification || false);
       setSequentialLessons(course.sequential_lessons || false);
       setAllowVideoSeek(course.allow_video_seek !== false);
+      // Load FRDO settings from course
+      setFrdoSettings({
+        frdo_program_type: course.frdo_program_type || null,
+        frdo_document_type: course.frdo_document_type || null,
+        frdo_professional_area: course.frdo_professional_area || null,
+        frdo_specialty_group: course.frdo_specialty_group || null,
+        frdo_qualification_name: course.frdo_qualification_name || null,
+        frdo_profession_name: course.frdo_profession_name || null,
+        frdo_qualification_rank: course.frdo_qualification_rank || null,
+      });
     }
   }, [course]);
 
@@ -298,6 +342,45 @@ export function CourseDetailsModal({
     } catch (error) {
       console.error("Error updating course:", error);
       toast.error("Ошибка сохранения настроек");
+    } finally {
+      setIsSavingSettings(false);
+    }
+  };
+
+  const handleUpdateFrdoSettings = async (field: keyof CourseFRDOSettings, value: string | null) => {
+    if (!course) return;
+    
+    // Update local state immediately
+    setFrdoSettings(prev => {
+      const newSettings = { ...prev, [field]: value };
+      
+      // Auto-set document type when program type changes
+      if (field === "frdo_program_type" && value) {
+        newSettings.frdo_document_type = FRDO_DOCUMENT_TYPES[value] || null;
+      }
+      
+      return newSettings;
+    });
+    
+    setIsSavingSettings(true);
+    try {
+      const updateData: Record<string, string | null> = { [field]: value };
+      
+      // Auto-set document type when program type changes
+      if (field === "frdo_program_type" && value) {
+        updateData.frdo_document_type = FRDO_DOCUMENT_TYPES[value] || null;
+      }
+      
+      const { error } = await supabase
+        .from("courses")
+        .update(updateData)
+        .eq("id", course.id);
+      
+      if (error) throw error;
+      onCourseUpdated?.();
+    } catch (error) {
+      console.error("Error updating FRDO settings:", error);
+      toast.error("Ошибка сохранения настроек FRDO");
     } finally {
       setIsSavingSettings(false);
     }
@@ -739,6 +822,145 @@ export function CourseDetailsModal({
                       disabled={isSavingSettings}
                     />
                   </div>
+                </div>
+              </div>
+
+              {/* FRDO Settings Section */}
+              <div className="space-y-4 mt-6">
+                <div className="flex items-center gap-2">
+                  <FileSpreadsheet className="w-5 h-5 text-primary" />
+                  <h3 className="font-semibold">Настройки ФИС ФРДО</h3>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Эти настройки будут автоматически применяться при экспорте данных курса в ФИС ФРДО
+                </p>
+                
+                <div className="bg-secondary/30 rounded-xl p-4 space-y-4">
+                  {/* Program Type */}
+                  <div className="space-y-2">
+                    <Label>Тип программы</Label>
+                    <Select
+                      value={frdoSettings.frdo_program_type || ""}
+                      onValueChange={(value) => handleUpdateFrdoSettings("frdo_program_type", value || null)}
+                      disabled={isSavingSettings}
+                    >
+                      <SelectTrigger className="rounded-xl">
+                        <SelectValue placeholder="Выберите тип программы" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {FRDO_PROGRAM_TYPES.map((type) => (
+                          <SelectItem key={type.value} value={type.value}>
+                            {type.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Document Type (auto-set based on program type) */}
+                  {frdoSettings.frdo_program_type && (
+                    <div className="space-y-2">
+                      <Label>Вид документа</Label>
+                      <Input
+                        value={frdoSettings.frdo_document_type || ""}
+                        className="rounded-xl bg-muted"
+                        disabled
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Определяется автоматически на основе типа программы
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Professional Area - for DPO programs */}
+                  {(frdoSettings.frdo_program_type === "qualification_upgrade" || 
+                    frdoSettings.frdo_program_type === "professional_retraining") && (
+                    <>
+                      <div className="space-y-2">
+                        <Label>Область профессиональной деятельности</Label>
+                        <Select
+                          value={frdoSettings.frdo_professional_area || ""}
+                          onValueChange={(value) => handleUpdateFrdoSettings("frdo_professional_area", value || null)}
+                          disabled={isSavingSettings}
+                        >
+                          <SelectTrigger className="rounded-xl">
+                            <SelectValue placeholder="Выберите область деятельности" />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-60">
+                            {FRDO_PROFESSIONAL_AREAS.map((area) => (
+                              <SelectItem key={area} value={area}>
+                                {area}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Укрупненная группа специальностей</Label>
+                        <Select
+                          value={frdoSettings.frdo_specialty_group || ""}
+                          onValueChange={(value) => handleUpdateFrdoSettings("frdo_specialty_group", value || null)}
+                          disabled={isSavingSettings}
+                        >
+                          <SelectTrigger className="rounded-xl">
+                            <SelectValue placeholder="Выберите группу специальностей" />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-60">
+                            {FRDO_SPECIALTY_GROUPS.map((group) => (
+                              <SelectItem key={group} value={group}>
+                                {group}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Наименование квалификации/специальности</Label>
+                        <Input
+                          value={frdoSettings.frdo_qualification_name || ""}
+                          onChange={(e) => handleUpdateFrdoSettings("frdo_qualification_name", e.target.value || null)}
+                          placeholder="Например: специалист по охране труда"
+                          className="rounded-xl"
+                          disabled={isSavingSettings}
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {/* Professional Training (PO) specific fields */}
+                  {frdoSettings.frdo_program_type === "professional_training" && (
+                    <>
+                      <div className="space-y-2">
+                        <Label>Наименование профессии</Label>
+                        <Input
+                          value={frdoSettings.frdo_profession_name || ""}
+                          onChange={(e) => handleUpdateFrdoSettings("frdo_profession_name", e.target.value || null)}
+                          placeholder="Например: машинист крана"
+                          className="rounded-xl"
+                          disabled={isSavingSettings}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Квалификационный разряд</Label>
+                        <Input
+                          value={frdoSettings.frdo_qualification_rank || ""}
+                          onChange={(e) => handleUpdateFrdoSettings("frdo_qualification_rank", e.target.value || null)}
+                          placeholder="Например: 4 разряд"
+                          className="rounded-xl"
+                          disabled={isSavingSettings}
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {!frdoSettings.frdo_program_type && (
+                    <p className="text-sm text-muted-foreground italic">
+                      Выберите тип программы для отображения дополнительных полей
+                    </p>
+                  )}
                 </div>
               </div>
             </TabsContent>
