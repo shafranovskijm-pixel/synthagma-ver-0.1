@@ -1215,7 +1215,23 @@ const CourseLearning = () => {
       // Show the questions from the last attempt
       const shownIds = (lastAttempt as any).shown_question_ids as string[] || [];
       if (shownIds.length > 0) {
-        const shownQuestions = allQuestions.filter(q => shownIds.includes(q.id));
+        // Fetch correct answers for displaying results
+        const { data: questionsWithAnswers } = await supabase
+          .from('test_questions')
+          .select('id, correct_answer')
+          .in('id', shownIds);
+        
+        const correctAnswersMap = new Map<string, number>();
+        questionsWithAnswers?.forEach(q => {
+          correctAnswersMap.set(q.id, q.correct_answer);
+        });
+
+        const shownQuestions = allQuestions
+          .filter(q => shownIds.includes(q.id))
+          .map(q => ({
+            ...q,
+            correct_answer: correctAnswersMap.get(q.id) ?? q.correct_answer
+          }));
         setTestQuestions(shownQuestions);
       } else {
         setTestQuestions(allQuestions);
@@ -1469,16 +1485,42 @@ const CourseLearning = () => {
       return;
     }
 
+    // Fetch correct answers from the main table (not the view which hides them)
+    const shownIds = testQuestions.map(q => q.id);
+    const { data: questionsWithAnswers, error: fetchError } = await supabase
+      .from('test_questions')
+      .select('id, correct_answer')
+      .in('id', shownIds);
+
+    if (fetchError || !questionsWithAnswers) {
+      console.error('Error fetching correct answers:', fetchError);
+      toast.error('Ошибка проверки теста');
+      return;
+    }
+
+    // Create a map for quick lookup
+    const correctAnswersMap = new Map<string, number>();
+    questionsWithAnswers.forEach(q => {
+      correctAnswersMap.set(q.id, q.correct_answer);
+    });
+
+    // Calculate score using the fetched correct answers
     let score = 0;
     testQuestions.forEach(q => {
-      if (answers[q.id] === q.correct_answer) {
+      const correctAnswer = correctAnswersMap.get(q.id);
+      if (correctAnswer !== undefined && answers[q.id] === correctAnswer) {
         score++;
       }
     });
 
-    const maxScore = testQuestions.length;
+    // Update testQuestions with correct answers for display
+    const updatedQuestions = testQuestions.map(q => ({
+      ...q,
+      correct_answer: correctAnswersMap.get(q.id) ?? q.correct_answer
+    }));
+    setTestQuestions(updatedQuestions);
 
-    const shownIds = testQuestions.map(q => q.id);
+    const maxScore = testQuestions.length;
     
     const { error } = await supabase
       .from('test_attempts')
