@@ -255,11 +255,31 @@ export function useStudentManagement({
       return { successCount: 0, errorCount: 0, credentials: [] };
     }
     
+    // Verify students exist in database before processing
+    const validUserIds = studentsToCreate.map(s => s.user_id);
+    const { data: existingProfiles } = await supabase
+      .from("profiles")
+      .select("user_id")
+      .in("user_id", validUserIds);
+    
+    const existingUserIds = new Set((existingProfiles || []).map(p => p.user_id));
+    const validStudents = studentsToCreate.filter(s => existingUserIds.has(s.user_id));
+    const skippedCount = studentsToCreate.length - validStudents.length;
+    
+    if (skippedCount > 0) {
+      console.warn(`Skipped ${skippedCount} students with invalid/deleted profiles`);
+    }
+    
+    if (validStudents.length === 0) {
+      toast.error("Не найдено учеников для создания учетных данных. Попробуйте обновить страницу.");
+      return { successCount: 0, errorCount: studentsToCreate.length, credentials: [] };
+    }
+    
     let successCount = 0;
     let errorCount = 0;
-    const createdCredentials: { name: string; login: string; password: string }[] = [];
+    const createdCredentials: { userId: string; name: string; login: string; password: string }[] = [];
 
-    for (const student of studentsToCreate) {
+    for (const student of validStudents) {
       try {
         const login = student.login || generateLogin(student.name);
         const password = generateSimplePassword();
@@ -276,7 +296,7 @@ export function useStudentManagement({
         if (error) throw error;
         if (data?.error) throw new Error(data.error);
         
-        createdCredentials.push({ name: student.name, login, password });
+        createdCredentials.push({ userId: student.user_id, name: student.name, login, password });
         successCount++;
       } catch (err) {
         errorCount++;
@@ -284,21 +304,24 @@ export function useStudentManagement({
       }
     }
 
-    // Update local state
+    // Update local state using user_id for more reliable matching
     setStudents(prev => prev.map(s => {
-      const creds = createdCredentials.find(c => c.name === s.name && !s.login);
+      const creds = createdCredentials.find(c => c.userId === s.user_id);
       return creds ? { ...s, login: creds.login, generated_password: creds.password } : s;
     }));
     setAllProfiles(prev => prev.map(s => {
-      const creds = createdCredentials.find(c => c.name === s.name && !s.login);
+      const creds = createdCredentials.find(c => c.userId === s.user_id);
       return creds ? { ...s, login: creds.login, generated_password: creds.password } : s;
     }));
 
     if (successCount > 0) {
-      toast.success(`Создано логинов: ${successCount} из ${studentsToCreate.length}`);
+      toast.success(`Создано логинов: ${successCount} из ${validStudents.length}`);
     }
     if (errorCount > 0) {
-      toast.error(`Ошибки: ${errorCount}`);
+      toast.error(`Ошибки: ${errorCount}. Попробуйте обновить страницу.`);
+    }
+    if (skippedCount > 0) {
+      toast.warning(`Пропущено ${skippedCount} удаленных учеников`);
     }
 
     return { successCount, errorCount, credentials: createdCredentials };
