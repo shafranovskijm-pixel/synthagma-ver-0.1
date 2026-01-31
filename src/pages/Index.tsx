@@ -1,13 +1,13 @@
 import { Helmet } from "react-helmet-async";
 import { Hero } from "@/components/landing/Hero";
 import { Features } from "@/components/landing/Features";
+import { EditorDemo } from "@/components/landing/EditorDemo";
 import { Roadmap } from "@/components/landing/Roadmap";
 import { CostCalculator } from "@/components/landing/CostCalculator";
 import { Testimonials } from "@/components/landing/Testimonials";
 import { CTA } from "@/components/landing/CTA";
 import { Footer } from "@/components/landing/Footer";
 import { ScrollToTop } from "@/components/ui/ScrollToTop";
-
 const Index = () => {
   return (
     <>
@@ -58,6 +58,7 @@ const Index = () => {
       <div className="min-h-screen bg-background">
         <Hero />
         <Features />
+        <EditorDemo />
         <Roadmap />
         <Testimonials />
         <CostCalculator />
