@@ -3,25 +3,28 @@ import { motion } from "framer-motion";
 
 const testimonials = [
   {
-    name: "Алексей Петров",
+    name: "Анна Морозова",
     role: "Директор учебного центра",
     company: "ООО «Профессионал»",
-    content: "Платформа помогла нам полностью автоматизировать обучение сотрудников. Особенно впечатлила функция ИИ-генерации курсов.",
+    content: "Перешли с iSpring — у них стало очень дорого. Тут в разы дешевле, так как оплата не за учеников, а фиксированная в месяц. У нас большие потоки по 200+ учеников в месяц, на Синтагме всё работает без проблем.",
     rating: 5,
+    highlight: "Экономия на обучении",
+  },
+  {
+    name: "Дмитрий Волков",
+    role: "Руководитель IT-отдела",
+    company: "ПАО «ТехноГрупп»",
+    content: "У нас 50 ГБ видеоуроков — всё разместили на Синтагме. Видео отображается без проблем, ученики довольны качеством и скоростью загрузки.",
+    rating: 5,
+    highlight: "50 ГБ видео без проблем",
   },
   {
     name: "Елена Смирнова",
     role: "Руководитель HR",
-    company: "ПАО «ТехноГрупп»",
-    content: "Выгрузка в ФИС ФРДО экономит нам десятки часов работы ежемесячно. Рекомендую всем, кто работает с документооборотом.",
-    rating: 5,
-  },
-  {
-    name: "Дмитрий Козлов",
-    role: "Владелец",
     company: "Автошкола «Стандарт»",
-    content: "Перешли на Синтагму с другой платформы — разница колоссальная. Ученики в восторге от ИИ-помощника.",
+    content: "Выгрузка в ФИС ФРДО экономит нам десятки часов работы ежемесячно. Перешли на Синтагму с другой платформы — разница колоссальная.",
     rating: 5,
+    highlight: "Автоматизация ФРДО",
   },
 ];
 
@@ -174,8 +177,15 @@ export function Testimonials() {
             <motion.div
               key={testimonial.name}
               variants={itemVariants}
-              className="group bg-card/50 backdrop-blur-sm rounded-2xl p-8 border border-border/30 hover:border-accent/30 transition-all duration-500 hover:shadow-lg"
+              className="group bg-card/50 backdrop-blur-sm rounded-2xl p-8 border border-border/30 hover:border-accent/30 transition-all duration-500 hover:shadow-lg relative"
             >
+              {/* Highlight badge */}
+              {testimonial.highlight && (
+                <div className="absolute -top-3 left-6 px-3 py-1 bg-accent text-accent-foreground text-xs font-medium rounded-full">
+                  {testimonial.highlight}
+                </div>
+              )}
+
               {/* Quote icon */}
               <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center mb-6 group-hover:bg-accent/10 transition-colors duration-300">
                 <Quote className="w-5 h-5 text-muted-foreground group-hover:text-accent transition-colors duration-300" />
@@ -195,14 +205,14 @@ export function Testimonials() {
 
               {/* Author */}
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
-                  <span className="text-foreground font-medium text-sm">
+                <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center">
+                  <span className="text-accent font-medium text-sm">
                     {testimonial.name.charAt(0)}
                   </span>
                 </div>
                 <div>
                   <div className="font-medium text-sm">{testimonial.name}</div>
-                  <div className="text-xs text-muted-foreground">{testimonial.role}</div>
+                  <div className="text-xs text-muted-foreground">{testimonial.role}, {testimonial.company}</div>
                 </div>
               </div>
             </motion.div>
