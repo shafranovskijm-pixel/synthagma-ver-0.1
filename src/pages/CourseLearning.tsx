@@ -38,7 +38,8 @@ import {
   Play,
   Presentation,
   Lock,
-  RotateCcw
+  RotateCcw,
+  Settings2
 } from "lucide-react";
 import {
   AlertDialog,
@@ -54,6 +55,8 @@ import {
 import { ContentBlock, jsonToBlocks, BlockRenderer } from "@/components/course-builder/BlockEditor";
 import { cn } from "@/lib/utils";
 import { generateAttestationProtocol } from "@/utils/generateAttestationProtocol";
+import { useElevenLabsTTS } from "@/hooks/useElevenLabsTTS";
+import { TTSSettingsDialog, TTSSettings, getStoredTTSSettings } from "@/components/student/TTSSettingsDialog";
 
 // Helper to get text from option (handles both string and {text: string} formats)
 const getOptionText = (option: unknown): string => {
@@ -864,8 +867,15 @@ const CourseLearning = () => {
   const [testPassingScore, setTestPassingScore] = useState<number>(60); // Default 60%
 
   // Text-to-speech state
-  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [ttsSettingsOpen, setTtsSettingsOpen] = useState(false);
+  const [ttsSettings, setTtsSettings] = useState<TTSSettings>(() => getStoredTTSSettings());
   const speechSynthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const [isBrowserSpeaking, setIsBrowserSpeaking] = useState(false);
+  
+  // ElevenLabs TTS hook
+  const elevenLabsTTS = useElevenLabsTTS({
+    voiceId: ttsSettings.voiceId,
+  });
 
   // Video watch progress state (for controlling "Complete lesson" button visibility)
   const [videoWatchProgress, setVideoWatchProgress] = useState(0);
@@ -919,17 +929,12 @@ const CourseLearning = () => {
     }).filter(Boolean).join('. ');
   };
 
-  const speakText = () => {
-    if (!currentLesson) return;
+  // Computed isSpeaking for UI
+  const isSpeaking = ttsSettings.useElevenLabs ? elevenLabsTTS.isActive : isBrowserSpeaking;
 
-    // Stop if already speaking
-    if (isSpeaking) {
-      window.speechSynthesis.cancel();
-      setIsSpeaking(false);
-      return;
-    }
+  const getTextToSpeak = (): string => {
+    if (!currentLesson) return '';
 
-    // Get text to speak
     let textToSpeak = '';
     
     if (currentLesson.type === 'text') {
@@ -946,53 +951,72 @@ const CourseLearning = () => {
       }).join('. ');
     }
 
+    return textToSpeak;
+  };
+
+  const speakText = () => {
+    if (!currentLesson) return;
+
+    const textToSpeak = getTextToSpeak();
     if (!textToSpeak) {
       toast.error('Нет текста для озвучивания');
       return;
     }
 
-    // Check if speech synthesis is supported
-    if (!('speechSynthesis' in window)) {
-      toast.error('Озвучивание не поддерживается в вашем браузере');
-      return;
+    if (ttsSettings.useElevenLabs) {
+      // Use ElevenLabs TTS
+      elevenLabsTTS.speak(textToSpeak);
+    } else {
+      // Use browser speech synthesis
+      if (isBrowserSpeaking) {
+        window.speechSynthesis.cancel();
+        setIsBrowserSpeaking(false);
+        return;
+      }
+
+      if (!('speechSynthesis' in window)) {
+        toast.error('Озвучивание не поддерживается в вашем браузере');
+        return;
+      }
+
+      const utterance = new SpeechSynthesisUtterance(textToSpeak);
+      utterance.lang = 'ru-RU';
+      utterance.rate = 1.0;
+      utterance.pitch = 1.0;
+
+      const voices = window.speechSynthesis.getVoices();
+      const russianVoice = voices.find(v => v.lang.startsWith('ru'));
+      if (russianVoice) {
+        utterance.voice = russianVoice;
+      }
+
+      utterance.onend = () => {
+        setIsBrowserSpeaking(false);
+      };
+
+      utterance.onerror = () => {
+        setIsBrowserSpeaking(false);
+        toast.error('Ошибка озвучивания');
+      };
+
+      speechSynthesisRef.current = utterance;
+      window.speechSynthesis.speak(utterance);
+      setIsBrowserSpeaking(true);
     }
-
-    const utterance = new SpeechSynthesisUtterance(textToSpeak);
-    utterance.lang = 'ru-RU';
-    utterance.rate = 1.0;
-    utterance.pitch = 1.0;
-
-    // Find Russian voice if available
-    const voices = window.speechSynthesis.getVoices();
-    const russianVoice = voices.find(v => v.lang.startsWith('ru'));
-    if (russianVoice) {
-      utterance.voice = russianVoice;
-    }
-
-    utterance.onend = () => {
-      setIsSpeaking(false);
-    };
-
-    utterance.onerror = () => {
-      setIsSpeaking(false);
-      toast.error('Ошибка озвучивания');
-    };
-
-    speechSynthesisRef.current = utterance;
-    window.speechSynthesis.speak(utterance);
-    setIsSpeaking(true);
   };
 
   // Stop speaking when lesson changes
   useEffect(() => {
     window.speechSynthesis.cancel();
-    setIsSpeaking(false);
+    setIsBrowserSpeaking(false);
+    elevenLabsTTS.stop();
   }, [currentLessonIndex]);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       window.speechSynthesis.cancel();
+      elevenLabsTTS.stop();
     };
   }, []);
 
@@ -1850,26 +1874,40 @@ const CourseLearning = () => {
           <div className="flex items-center gap-1 md:gap-2 shrink-0">
             {/* Text-to-speech button */}
             {(currentLesson?.type === 'text' || currentLesson?.type === 'test') && (
-              <Button 
-                variant={isSpeaking ? "default" : "outline"}
-                size="sm"
-                onClick={speakText}
-                className={cn(
-                  "rounded-lg",
-                  isSpeaking && "bg-primary text-primary-foreground",
-                  isMobile && "h-8 w-8 p-0"
-                )}
-                title={isSpeaking ? "Остановить озвучивание" : "Озвучить текст"}
-              >
-                {isSpeaking ? (
-                  <Square className="w-4 h-4" />
-                ) : (
-                  <Volume2 className="w-4 h-4" />
-                )}
-                {!isMobile && (
-                  <span className="ml-1">{isSpeaking ? 'Стоп' : 'Озвучить'}</span>
-                )}
-              </Button>
+              <>
+                <Button 
+                  variant={isSpeaking ? "default" : "outline"}
+                  size="sm"
+                  onClick={speakText}
+                  disabled={elevenLabsTTS.isLoading}
+                  className={cn(
+                    "rounded-lg",
+                    isSpeaking && "bg-primary text-primary-foreground",
+                    isMobile && "h-8 w-8 p-0"
+                  )}
+                  title={isSpeaking ? "Остановить озвучивание" : "Озвучить текст"}
+                >
+                  {elevenLabsTTS.isLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : isSpeaking ? (
+                    <Square className="w-4 h-4" />
+                  ) : (
+                    <Volume2 className="w-4 h-4" />
+                  )}
+                  {!isMobile && (
+                    <span className="ml-1">{elevenLabsTTS.isLoading ? 'Загрузка...' : isSpeaking ? 'Стоп' : 'Озвучить'}</span>
+                  )}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setTtsSettingsOpen(true)}
+                  className={cn("rounded-lg", isMobile && "h-8 w-8 p-0")}
+                  title="Настройки озвучивания"
+                >
+                  <Settings2 className="w-4 h-4" />
+                </Button>
+              </>
             )}
             <Button 
               variant="outline" 
@@ -2513,6 +2551,14 @@ const CourseLearning = () => {
           </div>
         </div>
       )}
+
+      {/* TTS Settings Dialog */}
+      <TTSSettingsDialog
+        open={ttsSettingsOpen}
+        onOpenChange={setTtsSettingsOpen}
+        settings={ttsSettings}
+        onSettingsChange={setTtsSettings}
+      />
     </div>
   );
 };
