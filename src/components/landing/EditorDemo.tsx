@@ -328,6 +328,10 @@ export function EditorDemo() {
             {/* Decorative glow */}
             <div className="absolute -inset-4 bg-gradient-to-r from-primary/20 via-transparent to-primary/20 blur-3xl -z-10 opacity-50" />
           </div>
+
+          <p className="text-center text-sm text-muted-foreground mt-6">
+            В настоящей демонстрации представлен алгоритм вместо реального ИИ. Полноценный ИИ будет доступен после регистрации.
+          </p>
         </ScrollReveal>
       </div>
     </section>
