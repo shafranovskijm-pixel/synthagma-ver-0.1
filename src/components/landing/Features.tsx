@@ -116,47 +116,86 @@ export function Features() {
               key={feature.title}
               variants={itemVariants}
               whileHover={{ 
-                y: -8, 
-                scale: 1.02,
-                transition: { duration: 0.3, ease: "easeOut" }
+                y: -12,
+                rotateX: 5,
+                rotateY: index % 3 === 0 ? -3 : index % 3 === 2 ? 3 : 0,
+                transition: { duration: 0.4, ease: "easeOut" }
               }}
-              className="group relative bg-card/60 backdrop-blur-sm rounded-2xl p-8 border border-border/40 transition-all duration-500 cursor-pointer overflow-hidden"
-              style={{
-                boxShadow: '0 4px 20px -4px rgba(0, 0, 0, 0.05)'
-              }}
+              className="group relative rounded-2xl p-[1px] cursor-pointer"
+              style={{ perspective: '1000px' }}
             >
-              {/* Glow effect on hover */}
-              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
-                <div className="absolute inset-0 bg-gradient-to-br from-accent/10 via-transparent to-accent/5" />
-                <div className="absolute -inset-1 bg-accent/5 blur-xl" />
+              {/* Animated gradient border */}
+              <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-border/50 via-border/20 to-border/50 group-hover:from-accent/60 group-hover:via-accent/20 group-hover:to-accent/60 transition-all duration-700" />
+              
+              {/* Shimmer effect */}
+              <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out" />
               </div>
               
-              {/* Accent border glow */}
-              <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" 
-                style={{
-                  boxShadow: 'inset 0 0 0 1px hsl(var(--accent) / 0.3), 0 8px 32px -8px hsl(var(--accent) / 0.2)'
-                }}
-              />
-              
-              {/* Corner accent */}
-              <div className="absolute top-0 right-0 w-20 h-20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
-                <div className="absolute top-4 right-4 w-8 h-8 border-t border-r border-accent/30 rounded-tr-xl" />
-              </div>
-              
-              <div className="relative z-10">
-                <motion.div 
-                  className="w-14 h-14 rounded-xl bg-secondary/80 flex items-center justify-center mb-6 border border-border/30 group-hover:bg-accent/15 group-hover:border-accent/30 transition-all duration-300"
-                  whileHover={{ rotate: [0, -5, 5, 0], transition: { duration: 0.5 } }}
-                >
-                  <feature.icon className="w-6 h-6 text-foreground/70 group-hover:text-accent transition-colors duration-300" />
-                </motion.div>
+              {/* Card content */}
+              <div className="relative bg-card/95 backdrop-blur-md rounded-2xl p-8 h-full transition-all duration-500 group-hover:bg-card">
+                {/* Inner glow */}
+                <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none overflow-hidden">
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-24 bg-accent/20 blur-3xl" />
+                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1/2 h-16 bg-accent/10 blur-2xl" />
+                </div>
                 
-                <h3 className="font-display text-xl font-medium mb-3 group-hover:text-foreground transition-colors">
-                  {feature.title}
-                </h3>
-                <p className="text-muted-foreground leading-relaxed text-sm group-hover:text-foreground/70 transition-colors">
-                  {feature.description}
-                </p>
+                {/* Floating particles */}
+                <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-700">
+                  <motion.div 
+                    className="absolute top-6 right-8 w-1 h-1 rounded-full bg-accent/50"
+                    animate={{ y: [0, -8, 0], opacity: [0.5, 1, 0.5] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                  />
+                  <motion.div 
+                    className="absolute top-12 right-12 w-0.5 h-0.5 rounded-full bg-accent/40"
+                    animate={{ y: [0, -6, 0], opacity: [0.3, 0.8, 0.3] }}
+                    transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+                  />
+                  <motion.div 
+                    className="absolute bottom-8 left-10 w-1 h-1 rounded-full bg-accent/30"
+                    animate={{ y: [0, -10, 0], opacity: [0.2, 0.6, 0.2] }}
+                    transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+                  />
+                </div>
+                
+                {/* Corner decoration */}
+                <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-all duration-500 transform group-hover:translate-x-0 group-hover:translate-y-0 translate-x-2 -translate-y-2">
+                  <div className="w-6 h-6 border-t-2 border-r-2 border-accent/40 rounded-tr-lg" />
+                </div>
+                <div className="absolute bottom-3 left-3 opacity-0 group-hover:opacity-100 transition-all duration-500 transform group-hover:translate-x-0 group-hover:translate-y-0 -translate-x-2 translate-y-2">
+                  <div className="w-6 h-6 border-b-2 border-l-2 border-accent/40 rounded-bl-lg" />
+                </div>
+                
+                <div className="relative z-10">
+                  {/* Icon with pulse effect */}
+                  <div className="relative mb-6">
+                    <motion.div 
+                      className="w-14 h-14 rounded-xl bg-gradient-to-br from-secondary to-secondary/50 flex items-center justify-center border border-border/50 group-hover:border-accent/40 group-hover:from-accent/20 group-hover:to-accent/5 transition-all duration-500 shadow-sm group-hover:shadow-lg group-hover:shadow-accent/10"
+                      whileHover={{ 
+                        scale: 1.1,
+                        rotate: 5,
+                        transition: { duration: 0.3 }
+                      }}
+                    >
+                      <feature.icon className="w-6 h-6 text-foreground/60 group-hover:text-accent transition-colors duration-300" />
+                    </motion.div>
+                    {/* Icon glow ring */}
+                    <div className="absolute inset-0 w-14 h-14 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                      <div className="absolute inset-0 rounded-xl bg-accent/20 blur-md animate-pulse" />
+                    </div>
+                  </div>
+                  
+                  <h3 className="font-display text-xl font-medium mb-3 group-hover:text-foreground transition-colors duration-300">
+                    {feature.title}
+                  </h3>
+                  <p className="text-muted-foreground leading-relaxed text-sm group-hover:text-foreground/70 transition-colors duration-300">
+                    {feature.description}
+                  </p>
+                  
+                  {/* Bottom accent line */}
+                  <div className="mt-6 h-0.5 w-0 group-hover:w-12 bg-gradient-to-r from-accent to-accent/30 rounded-full transition-all duration-500 ease-out" />
+                </div>
               </div>
             </motion.div>
           ))}
