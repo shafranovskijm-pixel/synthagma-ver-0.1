@@ -261,8 +261,117 @@ export function CostCalculator() {
       {/* Background */}
       <div className="absolute inset-0 bg-gradient-to-b from-secondary/30 via-background to-secondary/30" />
       
-      {/* Decorative elements */}
-      <div className="absolute top-1/4 right-0 w-px h-40 bg-gradient-to-b from-transparent via-accent/20 to-transparent" />
+      {/* Decorative pattern */}
+      <div className="absolute inset-0 opacity-[0.02]" style={{
+        backgroundImage: `radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)`,
+        backgroundSize: '44px 44px'
+      }} />
+      
+      {/* Decorative lines */}
+      <motion.div 
+        className="absolute top-28 right-[18%] w-px h-44 bg-gradient-to-b from-transparent via-accent/25 to-transparent"
+        initial={{ scaleY: 0 }}
+        whileInView={{ scaleY: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 1.5 }}
+      />
+      <motion.div 
+        className="absolute top-40 right-[16%] w-px h-28 bg-gradient-to-b from-transparent via-accent/15 to-transparent"
+        initial={{ scaleY: 0 }}
+        whileInView={{ scaleY: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 1.5, delay: 0.2 }}
+      />
+      <motion.div 
+        className="absolute bottom-28 left-[12%] w-px h-36 bg-gradient-to-b from-transparent via-border to-transparent"
+        initial={{ scaleY: 0 }}
+        whileInView={{ scaleY: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 1.5, delay: 0.4 }}
+      />
+      <motion.div 
+        className="absolute top-1/3 left-[6%] w-20 h-px bg-gradient-to-r from-transparent via-accent/20 to-transparent"
+        initial={{ scaleX: 0 }}
+        whileInView={{ scaleX: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 1.5, delay: 0.6 }}
+      />
+      <motion.div 
+        className="absolute bottom-1/4 right-[10%] w-24 h-px bg-gradient-to-r from-transparent via-accent/15 to-transparent"
+        initial={{ scaleX: 0 }}
+        whileInView={{ scaleX: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 1.5, delay: 0.8 }}
+      />
+      
+      {/* Corner decorations */}
+      <motion.div
+        className="absolute top-16 left-10 w-20 h-20 border-l border-t border-accent/15 rounded-tl-3xl"
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 1 }}
+      />
+      <motion.div
+        className="absolute bottom-16 right-10 w-20 h-20 border-r border-b border-accent/15 rounded-br-3xl"
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 1, delay: 0.2 }}
+      />
+      <motion.div
+        className="absolute top-1/2 left-8 w-12 h-12 border-l border-b border-accent/10 rounded-bl-2xl"
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 1, delay: 0.4 }}
+      />
+      
+      {/* Floating circles */}
+      <motion.div
+        className="absolute top-1/4 left-[22%] w-2.5 h-2.5 rounded-full bg-accent/20"
+        initial={{ scale: 0 }}
+        whileInView={{ scale: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.8, delay: 0.5 }}
+      />
+      <motion.div
+        className="absolute top-1/2 right-[28%] w-3 h-3 rounded-full border border-accent/20"
+        initial={{ scale: 0 }}
+        whileInView={{ scale: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.8, delay: 0.7 }}
+      />
+      <motion.div
+        className="absolute bottom-1/3 left-[28%] w-2 h-2 rounded-full bg-accent/25"
+        initial={{ scale: 0 }}
+        whileInView={{ scale: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.8, delay: 0.9 }}
+      />
+      <motion.div
+        className="absolute top-2/3 right-[35%] w-1.5 h-1.5 rounded-full bg-accent/30"
+        initial={{ scale: 0 }}
+        whileInView={{ scale: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.8, delay: 1.1 }}
+      />
+      
+      {/* Diamond shapes */}
+      <motion.div
+        className="absolute top-1/3 right-[32%] w-4 h-4 rotate-45 border border-accent/15"
+        initial={{ opacity: 0, rotate: 0 }}
+        whileInView={{ opacity: 1, rotate: 45 }}
+        viewport={{ once: true }}
+        transition={{ duration: 1, delay: 1 }}
+      />
+      <motion.div
+        className="absolute bottom-1/4 left-[35%] w-3 h-3 rotate-45 border border-accent/10"
+        initial={{ opacity: 0, rotate: 0 }}
+        whileInView={{ opacity: 1, rotate: 45 }}
+        viewport={{ once: true }}
+        transition={{ duration: 1, delay: 1.2 }}
+      />
 
       <div className="container mx-auto px-6 relative z-10">
         {/* Section header */}
