@@ -48,6 +48,18 @@ export function Hero() {
           animate={{ scaleY: 1, opacity: 1 }}
           transition={{ duration: 1.5, delay: 0.8 }}
         />
+        <motion.div 
+          className="absolute top-[60%] left-[8%] w-px h-24 bg-gradient-to-b from-transparent via-accent/30 to-transparent"
+          initial={{ scaleY: 0, opacity: 0 }}
+          animate={{ scaleY: 1, opacity: 1 }}
+          transition={{ duration: 1.5, delay: 0.9 }}
+        />
+        <motion.div 
+          className="absolute top-[45%] right-[5%] w-px h-36 bg-gradient-to-b from-transparent via-accent/25 to-transparent"
+          initial={{ scaleY: 0, opacity: 0 }}
+          animate={{ scaleY: 1, opacity: 1 }}
+          transition={{ duration: 1.5, delay: 1.1 }}
+        />
         
         {/* Horizontal lines */}
         <motion.div 
@@ -61,6 +73,18 @@ export function Hero() {
           initial={{ scaleX: 0, opacity: 0 }}
           animate={{ scaleX: 1, opacity: 1 }}
           transition={{ duration: 1.5, delay: 1.2 }}
+        />
+        <motion.div 
+          className="absolute top-[55%] left-[20%] w-16 h-px bg-gradient-to-r from-transparent via-accent/25 to-transparent"
+          initial={{ scaleX: 0, opacity: 0 }}
+          animate={{ scaleX: 1, opacity: 1 }}
+          transition={{ duration: 1.5, delay: 1.3 }}
+        />
+        <motion.div 
+          className="absolute bottom-[40%] right-[15%] w-28 h-px bg-gradient-to-r from-transparent via-border to-transparent"
+          initial={{ scaleX: 0, opacity: 0 }}
+          animate={{ scaleX: 1, opacity: 1 }}
+          transition={{ duration: 1.5, delay: 1.4 }}
         />
 
         {/* Decorative circles */}
@@ -82,6 +106,24 @@ export function Hero() {
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.8, delay: 1.5 }}
         />
+        <motion.div
+          className="absolute top-[35%] right-[8%] w-2.5 h-2.5 rounded-full border border-accent/25"
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.8, delay: 1.6 }}
+        />
+        <motion.div
+          className="absolute bottom-[25%] right-[30%] w-1.5 h-1.5 rounded-full bg-accent/35"
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.8, delay: 1.7 }}
+        />
+        <motion.div
+          className="absolute top-[70%] left-[5%] w-2 h-2 rounded-full border border-border"
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.8, delay: 1.8 }}
+        />
 
         {/* Corner decorations */}
         <motion.div
@@ -96,6 +138,18 @@ export function Hero() {
           animate={{ opacity: 1 }}
           transition={{ duration: 1, delay: 1.7 }}
         />
+        <motion.div
+          className="absolute top-48 right-16 w-12 h-12 border-r border-t border-border/40 rounded-tr-2xl"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 1, delay: 1.9 }}
+        />
+        <motion.div
+          className="absolute bottom-48 left-16 w-10 h-10 border-l border-b border-border/30 rounded-bl-xl"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 1, delay: 2 }}
+        />
 
         {/* Floating diamonds */}
         <motion.div
@@ -104,6 +158,50 @@ export function Hero() {
           animate={{ opacity: 1, rotate: 45 }}
           transition={{ duration: 1, delay: 1.8 }}
         />
+        <motion.div
+          className="absolute bottom-[45%] left-[18%] w-3 h-3 rotate-45 border border-accent/30"
+          initial={{ opacity: 0, rotate: 0 }}
+          animate={{ opacity: 1, rotate: 45 }}
+          transition={{ duration: 1, delay: 2.1 }}
+        />
+        <motion.div
+          className="absolute top-[60%] right-[12%] w-2.5 h-2.5 rotate-45 bg-accent/15"
+          initial={{ opacity: 0, rotate: 0 }}
+          animate={{ opacity: 1, rotate: 45 }}
+          transition={{ duration: 1, delay: 2.2 }}
+        />
+
+        {/* Cross patterns */}
+        <motion.div
+          className="absolute top-[40%] left-[30%]"
+          initial={{ opacity: 0, scale: 0 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.8, delay: 2.3 }}
+        >
+          <div className="w-4 h-px bg-accent/20" />
+          <div className="w-px h-4 bg-accent/20 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+        </motion.div>
+        <motion.div
+          className="absolute bottom-[35%] right-[22%]"
+          initial={{ opacity: 0, scale: 0 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.8, delay: 2.4 }}
+        >
+          <div className="w-3 h-px bg-border" />
+          <div className="w-px h-3 bg-border absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+        </motion.div>
+
+        {/* Floating dots grid */}
+        <motion.div
+          className="absolute top-[25%] right-[35%] grid grid-cols-3 gap-2"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 1, delay: 2.5 }}
+        >
+          {[...Array(9)].map((_, i) => (
+            <div key={i} className="w-1 h-1 rounded-full bg-accent/15" />
+          ))}
+        </motion.div>
       </div>
 
       {/* Navigation */}
