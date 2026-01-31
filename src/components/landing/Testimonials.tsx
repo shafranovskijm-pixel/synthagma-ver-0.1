@@ -1,5 +1,4 @@
 import { Star, Quote } from "lucide-react";
-import { ScrollReveal, ScrollRevealGroup, scrollRevealItem } from "@/components/ui/ScrollReveal";
 import { motion } from "framer-motion";
 
 const testimonials = [
@@ -9,7 +8,6 @@ const testimonials = [
     company: "ООО «Профессионал»",
     content: "Платформа помогла нам полностью автоматизировать обучение сотрудников. Особенно впечатлила функция ИИ-генерации курсов.",
     rating: 5,
-    glyph: "𓂀",
   },
   {
     name: "Елена Смирнова",
@@ -17,7 +15,6 @@ const testimonials = [
     company: "ПАО «ТехноГрупп»",
     content: "Выгрузка в ФИС ФРДО экономит нам десятки часов работы ежемесячно. Рекомендую всем, кто работает с документооборотом.",
     rating: 5,
-    glyph: "𓃀",
   },
   {
     name: "Дмитрий Козлов",
@@ -25,97 +22,104 @@ const testimonials = [
     company: "Автошкола «Стандарт»",
     content: "Перешли на Синтагму с другой платформы — разница колоссальная. Ученики в восторге от ИИ-помощника.",
     rating: 5,
-    glyph: "𓅀",
   },
 ];
 
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.15,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 30 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.6, ease: "easeOut" as const },
+  },
+};
+
 export function Testimonials() {
   return (
-    <section className="py-32 relative overflow-hidden bg-gradient-to-b from-background via-secondary/30 to-background">
-      {/* Decorative elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <span className="hieroglyphic absolute top-16 left-12 text-5xl text-accent/20 animate-pulse-soft">𓉀</span>
-        <span className="hieroglyphic absolute top-1/2 right-16 text-4xl text-primary/15 animate-pulse-soft delay-200">𓊀</span>
-        <span className="hieroglyphic absolute bottom-24 left-1/4 text-6xl text-accent/15 animate-pulse-soft delay-300">𓈀</span>
-        <span className="greek-text absolute bottom-1/3 left-8 text-sm text-primary/20 rotate-90">ΜΑΡΤΥΡΙΑ</span>
-      </div>
+    <section className="section-padding relative overflow-hidden">
+      {/* Background */}
+      <div className="absolute inset-0 bg-gradient-to-b from-background via-secondary/30 to-background" />
       
-      {/* Cold nitrogen gradient orb */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-gradient-to-br from-primary/10 via-[hsl(185_100%_45%/0.08)] to-transparent rounded-full blur-3xl" />
+      {/* Decorative elements */}
+      <div className="absolute top-1/4 left-0 w-px h-32 bg-gradient-to-b from-transparent via-accent/20 to-transparent" />
 
       <div className="container mx-auto px-6 relative z-10">
         {/* Section header */}
-        <ScrollReveal className="text-center mb-16">
-          <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-gradient-to-r from-accent/15 to-primary/10 border border-accent/30 mb-8 backdrop-blur-sm">
-            <Star className="w-5 h-5 text-accent fill-accent" />
-            <span className="text-sm font-semibold text-foreground">Отзывы клиентов</span>
-            <span className="hieroglyphic text-accent text-lg">𓇀</span>
-          </div>
-          <h2 className="font-display text-4xl md:text-5xl font-bold mb-4">
-            Что говорят <span className="gradient-text-gold">наши клиенты</span>
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.8 }}
+          className="text-center mb-16"
+        >
+          <span className="text-sm text-accent font-medium tracking-widest uppercase mb-4 block">
+            Отзывы
+          </span>
+          <h2 className="font-display text-4xl md:text-5xl font-medium mb-6 tracking-tight">
+            Что говорят клиенты
           </h2>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+          <div className="divider mb-6" />
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             Более 10 организаций уже получили лицензию с нашей платформой
           </p>
-          
-          {/* Egyptian border decoration */}
-          <div className="egyptian-border w-32 mx-auto mt-8 rounded-full" />
-        </ScrollReveal>
+        </motion.div>
 
         {/* Testimonials grid */}
-        <ScrollRevealGroup className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto" staggerDelay={0.15}>
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-50px" }}
+          className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto"
+        >
           {testimonials.map((testimonial) => (
             <motion.div
               key={testimonial.name}
-              variants={scrollRevealItem}
-              className="relative bg-card/80 backdrop-blur-sm rounded-3xl p-8 border border-primary/20 hover:border-accent/40 shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-2 overflow-hidden group"
+              variants={itemVariants}
+              className="group bg-card/50 backdrop-blur-sm rounded-2xl p-8 border border-border/30 hover:border-accent/30 transition-all duration-500 hover:shadow-lg"
             >
-              {/* Hieroglyph watermark */}
-              <span className="hieroglyphic absolute top-4 right-4 text-4xl text-accent/20 group-hover:text-accent/40 transition-colors">
-                {testimonial.glyph}
-              </span>
-              
-              {/* Quote icon with gradient */}
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary/20 to-accent/10 flex items-center justify-center mb-4">
-                <Quote className="w-6 h-6 text-primary" />
+              {/* Quote icon */}
+              <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center mb-6 group-hover:bg-accent/10 transition-colors duration-300">
+                <Quote className="w-5 h-5 text-muted-foreground group-hover:text-accent transition-colors duration-300" />
               </div>
 
-              {/* Rating - gold stars */}
-              <div className="flex gap-1 mb-4">
+              {/* Rating */}
+              <div className="flex gap-0.5 mb-4">
                 {Array.from({ length: testimonial.rating }).map((_, i) => (
-                  <Star key={i} className="w-5 h-5 text-accent fill-accent" />
+                  <Star key={i} className="w-4 h-4 text-accent fill-accent" />
                 ))}
               </div>
 
               {/* Content */}
-              <p className="text-foreground mb-6 leading-relaxed">
+              <p className="text-foreground mb-6 leading-relaxed text-sm">
                 "{testimonial.content}"
               </p>
 
               {/* Author */}
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary via-[hsl(185_100%_45%)] to-accent flex items-center justify-center sigma-glow">
-                  <span className="text-foreground font-bold text-lg">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
+                  <span className="text-foreground font-medium text-sm">
                     {testimonial.name.charAt(0)}
                   </span>
                 </div>
                 <div>
-                  <div className="font-semibold">{testimonial.name}</div>
-                  <div className="text-sm text-muted-foreground">{testimonial.role}</div>
-                  <div className="text-sm text-primary">{testimonial.company}</div>
+                  <div className="font-medium text-sm">{testimonial.name}</div>
+                  <div className="text-xs text-muted-foreground">{testimonial.role}</div>
                 </div>
               </div>
-              
-              {/* Gold bottom accent on hover */}
-              <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-accent/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
             </motion.div>
           ))}
-        </ScrollRevealGroup>
-        
-        {/* Greek text decoration */}
-        <div className="greek-text text-center mt-12 text-primary/15 text-xs tracking-[0.5em]">
-          ΔΟΞΑ • ΕΠΙΤΥΧΙΑ • ΑΡΙΣΤΕΙΑ
-        </div>
+        </motion.div>
       </div>
     </section>
   );

@@ -27,56 +27,33 @@ export function SigmaLogo({
   showText = true,
   variant = "default"
 }: SigmaLogoProps) {
-  const iconColors = {
-    default: "from-primary via-accent to-sigma-orange",
-    white: "from-white via-white/90 to-white/80",
-    gradient: "from-primary via-accent to-sigma-orange",
-  };
-
-  const sigmaColors = {
-    default: "from-primary via-accent to-sigma-orange",
-    white: "from-primary via-accent to-sigma-orange",
-    gradient: "from-primary via-accent to-sigma-orange",
-  };
-
-  const textColors = {
-    default: "text-foreground",
-    white: "text-white/90",
-    gradient: "gradient-text",
-  };
-
   return (
-    <div className={cn("flex items-center gap-2", className)}>
+    <div className={cn("flex items-center gap-3", className)}>
       <div
         className={cn(
-          "relative flex items-center justify-center rounded-xl bg-gradient-to-br p-0.5",
-          iconColors[variant],
+          "flex items-center justify-center rounded-lg",
+          variant === "white" ? "bg-background" : "bg-foreground",
           sizeClasses[size]
         )}
       >
-        <div className={cn(
-          "flex items-center justify-center w-full h-full rounded-[10px]",
-          variant === "white" ? "bg-white" : "bg-card"
-        )}>
-          <span
-            className={cn(
-              "font-display font-bold bg-gradient-to-br bg-clip-text text-transparent",
-              sigmaColors[variant],
-              size === "sm" && "text-lg",
-              size === "md" && "text-xl",
-              size === "lg" && "text-2xl",
-              size === "xl" && "text-4xl",
-            )}
-          >
-            Σ
-          </span>
-        </div>
+        <span
+          className={cn(
+            "font-display font-medium",
+            variant === "white" ? "text-foreground" : "text-background",
+            size === "sm" && "text-lg",
+            size === "md" && "text-xl",
+            size === "lg" && "text-2xl",
+            size === "xl" && "text-4xl",
+          )}
+        >
+          Σ
+        </span>
       </div>
       {showText && (
         <span className={cn(
-          "font-display font-bold tracking-tight",
+          "font-display font-medium tracking-tight",
           textSizeClasses[size],
-          textColors[variant]
+          variant === "white" ? "text-background" : "text-foreground"
         )}>
           СИНТАГМА
         </span>
