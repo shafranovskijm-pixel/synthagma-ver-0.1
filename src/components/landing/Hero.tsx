@@ -126,6 +126,9 @@ export function Hero() {
             <a href="#calculator" className="text-muted-foreground hover:text-foreground transition-colors text-sm tracking-wide">
               Стоимость
             </a>
+            <Link to="/about" className="text-muted-foreground hover:text-foreground transition-colors text-sm tracking-wide">
+              О нас
+            </Link>
             <Link to="/blog" className="text-muted-foreground hover:text-foreground transition-colors text-sm tracking-wide">
               Блог
             </Link>
