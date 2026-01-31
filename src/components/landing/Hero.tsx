@@ -240,31 +240,6 @@ export function Hero() {
           </motion.div>
         </div>
 
-        {/* Decorative bottom section */}
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1, delay: 1.2 }}
-          className="mt-20 relative max-w-4xl mx-auto"
-        >
-          {/* Stats or trust indicators */}
-          <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16 py-8 px-6 rounded-2xl bg-card/40 backdrop-blur-sm border border-border/30">
-            <div className="text-center">
-              <div className="text-3xl md:text-4xl font-display font-semibold text-foreground mb-1">500+</div>
-              <div className="text-sm text-muted-foreground">Организаций</div>
-            </div>
-            <div className="hidden sm:block w-px h-12 bg-border/50" />
-            <div className="text-center">
-              <div className="text-3xl md:text-4xl font-display font-semibold text-foreground mb-1">50K+</div>
-              <div className="text-sm text-muted-foreground">Обучающихся</div>
-            </div>
-            <div className="hidden sm:block w-px h-12 bg-border/50" />
-            <div className="text-center">
-              <div className="text-3xl md:text-4xl font-display font-semibold text-foreground mb-1">99.9%</div>
-              <div className="text-sm text-muted-foreground">Uptime</div>
-            </div>
-          </div>
-        </motion.div>
       </div>
     </section>
   );
