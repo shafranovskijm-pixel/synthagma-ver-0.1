@@ -1,4 +1,4 @@
-import { ArrowRight, CheckCircle2 } from "lucide-react";
+import { ArrowRight, CheckCircle2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -6,26 +6,69 @@ import { motion } from "framer-motion";
 export function CTA() {
   return (
     <section className="section-padding relative overflow-hidden">
-      {/* Dark background */}
+      {/* Rich gradient background */}
       <div className="absolute inset-0 bg-foreground" />
+      <div className="absolute inset-0 bg-gradient-to-br from-accent/10 via-transparent to-accent/5" />
       
-      {/* Subtle gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-br from-accent/5 via-transparent to-accent/10" />
+      {/* Decorative pattern */}
+      <div className="absolute inset-0 opacity-[0.03]" style={{
+        backgroundImage: `radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)`,
+        backgroundSize: '32px 32px'
+      }} />
       
       {/* Decorative elements */}
       <motion.div 
-        className="absolute top-1/4 right-[15%] w-px h-32 bg-gradient-to-b from-transparent via-accent/30 to-transparent"
+        className="absolute top-1/4 right-[15%] w-px h-40 bg-gradient-to-b from-transparent via-accent/40 to-transparent"
         initial={{ scaleY: 0 }}
         whileInView={{ scaleY: 1 }}
         viewport={{ once: true }}
         transition={{ duration: 1.5 }}
       />
       <motion.div 
-        className="absolute bottom-1/3 left-[10%] w-px h-24 bg-gradient-to-b from-transparent via-background/20 to-transparent"
+        className="absolute bottom-1/4 left-[12%] w-px h-32 bg-gradient-to-b from-transparent via-background/20 to-transparent"
         initial={{ scaleY: 0 }}
         whileInView={{ scaleY: 1 }}
         viewport={{ once: true }}
         transition={{ duration: 1.5, delay: 0.3 }}
+      />
+      <motion.div 
+        className="absolute top-1/3 left-[8%] w-20 h-px bg-gradient-to-r from-transparent via-accent/30 to-transparent"
+        initial={{ scaleX: 0 }}
+        whileInView={{ scaleX: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 1.5, delay: 0.5 }}
+      />
+      
+      {/* Corner decorations */}
+      <motion.div
+        className="absolute top-16 left-16 w-20 h-20 border-l border-t border-accent/20 rounded-tl-3xl"
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 1 }}
+      />
+      <motion.div
+        className="absolute bottom-16 right-16 w-20 h-20 border-r border-b border-accent/20 rounded-br-3xl"
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 1, delay: 0.2 }}
+      />
+
+      {/* Floating circles */}
+      <motion.div
+        className="absolute top-1/4 left-[20%] w-3 h-3 rounded-full bg-accent/20"
+        initial={{ scale: 0 }}
+        whileInView={{ scale: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.8, delay: 0.6 }}
+      />
+      <motion.div
+        className="absolute bottom-1/3 right-[25%] w-2 h-2 rounded-full border border-accent/30"
+        initial={{ scale: 0 }}
+        whileInView={{ scale: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.8, delay: 0.8 }}
       />
 
       <div className="container mx-auto px-6 relative z-10">
@@ -36,9 +79,10 @@ export function CTA() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-background/20 bg-background/5 backdrop-blur-sm mb-10"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-accent/30 bg-accent/10 backdrop-blur-sm mb-10"
           >
-            <span className="text-sm text-background/80">Начните бесплатно</span>
+            <Sparkles className="w-4 h-4 text-accent" />
+            <span className="text-sm text-background/90 font-medium">Начните бесплатно</span>
           </motion.div>
 
           <motion.h2
@@ -51,14 +95,18 @@ export function CTA() {
             Готовы автоматизировать обучение?
           </motion.h2>
 
-          {/* Decorative line */}
+          {/* Decorative line with dots */}
           <motion.div
             initial={{ scaleX: 0 }}
             whileInView={{ scaleX: 1 }}
             viewport={{ once: true }}
             transition={{ duration: 1, delay: 0.4 }}
-            className="w-16 h-px bg-accent mx-auto mb-8 origin-center"
-          />
+            className="flex items-center justify-center gap-2 mb-8"
+          >
+            <div className="w-2 h-2 rounded-full bg-accent/50" />
+            <div className="w-20 h-px bg-accent" />
+            <div className="w-2 h-2 rounded-full bg-accent/50" />
+          </motion.div>
 
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -80,7 +128,7 @@ export function CTA() {
             <Link to="/register-organization">
               <Button
                 size="lg"
-                className="bg-background text-foreground hover:bg-background/90 rounded-xl px-8 h-14 text-base font-medium gap-2 group"
+                className="bg-background text-foreground hover:bg-background/90 rounded-xl px-10 h-14 text-base font-medium gap-2 group shadow-lg"
               >
                 Попробовать бесплатно
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -105,15 +153,15 @@ export function CTA() {
             transition={{ duration: 0.8, delay: 0.5 }}
             className="mt-12 flex flex-wrap justify-center gap-6 text-background/60 text-sm"
           >
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-background/5 border border-background/10">
               <CheckCircle2 className="w-4 h-4 text-accent" />
               <span>14 дней бесплатно</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-background/5 border border-background/10">
               <CheckCircle2 className="w-4 h-4 text-accent" />
               <span>Не требуется карта</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-background/5 border border-background/10">
               <CheckCircle2 className="w-4 h-4 text-accent" />
               <span>Настройка за 5 минут</span>
             </div>

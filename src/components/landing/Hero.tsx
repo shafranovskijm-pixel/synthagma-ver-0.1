@@ -1,44 +1,108 @@
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
-import { ArrowRight, Play, Sparkles } from "lucide-react";
+import { ArrowRight, Sparkles, Shield, FileCheck, GraduationCap } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 
 const features = [
-  "Дистанционное обучение",
-  "Документооборот",
-  "Соответствие 273-ФЗ",
+  { icon: GraduationCap, label: "Дистанционное обучение" },
+  { icon: FileCheck, label: "Документооборот" },
+  { icon: Shield, label: "Соответствие 273-ФЗ" },
 ];
 
 export function Hero() {
   return (
     <section className="relative min-h-screen overflow-hidden bg-background">
-      {/* Subtle gradient background */}
+      {/* Rich gradient background */}
       <div className="absolute inset-0">
-        <div className="absolute inset-0 bg-gradient-to-b from-secondary/50 via-background to-background" />
-        <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-accent/5 rounded-full blur-3xl translate-x-1/3 -translate-y-1/3" />
-        <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-accent/3 rounded-full blur-3xl -translate-x-1/3 translate-y-1/3" />
+        <div className="absolute inset-0 bg-gradient-to-br from-accent/8 via-background to-secondary/30" />
+        <div className="absolute top-0 right-0 w-[1000px] h-[1000px] bg-accent/10 rounded-full blur-[120px] translate-x-1/4 -translate-y-1/4" />
+        <div className="absolute bottom-0 left-0 w-[800px] h-[800px] bg-primary/5 rounded-full blur-[100px] -translate-x-1/4 translate-y-1/4" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-accent/5 rounded-full blur-[80px]" />
       </div>
 
-      {/* Decorative elements */}
+      {/* Decorative pattern overlay */}
+      <div className="absolute inset-0 opacity-[0.015]" style={{
+        backgroundImage: `radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)`,
+        backgroundSize: '40px 40px'
+      }} />
+
+      {/* Decorative geometric elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {/* Vertical lines */}
         <motion.div 
-          className="absolute top-1/4 right-[15%] w-px h-32 bg-gradient-to-b from-transparent via-accent/30 to-transparent"
-          initial={{ scaleY: 0 }}
-          animate={{ scaleY: 1 }}
+          className="absolute top-20 right-[20%] w-px h-48 bg-gradient-to-b from-transparent via-accent/40 to-transparent"
+          initial={{ scaleY: 0, opacity: 0 }}
+          animate={{ scaleY: 1, opacity: 1 }}
           transition={{ duration: 1.5, delay: 0.5 }}
         />
         <motion.div 
-          className="absolute bottom-1/3 left-[10%] w-px h-24 bg-gradient-to-b from-transparent via-border to-transparent"
-          initial={{ scaleY: 0 }}
-          animate={{ scaleY: 1 }}
-          transition={{ duration: 1.5, delay: 0.8 }}
+          className="absolute top-40 right-[18%] w-px h-32 bg-gradient-to-b from-transparent via-accent/20 to-transparent"
+          initial={{ scaleY: 0, opacity: 0 }}
+          animate={{ scaleY: 1, opacity: 1 }}
+          transition={{ duration: 1.5, delay: 0.7 }}
         />
         <motion.div 
-          className="absolute top-1/2 left-[20%] w-16 h-px bg-gradient-to-r from-transparent via-accent/20 to-transparent"
-          initial={{ scaleX: 0 }}
-          animate={{ scaleX: 1 }}
+          className="absolute bottom-32 left-[12%] w-px h-40 bg-gradient-to-b from-transparent via-border to-transparent"
+          initial={{ scaleY: 0, opacity: 0 }}
+          animate={{ scaleY: 1, opacity: 1 }}
+          transition={{ duration: 1.5, delay: 0.8 }}
+        />
+        
+        {/* Horizontal lines */}
+        <motion.div 
+          className="absolute top-1/3 left-[8%] w-24 h-px bg-gradient-to-r from-transparent via-accent/30 to-transparent"
+          initial={{ scaleX: 0, opacity: 0 }}
+          animate={{ scaleX: 1, opacity: 1 }}
           transition={{ duration: 1.5, delay: 1 }}
+        />
+        <motion.div 
+          className="absolute top-2/3 right-[10%] w-20 h-px bg-gradient-to-r from-transparent via-accent/20 to-transparent"
+          initial={{ scaleX: 0, opacity: 0 }}
+          animate={{ scaleX: 1, opacity: 1 }}
+          transition={{ duration: 1.5, delay: 1.2 }}
+        />
+
+        {/* Decorative circles */}
+        <motion.div
+          className="absolute top-1/4 left-[15%] w-2 h-2 rounded-full bg-accent/30"
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.8, delay: 1.3 }}
+        />
+        <motion.div
+          className="absolute top-1/2 right-[25%] w-3 h-3 rounded-full border border-accent/30"
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.8, delay: 1.4 }}
+        />
+        <motion.div
+          className="absolute bottom-1/3 left-[25%] w-1.5 h-1.5 rounded-full bg-accent/40"
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.8, delay: 1.5 }}
+        />
+
+        {/* Corner decorations */}
+        <motion.div
+          className="absolute top-32 left-8 w-16 h-16 border-l border-t border-accent/20 rounded-tl-3xl"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 1, delay: 1.6 }}
+        />
+        <motion.div
+          className="absolute bottom-32 right-8 w-16 h-16 border-r border-b border-accent/20 rounded-br-3xl"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 1, delay: 1.7 }}
+        />
+
+        {/* Floating diamonds */}
+        <motion.div
+          className="absolute top-1/3 right-[30%] w-4 h-4 rotate-45 border border-accent/20"
+          initial={{ opacity: 0, rotate: 0 }}
+          animate={{ opacity: 1, rotate: 45 }}
+          transition={{ duration: 1, delay: 1.8 }}
         />
       </div>
 
@@ -84,17 +148,17 @@ export function Hero() {
       </nav>
 
       {/* Hero content */}
-      <div className="relative z-10 container mx-auto px-6 pt-20 pb-32 md:pt-32 md:pb-40">
+      <div className="relative z-10 container mx-auto px-6 pt-16 pb-24 md:pt-24 md:pb-32">
         <div className="max-w-4xl mx-auto text-center">
           {/* Badge */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-border bg-card/50 backdrop-blur-sm mb-10"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-accent/30 bg-accent/5 backdrop-blur-sm mb-10"
           >
             <Sparkles className="w-4 h-4 text-accent" />
-            <span className="text-sm text-muted-foreground">Система дистанционного обучения</span>
+            <span className="text-sm text-foreground/80 font-medium">Система дистанционного обучения</span>
           </motion.div>
 
           {/* Main headline */}
@@ -109,13 +173,17 @@ export function Hero() {
             <span className="text-muted-foreground">в одной системе</span>
           </motion.h1>
 
-          {/* Decorative line */}
+          {/* Decorative line with dots */}
           <motion.div
             initial={{ scaleX: 0 }}
             animate={{ scaleX: 1 }}
             transition={{ duration: 1, delay: 0.4 }}
-            className="w-16 h-px bg-accent mx-auto mb-8 origin-center"
-          />
+            className="flex items-center justify-center gap-2 mb-8"
+          >
+            <div className="w-2 h-2 rounded-full bg-accent/40" />
+            <div className="w-20 h-px bg-accent" />
+            <div className="w-2 h-2 rounded-full bg-accent/40" />
+          </motion.div>
 
           {/* Subtitle */}
           <motion.p
@@ -128,78 +196,69 @@ export function Hero() {
             Полное соответствие требованиям законодательства.
           </motion.p>
 
-          {/* CTA buttons */}
+          {/* Single CTA button */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.5 }}
-            className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12"
+            className="flex justify-center mb-16"
           >
             <Link to="/register-organization">
-              <Button size="lg" className="btn-gradient rounded-xl px-8 h-14 text-base gap-2 group">
+              <Button size="lg" className="btn-gradient rounded-xl px-10 h-14 text-base gap-2 group shadow-lg shadow-accent/20">
                 Начать бесплатно
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
-            <a href="#video-preview">
-              <Button size="lg" variant="outline" className="rounded-xl px-8 h-14 text-base gap-2 border-border/60 hover:bg-secondary/50">
-                <Play className="w-4 h-4" />
-                Смотреть демо
-              </Button>
-            </a>
           </motion.div>
 
-          {/* Feature tags */}
+          {/* Feature cards */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.8, delay: 0.7 }}
-            className="flex flex-wrap justify-center gap-3"
+            className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl mx-auto"
           >
             {features.map((feature, index) => (
-              <motion.span
-                key={feature}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
+              <motion.div
+                key={feature.label}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.8 + index * 0.1 }}
-                className="px-4 py-2 rounded-full bg-secondary/50 text-sm text-muted-foreground border border-border/30"
+                className="group relative px-5 py-4 rounded-2xl bg-card/60 backdrop-blur-sm border border-border/50 hover:border-accent/30 hover:bg-card transition-all duration-300"
               >
-                {feature}
-              </motion.span>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
+                    <feature.icon className="w-5 h-5 text-accent" />
+                  </div>
+                  <span className="text-sm font-medium text-foreground/80">{feature.label}</span>
+                </div>
+              </motion.div>
             ))}
           </motion.div>
         </div>
 
-        {/* Platform preview */}
+        {/* Decorative bottom section */}
         <motion.div
-          initial={{ opacity: 0, y: 60 }}
+          initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1, delay: 0.9 }}
-          className="mt-24 relative max-w-5xl mx-auto"
+          transition={{ duration: 1, delay: 1.2 }}
+          className="mt-20 relative max-w-4xl mx-auto"
         >
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent z-10 pointer-events-none h-1/3 bottom-0 top-auto" />
-          
-          <div className="bg-card border border-border/50 rounded-2xl p-2 shadow-2xl overflow-hidden">
-            <div className="bg-secondary/50 rounded-xl aspect-video flex items-center justify-center relative overflow-hidden">
-              {/* Mock UI */}
-              <div className="absolute top-3 left-3 right-3 flex items-center gap-2">
-                <div className="flex gap-1.5">
-                  <div className="w-2.5 h-2.5 rounded-full bg-foreground/20" />
-                  <div className="w-2.5 h-2.5 rounded-full bg-foreground/20" />
-                  <div className="w-2.5 h-2.5 rounded-full bg-foreground/20" />
-                </div>
-                <div className="flex-1 h-6 bg-foreground/5 rounded-md mx-4" />
-              </div>
-              
-              <div className="text-center">
-                <motion.div
-                  whileHover={{ scale: 1.05 }}
-                  className="w-20 h-20 rounded-2xl bg-foreground flex items-center justify-center mx-auto mb-4 cursor-pointer shadow-lg"
-                >
-                  <Play className="w-8 h-8 text-background ml-1" />
-                </motion.div>
-                <p className="text-muted-foreground text-sm">Смотреть видео о платформе</p>
-              </div>
+          {/* Stats or trust indicators */}
+          <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16 py-8 px-6 rounded-2xl bg-card/40 backdrop-blur-sm border border-border/30">
+            <div className="text-center">
+              <div className="text-3xl md:text-4xl font-display font-semibold text-foreground mb-1">500+</div>
+              <div className="text-sm text-muted-foreground">Организаций</div>
+            </div>
+            <div className="hidden sm:block w-px h-12 bg-border/50" />
+            <div className="text-center">
+              <div className="text-3xl md:text-4xl font-display font-semibold text-foreground mb-1">50K+</div>
+              <div className="text-sm text-muted-foreground">Обучающихся</div>
+            </div>
+            <div className="hidden sm:block w-px h-12 bg-border/50" />
+            <div className="text-center">
+              <div className="text-3xl md:text-4xl font-display font-semibold text-foreground mb-1">99.9%</div>
+              <div className="text-sm text-muted-foreground">Uptime</div>
             </div>
           </div>
         </motion.div>
