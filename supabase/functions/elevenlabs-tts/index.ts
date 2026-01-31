@@ -2,7 +2,8 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 serve(async (req) => {
@@ -56,8 +57,32 @@ serve(async (req) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error("ElevenLabs API error:", response.status, errorText);
+
+      // ElevenLabs sometimes disables Free Tier with this status.
+      // We map it to a clearer message for the client.
+      if (
+        response.status === 401 &&
+        errorText.includes("detected_unusual_activity")
+      ) {
+        return new Response(
+          JSON.stringify({
+            error:
+              "Озвучка временно недоступна: ElevenLabs отключил Free Tier (detected_unusual_activity). Попробуйте без VPN/прокси или используйте платный тариф.",
+            provider_status: response.status,
+          }),
+          {
+            status: 402,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
       return new Response(
-        JSON.stringify({ error: `Ошибка ElevenLabs API: ${response.status}` }),
+        JSON.stringify({
+          error: `Ошибка ElevenLabs API: ${response.status}`,
+          provider_status: response.status,
+          provider_body: errorText,
+        }),
         { status: response.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
