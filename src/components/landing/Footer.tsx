@@ -1,131 +1,113 @@
 import { Link } from "react-router-dom";
-import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Mail, Phone, ArrowUpRight } from "lucide-react";
+import { motion } from "framer-motion";
 
 export function Footer() {
   return (
     <footer className="bg-foreground text-background py-20 relative overflow-hidden">
-      {/* Background effects */}
-      <div className="absolute inset-0 opacity-10">
-        <div className="absolute top-0 left-1/4 w-[400px] h-[400px] bg-primary rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-1/4 w-[300px] h-[300px] bg-accent rounded-full blur-3xl" />
-      </div>
+      {/* Subtle accent glow */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-px bg-gradient-to-r from-transparent via-accent/30 to-transparent" />
 
       <div className="container mx-auto px-6 relative">
         <div className="grid md:grid-cols-4 gap-12 mb-16">
           {/* Brand */}
           <div className="md:col-span-2">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary via-accent to-sigma-orange p-0.5">
-                <div className="flex items-center justify-center w-full h-full rounded-[10px] bg-foreground">
-                  <span className="font-display font-bold text-2xl bg-gradient-to-br from-primary via-accent to-sigma-orange bg-clip-text text-transparent">Σ</span>
-                </div>
+            <Link to="/" className="flex items-center gap-3 mb-6 group">
+              <div className="w-10 h-10 rounded-lg bg-background flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
+                <span className="font-display font-bold text-xl text-foreground">Σ</span>
               </div>
-              <span className="font-display font-bold text-3xl bg-gradient-to-r from-amber-400 via-orange-400 to-yellow-500 bg-clip-text text-transparent tracking-tight drop-shadow-lg">СИНТАГМА</span>
-            </div>
-            <p className="text-background/70 max-w-md mb-8 leading-relaxed text-lg">
+              <span className="font-display font-medium text-xl text-background tracking-tight">СИНТАГМА</span>
+            </Link>
+            <p className="text-background/60 max-w-sm mb-8 leading-relaxed">
               Современная система дистанционного обучения и документооборота для организаций.
-              Соответствует требованиям 273-ФЗ.
             </p>
-            <div className="space-y-3 text-background/70">
-              <a href="mailto:shafranovskij.m@gmail.com" className="flex items-center gap-3 hover:text-background transition-colors group">
-                <div className="w-10 h-10 rounded-xl bg-background/10 flex items-center justify-center group-hover:bg-background/20 transition-colors">
-                  <Mail className="w-5 h-5" />
+            <div className="space-y-3">
+              <a href="mailto:shafranovskij.m@gmail.com" className="flex items-center gap-3 text-background/60 hover:text-background transition-colors group">
+                <div className="w-9 h-9 rounded-lg bg-background/10 flex items-center justify-center group-hover:bg-background/15 transition-colors">
+                  <Mail className="w-4 h-4" />
                 </div>
-                <span>shafranovskij.m@gmail.com</span>
+                <span className="text-sm">shafranovskij.m@gmail.com</span>
               </a>
-              <a href="tel:89147213424" className="flex items-center gap-3 hover:text-background transition-colors group">
-                <div className="w-10 h-10 rounded-xl bg-background/10 flex items-center justify-center group-hover:bg-background/20 transition-colors">
-                  <Phone className="w-5 h-5" />
+              <a href="tel:89147213424" className="flex items-center gap-3 text-background/60 hover:text-background transition-colors group">
+                <div className="w-9 h-9 rounded-lg bg-background/10 flex items-center justify-center group-hover:bg-background/15 transition-colors">
+                  <Phone className="w-4 h-4" />
                 </div>
-                <span>8 (914) 721-34-24</span>
+                <span className="text-sm">8 (914) 721-34-24</span>
               </a>
             </div>
           </div>
 
           {/* Links */}
           <div>
-            <h4 className="font-display font-bold text-lg mb-6">Платформа</h4>
-            <ul className="space-y-4 text-background/70">
-              <li>
-                <a href="#features" className="hover:text-background transition-colors flex items-center gap-1 group">
-                  Возможности
-                  <ArrowUpRight className="w-4 h-4 opacity-0 -translate-y-1 translate-x-1 group-hover:opacity-100 group-hover:translate-y-0 group-hover:translate-x-0 transition-all" />
-                </a>
-              </li>
-              <li>
-                <a href="#roadmap" className="hover:text-background transition-colors flex items-center gap-1 group">
-                  Дорожная карта
-                  <ArrowUpRight className="w-4 h-4 opacity-0 -translate-y-1 translate-x-1 group-hover:opacity-100 group-hover:translate-y-0 group-hover:translate-x-0 transition-all" />
-                </a>
-              </li>
-              <li>
-                <a href="#calculator" className="hover:text-background transition-colors flex items-center gap-1 group">
-                  Калькулятор стоимости
-                  <ArrowUpRight className="w-4 h-4 opacity-0 -translate-y-1 translate-x-1 group-hover:opacity-100 group-hover:translate-y-0 group-hover:translate-x-0 transition-all" />
-                </a>
-              </li>
-              <li>
-                <Link to="/about" className="hover:text-background transition-colors flex items-center gap-1 group">
-                  О нас
-                  <ArrowUpRight className="w-4 h-4 opacity-0 -translate-y-1 translate-x-1 group-hover:opacity-100 group-hover:translate-y-0 group-hover:translate-x-0 transition-all" />
-                </Link>
-              </li>
-              <li>
-                <Link to="/blog" className="hover:text-background transition-colors flex items-center gap-1 group">
-                  Блог
-                  <ArrowUpRight className="w-4 h-4 opacity-0 -translate-y-1 translate-x-1 group-hover:opacity-100 group-hover:translate-y-0 group-hover:translate-x-0 transition-all" />
-                </Link>
-              </li>
+            <h4 className="font-display font-medium text-base mb-6 text-background">Платформа</h4>
+            <ul className="space-y-3">
+              {[
+                { label: "Возможности", href: "#features" },
+                { label: "Дорожная карта", href: "#roadmap" },
+                { label: "Стоимость", href: "#calculator" },
+                { label: "Блог", to: "/blog" },
+              ].map((link) => (
+                <li key={link.label}>
+                  {link.to ? (
+                    <Link to={link.to} className="text-background/60 hover:text-background transition-colors text-sm flex items-center gap-1 group">
+                      {link.label}
+                      <ArrowUpRight className="w-3 h-3 opacity-0 -translate-y-0.5 translate-x-0.5 group-hover:opacity-100 group-hover:translate-y-0 group-hover:translate-x-0 transition-all" />
+                    </Link>
+                  ) : (
+                    <a href={link.href} className="text-background/60 hover:text-background transition-colors text-sm flex items-center gap-1 group">
+                      {link.label}
+                      <ArrowUpRight className="w-3 h-3 opacity-0 -translate-y-0.5 translate-x-0.5 group-hover:opacity-100 group-hover:translate-y-0 group-hover:translate-x-0 transition-all" />
+                    </a>
+                  )}
+                </li>
+              ))}
             </ul>
           </div>
 
           <div>
-            <h4 className="font-display font-bold text-lg mb-6">Компания</h4>
-            <ul className="space-y-4 text-background/70">
-              <li>
-                <Link to="/about" className="hover:text-background transition-colors flex items-center gap-1 group">
-                  О нас
-                  <ArrowUpRight className="w-4 h-4 opacity-0 -translate-y-1 translate-x-1 group-hover:opacity-100 group-hover:translate-y-0 group-hover:translate-x-0 transition-all" />
-                </Link>
-              </li>
-              <li>
-                <Link to="/blog" className="hover:text-background transition-colors flex items-center gap-1 group">
-                  Блог
-                  <ArrowUpRight className="w-4 h-4 opacity-0 -translate-y-1 translate-x-1 group-hover:opacity-100 group-hover:translate-y-0 group-hover:translate-x-0 transition-all" />
-                </Link>
-              </li>
-              <li>
-                <a href="mailto:shafranovskij.m@gmail.com" className="hover:text-background transition-colors flex items-center gap-1 group">
-                  Контакты
-                  <ArrowUpRight className="w-4 h-4 opacity-0 -translate-y-1 translate-x-1 group-hover:opacity-100 group-hover:translate-y-0 group-hover:translate-x-0 transition-all" />
-                </a>
-              </li>
-              <li>
-                <a href="tel:89147213424" className="hover:text-background transition-colors flex items-center gap-1 group">
-                  Поддержка
-                  <ArrowUpRight className="w-4 h-4 opacity-0 -translate-y-1 translate-x-1 group-hover:opacity-100 group-hover:translate-y-0 group-hover:translate-x-0 transition-all" />
-                </a>
-              </li>
+            <h4 className="font-display font-medium text-base mb-6 text-background">Компания</h4>
+            <ul className="space-y-3">
+              {[
+                { label: "О нас", to: "/about" },
+                { label: "Контакты", href: "mailto:shafranovskij.m@gmail.com" },
+                { label: "Поддержка", href: "tel:89147213424" },
+              ].map((link) => (
+                <li key={link.label}>
+                  {link.to ? (
+                    <Link to={link.to} className="text-background/60 hover:text-background transition-colors text-sm flex items-center gap-1 group">
+                      {link.label}
+                      <ArrowUpRight className="w-3 h-3 opacity-0 -translate-y-0.5 translate-x-0.5 group-hover:opacity-100 group-hover:translate-y-0 group-hover:translate-x-0 transition-all" />
+                    </Link>
+                  ) : (
+                    <a href={link.href} className="text-background/60 hover:text-background transition-colors text-sm flex items-center gap-1 group">
+                      {link.label}
+                      <ArrowUpRight className="w-3 h-3 opacity-0 -translate-y-0.5 translate-x-0.5 group-hover:opacity-100 group-hover:translate-y-0 group-hover:translate-x-0 transition-all" />
+                    </a>
+                  )}
+                </li>
+              ))}
             </ul>
           </div>
         </div>
 
+        {/* Divider */}
+        <div className="h-px bg-background/10 mb-8" />
+
         {/* Bottom */}
-        <div className="pt-8 border-t border-background/10 flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex flex-col items-center md:items-start gap-1">
-            <p className="text-background/50 text-sm">
+            <p className="text-background/40 text-xs">
               © 2026 СИНТАГМА. Все права защищены.
             </p>
-            <a href="https://24zxc.ru" target="_blank" rel="noopener noreferrer" className="text-background/40 text-xs hover:text-background/60 transition-colors">
-              Создание сайтов и рекламы — 24zxc.ru
+            <a href="https://24zxc.ru" target="_blank" rel="noopener noreferrer" className="text-background/30 text-xs hover:text-background/50 transition-colors">
+              Создание сайтов — 24zxc.ru
             </a>
           </div>
-          <div className="flex gap-8 text-sm text-background/50">
-            <a href="#" className="hover:text-background transition-colors">
+          <div className="flex gap-6 text-xs text-background/40">
+            <a href="#" className="hover:text-background/60 transition-colors">
               Политика конфиденциальности
             </a>
-            <a href="#" className="hover:text-background transition-colors">
+            <a href="#" className="hover:text-background/60 transition-colors">
               Условия использования
             </a>
           </div>
