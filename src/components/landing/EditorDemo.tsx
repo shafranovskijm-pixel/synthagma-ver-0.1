@@ -60,6 +60,7 @@ export function EditorDemo() {
   const [displayedText, setDisplayedText] = useState("");
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [ttsError, setTtsError] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const handleGenerate = async () => {
@@ -95,6 +96,8 @@ export function EditorDemo() {
   };
 
   const handleSpeak = async () => {
+    setTtsError(null);
+
     if (isPlaying && audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
@@ -124,7 +127,16 @@ export function EditorDemo() {
       );
 
       if (!response.ok) {
-        throw new Error("TTS request failed");
+        // Edge function may return JSON error for non-2xx statuses
+        const contentType = response.headers.get("Content-Type") || "";
+        const isJson = contentType.includes("application/json");
+        const errorPayload = isJson ? await response.json().catch(() => null) : null;
+        const message =
+          (errorPayload && typeof errorPayload.error === "string" && errorPayload.error) ||
+          `Озвучка недоступна (HTTP ${response.status})`;
+
+        setTtsError(message);
+        return;
       }
 
       const audioBlob = await response.blob();
@@ -151,6 +163,7 @@ export function EditorDemo() {
       setIsPlaying(true);
     } catch (error) {
       console.error("TTS error:", error);
+      setTtsError("Не удалось запустить озвучку. Попробуйте ещё раз.");
     } finally {
       setIsLoading(false);
     }
@@ -302,6 +315,14 @@ export function EditorDemo() {
                   Нажмите на кнопки для демонстрации
                 </span>
               </div>
+
+              {ttsError && (
+                <div className="px-6 pb-6">
+                  <div className="rounded-lg border border-border/60 bg-muted/30 p-4 text-sm text-muted-foreground">
+                    {ttsError}
+                  </div>
+                </div>
+              )}
             </motion.div>
 
             {/* Decorative glow */}
