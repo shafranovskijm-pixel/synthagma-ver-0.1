@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Mail, Phone, ArrowUpRight } from "lucide-react";
+import { Mail, Phone, ArrowUpRight, Apple, Play } from "lucide-react";
 import { motion } from "framer-motion";
 
 export function Footer() {
@@ -21,6 +21,31 @@ export function Footer() {
             <p className="text-background/60 max-w-sm mb-8 leading-relaxed">
               Современная система дистанционного обучения и документооборота для организаций.
             </p>
+            
+            {/* App Store Buttons */}
+            <div className="flex flex-wrap gap-3 mb-8">
+              <Link 
+                to="/install" 
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-background/10 border border-background/20 hover:bg-background/15 transition-colors group"
+              >
+                <Apple className="w-5 h-5 text-background" />
+                <div className="text-left">
+                  <div className="text-[10px] text-background/60 leading-none">Скачать в</div>
+                  <div className="text-sm font-medium text-background leading-tight">App Store</div>
+                </div>
+              </Link>
+              <Link 
+                to="/install" 
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-background/10 border border-background/20 hover:bg-background/15 transition-colors group"
+              >
+                <Play className="w-5 h-5 text-background fill-background" />
+                <div className="text-left">
+                  <div className="text-[10px] text-background/60 leading-none">Скачать в</div>
+                  <div className="text-sm font-medium text-background leading-tight">Google Play</div>
+                </div>
+              </Link>
+            </div>
+            
             <div className="space-y-3">
               <a href="mailto:support@sintagma.com.ru" className="flex items-center gap-3 text-background/60 hover:text-background transition-colors group">
                 <div className="w-9 h-9 rounded-lg bg-background/10 flex items-center justify-center group-hover:bg-background/15 transition-colors">
@@ -75,6 +100,7 @@ export function Footer() {
             <ul className="space-y-3">
               {[
                 { label: "О нас", to: "/about" },
+                { label: "Установить приложение", to: "/install" },
                 { label: "Контакты", href: "mailto:shafranovskij.m@gmail.com" },
                 { label: "Поддержка", href: "tel:89147213424" },
               ].map((link) => (
