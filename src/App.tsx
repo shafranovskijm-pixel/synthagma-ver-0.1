@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
+import { HelmetProvider } from "react-helmet-async";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
@@ -31,79 +32,81 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 const App = () => (
-  <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <AuthProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/login/:slug" element={<BrandedLogin />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/register" element={<RegisterOrganization />} />
-            <Route path="/register-organization" element={<RegisterOrganization />} />
-            <Route path="/student" element={
-              <ProtectedRoute>
-                <StudentDashboard />
-              </ProtectedRoute>
-            } />
-            <Route path="/organization" element={
-              <ProtectedRoute requiredRole="organization">
-                <OrganizationDashboard />
-              </ProtectedRoute>
-            } />
-            <Route path="/course/:courseId/edit" element={
-              <ProtectedRoute requiredRole="organization">
-                <CourseEditor />
-              </ProtectedRoute>
-            } />
-            <Route path="/course-builder" element={
-              <ProtectedRoute requiredRole="organization">
-                <CourseBuilder />
-              </ProtectedRoute>
-            } />
-            <Route path="/course-builder/:courseId" element={
-              <ProtectedRoute requiredRole="organization">
-                <CourseBuilder />
-              </ProtectedRoute>
-            } />
-            <Route path="/course-preview/:courseId" element={
-              <ProtectedRoute requiredRole="organization">
-                <CoursePreview />
-              </ProtectedRoute>
-            } />
-            <Route path="/course/:courseId/learn" element={
-              <ProtectedRoute>
-                <CourseLearning />
-              </ProtectedRoute>
-            } />
-            <Route path="/join/:token" element={<JoinByLink />} />
-            <Route path="/features" element={<Features />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/blog" element={<Blog />} />
-            <Route path="/blog/:slug" element={<BlogPost />} />
-            <Route path="/install" element={<Install />} />
-            <Route path="/course-import" element={
-              <ProtectedRoute requiredRole="organization">
-                <CourseImport />
-              </ProtectedRoute>
-            } />
-            <Route path="/admin" element={
-              <ProtectedRoute requiredRole="admin">
-                <AdminDashboard />
-              </ProtectedRoute>
-            } />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-          </TooltipProvider>
-        </AuthProvider>
-      </BrowserRouter>
-    </QueryClientProvider>
-  </ThemeProvider>
+  <HelmetProvider>
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <AuthProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/login/:slug" element={<BrandedLogin />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/register" element={<RegisterOrganization />} />
+                <Route path="/register-organization" element={<RegisterOrganization />} />
+                <Route path="/student" element={
+                  <ProtectedRoute>
+                    <StudentDashboard />
+                  </ProtectedRoute>
+                } />
+                <Route path="/organization" element={
+                  <ProtectedRoute requiredRole="organization">
+                    <OrganizationDashboard />
+                  </ProtectedRoute>
+                } />
+                <Route path="/course/:courseId/edit" element={
+                  <ProtectedRoute requiredRole="organization">
+                    <CourseEditor />
+                  </ProtectedRoute>
+                } />
+                <Route path="/course-builder" element={
+                  <ProtectedRoute requiredRole="organization">
+                    <CourseBuilder />
+                  </ProtectedRoute>
+                } />
+                <Route path="/course-builder/:courseId" element={
+                  <ProtectedRoute requiredRole="organization">
+                    <CourseBuilder />
+                  </ProtectedRoute>
+                } />
+                <Route path="/course-preview/:courseId" element={
+                  <ProtectedRoute requiredRole="organization">
+                    <CoursePreview />
+                  </ProtectedRoute>
+                } />
+                <Route path="/course/:courseId/learn" element={
+                  <ProtectedRoute>
+                    <CourseLearning />
+                  </ProtectedRoute>
+                } />
+                <Route path="/join/:token" element={<JoinByLink />} />
+                <Route path="/features" element={<Features />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/blog" element={<Blog />} />
+                <Route path="/blog/:slug" element={<BlogPost />} />
+                <Route path="/install" element={<Install />} />
+                <Route path="/course-import" element={
+                  <ProtectedRoute requiredRole="organization">
+                    <CourseImport />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin" element={
+                  <ProtectedRoute requiredRole="admin">
+                    <AdminDashboard />
+                  </ProtectedRoute>
+                } />
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </TooltipProvider>
+          </AuthProvider>
+        </BrowserRouter>
+      </QueryClientProvider>
+    </ThemeProvider>
+  </HelmetProvider>
 );
 
 export default App;
