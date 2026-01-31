@@ -559,6 +559,24 @@ export function CostCalculator() {
                 </div>
               </div>
             </div>
+
+            {/* Storage info */}
+            <div className="mt-4 p-4 bg-card/50 rounded-xl border border-border/30">
+              <div className="flex items-start gap-3">
+                <Database className="w-4 h-4 text-accent mt-0.5 flex-shrink-0" />
+                <div className="space-y-1.5 text-xs text-muted-foreground">
+                  <p>
+                    <span className="text-foreground font-medium">Хранилище: 1 ГБ</span> в стандартном тарифе
+                  </p>
+                  <p>
+                    Расширение: <span className="text-foreground">+5 ГБ</span> за <span className="text-foreground">1 000 ₽/мес</span>
+                  </p>
+                  <p>
+                    Далее: <span className="text-foreground">200 ₽</span> за 1 ГБ
+                  </p>
+                </div>
+              </div>
+            </div>
           </motion.div>
         </div>
 
