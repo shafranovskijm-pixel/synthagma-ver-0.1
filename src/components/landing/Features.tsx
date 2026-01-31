@@ -111,22 +111,53 @@ export function Features() {
           viewport={{ once: true, margin: "-50px" }}
           className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-32"
         >
-          {features.map((feature) => (
+          {features.map((feature, index) => (
             <motion.div
               key={feature.title}
               variants={itemVariants}
-              className="group bg-card/50 backdrop-blur-sm rounded-2xl p-8 border border-border/30 hover:border-accent/30 transition-all duration-500 hover:shadow-lg"
+              whileHover={{ 
+                y: -8, 
+                scale: 1.02,
+                transition: { duration: 0.3, ease: "easeOut" }
+              }}
+              className="group relative bg-card/60 backdrop-blur-sm rounded-2xl p-8 border border-border/40 transition-all duration-500 cursor-pointer overflow-hidden"
+              style={{
+                boxShadow: '0 4px 20px -4px rgba(0, 0, 0, 0.05)'
+              }}
             >
-              <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center mb-6 group-hover:bg-accent/10 transition-colors duration-300">
-                <feature.icon className="w-6 h-6 text-foreground group-hover:text-accent transition-colors duration-300" />
+              {/* Glow effect on hover */}
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
+                <div className="absolute inset-0 bg-gradient-to-br from-accent/10 via-transparent to-accent/5" />
+                <div className="absolute -inset-1 bg-accent/5 blur-xl" />
               </div>
               
-              <h3 className="font-display text-xl font-medium mb-3">
-                {feature.title}
-              </h3>
-              <p className="text-muted-foreground leading-relaxed text-sm">
-                {feature.description}
-              </p>
+              {/* Accent border glow */}
+              <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" 
+                style={{
+                  boxShadow: 'inset 0 0 0 1px hsl(var(--accent) / 0.3), 0 8px 32px -8px hsl(var(--accent) / 0.2)'
+                }}
+              />
+              
+              {/* Corner accent */}
+              <div className="absolute top-0 right-0 w-20 h-20 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
+                <div className="absolute top-4 right-4 w-8 h-8 border-t border-r border-accent/30 rounded-tr-xl" />
+              </div>
+              
+              <div className="relative z-10">
+                <motion.div 
+                  className="w-14 h-14 rounded-xl bg-secondary/80 flex items-center justify-center mb-6 border border-border/30 group-hover:bg-accent/15 group-hover:border-accent/30 transition-all duration-300"
+                  whileHover={{ rotate: [0, -5, 5, 0], transition: { duration: 0.5 } }}
+                >
+                  <feature.icon className="w-6 h-6 text-foreground/70 group-hover:text-accent transition-colors duration-300" />
+                </motion.div>
+                
+                <h3 className="font-display text-xl font-medium mb-3 group-hover:text-foreground transition-colors">
+                  {feature.title}
+                </h3>
+                <p className="text-muted-foreground leading-relaxed text-sm group-hover:text-foreground/70 transition-colors">
+                  {feature.description}
+                </p>
+              </div>
             </motion.div>
           ))}
         </motion.div>
