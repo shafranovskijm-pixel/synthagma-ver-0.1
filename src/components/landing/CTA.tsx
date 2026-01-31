@@ -8,7 +8,13 @@ export function CTA() {
     <section className="section-padding relative overflow-hidden">
       {/* Rich gradient background */}
       <div className="absolute inset-0 bg-foreground" />
-      <div className="absolute inset-0 bg-gradient-to-br from-accent/10 via-transparent to-accent/5" />
+      <div className="absolute inset-0 bg-gradient-to-br from-accent/15 via-transparent to-accent/10" />
+      <div className="absolute inset-0 bg-gradient-to-tl from-primary/20 via-transparent to-transparent" />
+      
+      {/* Radial glow effects */}
+      <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-accent/10 rounded-full blur-[150px]" />
+      <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-accent/8 rounded-full blur-[120px]" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-background/5 rounded-full blur-[100px]" />
       
       {/* Decorative pattern */}
       <div className="absolute inset-0 opacity-[0.03]" style={{
