@@ -181,7 +181,7 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
   // Course enrollment dialog
   const [showEnrollDialog, setShowEnrollDialog] = useState(false);
   const [courses, setCourses] = useState<Course[]>([]);
-  const [selectedCourseId, setSelectedCourseId] = useState<string>("");
+  const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>([]);
   const [isLoadingCourses, setIsLoadingCourses] = useState(false);
   const [isEnrolling, setIsEnrolling] = useState(false);
 
@@ -899,13 +899,13 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
       return;
     }
     setShowEnrollDialog(true);
-    setSelectedCourseId("");
+    setSelectedCourseIds([]);
     fetchCourses();
   };
 
   const enrollSelectedToCourse = async () => {
-    if (!selectedCourseId) {
-      toast.error("Выберите курс");
+    if (selectedCourseIds.length === 0) {
+      toast.error("Выберите хотя бы один курс");
       return;
     }
 
@@ -949,8 +949,6 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
               body: {
                 organization_id: organizationId,
                 full_name: record.full_name,
-               email: `ls_${record.id.slice(0, 8)}@temp.local`,
-               no_login: false
               }
             }
           );
@@ -982,46 +980,50 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
           continue;
         }
 
-        const { data: existingEnrollment } = await supabase
-          .from("enrollments")
-          .select("id")
-          .eq("user_id", userId)
-          .eq("course_id", selectedCourseId)
-         .maybeSingle();
+        // Enroll in all selected courses
+        for (const courseId of selectedCourseIds) {
+          const { data: existingEnrollment } = await supabase
+            .from("enrollments")
+            .select("id")
+            .eq("user_id", userId)
+            .eq("course_id", courseId)
+            .maybeSingle();
 
-       if (existingEnrollment) {
-          alreadyEnrolledCount++;
-          continue;
-        }
+          if (existingEnrollment) {
+            alreadyEnrolledCount++;
+            continue;
+          }
 
-        const { error: enrollError } = await supabase
-          .from("enrollments")
-          .insert({
-            user_id: userId,
-            course_id: selectedCourseId,
-            status: "active"
-          });
+          const { error: enrollError } = await supabase
+            .from("enrollments")
+            .insert({
+              user_id: userId,
+              course_id: courseId,
+              status: "active"
+            });
 
-        if (enrollError) {
-          console.error("Error enrolling:", enrollError);
-          failCount++;
-        } else {
-          successCount++;
+          if (enrollError) {
+            console.error("Error enrolling:", enrollError);
+            failCount++;
+          } else {
+            successCount++;
+          }
         }
       }
 
       if (successCount > 0) {
-        toast.success(`Зачислено на курс: ${successCount} чел.`);
+        toast.success(`Зачислено: ${successCount} записей`);
       }
       if (alreadyEnrolledCount > 0) {
-        toast.info(`Уже зачислены: ${alreadyEnrolledCount} чел.`);
+        toast.info(`Уже зачислены: ${alreadyEnrolledCount}`);
       }
       if (failCount > 0) {
-        toast.error(`Ошибка зачисления: ${failCount} чел.`);
+        toast.error(`Ошибок: ${failCount}`);
       }
 
       setShowEnrollDialog(false);
       setSelectedRecordIds(new Set());
+      if (selectedGroup) fetchRecords(selectedGroup.id);
     } catch (error) {
       console.error("Error enrolling records:", error);
       toast.error("Ошибка зачисления на курс");
@@ -1690,7 +1692,7 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
  
       {/* Enroll Dialog */}
       <Dialog open={showEnrollDialog} onOpenChange={setShowEnrollDialog}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Записать на курс</DialogTitle>
           </DialogHeader>
@@ -1699,28 +1701,47 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
               Будет создан профиль и зачисление для {selectedRecordIds.size} сотрудников.
             </p>
             <div className="space-y-2">
-              <Label>Выберите курс</Label>
-              <Select value={selectedCourseId} onValueChange={setSelectedCourseId}>
-                <SelectTrigger>
-                  <SelectValue placeholder={isLoadingCourses ? "Загрузка..." : "Выберите курс"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {courses.map(course => (
-                    <SelectItem key={course.id} value={course.id}>
-                      {course.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Выберите курсы ({selectedCourseIds.length} выбрано)</Label>
+              {isLoadingCourses ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : courses.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-2">Нет доступных курсов</p>
+              ) : (
+                <ScrollArea className="h-[250px] border rounded-md p-2">
+                  <div className="space-y-2">
+                    {courses.map(course => (
+                      <label
+                        key={course.id}
+                        className="flex items-start gap-3 p-2 rounded-md hover:bg-muted cursor-pointer"
+                      >
+                        <Checkbox
+                          checked={selectedCourseIds.includes(course.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedCourseIds(prev => [...prev, course.id]);
+                            } else {
+                              setSelectedCourseIds(prev => prev.filter(id => id !== course.id));
+                            }
+                          }}
+                          className="mt-0.5"
+                        />
+                        <span className="text-sm leading-tight">{course.title}</span>
+                      </label>
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowEnrollDialog(false)}>
               Отмена
             </Button>
-            <Button onClick={enrollSelectedToCourse} disabled={isEnrolling || !selectedCourseId}>
+            <Button onClick={enrollSelectedToCourse} disabled={isEnrolling || selectedCourseIds.length === 0}>
               {isEnrolling && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Записать
+              Записать {selectedCourseIds.length > 0 && `(${selectedCourseIds.length})`}
             </Button>
           </DialogFooter>
         </DialogContent>
