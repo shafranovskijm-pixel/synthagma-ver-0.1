@@ -227,6 +227,28 @@ export default function StudentDashboard() {
           organization_id: profileData.organization_id
         });
 
+        // If no organization_id in profile, try to get from labor_safety_profiles
+        let effectiveOrgId = profileData.organization_id;
+        if (!effectiveOrgId) {
+          const { data: laborProfile } = await supabase
+            .from("labor_safety_profiles")
+            .select("organization_id, organizations(name)")
+            .eq("user_id", user.id)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          
+          if (laborProfile?.organization_id) {
+            effectiveOrgId = laborProfile.organization_id;
+            const laborOrg = laborProfile.organizations as any;
+            setProfile(prev => prev ? {
+              ...prev,
+              organization_id: laborProfile.organization_id,
+              organization_name: laborOrg?.name || prev.organization_name
+            } : prev);
+          }
+        }
+
         // Load branding from organization
         if (org?.branding && typeof org.branding === 'object') {
           const b = org.branding as Record<string, unknown>;
@@ -320,12 +342,31 @@ export default function StudentDashboard() {
       }
 
       // Load identity documents progress
-      if (profileData?.organization_id) {
+      // Use effectiveOrgId which may come from labor_safety_profiles
+      const effectiveOrgIdForDocs = profile?.organization_id || profileData?.organization_id;
+      
+      // Also check labor_safety_profiles if no org in main profile
+      let orgIdToUse = effectiveOrgIdForDocs;
+      if (!orgIdToUse) {
+        const { data: laborProfile } = await supabase
+          .from("labor_safety_profiles")
+          .select("organization_id")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        if (laborProfile?.organization_id) {
+          orgIdToUse = laborProfile.organization_id;
+        }
+      }
+      
+      if (orgIdToUse) {
         const { data: identityDocs } = await supabase
           .from("student_identity_documents")
           .select("type")
           .eq("user_id", user.id)
-          .eq("organization_id", profileData.organization_id);
+          .eq("organization_id", orgIdToUse);
 
         if (identityDocs) {
           const hasPassport = identityDocs.some(d => d.type === "passport" || d.type === "birth_certificate");
@@ -344,7 +385,7 @@ export default function StudentDashboard() {
           .from("video_identifications")
           .select("status")
           .eq("user_id", user.id)
-          .eq("organization_id", profileData.organization_id)
+          .eq("organization_id", orgIdToUse)
           .in("status", ["approved", "verified"])
           .order("created_at", { ascending: false })
           .limit(1)
