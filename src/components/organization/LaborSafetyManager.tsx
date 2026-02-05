@@ -86,6 +86,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
  import { LaborSafetyStudentDetailCard } from "./LaborSafetyStudentDetailCard";
+import { useWordDocumentGenerator } from "@/hooks/useWordDocumentGenerator";
 
 interface Course {
   id: string;
@@ -184,7 +185,10 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
    // Student detail card
    const [selectedRecordForDetail, setSelectedRecordForDetail] = useState<LaborSafetyRecord | null>(null);
    const [showStudentDetailCard, setShowStudentDetailCard] = useState(false);
- 
+
+  // Word document generator
+  const { generateDocument, isGenerating } = useWordDocumentGenerator();
+
   // Filtered and sorted groups
   const filteredGroups = useMemo(() => {
     let result = [...groups];
@@ -675,6 +679,59 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
     }
     
     toast.success(`Протокол сформирован для ${recordsToExport.length} записей`);
+  };
+
+  // Generate Word documents for selected records
+  const handleGeneratePrikaz = () => {
+    const recordsToExport = selectedRecordIds.size > 0 
+      ? records.filter(r => selectedRecordIds.has(r.id))
+      : filteredRecords;
+    
+    if (recordsToExport.length === 0) {
+      toast.error("Выберите записи для формирования приказа");
+      return;
+    }
+
+    generateDocument({
+      templateType: "prikaz",
+      persons: recordsToExport.map(r => ({
+        fullName: r.full_name,
+        position: r.position || undefined,
+        organization: r.organization_name || undefined,
+        snils: r.snils || undefined,
+        inn: r.inn || undefined,
+        programName: r.program_name || undefined,
+        examDate: r.exam_date || undefined,
+        isPassed: r.is_passed,
+      })),
+      groupName: selectedGroup?.name,
+    });
+  };
+
+  const handleGenerateProtokol = () => {
+    const recordsToExport = selectedRecordIds.size > 0 
+      ? records.filter(r => selectedRecordIds.has(r.id))
+      : filteredRecords;
+    
+    if (recordsToExport.length === 0) {
+      toast.error("Выберите записи для формирования протокола");
+      return;
+    }
+
+    generateDocument({
+      templateType: "protokol",
+      persons: recordsToExport.map(r => ({
+        fullName: r.full_name,
+        position: r.position || undefined,
+        organization: r.organization_name || undefined,
+        snils: r.snils || undefined,
+        inn: r.inn || undefined,
+        programName: r.program_name || undefined,
+        examDate: r.exam_date || undefined,
+        isPassed: r.is_passed,
+      })),
+      groupName: selectedGroup?.name,
+    });
   };
 
   // Fetch courses for enrollment
@@ -1196,6 +1253,14 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
               <Button variant="outline" size="sm" onClick={generateProtocolForSelected}>
                 <FileText className="h-4 w-4 mr-2" />
                 Протокол
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleGeneratePrikaz} disabled={isGenerating}>
+                {isGenerating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileText className="h-4 w-4 mr-2" />}
+                Приказ (Word)
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleGenerateProtokol} disabled={isGenerating}>
+                {isGenerating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileText className="h-4 w-4 mr-2" />}
+                Протокол (Word)
               </Button>
               <Button variant="outline" size="sm" onClick={openEnrollDialog}>
                 <GraduationCap className="h-4 w-4 mr-2" />

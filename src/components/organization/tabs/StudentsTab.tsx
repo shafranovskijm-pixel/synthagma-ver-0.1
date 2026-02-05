@@ -12,6 +12,7 @@ import {
 import { useStudents } from "@/hooks/useStudents";
 import { toast } from "sonner";
 import type { Student, Course, StudentFRDOStatus } from "@/types";
+import { useWordDocumentGenerator } from "@/hooks/useWordDocumentGenerator";
 
 interface StudentsTabProps {
   organizationId: string;
@@ -50,6 +51,9 @@ export function StudentsTab({
   isSendingBulkDocReminders = false,
 }: StudentsTabProps) {
   const courseIds = courses.map(c => c.id);
+
+  // Word document generator
+  const { generateDocument, isGenerating } = useWordDocumentGenerator();
   
   const {
     filteredStudents,
@@ -97,6 +101,40 @@ export function StudentsTab({
     XLSX.writeFile(wb, `ученики_${new Date().toISOString().split('T')[0]}.xlsx`);
     toast.success('Список учеников экспортирован');
   }, [filteredStudents]);
+
+  // Generate Word documents for selected students
+  const handleGeneratePrikaz = useCallback(() => {
+    const studentsToExport = filteredStudents.filter(s => selectedStudentIds.has(s.user_id));
+    
+    if (studentsToExport.length === 0) {
+      toast.error("Выберите учеников для формирования приказа");
+      return;
+    }
+
+    generateDocument({
+      templateType: "prikaz",
+      persons: studentsToExport.map(s => ({
+        fullName: s.name,
+      })),
+    });
+  }, [filteredStudents, selectedStudentIds, generateDocument]);
+
+  const handleGenerateProtokol = useCallback(() => {
+    const studentsToExport = filteredStudents.filter(s => selectedStudentIds.has(s.user_id));
+    
+    if (studentsToExport.length === 0) {
+      toast.error("Выберите учеников для формирования протокола");
+      return;
+    }
+
+    generateDocument({
+      templateType: "protokol",
+      persons: studentsToExport.map(s => ({
+        fullName: s.name,
+        isPassed: s.status === 'completed',
+      })),
+    });
+  }, [filteredStudents, selectedStudentIds, generateDocument]);
 
   const renderDocumentStatus = (student: Student) => {
     const userDocs = studentDocsByUser.get(student.user_id) || [];
@@ -243,6 +281,24 @@ export function StudentsTab({
               >
                 <Trash2 className="w-4 h-4" />
                 <span className="hidden sm:inline">Удалить</span> ({selectedStudentIds.size})
+              </Button>
+              <Button 
+                onClick={handleGeneratePrikaz} 
+                variant="outline" 
+                className="rounded-xl gap-2 shrink-0 text-xs lg:text-sm"
+                disabled={isGenerating}
+              >
+                {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+                <span className="hidden sm:inline">Приказ</span>
+              </Button>
+              <Button 
+                onClick={handleGenerateProtokol} 
+                variant="outline" 
+                className="rounded-xl gap-2 shrink-0 text-xs lg:text-sm"
+                disabled={isGenerating}
+              >
+                {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+                <span className="hidden sm:inline">Протокол</span>
               </Button>
             </>
           )}
