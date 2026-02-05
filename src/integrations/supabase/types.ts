@@ -2645,6 +2645,7 @@ export type Database = {
           correct_answer: number
           explanation: string | null
           id: string
+          image_url: string | null
           is_bank_question: boolean
           lesson_id: string
           options: Json
@@ -2655,6 +2656,7 @@ export type Database = {
           correct_answer?: number
           explanation?: string | null
           id?: string
+          image_url?: string | null
           is_bank_question?: boolean
           lesson_id: string
           options?: Json
@@ -2665,6 +2667,7 @@ export type Database = {
           correct_answer?: number
           explanation?: string | null
           id?: string
+          image_url?: string | null
           is_bank_question?: boolean
           lesson_id?: string
           options?: Json
