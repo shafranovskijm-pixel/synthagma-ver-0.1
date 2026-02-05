@@ -688,8 +688,12 @@
                            <p className="text-muted-foreground mb-4">
                              Учётная запись для входа не создана
                            </p>
-                           <Button onClick={createProfileForRecord}>
-                             <Plus className="w-4 h-4 mr-2" />
+                          <Button onClick={createProfileForRecord} disabled={isCreatingProfile}>
+                            {isCreatingProfile ? (
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            ) : (
+                              <Plus className="w-4 h-4 mr-2" />
+                            )}
                              Создать учётную запись
                            </Button>
                          </div>
