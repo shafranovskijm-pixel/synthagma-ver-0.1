@@ -943,6 +943,60 @@ export type Database = {
           },
         ]
       }
+      labor_safety_profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          full_name: string
+          generated_password: string | null
+          id: string
+          login: string | null
+          organization_id: string
+          record_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          full_name: string
+          generated_password?: string | null
+          id?: string
+          login?: string | null
+          organization_id: string
+          record_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          full_name?: string
+          generated_password?: string | null
+          id?: string
+          login?: string | null
+          organization_id?: string
+          record_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "labor_safety_profiles_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "labor_safety_profiles_record_id_fkey"
+            columns: ["record_id"]
+            isOneToOne: false
+            referencedRelation: "labor_safety_records"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       labor_safety_records: {
         Row: {
           created_at: string
