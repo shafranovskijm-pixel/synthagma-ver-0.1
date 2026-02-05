@@ -85,9 +85,26 @@ serve(async (req) => {
       .from('profiles')
       .select('organization_id, login, generated_password')
       .eq('user_id', user_id)
-      .single();
+     .maybeSingle();
 
-    if (!targetProfile) {
+   // Also check labor_safety_profiles if not found in profiles
+   let effectiveProfile = targetProfile;
+   let isLaborSafetyUser = false;
+   
+   if (!effectiveProfile) {
+     const { data: laborProfile } = await supabaseAdmin
+       .from('labor_safety_profiles')
+       .select('organization_id, login, generated_password')
+       .eq('user_id', user_id)
+       .maybeSingle();
+     
+     if (laborProfile) {
+       effectiveProfile = laborProfile;
+       isLaborSafetyUser = true;
+     }
+   }
+
+   if (!effectiveProfile) {
       return new Response(
         JSON.stringify({ error: "User not found" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -108,7 +125,7 @@ serve(async (req) => {
       );
     }
 
-    if (roleData.role !== 'admin' && callerProfile?.organization_id !== targetProfile.organization_id) {
+   if (roleData.role !== 'admin' && callerProfile?.organization_id !== effectiveProfile.organization_id) {
       return new Response(
         JSON.stringify({ error: "You can only update credentials for users in your organization" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -149,8 +166,8 @@ serve(async (req) => {
       );
     }
 
-    const loginToUse = new_login || targetProfile.login;
-    const passwordToUse = new_password || targetProfile.generated_password;
+   const loginToUse = new_login || effectiveProfile.login;
+   const passwordToUse = new_password || effectiveProfile.generated_password;
 
     // Update auth.users - email is based on login, password is the actual password
     const authUpdateData: { email?: string; email_confirm?: boolean; password?: string } = {};
@@ -202,22 +219,12 @@ serve(async (req) => {
         );
       }
 
-      // Also update labor_safety_profiles if exists
-      const laborSafetyUpdate: { login?: string; generated_password?: string } = {};
-      if (new_login) {
-        laborSafetyUpdate.login = new_login;
-      }
-      if (new_password) {
-        laborSafetyUpdate.generated_password = new_password;
-      }
-
-      if (Object.keys(laborSafetyUpdate).length > 0) {
-        await supabaseAdmin
-          .from("labor_safety_profiles")
-          .update(laborSafetyUpdate)
-          .eq("user_id", user_id);
-        console.log(`Labor safety profile also updated for user: ${user_id}`);
-      }
+     // Also update labor_safety_profiles if exists (always sync both tables)
+     await supabaseAdmin
+       .from("labor_safety_profiles")
+       .update(profileUpdateData)
+       .eq("user_id", user_id);
+     console.log(`Labor safety profile also updated for user: ${user_id}`);
     }
 
     console.log(`Credentials updated for user: ${user_id} by: ${user.id}`);
