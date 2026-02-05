@@ -23,6 +23,7 @@
    Upload,
    Trash2,
    Eye,
+   EyeOff,
    XCircle,
    Download,
    Bell,
@@ -142,6 +143,9 @@
    // Creating profile
    const [isCreatingProfile, setIsCreatingProfile] = useState(false);
    const [isSendingCredentials, setIsSendingCredentials] = useState(false);
+ 
+ // Password visibility
+ const [showPassword, setShowPassword] = useState(false);
  
    useEffect(() => {
      if (isOpen && record) {
@@ -787,8 +791,24 @@
                              <div className="p-3 rounded-lg bg-muted/50">
                                <div className="text-xs text-muted-foreground mb-1">Пароль</div>
                                <div className="flex items-center justify-between">
-                                 <code className="font-mono text-sm">{profile.generated_password || "••••••••"}</code>
-                                 {profile.generated_password && (
+                                 <code className="font-mono text-sm">
+                                   {profile.generated_password 
+                                     ? (showPassword ? profile.generated_password : "••••••••") 
+                                     : "—"}
+                                 </code>
+                                 <div className="flex items-center gap-1">
+                                   {profile.generated_password && (
+                                     <Button
+                                       size="icon"
+                                       variant="ghost"
+                                       className="h-6 w-6"
+                                       onClick={() => setShowPassword(!showPassword)}
+                                       title={showPassword ? "Скрыть пароль" : "Показать пароль"}
+                                     >
+                                       {showPassword ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                                     </Button>
+                                   )}
+                                   {profile.generated_password && (
                                    <Button
                                      size="icon"
                                      variant="ghost"
@@ -798,6 +818,7 @@
                                      {copiedField === "password" ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
                                    </Button>
                                  )}
+                                 </div>
                                </div>
                              </div>
                            </div>
