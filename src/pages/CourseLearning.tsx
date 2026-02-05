@@ -1206,61 +1206,52 @@ const CourseLearning = () => {
     const allQuestions = (data || []) as TestQuestion[];
     setAllBankQuestions(allQuestions);
 
-    // Check for previous attempts
-    const { data: attempts } = await supabase
-      .from('test_attempts')
-      .select('*')
-      .eq('lesson_id', lessonId)
-      .eq('user_id', user!.id)
-      .order('completed_at', { ascending: false })
-      .limit(1);
-
-    if (attempts && attempts.length > 0) {
-      const lastAttempt = attempts[0];
-      setTestSubmitted(true);
-      setTestScore({ score: lastAttempt.score, max: lastAttempt.max_score });
-      const savedAnswers = lastAttempt.answers as Record<string, number>;
-      setAnswers(savedAnswers || {});
-      
-      // Get used question IDs from all previous attempts
-      const { data: allAttempts } = await supabase
-        .from('test_attempts')
-        .select('shown_question_ids')
-        .eq('lesson_id', lessonId)
-        .eq('user_id', user!.id);
-      
-      const allUsedIds = new Set<string>();
-      allAttempts?.forEach(attempt => {
-        const ids = (attempt as any).shown_question_ids as string[] || [];
-        ids.forEach(id => allUsedIds.add(id));
+    // Check for previous attempts using server-side edge function
+    try {
+      const { data: resultsData, error: resultsError } = await supabase.functions.invoke('get-test-results', {
+        body: { lesson_id: lessonId }
       });
-      setUsedQuestionIds(Array.from(allUsedIds));
-      
-      // Show the questions from the last attempt
-      const shownIds = (lastAttempt as any).shown_question_ids as string[] || [];
-      if (shownIds.length > 0) {
-        // Fetch correct answers for displaying results
-        const { data: questionsWithAnswers } = await supabase
-          .from('test_questions')
-          .select('id, correct_answer')
-          .in('id', shownIds);
-        
-        const correctAnswersMap = new Map<string, number>();
-        questionsWithAnswers?.forEach(q => {
-          correctAnswersMap.set(q.id, q.correct_answer);
-        });
 
-        const shownQuestions = allQuestions
-          .filter(q => shownIds.includes(q.id))
-          .map(q => ({
-            ...q,
-            correct_answer: correctAnswersMap.get(q.id) ?? q.correct_answer
-          }));
-        setTestQuestions(shownQuestions);
-      } else {
-        setTestQuestions(allQuestions);
+      if (resultsError) {
+        console.error('Error fetching test results:', resultsError);
+        // Fall back to first attempt mode
+        console.log('[First Attempt] Selecting', questionsToShow, 'random questions from', allQuestions.length, 'total');
+        selectRandomQuestions(allQuestions, questionsToShow, []);
+        setUsedQuestionIds([]);
+        setAnswers({});
+        return;
       }
-    } else {
+
+      if (resultsData?.hasAttempt) {
+        const { attempt, correctAnswers, usedQuestionIds: allUsedIds } = resultsData;
+        setTestSubmitted(true);
+        setTestScore({ score: attempt.score, max: attempt.max_score });
+        const savedAnswers = attempt.answers as Record<string, number>;
+        setAnswers(savedAnswers || {});
+        setUsedQuestionIds(allUsedIds || []);
+
+        // Show the questions from the last attempt with correct answers from server
+        const shownIds = attempt.shown_question_ids as string[] || [];
+        if (shownIds.length > 0) {
+          const shownQuestions = allQuestions
+            .filter(q => shownIds.includes(q.id))
+            .map(q => ({
+              ...q,
+              correct_answer: correctAnswers[q.id] ?? q.correct_answer
+            }));
+          setTestQuestions(shownQuestions);
+        } else {
+          setTestQuestions(allQuestions);
+        }
+      } else {
+        // First attempt - select random questions from bank
+        console.log('[First Attempt] Selecting', questionsToShow, 'random questions from', allQuestions.length, 'total');
+        selectRandomQuestions(allQuestions, questionsToShow, []);
+        setUsedQuestionIds([]);
+        setAnswers({});
+      }
+    } catch (err) {
+      console.error('Error loading test results:', err);
       // First attempt - select random questions from bank
       console.log('[First Attempt] Selecting', questionsToShow, 'random questions from', allQuestions.length, 'total');
       selectRandomQuestions(allQuestions, questionsToShow, []);
