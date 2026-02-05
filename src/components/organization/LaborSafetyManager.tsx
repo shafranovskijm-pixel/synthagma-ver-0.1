@@ -1692,7 +1692,7 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
  
       {/* Enroll Dialog */}
       <Dialog open={showEnrollDialog} onOpenChange={setShowEnrollDialog}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Записать на курс</DialogTitle>
           </DialogHeader>
@@ -1701,28 +1701,47 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
               Будет создан профиль и зачисление для {selectedRecordIds.size} сотрудников.
             </p>
             <div className="space-y-2">
-              <Label>Выберите курс</Label>
-              <Select value={selectedCourseId} onValueChange={setSelectedCourseId}>
-                <SelectTrigger>
-                  <SelectValue placeholder={isLoadingCourses ? "Загрузка..." : "Выберите курс"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {courses.map(course => (
-                    <SelectItem key={course.id} value={course.id}>
-                      {course.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Выберите курсы ({selectedCourseIds.length} выбрано)</Label>
+              {isLoadingCourses ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : courses.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-2">Нет доступных курсов</p>
+              ) : (
+                <ScrollArea className="h-[250px] border rounded-md p-2">
+                  <div className="space-y-2">
+                    {courses.map(course => (
+                      <label
+                        key={course.id}
+                        className="flex items-start gap-3 p-2 rounded-md hover:bg-muted cursor-pointer"
+                      >
+                        <Checkbox
+                          checked={selectedCourseIds.includes(course.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedCourseIds(prev => [...prev, course.id]);
+                            } else {
+                              setSelectedCourseIds(prev => prev.filter(id => id !== course.id));
+                            }
+                          }}
+                          className="mt-0.5"
+                        />
+                        <span className="text-sm leading-tight">{course.title}</span>
+                      </label>
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowEnrollDialog(false)}>
               Отмена
             </Button>
-            <Button onClick={enrollSelectedToCourse} disabled={isEnrolling || !selectedCourseId}>
+            <Button onClick={enrollSelectedToCourse} disabled={isEnrolling || selectedCourseIds.length === 0}>
               {isEnrolling && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Записать
+              Записать {selectedCourseIds.length > 0 && `(${selectedCourseIds.length})`}
             </Button>
           </DialogFooter>
         </DialogContent>
