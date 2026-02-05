@@ -82,7 +82,8 @@ import {
   Calendar,
   Shield,
    ChevronRight,
-   User
+   User,
+   Key
 } from "lucide-react";
 import { format } from "date-fns";
  import { LaborSafetyStudentDetailCard } from "./LaborSafetyStudentDetailCard";
