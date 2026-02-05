@@ -861,11 +861,27 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
   const fetchCourses = useCallback(async () => {
     try {
       setIsLoadingCourses(true);
-      const { data, error } = await supabase
-        .from("courses")
-        .select("id, title, description, is_published")
-        .eq("organization_id", organizationId)
-        .order("title");
+     
+     // First find the "Охрана труда" category
+     const { data: categoryData } = await supabase
+       .from("course_categories")
+       .select("id")
+       .eq("organization_id", organizationId)
+       .ilike("name", "%охрана труда%")
+       .maybeSingle();
+     
+     let query = supabase
+       .from("courses")
+       .select("id, title, description, is_published")
+       .eq("organization_id", organizationId)
+       .order("title");
+     
+     // Filter by category if found
+     if (categoryData?.id) {
+       query = query.eq("category_id", categoryData.id);
+     }
+     
+     const { data, error } = await query;
       
       if (error) throw error;
       setCourses(data || []);
