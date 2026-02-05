@@ -281,8 +281,6 @@
          body: {
            organization_id: organizationId,
            full_name: record.full_name,
-           email: `ls_${record.id.slice(0, 8)}@temp.local`,
-           no_login: false,
          }
        });
        
