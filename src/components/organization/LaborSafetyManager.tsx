@@ -174,6 +174,7 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
   
   // Bulk actions loading
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
+  const [isGeneratingCredentials, setIsGeneratingCredentials] = useState(false);
   
   // Course enrollment dialog
   const [showEnrollDialog, setShowEnrollDialog] = useState(false);
@@ -679,6 +680,99 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
     }
     
     toast.success(`Протокол сформирован для ${recordsToExport.length} записей`);
+  };
+
+  // Generate credentials for selected records
+  const generateCredentialsForSelected = async () => {
+    if (selectedRecordIds.size === 0) {
+      toast.error("Выберите записи");
+      return;
+    }
+
+    const recordsToProcess = records.filter(r => selectedRecordIds.has(r.id));
+    if (recordsToProcess.length === 0) {
+      toast.error("Нет выбранных записей");
+      return;
+    }
+
+    try {
+      setIsGeneratingCredentials(true);
+      let successCount = 0;
+      let alreadyExistsCount = 0;
+      let failCount = 0;
+
+      for (const record of recordsToProcess) {
+        // Check if profile already exists for this record
+        const { data: existingProfile } = await supabase
+          .from("labor_safety_profiles")
+          .select("id, login, generated_password")
+          .eq("record_id", record.id)
+          .eq("organization_id", organizationId)
+          .maybeSingle();
+
+        if (existingProfile && existingProfile.login && existingProfile.generated_password) {
+          alreadyExistsCount++;
+          continue;
+        }
+
+        // Create account via edge function
+        const { data, error } = await supabase.functions.invoke("register-student", {
+          body: {
+            organization_id: organizationId,
+            full_name: record.full_name,
+            email: `ls_${record.id.slice(0, 8)}@temp.local`,
+            no_login: false,
+          }
+        });
+
+        if (error || data?.error) {
+          console.error("Error registering:", error || data?.error);
+          failCount++;
+          continue;
+        }
+
+        if (data?.user_id) {
+          // Link to labor safety profile
+          const { error: linkError } = await supabase
+            .from("labor_safety_profiles")
+            .upsert({
+              user_id: data.user_id,
+              full_name: record.full_name,
+              login: data.login,
+              generated_password: data.generated_password,
+              email: data.email,
+              organization_id: organizationId,
+              record_id: record.id,
+            }, { onConflict: 'record_id' });
+
+          if (linkError) {
+            console.error("Error linking profile:", linkError);
+            failCount++;
+          } else {
+            successCount++;
+          }
+        } else {
+          failCount++;
+        }
+      }
+
+      if (successCount > 0) {
+        toast.success(`Создано доступов: ${successCount}`);
+      }
+      if (alreadyExistsCount > 0) {
+        toast.info(`Уже имеют доступ: ${alreadyExistsCount}`);
+      }
+      if (failCount > 0) {
+        toast.error(`Ошибок: ${failCount}`);
+      }
+
+      setSelectedRecordIds(new Set());
+    } catch (error) {
+      console.error("Error generating credentials:", error);
+      toast.error("Ошибка генерации доступов");
+    } finally {
+      setIsGeneratingCredentials(false);
+    }
   };
 
   // Generate Word documents for selected records
@@ -1265,6 +1359,15 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
               <Button variant="outline" size="sm" onClick={openEnrollDialog}>
                 <GraduationCap className="h-4 w-4 mr-2" />
                 На курс
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={generateCredentialsForSelected} 
+                disabled={isGeneratingCredentials}
+              >
+                {isGeneratingCredentials ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Key className="h-4 w-4 mr-2" />}
+                Логин/пароль
               </Button>
               <Button 
                 variant="ghost" 
