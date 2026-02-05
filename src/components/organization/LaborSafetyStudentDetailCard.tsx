@@ -267,6 +267,33 @@
      } catch (error: any) {
        console.error("Error creating profile:", error);
        toast.error(error.message || "Ошибка создания профиля");
+     } finally {
+       setIsCreatingProfile(false);
+     }
+   };
+
+   const sendCredentialsToUser = async () => {
+     if (!profile || !profile.login) {
+       toast.error("Нет учётных данных для отправки");
+       return;
+     }
+
+     setIsSendingCredentials(true);
+     try {
+       const { error } = await supabase.functions.invoke("send-credentials", {
+         body: {
+           user_id: profile.user_id,
+           organization_id: organizationId,
+         }
+       });
+
+       if (error) throw error;
+       toast.success("Учётные данные отправлены на email");
+     } catch (error: any) {
+       console.error("Error sending credentials:", error);
+       toast.error(error.message || "Ошибка отправки");
+     } finally {
+       setIsSendingCredentials(false);
      }
    };
  
