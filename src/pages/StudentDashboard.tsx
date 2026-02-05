@@ -238,38 +238,42 @@ export default function StudentDashboard() {
         });
       }
 
-      // If no organization_id in profile, try to get from labor_safety_profiles
-      if (!effectiveOrgId) {
-        const { data: laborProfile } = await supabase
-          .from("labor_safety_profiles")
-          .select("organization_id, full_name, organizations(name, branding, student_dashboard_settings)")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        
-        if (laborProfile?.organization_id) {
-          effectiveOrgId = laborProfile.organization_id;
-          const laborOrg = laborProfile.organizations as any;
-          effectiveOrgName = laborOrg?.name || null;
-          effectiveBranding = laborOrg?.branding;
-          effectiveDashboardSettings = laborOrg?.student_dashboard_settings;
-          
-         setProfile(prev => {
-           // Prefer the more complete name (the one with more words)
-           const prevParts = prev?.full_name?.trim().split(/\s+/).length || 0;
-           const laborParts = laborProfile.full_name?.trim().split(/\s+/).length || 0;
-           const fullName = laborParts > prevParts 
-             ? laborProfile.full_name 
-             : (prev?.full_name || laborProfile.full_name);
-           
-           return {
-             full_name: fullName || null,
-             organization_id: laborProfile.organization_id,
-             organization_name: effectiveOrgName
-           };
-         });
-        }
+      // Also check labor_safety_profiles:
+      // - older "labor safety" listeners may have incomplete full_name in profiles (e.g. only surname)
+      // - organization_id from labor_safety_profiles may be the correct scope for verification
+      const { data: laborProfile } = await supabase
+        .from("labor_safety_profiles")
+        .select("organization_id, full_name, organizations(name, branding, student_dashboard_settings)")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (laborProfile?.organization_id) {
+        // Prefer org scope from Labor Safety module (prevents mismatched org_id for legacy accounts)
+        effectiveOrgId = laborProfile.organization_id;
+        const laborOrg = laborProfile.organizations as any;
+        effectiveOrgName = laborOrg?.name || effectiveOrgName;
+        effectiveBranding = laborOrg?.branding ?? effectiveBranding;
+        effectiveDashboardSettings = laborOrg?.student_dashboard_settings ?? effectiveDashboardSettings;
+
+        setProfile(prev => {
+          const prevName = prev?.full_name?.trim() || "";
+          const prevParts = prevName ? prevName.split(/\s+/).length : 0;
+          const laborName = laborProfile.full_name?.trim() || "";
+          const laborParts = laborName ? laborName.split(/\s+/).length : 0;
+
+          // Use labor full_name when it's more complete OR when profile name is just one word
+          const fullName = (laborParts >= 2 && prevParts < 2)
+            ? laborProfile.full_name
+            : (laborParts > prevParts ? laborProfile.full_name : (prev?.full_name || laborProfile.full_name));
+
+          return {
+            full_name: fullName || prev?.full_name || null,
+            organization_id: laborProfile.organization_id,
+            organization_name: effectiveOrgName || prev?.organization_name || null,
+          };
+        });
       }
 
       // Load branding from organization
