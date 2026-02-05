@@ -991,7 +991,7 @@ export type Database = {
           {
             foreignKeyName: "labor_safety_profiles_record_id_fkey"
             columns: ["record_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "labor_safety_records"
             referencedColumns: ["id"]
           },

@@ -138,6 +138,10 @@
    
    // Reminders
    const [isSendingReminder, setIsSendingReminder] = useState(false);
+   
+   // Creating profile
+   const [isCreatingProfile, setIsCreatingProfile] = useState(false);
+   const [isSendingCredentials, setIsSendingCredentials] = useState(false);
  
    useEffect(() => {
      if (isOpen && record) {
@@ -227,6 +231,7 @@
    const createProfileForRecord = async () => {
      if (!record) return;
      
+     setIsCreatingProfile(true);
      try {
        const { data, error } = await supabase.functions.invoke("register-student", {
          body: {
@@ -263,6 +268,33 @@
      } catch (error: any) {
        console.error("Error creating profile:", error);
        toast.error(error.message || "Ошибка создания профиля");
+     } finally {
+       setIsCreatingProfile(false);
+     }
+   };
+
+   const sendCredentialsToUser = async () => {
+     if (!profile || !profile.login) {
+       toast.error("Нет учётных данных для отправки");
+       return;
+     }
+
+     setIsSendingCredentials(true);
+     try {
+       const { error } = await supabase.functions.invoke("send-credentials", {
+         body: {
+           user_id: profile.user_id,
+           organization_id: organizationId,
+         }
+       });
+
+       if (error) throw error;
+       toast.success("Учётные данные отправлены на email");
+     } catch (error: any) {
+       console.error("Error sending credentials:", error);
+       toast.error(error.message || "Ошибка отправки");
+     } finally {
+       setIsSendingCredentials(false);
      }
    };
  
@@ -656,8 +688,12 @@
                            <p className="text-muted-foreground mb-4">
                              Учётная запись для входа не создана
                            </p>
-                           <Button onClick={createProfileForRecord}>
-                             <Plus className="w-4 h-4 mr-2" />
+                          <Button onClick={createProfileForRecord} disabled={isCreatingProfile}>
+                            {isCreatingProfile ? (
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            ) : (
+                              <Plus className="w-4 h-4 mr-2" />
+                            )}
                              Создать учётную запись
                            </Button>
                          </div>
@@ -764,6 +800,26 @@
                                  )}
                                </div>
                              </div>
+                           </div>
+                         )}
+
+                         {/* Send credentials button */}
+                         {profile.login && profile.generated_password && (
+                           <div className="mt-4 pt-4 border-t border-border">
+                             <Button
+                               variant="outline"
+                               size="sm"
+                               onClick={sendCredentialsToUser}
+                               disabled={isSendingCredentials}
+                               className="w-full gap-2"
+                             >
+                               {isSendingCredentials ? (
+                                 <Loader2 className="w-4 h-4 animate-spin" />
+                               ) : (
+                                 <Mail className="w-4 h-4" />
+                               )}
+                               Отправить данные на email
+                             </Button>
                            </div>
                          )}
                        </div>
