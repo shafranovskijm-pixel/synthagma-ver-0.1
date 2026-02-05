@@ -231,6 +231,7 @@
    const createProfileForRecord = async () => {
      if (!record) return;
      
+     setIsCreatingProfile(true);
      try {
        const { data, error } = await supabase.functions.invoke("register-student", {
          body: {
