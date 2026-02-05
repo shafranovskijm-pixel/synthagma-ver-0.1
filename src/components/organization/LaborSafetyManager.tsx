@@ -81,9 +81,11 @@ import {
   FolderOpen,
   Calendar,
   Shield,
-  ChevronRight
+   ChevronRight,
+   User
 } from "lucide-react";
 import { format } from "date-fns";
+ import { LaborSafetyStudentDetailCard } from "./LaborSafetyStudentDetailCard";
 
 interface Course {
   id: string;
@@ -179,6 +181,10 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
   const [isLoadingCourses, setIsLoadingCourses] = useState(false);
   const [isEnrolling, setIsEnrolling] = useState(false);
 
+   // Student detail card
+   const [selectedRecordForDetail, setSelectedRecordForDetail] = useState<LaborSafetyRecord | null>(null);
+   const [showStudentDetailCard, setShowStudentDetailCard] = useState(false);
+ 
   // Filtered and sorted groups
   const filteredGroups = useMemo(() => {
     let result = [...groups];
@@ -1266,7 +1272,15 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
                         onCheckedChange={() => toggleRecordSelection(record.id)}
                       />
                     </TableCell>
-                    <TableCell className="font-medium">{record.full_name}</TableCell>
+                     <TableCell 
+                       className="font-medium cursor-pointer hover:text-primary transition-colors"
+                       onClick={() => {
+                         setSelectedRecordForDetail(record);
+                         setShowStudentDetailCard(true);
+                       }}
+                     >
+                       {record.full_name}
+                     </TableCell>
                     <TableCell className="hidden md:table-cell">{record.position || '-'}</TableCell>
                     <TableCell className="hidden lg:table-cell">{record.organization_name || '-'}</TableCell>
                     <TableCell className="hidden lg:table-cell">{record.snils || '-'}</TableCell>
@@ -1292,6 +1306,13 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
                             <Edit className="h-4 w-4 mr-2" />
                             Редактировать
                           </DropdownMenuItem>
+                           <DropdownMenuItem onClick={() => {
+                             setSelectedRecordForDetail(record);
+                             setShowStudentDetailCard(true);
+                           }}>
+                             <User className="h-4 w-4 mr-2" />
+                             Личное дело
+                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem 
                             className="text-destructive focus:text-destructive"
@@ -1409,6 +1430,17 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
         </DialogContent>
       </Dialog>
 
+       {/* Student Detail Card */}
+       <LaborSafetyStudentDetailCard
+         isOpen={showStudentDetailCard}
+         onOpenChange={setShowStudentDetailCard}
+         record={selectedRecordForDetail}
+         organizationId={organizationId}
+         onRecordUpdated={() => {
+           if (selectedGroup) fetchRecords(selectedGroup.id);
+         }}
+       />
+ 
       {/* Enroll Dialog */}
       <Dialog open={showEnrollDialog} onOpenChange={setShowEnrollDialog}>
         <DialogContent>
