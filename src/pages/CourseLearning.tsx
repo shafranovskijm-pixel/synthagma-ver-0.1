@@ -1206,61 +1206,52 @@ const CourseLearning = () => {
     const allQuestions = (data || []) as TestQuestion[];
     setAllBankQuestions(allQuestions);
 
-    // Check for previous attempts
-    const { data: attempts } = await supabase
-      .from('test_attempts')
-      .select('*')
-      .eq('lesson_id', lessonId)
-      .eq('user_id', user!.id)
-      .order('completed_at', { ascending: false })
-      .limit(1);
-
-    if (attempts && attempts.length > 0) {
-      const lastAttempt = attempts[0];
-      setTestSubmitted(true);
-      setTestScore({ score: lastAttempt.score, max: lastAttempt.max_score });
-      const savedAnswers = lastAttempt.answers as Record<string, number>;
-      setAnswers(savedAnswers || {});
-      
-      // Get used question IDs from all previous attempts
-      const { data: allAttempts } = await supabase
-        .from('test_attempts')
-        .select('shown_question_ids')
-        .eq('lesson_id', lessonId)
-        .eq('user_id', user!.id);
-      
-      const allUsedIds = new Set<string>();
-      allAttempts?.forEach(attempt => {
-        const ids = (attempt as any).shown_question_ids as string[] || [];
-        ids.forEach(id => allUsedIds.add(id));
+    // Check for previous attempts using server-side edge function
+    try {
+      const { data: resultsData, error: resultsError } = await supabase.functions.invoke('get-test-results', {
+        body: { lesson_id: lessonId }
       });
-      setUsedQuestionIds(Array.from(allUsedIds));
-      
-      // Show the questions from the last attempt
-      const shownIds = (lastAttempt as any).shown_question_ids as string[] || [];
-      if (shownIds.length > 0) {
-        // Fetch correct answers for displaying results
-        const { data: questionsWithAnswers } = await supabase
-          .from('test_questions')
-          .select('id, correct_answer')
-          .in('id', shownIds);
-        
-        const correctAnswersMap = new Map<string, number>();
-        questionsWithAnswers?.forEach(q => {
-          correctAnswersMap.set(q.id, q.correct_answer);
-        });
 
-        const shownQuestions = allQuestions
-          .filter(q => shownIds.includes(q.id))
-          .map(q => ({
-            ...q,
-            correct_answer: correctAnswersMap.get(q.id) ?? q.correct_answer
-          }));
-        setTestQuestions(shownQuestions);
-      } else {
-        setTestQuestions(allQuestions);
+      if (resultsError) {
+        console.error('Error fetching test results:', resultsError);
+        // Fall back to first attempt mode
+        console.log('[First Attempt] Selecting', questionsToShow, 'random questions from', allQuestions.length, 'total');
+        selectRandomQuestions(allQuestions, questionsToShow, []);
+        setUsedQuestionIds([]);
+        setAnswers({});
+        return;
       }
-    } else {
+
+      if (resultsData?.hasAttempt) {
+        const { attempt, correctAnswers, usedQuestionIds: allUsedIds } = resultsData;
+        setTestSubmitted(true);
+        setTestScore({ score: attempt.score, max: attempt.max_score });
+        const savedAnswers = attempt.answers as Record<string, number>;
+        setAnswers(savedAnswers || {});
+        setUsedQuestionIds(allUsedIds || []);
+
+        // Show the questions from the last attempt with correct answers from server
+        const shownIds = attempt.shown_question_ids as string[] || [];
+        if (shownIds.length > 0) {
+          const shownQuestions = allQuestions
+            .filter(q => shownIds.includes(q.id))
+            .map(q => ({
+              ...q,
+              correct_answer: correctAnswers[q.id] ?? q.correct_answer
+            }));
+          setTestQuestions(shownQuestions);
+        } else {
+          setTestQuestions(allQuestions);
+        }
+      } else {
+        // First attempt - select random questions from bank
+        console.log('[First Attempt] Selecting', questionsToShow, 'random questions from', allQuestions.length, 'total');
+        selectRandomQuestions(allQuestions, questionsToShow, []);
+        setUsedQuestionIds([]);
+        setAnswers({});
+      }
+    } catch (err) {
+      console.error('Error loading test results:', err);
       // First attempt - select random questions from bank
       console.log('[First Attempt] Selecting', questionsToShow, 'random questions from', allQuestions.length, 'total');
       selectRandomQuestions(allQuestions, questionsToShow, []);
@@ -1509,96 +1500,62 @@ const CourseLearning = () => {
       return;
     }
 
-    // Fetch correct answers from the main table (not the view which hides them)
     const shownIds = testQuestions.map(q => q.id);
-    const { data: questionsWithAnswers, error: fetchError } = await supabase
-      .from('test_questions')
-      .select('id, correct_answer')
-      .in('id', shownIds);
-
-    if (fetchError || !questionsWithAnswers) {
-      console.error('Error fetching correct answers:', fetchError);
-      toast.error('Ошибка проверки теста');
-      return;
-    }
-
-    // Create a map for quick lookup
-    const correctAnswersMap = new Map<string, number>();
-    questionsWithAnswers.forEach(q => {
-      correctAnswersMap.set(q.id, q.correct_answer);
-    });
-
-    // Calculate score using the fetched correct answers
-    let score = 0;
-    testQuestions.forEach(q => {
-      const correctAnswer = correctAnswersMap.get(q.id);
-      if (correctAnswer !== undefined && answers[q.id] === correctAnswer) {
-        score++;
-      }
-    });
-
-    // Update testQuestions with correct answers for display
-    const updatedQuestions = testQuestions.map(q => ({
-      ...q,
-      correct_answer: correctAnswersMap.get(q.id) ?? q.correct_answer
-    }));
-    setTestQuestions(updatedQuestions);
-
-    const maxScore = testQuestions.length;
     
-    const { error } = await supabase
-      .from('test_attempts')
-      .insert({
-        lesson_id: currentLesson.id,
-        user_id: user.id,
-        score,
-        max_score: maxScore,
-        answers,
-        shown_question_ids: shownIds
+    // Grade test using server-side edge function (secure - doesn't expose correct answers to client)
+    try {
+      const { data: gradeResult, error: gradeError } = await supabase.functions.invoke('grade-test', {
+        body: {
+          lesson_id: currentLesson.id,
+          answers,
+          shown_question_ids: shownIds
+        }
       });
 
-    if (error) {
-      console.error('Error saving test:', error);
-      toast.error('Ошибка сохранения результата');
-      return;
-    }
-
-    setTestSubmitted(true);
-    setTestScore({ score, max: maxScore });
-
-    const isPassed = maxScore > 0 && ((score / maxScore) * 100 >= testPassingScore);
-    const scorePercent = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
-
-    if (isPassed) {
-      await supabase
-        .from('lesson_progress')
-        .upsert({
-          lesson_id: currentLesson.id,
-          user_id: user.id,
-          completed: true,
-          completed_at: new Date().toISOString()
-        }, { onConflict: 'lesson_id,user_id' });
-
-      setLessonProgress(prev => [
-        ...prev.filter(p => p.lesson_id !== currentLesson.id),
-        { lesson_id: currentLesson.id, completed: true }
-      ]);
-
-      // Update enrollment progress
-      const newProgress = Math.round(((completedCount + 1) / lessons.length) * 100);
-      await supabase
-        .from('enrollments')
-        .update({ progress: newProgress })
-        .eq('id', enrollmentId);
-
-      // Check if course is now complete
-      if (newProgress >= 100) {
-        await handleCourseCompletion({ score, max: maxScore });
-      } else {
-        toast.success(`Тест пройден! ${score}/${maxScore} (${scorePercent}%)`);
+      if (gradeError || !gradeResult) {
+        console.error('Error grading test:', gradeError);
+        toast.error('Ошибка проверки теста');
+        return;
       }
-    } else {
-      toast.error(`Тест не пройден. ${score}/${maxScore} (${scorePercent}%). Нужно: ${testPassingScore}%. Попробуйте снова.`);
+
+      const { score, maxScore, scorePercent, passed, correctAnswers } = gradeResult;
+
+      // Update testQuestions with correct answers from server for display
+      const updatedQuestions = testQuestions.map(q => ({
+        ...q,
+        correct_answer: correctAnswers[q.id] ?? q.correct_answer
+      }));
+      setTestQuestions(updatedQuestions);
+
+      setTestSubmitted(true);
+      setTestScore({ score, max: maxScore });
+
+      if (passed) {
+        // Update local lesson progress (server already updated the database)
+        setLessonProgress(prev => [
+          ...prev.filter(p => p.lesson_id !== currentLesson.id),
+          { lesson_id: currentLesson.id, completed: true }
+        ]);
+
+        // Update enrollment progress
+        const newProgress = Math.round(((completedCount + 1) / lessons.length) * 100);
+        await supabase
+          .from('enrollments')
+          .update({ progress: newProgress })
+          .eq('id', enrollmentId);
+
+        // Check if course is now complete
+        if (newProgress >= 100) {
+          await handleCourseCompletion({ score, max: maxScore });
+        } else {
+          toast.success(`Тест пройден! ${score}/${maxScore} (${scorePercent}%)`);
+        }
+      } else {
+        toast.error(`Тест не пройден. ${score}/${maxScore} (${scorePercent}%). Нужно: ${testPassingScore}%. Попробуйте снова.`);
+      }
+    } catch (err) {
+      console.error('Error submitting test:', err);
+      toast.error('Ошибка отправки теста');
     }
   };
 
