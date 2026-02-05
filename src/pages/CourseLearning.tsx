@@ -1500,96 +1500,62 @@ const CourseLearning = () => {
       return;
     }
 
-    // Fetch correct answers from the main table (not the view which hides them)
     const shownIds = testQuestions.map(q => q.id);
-    const { data: questionsWithAnswers, error: fetchError } = await supabase
-      .from('test_questions')
-      .select('id, correct_answer')
-      .in('id', shownIds);
-
-    if (fetchError || !questionsWithAnswers) {
-      console.error('Error fetching correct answers:', fetchError);
-      toast.error('Ошибка проверки теста');
-      return;
-    }
-
-    // Create a map for quick lookup
-    const correctAnswersMap = new Map<string, number>();
-    questionsWithAnswers.forEach(q => {
-      correctAnswersMap.set(q.id, q.correct_answer);
-    });
-
-    // Calculate score using the fetched correct answers
-    let score = 0;
-    testQuestions.forEach(q => {
-      const correctAnswer = correctAnswersMap.get(q.id);
-      if (correctAnswer !== undefined && answers[q.id] === correctAnswer) {
-        score++;
-      }
-    });
-
-    // Update testQuestions with correct answers for display
-    const updatedQuestions = testQuestions.map(q => ({
-      ...q,
-      correct_answer: correctAnswersMap.get(q.id) ?? q.correct_answer
-    }));
-    setTestQuestions(updatedQuestions);
-
-    const maxScore = testQuestions.length;
     
-    const { error } = await supabase
-      .from('test_attempts')
-      .insert({
-        lesson_id: currentLesson.id,
-        user_id: user.id,
-        score,
-        max_score: maxScore,
-        answers,
-        shown_question_ids: shownIds
+    // Grade test using server-side edge function (secure - doesn't expose correct answers to client)
+    try {
+      const { data: gradeResult, error: gradeError } = await supabase.functions.invoke('grade-test', {
+        body: {
+          lesson_id: currentLesson.id,
+          answers,
+          shown_question_ids: shownIds
+        }
       });
 
-    if (error) {
-      console.error('Error saving test:', error);
-      toast.error('Ошибка сохранения результата');
-      return;
-    }
-
-    setTestSubmitted(true);
-    setTestScore({ score, max: maxScore });
-
-    const isPassed = maxScore > 0 && ((score / maxScore) * 100 >= testPassingScore);
-    const scorePercent = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
-
-    if (isPassed) {
-      await supabase
-        .from('lesson_progress')
-        .upsert({
-          lesson_id: currentLesson.id,
-          user_id: user.id,
-          completed: true,
-          completed_at: new Date().toISOString()
-        }, { onConflict: 'lesson_id,user_id' });
-
-      setLessonProgress(prev => [
-        ...prev.filter(p => p.lesson_id !== currentLesson.id),
-        { lesson_id: currentLesson.id, completed: true }
-      ]);
-
-      // Update enrollment progress
-      const newProgress = Math.round(((completedCount + 1) / lessons.length) * 100);
-      await supabase
-        .from('enrollments')
-        .update({ progress: newProgress })
-        .eq('id', enrollmentId);
-
-      // Check if course is now complete
-      if (newProgress >= 100) {
-        await handleCourseCompletion({ score, max: maxScore });
-      } else {
-        toast.success(`Тест пройден! ${score}/${maxScore} (${scorePercent}%)`);
+      if (gradeError || !gradeResult) {
+        console.error('Error grading test:', gradeError);
+        toast.error('Ошибка проверки теста');
+        return;
       }
-    } else {
-      toast.error(`Тест не пройден. ${score}/${maxScore} (${scorePercent}%). Нужно: ${testPassingScore}%. Попробуйте снова.`);
+
+      const { score, maxScore, scorePercent, passed, correctAnswers } = gradeResult;
+
+      // Update testQuestions with correct answers from server for display
+      const updatedQuestions = testQuestions.map(q => ({
+        ...q,
+        correct_answer: correctAnswers[q.id] ?? q.correct_answer
+      }));
+      setTestQuestions(updatedQuestions);
+
+      setTestSubmitted(true);
+      setTestScore({ score, max: maxScore });
+
+      if (passed) {
+        // Update local lesson progress (server already updated the database)
+        setLessonProgress(prev => [
+          ...prev.filter(p => p.lesson_id !== currentLesson.id),
+          { lesson_id: currentLesson.id, completed: true }
+        ]);
+
+        // Update enrollment progress
+        const newProgress = Math.round(((completedCount + 1) / lessons.length) * 100);
+        await supabase
+          .from('enrollments')
+          .update({ progress: newProgress })
+          .eq('id', enrollmentId);
+
+        // Check if course is now complete
+        if (newProgress >= 100) {
+          await handleCourseCompletion({ score, max: maxScore });
+        } else {
+          toast.success(`Тест пройден! ${score}/${maxScore} (${scorePercent}%)`);
+        }
+      } else {
+        toast.error(`Тест не пройден. ${score}/${maxScore} (${scorePercent}%). Нужно: ${testPassingScore}%. Попробуйте снова.`);
+      }
+    } catch (err) {
+      console.error('Error submitting test:', err);
+      toast.error('Ошибка отправки теста');
     }
   };
 
