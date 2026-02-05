@@ -681,6 +681,59 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
     toast.success(`Протокол сформирован для ${recordsToExport.length} записей`);
   };
 
+  // Generate Word documents for selected records
+  const handleGeneratePrikaz = () => {
+    const recordsToExport = selectedRecordIds.size > 0 
+      ? records.filter(r => selectedRecordIds.has(r.id))
+      : filteredRecords;
+    
+    if (recordsToExport.length === 0) {
+      toast.error("Выберите записи для формирования приказа");
+      return;
+    }
+
+    generateDocument({
+      templateType: "prikaz",
+      persons: recordsToExport.map(r => ({
+        fullName: r.full_name,
+        position: r.position || undefined,
+        organization: r.organization_name || undefined,
+        snils: r.snils || undefined,
+        inn: r.inn || undefined,
+        programName: r.program_name || undefined,
+        examDate: r.exam_date || undefined,
+        isPassed: r.is_passed,
+      })),
+      groupName: selectedGroup?.name,
+    });
+  };
+
+  const handleGenerateProtokol = () => {
+    const recordsToExport = selectedRecordIds.size > 0 
+      ? records.filter(r => selectedRecordIds.has(r.id))
+      : filteredRecords;
+    
+    if (recordsToExport.length === 0) {
+      toast.error("Выберите записи для формирования протокола");
+      return;
+    }
+
+    generateDocument({
+      templateType: "protokol",
+      persons: recordsToExport.map(r => ({
+        fullName: r.full_name,
+        position: r.position || undefined,
+        organization: r.organization_name || undefined,
+        snils: r.snils || undefined,
+        inn: r.inn || undefined,
+        programName: r.program_name || undefined,
+        examDate: r.exam_date || undefined,
+        isPassed: r.is_passed,
+      })),
+      groupName: selectedGroup?.name,
+    });
+  };
+
   // Fetch courses for enrollment
   const fetchCourses = useCallback(async () => {
     try {
