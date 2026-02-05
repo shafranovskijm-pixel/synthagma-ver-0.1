@@ -201,6 +201,23 @@ serve(async (req) => {
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+
+      // Also update labor_safety_profiles if exists
+      const laborSafetyUpdate: { login?: string; generated_password?: string } = {};
+      if (new_login) {
+        laborSafetyUpdate.login = new_login;
+      }
+      if (new_password) {
+        laborSafetyUpdate.generated_password = new_password;
+      }
+
+      if (Object.keys(laborSafetyUpdate).length > 0) {
+        await supabaseAdmin
+          .from("labor_safety_profiles")
+          .update(laborSafetyUpdate)
+          .eq("user_id", user_id);
+        console.log(`Labor safety profile also updated for user: ${user_id}`);
+      }
     }
 
     console.log(`Credentials updated for user: ${user_id} by: ${user.id}`);
