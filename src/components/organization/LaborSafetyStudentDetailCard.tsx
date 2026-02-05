@@ -169,7 +169,32 @@
        if (profileError && profileError.code !== 'PGRST116') throw profileError;
  
        if (existingProfile) {
-         setProfile(existingProfile);
+         // If password is missing in labor_safety_profiles, try to get from profiles table
+         let profileData = existingProfile;
+         if (!existingProfile.generated_password && existingProfile.user_id) {
+           const { data: mainProfile } = await supabase
+             .from("profiles")
+             .select("generated_password, login")
+             .eq("user_id", existingProfile.user_id)
+             .maybeSingle();
+           
+           if (mainProfile?.generated_password) {
+             profileData = {
+               ...existingProfile,
+               generated_password: mainProfile.generated_password,
+               login: existingProfile.login || mainProfile.login,
+             };
+             // Update labor_safety_profiles with the password for future
+             await supabase
+               .from("labor_safety_profiles")
+               .update({
+                 generated_password: mainProfile.generated_password,
+                 login: existingProfile.login || mainProfile.login,
+               })
+               .eq("id", existingProfile.id);
+           }
+         }
+         setProfile(profileData);
          
          // Load enrollments
          const { data: enrollmentData } = await supabase
@@ -257,7 +282,7 @@
              user_id: data.user_id,
              full_name: record.full_name,
              login: data.login,
-             generated_password: data.generated_password,
+             generated_password: data.password || data.generated_password,
              email: data.email,
              organization_id: organizationId,
              record_id: record.id,
