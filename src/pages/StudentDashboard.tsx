@@ -432,7 +432,9 @@ export default function StudentDashboard() {
     ? Math.round(courses.reduce((acc, c) => acc + c.progress, 0) / courses.length)
     : 0;
 
-  const firstName = profile?.full_name?.split(" ")[0] || "Ученик";
+  // В русских ФИО формат "Фамилия Имя Отчество", имя — второе слово
+  const nameParts = profile?.full_name?.split(" ") || [];
+  const firstName = nameParts.length >= 2 ? nameParts[1] : (nameParts[0] || "Ученик");
 
   const formatTime = (minutes: number) => {
     const hours = Math.floor(minutes / 60);
