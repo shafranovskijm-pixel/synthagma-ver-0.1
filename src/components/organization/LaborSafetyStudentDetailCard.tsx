@@ -134,7 +134,7 @@
    
    // Enrollment
    const [isAddingCourse, setIsAddingCourse] = useState(false);
-   const [selectedCourseId, setSelectedCourseId] = useState("");
+    const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>([]);
    const [isEnrolling, setIsEnrolling] = useState(false);
    
    // Reminders
@@ -500,33 +500,43 @@
    };
  
    const handleEnrollToCourse = async () => {
-     if (!profile || !selectedCourseId) return;
+      if (!profile || selectedCourseIds.length === 0) return;
      
      setIsEnrolling(true);
      try {
-       // Check existing enrollment
-       const { data: existing } = await supabase
-         .from("enrollments")
-         .select("id")
-         .eq("user_id", profile.user_id)
-         .eq("course_id", selectedCourseId)
-         .maybeSingle();
-       
-       if (existing) {
-         toast.info("Уже зачислен на этот курс");
-         setIsAddingCourse(false);
-         return;
+        let enrolledCount = 0;
+        let alreadyEnrolledCount = 0;
+        
+        for (const courseId of selectedCourseIds) {
+          // Check existing enrollment
+          const { data: existing } = await supabase
+            .from("enrollments")
+            .select("id")
+            .eq("user_id", profile.user_id)
+            .eq("course_id", courseId)
+            .maybeSingle();
+          
+          if (existing) {
+            alreadyEnrolledCount++;
+            continue;
+          }
+          
+          await supabase.from("enrollments").insert({
+            user_id: profile.user_id,
+            course_id: courseId,
+            status: "active",
+          });
+          enrolledCount++;
        }
        
-       await supabase.from("enrollments").insert({
-         user_id: profile.user_id,
-         course_id: selectedCourseId,
-         status: "active",
-       });
-       
-       toast.success("Зачислен на курс");
+        if (enrolledCount > 0) {
+          toast.success(`Зачислен на ${enrolledCount} курс(ов)`);
+        }
+        if (alreadyEnrolledCount > 0) {
+          toast.info(`Уже зачислен на ${alreadyEnrolledCount} курс(ов)`);
+        }
        setIsAddingCourse(false);
-       setSelectedCourseId("");
+        setSelectedCourseIds([]);
        loadData();
      } catch (error) {
        console.error("Error enrolling:", error);
@@ -1093,24 +1103,60 @@
                          </div>
  
                          {isAddingCourse && (
-                           <div className="flex gap-2 mb-4 p-3 rounded-lg bg-muted/50">
-                             <select
-                               className="flex-1 rounded-lg border border-input bg-background px-3 py-2 text-sm"
-                               value={selectedCourseId}
-                               onChange={(e) => setSelectedCourseId(e.target.value)}
-                             >
-                               <option value="">Выберите курс...</option>
-                               {coursesToEnroll.map(c => (
-                                 <option key={c.id} value={c.id}>{c.title}</option>
-                               ))}
-                             </select>
+                            <div className="mb-4 p-3 rounded-lg bg-muted/50 space-y-3">
+                              <div className="text-sm text-muted-foreground mb-2">
+                                Выберите курсы для зачисления:
+                              </div>
+                              <div className="max-h-48 overflow-y-auto space-y-2">
+                                {coursesToEnroll.map(c => (
+                                  <div
+                                    key={c.id}
+                                    className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${
+                                      selectedCourseIds.includes(c.id)
+                                        ? "bg-primary/10"
+                                        : "hover:bg-muted"
+                                    }`}
+                                    onClick={() => {
+                                      setSelectedCourseIds(prev =>
+                                        prev.includes(c.id)
+                                          ? prev.filter(id => id !== c.id)
+                                          : [...prev, c.id]
+                                      );
+                                    }}
+                                  >
+                                    <Checkbox
+                                      checked={selectedCourseIds.includes(c.id)}
+                                      onCheckedChange={(checked) => {
+                                        setSelectedCourseIds(prev =>
+                                          checked
+                                            ? [...prev, c.id]
+                                            : prev.filter(id => id !== c.id)
+                                        );
+                                      }}
+                                    />
+                                    <span className="text-sm">{c.title}</span>
+                                  </div>
+                                ))}
+                              </div>
+                              {selectedCourseIds.length > 0 && (
+                                <div className="text-xs text-muted-foreground">
+                                  Выбрано: {selectedCourseIds.length}
+                                </div>
+                              )}
+                              <div className="flex justify-end">
                              <Button
                                size="sm"
                                onClick={handleEnrollToCourse}
-                               disabled={!selectedCourseId || isEnrolling}
+                                disabled={selectedCourseIds.length === 0 || isEnrolling}
                              >
-                               {isEnrolling ? <Loader2 className="w-4 h-4 animate-spin" /> : "Зачислить"}
+                                {isEnrolling ? (
+                                  <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                                ) : (
+                                  <GraduationCap className="w-4 h-4 mr-1" />
+                                )}
+                                Зачислить ({selectedCourseIds.length})
                              </Button>
+                              </div>
                            </div>
                          )}
  
