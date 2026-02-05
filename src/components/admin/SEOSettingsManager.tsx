@@ -139,8 +139,8 @@
  
          <div className="bg-card rounded-xl border border-border p-4">
            <div className="flex items-center gap-3">
-             <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center">
-               <Search className="w-5 h-5 text-green-500" />
+             <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
+               <Search className="w-5 h-5 text-primary" />
              </div>
              <div>
                <p className="text-sm text-muted-foreground">Robots</p>
@@ -171,8 +171,8 @@
  
          <div className="bg-card rounded-xl border border-border p-4">
            <div className="flex items-center gap-3">
-             <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-               <Image className="w-5 h-5 text-blue-500" />
+             <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
+               <Image className="w-5 h-5 text-primary" />
              </div>
              <div>
                <p className="text-sm text-muted-foreground">OG Image</p>
@@ -285,10 +285,10 @@
              <div className="mt-6 p-4 bg-secondary/50 rounded-xl">
                <p className="text-xs text-muted-foreground mb-2">Предпросмотр в поиске Google:</p>
                <div className="space-y-1">
-                 <p className="text-blue-600 dark:text-blue-400 text-lg truncate hover:underline cursor-pointer">
+                 <p className="text-primary text-lg truncate hover:underline cursor-pointer">
                    {currentPage.title || 'Заголовок страницы'}
                  </p>
-                 <p className="text-green-700 dark:text-green-500 text-sm">
+                 <p className="text-sm text-muted-foreground">
                    {siteUrl}{currentPage.path}
                  </p>
                  <p className="text-sm text-muted-foreground line-clamp-2">
@@ -312,9 +312,9 @@
        </div>
  
        {/* SEO Tips */}
-       <div className="bg-blue-50 dark:bg-blue-950/30 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
-         <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">💡 SEO рекомендации</h4>
-         <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
+       <div className="bg-accent/50 rounded-xl p-4 border border-border">
+         <h4 className="font-medium mb-2">💡 SEO рекомендации</h4>
+         <ul className="text-sm text-muted-foreground space-y-1">
            <li>• Title должен содержать ключевое слово в начале</li>
            <li>• Description должен быть уникальным для каждой страницы</li>
            <li>• Используйте 3-5 ключевых слов на страницу</li>
