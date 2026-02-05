@@ -219,6 +219,7 @@
            .from("video_identifications")
            .select("*")
            .eq("user_id", existingProfile.user_id)
+           .eq("organization_id", organizationId)
            .order("created_at", { ascending: false });
          
          if (verificationData) setVerifications(verificationData);
