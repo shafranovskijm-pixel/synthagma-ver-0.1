@@ -482,7 +482,8 @@ export default function StudentDashboard() {
 
   // В русских ФИО формат "Фамилия Имя Отчество", имя — второе слово
   const nameParts = profile?.full_name?.split(" ") || [];
-  const firstName = nameParts.length >= 2 ? nameParts[1] : (nameParts[0] || "Ученик");
+  // For legacy accounts `full_name` may contain only one word (often surname). In that case, fallback to "Ученик".
+  const firstName = nameParts.length >= 2 ? nameParts[1] : "Ученик";
 
   const formatTime = (minutes: number) => {
     const hours = Math.floor(minutes / 60);
