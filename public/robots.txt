@@ -1,14 +1,47 @@
-User-agent: Googlebot
-Allow: /
-
-User-agent: Bingbot
-Allow: /
-
-User-agent: Twitterbot
-Allow: /
-
-User-agent: facebookexternalhit
-Allow: /
-
-User-agent: *
-Allow: /
+ # СИНТАГМА - Система дистанционного обучения
+ # https://synthagma-bloom.lovable.app
+ 
+ User-agent: *
+ Allow: /
+ 
+ # Crawl-delay for polite crawling
+ Crawl-delay: 1
+ 
+ # Allow specific bots full access
+ User-agent: Googlebot
+ Allow: /
+ 
+ User-agent: Bingbot
+ Allow: /
+ 
+ User-agent: Yandex
+ Allow: /
+ 
+ User-agent: Mail.RU_Bot
+ Allow: /
+ 
+ User-agent: Twitterbot
+ Allow: /
+ 
+ User-agent: facebookexternalhit
+ Allow: /
+ 
+ User-agent: LinkedInBot
+ Allow: /
+ 
+ User-agent: Slackbot
+ Allow: /
+ 
+ User-agent: TelegramBot
+ Allow: /
+ 
+ # Disallow admin and private sections
+ Disallow: /admin
+ Disallow: /organization
+ Disallow: /student
+ Disallow: /course-editor
+ Disallow: /course-builder
+ Disallow: /course-learning
+ 
+ # Sitemap location
+ Sitemap: https://synthagma-bloom.lovable.app/sitemap.xml
