@@ -879,32 +879,34 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
       let alreadyEnrolledCount = 0;
 
       for (const record of recordsToEnroll) {
-        const { data: existingProfiles, error: profileError } = await supabase
-          .from("profiles")
-          .select("user_id")
-          .eq("organization_id", organizationId)
-          .eq("full_name", record.full_name)
-          .limit(1);
+       // First check labor_safety_profiles for this record
+       const { data: laborProfile, error: laborProfileError } = await supabase
+         .from("labor_safety_profiles")
+         .select("user_id")
+         .eq("record_id", record.id)
+         .eq("organization_id", organizationId)
+         .maybeSingle();
 
-        if (profileError) {
-          console.error("Error checking profile:", profileError);
+       if (laborProfileError) {
+         console.error("Error checking labor safety profile:", laborProfileError);
           failCount++;
           continue;
         }
 
         let userId: string | null = null;
 
-        if (existingProfiles && existingProfiles.length > 0) {
-          userId = existingProfiles[0].user_id;
+       if (laborProfile?.user_id) {
+         userId = laborProfile.user_id;
         } else {
+         // No profile exists - create one via register-student
           const { data: registerData, error: registerError } = await supabase.functions.invoke(
             "register-student",
             {
               body: {
                 organization_id: organizationId,
                 full_name: record.full_name,
-                email: `${record.full_name.replace(/\s+/g, '_').toLowerCase()}_${Date.now()}@temp.local`,
-                no_login: true
+               email: `ls_${record.id.slice(0, 8)}@temp.local`,
+               no_login: false
               }
             }
           );
@@ -916,6 +918,19 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
           }
 
           userId = registerData.user_id;
+         
+         // Link to labor safety profile
+         await supabase
+           .from("labor_safety_profiles")
+           .upsert({
+             user_id: userId,
+             full_name: record.full_name,
+             login: registerData.login,
+             generated_password: registerData.generated_password,
+             email: registerData.email,
+             organization_id: organizationId,
+             record_id: record.id,
+           }, { onConflict: 'record_id' });
         }
 
         if (!userId) {
@@ -928,9 +943,9 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
           .select("id")
           .eq("user_id", userId)
           .eq("course_id", selectedCourseId)
-          .limit(1);
+         .maybeSingle();
 
-        if (existingEnrollment && existingEnrollment.length > 0) {
+       if (existingEnrollment) {
           alreadyEnrolledCount++;
           continue;
         }
