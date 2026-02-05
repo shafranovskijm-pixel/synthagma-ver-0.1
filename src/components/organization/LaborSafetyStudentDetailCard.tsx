@@ -802,6 +802,26 @@
                              </div>
                            </div>
                          )}
+
+                         {/* Send credentials button */}
+                         {profile.login && profile.generated_password && (
+                           <div className="mt-4 pt-4 border-t border-border">
+                             <Button
+                               variant="outline"
+                               size="sm"
+                               onClick={sendCredentialsToUser}
+                               disabled={isSendingCredentials}
+                               className="w-full gap-2"
+                             >
+                               {isSendingCredentials ? (
+                                 <Loader2 className="w-4 h-4 animate-spin" />
+                               ) : (
+                                 <Mail className="w-4 h-4" />
+                               )}
+                               Отправить данные на email
+                             </Button>
+                           </div>
+                         )}
                        </div>
                      )}
  
