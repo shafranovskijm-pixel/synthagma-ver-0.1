@@ -86,6 +86,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
  import { LaborSafetyStudentDetailCard } from "./LaborSafetyStudentDetailCard";
+import { useWordDocumentGenerator } from "@/hooks/useWordDocumentGenerator";
 
 interface Course {
   id: string;
@@ -184,7 +185,10 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
    // Student detail card
    const [selectedRecordForDetail, setSelectedRecordForDetail] = useState<LaborSafetyRecord | null>(null);
    const [showStudentDetailCard, setShowStudentDetailCard] = useState(false);
- 
+
+  // Word document generator
+  const { generateDocument, isGenerating } = useWordDocumentGenerator();
+
   // Filtered and sorted groups
   const filteredGroups = useMemo(() => {
     let result = [...groups];
