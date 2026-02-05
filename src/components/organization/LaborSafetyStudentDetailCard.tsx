@@ -32,6 +32,8 @@
    Check,
    RotateCcw,
    Plus,
+   Mail,
+   RefreshCw,
  } from "lucide-react";
  import { format } from "date-fns";
  import { ru } from "date-fns/locale";
@@ -547,6 +549,14 @@
  
    const checklistItems = [
      {
+       id: "contract",
+       label: "Договор",
+       icon: FileText,
+       completed: identityDocs.some(d => d.type === "contract" || d.type === "agreement"),
+       uploadable: true,
+       uploadType: "contract",
+     },
+     {
        id: "passport",
        label: "Паспорт / Св-во о рождении",
        icon: User,
@@ -561,21 +571,6 @@
        completed: identityDocs.some(d => d.type === "snils"),
        uploadable: true,
        uploadType: "snils",
-     },
-     {
-       id: "education_doc",
-       label: "Документ об образовании",
-       icon: GraduationCap,
-       completed: identityDocs.some(d => d.type === "education_document" || d.type === "diploma" || d.type === "attestat"),
-       uploadable: true,
-       uploadType: "education_document",
-     },
-     {
-       id: "video_id",
-       label: "Видеоидентификация",
-       icon: Video,
-       completed: latestVerification?.status === "verified",
-       uploadable: false,
      },
    ];
  
@@ -592,7 +587,7 @@
              <div>
                <div className="text-xl">{record.full_name}</div>
                <div className="text-sm font-normal text-muted-foreground">
-                 {record.position || "Должность не указана"} • {record.organization_name || "Организация не указана"}
+                 {profile?.email || record.organization_name || "Охрана труда"}
                </div>
              </div>
            </DialogTitle>
@@ -628,27 +623,28 @@
                  <>
                    {/* Profile Tab */}
                    <TabsContent value="profile" className="m-0 space-y-6">
-                     {/* Record Info */}
-                     <div className="grid grid-cols-2 gap-4">
-                       <div className="p-4 rounded-xl bg-muted/50">
-                         <div className="text-sm text-muted-foreground mb-1">СНИЛС</div>
-                         <div className="font-medium">{record.snils || "—"}</div>
-                       </div>
-                       <div className="p-4 rounded-xl bg-muted/50">
-                         <div className="text-sm text-muted-foreground mb-1">ИНН</div>
-                         <div className="font-medium">{record.inn || "—"}</div>
-                       </div>
-                       <div className="p-4 rounded-xl bg-muted/50">
-                         <div className="text-sm text-muted-foreground mb-1">Программа обучения</div>
-                         <div className="font-medium">{record.program_name || "—"}</div>
-                       </div>
-                       <div className="p-4 rounded-xl bg-muted/50">
-                         <div className="text-sm text-muted-foreground mb-1">Статус экзамена</div>
-                         <div className="font-medium">
-                           <Badge variant={record.is_passed ? "default" : "secondary"}>
-                             {record.is_passed ? "Сдано" : "Не сдано"}
-                           </Badge>
+                     {/* Email, Login, Courses stats */}
+                     <div className="grid grid-cols-3 gap-4">
+                       <div className="p-4 rounded-xl bg-card border border-border">
+                         <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                           <Mail className="w-4 h-4" />
+                           Email
                          </div>
+                         <div className="font-medium truncate">{profile?.email || "—"}</div>
+                       </div>
+                       <div className="p-4 rounded-xl bg-card border border-border">
+                         <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                           <User className="w-4 h-4" />
+                           Логин
+                         </div>
+                         <div className="font-medium">{profile?.login || "—"}</div>
+                       </div>
+                       <div className="p-4 rounded-xl bg-card border border-border">
+                         <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                           <RefreshCw className="w-4 h-4" />
+                           Курсов
+                         </div>
+                         <div className="font-medium">{enrollments.length}</div>
                        </div>
                      </div>
  
@@ -790,43 +786,70 @@
                              <CheckCircle2 className="w-5 h-5 text-primary" />
                              Чек-лист документов
                            </h3>
+                           <Button
+                             size="sm"
+                             variant="outline"
+                             className="gap-2"
+                             disabled={isSendingReminder}
+                             onClick={async () => {
+                               if (!profile) return;
+                               setIsSendingReminder(true);
+                               try {
+                                 const { error } = await supabase.functions.invoke("send-documents-reminder", {
+                                   body: { user_id: profile.user_id, organization_id: organizationId }
+                                 });
+                                 if (error) throw error;
+                                 toast.success("Напоминание отправлено");
+                               } catch (err) {
+                                 toast.error("Ошибка отправки напоминания");
+                               } finally {
+                                 setIsSendingReminder(false);
+                               }
+                             }}
+                           >
+                             {isSendingReminder ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bell className="w-4 h-4" />}
+                             Напомнить о документах
+                           </Button>
                          </div>
-                         <div className="grid grid-cols-2 gap-3">
+                         <div className="grid grid-cols-3 gap-3">
                            {checklistItems.map((item) => {
                              const isUploading = uploadingType === item.uploadType;
                              
                              return (
                                <div
                                  key={item.id}
-                                 className={`p-4 rounded-xl border transition-colors ${
+                                  className={`p-4 rounded-xl border transition-colors flex flex-col items-center text-center ${
                                    item.completed
                                      ? "bg-green-500/10 border-green-500/30"
                                      : "bg-muted/50 border-border"
                                  }`}
                                >
-                                 <div className="flex items-center gap-3">
-                                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                                  <div className="flex flex-col items-center gap-2">
+                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
                                      item.completed ? "bg-green-500/20" : "bg-muted"
                                    }`}>
                                      {item.completed ? (
-                                       <CheckCircle2 className="w-4 h-4 text-green-600" />
+                                        <CheckCircle2 className="w-5 h-5 text-green-600" />
                                      ) : (
-                                       <item.icon className="w-4 h-4 text-muted-foreground" />
+                                        <item.icon className="w-5 h-5 text-muted-foreground" />
                                      )}
                                    </div>
-                                   <span className="text-sm font-medium flex-1">{item.label}</span>
+                                    <span className="text-sm font-medium">{item.label}</span>
                                    {item.uploadable && !item.completed && (
                                      <Button
                                        size="sm"
                                        variant="ghost"
-                                       className="h-7 w-7 p-0"
+                                        className="h-7 gap-1 text-xs"
                                        onClick={() => handleUploadClick(item.uploadType!)}
                                        disabled={isUploading}
                                      >
                                        {isUploading ? (
                                          <Loader2 className="w-4 h-4 animate-spin" />
                                        ) : (
-                                         <Upload className="w-4 h-4" />
+                                          <>
+                                            <Upload className="w-3 h-3" />
+                                            Загрузить
+                                          </>
                                        )}
                                      </Button>
                                    )}
