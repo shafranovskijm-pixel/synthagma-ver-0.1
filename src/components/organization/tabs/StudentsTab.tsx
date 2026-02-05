@@ -282,6 +282,24 @@ export function StudentsTab({
                 <Trash2 className="w-4 h-4" />
                 <span className="hidden sm:inline">Удалить</span> ({selectedStudentIds.size})
               </Button>
+              <Button 
+                onClick={handleGeneratePrikaz} 
+                variant="outline" 
+                className="rounded-xl gap-2 shrink-0 text-xs lg:text-sm"
+                disabled={isGenerating}
+              >
+                {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+                <span className="hidden sm:inline">Приказ</span>
+              </Button>
+              <Button 
+                onClick={handleGenerateProtokol} 
+                variant="outline" 
+                className="rounded-xl gap-2 shrink-0 text-xs lg:text-sm"
+                disabled={isGenerating}
+              >
+                {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+                <span className="hidden sm:inline">Протокол</span>
+              </Button>
             </>
           )}
           <Button 
