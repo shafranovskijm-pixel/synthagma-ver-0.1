@@ -118,6 +118,10 @@ interface LaborSafetyRecord {
   is_passed: boolean;
   created_at?: string;
   courses?: { id: string; title: string }[];
+  // Enrollment progress data
+  enrollments?: { course_id: string; course_title: string; progress: number; status: string }[];
+  averageProgress?: number;
+  hasActiveEnrollment?: boolean;
 }
 
 interface LaborSafetyManagerProps {
@@ -301,17 +305,35 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
           // Get enrollments with course titles
           const { data: enrollments } = await supabase
             .from("enrollments")
-            .select("course_id, courses(id, title)")
+            .select("course_id, progress, status, courses(id, title)")
             .eq("user_id", profile.user_id);
           
-          const courses = (enrollments || [])
-            .map((e: any) => e.courses)
-            .filter(Boolean);
+          const enrollmentData = (enrollments || []).map((e: any) => ({
+            course_id: e.course_id,
+            course_title: e.courses?.title || "Курс",
+            progress: e.progress || 0,
+            status: e.status || "active",
+          }));
           
-          return { ...record, courses };
+          const courses = enrollmentData.map(e => ({ id: e.course_id, title: e.course_title }));
+          
+          // Calculate average progress
+          const avgProgress = enrollmentData.length > 0
+            ? Math.round(enrollmentData.reduce((sum, e) => sum + e.progress, 0) / enrollmentData.length)
+            : 0;
+          
+          const hasActive = enrollmentData.some(e => e.status === "active" && e.progress < 100);
+          
+          return { 
+            ...record, 
+            courses, 
+            enrollments: enrollmentData,
+            averageProgress: avgProgress,
+            hasActiveEnrollment: hasActive,
+          };
         }
         
-        return { ...record, courses: [] };
+        return { ...record, courses: [], enrollments: [], averageProgress: 0, hasActiveEnrollment: false };
       }));
       
       setRecords(recordsWithCourses);
@@ -1539,9 +1561,20 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
                         : '-'}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={record.is_passed ? "default" : "secondary"}>
-                        {record.is_passed ? 'Сдано' : 'Не сдано'}
-                      </Badge>
+                      {record.is_passed ? (
+                        <Badge variant="default">Сдано</Badge>
+                      ) : record.enrollments && record.enrollments.length > 0 ? (
+                        <div className="flex flex-col gap-1">
+                          <Badge variant="outline" className="text-xs">
+                            Обучение: {record.averageProgress || 0}%
+                          </Badge>
+                          {(record.averageProgress || 0) >= 100 && (
+                            <Badge variant="secondary" className="text-xs">Завершено</Badge>
+                          )}
+                        </div>
+                      ) : (
+                        <Badge variant="secondary">Не начато</Badge>
+                      )}
                     </TableCell>
                     <TableCell>
                       <DropdownMenu>
