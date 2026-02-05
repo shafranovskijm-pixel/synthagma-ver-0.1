@@ -1254,6 +1254,14 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
                 <FileText className="h-4 w-4 mr-2" />
                 Протокол
               </Button>
+              <Button variant="outline" size="sm" onClick={handleGeneratePrikaz} disabled={isGenerating}>
+                {isGenerating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileText className="h-4 w-4 mr-2" />}
+                Приказ (Word)
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleGenerateProtokol} disabled={isGenerating}>
+                {isGenerating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileText className="h-4 w-4 mr-2" />}
+                Протокол (Word)
+              </Button>
               <Button variant="outline" size="sm" onClick={openEnrollDialog}>
                 <GraduationCap className="h-4 w-4 mr-2" />
                 На курс
