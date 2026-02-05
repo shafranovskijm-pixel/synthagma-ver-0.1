@@ -255,11 +255,20 @@ export default function StudentDashboard() {
           effectiveBranding = laborOrg?.branding;
           effectiveDashboardSettings = laborOrg?.student_dashboard_settings;
           
-          setProfile(prev => ({
-            full_name: prev?.full_name || laborProfile.full_name || null,
-            organization_id: laborProfile.organization_id,
-            organization_name: effectiveOrgName
-          }));
+         setProfile(prev => {
+           // Prefer the more complete name (the one with more words)
+           const prevParts = prev?.full_name?.trim().split(/\s+/).length || 0;
+           const laborParts = laborProfile.full_name?.trim().split(/\s+/).length || 0;
+           const fullName = laborParts > prevParts 
+             ? laborProfile.full_name 
+             : (prev?.full_name || laborProfile.full_name);
+           
+           return {
+             full_name: fullName || null,
+             organization_id: laborProfile.organization_id,
+             organization_name: effectiveOrgName
+           };
+         });
         }
       }
 
