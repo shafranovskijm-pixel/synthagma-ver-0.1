@@ -10,11 +10,14 @@ import {
   Save,
   Loader2,
   Sparkles,
+  ImagePlus,
+  X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { Json } from "@/integrations/supabase/types";
+import { useExternalStorage } from "@/hooks/useExternalStorage";
 
 interface QuestionOption {
   text: string;
@@ -27,6 +30,7 @@ export interface TestQuestion {
   correct_answer: number;
   order_index: number;
   explanation?: string;
+  image_url?: string | null;
   isNew?: boolean;
   isDeleted?: boolean;
 }
@@ -59,6 +63,8 @@ export const TestQuestionEditor = forwardRef<TestQuestionEditorRef, TestQuestion
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [generatingExplanationId, setGeneratingExplanationId] = useState<string | null>(null);
+  const [uploadingImageId, setUploadingImageId] = useState<string | null>(null);
+  const { uploadFile, isExternalConfigured } = useExternalStorage();
 
   // Expose methods to parent via ref
   useImperativeHandle(ref, () => ({
@@ -125,7 +131,8 @@ export const TestQuestionEditor = forwardRef<TestQuestionEditorRef, TestQuestion
           options: (q.options as unknown as QuestionOption[]) || [],
           correct_answer: q.correct_answer,
           order_index: q.order_index,
-          explanation: (q as any).explanation || ''
+          explanation: (q as any).explanation || '',
+          image_url: q.image_url || null
         })));
       }
 
@@ -148,6 +155,7 @@ export const TestQuestionEditor = forwardRef<TestQuestionEditorRef, TestQuestion
       correct_answer: 0,
       order_index: questions.length,
       explanation: "",
+      image_url: null,
       isNew: true
     };
     setQuestions([...questions, newQuestion]);
@@ -204,6 +212,41 @@ export const TestQuestionEditor = forwardRef<TestQuestionEditorRef, TestQuestion
         q.id === id ? { ...q, isDeleted: true } : q
       ));
     }
+  };
+
+  const handleImageUpload = async (questionId: string, file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast.error("Выберите изображение");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Максимальный размер 5 МБ");
+      return;
+    }
+
+    setUploadingImageId(questionId);
+
+    try {
+      const fileExt = file.name.split(".").pop();
+      const fileName = `question-images/${questionId}-${Date.now()}.${fileExt}`;
+      
+      const result = await uploadFile(file, "course-files", fileName);
+      
+      if (!result) throw new Error("Ошибка загрузки файла");
+      
+      updateQuestion(questionId, { image_url: result.url });
+      toast.success("Изображение загружено");
+    } catch (error: any) {
+      console.error("Error uploading image:", error);
+      toast.error("Ошибка загрузки: " + (error.message || "Попробуйте позже"));
+    } finally {
+      setUploadingImageId(null);
+    }
+  };
+
+  const removeImage = (questionId: string) => {
+    updateQuestion(questionId, { image_url: null });
   };
 
   const generateExplanation = async (questionId: string) => {
@@ -295,7 +338,8 @@ export const TestQuestionEditor = forwardRef<TestQuestionEditorRef, TestQuestion
           options: q.options.filter(o => o.text.trim()) as unknown as Json,
           correct_answer: q.correct_answer,
           order_index: i,
-          explanation: q.explanation || null
+          explanation: q.explanation || null,
+          image_url: q.image_url || null
         };
 
         const { error } = await supabase
@@ -362,6 +406,58 @@ export const TestQuestionEditor = forwardRef<TestQuestionEditorRef, TestQuestion
                     placeholder="Введите текст вопроса..."
                     className="font-medium"
                   />
+
+                  {/* Image upload section */}
+                  <div className="space-y-2">
+                    {question.image_url ? (
+                      <div className="relative inline-block">
+                        <img
+                          src={question.image_url}
+                          alt="Изображение вопроса"
+                          className="max-h-48 rounded-lg border border-border object-contain"
+                        />
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                          onClick={() => removeImage(question.id)}
+                        >
+                          <X className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <label className="cursor-pointer">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleImageUpload(question.id, file);
+                            e.target.value = "";
+                          }}
+                          disabled={uploadingImageId === question.id}
+                        />
+                        <div className={cn(
+                          "inline-flex items-center gap-2 px-3 py-2 text-sm border border-dashed border-border rounded-lg",
+                          "hover:bg-secondary/50 transition-colors text-muted-foreground",
+                          uploadingImageId === question.id && "opacity-50 pointer-events-none"
+                        )}>
+                          {uploadingImageId === question.id ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Загрузка...
+                            </>
+                          ) : (
+                            <>
+                              <ImagePlus className="w-4 h-4" />
+                              Добавить изображение
+                            </>
+                          )}
+                        </div>
+                      </label>
+                    )}
+                  </div>
 
                   <div className="space-y-2">
                     <Label className="text-xs text-muted-foreground">
