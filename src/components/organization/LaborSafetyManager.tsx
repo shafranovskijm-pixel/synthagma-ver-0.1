@@ -117,6 +117,7 @@ interface LaborSafetyRecord {
   exam_date: string | null;
   is_passed: boolean;
   created_at?: string;
+  courses?: { id: string; title: string }[];
 }
 
 interface LaborSafetyManagerProps {
@@ -286,7 +287,34 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
         .order("full_name", { ascending: true });
       
       if (error) throw error;
-      setRecords(data || []);
+      
+      // Fetch course enrollments for each record via labor_safety_profiles
+      const recordsWithCourses = await Promise.all((data || []).map(async (record) => {
+        // Get profile linked to this record
+        const { data: profile } = await supabase
+          .from("labor_safety_profiles")
+          .select("user_id")
+          .eq("record_id", record.id)
+          .maybeSingle();
+        
+        if (profile?.user_id) {
+          // Get enrollments with course titles
+          const { data: enrollments } = await supabase
+            .from("enrollments")
+            .select("course_id, courses(id, title)")
+            .eq("user_id", profile.user_id);
+          
+          const courses = (enrollments || [])
+            .map((e: any) => e.courses)
+            .filter(Boolean);
+          
+          return { ...record, courses };
+        }
+        
+        return { ...record, courses: [] };
+      }));
+      
+      setRecords(recordsWithCourses);
     } catch (error) {
       console.error("Error fetching records:", error);
       toast.error("Ошибка загрузки записей");
@@ -1441,6 +1469,7 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
                   <TableHead>ФИО</TableHead>
                   <TableHead className="hidden md:table-cell">Должность</TableHead>
                   <TableHead className="hidden lg:table-cell">Организация</TableHead>
+                  <TableHead className="hidden md:table-cell">Курсы</TableHead>
                   <TableHead className="hidden lg:table-cell">СНИЛС</TableHead>
                   <TableHead className="hidden sm:table-cell">Дата экзамена</TableHead>
                   <TableHead className="w-24">Статус</TableHead>
@@ -1467,6 +1496,24 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
                      </TableCell>
                     <TableCell className="hidden md:table-cell">{record.position || '-'}</TableCell>
                     <TableCell className="hidden lg:table-cell">{record.organization_name || '-'}</TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      {record.courses && record.courses.length > 0 ? (
+                        <div className="flex flex-wrap gap-1 max-w-[200px]">
+                          {record.courses.slice(0, 2).map((course) => (
+                            <Badge key={course.id} variant="outline" className="text-xs truncate max-w-[150px]">
+                              {course.title}
+                            </Badge>
+                          ))}
+                          {record.courses.length > 2 && (
+                            <Badge variant="secondary" className="text-xs">
+                              +{record.courses.length - 2}
+                            </Badge>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
                     <TableCell className="hidden lg:table-cell">{record.snils || '-'}</TableCell>
                     <TableCell className="hidden sm:table-cell">
                       {record.exam_date 
