@@ -240,12 +240,27 @@
        }
  
        // Load available courses
-       const { data: coursesData } = await supabase
+       // First find the "Охрана труда" category
+       const { data: categoryData } = await supabase
+         .from("course_categories")
+         .select("id")
+         .eq("organization_id", organizationId)
+         .ilike("name", "%охрана труда%")
+         .maybeSingle();
+       
+       let coursesQuery = supabase
          .from("courses")
          .select("id, title")
          .eq("organization_id", organizationId)
          .eq("is_published", true)
          .order("title");
+       
+       // Filter by category if found
+       if (categoryData?.id) {
+         coursesQuery = coursesQuery.eq("category_id", categoryData.id);
+       }
+       
+       const { data: coursesData } = await coursesQuery;
        
        if (coursesData) setAvailableCourses(coursesData);
  
