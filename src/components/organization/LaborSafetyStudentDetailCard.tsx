@@ -138,6 +138,10 @@
    
    // Reminders
    const [isSendingReminder, setIsSendingReminder] = useState(false);
+   
+   // Creating profile
+   const [isCreatingProfile, setIsCreatingProfile] = useState(false);
+   const [isSendingCredentials, setIsSendingCredentials] = useState(false);
  
    useEffect(() => {
      if (isOpen && record) {
