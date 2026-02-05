@@ -217,59 +217,72 @@ export default function StudentDashboard() {
         .from("profiles")
         .select("full_name, organization_id, organizations(name, branding, student_dashboard_settings)")
         .eq("user_id", user.id)
-        .single();
+        .maybeSingle();
+
+      // Determine effective organization ID (may come from profiles or labor_safety_profiles)
+      let effectiveOrgId: string | null = profileData?.organization_id || null;
+      let effectiveOrgName: string | null = null;
+      let effectiveBranding: any = null;
+      let effectiveDashboardSettings: any = null;
 
       if (profileData) {
         const org = profileData.organizations as any;
+        effectiveOrgName = org?.name || null;
+        effectiveBranding = org?.branding;
+        effectiveDashboardSettings = org?.student_dashboard_settings;
+        
         setProfile({
           full_name: profileData.full_name,
-          organization_name: org?.name || null,
+          organization_name: effectiveOrgName,
           organization_id: profileData.organization_id
         });
+      }
 
-        // If no organization_id in profile, try to get from labor_safety_profiles
-        let effectiveOrgId = profileData.organization_id;
-        if (!effectiveOrgId) {
-          const { data: laborProfile } = await supabase
-            .from("labor_safety_profiles")
-            .select("organization_id, organizations(name)")
-            .eq("user_id", user.id)
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .maybeSingle();
+      // If no organization_id in profile, try to get from labor_safety_profiles
+      if (!effectiveOrgId) {
+        const { data: laborProfile } = await supabase
+          .from("labor_safety_profiles")
+          .select("organization_id, full_name, organizations(name, branding, student_dashboard_settings)")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        if (laborProfile?.organization_id) {
+          effectiveOrgId = laborProfile.organization_id;
+          const laborOrg = laborProfile.organizations as any;
+          effectiveOrgName = laborOrg?.name || null;
+          effectiveBranding = laborOrg?.branding;
+          effectiveDashboardSettings = laborOrg?.student_dashboard_settings;
           
-          if (laborProfile?.organization_id) {
-            effectiveOrgId = laborProfile.organization_id;
-            const laborOrg = laborProfile.organizations as any;
-            setProfile(prev => prev ? {
-              ...prev,
-              organization_id: laborProfile.organization_id,
-              organization_name: laborOrg?.name || prev.organization_name
-            } : prev);
-          }
+          setProfile(prev => ({
+            full_name: prev?.full_name || laborProfile.full_name || null,
+            organization_id: laborProfile.organization_id,
+            organization_name: effectiveOrgName
+          }));
         }
+      }
 
-        // Load branding from organization
-        if (org?.branding && typeof org.branding === 'object') {
-          const b = org.branding as Record<string, unknown>;
-          setBranding({
-            coverUrl: (b.coverUrl as string) || '',
-            primaryColor: (b.primaryColor as string) || '#6366f1',
-            secondaryColor: (b.secondaryColor as string) || '#8b5cf6',
-            logoUrl: (b.logoUrl as string) || '',
-            showOrgName: b.showOrgName !== false
-          });
-        }
+      // Load branding from organization
+      if (effectiveBranding && typeof effectiveBranding === 'object') {
+        const b = effectiveBranding as Record<string, unknown>;
+        setBranding({
+          coverUrl: (b.coverUrl as string) || '',
+          primaryColor: (b.primaryColor as string) || '#6366f1',
+          secondaryColor: (b.secondaryColor as string) || '#8b5cf6',
+          logoUrl: (b.logoUrl as string) || '',
+          showOrgName: b.showOrgName !== false
+        });
+      }
 
-        // Load dashboard settings from organization
-        if (org?.student_dashboard_settings && typeof org.student_dashboard_settings === 'object') {
-          const s = org.student_dashboard_settings as Record<string, unknown>;
-          setDashboardSettings({
-            showLibrary: s.showLibrary !== false,
-            showAchievements: s.showAchievements !== false,
-            showAiChat: s.showAiChat !== false
-          });
-        }
+      // Load dashboard settings from organization
+      if (effectiveDashboardSettings && typeof effectiveDashboardSettings === 'object') {
+        const s = effectiveDashboardSettings as Record<string, unknown>;
+        setDashboardSettings({
+          showLibrary: s.showLibrary !== false,
+          showAchievements: s.showAchievements !== false,
+          showAiChat: s.showAiChat !== false
+        });
       }
 
       // Load enrollments with courses
@@ -341,32 +354,13 @@ export default function StudentDashboard() {
         setTotalCompletedLessons(completedLessonsTotal);
       }
 
-      // Load identity documents progress
-      // Use effectiveOrgId which may come from labor_safety_profiles
-      const effectiveOrgIdForDocs = profile?.organization_id || profileData?.organization_id;
-      
-      // Also check labor_safety_profiles if no org in main profile
-      let orgIdToUse = effectiveOrgIdForDocs;
-      if (!orgIdToUse) {
-        const { data: laborProfile } = await supabase
-          .from("labor_safety_profiles")
-          .select("organization_id")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        
-        if (laborProfile?.organization_id) {
-          orgIdToUse = laborProfile.organization_id;
-        }
-      }
-      
-      if (orgIdToUse) {
+      // Load identity documents progress using effectiveOrgId computed above
+      if (effectiveOrgId) {
         const { data: identityDocs } = await supabase
           .from("student_identity_documents")
           .select("type")
           .eq("user_id", user.id)
-          .eq("organization_id", orgIdToUse);
+          .eq("organization_id", effectiveOrgId);
 
         if (identityDocs) {
           const hasPassport = identityDocs.some(d => d.type === "passport" || d.type === "birth_certificate");
@@ -385,7 +379,7 @@ export default function StudentDashboard() {
           .from("video_identifications")
           .select("status")
           .eq("user_id", user.id)
-          .eq("organization_id", orgIdToUse)
+          .eq("organization_id", effectiveOrgId)
           .in("status", ["approved", "verified"])
           .order("created_at", { ascending: false })
           .limit(1)
