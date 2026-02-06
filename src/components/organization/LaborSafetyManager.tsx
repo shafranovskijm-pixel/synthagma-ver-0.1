@@ -1566,7 +1566,7 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
                       ) : record.enrollments && record.enrollments.length > 0 ? (
                         <div className="flex flex-col gap-1">
                           <Badge variant="outline" className="text-xs">
-                            Обучение: {record.averageProgress || 0}%
+                            Обучение: {Math.min(record.averageProgress || 0, 100)}%
                           </Badge>
                           {(record.averageProgress || 0) >= 100 && (
                             <Badge variant="secondary" className="text-xs">Завершено</Badge>
