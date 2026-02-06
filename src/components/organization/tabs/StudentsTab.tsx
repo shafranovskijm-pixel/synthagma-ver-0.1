@@ -442,7 +442,7 @@ export function StudentsTab({
                            enrollmentsCount === 1 ? student.course : 
                            `${enrollmentsCount} курс(а)`}
                         </span>
-                        <span className="shrink-0">{student.progress}%</span>
+                        <span className="shrink-0">{Math.min(student.progress, 100)}%</span>
                       </div>
                       
                       <div className="flex items-center gap-1 mt-2">
@@ -561,8 +561,8 @@ export function StudentsTab({
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <Progress value={student.progress} className="w-20 h-2" />
-                          <span className="text-sm font-medium">{student.progress}%</span>
+                          <Progress value={Math.min(student.progress, 100)} className="w-20 h-2" />
+                          <span className="text-sm font-medium">{Math.min(student.progress, 100)}%</span>
                         </div>
                       </td>
                       <td className="px-6 py-4">
