@@ -442,7 +442,7 @@ export function StudentsTab({
                            enrollmentsCount === 1 ? student.course : 
                            `${enrollmentsCount} курс(а)`}
                         </span>
-                        <span className="shrink-0">{student.progress}%</span>
+                        <span className="shrink-0">{Math.min(student.progress, 100)}%</span>
                       </div>
                       
                       <div className="flex items-center gap-1 mt-2">
