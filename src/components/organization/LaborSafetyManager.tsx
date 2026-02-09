@@ -1444,16 +1444,7 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
                 <GraduationCap className="h-4 w-4 mr-2" />
                 На курс
               </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={generateCredentialsForSelected} 
-                disabled={isGeneratingCredentials}
-              >
-                {isGeneratingCredentials ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Key className="h-4 w-4 mr-2" />}
-                Логин/пароль
-              </Button>
-              <Button 
+              <Button
                 variant="ghost" 
                 size="sm" 
                 onClick={() => setSelectedRecordIds(new Set())}
