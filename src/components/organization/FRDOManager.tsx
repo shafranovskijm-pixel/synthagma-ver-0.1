@@ -347,7 +347,10 @@ export function FRDOManager({ organizationId }: FRDOManagerProps) {
 
           const startYear = enrollment?.started_at ? new Date(enrollment.started_at).getFullYear() : "";
           const endYear = enrollment?.completed_at ? new Date(enrollment.completed_at).getFullYear() : startYear;
-          const durationHours = getDuration(enrollment, courseSettings);
+          const durationHours = courseSettings?.frdo_duration_hours || getDuration(enrollment, courseSettings);
+          const financingSource = data.financing_source || courseSettings?.frdo_financing_source || "Платное обучение";
+          const educationForm = data.education_form || courseSettings?.frdo_education_form || "в образовательной организации";
+          const trainingForm = data.training_form || courseSettings?.training_form || "Очная";
 
           const documentType = exportType === "dpo"
             ? (courseSettings?.frdo_document_type || "Удостоверение о повышении квалификации")
