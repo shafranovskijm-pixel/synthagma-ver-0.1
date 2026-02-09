@@ -102,6 +102,7 @@ export function FRDOExportDialog({
   const [courseData, setCourseData] = useState<{
     title: string;
     duration: string | null;
+    training_form?: string | null;
     frdo_program_type?: string | null;
     frdo_document_type?: string | null;
     frdo_professional_area?: string | null;
