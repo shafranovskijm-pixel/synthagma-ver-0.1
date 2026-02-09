@@ -919,8 +919,8 @@ export function CourseDetailsModal({
                       <div className="space-y-2">
                         <Label>Наименование квалификации/специальности</Label>
                         <Input
-                          value={frdoSettings.frdo_qualification_name || ""}
-                          onChange={(e) => handleUpdateFrdoSettings("frdo_qualification_name", e.target.value || null)}
+                          defaultValue={frdoSettings.frdo_qualification_name || ""}
+                          onBlur={(e) => handleUpdateFrdoSettings("frdo_qualification_name", e.target.value || null)}
                           placeholder="Например: специалист по охране труда"
                           className="rounded-xl"
                           disabled={isSavingSettings}
