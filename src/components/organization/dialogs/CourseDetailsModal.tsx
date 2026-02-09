@@ -390,6 +390,25 @@ export function CourseDetailsModal({
     }
   };
 
+  const handleUpdateTrainingForm = async (value: string) => {
+    if (!course) return;
+    setTrainingForm(value);
+    setIsSavingSettings(true);
+    try {
+      const { error } = await supabase
+        .from("courses")
+        .update({ training_form: value })
+        .eq("id", course.id);
+      if (error) throw error;
+      onCourseUpdated?.();
+    } catch (error) {
+      console.error("Error updating training form:", error);
+      toast.error("Ошибка сохранения формы обучения");
+    } finally {
+      setIsSavingSettings(false);
+    }
+  };
+
   const handleResetProgress = async (student: Student) => {
     if (!course || !student.enrollment_id) return;
     
