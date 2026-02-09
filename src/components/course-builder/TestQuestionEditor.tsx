@@ -50,6 +50,7 @@ interface TestQuestionEditorProps {
   }>;
   onQuestionsProcessed?: () => void;
   onQuestionsChange?: (questions: TestQuestion[]) => void;
+  initialQuestions?: TestQuestion[];
 }
 
 export const TestQuestionEditor = forwardRef<TestQuestionEditorRef, TestQuestionEditorProps>(({ 
@@ -57,10 +58,11 @@ export const TestQuestionEditor = forwardRef<TestQuestionEditorRef, TestQuestion
   courseId, 
   generatedQuestions,
   onQuestionsProcessed,
-  onQuestionsChange 
+  onQuestionsChange,
+  initialQuestions
 }, ref) => {
-  const [questions, setQuestions] = useState<TestQuestion[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [questions, setQuestions] = useState<TestQuestion[]>(initialQuestions || []);
+  const [isLoading, setIsLoading] = useState(!initialQuestions || initialQuestions.length === 0);
   const [isSaving, setIsSaving] = useState(false);
   const [generatingExplanationId, setGeneratingExplanationId] = useState<string | null>(null);
   const [uploadingImageId, setUploadingImageId] = useState<string | null>(null);
@@ -99,6 +101,12 @@ export const TestQuestionEditor = forwardRef<TestQuestionEditorRef, TestQuestion
 
   useEffect(() => {
     const fetchQuestions = async () => {
+      // Skip fetching if we have initial questions from parent
+      if (initialQuestions && initialQuestions.length > 0) {
+        setIsLoading(false);
+        return;
+      }
+
       if (!lessonId) {
         setIsLoading(false);
         return;
@@ -140,7 +148,7 @@ export const TestQuestionEditor = forwardRef<TestQuestionEditorRef, TestQuestion
     };
 
     fetchQuestions();
-  }, [lessonId]);
+  }, [lessonId, initialQuestions]);
 
   const addQuestion = () => {
     const newQuestion: TestQuestion = {

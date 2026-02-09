@@ -263,6 +263,18 @@ const VideoPreviewInline = ({ content }: { content: string }) => {
 
 type LessonType = "text" | "video" | "image" | "test" | "audio" | "lesson" | "slider";
 
+interface TestQuestionLocal {
+  id: string;
+  question: string;
+  options: { text: string }[];
+  correct_answer: number;
+  order_index: number;
+  explanation?: string;
+  image_url?: string | null;
+  isNew?: boolean;
+  isDeleted?: boolean;
+}
+
 interface Lesson {
   id: string;
   type: LessonType;
@@ -275,6 +287,8 @@ interface Lesson {
   // Test-specific settings
   testPassingScore?: number; // 0-100, default 60
   testQuestionsToShow?: number | null; // null = show all
+  // Store questions locally for saving with course
+  questions?: TestQuestionLocal[];
 }
 
 const lessonIcons: Record<LessonType, any> = {
@@ -1377,6 +1391,7 @@ function SortableLessonItem({
               <TestQuestionEditor
                 lessonId={lesson.id}
                 courseId={courseId}
+                initialQuestions={lesson.questions as any}
                 generatedQuestions={(() => {
                   try {
                     const parsed = JSON.parse(lesson.content || '{}');
@@ -1386,6 +1401,10 @@ function SortableLessonItem({
                   }
                 })()}
                 onQuestionsProcessed={() => onUpdate({ content: '' })}
+                onQuestionsChange={(questions) => {
+                  // Store questions in lesson state for saving with course
+                  onUpdate({ questions: questions as TestQuestionLocal[] });
+                }}
               />
             </div>
           )}
@@ -1564,6 +1583,37 @@ export default function CourseBuilder() {
           .order("order_index");
 
         if (lessonsData) {
+          // Load questions for test lessons
+          const testLessonIds = lessonsData.filter(l => l.type === 'test').map(l => l.id);
+          let questionsMap: Record<string, TestQuestionLocal[]> = {};
+          
+          if (testLessonIds.length > 0) {
+            const { data: questionsData } = await supabase
+              .from("test_questions")
+              .select("*")
+              .in("lesson_id", testLessonIds)
+              .order("order_index");
+            
+            if (questionsData) {
+              for (const q of questionsData) {
+                if (!questionsMap[q.lesson_id]) {
+                  questionsMap[q.lesson_id] = [];
+                }
+                questionsMap[q.lesson_id].push({
+                  id: q.id,
+                  question: q.question,
+                  options: (q.options as unknown as { text: string }[]) || [],
+                  correct_answer: q.correct_answer,
+                  order_index: q.order_index,
+                  explanation: (q as any).explanation || '',
+                  image_url: q.image_url || null,
+                  isNew: false,
+                  isDeleted: false,
+                });
+              }
+            }
+          }
+
           setLessons(lessonsData.map(l => {
             const blocks = l.content ? jsonToBlocks(l.content) : [];
             return {
@@ -1576,6 +1626,8 @@ export default function CourseBuilder() {
               // Test settings from DB
               testPassingScore: (l as any).test_passing_score ?? 60,
               testQuestionsToShow: (l as any).test_questions_to_show ?? null,
+              // Load questions for test lessons
+              questions: l.type === 'test' ? (questionsMap[l.id] || []) : undefined,
             };
           }));
         }
@@ -2090,13 +2142,42 @@ export default function CourseBuilder() {
           }
         }
 
-        // Save test questions for each test lesson
+        // Save test questions for each test lesson from local state
         for (const lesson of lessons) {
-          if (lesson.type === "test") {
-            // Get questions from TestQuestionEditor via DOM query for ref
-            const testEditorRefs = document.querySelectorAll(`[data-lesson-id="${lesson.id}"]`);
-            // Questions are managed by TestQuestionEditor component - they save themselves
-            // We trigger save via the courseId being set which allows saving
+          if (lesson.type === "test" && lesson.questions && lesson.questions.length > 0) {
+            const activeQuestions = lesson.questions.filter(q => !q.isDeleted);
+            
+            // Delete removed questions
+            const toDelete = lesson.questions.filter(q => q.isDeleted && !q.isNew);
+            for (const q of toDelete) {
+              await supabase
+                .from("test_questions")
+                .delete()
+                .eq("id", q.id);
+            }
+            
+            // Upsert active questions
+            for (let i = 0; i < activeQuestions.length; i++) {
+              const q = activeQuestions[i];
+              const questionData = {
+                id: q.id,
+                lesson_id: lesson.id,
+                question: q.question.trim(),
+                options: q.options.filter(o => o.text.trim()),
+                correct_answer: q.correct_answer,
+                order_index: i,
+                explanation: q.explanation || null,
+                image_url: q.image_url || null
+              };
+
+              const { error: qError } = await supabase
+                .from("test_questions")
+                .upsert([questionData], { onConflict: "id" });
+
+              if (qError) {
+                console.error(`Error saving question:`, qError);
+              }
+            }
           }
         }
       }
