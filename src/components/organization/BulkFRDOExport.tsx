@@ -15,12 +15,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Download, Loader2, FileSpreadsheet, AlertCircle, CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
-import * as XLSX from "xlsx";
+import {
+  buildDPORow,
+  buildPORow,
+  exportFRDOExcel,
+  formatDateForFRDO,
+} from "@/utils/frdoExcelExport";
 
 interface Student {
   id: string;
@@ -79,11 +83,7 @@ interface EnrollmentData {
 }
 
 export function BulkFRDOExport({
-  isOpen,
-  onOpenChange,
-  organizationId,
-  selectedStudentIds,
-  students,
+  isOpen, onOpenChange, organizationId, selectedStudentIds, students,
 }: BulkFRDOExportProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -94,29 +94,16 @@ export function BulkFRDOExport({
   const [enrollmentsMap, setEnrollmentsMap] = useState<Map<string, EnrollmentData[]>>(new Map());
   const [studentsWithMissingData, setStudentsWithMissingData] = useState<string[]>([]);
 
-  const selectedStudents = students.filter(s => 
-    selectedStudentIds.has(s.user_id) || selectedStudentIds.has(s.id)
-  );
+  const selectedStudents = students.filter(s => selectedStudentIds.has(s.user_id) || selectedStudentIds.has(s.id));
 
-  useEffect(() => {
-    if (isOpen) {
-      loadData();
-    }
-  }, [isOpen]);
+  useEffect(() => { if (isOpen) loadData(); }, [isOpen]);
 
   const loadData = async () => {
     setIsLoading(true);
     try {
-      // Get unique user IDs from selected students
       const userIds = [...new Set(selectedStudents.map(s => s.user_id))];
-      
-      // Fetch FRDO data for all selected students
       const { data: frdoData, error: frdoError } = await supabase
-        .from("student_frdo_data")
-        .select("*")
-        .eq("organization_id", organizationId)
-        .in("user_id", userIds);
-
+        .from("student_frdo_data").select("*").eq("organization_id", organizationId).in("user_id", userIds);
       if (frdoError) throw frdoError;
 
       const dataMap = new Map<string, FRDOData>();
@@ -127,12 +114,9 @@ export function BulkFRDOExport({
         if (data) {
           dataMap.set(student.user_id, {
             user_id: data.user_id,
-            last_name: data.last_name || "",
-            first_name: data.first_name || "",
-            middle_name: data.middle_name || "",
-            birth_date: data.birth_date || "",
-            gender: data.gender || "",
-            snils: data.snils || "",
+            last_name: data.last_name || "", first_name: data.first_name || "",
+            middle_name: data.middle_name || "", birth_date: data.birth_date || "",
+            gender: data.gender || "", snils: data.snils || "",
             citizenship_code: data.citizenship_code || "643",
             education_level: data.education_level || "",
             education_doc_last_name: data.education_doc_last_name || "",
@@ -148,29 +132,17 @@ export function BulkFRDOExport({
             qualification_rank: data.qualification_rank || "",
           });
         } else {
-          // Parse name from student
           const nameParts = student.name.split(" ");
           dataMap.set(student.user_id, {
             user_id: student.user_id,
-            last_name: nameParts[0] || "",
-            first_name: nameParts[1] || "",
-            middle_name: nameParts[2] || "",
-            birth_date: "",
-            gender: "",
-            snils: "",
-            citizenship_code: "643",
-            education_level: "",
-            education_doc_last_name: "",
-            education_doc_series: "",
-            education_doc_number: "",
-            training_form: "Очная",
-            financing_source: "Платное обучение",
+            last_name: nameParts[0] || "", first_name: nameParts[1] || "",
+            middle_name: nameParts[2] || "", birth_date: "", gender: "", snils: "",
+            citizenship_code: "643", education_level: "",
+            education_doc_last_name: "", education_doc_series: "", education_doc_number: "",
+            training_form: "Очная", financing_source: "Платное обучение",
             education_form: "в образовательной организации",
-            professional_area: "",
-            specialty_group: "",
-            qualification_name: "",
-            profession_name: "",
-            qualification_rank: "",
+            professional_area: "", specialty_group: "",
+            qualification_name: "", profession_name: "", qualification_rank: "",
           });
           missing.push(student.name);
         }
@@ -179,12 +151,10 @@ export function BulkFRDOExport({
       setFrdoDataMap(dataMap);
       setStudentsWithMissingData(missing);
 
-      // Fetch enrollments for all selected students
       const { data: enrollmentsData, error: enrollError } = await supabase
         .from("enrollments")
         .select("user_id, course_id, started_at, completed_at, time_spent, courses(title, duration)")
         .in("user_id", userIds);
-
       if (enrollError) throw enrollError;
 
       const enrollMap = new Map<string, EnrollmentData[]>();
@@ -193,26 +163,15 @@ export function BulkFRDOExport({
       for (const e of enrollmentsData || []) {
         const courseData = e.courses as { title: string; duration: string | null } | null;
         const enrollment: EnrollmentData = {
-          user_id: e.user_id,
-          course_id: e.course_id,
+          user_id: e.user_id, course_id: e.course_id,
           course_title: courseData?.title || "Неизвестный курс",
-          started_at: e.started_at,
-          completed_at: e.completed_at,
-          time_spent: e.time_spent || 0,
-          duration: courseData?.duration || null,
+          started_at: e.started_at, completed_at: e.completed_at,
+          time_spent: e.time_spent || 0, duration: courseData?.duration || null,
         };
-
-        if (!enrollMap.has(e.user_id)) {
-          enrollMap.set(e.user_id, []);
-        }
+        if (!enrollMap.has(e.user_id)) enrollMap.set(e.user_id, []);
         enrollMap.get(e.user_id)!.push(enrollment);
-
         if (!courseSet.has(e.course_id)) {
-          courseSet.set(e.course_id, {
-            id: e.course_id,
-            title: courseData?.title || "Неизвестный курс",
-            duration: courseData?.duration || null,
-          });
+          courseSet.set(e.course_id, { id: e.course_id, title: courseData?.title || "Неизвестный курс", duration: courseData?.duration || null });
         }
       }
 
@@ -226,125 +185,63 @@ export function BulkFRDOExport({
     }
   };
 
-  const formatDateForExport = (dateStr: string) => {
-    if (!dateStr) return "";
-    try {
-      return format(new Date(dateStr), "M/d/yy");
-    } catch {
-      return dateStr;
-    }
-  };
-
-  const handleExport = () => {
+  const handleExport = async () => {
     setIsExporting(true);
-
     try {
-      const rows: Record<string, unknown>[] = [];
+      const rows: (string | number)[][] = [];
 
       for (const student of selectedStudents) {
         const frdoData = frdoDataMap.get(student.user_id);
         if (!frdoData) continue;
 
         const enrollments = enrollmentsMap.get(student.user_id) || [];
-        const filteredEnrollments = selectedCourseId === "all" 
-          ? enrollments 
-          : enrollments.filter(e => e.course_id === selectedCourseId);
-
+        const filteredEnrollments = selectedCourseId === "all" ? enrollments : enrollments.filter(e => e.course_id === selectedCourseId);
         if (filteredEnrollments.length === 0) continue;
 
         for (const enrollment of filteredEnrollments) {
-          const startYear = enrollment.started_at
-            ? new Date(enrollment.started_at).getFullYear()
-            : "";
-          const endYear = enrollment.completed_at
-            ? new Date(enrollment.completed_at).getFullYear()
-            : startYear;
-
+          const startYear = enrollment.started_at ? new Date(enrollment.started_at).getFullYear() : "";
+          const endYear = enrollment.completed_at ? new Date(enrollment.completed_at).getFullYear() : startYear;
           const durationHours = enrollment.duration
             ? parseInt(enrollment.duration.replace(/\D/g, "")) || 0
             : Math.round(enrollment.time_spent / 3600);
 
           if (exportType === "dpo") {
-            rows.push({
-              "Вид документа": "Удостоверение о повышении квалификации",
-              "Статус документа": "Оригинал",
-              "Подтверждение утраты": "Нет",
-              "Подтверждение обмена": "Нет",
-              "Подтверждение уничтожения": "Нет",
-              "Серия документа": "нет",
-              "Номер документа": "",
-              "Дата выдачи документа": formatDateForExport(enrollment.completed_at || ""),
-              "Регистрационный номер": "",
-              "Дополнительная профессиональная программа (повышение квалификации/ профессиональная переподготовка)": "Повышение квалификации",
-              "Наименование дополнительной профессиональной программы": enrollment.course_title,
-              "Наименование области профессиональной деятельности": frdoData.professional_area,
-              "Укрупненные группы специальностей": frdoData.specialty_group,
-              "Наименование квалификации, профессии, специальности": frdoData.qualification_name || "нет",
-              "Уровень образования ВО/СПО": frdoData.education_level,
-              "Фамилия указанная в дипломе о ВО или СПО": frdoData.education_doc_last_name,
-              "Серия документа о ВО/СПО": frdoData.education_doc_series,
-              "Номер документа о ВО/СПО": frdoData.education_doc_number,
-              "Год начала обучения (для документа о квалификации)": startYear,
-              "Год окончания обучения (для документа о квалификации)": endYear,
-              "Срок обучения, часов (для документа о квалификации)": durationHours,
-              "Фамилия получателя": frdoData.last_name,
-              "Имя получателя": frdoData.first_name,
-              "Отчество получателя": frdoData.middle_name,
-              "Дата рождения получателя": formatDateForExport(frdoData.birth_date),
-              "Пол получателя": frdoData.gender,
-              "СНИЛС": frdoData.snils,
-              "Форма обучения": frdoData.training_form,
-              "Источник финансирования обучения": frdoData.financing_source,
-              "Форма получения образования на момент прекращения образовательных отношений": frdoData.education_form,
-              "Гражданство получателя (код страны по ОКСМ)": frdoData.citizenship_code,
-              "Наименование документа об образовании (оригинала)": "",
-              "Серия (оригинала)": "",
-              "Номер (оригинала)": "",
-              "Регистрационный N (оригинала)": "",
-              "Дата выдачи (оригинала)": "",
-              "Фамилия получателя (оригинала)": "",
-              "Имя получателя (оригинала)": "",
-              "Отчество получателя (оригинала)": "",
-              "Номер документа для изменения": "",
-            });
+            rows.push(buildDPORow({
+              documentType: "Удостоверение о повышении квалификации",
+              docNumber: "", regNumber: "",
+              issueDate: formatDateForFRDO(enrollment.completed_at || ""),
+              programType: "Повышение квалификации",
+              programName: enrollment.course_title,
+              professionalArea: frdoData.professional_area,
+              specialtyGroup: frdoData.specialty_group,
+              qualificationName: frdoData.qualification_name || "нет",
+              educationLevel: frdoData.education_level,
+              educationDocLastName: frdoData.education_doc_last_name,
+              educationDocSeries: frdoData.education_doc_series,
+              educationDocNumber: frdoData.education_doc_number,
+              startYear, endYear, durationHours,
+              lastName: frdoData.last_name, firstName: frdoData.first_name, middleName: frdoData.middle_name,
+              birthDate: formatDateForFRDO(frdoData.birth_date),
+              gender: frdoData.gender, snils: frdoData.snils,
+              trainingForm: frdoData.training_form, financingSource: frdoData.financing_source,
+              educationForm: frdoData.education_form, citizenshipCode: frdoData.citizenship_code,
+            }));
           } else {
-            rows.push({
-              "Вид документа": "Свидетельство о профессии рабочего, должности служащего",
-              "Статус документа": "Оригинал",
-              "Подтверждение утраты": "Нет",
-              "Подтверждение обмена": "Нет",
-              "Подтверждение уничтожения": "Нет",
-              "Серия документа": "Нет",
-              "Номер документа": "",
-              "Дата выдачи документа": formatDateForExport(enrollment.completed_at || ""),
-              "Регистрационный номер": "",
-              "Программа профессионального обучения, направление подготовки": "Программа профессиональной подготовки по профессии рабочего, должности служащего",
-              "Наименование программы профессионального обучения": enrollment.course_title,
-              "Наименование профессий рабочих, должностей служащих": frdoData.profession_name,
-              "Присвоенный квалификационный разряд, класс, категория (при наличии)": frdoData.qualification_rank,
-              "Год начала обучения": startYear,
-              "Год окончания обучения": endYear,
-              "Срок обучения, часов": durationHours,
-              "Фамилия получателя": frdoData.last_name,
-              "Имя получателя": frdoData.first_name,
-              "Отчество получателя": frdoData.middle_name,
-              "Дата рождения получателя": formatDateForExport(frdoData.birth_date),
-              "Пол получателя": frdoData.gender,
-              "СНИЛС": frdoData.snils,
-              "Гражданство получателя (код страны по ОКСМ)": frdoData.citizenship_code,
-              "Форма обучения": frdoData.training_form,
-              "Источник финансирования обучения": frdoData.financing_source,
-              "Форма получения образования на момент прекращения образовательных отношений": frdoData.education_form,
-              "Наименование документа об образовании (оригинала)": "",
-              "Серия (оригинала)": "",
-              "Номер (оригинала)": "",
-              "Регистрационный N (оригинала)": "",
-              "Дата выдачи (оригинала)": "",
-              "Фамилия получателя (оригинала)": "",
-              "Имя получателя (оригинала)": "",
-              "Отчество получателя (оригинала)": "",
-              "Номер документа для изменения": "",
-            });
+            rows.push(buildPORow({
+              documentType: "Свидетельство о профессии рабочего, должности служащего",
+              docNumber: "", regNumber: "",
+              issueDate: formatDateForFRDO(enrollment.completed_at || ""),
+              programType: "Программа профессиональной подготовки по профессии рабочего, должности служащего",
+              programName: enrollment.course_title,
+              professionName: frdoData.profession_name,
+              qualificationRank: frdoData.qualification_rank,
+              startYear, endYear, durationHours,
+              lastName: frdoData.last_name, firstName: frdoData.first_name, middleName: frdoData.middle_name,
+              birthDate: formatDateForFRDO(frdoData.birth_date),
+              gender: frdoData.gender, snils: frdoData.snils, citizenshipCode: frdoData.citizenship_code,
+              trainingForm: frdoData.training_form, financingSource: frdoData.financing_source,
+              educationForm: frdoData.education_form,
+            }));
           }
         }
       }
@@ -355,13 +252,7 @@ export function BulkFRDOExport({
         return;
       }
 
-      const ws = XLSX.utils.json_to_sheet(rows);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "ФИС ФРДО");
-
-      const filename = `ФИС_ФРДО_${exportType.toUpperCase()}_${format(new Date(), "dd-MM-yyyy")}.xlsx`;
-      XLSX.writeFile(wb, filename);
-
+      await exportFRDOExcel(rows, exportType);
       toast.success(`Экспортировано ${rows.length} записей`);
       onOpenChange(false);
     } catch (error) {
@@ -382,9 +273,7 @@ export function BulkFRDOExport({
             </div>
             <div>
               <div className="text-xl">Массовый экспорт в ФИС ФРДО</div>
-              <div className="text-sm font-normal text-muted-foreground">
-                Выбрано студентов: {selectedStudents.length}
-              </div>
+              <div className="text-sm font-normal text-muted-foreground">Выбрано студентов: {selectedStudents.length}</div>
             </div>
           </DialogTitle>
         </DialogHeader>
@@ -402,8 +291,7 @@ export function BulkFRDOExport({
                   <div>
                     <p className="font-medium text-amber-600">Неполные данные</p>
                     <p className="text-sm text-muted-foreground mt-1">
-                      У {studentsWithMissingData.length} студентов нет заполненных данных ФРДО. 
-                      Откройте карточку каждого студента для заполнения.
+                      У {studentsWithMissingData.length} студентов нет заполненных данных ФРДО.
                     </p>
                   </div>
                 </div>
@@ -414,28 +302,21 @@ export function BulkFRDOExport({
               <div className="space-y-2">
                 <Label>Тип документа</Label>
                 <Select value={exportType} onValueChange={(v) => setExportType(v as "dpo" | "po")}>
-                  <SelectTrigger className="rounded-xl">
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="dpo">ДПО (повышение квалификации)</SelectItem>
                     <SelectItem value="po">ПО (профессиональное обучение)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-
               <div className="space-y-2">
                 <Label>Курс</Label>
                 <Select value={selectedCourseId} onValueChange={setSelectedCourseId}>
-                  <SelectTrigger className="rounded-xl">
-                    <SelectValue placeholder="Все курсы" />
-                  </SelectTrigger>
+                  <SelectTrigger className="rounded-xl"><SelectValue placeholder="Все курсы" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Все курсы</SelectItem>
                     {courses.map((course) => (
-                      <SelectItem key={course.id} value={course.id}>
-                        {course.title}
-                      </SelectItem>
+                      <SelectItem key={course.id} value={course.id}>{course.title}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -447,26 +328,15 @@ export function BulkFRDOExport({
               <ScrollArea className="h-40">
                 <div className="space-y-2">
                   {selectedStudents.map((student) => {
-                    const hasData = frdoDataMap.has(student.user_id);
                     const frdoData = frdoDataMap.get(student.user_id);
                     const hasRequiredFields = frdoData && frdoData.snils && frdoData.birth_date;
-                    
                     return (
-                      <div
-                        key={student.user_id}
-                        className="flex items-center justify-between p-2 rounded-lg bg-background"
-                      >
+                      <div key={student.user_id} className="flex items-center justify-between p-2 rounded-lg bg-background">
                         <div className="flex items-center gap-2">
-                          {hasRequiredFields ? (
-                            <CheckCircle2 className="w-4 h-4 text-green-500" />
-                          ) : (
-                            <AlertCircle className="w-4 h-4 text-amber-500" />
-                          )}
+                          {hasRequiredFields ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <AlertCircle className="w-4 h-4 text-amber-500" />}
                           <span className="text-sm">{student.name}</span>
                         </div>
-                        <span className="text-xs text-muted-foreground">
-                          {student.course || "Нет курса"}
-                        </span>
+                        <span className="text-xs text-muted-foreground">{student.course || "Нет курса"}</span>
                       </div>
                     );
                   })}
@@ -475,23 +345,9 @@ export function BulkFRDOExport({
             </div>
 
             <div className="flex justify-end gap-3">
-              <Button
-                variant="outline"
-                className="rounded-xl"
-                onClick={() => onOpenChange(false)}
-              >
-                Отмена
-              </Button>
-              <Button
-                className="rounded-xl gap-2"
-                onClick={handleExport}
-                disabled={isExporting || selectedStudents.length === 0}
-              >
-                {isExporting ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Download className="w-4 h-4" />
-                )}
+              <Button variant="outline" className="rounded-xl" onClick={() => onOpenChange(false)}>Отмена</Button>
+              <Button className="rounded-xl gap-2" onClick={handleExport} disabled={isExporting || selectedStudents.length === 0}>
+                {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                 Экспортировать ({selectedStudents.length})
               </Button>
             </div>
