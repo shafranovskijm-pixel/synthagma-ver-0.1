@@ -313,10 +313,10 @@ export function CourseTestReport({ courseId, courseName, organizationId }: Cours
           'Дата': new Date(a.completed_at).toLocaleString('ru-RU'),
           'Вопрос': d.questionText.replace(/<[^>]*>/g, '').substring(0, 500),
           'Ответ студента': d.selectedAnswer >= 0 && d.options[d.selectedAnswer] 
-            ? d.options[d.selectedAnswer].replace(/<[^>]*>/g, '').substring(0, 200) 
+            ? normalizeOption(d.options[d.selectedAnswer]).replace(/<[^>]*>/g, '').substring(0, 200) 
             : 'Нет ответа',
           'Правильный ответ': d.options[d.correctAnswer] 
-            ? d.options[d.correctAnswer].replace(/<[^>]*>/g, '').substring(0, 200) 
+            ? normalizeOption(d.options[d.correctAnswer]).replace(/<[^>]*>/g, '').substring(0, 200) 
             : ''
         });
       });
