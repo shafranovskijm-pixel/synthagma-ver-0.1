@@ -935,8 +935,8 @@ export function CourseDetailsModal({
                       <div className="space-y-2">
                         <Label>Наименование профессии</Label>
                         <Input
-                          value={frdoSettings.frdo_profession_name || ""}
-                          onChange={(e) => handleUpdateFrdoSettings("frdo_profession_name", e.target.value || null)}
+                          defaultValue={frdoSettings.frdo_profession_name || ""}
+                          onBlur={(e) => handleUpdateFrdoSettings("frdo_profession_name", e.target.value || null)}
                           placeholder="Например: машинист крана"
                           className="rounded-xl"
                           disabled={isSavingSettings}
