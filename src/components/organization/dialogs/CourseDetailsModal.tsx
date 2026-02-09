@@ -742,11 +742,15 @@ export function CourseDetailsModal({
             </TabsContent>
 
             <TabsContent value="tests" className="mt-0">
-              <CourseTestReport 
-                courseId={course.id} 
-                courseName={course.title} 
-                organizationId={organizationId || ""} 
-              />
+              <React.Suspense fallback={<div className="flex items-center justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>}>
+                <ErrorBoundaryFallback>
+                  <CourseTestReport 
+                    courseId={course.id} 
+                    courseName={course.title} 
+                    organizationId={organizationId || ""} 
+                  />
+                </ErrorBoundaryFallback>
+              </React.Suspense>
             </TabsContent>
 
             <TabsContent value="settings" className="mt-0 h-full">
