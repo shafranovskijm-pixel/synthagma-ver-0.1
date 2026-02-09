@@ -192,7 +192,7 @@ export function FRDOExportDialog({
     try {
       const { data, error } = await supabase
         .from("courses")
-        .select("title, duration, frdo_program_type, frdo_document_type, frdo_professional_area, frdo_specialty_group, frdo_qualification_name, frdo_profession_name, frdo_qualification_rank")
+        .select("title, duration, training_form, frdo_program_type, frdo_document_type, frdo_professional_area, frdo_specialty_group, frdo_qualification_name, frdo_profession_name, frdo_qualification_rank")
         .eq("id", courseId)
         .single();
 
