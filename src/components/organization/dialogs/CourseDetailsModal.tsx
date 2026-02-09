@@ -50,6 +50,7 @@ import {
   FRDO_DOCUMENT_TYPES,
   FRDO_PROFESSIONAL_AREAS,
   FRDO_SPECIALTY_GROUPS,
+  FRDO_TRAINING_FORMS,
   type CourseFRDOSettings,
 } from "@/constants/frdo";
 
@@ -66,6 +67,7 @@ interface Course {
   skip_video_identification?: boolean;
   sequential_lessons?: boolean;
   allow_video_seek?: boolean;
+  training_form?: string | null;
   // FRDO settings
   frdo_program_type?: string | null;
   frdo_document_type?: string | null;
@@ -126,6 +128,7 @@ export function CourseDetailsModal({
   const [skipVideoId, setSkipVideoId] = useState(course?.skip_video_identification || false);
   const [sequentialLessons, setSequentialLessons] = useState(course?.sequential_lessons || false);
   const [allowVideoSeek, setAllowVideoSeek] = useState(course?.allow_video_seek !== false);
+  const [trainingForm, setTrainingForm] = useState(course?.training_form || "Очная");
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [resetConfirmStudent, setResetConfirmStudent] = useState<Student | null>(null);
   const [isResetting, setIsResetting] = useState(false);
@@ -154,6 +157,7 @@ export function CourseDetailsModal({
       setSkipVideoId(course.skip_video_identification || false);
       setSequentialLessons(course.sequential_lessons || false);
       setAllowVideoSeek(course.allow_video_seek !== false);
+      setTrainingForm(course.training_form || "Очная");
       // Load FRDO settings from course
       setFrdoSettings({
         frdo_program_type: course.frdo_program_type || null,
@@ -381,6 +385,25 @@ export function CourseDetailsModal({
     } catch (error) {
       console.error("Error updating FRDO settings:", error);
       toast.error("Ошибка сохранения настроек FRDO");
+    } finally {
+      setIsSavingSettings(false);
+    }
+  };
+
+  const handleUpdateTrainingForm = async (value: string) => {
+    if (!course) return;
+    setTrainingForm(value);
+    setIsSavingSettings(true);
+    try {
+      const { error } = await supabase
+        .from("courses")
+        .update({ training_form: value })
+        .eq("id", course.id);
+      if (error) throw error;
+      onCourseUpdated?.();
+    } catch (error) {
+      console.error("Error updating training form:", error);
+      toast.error("Ошибка сохранения формы обучения");
     } finally {
       setIsSavingSettings(false);
     }
@@ -836,6 +859,27 @@ export function CourseDetailsModal({
                 </p>
                 
                 <div className="bg-secondary/30 rounded-xl p-4 space-y-4">
+                  {/* Training Form */}
+                  <div className="space-y-2">
+                    <Label>Форма обучения</Label>
+                    <Select
+                      value={trainingForm}
+                      onValueChange={handleUpdateTrainingForm}
+                      disabled={isSavingSettings}
+                    >
+                      <SelectTrigger className="rounded-xl">
+                        <SelectValue placeholder="Выберите форму обучения" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {FRDO_TRAINING_FORMS.map((form) => (
+                          <SelectItem key={form} value={form}>
+                            {form}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
                   {/* Program Type */}
                   <div className="space-y-2">
                     <Label>Тип программы</Label>

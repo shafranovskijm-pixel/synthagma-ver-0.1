@@ -26,6 +26,11 @@ import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import * as XLSX from "xlsx";
 import { FRDOExportDialog } from "./FRDOExportDialog";
+import {
+  detectGenderFromMiddleName,
+  generateDocumentNumber,
+  generateRegNumber,
+} from "@/constants/frdo";
 
 interface FRDOManagerProps {
   organizationId: string;
@@ -243,7 +248,7 @@ export function FRDOManager({ organizationId }: FRDOManagerProps) {
           first_name: data.first_name || "",
           middle_name: data.middle_name || "",
           birth_date: data.birth_date || "",
-          gender: data.gender || "",
+          gender: data.gender || detectGenderFromMiddleName(data.middle_name) || "",
           snils: data.snils || "",
           citizenship_code: data.citizenship_code || "643",
           education_level: data.education_level || "",
@@ -342,7 +347,7 @@ export function FRDOManager({ organizationId }: FRDOManagerProps) {
     }
   };
 
-  const handleBulkExport = (exportType: "dpo" | "po") => {
+  const handleBulkExport = async (exportType: "dpo" | "po") => {
     if (selectedStudents.size === 0) {
       toast.error("Выберите студентов для экспорта");
       return;
@@ -351,6 +356,15 @@ export function FRDOManager({ organizationId }: FRDOManagerProps) {
     setIsExporting(true);
 
     try {
+      // Get current year doc count for auto-numbering
+      const year = new Date().getFullYear();
+      const { count: baseCount } = await supabase
+        .from("education_document_records")
+        .select("*", { count: "exact", head: true })
+        .eq("organization_id", organizationId)
+        .gte("created_at", `${year}-01-01`);
+      
+      let docCounter = baseCount || 0;
       const rows: Record<string, unknown>[] = [];
 
       for (const userId of selectedStudents) {
@@ -389,18 +403,41 @@ export function FRDOManager({ organizationId }: FRDOManagerProps) {
 
         if (filteredEnrollments.length === 0) {
           // Add one row without course data
+          const docNum = generateDocumentNumber(docCounter);
+          const regNum = generateRegNumber(docCounter);
+          docCounter++;
           if (exportType === "dpo") {
-            rows.push(createDPORow(data, null, null));
+            rows.push(createDPORow(data, null, null, docNum, regNum));
           } else {
-            rows.push(createPORow(data, null, null));
+            rows.push(createPORow(data, null, null, docNum, regNum));
           }
         } else {
           for (const enrollment of filteredEnrollments) {
             const courseSettings = courses.find(c => c.id === enrollment.course_id) || null;
+            const docNum = generateDocumentNumber(docCounter);
+            const regNum = generateRegNumber(docCounter);
+            docCounter++;
+
+            // Create journal record
+            const documentType = exportType === "dpo"
+              ? (courseSettings?.frdo_document_type || "Удостоверение о повышении квалификации")
+              : (courseSettings?.frdo_document_type || "Свидетельство о профессии рабочего, должности служащего");
+
+            await supabase.from("education_document_records").insert({
+              organization_id: organizationId,
+              full_name: `${data.last_name} ${data.first_name} ${data.middle_name}`.trim(),
+              document_type: documentType,
+              document_number: docNum,
+              reg_number: regNum,
+              issue_date: enrollment.completed_at || new Date().toISOString(),
+              specialty_name: enrollment.course_title,
+              document_status: "Оригинал",
+            });
+
             if (exportType === "dpo") {
-              rows.push(createDPORow(data, enrollment, courseSettings));
+              rows.push(createDPORow(data, enrollment, courseSettings, docNum, regNum));
             } else {
-              rows.push(createPORow(data, enrollment, courseSettings));
+              rows.push(createPORow(data, enrollment, courseSettings, docNum, regNum));
             }
           }
         }
@@ -428,7 +465,7 @@ export function FRDOManager({ organizationId }: FRDOManagerProps) {
     }
   };
 
-  const createDPORow = (data: FRDOData, enrollment: EnrollmentData | null, courseSettings: Course | null) => {
+  const createDPORow = (data: FRDOData, enrollment: EnrollmentData | null, courseSettings: Course | null, docNumber = "", regNumber = "") => {
     const startYear = enrollment?.started_at ? new Date(enrollment.started_at).getFullYear() : "";
     const endYear = enrollment?.completed_at ? new Date(enrollment.completed_at).getFullYear() : startYear;
     const durationHours = enrollment?.duration 
@@ -451,9 +488,9 @@ export function FRDOManager({ organizationId }: FRDOManagerProps) {
       "Подтверждение обмена": "Нет",
       "Подтверждение уничтожения": "Нет",
       "Серия документа": "нет",
-      "Номер документа": "",
+      "Номер документа": docNumber,
       "Дата выдачи документа": formatDateForExport(enrollment?.completed_at || ""),
-      "Регистрационный номер": "",
+      "Регистрационный номер": regNumber,
       "Дополнительная профессиональная программа": programType,
       "Наименование дополнительной профессиональной программы": enrollment?.course_title || "",
       "Наименование области профессиональной деятельности": professionalArea,
@@ -479,7 +516,7 @@ export function FRDOManager({ organizationId }: FRDOManagerProps) {
     };
   };
 
-  const createPORow = (data: FRDOData, enrollment: EnrollmentData | null, courseSettings: Course | null) => {
+  const createPORow = (data: FRDOData, enrollment: EnrollmentData | null, courseSettings: Course | null, docNumber = "", regNumber = "") => {
     const startYear = enrollment?.started_at ? new Date(enrollment.started_at).getFullYear() : "";
     const endYear = enrollment?.completed_at ? new Date(enrollment.completed_at).getFullYear() : startYear;
     const durationHours = enrollment?.duration 
@@ -498,9 +535,9 @@ export function FRDOManager({ organizationId }: FRDOManagerProps) {
       "Подтверждение обмена": "Нет",
       "Подтверждение уничтожения": "Нет",
       "Серия документа": "Нет",
-      "Номер документа": "",
+      "Номер документа": docNumber,
       "Дата выдачи документа": formatDateForExport(enrollment?.completed_at || ""),
-      "Регистрационный номер": "",
+      "Регистрационный номер": regNumber,
       "Программа профессионального обучения": "Программа профессиональной подготовки",
       "Наименование программы профессионального обучения": enrollment?.course_title || "",
       "Наименование профессии": professionName,

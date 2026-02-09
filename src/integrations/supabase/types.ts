@@ -526,6 +526,7 @@ export type Database = {
           sequential_lessons: boolean
           skip_video_identification: boolean | null
           title: string
+          training_form: string | null
           updated_at: string
         }
         Insert: {
@@ -547,6 +548,7 @@ export type Database = {
           sequential_lessons?: boolean
           skip_video_identification?: boolean | null
           title: string
+          training_form?: string | null
           updated_at?: string
         }
         Update: {
@@ -568,6 +570,7 @@ export type Database = {
           sequential_lessons?: boolean
           skip_video_identification?: boolean | null
           title?: string
+          training_form?: string | null
           updated_at?: string
         }
         Relationships: [
