@@ -128,6 +128,7 @@ export function CourseDetailsModal({
   const [skipVideoId, setSkipVideoId] = useState(course?.skip_video_identification || false);
   const [sequentialLessons, setSequentialLessons] = useState(course?.sequential_lessons || false);
   const [allowVideoSeek, setAllowVideoSeek] = useState(course?.allow_video_seek !== false);
+  const [trainingForm, setTrainingForm] = useState(course?.training_form || "Очная");
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [resetConfirmStudent, setResetConfirmStudent] = useState<Student | null>(null);
   const [isResetting, setIsResetting] = useState(false);
