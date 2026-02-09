@@ -14,7 +14,7 @@ export const DPO_HEADERS = [
   "Наименование дополнительной профессиональной программы",
   "Наименование области профессиональной деятельности",
   "Укрупненные группы специальностей и (или) направлений подготовки",
-  "Наименование квалификации, разреза, класса, категории (при наличии)",
+  "Наименование квалификации, разряда, класса, категории (при наличии)",
   "Уровень имеющегося образования (ВО/СПО)",
   "Фамилия, указанная в документе о ВО или СПО",
   "Серия документа о ВО/СПО",
@@ -292,7 +292,7 @@ export async function exportFRDOExcel(
 export function formatDateForFRDO(dateStr: string): string {
   if (!dateStr) return "";
   try {
-    return format(new Date(dateStr), "M/d/yy");
+    return format(new Date(dateStr), "dd.MM.yyyy");
   } catch {
     return dateStr;
   }
