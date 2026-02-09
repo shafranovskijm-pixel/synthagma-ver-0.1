@@ -613,6 +613,25 @@ export function FRDOManager({ organizationId }: FRDOManagerProps) {
           <h2 className="text-2xl font-display font-semibold">ФИС ФРДО</h2>
           <p className="text-muted-foreground">Управление данными для федерального реестра</p>
         </div>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={() => handleBulkExport("dpo")}
+            className="rounded-xl gap-2"
+            disabled={isExporting || students.length === 0}
+          >
+            {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            Выгрузить ДПО
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => handleBulkExport("po")}
+            className="rounded-xl gap-2"
+            disabled={isExporting || students.length === 0}
+          >
+            {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            Выгрузить ПО
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
