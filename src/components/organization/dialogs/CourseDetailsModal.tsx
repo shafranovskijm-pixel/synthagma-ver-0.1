@@ -1023,7 +1023,7 @@ export function CourseDetailsModal({
                       defaultValue={frdoSettings.frdo_duration_hours ?? ""}
                       onBlur={(e) => {
                         const val = e.target.value ? parseInt(e.target.value) : null;
-                        handleUpdateFrdoSettings("frdo_duration_hours" as any, val as any);
+                        handleUpdateFrdoSettings("frdo_duration_hours", val);
                       }}
                       placeholder="Например: 72"
                       className="rounded-xl"
