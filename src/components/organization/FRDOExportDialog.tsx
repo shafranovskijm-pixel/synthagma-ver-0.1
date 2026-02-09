@@ -208,6 +208,7 @@ export function FRDOExportDialog({
           qualification_name: prev.qualification_name || data.frdo_qualification_name || "",
           profession_name: prev.profession_name || data.frdo_profession_name || "",
           qualification_rank: prev.qualification_rank || data.frdo_qualification_rank || "",
+          training_form: prev.training_form || data.training_form || "Очная",
         }));
       }
     } catch (error) {
