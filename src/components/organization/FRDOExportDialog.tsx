@@ -177,6 +177,8 @@ export function FRDOExportDialog({
           profession_name: prev.profession_name || data.frdo_profession_name || "",
           qualification_rank: prev.qualification_rank || data.frdo_qualification_rank || "",
           training_form: prev.training_form || data.training_form || "Очная",
+          financing_source: prev.financing_source || data.frdo_financing_source || "Платное обучение",
+          education_form: prev.education_form || data.frdo_education_form || "в образовательной организации",
         }));
       }
     } catch (error) {
