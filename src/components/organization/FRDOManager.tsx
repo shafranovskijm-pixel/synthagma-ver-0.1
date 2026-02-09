@@ -372,7 +372,7 @@ export function FRDOManager({ organizationId }: FRDOManagerProps) {
       let docCounter = baseCount || 0;
       const rows: Record<string, unknown>[] = [];
 
-      for (const userId of selectedStudents) {
+      for (const userId of exportUserIds) {
         const student = students.find(s => s.user_id === userId);
         const frdoData = frdoDataMap.get(userId);
         if (!student) continue;
