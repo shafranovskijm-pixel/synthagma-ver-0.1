@@ -192,7 +192,6 @@ export function CourseTestReport({ courseId, courseName, organizationId }: Cours
     const averageScore = filteredData.length > 0
       ? Math.round(filteredData.reduce((sum, a) => sum + (a.max_score > 0 ? (a.score / a.max_score) * 100 : 0), 0) / filteredData.length)
       : 0;
-      : 0;
     const uniqueStudentsCount = new Set(filteredData.map(a => a.user_id)).size;
 
     return {
