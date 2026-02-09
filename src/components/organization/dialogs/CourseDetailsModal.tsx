@@ -67,6 +67,7 @@ interface Course {
   skip_video_identification?: boolean;
   sequential_lessons?: boolean;
   allow_video_seek?: boolean;
+  training_form?: string | null;
   // FRDO settings
   frdo_program_type?: string | null;
   frdo_document_type?: string | null;
