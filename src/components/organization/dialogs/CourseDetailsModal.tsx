@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
@@ -741,7 +741,7 @@ export function CourseDetailsModal({
               />
             </TabsContent>
 
-            <TabsContent value="tests" className="mt-0 h-full">
+            <TabsContent value="tests" className="mt-0">
               <CourseTestReport 
                 courseId={course.id} 
                 courseName={course.title} 
