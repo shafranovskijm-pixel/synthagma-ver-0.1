@@ -576,7 +576,7 @@ export function CourseTestReport({ courseId, courseName, organizationId }: Cours
                                   <span className="text-muted-foreground">Ответ: </span>
                                   <span className={d.isCorrect ? 'text-sigma-green' : 'text-destructive'}>
                                     {d.selectedAnswer >= 0 && d.options[d.selectedAnswer] 
-                                      ? d.options[d.selectedAnswer].replace(/<[^>]*>/g, '').substring(0, 100)
+                                      ? normalizeOption(d.options[d.selectedAnswer]).replace(/<[^>]*>/g, '').substring(0, 100)
                                       : 'Нет ответа'}
                                   </span>
                                 </div>
