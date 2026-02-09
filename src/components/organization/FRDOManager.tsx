@@ -91,6 +91,10 @@ interface Course {
   frdo_qualification_name?: string | null;
   frdo_profession_name?: string | null;
   frdo_qualification_rank?: string | null;
+  frdo_duration_hours?: number | null;
+  frdo_financing_source?: string | null;
+  frdo_education_form?: string | null;
+  training_form?: string | null;
 }
 
 type FRDOStatus = "all" | "complete" | "incomplete" | "empty";
@@ -159,7 +163,7 @@ export function FRDOManager({ organizationId }: FRDOManagerProps) {
 
       const { data: enrollmentsData } = await supabase
         .from("enrollments")
-        .select("user_id, course_id, started_at, completed_at, time_spent, courses(id, title, duration, frdo_program_type, frdo_document_type, frdo_professional_area, frdo_specialty_group, frdo_qualification_name, frdo_profession_name, frdo_qualification_rank)")
+        .select("user_id, course_id, started_at, completed_at, time_spent, courses(id, title, duration, training_form, frdo_program_type, frdo_document_type, frdo_professional_area, frdo_specialty_group, frdo_qualification_name, frdo_profession_name, frdo_qualification_rank, frdo_duration_hours, frdo_financing_source, frdo_education_form)")
         .in("user_id", studentUserIds);
 
       const enrollMap = new Map<string, EnrollmentData[]>();
@@ -167,11 +171,13 @@ export function FRDOManager({ organizationId }: FRDOManagerProps) {
 
       for (const e of enrollmentsData || []) {
         const courseData = e.courses as { 
-          id: string; title: string; duration: string | null;
+          id: string; title: string; duration: string | null; training_form?: string | null;
           frdo_program_type?: string | null; frdo_document_type?: string | null;
           frdo_professional_area?: string | null; frdo_specialty_group?: string | null;
           frdo_qualification_name?: string | null; frdo_profession_name?: string | null;
           frdo_qualification_rank?: string | null;
+          frdo_duration_hours?: number | null; frdo_financing_source?: string | null;
+          frdo_education_form?: string | null;
         } | null;
         const enrollment: EnrollmentData = {
           user_id: e.user_id, course_id: e.course_id,
@@ -190,6 +196,8 @@ export function FRDOManager({ organizationId }: FRDOManagerProps) {
             frdo_professional_area: courseData.frdo_professional_area, frdo_specialty_group: courseData.frdo_specialty_group,
             frdo_qualification_name: courseData.frdo_qualification_name, frdo_profession_name: courseData.frdo_profession_name,
             frdo_qualification_rank: courseData.frdo_qualification_rank,
+            frdo_duration_hours: courseData.frdo_duration_hours, frdo_financing_source: courseData.frdo_financing_source,
+            frdo_education_form: courseData.frdo_education_form, training_form: courseData.training_form,
           });
         }
       }
@@ -339,7 +347,10 @@ export function FRDOManager({ organizationId }: FRDOManagerProps) {
 
           const startYear = enrollment?.started_at ? new Date(enrollment.started_at).getFullYear() : "";
           const endYear = enrollment?.completed_at ? new Date(enrollment.completed_at).getFullYear() : startYear;
-          const durationHours = getDuration(enrollment, courseSettings);
+          const durationHours = courseSettings?.frdo_duration_hours || getDuration(enrollment, courseSettings);
+          const financingSource = data.financing_source || courseSettings?.frdo_financing_source || "Платное обучение";
+          const educationForm = data.education_form || courseSettings?.frdo_education_form || "в образовательной организации";
+          const trainingForm = data.training_form || courseSettings?.training_form || "Очная";
 
           const documentType = exportType === "dpo"
             ? (courseSettings?.frdo_document_type || "Удостоверение о повышении квалификации")
@@ -377,8 +388,8 @@ export function FRDOManager({ organizationId }: FRDOManagerProps) {
               lastName: data.last_name, firstName: data.first_name, middleName: data.middle_name,
               birthDate: formatDateForFRDO(data.birth_date),
               gender: data.gender, snils: data.snils,
-              trainingForm: data.training_form, financingSource: data.financing_source,
-              educationForm: data.education_form, citizenshipCode: data.citizenship_code,
+              trainingForm, financingSource,
+              educationForm, citizenshipCode: data.citizenship_code,
             }));
           } else {
             const professionName = data.profession_name || courseSettings?.frdo_profession_name || "";
@@ -394,8 +405,8 @@ export function FRDOManager({ organizationId }: FRDOManagerProps) {
               lastName: data.last_name, firstName: data.first_name, middleName: data.middle_name,
               birthDate: formatDateForFRDO(data.birth_date),
               gender: data.gender, snils: data.snils, citizenshipCode: data.citizenship_code,
-              trainingForm: data.training_form, financingSource: data.financing_source,
-              educationForm: data.education_form,
+              trainingForm, financingSource,
+              educationForm,
             }));
           }
         };

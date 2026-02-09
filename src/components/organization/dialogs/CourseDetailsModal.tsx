@@ -76,6 +76,9 @@ interface Course {
   frdo_qualification_name?: string | null;
   frdo_profession_name?: string | null;
   frdo_qualification_rank?: string | null;
+  frdo_duration_hours?: number | null;
+  frdo_financing_source?: string | null;
+  frdo_education_form?: string | null;
 }
 
 interface Student {
@@ -150,6 +153,9 @@ export function CourseDetailsModal({
     frdo_qualification_name: null,
     frdo_profession_name: null,
     frdo_qualification_rank: null,
+    frdo_duration_hours: null,
+    frdo_financing_source: null,
+    frdo_education_form: null,
   });
 
   useEffect(() => {
@@ -167,6 +173,9 @@ export function CourseDetailsModal({
         frdo_qualification_name: course.frdo_qualification_name || null,
         frdo_profession_name: course.frdo_profession_name || null,
         frdo_qualification_rank: course.frdo_qualification_rank || null,
+        frdo_duration_hours: course.frdo_duration_hours ?? null,
+        frdo_financing_source: course.frdo_financing_source || null,
+        frdo_education_form: course.frdo_education_form || null,
       });
     }
   }, [course]);
@@ -351,7 +360,7 @@ export function CourseDetailsModal({
     }
   };
 
-  const handleUpdateFrdoSettings = async (field: keyof CourseFRDOSettings, value: string | null) => {
+  const handleUpdateFrdoSettings = async (field: keyof CourseFRDOSettings, value: string | number | null) => {
     if (!course) return;
     
     // Update local state immediately
@@ -360,7 +369,7 @@ export function CourseDetailsModal({
       
       // Auto-set document type when program type changes
       if (field === "frdo_program_type" && value) {
-        newSettings.frdo_document_type = FRDO_DOCUMENT_TYPES[value] || null;
+        newSettings.frdo_document_type = FRDO_DOCUMENT_TYPES[value as string] || null;
       }
       
       return newSettings;
@@ -368,7 +377,7 @@ export function CourseDetailsModal({
     
     setIsSavingSettings(true);
     try {
-      const updateData: Record<string, string | null> = { [field]: value };
+      const updateData: Record<string, string | number | null> = { [field]: value };
       
       // Auto-set document type when program type changes
       if (field === "frdo_program_type" && value) {
@@ -1005,6 +1014,58 @@ export function CourseDetailsModal({
                       Выберите тип программы для отображения дополнительных полей
                     </p>
                   )}
+
+                  {/* Duration Hours */}
+                  <div className="space-y-2">
+                    <Label>Срок обучения, часов (для документа о квалификации)</Label>
+                    <Input
+                      type="number"
+                      defaultValue={frdoSettings.frdo_duration_hours ?? ""}
+                      onBlur={(e) => {
+                        const val = e.target.value ? parseInt(e.target.value) : null;
+                        handleUpdateFrdoSettings("frdo_duration_hours", val);
+                      }}
+                      placeholder="Например: 72"
+                      className="rounded-xl"
+                      disabled={isSavingSettings}
+                    />
+                  </div>
+
+                  {/* Financing Source */}
+                  <div className="space-y-2">
+                    <Label>Источник финансирования обучения</Label>
+                    <Select
+                      value={frdoSettings.frdo_financing_source || ""}
+                      onValueChange={(value) => handleUpdateFrdoSettings("frdo_financing_source", value || null)}
+                      disabled={isSavingSettings}
+                    >
+                      <SelectTrigger className="rounded-xl">
+                        <SelectValue placeholder="Выберите источник финансирования" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Платное обучение">Платное обучение</SelectItem>
+                        <SelectItem value="Бюджетное обучение">Бюджетное обучение</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Education Form */}
+                  <div className="space-y-2">
+                    <Label>Форма получения образования на момент прекращения образовательных отношений</Label>
+                    <Select
+                      value={frdoSettings.frdo_education_form || ""}
+                      onValueChange={(value) => handleUpdateFrdoSettings("frdo_education_form", value || null)}
+                      disabled={isSavingSettings}
+                    >
+                      <SelectTrigger className="rounded-xl">
+                        <SelectValue placeholder="Выберите форму получения образования" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="в образовательной организации">в образовательной организации</SelectItem>
+                        <SelectItem value="вне образовательной организации">вне образовательной организации</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
             </TabsContent>

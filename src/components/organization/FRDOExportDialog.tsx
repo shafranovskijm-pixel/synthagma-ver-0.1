@@ -104,6 +104,8 @@ export function FRDOExportDialog({
     frdo_professional_area?: string | null; frdo_specialty_group?: string | null;
     frdo_qualification_name?: string | null; frdo_profession_name?: string | null;
     frdo_qualification_rank?: string | null;
+    frdo_duration_hours?: number | null; frdo_financing_source?: string | null;
+    frdo_education_form?: string | null;
   } | null>(null);
 
   useEffect(() => {
@@ -162,7 +164,7 @@ export function FRDOExportDialog({
   const loadCourseData = async (courseId: string) => {
     try {
       const { data, error } = await supabase.from("courses")
-        .select("title, duration, training_form, frdo_program_type, frdo_document_type, frdo_professional_area, frdo_specialty_group, frdo_qualification_name, frdo_profession_name, frdo_qualification_rank")
+        .select("title, duration, training_form, frdo_program_type, frdo_document_type, frdo_professional_area, frdo_specialty_group, frdo_qualification_name, frdo_profession_name, frdo_qualification_rank, frdo_duration_hours, frdo_financing_source, frdo_education_form")
         .eq("id", courseId).single();
       if (error) throw error;
       setCourseData(data);
@@ -175,6 +177,8 @@ export function FRDOExportDialog({
           profession_name: prev.profession_name || data.frdo_profession_name || "",
           qualification_rank: prev.qualification_rank || data.frdo_qualification_rank || "",
           training_form: prev.training_form || data.training_form || "Очная",
+          financing_source: prev.financing_source || data.frdo_financing_source || "Платное обучение",
+          education_form: prev.education_form || data.frdo_education_form || "в образовательной организации",
         }));
       }
     } catch (error) {
@@ -228,9 +232,9 @@ export function FRDOExportDialog({
 
     const startYear = enrollment.started_at ? new Date(enrollment.started_at).getFullYear() : "";
     const endYear = enrollment.completed_at ? new Date(enrollment.completed_at).getFullYear() : startYear;
-    const durationHours = courseData?.duration
-      ? parseInt(courseData.duration.replace(/\D/g, "")) || 0
-      : Math.round(enrollment.time_spent / 3600);
+    const durationHours = courseData?.frdo_duration_hours
+      || (courseData?.duration ? parseInt(courseData.duration.replace(/\D/g, "")) || 0 : 0)
+      || Math.round(enrollment.time_spent / 3600);
 
     const professionalArea = frдоData.professional_area || courseData?.frdo_professional_area || "";
     const specialtyGroup = frдоData.specialty_group || courseData?.frdo_specialty_group || "";
@@ -280,9 +284,9 @@ export function FRDOExportDialog({
 
     const startYear = enrollment.started_at ? new Date(enrollment.started_at).getFullYear() : "";
     const endYear = enrollment.completed_at ? new Date(enrollment.completed_at).getFullYear() : startYear;
-    const durationHours = courseData?.duration
-      ? parseInt(courseData.duration.replace(/\D/g, "")) || 0
-      : Math.round(enrollment.time_spent / 3600);
+    const durationHours = courseData?.frdo_duration_hours
+      || (courseData?.duration ? parseInt(courseData.duration.replace(/\D/g, "")) || 0 : 0)
+      || Math.round(enrollment.time_spent / 3600);
 
     const professionName = frдоData.profession_name || courseData?.frdo_profession_name || "";
     const qualificationRank = frдоData.qualification_rank || courseData?.frdo_qualification_rank || "";
