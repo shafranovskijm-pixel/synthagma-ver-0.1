@@ -514,6 +514,9 @@ export type Database = {
           description: string | null
           duration: string | null
           frdo_document_type: string | null
+          frdo_duration_hours: number | null
+          frdo_education_form: string | null
+          frdo_financing_source: string | null
           frdo_profession_name: string | null
           frdo_professional_area: string | null
           frdo_program_type: string | null
@@ -536,6 +539,9 @@ export type Database = {
           description?: string | null
           duration?: string | null
           frdo_document_type?: string | null
+          frdo_duration_hours?: number | null
+          frdo_education_form?: string | null
+          frdo_financing_source?: string | null
           frdo_profession_name?: string | null
           frdo_professional_area?: string | null
           frdo_program_type?: string | null
@@ -558,6 +564,9 @@ export type Database = {
           description?: string | null
           duration?: string | null
           frdo_document_type?: string | null
+          frdo_duration_hours?: number | null
+          frdo_education_form?: string | null
+          frdo_financing_source?: string | null
           frdo_profession_name?: string | null
           frdo_professional_area?: string | null
           frdo_program_type?: string | null
