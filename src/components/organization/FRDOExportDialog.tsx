@@ -281,7 +281,7 @@ export function FRDOExportDialog({
     }
   };
 
-  const handleExportDPO = () => {
+  const handleExportDPO = async () => {
     if (!student || !enrollment) {
       toast.error("Выберите курс для экспорта");
       return;
@@ -307,6 +307,32 @@ export function FRDOExportDialog({
       ? "Профессиональная переподготовка" 
       : "Повышение квалификации";
 
+    // Auto-generate document numbers
+    const year = new Date().getFullYear();
+    const { count } = await supabase
+      .from("education_document_records")
+      .select("*", { count: "exact", head: true })
+      .eq("organization_id", organizationId)
+      .gte("created_at", `${year}-01-01`);
+    
+    const existingCount = count || 0;
+    const docNumber = generateDocumentNumber(existingCount);
+    const regNumber = generateRegNumber(existingCount);
+
+    // Create journal record
+    await supabase.from("education_document_records").insert({
+      organization_id: organizationId,
+      enrollment_id: enrollment.id,
+      full_name: `${frдоData.last_name} ${frдоData.first_name} ${frдоData.middle_name}`.trim(),
+      document_type: documentType,
+      document_number: docNumber,
+      reg_number: regNumber,
+      issue_date: enrollment.completed_at || new Date().toISOString(),
+      specialty_name: courseData?.title || enrollment.course_title,
+      qualification_name: qualificationName,
+      document_status: "Оригинал",
+    });
+
     const row = {
       "Вид документа": documentType,
       "Статус документа": "Оригинал",
@@ -314,9 +340,9 @@ export function FRDOExportDialog({
       "Подтверждение обмена": "Нет",
       "Подтверждение уничтожения": "Нет",
       "Серия документа": "нет",
-      "Номер документа": "",
+      "Номер документа": docNumber,
       "Дата выдачи документа": formatDateForExport(enrollment.completed_at || ""),
-      "Регистрационный номер": "",
+      "Регистрационный номер": regNumber,
       "Дополнительная профессиональная программа (повышение квалификации/ профессиональная переподготовка)": programType,
       "Наименование дополнительной профессиональной программы": courseData?.title || enrollment.course_title,
       "Наименование области профессиональной деятельности": professionalArea,
@@ -351,9 +377,10 @@ export function FRDOExportDialog({
     };
 
     exportToExcel([row], `ФИС_ФРДО_ДПО_${frдоData.last_name}_${format(new Date(), "dd-MM-yyyy")}.xlsx`);
+    toast.success("Документ зарегистрирован в журнале");
   };
 
-  const handleExportPO = () => {
+  const handleExportPO = async () => {
     if (!student || !enrollment) {
       toast.error("Выберите курс для экспорта");
       return;
@@ -375,6 +402,32 @@ export function FRDOExportDialog({
     const qualificationRank = frдоData.qualification_rank || courseData?.frdo_qualification_rank || "";
     const documentType = courseData?.frdo_document_type || "Свидетельство о профессии рабочего, должности служащего";
 
+    // Auto-generate document numbers
+    const year = new Date().getFullYear();
+    const { count } = await supabase
+      .from("education_document_records")
+      .select("*", { count: "exact", head: true })
+      .eq("organization_id", organizationId)
+      .gte("created_at", `${year}-01-01`);
+    
+    const existingCount = count || 0;
+    const docNumber = generateDocumentNumber(existingCount);
+    const regNumber = generateRegNumber(existingCount);
+
+    // Create journal record
+    await supabase.from("education_document_records").insert({
+      organization_id: organizationId,
+      enrollment_id: enrollment.id,
+      full_name: `${frдоData.last_name} ${frдоData.first_name} ${frдоData.middle_name}`.trim(),
+      document_type: documentType,
+      document_number: docNumber,
+      reg_number: regNumber,
+      issue_date: enrollment.completed_at || new Date().toISOString(),
+      specialty_name: courseData?.title || enrollment.course_title,
+      qualification_name: professionName,
+      document_status: "Оригинал",
+    });
+
     const row = {
       "Вид документа": documentType,
       "Статус документа": "Оригинал",
@@ -382,9 +435,9 @@ export function FRDOExportDialog({
       "Подтверждение обмена": "Нет",
       "Подтверждение уничтожения": "Нет",
       "Серия документа": "Нет",
-      "Номер документа": "",
+      "Номер документа": docNumber,
       "Дата выдачи документа": formatDateForExport(enrollment.completed_at || ""),
-      "Регистрационный номер": "",
+      "Регистрационный номер": regNumber,
       "Программа профессионального обучения, направление подготовки": "Программа профессиональной подготовки по профессии рабочего, должности служащего",
       "Наименование программы профессионального обучения": courseData?.title || enrollment.course_title,
       "Наименование профессий рабочих, должностей служащих": professionName,
@@ -414,6 +467,7 @@ export function FRDOExportDialog({
     };
 
     exportToExcel([row], `ФИС_ФРДО_ПО_${frдоData.last_name}_${format(new Date(), "dd-MM-yyyy")}.xlsx`);
+    toast.success("Документ зарегистрирован в журнале");
   };
 
   const exportToExcel = (data: Record<string, unknown>[], filename: string) => {
