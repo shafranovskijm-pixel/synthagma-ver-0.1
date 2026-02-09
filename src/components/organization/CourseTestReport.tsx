@@ -10,6 +10,13 @@ import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
+// Helper to normalize option value (can be string or {text: string})
+function normalizeOption(opt: unknown): string {
+  if (typeof opt === 'string') return opt;
+  if (opt && typeof opt === 'object' && 'text' in opt) return String((opt as any).text);
+  return String(opt ?? '');
+}
+
 interface TestQuestion {
   id: string;
   question: string;
@@ -97,7 +104,7 @@ export function CourseTestReport({ courseId, courseName, organizationId }: Cours
           qMap.set(q.id, {
             id: q.id,
             question: q.question,
-            options: (q.options as string[]) || [],
+            options: Array.isArray(q.options) ? (q.options as unknown[]).map(normalizeOption) : [],
             correct_answer: q.correct_answer
           });
         });
@@ -183,7 +190,7 @@ export function CourseTestReport({ courseId, courseName, organizationId }: Cours
   const stats = useMemo(() => {
     const passedCount = filteredData.filter(a => a.score >= a.max_score * 0.7).length;
     const averageScore = filteredData.length > 0
-      ? Math.round(filteredData.reduce((sum, a) => sum + (a.score / a.max_score) * 100, 0) / filteredData.length)
+      ? Math.round(filteredData.reduce((sum, a) => sum + (a.max_score > 0 ? (a.score / a.max_score) * 100 : 0), 0) / filteredData.length)
       : 0;
     const uniqueStudentsCount = new Set(filteredData.map(a => a.user_id)).size;
 
@@ -263,7 +270,7 @@ export function CourseTestReport({ courseId, courseName, organizationId }: Cours
         'Тест': a.lesson_title,
         'Баллы': a.score,
         'Макс. баллы': a.max_score,
-        'Процент': Math.round((a.score / a.max_score) * 100) + '%',
+        'Процент': a.max_score > 0 ? Math.round((a.score / a.max_score) * 100) + '%' : '0%',
         'Результат': a.score >= a.max_score * 0.7 ? 'Пройден' : 'Не пройден',
         'Правильных': details.filter(d => d.isCorrect).length,
         'Неправильных': incorrectCount,
