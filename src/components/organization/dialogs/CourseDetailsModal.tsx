@@ -1036,7 +1036,7 @@ export function CourseDetailsModal({
                     <Label>Источник финансирования обучения</Label>
                     <Select
                       value={frdoSettings.frdo_financing_source || ""}
-                      onValueChange={(value) => handleUpdateFrdoSettings("frdo_financing_source" as any, value || null)}
+                      onValueChange={(value) => handleUpdateFrdoSettings("frdo_financing_source", value || null)}
                       disabled={isSavingSettings}
                     >
                       <SelectTrigger className="rounded-xl">
