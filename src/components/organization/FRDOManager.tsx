@@ -348,8 +348,13 @@ export function FRDOManager({ organizationId }: FRDOManagerProps) {
   };
 
   const handleBulkExport = async (exportType: "dpo" | "po") => {
-    if (selectedStudents.size === 0) {
-      toast.error("Выберите студентов для экспорта");
+    // If no students selected via checkboxes, export all filtered students
+    const exportUserIds = selectedStudents.size > 0 
+      ? selectedStudents 
+      : new Set(filteredStudents.map(s => s.user_id));
+
+    if (exportUserIds.size === 0) {
+      toast.error("Нет студентов для экспорта");
       return;
     }
 
