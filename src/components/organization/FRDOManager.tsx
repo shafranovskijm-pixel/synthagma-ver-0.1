@@ -388,8 +388,8 @@ export function FRDOManager({ organizationId }: FRDOManagerProps) {
               lastName: data.last_name, firstName: data.first_name, middleName: data.middle_name,
               birthDate: formatDateForFRDO(data.birth_date),
               gender: data.gender, snils: data.snils,
-              trainingForm: data.training_form, financingSource: data.financing_source,
-              educationForm: data.education_form, citizenshipCode: data.citizenship_code,
+              trainingForm, financingSource,
+              educationForm, citizenshipCode: data.citizenship_code,
             }));
           } else {
             const professionName = data.profession_name || courseSettings?.frdo_profession_name || "";
