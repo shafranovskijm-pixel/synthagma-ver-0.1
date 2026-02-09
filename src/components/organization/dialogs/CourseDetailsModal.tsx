@@ -1014,6 +1014,58 @@ export function CourseDetailsModal({
                       Выберите тип программы для отображения дополнительных полей
                     </p>
                   )}
+
+                  {/* Duration Hours */}
+                  <div className="space-y-2">
+                    <Label>Срок обучения, часов (для документа о квалификации)</Label>
+                    <Input
+                      type="number"
+                      defaultValue={frdoSettings.frdo_duration_hours ?? ""}
+                      onBlur={(e) => {
+                        const val = e.target.value ? parseInt(e.target.value) : null;
+                        handleUpdateFrdoSettings("frdo_duration_hours" as any, val as any);
+                      }}
+                      placeholder="Например: 72"
+                      className="rounded-xl"
+                      disabled={isSavingSettings}
+                    />
+                  </div>
+
+                  {/* Financing Source */}
+                  <div className="space-y-2">
+                    <Label>Источник финансирования обучения</Label>
+                    <Select
+                      value={frdoSettings.frdo_financing_source || ""}
+                      onValueChange={(value) => handleUpdateFrdoSettings("frdo_financing_source" as any, value || null)}
+                      disabled={isSavingSettings}
+                    >
+                      <SelectTrigger className="rounded-xl">
+                        <SelectValue placeholder="Выберите источник финансирования" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Платное обучение">Платное обучение</SelectItem>
+                        <SelectItem value="Бюджетное обучение">Бюджетное обучение</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Education Form */}
+                  <div className="space-y-2">
+                    <Label>Форма получения образования на момент прекращения образовательных отношений</Label>
+                    <Select
+                      value={frdoSettings.frdo_education_form || ""}
+                      onValueChange={(value) => handleUpdateFrdoSettings("frdo_education_form" as any, value || null)}
+                      disabled={isSavingSettings}
+                    >
+                      <SelectTrigger className="rounded-xl">
+                        <SelectValue placeholder="Выберите форму получения образования" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="в образовательной организации">в образовательной организации</SelectItem>
+                        <SelectItem value="вне образовательной организации">вне образовательной организации</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
             </TabsContent>

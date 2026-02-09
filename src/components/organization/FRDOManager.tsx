@@ -405,8 +405,8 @@ export function FRDOManager({ organizationId }: FRDOManagerProps) {
               lastName: data.last_name, firstName: data.first_name, middleName: data.middle_name,
               birthDate: formatDateForFRDO(data.birth_date),
               gender: data.gender, snils: data.snils, citizenshipCode: data.citizenship_code,
-              trainingForm: data.training_form, financingSource: data.financing_source,
-              educationForm: data.education_form,
+              trainingForm, financingSource,
+              educationForm,
             }));
           }
         };
