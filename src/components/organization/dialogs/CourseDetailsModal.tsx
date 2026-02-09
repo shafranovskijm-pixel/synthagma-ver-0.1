@@ -360,7 +360,7 @@ export function CourseDetailsModal({
     }
   };
 
-  const handleUpdateFrdoSettings = async (field: keyof CourseFRDOSettings, value: string | null) => {
+  const handleUpdateFrdoSettings = async (field: keyof CourseFRDOSettings, value: string | number | null) => {
     if (!course) return;
     
     // Update local state immediately
@@ -369,7 +369,7 @@ export function CourseDetailsModal({
       
       // Auto-set document type when program type changes
       if (field === "frdo_program_type" && value) {
-        newSettings.frdo_document_type = FRDO_DOCUMENT_TYPES[value] || null;
+        newSettings.frdo_document_type = FRDO_DOCUMENT_TYPES[value as string] || null;
       }
       
       return newSettings;
@@ -377,7 +377,7 @@ export function CourseDetailsModal({
     
     setIsSavingSettings(true);
     try {
-      const updateData: Record<string, string | null> = { [field]: value };
+      const updateData: Record<string, string | number | null> = { [field]: value };
       
       // Auto-set document type when program type changes
       if (field === "frdo_program_type" && value) {
