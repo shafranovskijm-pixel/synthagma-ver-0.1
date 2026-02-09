@@ -121,14 +121,14 @@ export const TestQuestionEditor = forwardRef<TestQuestionEditorRef, TestQuestion
       }
 
       try {
-        const { data: lessonData } = await supabase
+        const { data: lessonData, error: lessonError } = await supabase
           .from("lessons")
           .select("id")
           .eq("id", lessonId)
           .maybeSingle();
 
-        if (!lessonData) {
-          // Lesson doesn't exist yet - this is a new unsaved lesson
+        // If lesson doesn't exist or RLS blocks access - this is expected for unsaved lessons
+        if (lessonError || !lessonData) {
           setIsLoading(false);
           return;
         }
@@ -141,8 +141,7 @@ export const TestQuestionEditor = forwardRef<TestQuestionEditorRef, TestQuestion
 
         if (error) {
           console.error("Error fetching questions:", error);
-          // Only show error if lesson exists but questions failed to load
-          toast.error("Ошибка загрузки вопросов");
+          // Don't show toast - this can happen for new lessons or RLS restrictions
         } else if (data) {
           setQuestions(data.map(q => ({
             id: q.id,
@@ -156,6 +155,7 @@ export const TestQuestionEditor = forwardRef<TestQuestionEditorRef, TestQuestion
         }
       } catch (err) {
         console.error("Error in fetchQuestions:", err);
+        // Silent catch - don't show toast for fetch errors on unsaved lessons
       }
 
       setIsLoading(false);
