@@ -1,0 +1,1 @@
+ALTER TABLE public.courses ADD COLUMN training_form text DEFAULT 'Очная';
