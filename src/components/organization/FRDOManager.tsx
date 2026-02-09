@@ -163,7 +163,7 @@ export function FRDOManager({ organizationId }: FRDOManagerProps) {
 
       const { data: enrollmentsData } = await supabase
         .from("enrollments")
-        .select("user_id, course_id, started_at, completed_at, time_spent, courses(id, title, duration, frdo_program_type, frdo_document_type, frdo_professional_area, frdo_specialty_group, frdo_qualification_name, frdo_profession_name, frdo_qualification_rank)")
+        .select("user_id, course_id, started_at, completed_at, time_spent, courses(id, title, duration, training_form, frdo_program_type, frdo_document_type, frdo_professional_area, frdo_specialty_group, frdo_qualification_name, frdo_profession_name, frdo_qualification_rank, frdo_duration_hours, frdo_financing_source, frdo_education_form)")
         .in("user_id", studentUserIds);
 
       const enrollMap = new Map<string, EnrollmentData[]>();
