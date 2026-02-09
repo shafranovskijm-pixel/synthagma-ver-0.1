@@ -284,9 +284,9 @@ export function FRDOExportDialog({
 
     const startYear = enrollment.started_at ? new Date(enrollment.started_at).getFullYear() : "";
     const endYear = enrollment.completed_at ? new Date(enrollment.completed_at).getFullYear() : startYear;
-    const durationHours = courseData?.duration
-      ? parseInt(courseData.duration.replace(/\D/g, "")) || 0
-      : Math.round(enrollment.time_spent / 3600);
+    const durationHours = courseData?.frdo_duration_hours
+      || (courseData?.duration ? parseInt(courseData.duration.replace(/\D/g, "")) || 0 : 0)
+      || Math.round(enrollment.time_spent / 3600);
 
     const professionName = frдоData.profession_name || courseData?.frdo_profession_name || "";
     const qualificationRank = frдоData.qualification_rank || courseData?.frdo_qualification_rank || "";
