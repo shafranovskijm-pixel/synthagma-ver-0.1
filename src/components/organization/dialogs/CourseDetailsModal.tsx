@@ -157,6 +157,7 @@ export function CourseDetailsModal({
       setSkipVideoId(course.skip_video_identification || false);
       setSequentialLessons(course.sequential_lessons || false);
       setAllowVideoSeek(course.allow_video_seek !== false);
+      setTrainingForm(course.training_form || "Очная");
       // Load FRDO settings from course
       setFrdoSettings({
         frdo_program_type: course.frdo_program_type || null,
