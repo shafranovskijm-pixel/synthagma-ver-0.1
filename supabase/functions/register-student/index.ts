@@ -227,6 +227,31 @@ serve(async (req) => {
           role: "student"
         });
 
+      // Auto-create student_frdo_data with parsed name and gender detection
+      const nameParts = full_name.trim().split(/\s+/);
+      const lastName = nameParts[0] || "";
+      const firstName = nameParts[1] || "";
+      const middleName = nameParts[2] || "";
+      
+      // Detect gender from patronymic
+      let detectedGender: string | null = null;
+      if (middleName) {
+        const mn = middleName.toLowerCase();
+        if (mn.endsWith("ич") || mn.endsWith("ыч")) detectedGender = "Муж";
+        else if (mn.endsWith("на")) detectedGender = "Жен";
+      }
+
+      await supabaseAdmin
+        .from("student_frdo_data")
+        .upsert({
+          user_id: userId,
+          organization_id,
+          last_name: lastName,
+          first_name: firstName,
+          middle_name: middleName,
+          gender: detectedGender,
+        }, { onConflict: "user_id,organization_id" });
+
       console.log(`Created student: ${full_name}, login: ${generatedLogin}`);
     }
 
