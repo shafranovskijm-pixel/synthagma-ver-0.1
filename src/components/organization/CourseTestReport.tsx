@@ -270,7 +270,7 @@ export function CourseTestReport({ courseId, courseName, organizationId }: Cours
         'Тест': a.lesson_title,
         'Баллы': a.score,
         'Макс. баллы': a.max_score,
-        'Процент': Math.round((a.score / a.max_score) * 100) + '%',
+        'Процент': a.max_score > 0 ? Math.round((a.score / a.max_score) * 100) + '%' : '0%',
         'Результат': a.score >= a.max_score * 0.7 ? 'Пройден' : 'Не пройден',
         'Правильных': details.filter(d => d.isCorrect).length,
         'Неправильных': incorrectCount,
