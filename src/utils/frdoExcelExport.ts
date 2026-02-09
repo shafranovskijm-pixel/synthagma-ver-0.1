@@ -292,7 +292,7 @@ export async function exportFRDOExcel(
 export function formatDateForFRDO(dateStr: string): string {
   if (!dateStr) return "";
   try {
-    return format(new Date(dateStr), "M/d/yy");
+    return format(new Date(dateStr), "dd.MM.yyyy");
   } catch {
     return dateStr;
   }
