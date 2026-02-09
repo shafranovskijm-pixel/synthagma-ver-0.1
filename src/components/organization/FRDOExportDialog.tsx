@@ -170,11 +170,14 @@ export function FRDOExportDialog({
       } else {
         // Try to parse name from student.name
         const nameParts = student.name.split(" ");
+        const middleName = nameParts[2] || "";
+        const detectedGender = detectGenderFromMiddleName(middleName);
         setFrdoData({
           ...defaultFRDOData,
           last_name: nameParts[0] || "",
           first_name: nameParts[1] || "",
-          middle_name: nameParts[2] || "",
+          middle_name: middleName,
+          gender: detectedGender || "",
         });
       }
     } catch (error) {
