@@ -356,6 +356,15 @@ export function FRDOManager({ organizationId }: FRDOManagerProps) {
     setIsExporting(true);
 
     try {
+      // Get current year doc count for auto-numbering
+      const year = new Date().getFullYear();
+      const { count: baseCount } = await supabase
+        .from("education_document_records")
+        .select("*", { count: "exact", head: true })
+        .eq("organization_id", organizationId)
+        .gte("created_at", `${year}-01-01`);
+      
+      let docCounter = baseCount || 0;
       const rows: Record<string, unknown>[] = [];
 
       for (const userId of selectedStudents) {
