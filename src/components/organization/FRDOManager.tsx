@@ -348,8 +348,13 @@ export function FRDOManager({ organizationId }: FRDOManagerProps) {
   };
 
   const handleBulkExport = async (exportType: "dpo" | "po") => {
-    if (selectedStudents.size === 0) {
-      toast.error("Выберите студентов для экспорта");
+    // If no students selected via checkboxes, export all filtered students
+    const exportUserIds = selectedStudents.size > 0 
+      ? selectedStudents 
+      : new Set(filteredStudents.map(s => s.user_id));
+
+    if (exportUserIds.size === 0) {
+      toast.error("Нет студентов для экспорта");
       return;
     }
 
@@ -367,7 +372,7 @@ export function FRDOManager({ organizationId }: FRDOManagerProps) {
       let docCounter = baseCount || 0;
       const rows: Record<string, unknown>[] = [];
 
-      for (const userId of selectedStudents) {
+      for (const userId of exportUserIds) {
         const student = students.find(s => s.user_id === userId);
         const frdoData = frdoDataMap.get(userId);
         if (!student) continue;
@@ -612,6 +617,25 @@ export function FRDOManager({ organizationId }: FRDOManagerProps) {
         <div>
           <h2 className="text-2xl font-display font-semibold">ФИС ФРДО</h2>
           <p className="text-muted-foreground">Управление данными для федерального реестра</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={() => handleBulkExport("dpo")}
+            className="rounded-xl gap-2"
+            disabled={isExporting || students.length === 0}
+          >
+            {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            Выгрузить ДПО
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => handleBulkExport("po")}
+            className="rounded-xl gap-2"
+            disabled={isExporting || students.length === 0}
+          >
+            {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            Выгрузить ПО
+          </Button>
         </div>
       </div>
 
