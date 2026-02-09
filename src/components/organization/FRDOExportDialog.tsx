@@ -22,6 +22,15 @@ import { toast } from "sonner";
 import { Download, Save, Loader2, FileSpreadsheet, User, GraduationCap, Briefcase } from "lucide-react";
 import { format } from "date-fns";
 import * as XLSX from "xlsx";
+import {
+  detectGenderFromMiddleName,
+  generateDocumentNumber,
+  generateRegNumber,
+  FRDO_TRAINING_FORMS,
+  FRDO_FINANCING_SOURCES,
+  FRDO_EDUCATION_FORMS,
+  FRDO_EDUCATION_LEVELS,
+} from "@/constants/frdo";
 
 interface FRDOExportDialogProps {
   isOpen: boolean;

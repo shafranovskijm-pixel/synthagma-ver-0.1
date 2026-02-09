@@ -859,6 +859,27 @@ export function CourseDetailsModal({
                 </p>
                 
                 <div className="bg-secondary/30 rounded-xl p-4 space-y-4">
+                  {/* Training Form */}
+                  <div className="space-y-2">
+                    <Label>Форма обучения</Label>
+                    <Select
+                      value={trainingForm}
+                      onValueChange={handleUpdateTrainingForm}
+                      disabled={isSavingSettings}
+                    >
+                      <SelectTrigger className="rounded-xl">
+                        <SelectValue placeholder="Выберите форму обучения" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {FRDO_TRAINING_FORMS.map((form) => (
+                          <SelectItem key={form} value={form}>
+                            {form}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
                   {/* Program Type */}
                   <div className="space-y-2">
                     <Label>Тип программы</Label>
