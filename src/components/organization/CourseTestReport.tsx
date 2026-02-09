@@ -584,7 +584,7 @@ export function CourseTestReport({ courseId, courseName, organizationId }: Cours
                                   <div>
                                     <span className="text-muted-foreground">Правильно: </span>
                                     <span className="text-sigma-green">
-                                      {d.options[d.correctAnswer]?.replace(/<[^>]*>/g, '').substring(0, 100)}
+                                      {normalizeOption(d.options[d.correctAnswer]).replace(/<[^>]*>/g, '').substring(0, 100)}
                                     </span>
                                   </div>
                                 )}
