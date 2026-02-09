@@ -10,6 +10,13 @@ import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
+// Helper to normalize option value (can be string or {text: string})
+function normalizeOption(opt: unknown): string {
+  if (typeof opt === 'string') return opt;
+  if (opt && typeof opt === 'object' && 'text' in opt) return String((opt as any).text);
+  return String(opt ?? '');
+}
+
 interface TestQuestion {
   id: string;
   question: string;
