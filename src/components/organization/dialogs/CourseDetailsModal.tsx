@@ -919,8 +919,8 @@ export function CourseDetailsModal({
                       <div className="space-y-2">
                         <Label>Наименование квалификации/специальности</Label>
                         <Input
-                          value={frdoSettings.frdo_qualification_name || ""}
-                          onChange={(e) => handleUpdateFrdoSettings("frdo_qualification_name", e.target.value || null)}
+                          defaultValue={frdoSettings.frdo_qualification_name || ""}
+                          onBlur={(e) => handleUpdateFrdoSettings("frdo_qualification_name", e.target.value || null)}
                           placeholder="Например: специалист по охране труда"
                           className="rounded-xl"
                           disabled={isSavingSettings}
@@ -935,8 +935,8 @@ export function CourseDetailsModal({
                       <div className="space-y-2">
                         <Label>Наименование профессии</Label>
                         <Input
-                          value={frdoSettings.frdo_profession_name || ""}
-                          onChange={(e) => handleUpdateFrdoSettings("frdo_profession_name", e.target.value || null)}
+                          defaultValue={frdoSettings.frdo_profession_name || ""}
+                          onBlur={(e) => handleUpdateFrdoSettings("frdo_profession_name", e.target.value || null)}
                           placeholder="Например: машинист крана"
                           className="rounded-xl"
                           disabled={isSavingSettings}
@@ -946,8 +946,8 @@ export function CourseDetailsModal({
                       <div className="space-y-2">
                         <Label>Квалификационный разряд</Label>
                         <Input
-                          value={frdoSettings.frdo_qualification_rank || ""}
-                          onChange={(e) => handleUpdateFrdoSettings("frdo_qualification_rank", e.target.value || null)}
+                          defaultValue={frdoSettings.frdo_qualification_rank || ""}
+                          onBlur={(e) => handleUpdateFrdoSettings("frdo_qualification_rank", e.target.value || null)}
                           placeholder="Например: 4 разряд"
                           className="rounded-xl"
                           disabled={isSavingSettings}
