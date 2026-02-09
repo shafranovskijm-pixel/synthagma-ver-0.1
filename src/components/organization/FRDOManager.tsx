@@ -248,7 +248,7 @@ export function FRDOManager({ organizationId }: FRDOManagerProps) {
           first_name: data.first_name || "",
           middle_name: data.middle_name || "",
           birth_date: data.birth_date || "",
-          gender: data.gender || "",
+          gender: data.gender || detectGenderFromMiddleName(data.middle_name) || "",
           snils: data.snils || "",
           citizenship_code: data.citizenship_code || "643",
           education_level: data.education_level || "",
