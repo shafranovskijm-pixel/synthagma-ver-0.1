@@ -112,36 +112,50 @@ export const TestQuestionEditor = forwardRef<TestQuestionEditorRef, TestQuestion
         return;
       }
 
-      const { data: lessonData } = await supabase
-        .from("lessons")
-        .select("id")
-        .eq("id", lessonId)
-        .maybeSingle();
-
-      if (!lessonData) {
+      // Check if lessonId is a valid UUID format before querying
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(lessonId)) {
+        // This is a temporary ID for a new lesson, skip fetching
         setIsLoading(false);
         return;
       }
 
-      const { data, error } = await supabase
-        .from("test_questions")
-        .select("*")
-        .eq("lesson_id", lessonId)
-        .order("order_index");
+      try {
+        const { data: lessonData } = await supabase
+          .from("lessons")
+          .select("id")
+          .eq("id", lessonId)
+          .maybeSingle();
 
-      if (error) {
-        console.error("Error fetching questions:", error);
-        toast.error("Ошибка загрузки вопросов");
-      } else if (data) {
-        setQuestions(data.map(q => ({
-          id: q.id,
-          question: q.question,
-          options: (q.options as unknown as QuestionOption[]) || [],
-          correct_answer: q.correct_answer,
-          order_index: q.order_index,
-          explanation: (q as any).explanation || '',
-          image_url: q.image_url || null
-        })));
+        if (!lessonData) {
+          // Lesson doesn't exist yet - this is a new unsaved lesson
+          setIsLoading(false);
+          return;
+        }
+
+        const { data, error } = await supabase
+          .from("test_questions")
+          .select("*")
+          .eq("lesson_id", lessonId)
+          .order("order_index");
+
+        if (error) {
+          console.error("Error fetching questions:", error);
+          // Only show error if lesson exists but questions failed to load
+          toast.error("Ошибка загрузки вопросов");
+        } else if (data) {
+          setQuestions(data.map(q => ({
+            id: q.id,
+            question: q.question,
+            options: (q.options as unknown as QuestionOption[]) || [],
+            correct_answer: q.correct_answer,
+            order_index: q.order_index,
+            explanation: (q as any).explanation || '',
+            image_url: q.image_url || null
+          })));
+        }
+      } catch (err) {
+        console.error("Error in fetchQuestions:", err);
       }
 
       setIsLoading(false);
