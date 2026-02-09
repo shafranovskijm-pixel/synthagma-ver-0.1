@@ -196,6 +196,8 @@ export function FRDOManager({ organizationId }: FRDOManagerProps) {
             frdo_professional_area: courseData.frdo_professional_area, frdo_specialty_group: courseData.frdo_specialty_group,
             frdo_qualification_name: courseData.frdo_qualification_name, frdo_profession_name: courseData.frdo_profession_name,
             frdo_qualification_rank: courseData.frdo_qualification_rank,
+            frdo_duration_hours: courseData.frdo_duration_hours, frdo_financing_source: courseData.frdo_financing_source,
+            frdo_education_form: courseData.frdo_education_form, training_form: courseData.training_form,
           });
         }
       }
