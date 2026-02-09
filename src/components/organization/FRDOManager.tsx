@@ -171,11 +171,13 @@ export function FRDOManager({ organizationId }: FRDOManagerProps) {
 
       for (const e of enrollmentsData || []) {
         const courseData = e.courses as { 
-          id: string; title: string; duration: string | null;
+          id: string; title: string; duration: string | null; training_form?: string | null;
           frdo_program_type?: string | null; frdo_document_type?: string | null;
           frdo_professional_area?: string | null; frdo_specialty_group?: string | null;
           frdo_qualification_name?: string | null; frdo_profession_name?: string | null;
           frdo_qualification_rank?: string | null;
+          frdo_duration_hours?: number | null; frdo_financing_source?: string | null;
+          frdo_education_form?: string | null;
         } | null;
         const enrollment: EnrollmentData = {
           user_id: e.user_id, course_id: e.course_id,
