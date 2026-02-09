@@ -12,6 +12,7 @@ export interface Course {
   skip_video_identification?: boolean;
   sequential_lessons?: boolean;
   allow_video_seek?: boolean;
+  training_form?: string | null;
   // Computed fields
   lessonsCount?: number;
   studentsCount?: number;

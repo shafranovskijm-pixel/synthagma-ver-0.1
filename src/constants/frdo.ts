@@ -12,6 +12,40 @@ export const FRDO_DOCUMENT_TYPES: Record<string, string> = {
   professional_training: "Свидетельство о профессии рабочего, должности служащего",
 };
 
+export const FRDO_TRAINING_FORMS = [
+  "Очная",
+  "Заочная",
+  "Очно-заочная",
+] as const;
+
+export const FRDO_FINANCING_SOURCES = [
+  "Платное обучение",
+  "Бюджетное обучение",
+] as const;
+
+export const FRDO_EDUCATION_FORMS = [
+  "в образовательной организации",
+  "вне образовательной организации",
+] as const;
+
+export const FRDO_EDUCATION_LEVELS = [
+  "Высшее образование",
+  "Среднее профессиональное образование",
+  "Среднее общее образование",
+  "Основное общее образование",
+] as const;
+
+export const FRDO_DOCUMENT_STATUSES = [
+  "Оригинал",
+  "Дубликат",
+] as const;
+
+export const FRDO_PO_PROGRAM_TYPES = [
+  "Программа профессиональной подготовки по профессии рабочего, должности служащего",
+  "Программа переподготовки рабочих, служащих",
+  "Программа повышения квалификации рабочих, служащих",
+] as const;
+
 export const FRDO_PROFESSIONAL_AREAS = [
   "Административно-управленческая и офисная деятельность",
   "Архитектура, проектирование, геодезия, топография и дизайн",
@@ -92,4 +126,46 @@ export interface CourseFRDOSettings {
   frdo_qualification_name: string | null;
   frdo_profession_name: string | null;
   frdo_qualification_rank: string | null;
+}
+
+/**
+ * Detect gender from Russian middle name (patronymic).
+ * Returns "Муж" for masculine endings (ич, ыч),
+ * "Жен" for feminine endings (на, вна),
+ * or null if unable to determine.
+ */
+export function detectGenderFromMiddleName(middleName: string | null | undefined): string | null {
+  if (!middleName || middleName.trim().length < 2) return null;
+  
+  const name = middleName.trim().toLowerCase();
+  
+  // Masculine: ends with "ич" or "ыч" (e.g., Иванович, Фомич, Ильич, Кузьмич)
+  if (name.endsWith("ич") || name.endsWith("ыч")) {
+    return "Муж";
+  }
+  
+  // Feminine: ends with "на" (e.g., Ивановна, Сергеевна, Ильинична)
+  if (name.endsWith("на")) {
+    return "Жен";
+  }
+  
+  return null;
+}
+
+/**
+ * Generate document number in format YYYY/NNNNNN
+ */
+export function generateDocumentNumber(existingCount: number): string {
+  const year = new Date().getFullYear();
+  const num = (existingCount + 1).toString().padStart(6, "0");
+  return `${year}/${num}`;
+}
+
+/**
+ * Generate registration number in format ДОК-YYYY/NNNN
+ */
+export function generateRegNumber(existingCount: number): string {
+  const year = new Date().getFullYear();
+  const num = (existingCount + 1).toString().padStart(4, "0");
+  return `ДОК-${year}/${num}`;
 }
