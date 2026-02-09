@@ -1054,7 +1054,7 @@ export function CourseDetailsModal({
                     <Label>Форма получения образования на момент прекращения образовательных отношений</Label>
                     <Select
                       value={frdoSettings.frdo_education_form || ""}
-                      onValueChange={(value) => handleUpdateFrdoSettings("frdo_education_form" as any, value || null)}
+                      onValueChange={(value) => handleUpdateFrdoSettings("frdo_education_form", value || null)}
                       disabled={isSavingSettings}
                     >
                       <SelectTrigger className="rounded-xl">
