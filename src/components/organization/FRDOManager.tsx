@@ -91,6 +91,10 @@ interface Course {
   frdo_qualification_name?: string | null;
   frdo_profession_name?: string | null;
   frdo_qualification_rank?: string | null;
+  frdo_duration_hours?: number | null;
+  frdo_financing_source?: string | null;
+  frdo_education_form?: string | null;
+  training_form?: string | null;
 }
 
 type FRDOStatus = "all" | "complete" | "incomplete" | "empty";
