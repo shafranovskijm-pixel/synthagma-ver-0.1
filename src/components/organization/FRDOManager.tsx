@@ -403,18 +403,41 @@ export function FRDOManager({ organizationId }: FRDOManagerProps) {
 
         if (filteredEnrollments.length === 0) {
           // Add one row without course data
+          const docNum = generateDocumentNumber(docCounter);
+          const regNum = generateRegNumber(docCounter);
+          docCounter++;
           if (exportType === "dpo") {
-            rows.push(createDPORow(data, null, null));
+            rows.push(createDPORow(data, null, null, docNum, regNum));
           } else {
-            rows.push(createPORow(data, null, null));
+            rows.push(createPORow(data, null, null, docNum, regNum));
           }
         } else {
           for (const enrollment of filteredEnrollments) {
             const courseSettings = courses.find(c => c.id === enrollment.course_id) || null;
+            const docNum = generateDocumentNumber(docCounter);
+            const regNum = generateRegNumber(docCounter);
+            docCounter++;
+
+            // Create journal record
+            const documentType = exportType === "dpo"
+              ? (courseSettings?.frdo_document_type || "Удостоверение о повышении квалификации")
+              : (courseSettings?.frdo_document_type || "Свидетельство о профессии рабочего, должности служащего");
+
+            await supabase.from("education_document_records").insert({
+              organization_id: organizationId,
+              full_name: `${data.last_name} ${data.first_name} ${data.middle_name}`.trim(),
+              document_type: documentType,
+              document_number: docNum,
+              reg_number: regNum,
+              issue_date: enrollment.completed_at || new Date().toISOString(),
+              specialty_name: enrollment.course_title,
+              document_status: "Оригинал",
+            });
+
             if (exportType === "dpo") {
-              rows.push(createDPORow(data, enrollment, courseSettings));
+              rows.push(createDPORow(data, enrollment, courseSettings, docNum, regNum));
             } else {
-              rows.push(createPORow(data, enrollment, courseSettings));
+              rows.push(createPORow(data, enrollment, courseSettings, docNum, regNum));
             }
           }
         }
