@@ -347,7 +347,7 @@ export function FRDOManager({ organizationId }: FRDOManagerProps) {
     }
   };
 
-  const handleBulkExport = (exportType: "dpo" | "po") => {
+  const handleBulkExport = async (exportType: "dpo" | "po") => {
     if (selectedStudents.size === 0) {
       toast.error("Выберите студентов для экспорта");
       return;
