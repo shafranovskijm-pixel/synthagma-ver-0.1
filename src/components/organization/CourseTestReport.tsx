@@ -291,10 +291,10 @@ export function CourseTestReport({ courseId, courseName, organizationId }: Cours
           '№ вопроса': idx + 1,
           'Вопрос': d.questionText.replace(/<[^>]*>/g, '').substring(0, 500), // Strip HTML, limit length
           'Ответ студента': d.selectedAnswer >= 0 && d.options[d.selectedAnswer] 
-            ? d.options[d.selectedAnswer].replace(/<[^>]*>/g, '').substring(0, 200) 
+            ? normalizeOption(d.options[d.selectedAnswer]).replace(/<[^>]*>/g, '').substring(0, 200) 
             : 'Нет ответа',
           'Правильный ответ': d.options[d.correctAnswer] 
-            ? d.options[d.correctAnswer].replace(/<[^>]*>/g, '').substring(0, 200) 
+            ? normalizeOption(d.options[d.correctAnswer]).replace(/<[^>]*>/g, '').substring(0, 200) 
             : '',
           'Результат': d.isCorrect ? '✓ Верно' : '✗ Неверно'
         });
@@ -313,10 +313,10 @@ export function CourseTestReport({ courseId, courseName, organizationId }: Cours
           'Дата': new Date(a.completed_at).toLocaleString('ru-RU'),
           'Вопрос': d.questionText.replace(/<[^>]*>/g, '').substring(0, 500),
           'Ответ студента': d.selectedAnswer >= 0 && d.options[d.selectedAnswer] 
-            ? d.options[d.selectedAnswer].replace(/<[^>]*>/g, '').substring(0, 200) 
+            ? normalizeOption(d.options[d.selectedAnswer]).replace(/<[^>]*>/g, '').substring(0, 200) 
             : 'Нет ответа',
           'Правильный ответ': d.options[d.correctAnswer] 
-            ? d.options[d.correctAnswer].replace(/<[^>]*>/g, '').substring(0, 200) 
+            ? normalizeOption(d.options[d.correctAnswer]).replace(/<[^>]*>/g, '').substring(0, 200) 
             : ''
         });
       });
@@ -576,7 +576,7 @@ export function CourseTestReport({ courseId, courseName, organizationId }: Cours
                                   <span className="text-muted-foreground">Ответ: </span>
                                   <span className={d.isCorrect ? 'text-sigma-green' : 'text-destructive'}>
                                     {d.selectedAnswer >= 0 && d.options[d.selectedAnswer] 
-                                      ? d.options[d.selectedAnswer].replace(/<[^>]*>/g, '').substring(0, 100)
+                                      ? normalizeOption(d.options[d.selectedAnswer]).replace(/<[^>]*>/g, '').substring(0, 100)
                                       : 'Нет ответа'}
                                   </span>
                                 </div>
@@ -584,7 +584,7 @@ export function CourseTestReport({ courseId, courseName, organizationId }: Cours
                                   <div>
                                     <span className="text-muted-foreground">Правильно: </span>
                                     <span className="text-sigma-green">
-                                      {d.options[d.correctAnswer]?.replace(/<[^>]*>/g, '').substring(0, 100)}
+                                      {normalizeOption(d.options[d.correctAnswer]).replace(/<[^>]*>/g, '').substring(0, 100)}
                                     </span>
                                   </div>
                                 )}
