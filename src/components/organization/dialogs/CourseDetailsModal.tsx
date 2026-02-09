@@ -741,7 +741,7 @@ export function CourseDetailsModal({
               />
             </TabsContent>
 
-            <TabsContent value="tests" className="mt-0 h-full">
+            <TabsContent value="tests" className="mt-0">
               <CourseTestReport 
                 courseId={course.id} 
                 courseName={course.title} 
