@@ -1,6 +1,6 @@
 import { 
   BarChart3, Building2, Users, ShoppingBag, Sparkles, 
-  LogOut, Shield, Settings, FileText
+  LogOut, Shield, Settings, FileText, Mail
 } from "lucide-react";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 
@@ -11,6 +11,7 @@ export type AdminTabType =
   | "users" 
   | "features"
   | "blog"
+  | "subscribers"
   | "settings";
 
 interface AdminSidebarProps {
@@ -99,6 +100,12 @@ export function AdminSidebar({
           <button onClick={() => handleTabClick("blog")} className={tabButtonClass("blog")}>
             <FileText className="w-5 h-5" />
             Блог
+          </button>
+          
+          {/* Subscribers */}
+          <button onClick={() => handleTabClick("subscribers")} className={tabButtonClass("subscribers")}>
+            <Mail className="w-5 h-5" />
+            Подписчики
           </button>
           
           {/* Settings - always visible */}
