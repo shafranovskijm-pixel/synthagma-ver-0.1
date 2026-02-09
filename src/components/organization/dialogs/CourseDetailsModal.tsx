@@ -173,6 +173,9 @@ export function CourseDetailsModal({
         frdo_qualification_name: course.frdo_qualification_name || null,
         frdo_profession_name: course.frdo_profession_name || null,
         frdo_qualification_rank: course.frdo_qualification_rank || null,
+        frdo_duration_hours: course.frdo_duration_hours ?? null,
+        frdo_financing_source: course.frdo_financing_source || null,
+        frdo_education_form: course.frdo_education_form || null,
       });
     }
   }, [course]);
