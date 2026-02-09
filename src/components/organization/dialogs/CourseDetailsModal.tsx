@@ -50,6 +50,7 @@ import {
   FRDO_DOCUMENT_TYPES,
   FRDO_PROFESSIONAL_AREAS,
   FRDO_SPECIALTY_GROUPS,
+  FRDO_TRAINING_FORMS,
   type CourseFRDOSettings,
 } from "@/constants/frdo";
 
