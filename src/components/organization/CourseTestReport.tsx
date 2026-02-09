@@ -104,7 +104,7 @@ export function CourseTestReport({ courseId, courseName, organizationId }: Cours
           qMap.set(q.id, {
             id: q.id,
             question: q.question,
-            options: (q.options as string[]) || [],
+            options: Array.isArray(q.options) ? (q.options as unknown[]).map(normalizeOption) : [],
             correct_answer: q.correct_answer
           });
         });
