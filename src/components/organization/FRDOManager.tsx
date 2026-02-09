@@ -26,6 +26,11 @@ import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import * as XLSX from "xlsx";
 import { FRDOExportDialog } from "./FRDOExportDialog";
+import {
+  detectGenderFromMiddleName,
+  generateDocumentNumber,
+  generateRegNumber,
+} from "@/constants/frdo";
 
 interface FRDOManagerProps {
   organizationId: string;
