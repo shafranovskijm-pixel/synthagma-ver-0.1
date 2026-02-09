@@ -291,10 +291,10 @@ export function CourseTestReport({ courseId, courseName, organizationId }: Cours
           '№ вопроса': idx + 1,
           'Вопрос': d.questionText.replace(/<[^>]*>/g, '').substring(0, 500), // Strip HTML, limit length
           'Ответ студента': d.selectedAnswer >= 0 && d.options[d.selectedAnswer] 
-            ? d.options[d.selectedAnswer].replace(/<[^>]*>/g, '').substring(0, 200) 
+            ? normalizeOption(d.options[d.selectedAnswer]).replace(/<[^>]*>/g, '').substring(0, 200) 
             : 'Нет ответа',
           'Правильный ответ': d.options[d.correctAnswer] 
-            ? d.options[d.correctAnswer].replace(/<[^>]*>/g, '').substring(0, 200) 
+            ? normalizeOption(d.options[d.correctAnswer]).replace(/<[^>]*>/g, '').substring(0, 200) 
             : '',
           'Результат': d.isCorrect ? '✓ Верно' : '✗ Неверно'
         });
