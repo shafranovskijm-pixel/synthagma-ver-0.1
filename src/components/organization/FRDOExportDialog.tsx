@@ -21,7 +21,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Download, Save, Loader2, FileSpreadsheet, User, GraduationCap, Briefcase } from "lucide-react";
 import { format } from "date-fns";
-import * as XLSX from "xlsx";
 import {
   detectGenderFromMiddleName,
   generateDocumentNumber,
@@ -31,6 +30,12 @@ import {
   FRDO_EDUCATION_FORMS,
   FRDO_EDUCATION_LEVELS,
 } from "@/constants/frdo";
+import {
+  buildDPORow,
+  buildPORow,
+  exportFRDOExcel,
+  formatDateForFRDO,
+} from "@/utils/frdoExcelExport";
 
 interface FRDOExportDialogProps {
   isOpen: boolean;
@@ -76,84 +81,54 @@ interface FRDOData {
 }
 
 const defaultFRDOData: FRDOData = {
-  last_name: "",
-  first_name: "",
-  middle_name: "",
-  birth_date: "",
-  gender: "",
-  snils: "",
-  citizenship_code: "643",
-  education_level: "",
-  education_doc_last_name: "",
-  education_doc_series: "",
-  education_doc_number: "",
-  training_form: "Очная",
-  financing_source: "Платное обучение",
+  last_name: "", first_name: "", middle_name: "",
+  birth_date: "", gender: "", snils: "",
+  citizenship_code: "643", education_level: "",
+  education_doc_last_name: "", education_doc_series: "", education_doc_number: "",
+  training_form: "Очная", financing_source: "Платное обучение",
   education_form: "в образовательной организации",
-  professional_area: "",
-  specialty_group: "",
-  qualification_name: "",
-  profession_name: "",
-  qualification_rank: "",
+  professional_area: "", specialty_group: "",
+  qualification_name: "", profession_name: "", qualification_rank: "",
 };
 
 export function FRDOExportDialog({
-  isOpen,
-  onOpenChange,
-  student,
-  organizationId,
-  enrollment,
+  isOpen, onOpenChange, student, organizationId, enrollment,
 }: FRDOExportDialogProps) {
   const [activeTab, setActiveTab] = useState("personal");
   const [frдоData, setFrdoData] = useState<FRDOData>(defaultFRDOData);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [courseData, setCourseData] = useState<{
-    title: string;
-    duration: string | null;
-    training_form?: string | null;
-    frdo_program_type?: string | null;
-    frdo_document_type?: string | null;
-    frdo_professional_area?: string | null;
-    frdo_specialty_group?: string | null;
-    frdo_qualification_name?: string | null;
-    frdo_profession_name?: string | null;
+    title: string; duration: string | null; training_form?: string | null;
+    frdo_program_type?: string | null; frdo_document_type?: string | null;
+    frdo_professional_area?: string | null; frdo_specialty_group?: string | null;
+    frdo_qualification_name?: string | null; frdo_profession_name?: string | null;
     frdo_qualification_rank?: string | null;
   } | null>(null);
 
   useEffect(() => {
     if (isOpen && student) {
       loadFRDOData();
-      if (enrollment?.course_id) {
-        loadCourseData(enrollment.course_id);
-      }
+      if (enrollment?.course_id) loadCourseData(enrollment.course_id);
     }
   }, [isOpen, student]);
 
   const loadFRDOData = async () => {
     if (!student) return;
     setIsLoading(true);
-
     try {
       const { data, error } = await supabase
-        .from("student_frdo_data")
-        .select("*")
-        .eq("user_id", student.user_id)
-        .eq("organization_id", organizationId)
-        .maybeSingle();
-
+        .from("student_frdo_data").select("*")
+        .eq("user_id", student.user_id).eq("organization_id", organizationId).maybeSingle();
       if (error) throw error;
 
       if (data) {
         setFrdoData({
           id: data.id,
-          last_name: data.last_name || "",
-          first_name: data.first_name || "",
-          middle_name: data.middle_name || "",
-          birth_date: data.birth_date || "",
+          last_name: data.last_name || "", first_name: data.first_name || "",
+          middle_name: data.middle_name || "", birth_date: data.birth_date || "",
           gender: data.gender || detectGenderFromMiddleName(data.middle_name) || "",
-          snils: data.snils || "",
-          citizenship_code: data.citizenship_code || "643",
+          snils: data.snils || "", citizenship_code: data.citizenship_code || "643",
           education_level: data.education_level || "",
           education_doc_last_name: data.education_doc_last_name || "",
           education_doc_series: data.education_doc_series || "",
@@ -168,16 +143,12 @@ export function FRDOExportDialog({
           qualification_rank: data.qualification_rank || "",
         });
       } else {
-        // Try to parse name from student.name
         const nameParts = student.name.split(" ");
         const middleName = nameParts[2] || "";
-        const detectedGender = detectGenderFromMiddleName(middleName);
         setFrdoData({
           ...defaultFRDOData,
-          last_name: nameParts[0] || "",
-          first_name: nameParts[1] || "",
-          middle_name: middleName,
-          gender: detectedGender || "",
+          last_name: nameParts[0] || "", first_name: nameParts[1] || "",
+          middle_name: middleName, gender: detectGenderFromMiddleName(middleName) || "",
         });
       }
     } catch (error) {
@@ -190,16 +161,11 @@ export function FRDOExportDialog({
 
   const loadCourseData = async (courseId: string) => {
     try {
-      const { data, error } = await supabase
-        .from("courses")
+      const { data, error } = await supabase.from("courses")
         .select("title, duration, training_form, frdo_program_type, frdo_document_type, frdo_professional_area, frdo_specialty_group, frdo_qualification_name, frdo_profession_name, frdo_qualification_rank")
-        .eq("id", courseId)
-        .single();
-
+        .eq("id", courseId).single();
       if (error) throw error;
       setCourseData(data);
-      
-      // Pre-fill FRDO data from course settings if student data is empty
       if (data) {
         setFrdoData((prev) => ({
           ...prev,
@@ -219,17 +185,12 @@ export function FRDOExportDialog({
   const handleSave = async () => {
     if (!student) return;
     setIsSaving(true);
-
     try {
       const dataToSave = {
-        user_id: student.user_id,
-        organization_id: organizationId,
-        last_name: frдоData.last_name || null,
-        first_name: frдоData.first_name || null,
-        middle_name: frдоData.middle_name || null,
-        birth_date: frдоData.birth_date || null,
-        gender: frдоData.gender || null,
-        snils: frдоData.snils || null,
+        user_id: student.user_id, organization_id: organizationId,
+        last_name: frдоData.last_name || null, first_name: frдоData.first_name || null,
+        middle_name: frдоData.middle_name || null, birth_date: frдоData.birth_date || null,
+        gender: frдоData.gender || null, snils: frдоData.snils || null,
         citizenship_code: frдоData.citizenship_code || "643",
         education_level: frдоData.education_level || null,
         education_doc_last_name: frдоData.education_doc_last_name || null,
@@ -246,23 +207,13 @@ export function FRDOExportDialog({
       };
 
       if (frдоData.id) {
-        const { error } = await supabase
-          .from("student_frdo_data")
-          .update(dataToSave)
-          .eq("id", frдоData.id);
-
+        const { error } = await supabase.from("student_frdo_data").update(dataToSave).eq("id", frдоData.id);
         if (error) throw error;
       } else {
-        const { data, error } = await supabase
-          .from("student_frdo_data")
-          .insert(dataToSave)
-          .select()
-          .single();
-
+        const { data, error } = await supabase.from("student_frdo_data").insert(dataToSave).select().single();
         if (error) throw error;
         setFrdoData((prev) => ({ ...prev, id: data.id }));
       }
-
       toast.success("Данные сохранены");
     } catch (error) {
       console.error("Error saving FRDO data:", error);
@@ -272,210 +223,103 @@ export function FRDOExportDialog({
     }
   };
 
-  const formatDateForExport = (dateStr: string) => {
-    if (!dateStr) return "";
-    try {
-      return format(new Date(dateStr), "M/d/yy");
-    } catch {
-      return dateStr;
-    }
-  };
-
   const handleExportDPO = async () => {
-    if (!student || !enrollment) {
-      toast.error("Выберите курс для экспорта");
-      return;
-    }
+    if (!student || !enrollment) { toast.error("Выберите курс для экспорта"); return; }
 
-    const startYear = enrollment.started_at
-      ? new Date(enrollment.started_at).getFullYear()
-      : "";
-    const endYear = enrollment.completed_at
-      ? new Date(enrollment.completed_at).getFullYear()
-      : startYear;
-    
+    const startYear = enrollment.started_at ? new Date(enrollment.started_at).getFullYear() : "";
+    const endYear = enrollment.completed_at ? new Date(enrollment.completed_at).getFullYear() : startYear;
     const durationHours = courseData?.duration
       ? parseInt(courseData.duration.replace(/\D/g, "")) || 0
       : Math.round(enrollment.time_spent / 3600);
 
-    // Use course FRDO settings as fallback if student data is empty
     const professionalArea = frдоData.professional_area || courseData?.frdo_professional_area || "";
     const specialtyGroup = frдоData.specialty_group || courseData?.frdo_specialty_group || "";
     const qualificationName = frдоData.qualification_name || courseData?.frdo_qualification_name || "нет";
     const documentType = courseData?.frdo_document_type || "Удостоверение о повышении квалификации";
-    const programType = courseData?.frdo_program_type === "professional_retraining" 
-      ? "Профессиональная переподготовка" 
-      : "Повышение квалификации";
+    const programType = courseData?.frdo_program_type === "professional_retraining" ? "Профессиональная переподготовка" : "Повышение квалификации";
 
-    // Auto-generate document numbers
     const year = new Date().getFullYear();
-    const { count } = await supabase
-      .from("education_document_records")
-      .select("*", { count: "exact", head: true })
-      .eq("organization_id", organizationId)
-      .gte("created_at", `${year}-01-01`);
-    
+    const { count } = await supabase.from("education_document_records")
+      .select("*", { count: "exact", head: true }).eq("organization_id", organizationId).gte("created_at", `${year}-01-01`);
     const existingCount = count || 0;
     const docNumber = generateDocumentNumber(existingCount);
     const regNumber = generateRegNumber(existingCount);
 
-    // Create journal record
     await supabase.from("education_document_records").insert({
-      organization_id: organizationId,
-      enrollment_id: enrollment.id,
+      organization_id: organizationId, enrollment_id: enrollment.id,
       full_name: `${frдоData.last_name} ${frдоData.first_name} ${frдоData.middle_name}`.trim(),
-      document_type: documentType,
-      document_number: docNumber,
-      reg_number: regNumber,
+      document_type: documentType, document_number: docNumber, reg_number: regNumber,
       issue_date: enrollment.completed_at || new Date().toISOString(),
       specialty_name: courseData?.title || enrollment.course_title,
-      qualification_name: qualificationName,
-      document_status: "Оригинал",
+      qualification_name: qualificationName, document_status: "Оригинал",
     });
 
-    const row = {
-      "Вид документа": documentType,
-      "Статус документа": "Оригинал",
-      "Подтверждение утраты": "Нет",
-      "Подтверждение обмена": "Нет",
-      "Подтверждение уничтожения": "Нет",
-      "Серия документа": "нет",
-      "Номер документа": docNumber,
-      "Дата выдачи документа": formatDateForExport(enrollment.completed_at || ""),
-      "Регистрационный номер": regNumber,
-      "Дополнительная профессиональная программа (повышение квалификации/ профессиональная переподготовка)": programType,
-      "Наименование дополнительной профессиональной программы": courseData?.title || enrollment.course_title,
-      "Наименование области профессиональной деятельности": professionalArea,
-      "Укрупненные группы специальностей": specialtyGroup,
-      "Наименование квалификации, профессии, специальности": qualificationName,
-      "Уровень образования ВО/СПО": frдоData.education_level,
-      "Фамилия указанная в дипломе о ВО или СПО": frдоData.education_doc_last_name,
-      "Серия документа о ВО/СПО": frдоData.education_doc_series,
-      "Номер документа о ВО/СПО": frдоData.education_doc_number,
-      "Год начала обучения (для документа о квалификации)": startYear,
-      "Год окончания обучения (для документа о квалификации)": endYear,
-      "Срок обучения, часов (для документа о квалификации)": durationHours,
-      "Фамилия получателя": frдоData.last_name,
-      "Имя получателя": frдоData.first_name,
-      "Отчество получателя": frдоData.middle_name,
-      "Дата рождения получателя": formatDateForExport(frдоData.birth_date),
-      "Пол получателя": frдоData.gender,
-      "СНИЛС": frдоData.snils,
-      "Форма обучения": frдоData.training_form,
-      "Источник финансирования обучения": frдоData.financing_source,
-      "Форма получения образования на момент прекращения образовательных отношений": frдоData.education_form,
-      "Гражданство получателя (код страны по ОКСМ)": frдоData.citizenship_code,
-      "Наименование документа об образовании (оригинала)": "",
-      "Серия (оригинала)": "",
-      "Номер (оригинала)": "",
-      "Регистрационный N (оригинала)": "",
-      "Дата выдачи (оригинала)": "",
-      "Фамилия получателя (оригинала)": "",
-      "Имя получателя (оригинала)": "",
-      "Отчество получателя (оригинала)": "",
-      "Номер документа для изменения": "",
-    };
+    const row = buildDPORow({
+      documentType, docNumber, regNumber,
+      issueDate: formatDateForFRDO(enrollment.completed_at || ""),
+      programType, programName: courseData?.title || enrollment.course_title,
+      professionalArea, specialtyGroup, qualificationName,
+      educationLevel: frдоData.education_level,
+      educationDocLastName: frдоData.education_doc_last_name,
+      educationDocSeries: frдоData.education_doc_series,
+      educationDocNumber: frдоData.education_doc_number,
+      startYear, endYear, durationHours,
+      lastName: frдоData.last_name, firstName: frдоData.first_name, middleName: frдоData.middle_name,
+      birthDate: formatDateForFRDO(frдоData.birth_date),
+      gender: frдоData.gender, snils: frдоData.snils,
+      trainingForm: frдоData.training_form, financingSource: frдоData.financing_source,
+      educationForm: frдоData.education_form, citizenshipCode: frдоData.citizenship_code,
+    });
 
-    exportToExcel([row], `ФИС_ФРДО_ДПО_${frдоData.last_name}_${format(new Date(), "dd-MM-yyyy")}.xlsx`);
+    await exportFRDOExcel([row], "dpo", `${frдоData.last_name}_${format(new Date(), "dd-MM-yyyy")}`);
     toast.success("Документ зарегистрирован в журнале");
   };
 
   const handleExportPO = async () => {
-    if (!student || !enrollment) {
-      toast.error("Выберите курс для экспорта");
-      return;
-    }
+    if (!student || !enrollment) { toast.error("Выберите курс для экспорта"); return; }
 
-    const startYear = enrollment.started_at
-      ? new Date(enrollment.started_at).getFullYear()
-      : "";
-    const endYear = enrollment.completed_at
-      ? new Date(enrollment.completed_at).getFullYear()
-      : startYear;
-    
+    const startYear = enrollment.started_at ? new Date(enrollment.started_at).getFullYear() : "";
+    const endYear = enrollment.completed_at ? new Date(enrollment.completed_at).getFullYear() : startYear;
     const durationHours = courseData?.duration
       ? parseInt(courseData.duration.replace(/\D/g, "")) || 0
       : Math.round(enrollment.time_spent / 3600);
 
-    // Use course FRDO settings as fallback if student data is empty
     const professionName = frдоData.profession_name || courseData?.frdo_profession_name || "";
     const qualificationRank = frдоData.qualification_rank || courseData?.frdo_qualification_rank || "";
     const documentType = courseData?.frdo_document_type || "Свидетельство о профессии рабочего, должности служащего";
 
-    // Auto-generate document numbers
     const year = new Date().getFullYear();
-    const { count } = await supabase
-      .from("education_document_records")
-      .select("*", { count: "exact", head: true })
-      .eq("organization_id", organizationId)
-      .gte("created_at", `${year}-01-01`);
-    
+    const { count } = await supabase.from("education_document_records")
+      .select("*", { count: "exact", head: true }).eq("organization_id", organizationId).gte("created_at", `${year}-01-01`);
     const existingCount = count || 0;
     const docNumber = generateDocumentNumber(existingCount);
     const regNumber = generateRegNumber(existingCount);
 
-    // Create journal record
     await supabase.from("education_document_records").insert({
-      organization_id: organizationId,
-      enrollment_id: enrollment.id,
+      organization_id: organizationId, enrollment_id: enrollment.id,
       full_name: `${frдоData.last_name} ${frдоData.first_name} ${frдоData.middle_name}`.trim(),
-      document_type: documentType,
-      document_number: docNumber,
-      reg_number: regNumber,
+      document_type: documentType, document_number: docNumber, reg_number: regNumber,
       issue_date: enrollment.completed_at || new Date().toISOString(),
       specialty_name: courseData?.title || enrollment.course_title,
-      qualification_name: professionName,
-      document_status: "Оригинал",
+      qualification_name: professionName, document_status: "Оригинал",
     });
 
-    const row = {
-      "Вид документа": documentType,
-      "Статус документа": "Оригинал",
-      "Подтверждение утраты": "Нет",
-      "Подтверждение обмена": "Нет",
-      "Подтверждение уничтожения": "Нет",
-      "Серия документа": "Нет",
-      "Номер документа": docNumber,
-      "Дата выдачи документа": formatDateForExport(enrollment.completed_at || ""),
-      "Регистрационный номер": regNumber,
-      "Программа профессионального обучения, направление подготовки": "Программа профессиональной подготовки по профессии рабочего, должности служащего",
-      "Наименование программы профессионального обучения": courseData?.title || enrollment.course_title,
-      "Наименование профессий рабочих, должностей служащих": professionName,
-      "Присвоенный квалификационный разряд, класс, категория (при наличии)": qualificationRank,
-      "Год начала обучения": startYear,
-      "Год окончания обучения": endYear,
-      "Срок обучения, часов": durationHours,
-      "Фамилия получателя": frдоData.last_name,
-      "Имя получателя": frдоData.first_name,
-      "Отчество получателя": frдоData.middle_name,
-      "Дата рождения получателя": formatDateForExport(frдоData.birth_date),
-      "Пол получателя": frдоData.gender,
-      "СНИЛС": frдоData.snils,
-      "Гражданство получателя (код страны по ОКСМ)": frдоData.citizenship_code,
-      "Форма обучения": frдоData.training_form,
-      "Источник финансирования обучения": frдоData.financing_source,
-      "Форма получения образования на момент прекращения образовательных отношений": frдоData.education_form,
-      "Наименование документа об образовании (оригинала)": "",
-      "Серия (оригинала)": "",
-      "Номер (оригинала)": "",
-      "Регистрационный N (оригинала)": "",
-      "Дата выдачи (оригинала)": "",
-      "Фамилия получателя (оригинала)": "",
-      "Имя получателя (оригинала)": "",
-      "Отчество получателя (оригинала)": "",
-      "Номер документа для изменения": "",
-    };
+    const row = buildPORow({
+      documentType, docNumber, regNumber,
+      issueDate: formatDateForFRDO(enrollment.completed_at || ""),
+      programType: "Программа профессиональной подготовки по профессии рабочего, должности служащего",
+      programName: courseData?.title || enrollment.course_title,
+      professionName, qualificationRank,
+      startYear, endYear, durationHours,
+      lastName: frдоData.last_name, firstName: frдоData.first_name, middleName: frдоData.middle_name,
+      birthDate: formatDateForFRDO(frдоData.birth_date),
+      gender: frдоData.gender, snils: frдоData.snils, citizenshipCode: frдоData.citizenship_code,
+      trainingForm: frдоData.training_form, financingSource: frдоData.financing_source,
+      educationForm: frдоData.education_form,
+    });
 
-    exportToExcel([row], `ФИС_ФРДО_ПО_${frдоData.last_name}_${format(new Date(), "dd-MM-yyyy")}.xlsx`);
+    await exportFRDOExcel([row], "po", `${frдоData.last_name}_${format(new Date(), "dd-MM-yyyy")}`);
     toast.success("Документ зарегистрирован в журнале");
-  };
-
-  const exportToExcel = (data: Record<string, unknown>[], filename: string) => {
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
-    XLSX.writeFile(wb, filename);
-    toast.success("Файл экспортирован");
   };
 
   const updateField = (field: keyof FRDOData, value: string) => {
@@ -526,48 +370,27 @@ export function FRDOExportDialog({
                   <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-2">
                       <Label>Фамилия</Label>
-                      <Input
-                        value={frдоData.last_name}
-                        onChange={(e) => updateField("last_name", e.target.value)}
-                        placeholder="Иванов"
-                      />
+                      <Input value={frдоData.last_name} onChange={(e) => updateField("last_name", e.target.value)} placeholder="Иванов" />
                     </div>
                     <div className="space-y-2">
                       <Label>Имя</Label>
-                      <Input
-                        value={frдоData.first_name}
-                        onChange={(e) => updateField("first_name", e.target.value)}
-                        placeholder="Иван"
-                      />
+                      <Input value={frдоData.first_name} onChange={(e) => updateField("first_name", e.target.value)} placeholder="Иван" />
                     </div>
                     <div className="space-y-2">
                       <Label>Отчество</Label>
-                      <Input
-                        value={frдоData.middle_name}
-                        onChange={(e) => updateField("middle_name", e.target.value)}
-                        placeholder="Иванович"
-                      />
+                      <Input value={frдоData.middle_name} onChange={(e) => updateField("middle_name", e.target.value)} placeholder="Иванович" />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-2">
                       <Label>Дата рождения</Label>
-                      <Input
-                        type="date"
-                        value={frдоData.birth_date}
-                        onChange={(e) => updateField("birth_date", e.target.value)}
-                      />
+                      <Input type="date" value={frдоData.birth_date} onChange={(e) => updateField("birth_date", e.target.value)} />
                     </div>
                     <div className="space-y-2">
                       <Label>Пол</Label>
-                      <Select
-                        value={frдоData.gender}
-                        onValueChange={(value) => updateField("gender", value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Выберите" />
-                        </SelectTrigger>
+                      <Select value={frдоData.gender} onValueChange={(value) => updateField("gender", value)}>
+                        <SelectTrigger><SelectValue placeholder="Выберите" /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="Муж">Мужской</SelectItem>
                           <SelectItem value="Жен">Женский</SelectItem>
@@ -576,51 +399,30 @@ export function FRDOExportDialog({
                     </div>
                     <div className="space-y-2">
                       <Label>СНИЛС</Label>
-                      <Input
-                        value={frдоData.snils}
-                        onChange={(e) => updateField("snils", e.target.value)}
-                        placeholder="123-456-789 00"
-                      />
+                      <Input value={frдоData.snils} onChange={(e) => updateField("snils", e.target.value)} placeholder="123-456-789 00" />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-2">
                       <Label>Гражданство (код ОКСМ)</Label>
-                      <Input
-                        value={frдоData.citizenship_code}
-                        onChange={(e) => updateField("citizenship_code", e.target.value)}
-                        placeholder="643"
-                      />
+                      <Input value={frдоData.citizenship_code} onChange={(e) => updateField("citizenship_code", e.target.value)} placeholder="643" />
                     </div>
                     <div className="space-y-2">
                       <Label>Форма обучения</Label>
-                      <Select
-                        value={frдоData.training_form}
-                        onValueChange={(value) => updateField("training_form", value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
+                      <Select value={frдоData.training_form} onValueChange={(value) => updateField("training_form", value)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Очная">Очная</SelectItem>
-                          <SelectItem value="Заочная">Заочная</SelectItem>
-                          <SelectItem value="Очно-заочная">Очно-заочная</SelectItem>
+                          {FRDO_TRAINING_FORMS.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </div>
                     <div className="space-y-2">
                       <Label>Источник финансирования</Label>
-                      <Select
-                        value={frдоData.financing_source}
-                        onValueChange={(value) => updateField("financing_source", value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
+                      <Select value={frдоData.financing_source} onValueChange={(value) => updateField("financing_source", value)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Платное обучение">Платное обучение</SelectItem>
-                          <SelectItem value="Бюджетное обучение">Бюджетное обучение</SelectItem>
+                          {FRDO_FINANCING_SOURCES.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </div>
@@ -628,16 +430,10 @@ export function FRDOExportDialog({
 
                   <div className="space-y-2">
                     <Label>Форма получения образования</Label>
-                    <Select
-                      value={frдоData.education_form}
-                      onValueChange={(value) => updateField("education_form", value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
+                    <Select value={frдоData.education_form} onValueChange={(value) => updateField("education_form", value)}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="в образовательной организации">в образовательной организации</SelectItem>
-                        <SelectItem value="вне образовательной организации">вне образовательной организации</SelectItem>
+                        {FRDO_EDUCATION_FORMS.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
@@ -646,104 +442,54 @@ export function FRDOExportDialog({
                 <TabsContent value="education" className="m-0 space-y-4">
                   <div className="space-y-2">
                     <Label>Уровень образования ВО/СПО</Label>
-                    <Select
-                      value={frдоData.education_level}
-                      onValueChange={(value) => updateField("education_level", value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Выберите уровень образования" />
-                      </SelectTrigger>
+                    <Select value={frдоData.education_level} onValueChange={(value) => updateField("education_level", value)}>
+                      <SelectTrigger><SelectValue placeholder="Выберите уровень образования" /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Высшее образование">Высшее образование</SelectItem>
-                        <SelectItem value="Среднее профессиональное образование">Среднее профессиональное образование</SelectItem>
-                        <SelectItem value="Среднее общее образование">Среднее общее образование</SelectItem>
-                        <SelectItem value="Основное общее образование">Основное общее образование</SelectItem>
+                        {FRDO_EDUCATION_LEVELS.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div className="space-y-2">
                     <Label>Фамилия в дипломе о ВО/СПО</Label>
-                    <Input
-                      value={frдоData.education_doc_last_name}
-                      onChange={(e) => updateField("education_doc_last_name", e.target.value)}
-                      placeholder="Если изменялась фамилия"
-                    />
+                    <Input value={frдоData.education_doc_last_name} onChange={(e) => updateField("education_doc_last_name", e.target.value)} placeholder="Если изменялась фамилия" />
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Серия документа о ВО/СПО</Label>
-                      <Input
-                        value={frдоData.education_doc_series}
-                        onChange={(e) => updateField("education_doc_series", e.target.value)}
-                        placeholder="АДС"
-                      />
+                      <Input value={frдоData.education_doc_series} onChange={(e) => updateField("education_doc_series", e.target.value)} placeholder="АДС" />
                     </div>
                     <div className="space-y-2">
                       <Label>Номер документа о ВО/СПО</Label>
-                      <Input
-                        value={frдоData.education_doc_number}
-                        onChange={(e) => updateField("education_doc_number", e.target.value)}
-                        placeholder="1234567"
-                      />
+                      <Input value={frдоData.education_doc_number} onChange={(e) => updateField("education_doc_number", e.target.value)} placeholder="1234567" />
                     </div>
                   </div>
                 </TabsContent>
 
                 <TabsContent value="professional" className="m-0 space-y-4">
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Данные для ДПО (повышение квалификации / профессиональная переподготовка)
-                  </p>
-                  
+                  <p className="text-sm text-muted-foreground mb-4">Данные для ДПО (повышение квалификации / профессиональная переподготовка)</p>
                   <div className="space-y-2">
                     <Label>Область профессиональной деятельности</Label>
-                    <Input
-                      value={frдоData.professional_area}
-                      onChange={(e) => updateField("professional_area", e.target.value)}
-                      placeholder="Административно-управленческая и офисная деятельность"
-                    />
+                    <Input value={frдоData.professional_area} onChange={(e) => updateField("professional_area", e.target.value)} placeholder="Административно-управленческая и офисная деятельность" />
                   </div>
-
                   <div className="space-y-2">
                     <Label>Укрупненные группы специальностей</Label>
-                    <Input
-                      value={frдоData.specialty_group}
-                      onChange={(e) => updateField("specialty_group", e.target.value)}
-                      placeholder="Экономика и управление"
-                    />
+                    <Input value={frдоData.specialty_group} onChange={(e) => updateField("specialty_group", e.target.value)} placeholder="Экономика и управление" />
                   </div>
-
                   <div className="space-y-2">
                     <Label>Наименование квалификации, профессии, специальности</Label>
-                    <Input
-                      value={frдоData.qualification_name}
-                      onChange={(e) => updateField("qualification_name", e.target.value)}
-                      placeholder="специалист отдела кадров"
-                    />
+                    <Input value={frдоData.qualification_name} onChange={(e) => updateField("qualification_name", e.target.value)} placeholder="специалист отдела кадров" />
                   </div>
-
                   <div className="border-t border-border pt-4 mt-4">
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Данные для ПО (профессиональное обучение)
-                    </p>
-                    
+                    <p className="text-sm text-muted-foreground mb-4">Данные для ПО (профессиональное обучение)</p>
                     <div className="space-y-2">
                       <Label>Наименование профессии рабочего / должности служащего</Label>
-                      <Input
-                        value={frдоData.profession_name}
-                        onChange={(e) => updateField("profession_name", e.target.value)}
-                        placeholder="Охранник"
-                      />
+                      <Input value={frдоData.profession_name} onChange={(e) => updateField("profession_name", e.target.value)} placeholder="Охранник" />
                     </div>
-
                     <div className="space-y-2 mt-4">
                       <Label>Квалификационный разряд, класс, категория</Label>
-                      <Input
-                        value={frдоData.qualification_rank}
-                        onChange={(e) => updateField("qualification_rank", e.target.value)}
-                        placeholder="4"
-                      />
+                      <Input value={frдоData.qualification_rank} onChange={(e) => updateField("qualification_rank", e.target.value)} placeholder="4" />
                     </div>
                   </div>
                 </TabsContent>
@@ -751,35 +497,16 @@ export function FRDOExportDialog({
             </ScrollArea>
 
             <div className="p-6 border-t border-border flex items-center justify-between gap-4">
-              <Button
-                variant="outline"
-                className="rounded-xl gap-2"
-                onClick={handleSave}
-                disabled={isSaving}
-              >
-                {isSaving ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Save className="w-4 h-4" />
-                )}
+              <Button variant="outline" className="rounded-xl gap-2" onClick={handleSave} disabled={isSaving}>
+                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                 Сохранить данные
               </Button>
-
               <div className="flex gap-2">
-                <Button
-                  className="rounded-xl gap-2"
-                  onClick={handleExportDPO}
-                  disabled={!enrollment}
-                >
+                <Button className="rounded-xl gap-2" onClick={handleExportDPO} disabled={!enrollment}>
                   <Download className="w-4 h-4" />
                   Экспорт ДПО
                 </Button>
-                <Button
-                  variant="secondary"
-                  className="rounded-xl gap-2"
-                  onClick={handleExportPO}
-                  disabled={!enrollment}
-                >
+                <Button variant="secondary" className="rounded-xl gap-2" onClick={handleExportPO} disabled={!enrollment}>
                   <Download className="w-4 h-4" />
                   Экспорт ПО
                 </Button>
