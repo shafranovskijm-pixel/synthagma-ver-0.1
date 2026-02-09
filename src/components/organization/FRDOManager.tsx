@@ -465,7 +465,7 @@ export function FRDOManager({ organizationId }: FRDOManagerProps) {
     }
   };
 
-  const createDPORow = (data: FRDOData, enrollment: EnrollmentData | null, courseSettings: Course | null) => {
+  const createDPORow = (data: FRDOData, enrollment: EnrollmentData | null, courseSettings: Course | null, docNumber = "", regNumber = "") => {
     const startYear = enrollment?.started_at ? new Date(enrollment.started_at).getFullYear() : "";
     const endYear = enrollment?.completed_at ? new Date(enrollment.completed_at).getFullYear() : startYear;
     const durationHours = enrollment?.duration 
