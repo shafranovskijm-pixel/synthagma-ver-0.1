@@ -946,8 +946,8 @@ export function CourseDetailsModal({
                       <div className="space-y-2">
                         <Label>Квалификационный разряд</Label>
                         <Input
-                          value={frdoSettings.frdo_qualification_rank || ""}
-                          onChange={(e) => handleUpdateFrdoSettings("frdo_qualification_rank", e.target.value || null)}
+                          defaultValue={frdoSettings.frdo_qualification_rank || ""}
+                          onBlur={(e) => handleUpdateFrdoSettings("frdo_qualification_rank", e.target.value || null)}
                           placeholder="Например: 4 разряд"
                           className="rounded-xl"
                           disabled={isSavingSettings}
