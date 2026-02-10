@@ -525,7 +525,7 @@ const VideoPlayerInline = ({
         className="w-full h-full rounded-2xl"
         src={resolvedContent}
         preload="metadata"
-        crossOrigin="anonymous"
+        
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
         onSeeking={handleSeeking}
