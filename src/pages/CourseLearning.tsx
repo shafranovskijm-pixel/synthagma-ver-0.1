@@ -2183,6 +2183,9 @@ const CourseLearning = () => {
                         </span>
                         {question.question}
                       </h3>
+                      {(question as any).image_url && (
+                        <img src={(question as any).image_url} alt="К вопросу" className="max-h-64 rounded-lg border border-border object-contain mb-4" />
+                      )}
                       <div className="space-y-2">
                         {(Array.isArray(question.options) ? question.options : []).map((option: unknown, oIndex: number) => {
                           const isSelected = answers[question.id] === oIndex;

@@ -728,8 +728,8 @@ export function CourseDetailsModal({
                         </div>
                         <div className="flex items-center gap-4">
                           <div className="text-right">
-                            <div className="text-sm font-medium">{student.progress}%</div>
-                            <Progress value={student.progress} className="w-24 h-2" />
+                            <div className="text-sm font-medium">{Math.min(student.progress, 100)}%</div>
+                            <Progress value={Math.min(student.progress, 100)} className="w-24 h-2" />
                           </div>
                           <span className={`px-2 py-1 rounded-full text-xs ${
                             student.status === 'completed' 
