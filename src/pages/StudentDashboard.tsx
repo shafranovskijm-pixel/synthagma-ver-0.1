@@ -993,7 +993,9 @@ export default function StudentDashboard() {
                               ? "Пройти идентификацию"
                               : effectiveStatus === "completed"
                               ? "Повторить"
-                              : "Продолжить"
+                              : course.progress > 0
+                              ? "Продолжить"
+                              : "Начать"
                             }
                           </Button>
                         </div>
