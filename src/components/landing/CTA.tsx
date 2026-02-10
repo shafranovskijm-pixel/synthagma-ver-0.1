@@ -116,15 +116,17 @@ export function CTA() {
             <div className="w-2 h-2 rounded-full bg-accent/50" />
           </motion.div>
 
-          <motion.p
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.8, delay: 0.2 }}
-            className="text-lg md:text-xl text-background/70 mb-12 max-w-xl mx-auto leading-relaxed"
+            className="mb-12"
           >
-            Присоединяйтесь к организациям, которые уже используют нашу платформу
-          </motion.p>
+            <InlineEditable contentKey="cta_subtitle" defaultValue="Присоединяйтесь к организациям, которые уже используют нашу платформу">
+              {(v) => <p className="text-lg md:text-xl text-background/70 max-w-xl mx-auto leading-relaxed">{v}</p>}
+            </InlineEditable>
+          </motion.div>
 
           <motion.div
             initial={{ opacity: 0, y: 20 }}
