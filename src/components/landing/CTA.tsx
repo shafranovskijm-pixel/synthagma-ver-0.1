@@ -2,6 +2,7 @@ import { ArrowRight, CheckCircle2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
+import { InlineEditable } from "./InlineEditable";
 
 export function CTA() {
   return (
