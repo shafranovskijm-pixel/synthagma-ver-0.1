@@ -128,8 +128,47 @@ export default function Install() {
                 </Button>
               )}
 
-              {/* iOS Instructions — always show on iOS or unknown */}
-              {(isIOS || showBothPlatforms) && (
+              {/* Yandex Browser Instructions */}
+              {isYandex && (
+                <Card className="text-left border-orange-500/30 bg-orange-500/5">
+                  <CardContent className="py-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-10 h-10 rounded-lg bg-orange-500/20 flex items-center justify-center">
+                        <Globe className="w-5 h-5 text-orange-600" />
+                      </div>
+                      <h3 className="font-medium text-lg">Установка через Яндекс Браузер</h3>
+                    </div>
+                    <ol className="space-y-4 text-sm text-muted-foreground mb-6">
+                      <li className="flex items-start gap-3">
+                        <span className="w-6 h-6 rounded-full bg-orange-500/20 text-orange-600 flex items-center justify-center text-xs font-medium shrink-0">1</span>
+                        <span>Нажмите <MoreVertical className="w-4 h-4 inline mx-1" /> меню (три точки) внизу справа</span>
+                      </li>
+                      <li className="flex items-start gap-3">
+                        <span className="w-6 h-6 rounded-full bg-orange-500/20 text-orange-600 flex items-center justify-center text-xs font-medium shrink-0">2</span>
+                        <span>Выберите «Добавить на главный экран»</span>
+                      </li>
+                      <li className="flex items-start gap-3">
+                        <span className="w-6 h-6 rounded-full bg-orange-500/20 text-orange-600 flex items-center justify-center text-xs font-medium shrink-0">3</span>
+                        <span>Подтвердите добавление</span>
+                      </li>
+                    </ol>
+                    <div className="border-t border-border/50 pt-4">
+                      <p className="text-sm text-muted-foreground mb-3">Или откройте в <strong className="text-foreground">Chrome</strong> для лучшей установки:</p>
+                      <Button
+                        variant="outline"
+                        onClick={handleCopyLink}
+                        className="gap-2 w-full"
+                      >
+                        <Copy className="w-4 h-4" />
+                        Скопировать ссылку для Chrome
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* iOS Instructions */}
+              {(isIOS || showBothPlatforms) && !isYandex && (
                 <Card className="text-left">
                   <CardContent className="py-6">
                     <div className="flex items-center gap-3 mb-4">
@@ -160,8 +199,8 @@ export default function Install() {
                 </Card>
               )}
 
-              {/* Android Instructions — always show on Android or unknown */}
-              {(isAndroid || showBothPlatforms) && (
+              {/* Android Chrome Instructions */}
+              {(isAndroid || showBothPlatforms) && !isYandex && (
                 <Card className="text-left">
                   <CardContent className="py-6">
                     <div className="flex items-center gap-3 mb-4">
@@ -192,15 +231,27 @@ export default function Install() {
                 </Card>
               )}
 
-              {/* Refresh button */}
-              <Button
-                variant="outline"
-                onClick={() => window.location.reload()}
-                className="gap-2"
-              >
-                <RefreshCw className="w-4 h-4" />
-                Обновить страницу и попробовать снова
-              </Button>
+              {/* Copy link + Refresh buttons */}
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                {!isYandex && (
+                  <Button
+                    variant="outline"
+                    onClick={handleCopyLink}
+                    className="gap-2"
+                  >
+                    <Copy className="w-4 h-4" />
+                    Скопировать ссылку
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  onClick={() => window.location.reload()}
+                  className="gap-2"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Обновить страницу
+                </Button>
+              </div>
             </motion.div>
           )}
 
