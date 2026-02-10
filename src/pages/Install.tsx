@@ -101,37 +101,47 @@ export default function Install() {
               transition={{ duration: 0.6, delay: 0.2 }}
               className="space-y-6 mb-12"
             >
-              {/* Auto-install button */}
-              {deferredPrompt && (
-                <Button
-                  size="lg"
-                  onClick={handleInstallClick}
-                  className="btn-gradient rounded-xl px-10 h-14 text-base gap-2 shadow-lg"
-                >
-                  <Download className="w-5 h-5" />
-                  Установить приложение
-                </Button>
+              {/* Android: APK download */}
+              {(os === 'android' || isDesktop) && (
+                <Card className="text-left">
+                  <CardContent className="py-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center">
+                        <Smartphone className="w-5 h-5 text-green-600" />
+                      </div>
+                      <h3 className="font-medium text-lg">Android — Скачать APK</h3>
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Скачайте и установите приложение напрямую на ваше Android-устройство.
+                    </p>
+                    <a href="/downloads/synthagma.apk" download>
+                      <Button size="lg" className="btn-gradient rounded-xl px-10 h-14 text-base gap-2 shadow-lg w-full">
+                        <Download className="w-5 h-5" />
+                        Скачать APK для Android
+                      </Button>
+                    </a>
+                    <p className="text-xs text-muted-foreground mt-3">
+                      При установке может потребоваться разрешить установку из неизвестных источников в настройках устройства.
+                    </p>
+                  </CardContent>
+                </Card>
               )}
 
-              {/* Browser-specific instructions */}
-              {isDesktop ? (
+              {/* iOS: PWA instructions */}
+              {(os === 'ios' || isDesktop) && (
                 <>
-                  <InstructionCard info={iosInfo} label="iPhone / iPad" />
-                  <InstructionCard info={androidInfo} label="Android" />
+                  {deferredPrompt && os === 'ios' && (
+                    <Button
+                      size="lg"
+                      onClick={handleInstallClick}
+                      className="btn-gradient rounded-xl px-10 h-14 text-base gap-2 shadow-lg"
+                    >
+                      <Download className="w-5 h-5" />
+                      Установить приложение
+                    </Button>
+                  )}
+                  <InstructionCard info={isDesktop ? iosInfo : installInfo} label={isDesktop ? "iPhone / iPad (PWA)" : installInfo.name} />
                 </>
-              ) : (
-                <InstructionCard info={installInfo} label={installInfo.name} />
-              )}
-
-              {/* Suggest Chrome if not in a browser that supports beforeinstallprompt */}
-              {!deferredPrompt && os === 'android' && browser !== 'chrome' && (
-                <div className="border border-border/50 rounded-lg p-4 text-sm text-muted-foreground">
-                  <p>Для лучшей установки откройте в <strong className="text-foreground">Google Chrome</strong>:</p>
-                  <Button variant="outline" onClick={handleCopyLink} className="gap-2 mt-3 w-full">
-                    <Copy className="w-4 h-4" />
-                    Скопировать ссылку для Chrome
-                  </Button>
-                </div>
               )}
 
               {/* Utility buttons */}
