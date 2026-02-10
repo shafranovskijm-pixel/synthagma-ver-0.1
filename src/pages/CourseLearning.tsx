@@ -2089,6 +2089,7 @@ const CourseLearning = () => {
                       savedPosition={savedPosition}
                       onSavePosition={saveVideoPosition}
                       onProgressChange={(progress) => setVideoWatchProgress(progress)}
+                      onFinishLesson={markLessonComplete}
                       onVideoComplete={async () => {
                         // Auto-complete video lesson when 90% watched
                         if (!isLessonCompleted(currentLesson.id) && user) {
