@@ -814,22 +814,37 @@ export function StudentDetailCard({
                               <div className="text-xs text-muted-foreground mb-1">Пароль</div>
                               <div className="flex items-center justify-between">
                                 <code className="font-mono text-sm">
-                                  {student.generated_password || "••••••••"}
+                                  {showPassword ? (student.generated_password || "—") : "••••••••"}
                                 </code>
-                                {student.generated_password && (
+                                <div className="flex items-center gap-1">
                                   <Button
                                     size="icon"
                                     variant="ghost"
                                     className="h-6 w-6"
-                                    onClick={() => copyToClipboard(student.generated_password || "", "password")}
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    title={showPassword ? "Скрыть пароль" : "Показать пароль"}
                                   >
-                                    {copiedField === "password" ? (
-                                      <Check className="w-3 h-3 text-green-500" />
+                                    {showPassword ? (
+                                      <EyeOff className="w-3 h-3" />
                                     ) : (
-                                      <Copy className="w-3 h-3" />
+                                      <Eye className="w-3 h-3" />
                                     )}
                                   </Button>
-                                )}
+                                  {student.generated_password && (
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-6 w-6"
+                                      onClick={() => copyToClipboard(student.generated_password || "", "password")}
+                                    >
+                                      {copiedField === "password" ? (
+                                        <Check className="w-3 h-3 text-green-500" />
+                                      ) : (
+                                        <Copy className="w-3 h-3" />
+                                      )}
+                                    </Button>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </div>
