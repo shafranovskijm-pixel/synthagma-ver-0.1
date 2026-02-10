@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Download, Smartphone, Share, Plus, MoreVertical, Apple, Play, RefreshCw, Copy, Globe } from "lucide-react";
+import { ArrowLeft, Download, Smartphone, RefreshCw, Copy, Globe } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import { getBrowserName, getOS, getBrowserInstallInfo, type BrowserName } from "@/utils/browserDetect";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -14,55 +15,47 @@ interface BeforeInstallPromptEvent extends Event {
 export default function Install() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
-  const [isIOS, setIsIOS] = useState(false);
-  const [isAndroid, setIsAndroid] = useState(false);
-  const [isYandex, setIsYandex] = useState(false);
+  const [browser, setBrowser] = useState<BrowserName>('unknown');
+  const [os, setOs] = useState<'ios' | 'android' | 'desktop'>('desktop');
 
   useEffect(() => {
     if (window.matchMedia("(display-mode: standalone)").matches) {
       setIsInstalled(true);
     }
-
-    const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    setIsIOS(iOS);
-
-    const yandex = /YaBrowser|YaSearchBrowser/.test(navigator.userAgent);
-    setIsYandex(yandex);
-
-    const android = /Android/.test(navigator.userAgent);
-    setIsAndroid(android);
+    setBrowser(getBrowserName());
+    setOs(getOS());
 
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
     };
-
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-    return () => {
-      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-    };
+    return () => window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
   }, []);
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) return;
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === "accepted") {
-      setIsInstalled(true);
-    }
+    if (outcome === "accepted") setIsInstalled(true);
     setDeferredPrompt(null);
   };
 
   const handleCopyLink = async () => {
     try {
-      await navigator.clipboard.writeText(window.location.href);
+      await navigator.clipboard.writeText(window.location.origin + "/install");
       toast.success("Ссылка скопирована в буфер обмена");
     } catch {
       toast.error("Не удалось скопировать ссылку");
     }
   };
 
-  const showBothPlatforms = !isIOS && !isAndroid;
+  const installInfo = getBrowserInstallInfo(browser, os);
+  const isDesktop = os === 'desktop';
+
+  // On desktop show both iOS and Android guides
+  const iosInfo = getBrowserInstallInfo('safari', 'ios');
+  const androidInfo = getBrowserInstallInfo('chrome', 'android');
 
   return (
     <div className="min-h-screen bg-background">
@@ -77,11 +70,7 @@ export default function Install() {
 
       <main className="container mx-auto px-6 py-16">
         <div className="max-w-2xl mx-auto text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-          >
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
             <div className="w-20 h-20 rounded-2xl bg-foreground flex items-center justify-center mx-auto mb-8 shadow-xl">
               <span className="font-display font-bold text-3xl text-background">Σ</span>
             </div>
@@ -94,11 +83,7 @@ export default function Install() {
           </motion.div>
 
           {isInstalled ? (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="mb-12"
-            >
+            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="mb-12">
               <Card className="border-accent/30 bg-accent/5">
                 <CardContent className="py-8">
                   <div className="w-16 h-16 rounded-full bg-accent/20 flex items-center justify-center mx-auto mb-4">
@@ -116,7 +101,7 @@ export default function Install() {
               transition={{ duration: 0.6, delay: 0.2 }}
               className="space-y-6 mb-12"
             >
-              {/* Auto-install button when available */}
+              {/* Auto-install button */}
               {deferredPrompt && (
                 <Button
                   size="lg"
@@ -128,126 +113,34 @@ export default function Install() {
                 </Button>
               )}
 
-              {/* Yandex Browser Instructions */}
-              {isYandex && (
-                <Card className="text-left border-destructive/30 bg-destructive/5">
-                  <CardContent className="py-6">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-10 h-10 rounded-lg bg-destructive/20 flex items-center justify-center">
-                        <Globe className="w-5 h-5 text-destructive" />
-                      </div>
-                      <h3 className="font-medium text-lg">Установка через Яндекс Браузер</h3>
-                    </div>
-                    <ol className="space-y-4 text-sm text-muted-foreground mb-6">
-                      <li className="flex items-start gap-3">
-                        <span className="w-6 h-6 rounded-full bg-destructive/20 text-destructive flex items-center justify-center text-xs font-medium shrink-0">1</span>
-                        <span>Нажмите <MoreVertical className="w-4 h-4 inline mx-1" /> меню (три точки) внизу справа</span>
-                      </li>
-                      <li className="flex items-start gap-3">
-                        <span className="w-6 h-6 rounded-full bg-destructive/20 text-destructive flex items-center justify-center text-xs font-medium shrink-0">2</span>
-                        <span>Выберите «Добавить на главный экран»</span>
-                      </li>
-                      <li className="flex items-start gap-3">
-                        <span className="w-6 h-6 rounded-full bg-destructive/20 text-destructive flex items-center justify-center text-xs font-medium shrink-0">3</span>
-                        <span>Подтвердите добавление</span>
-                      </li>
-                    </ol>
-                    <div className="border-t border-border/50 pt-4">
-                      <p className="text-sm text-muted-foreground mb-3">Или откройте в <strong className="text-foreground">Chrome</strong> для лучшей установки:</p>
-                      <Button
-                        variant="outline"
-                        onClick={handleCopyLink}
-                        className="gap-2 w-full"
-                      >
-                        <Copy className="w-4 h-4" />
-                        Скопировать ссылку для Chrome
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+              {/* Browser-specific instructions */}
+              {isDesktop ? (
+                <>
+                  <InstructionCard info={iosInfo} label="iPhone / iPad" />
+                  <InstructionCard info={androidInfo} label="Android" />
+                </>
+              ) : (
+                <InstructionCard info={installInfo} label={installInfo.name} />
               )}
 
-              {/* iOS Instructions */}
-              {(isIOS || showBothPlatforms) && !isYandex && (
-                <Card className="text-left">
-                  <CardContent className="py-6">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
-                        <Apple className="w-5 h-5" />
-                      </div>
-                      <h3 className="font-medium text-lg">Установка на iPhone/iPad</h3>
-                    </div>
-                    <ol className="space-y-4 text-sm text-muted-foreground">
-                      <li className="flex items-start gap-3">
-                        <span className="w-6 h-6 rounded-full bg-accent/20 text-accent flex items-center justify-center text-xs font-medium shrink-0">1</span>
-                        <span>Откройте эту страницу в браузере <strong className="text-foreground">Safari</strong></span>
-                      </li>
-                      <li className="flex items-start gap-3">
-                        <span className="w-6 h-6 rounded-full bg-accent/20 text-accent flex items-center justify-center text-xs font-medium shrink-0">2</span>
-                        <span>Нажмите кнопку <Share className="w-4 h-4 inline mx-1" /> «Поделиться» внизу экрана</span>
-                      </li>
-                      <li className="flex items-start gap-3">
-                        <span className="w-6 h-6 rounded-full bg-accent/20 text-accent flex items-center justify-center text-xs font-medium shrink-0">3</span>
-                        <span>Прокрутите вниз и выберите <Plus className="w-4 h-4 inline mx-1" /> «На экран Домой»</span>
-                      </li>
-                      <li className="flex items-start gap-3">
-                        <span className="w-6 h-6 rounded-full bg-accent/20 text-accent flex items-center justify-center text-xs font-medium shrink-0">4</span>
-                        <span>Нажмите «Добавить» в правом верхнем углу</span>
-                      </li>
-                    </ol>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Android Chrome Instructions */}
-              {(isAndroid || showBothPlatforms) && !isYandex && (
-                <Card className="text-left">
-                  <CardContent className="py-6">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
-                        <Play className="w-5 h-5 fill-current" />
-                      </div>
-                      <h3 className="font-medium text-lg">Установка на Android</h3>
-                    </div>
-                    <ol className="space-y-4 text-sm text-muted-foreground">
-                      <li className="flex items-start gap-3">
-                        <span className="w-6 h-6 rounded-full bg-accent/20 text-accent flex items-center justify-center text-xs font-medium shrink-0">1</span>
-                        <span>Откройте эту страницу в браузере <strong className="text-foreground">Chrome</strong></span>
-                      </li>
-                      <li className="flex items-start gap-3">
-                        <span className="w-6 h-6 rounded-full bg-accent/20 text-accent flex items-center justify-center text-xs font-medium shrink-0">2</span>
-                        <span>Нажмите <MoreVertical className="w-4 h-4 inline mx-1" /> меню в правом верхнем углу</span>
-                      </li>
-                      <li className="flex items-start gap-3">
-                        <span className="w-6 h-6 rounded-full bg-accent/20 text-accent flex items-center justify-center text-xs font-medium shrink-0">3</span>
-                        <span>Выберите «Установить приложение» или «Добавить на главный экран»</span>
-                      </li>
-                      <li className="flex items-start gap-3">
-                        <span className="w-6 h-6 rounded-full bg-accent/20 text-accent flex items-center justify-center text-xs font-medium shrink-0">4</span>
-                        <span>Подтвердите установку</span>
-                      </li>
-                    </ol>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Copy link + Refresh buttons */}
-              <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                {!isYandex && (
-                  <Button
-                    variant="outline"
-                    onClick={handleCopyLink}
-                    className="gap-2"
-                  >
+              {/* Suggest Chrome if not in a browser that supports beforeinstallprompt */}
+              {!deferredPrompt && os === 'android' && browser !== 'chrome' && (
+                <div className="border border-border/50 rounded-lg p-4 text-sm text-muted-foreground">
+                  <p>Для лучшей установки откройте в <strong className="text-foreground">Google Chrome</strong>:</p>
+                  <Button variant="outline" onClick={handleCopyLink} className="gap-2 mt-3 w-full">
                     <Copy className="w-4 h-4" />
-                    Скопировать ссылку
+                    Скопировать ссылку для Chrome
                   </Button>
-                )}
-                <Button
-                  variant="outline"
-                  onClick={() => window.location.reload()}
-                  className="gap-2"
-                >
+                </div>
+              )}
+
+              {/* Utility buttons */}
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <Button variant="outline" onClick={handleCopyLink} className="gap-2">
+                  <Copy className="w-4 h-4" />
+                  Скопировать ссылку
+                </Button>
+                <Button variant="outline" onClick={() => window.location.reload()} className="gap-2">
                   <RefreshCw className="w-4 h-4" />
                   Обновить страницу
                 </Button>
@@ -256,11 +149,7 @@ export default function Install() {
           )}
 
           {/* Features */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-          >
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.4 }}>
             <h3 className="font-display text-xl font-medium mb-6">Преимущества приложения</h3>
             <div className="grid sm:grid-cols-3 gap-4">
               {[
@@ -280,5 +169,30 @@ export default function Install() {
         </div>
       </main>
     </div>
+  );
+}
+
+function InstructionCard({ info, label }: { info: { name: string; steps: string[] }; label: string }) {
+  return (
+    <Card className="text-left">
+      <CardContent className="py-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
+            <Globe className="w-5 h-5" />
+          </div>
+          <h3 className="font-medium text-lg">Установка — {label}</h3>
+        </div>
+        <ol className="space-y-4 text-sm text-muted-foreground">
+          {info.steps.map((step, i) => (
+            <li key={i} className="flex items-start gap-3">
+              <span className="w-6 h-6 rounded-full bg-accent/20 text-accent flex items-center justify-center text-xs font-medium shrink-0">
+                {i + 1}
+              </span>
+              <span>{step}</span>
+            </li>
+          ))}
+        </ol>
+      </CardContent>
+    </Card>
   );
 }
