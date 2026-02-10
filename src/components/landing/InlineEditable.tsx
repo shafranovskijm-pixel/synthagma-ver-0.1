@@ -14,7 +14,7 @@ interface InlineEditableProps {
 
 export const InlineEditable = forwardRef<HTMLElement, InlineEditableProps>(
   function InlineEditable({ contentKey, defaultValue, children, as: Tag = "span" }, _ref) {
-  const { getValue, updateValue, isAdmin } = useLandingContent();
+  const { getValue, updateValue, isAdmin, isLoggedIn, showLogin } = useLandingContent();
   const [open, setOpen] = useState(false);
   const [editValue, setEditValue] = useState("");
   const [saving, setSaving] = useState(false);
@@ -38,18 +38,26 @@ export const InlineEditable = forwardRef<HTMLElement, InlineEditableProps>(
     };
   }, []);
 
-  if (!isAdmin) {
-    return <>{children(value)}</>;
-  }
-
   const handleContextMenu = (e: React.MouseEvent) => {
     if (!e.ctrlKey) return;
     e.preventDefault();
     e.stopPropagation();
+
+    if (!isLoggedIn) {
+      showLogin();
+      return;
+    }
+
+    if (!isAdmin) {
+      toast({ title: "Нет прав для редактирования", variant: "destructive" });
+      return;
+    }
+
     setEditValue(value);
     setOpen(true);
   };
 
+  // Always attach context menu handler so login popup can appear
   const handleSave = async () => {
     setSaving(true);
     try {
