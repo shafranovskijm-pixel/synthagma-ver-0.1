@@ -134,10 +134,7 @@ export function StudentDocumentsManager({
         if (uploadError) {
           console.warn("Upload failed:", uploadError);
         } else {
-          const { data: urlData } = supabase.storage
-            .from("student-documents")
-            .getPublicUrl(fileName);
-          fileUrl = urlData.publicUrl;
+          fileUrl = fileName;
         }
       }
 

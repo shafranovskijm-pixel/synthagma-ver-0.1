@@ -448,10 +448,6 @@
  
        if (uploadError) throw uploadError;
  
-       const { data: { publicUrl } } = supabase.storage
-         .from("student-documents")
-         .getPublicUrl(fileName);
- 
        const docNames: Record<string, string> = {
          passport: "Паспорт",
          birth_certificate: "Свидетельство о рождении",
@@ -464,7 +460,7 @@
          organization_id: organizationId,
          type: selectedDocType,
          name: docNames[selectedDocType] || file.name,
-         file_url: publicUrl,
+         file_url: fileName,
          file_path: fileName,
        });
  

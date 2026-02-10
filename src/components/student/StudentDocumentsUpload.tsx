@@ -182,10 +182,6 @@ export function StudentDocumentsUpload({
 
       if (uploadError) throw uploadError;
 
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("student-documents").getPublicUrl(fileName);
-
       const docInfo = DOCUMENT_TYPES.find((d) => d.id === selectedDocType);
 
       const { error: insertError } = await supabase
@@ -195,7 +191,7 @@ export function StudentDocumentsUpload({
           organization_id: organizationId,
           type: selectedDocType,
           name: docInfo?.label || file.name,
-          file_url: publicUrl,
+          file_url: fileName,
           file_path: fileName,
         });
 
