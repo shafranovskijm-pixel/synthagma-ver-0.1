@@ -444,12 +444,32 @@ const VideoPlayerInline = ({
     }
   };
   
+  if (videoError) {
+    return (
+      <div className="aspect-video w-full rounded-2xl overflow-hidden bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 flex flex-col items-center justify-center gap-4">
+        <Video className="w-16 h-16 text-primary/60" />
+        <div className="text-center px-4">
+          <p className="text-sm font-medium text-foreground mb-1">Не удалось воспроизвести видео</p>
+          <p className="text-xs text-muted-foreground mb-3">Формат видео не поддерживается браузером</p>
+          <a
+            href={resolvedContent}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+          >
+            <Play className="w-4 h-4" />
+            Открыть видео в новом окне
+          </a>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="relative">
       <video 
         key={allowSeek ? "video-seek-enabled" : "video-seek-disabled"}
         ref={videoRef}
-        // IMPORTANT: when seeking is disabled we must remove native controls entirely.
         controls={allowSeek}
         className="w-full h-full rounded-2xl"
         src={resolvedContent}
@@ -459,8 +479,8 @@ const VideoPlayerInline = ({
         onRateChange={handleRateChange}
         onPlay={handlePlay}
         onPause={handlePause}
+        onError={() => setVideoError(true)}
         onContextMenu={(e) => {
-          // Prevent the browser's right-click menu (e.g., "Скачать") when restrictions are enabled.
           if (!allowSeek) e.preventDefault();
         }}
         controlsList={`nodownload${!allowSeek ? " noplaybackrate noremoteplayback" : ""}`}
