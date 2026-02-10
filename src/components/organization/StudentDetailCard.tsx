@@ -306,7 +306,7 @@ export function StudentDetailCard({
   const handleDeleteIdentityDoc = async (doc: IdentityDocumentRecord) => {
     try {
       if (doc.file_url) {
-        const path = doc.file_url.split("/student-documents/")[1];
+        const path = extractStoragePath(doc.file_url, "student-documents");
         if (path) {
           await supabase.storage.from("student-documents").remove([path]);
         }
