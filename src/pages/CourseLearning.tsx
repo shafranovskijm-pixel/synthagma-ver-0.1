@@ -1268,8 +1268,9 @@ const CourseLearning = () => {
     
     // If count is null, show all questions
     if (count === null || count <= 0 || count >= allQuestions.length) {
-      console.log('[selectRandomQuestions] Showing all questions');
-      setTestQuestions(allQuestions);
+      console.log('[selectRandomQuestions] Showing all questions (shuffled)');
+      const shuffled = [...allQuestions].sort(() => Math.random() - 0.5);
+      setTestQuestions(shuffled);
       return;
     }
 
