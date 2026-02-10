@@ -25,6 +25,7 @@ import {
   Upload,
   Trash2,
   Eye,
+  EyeOff,
   XCircle,
   History,
   Download,
