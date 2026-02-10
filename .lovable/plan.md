@@ -1,46 +1,108 @@
 
 
-# Исправление загрузки видео и перемотки
+# Инлайн-редактирование главной страницы (Ctrl + правый клик)
 
-## Проблема 1: Видео не загружается (крутится "Загрузка видео...")
+## Что будет сделано
 
-**Причина**: Атрибут `crossOrigin="anonymous"` на теге `<video>` требует, чтобы сервер хранилища отвечал заголовком `Access-Control-Allow-Origin`. Хранилище не отправляет этот заголовок для домена `синтагма.рф`, поэтому браузер полностью блокирует загрузку видео.
+Администратор сможет редактировать тексты на главной странице прямо на месте: зажать Ctrl и нажать правую кнопку мыши на любом редактируемом элементе -- появится попап с полем ввода, где можно изменить текст и сохранить его в базу данных. Изменения сохраняются и отображаются для всех посетителей.
 
-**Решение**: Убрать `crossOrigin="anonymous"` из тега `<video>`. Этот атрибут не нужен для простого воспроизведения видео -- он нужен только если мы хотим рисовать кадры на `<canvas>`, чего мы не делаем.
+## Как это будет работать
 
-## Проблема 2: Перемотка доступна при запрете
+1. При загрузке страницы проверяется, авторизован ли пользователь и является ли он админом
+2. Если да -- все редактируемые тексты оборачиваются в компонент `InlineEditable`, который при Ctrl+ПКМ показывает попап редактирования
+3. Тексты загружаются из таблицы `landing_content` в базе данных; если записи нет -- используется значение по умолчанию из кода
+4. При сохранении текст записывается в базу и обновляется на странице без перезагрузки
 
-**Причина**: Когда `allow_video_seek = false`, код ставит `controls={false}` и показывает кастомный оверлей без полосы перемотки. Но при входе в полноэкранный режим браузер может автоматически показать нативные контролы с полосой перемотки. Также видео, которые загружаются через iframe/embed (YouTube, VK и т.д.), не поддерживают запрет перемотки.
+## Редактируемые элементы
 
-**Решение**: 
-- При `allowSeek=false` в полноэкранном режиме (через `webkitEnterFullscreen` на мобильных) браузер показывает свои контролы -- нужно использовать `requestFullscreen()` на контейнере `<div>`, а не на самом `<video>`, чтобы кастомные контролы сохранялись.
-- Добавить CSS `video::-webkit-media-controls { display: none !important; }` для дополнительной защиты от показа нативных контролов.
+- **Hero**: заголовок, подзаголовок, текст кнопки, бейдж
+- **Features**: заголовок секции, подзаголовок, названия и описания каждой фичи
+- **EditorDemo**: заголовок, подзаголовок
+- **Roadmap**: заголовок, подзаголовок
+- **Testimonials**: заголовок, подзаголовок
+- **CostCalculator**: заголовок, подзаголовок
+- **CTA**: заголовок, подзаголовок, текст кнопки
+- **Footer**: описание компании
 
 ## Технические детали
 
-### Файл: `src/pages/CourseLearning.tsx`
+### 1. Новая таблица `landing_content`
 
-1. **Строка 528**: Удалить `crossOrigin="anonymous"` -- это главная причина, по которой видео не загружается
+```sql
+CREATE TABLE landing_content (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  content_key TEXT UNIQUE NOT NULL,
+  content_value TEXT NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  updated_by UUID REFERENCES auth.users(id)
+);
 
-2. **Строки 399-417 (requestFullscreen)**: Изменить логику полноэкранного режима при `allowSeek=false`:
-   - Вместо `v.requestFullscreen()` (показывает нативные контролы) использовать `containerRef.current.requestFullscreen()` (контейнер `<div>` с кастомными контролами)
-   - Добавить `containerRef` (ref на обёртку `<div className="relative">`)
+-- RLS: чтение для всех, запись только для админов
+ALTER TABLE landing_content ENABLE ROW LEVEL SECURITY;
 
-3. **Строка ~525**: Добавить inline style на `<video>` при `!allowSeek`: 
-   ```css
-   video::-webkit-media-controls { display: none !important; }
-   ```
-   Реализовать через className с соответствующим CSS.
+CREATE POLICY "Anyone can read landing content"
+  ON landing_content FOR SELECT USING (true);
 
-4. **Файл `src/App.css` или `src/index.css`**: Добавить CSS-правило:
-   ```css
-   .video-no-controls::-webkit-media-controls {
-     display: none !important;
-   }
-   ```
+CREATE POLICY "Admins can update landing content"
+  ON landing_content FOR ALL USING (
+    EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'admin')
+  );
+```
 
-### Итого
-- 2 файла с изменениями (`CourseLearning.tsx`, `src/index.css`)
-- Видео начнёт загружаться после удаления `crossOrigin`
-- Нативные контролы будут скрыты даже в полноэкранном режиме
+### 2. Новый компонент `InlineEditable`
+
+Файл: `src/components/landing/InlineEditable.tsx`
+
+- Принимает `contentKey`, `defaultValue`, `children` (render prop)
+- Подписывается на контекст `LandingContentContext` для получения текущего значения
+- При Ctrl+ПКМ предотвращает стандартное контекстное меню и показывает `Popover` с `<textarea>` и кнопками "Сохранить" / "Отмена"
+- При сохранении делает `upsert` в `landing_content` и обновляет контекст
+
+### 3. Контекст `LandingContentProvider`
+
+Файл: `src/components/landing/LandingContentContext.tsx`
+
+- При монтировании загружает все записи из `landing_content`
+- Проверяет авторизацию: если пользователь -- админ, устанавливает `isAdmin = true`
+- Предоставляет функцию `getValue(key, defaultValue)` и `updateValue(key, value)`
+- Оборачивает страницу `Index` целиком
+
+### 4. Изменения в компонентах
+
+Каждый landing-компонент (Hero, Features, CTA и т.д.) получит обёртки `InlineEditable` вокруг редактируемых текстов. Пример:
+
+```tsx
+// Было:
+<h1>Обучение и документы</h1>
+
+// Стало:
+<InlineEditable contentKey="hero_title" defaultValue="Обучение и документы">
+  {(value) => <h1>{value}</h1>}
+</InlineEditable>
+```
+
+Для обычных посетителей компонент просто рендерит текст без каких-либо дополнительных обработчиков -- никакого визуального отличия.
+
+### 5. Визуальная индикация для админа
+
+- При наведении с зажатым Ctrl на редактируемый элемент -- тонкая пунктирная рамка `border-dashed border-accent/50`
+- Попап редактирования: `textarea` + кнопки, позиционирование через `Popover` из shadcn/ui
+- После сохранения -- `toast` "Сохранено"
+
+### Файлы
+
+| Файл | Действие |
+|---|---|
+| `src/components/landing/LandingContentContext.tsx` | Новый |
+| `src/components/landing/InlineEditable.tsx` | Новый |
+| `src/pages/Index.tsx` | Обернуть в `LandingContentProvider` |
+| `src/components/landing/Hero.tsx` | Добавить `InlineEditable` |
+| `src/components/landing/Features.tsx` | Добавить `InlineEditable` |
+| `src/components/landing/EditorDemo.tsx` | Добавить `InlineEditable` |
+| `src/components/landing/Roadmap.tsx` | Добавить `InlineEditable` |
+| `src/components/landing/Testimonials.tsx` | Добавить `InlineEditable` |
+| `src/components/landing/CostCalculator.tsx` | Добавить `InlineEditable` |
+| `src/components/landing/CTA.tsx` | Добавить `InlineEditable` |
+| `src/components/landing/Footer.tsx` | Добавить `InlineEditable` |
+| База данных | Создать таблицу `landing_content` с RLS |
 
