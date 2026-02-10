@@ -570,10 +570,7 @@ export function CostCalculator() {
                     <span className="text-foreground font-medium">Хранилище: 1 ГБ</span> в стандартном тарифе
                   </p>
                   <p>
-                    Расширение: <span className="text-foreground">+5 ГБ</span> за <span className="text-foreground">1 000 ₽/мес</span>
-                  </p>
-                  <p>
-                    Далее: <span className="text-foreground">200 ₽</span> за 1 ГБ
+                    Далее: <span className="text-foreground">250 ₽</span> за 1 ГБ
                   </p>
                 </div>
               </div>
