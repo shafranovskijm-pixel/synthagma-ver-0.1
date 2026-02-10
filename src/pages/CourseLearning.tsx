@@ -447,22 +447,70 @@ const VideoPlayerInline = ({
     }
   };
   
+  const handleRetryVideo = () => {
+    setVideoError(false);
+    setVideoLoading(true);
+    setVideoSlow(false);
+    if (videoRef.current) {
+      videoRef.current.load();
+    }
+  };
+
+  const handleCanPlay = () => {
+    setVideoLoading(false);
+    setVideoSlow(false);
+    if (stalledTimerRef.current) {
+      clearTimeout(stalledTimerRef.current);
+      stalledTimerRef.current = null;
+    }
+  };
+
+  const handleWaiting = () => {
+    setVideoLoading(true);
+  };
+
+  const handlePlaying = () => {
+    setVideoLoading(false);
+    setVideoSlow(false);
+    if (stalledTimerRef.current) {
+      clearTimeout(stalledTimerRef.current);
+      stalledTimerRef.current = null;
+    }
+  };
+
+  const handleStalled = () => {
+    if (stalledTimerRef.current) clearTimeout(stalledTimerRef.current);
+    stalledTimerRef.current = setTimeout(() => {
+      setVideoSlow(true);
+    }, 15000);
+  };
+
   if (videoError) {
     return (
       <div className="aspect-video w-full rounded-2xl overflow-hidden bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 flex flex-col items-center justify-center gap-4">
         <Video className="w-16 h-16 text-primary/60" />
         <div className="text-center px-4">
           <p className="text-sm font-medium text-foreground mb-1">Не удалось воспроизвести видео</p>
-          <p className="text-xs text-muted-foreground mb-3">Формат видео не поддерживается браузером</p>
-          <a
-            href={resolvedContent}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
-          >
-            <Play className="w-4 h-4" />
-            Открыть видео в новом окне
-          </a>
+          <p className="text-xs text-muted-foreground mb-3">Формат видео не поддерживается браузером или файл недоступен</p>
+          <div className="flex flex-col sm:flex-row gap-2 justify-center">
+            <Button
+              variant="outline"
+              onClick={handleRetryVideo}
+              className="inline-flex items-center gap-2"
+            >
+              <RotateCcw className="w-4 h-4" />
+              Попробовать снова
+            </Button>
+            <a
+              href={resolvedContent}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+            >
+              <Play className="w-4 h-4" />
+              Открыть видео в новом окне
+            </a>
+          </div>
         </div>
       </div>
     );
