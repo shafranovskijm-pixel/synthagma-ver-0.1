@@ -92,15 +92,16 @@ export function CTA() {
             <span className="text-sm text-background/90 font-medium">Начните бесплатно</span>
           </motion.div>
 
-          <motion.h2
+          <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.8, delay: 0.1 }}
-            className="font-display text-4xl md:text-5xl lg:text-6xl font-medium text-background mb-8 leading-tight tracking-tight"
           >
-            Готовы автоматизировать обучение?
-          </motion.h2>
+            <InlineEditable contentKey="cta_title" defaultValue="Готовы автоматизировать обучение?">
+              {(v) => <h2 className="font-display text-4xl md:text-5xl lg:text-6xl font-medium text-background mb-8 leading-tight tracking-tight">{v}</h2>}
+            </InlineEditable>
+          </motion.div>
 
           {/* Decorative line with dots */}
           <motion.div
