@@ -396,19 +396,24 @@ const VideoPlayerInline = ({
     setIsMuted(v.muted);
   };
 
+  const containerRef = useRef<HTMLDivElement>(null);
+
   const requestFullscreen = async () => {
     const v = videoRef.current;
     if (!v) return;
     try {
-      // @ts-expect-error - older Safari uses webkitEnterFullscreen
-      if (typeof v.webkitEnterFullscreen === 'function') {
-        // @ts-expect-error
-        v.webkitEnterFullscreen();
-        return;
-      }
       if (document.fullscreenElement) {
         await document.exitFullscreen();
+      } else if (!allowSeek && containerRef.current) {
+        // Fullscreen on container preserves custom overlay (hides native controls)
+        await containerRef.current.requestFullscreen();
       } else {
+        // @ts-expect-error - older Safari uses webkitEnterFullscreen
+        if (typeof v.webkitEnterFullscreen === 'function') {
+          // @ts-expect-error
+          v.webkitEnterFullscreen();
+          return;
+        }
         await v.requestFullscreen();
       }
     } catch {
