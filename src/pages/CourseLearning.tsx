@@ -522,7 +522,7 @@ const VideoPlayerInline = ({
   }
 
   return (
-    <div className="relative">
+    <div ref={containerRef} className="relative bg-black rounded-2xl">
       <video 
         key={allowSeek ? "video-seek-enabled" : "video-seek-disabled"}
         ref={videoRef}
