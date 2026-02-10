@@ -188,6 +188,7 @@ const VideoPlayerInline = ({
   allowSeek = true, 
   onVideoComplete, 
   onProgressChange,
+  onFinishLesson,
   userId,
   lessonId,
   savedPosition = 0,
