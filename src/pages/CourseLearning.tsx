@@ -195,6 +195,8 @@ const VideoPlayerInline = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const [watchedProgress, setWatchedProgress] = useState(0);
   const [videoError, setVideoError] = useState(false);
+  const [videoLoading, setVideoLoading] = useState(true);
+  const [videoSlow, setVideoSlow] = useState(false);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -203,6 +205,7 @@ const VideoPlayerInline = ({
   const completedRef = useRef(false);
   const seekGuardRef = useRef(false);
   const hasRestoredPositionRef = useRef(false);
+  const stalledTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   if (!content) return null;
   
