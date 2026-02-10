@@ -541,6 +541,7 @@ const VideoPlayerInline = ({
         onRateChange={handleRateChange}
         onPlay={handlePlay}
         onPause={handlePause}
+        onEnded={handleEnded}
         onCanPlay={handleCanPlay}
         onWaiting={handleWaiting}
         onPlaying={handlePlaying}
