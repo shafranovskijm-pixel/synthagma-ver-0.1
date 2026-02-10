@@ -146,6 +146,7 @@ export function StudentDetailCard({
   const [newPassword, setNewPassword] = useState("");
   const [isUpdatingCredentials, setIsUpdatingCredentials] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     if (isOpen && student) {
