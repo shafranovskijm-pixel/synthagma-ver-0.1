@@ -383,8 +383,9 @@ const VideoPlayerInline = ({
     }
   };
 
-  const handlePlay = () => setIsPlaying(true);
+  const handlePlay = () => { setIsPlaying(true); setVideoEnded(false); };
   const handlePause = () => setIsPlaying(false);
+  const handleEnded = () => { setIsPlaying(false); setVideoEnded(true); };
 
   const togglePlay = () => {
     const v = videoRef.current;
