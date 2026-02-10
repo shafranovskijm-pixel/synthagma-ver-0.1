@@ -1160,10 +1160,13 @@ const CourseLearning = () => {
         setEnrollmentId(enrollment.id);
       }
 
+      // Filter lesson_progress by current course lessons only
+      const courseLessonIds = (lessonsData || []).map((l: any) => l.id);
       const { data: progressData } = await supabase
         .from('lesson_progress')
         .select('lesson_id, completed')
-        .eq('user_id', user!.id);
+        .eq('user_id', user!.id)
+        .in('lesson_id', courseLessonIds);
 
       setLessonProgress(progressData || []);
     } catch (error) {
