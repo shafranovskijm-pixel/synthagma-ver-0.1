@@ -524,12 +524,18 @@ const VideoPlayerInline = ({
         controls={allowSeek}
         className="w-full h-full rounded-2xl"
         src={resolvedContent}
+        preload="metadata"
+        crossOrigin="anonymous"
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
         onSeeking={handleSeeking}
         onRateChange={handleRateChange}
         onPlay={handlePlay}
         onPause={handlePause}
+        onCanPlay={handleCanPlay}
+        onWaiting={handleWaiting}
+        onPlaying={handlePlaying}
+        onStalled={handleStalled}
         onError={() => setVideoError(true)}
         onContextMenu={(e) => {
           if (!allowSeek) e.preventDefault();
@@ -539,6 +545,20 @@ const VideoPlayerInline = ({
         disableRemotePlayback={!allowSeek}
         playsInline
       />
+      {videoLoading && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 rounded-2xl pointer-events-none">
+          <Loader2 className="w-10 h-10 animate-spin text-white mb-2" />
+          <p className="text-white text-sm">Загрузка видео...</p>
+        </div>
+      )}
+      {videoSlow && !videoLoading && (
+        <div className="absolute top-2 left-2 bg-background/90 backdrop-blur-sm text-xs px-3 py-2 rounded-lg flex items-center gap-2 border border-border">
+          <span className="text-muted-foreground">Видео загружается медленно</span>
+          <a href={resolvedContent} target="_blank" rel="noopener noreferrer" className="text-primary underline">
+            Открыть отдельно
+          </a>
+        </div>
+      )
       {!allowSeek && (
         <div className="absolute inset-x-0 bottom-0 p-3">
           <div className="rounded-xl border border-border bg-background/80 backdrop-blur-md px-3 py-2 flex items-center gap-3">
