@@ -176,6 +176,7 @@ interface VideoPlayerInlineProps {
   allowSeek?: boolean;
   onVideoComplete?: () => void;
   onProgressChange?: (progress: number) => void;
+  onFinishLesson?: () => void;
   userId?: string;
   lessonId?: string;
   savedPosition?: number;
