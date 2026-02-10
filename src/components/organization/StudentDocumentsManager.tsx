@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { openPrivateFile } from "@/utils/storageHelpers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -134,10 +135,7 @@ export function StudentDocumentsManager({
         if (uploadError) {
           console.warn("Upload failed:", uploadError);
         } else {
-          const { data: urlData } = supabase.storage
-            .from("student-documents")
-            .getPublicUrl(fileName);
-          fileUrl = urlData.publicUrl;
+          fileUrl = fileName;
         }
       }
 
@@ -332,7 +330,7 @@ export function StudentDocumentsManager({
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => window.open(doc.file_url!, "_blank")}
+                            onClick={() => openPrivateFile("student-documents", doc.file_url!)}
                           >
                             <Eye className="w-4 h-4" />
                           </Button>

@@ -213,10 +213,7 @@ export function BulkDocumentUpload({
             .upload(fileName, selectedFile);
 
           if (!uploadError) {
-            const { data: urlData } = supabase.storage
-              .from("student-documents")
-              .getPublicUrl(fileName);
-            fileUrl = urlData.publicUrl;
+            fileUrl = fileName;
           }
         }
 

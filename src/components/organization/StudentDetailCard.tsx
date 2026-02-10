@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { openPrivateFile, getSignedStorageUrl, extractStoragePath } from "@/utils/storageHelpers";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -270,10 +271,6 @@ export function StudentDetailCard({
 
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
-        .from("student-documents")
-        .getPublicUrl(fileName);
-
       const docNames: Record<string, string> = {
         passport: "Паспорт",
         birth_certificate: "Свидетельство о рождении",
@@ -288,7 +285,7 @@ export function StudentDetailCard({
           organization_id: organizationId,
           type: selectedDocType,
           name: docNames[selectedDocType] || file.name,
-          file_url: publicUrl,
+          file_url: fileName,
           file_path: fileName,
         });
 
@@ -309,7 +306,7 @@ export function StudentDetailCard({
   const handleDeleteIdentityDoc = async (doc: IdentityDocumentRecord) => {
     try {
       if (doc.file_url) {
-        const path = doc.file_url.split("/student-documents/")[1];
+        const path = extractStoragePath(doc.file_url, "student-documents");
         if (path) {
           await supabase.storage.from("student-documents").remove([path]);
         }
@@ -339,29 +336,34 @@ export function StudentDetailCard({
     setIsLoadingPreview(true);
     
     try {
+      // Get signed URL for private bucket access
+      const storagePath = extractStoragePath(doc.file_url, "student-documents");
+      const signedUrl = await getSignedStorageUrl("student-documents", storagePath);
+      if (!signedUrl) {
+        toast.error("Не удалось получить доступ к файлу");
+        return;
+      }
+
       if (isImage) {
-        // Fetch image as blob to bypass ad blockers
-        const response = await fetch(doc.file_url);
+        const response = await fetch(signedUrl);
         const blob = await response.blob();
         const blobUrl = URL.createObjectURL(blob);
         setPreviewDoc({
           url: blobUrl,
           name: doc.name,
           type: 'image',
-          originalUrl: doc.file_url
+          originalUrl: signedUrl
         });
       } else if (isPdf) {
-        // Use Google Docs Viewer for PDF
-        const encodedUrl = encodeURIComponent(doc.file_url);
+        // Open PDF directly with signed URL
         setPreviewDoc({
-          url: `https://docs.google.com/viewer?url=${encodedUrl}&embedded=true`,
+          url: signedUrl,
           name: doc.name,
           type: 'pdf',
-          originalUrl: doc.file_url
+          originalUrl: signedUrl
         });
       } else {
-        // For other files, just download
-        handleDownloadDoc(doc.file_url, doc.name);
+        handleDownloadDoc(signedUrl, doc.name);
       }
     } catch (error) {
       console.error("Preview error:", error);

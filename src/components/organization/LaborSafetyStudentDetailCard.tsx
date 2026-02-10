@@ -1,4 +1,5 @@
  import { useState, useEffect, useRef } from "react";
+ import { openPrivateFile, extractStoragePath } from "@/utils/storageHelpers";
  import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
  import { Button } from "@/components/ui/button";
  import { Badge } from "@/components/ui/badge";
@@ -448,10 +449,6 @@
  
        if (uploadError) throw uploadError;
  
-       const { data: { publicUrl } } = supabase.storage
-         .from("student-documents")
-         .getPublicUrl(fileName);
- 
        const docNames: Record<string, string> = {
          passport: "Паспорт",
          birth_certificate: "Свидетельство о рождении",
@@ -464,7 +461,7 @@
          organization_id: organizationId,
          type: selectedDocType,
          name: docNames[selectedDocType] || file.name,
-         file_url: publicUrl,
+         file_url: fileName,
          file_path: fileName,
        });
  
@@ -483,7 +480,7 @@
    const handleDeleteDoc = async (doc: IdentityDocumentRecord) => {
      try {
        if (doc.file_url) {
-         const path = doc.file_url.split("/student-documents/")[1];
+         const path = extractStoragePath(doc.file_url, "student-documents");
          if (path) {
            await supabase.storage.from("student-documents").remove([path]);
          }
@@ -1253,7 +1250,7 @@
                                      <Button
                                        variant="ghost"
                                        size="icon"
-                                       onClick={() => window.open(d.file_url!, '_blank')}
+                                       onClick={() => openPrivateFile("student-documents", d.file_url!)}
                                        title="Открыть"
                                      >
                                        <Eye className="w-4 h-4" />

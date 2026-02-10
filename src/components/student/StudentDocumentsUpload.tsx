@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { openPrivateFile, extractStoragePath } from "@/utils/storageHelpers";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -182,10 +183,6 @@ export function StudentDocumentsUpload({
 
       if (uploadError) throw uploadError;
 
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("student-documents").getPublicUrl(fileName);
-
       const docInfo = DOCUMENT_TYPES.find((d) => d.id === selectedDocType);
 
       const { error: insertError } = await supabase
@@ -195,7 +192,7 @@ export function StudentDocumentsUpload({
           organization_id: organizationId,
           type: selectedDocType,
           name: docInfo?.label || file.name,
-          file_url: publicUrl,
+          file_url: fileName,
           file_path: fileName,
         });
 
@@ -216,7 +213,7 @@ export function StudentDocumentsUpload({
   const handleDelete = async (doc: IdentityDocument) => {
     try {
       if (doc.file_url) {
-        const path = doc.file_url.split("/student-documents/")[1];
+        const path = extractStoragePath(doc.file_url, "student-documents");
         if (path) {
           await supabase.storage.from("student-documents").remove([path]);
         }
@@ -365,7 +362,7 @@ export function StudentDocumentsUpload({
                               className="rounded-lg gap-1"
                               onClick={() =>
                                 existingDoc.file_url &&
-                                window.open(existingDoc.file_url, "_blank")
+                                openPrivateFile("student-documents", existingDoc.file_url)
                               }
                             >
                               <Eye className="w-4 h-4" />
