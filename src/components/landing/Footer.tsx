@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Mail, Phone, ArrowUpRight, Apple, Play } from "lucide-react";
+import { Mail, Phone, ArrowUpRight, Download } from "lucide-react";
 import { motion } from "framer-motion";
 import { InlineEditable } from "./InlineEditable";
 

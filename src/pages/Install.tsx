@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Download, Smartphone, Share, Plus, MoreVertical, Apple, Play } from "lucide-react";
+import { ArrowLeft, Download, Smartphone, Share, Plus, MoreVertical, Apple, Play, Monitor } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface BeforeInstallPromptEvent extends Event {
