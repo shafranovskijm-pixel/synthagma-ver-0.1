@@ -53,6 +53,15 @@ export default function Install() {
     setDeferredPrompt(null);
   };
 
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      toast.success("Ссылка скопирована в буфер обмена");
+    } catch {
+      toast.error("Не удалось скопировать ссылку");
+    }
+  };
+
   const showBothPlatforms = !isIOS && !isAndroid;
 
   return (
