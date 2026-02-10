@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { InlineEditable } from "./InlineEditable";
 import { 
   Smartphone, 
   KeyRound, 
