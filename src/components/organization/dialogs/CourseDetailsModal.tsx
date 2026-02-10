@@ -498,7 +498,7 @@ export function CourseDetailsModal({
   const activeStudents = courseStudents.filter(s => s.status !== 'completed').length;
   const completedStudents = courseStudents.filter(s => s.status === 'completed').length;
   const avgProgress = totalStudents > 0 
-    ? Math.round(courseStudents.reduce((sum, s) => sum + s.progress, 0) / totalStudents) 
+    ? Math.min(Math.round(courseStudents.reduce((sum, s) => sum + Math.min(s.progress, 100), 0) / totalStudents), 100)
     : 0;
   const completionRate = totalStudents > 0 
     ? Math.round(completedStudents / totalStudents * 100) 
