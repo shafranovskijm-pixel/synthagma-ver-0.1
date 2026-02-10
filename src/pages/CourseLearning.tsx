@@ -613,10 +613,20 @@ const VideoPlayerInline = ({
           </div>
         </div>
       )}
-      {!allowSeek && (
+      {!allowSeek && !videoEnded && (
         <div className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm text-xs px-2 py-1 rounded-lg flex items-center gap-1">
           <Video className="w-3 h-3" />
           Просмотрено: {Math.round(watchedProgress)}%
+        </div>
+      )}
+      {videoEnded && onFinishLesson && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 rounded-2xl">
+          <CheckCircle2 className="w-12 h-12 text-green-400 mb-3" />
+          <p className="text-white text-lg font-medium mb-4">Видео просмотрено</p>
+          <Button onClick={onFinishLesson} className="btn-gradient rounded-xl text-base px-6 py-3">
+            Завершить урок
+            <ChevronRight className="w-5 h-5 ml-2" />
+          </Button>
         </div>
       )}
     </div>
