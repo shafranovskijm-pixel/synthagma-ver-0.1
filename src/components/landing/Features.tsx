@@ -10,8 +10,10 @@ import {
   Bell,
   MessageCircle,
   Volume2,
+  Download,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
 import { InlineEditable } from "./InlineEditable";
 
 const features = [
