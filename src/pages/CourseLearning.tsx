@@ -195,6 +195,8 @@ const VideoPlayerInline = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const [watchedProgress, setWatchedProgress] = useState(0);
   const [videoError, setVideoError] = useState(false);
+  const [videoLoading, setVideoLoading] = useState(true);
+  const [videoSlow, setVideoSlow] = useState(false);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -203,6 +205,7 @@ const VideoPlayerInline = ({
   const completedRef = useRef(false);
   const seekGuardRef = useRef(false);
   const hasRestoredPositionRef = useRef(false);
+  const stalledTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   if (!content) return null;
   
@@ -444,22 +447,70 @@ const VideoPlayerInline = ({
     }
   };
   
+  const handleRetryVideo = () => {
+    setVideoError(false);
+    setVideoLoading(true);
+    setVideoSlow(false);
+    if (videoRef.current) {
+      videoRef.current.load();
+    }
+  };
+
+  const handleCanPlay = () => {
+    setVideoLoading(false);
+    setVideoSlow(false);
+    if (stalledTimerRef.current) {
+      clearTimeout(stalledTimerRef.current);
+      stalledTimerRef.current = null;
+    }
+  };
+
+  const handleWaiting = () => {
+    setVideoLoading(true);
+  };
+
+  const handlePlaying = () => {
+    setVideoLoading(false);
+    setVideoSlow(false);
+    if (stalledTimerRef.current) {
+      clearTimeout(stalledTimerRef.current);
+      stalledTimerRef.current = null;
+    }
+  };
+
+  const handleStalled = () => {
+    if (stalledTimerRef.current) clearTimeout(stalledTimerRef.current);
+    stalledTimerRef.current = setTimeout(() => {
+      setVideoSlow(true);
+    }, 15000);
+  };
+
   if (videoError) {
     return (
       <div className="aspect-video w-full rounded-2xl overflow-hidden bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 flex flex-col items-center justify-center gap-4">
         <Video className="w-16 h-16 text-primary/60" />
         <div className="text-center px-4">
           <p className="text-sm font-medium text-foreground mb-1">Не удалось воспроизвести видео</p>
-          <p className="text-xs text-muted-foreground mb-3">Формат видео не поддерживается браузером</p>
-          <a
-            href={resolvedContent}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
-          >
-            <Play className="w-4 h-4" />
-            Открыть видео в новом окне
-          </a>
+          <p className="text-xs text-muted-foreground mb-3">Формат видео не поддерживается браузером или файл недоступен</p>
+          <div className="flex flex-col sm:flex-row gap-2 justify-center">
+            <Button
+              variant="outline"
+              onClick={handleRetryVideo}
+              className="inline-flex items-center gap-2"
+            >
+              <RotateCcw className="w-4 h-4" />
+              Попробовать снова
+            </Button>
+            <a
+              href={resolvedContent}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+            >
+              <Play className="w-4 h-4" />
+              Открыть видео в новом окне
+            </a>
+          </div>
         </div>
       </div>
     );
@@ -473,12 +524,18 @@ const VideoPlayerInline = ({
         controls={allowSeek}
         className="w-full h-full rounded-2xl"
         src={resolvedContent}
+        preload="metadata"
+        crossOrigin="anonymous"
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
         onSeeking={handleSeeking}
         onRateChange={handleRateChange}
         onPlay={handlePlay}
         onPause={handlePause}
+        onCanPlay={handleCanPlay}
+        onWaiting={handleWaiting}
+        onPlaying={handlePlaying}
+        onStalled={handleStalled}
         onError={() => setVideoError(true)}
         onContextMenu={(e) => {
           if (!allowSeek) e.preventDefault();
@@ -488,6 +545,20 @@ const VideoPlayerInline = ({
         disableRemotePlayback={!allowSeek}
         playsInline
       />
+      {videoLoading && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 rounded-2xl pointer-events-none">
+          <Loader2 className="w-10 h-10 animate-spin text-white mb-2" />
+          <p className="text-white text-sm">Загрузка видео...</p>
+        </div>
+      )}
+      {videoSlow && !videoLoading && (
+        <div className="absolute top-2 left-2 bg-background/90 backdrop-blur-sm text-xs px-3 py-2 rounded-lg flex items-center gap-2 border border-border">
+          <span className="text-muted-foreground">Видео загружается медленно</span>
+          <a href={resolvedContent} target="_blank" rel="noopener noreferrer" className="text-primary underline">
+            Открыть отдельно
+          </a>
+        </div>
+      )}
       {!allowSeek && (
         <div className="absolute inset-x-0 bottom-0 p-3">
           <div className="rounded-xl border border-border bg-background/80 backdrop-blur-md px-3 py-2 flex items-center gap-3">
