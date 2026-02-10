@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Download, Smartphone, Share, Plus, MoreVertical, Apple, Play, RefreshCw } from "lucide-react";
+import { ArrowLeft, Download, Smartphone, Share, Plus, MoreVertical, Apple, Play, RefreshCw, Copy, Globe } from "lucide-react";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -15,6 +16,7 @@ export default function Install() {
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
   const [isAndroid, setIsAndroid] = useState(false);
+  const [isYandex, setIsYandex] = useState(false);
 
   useEffect(() => {
     if (window.matchMedia("(display-mode: standalone)").matches) {
@@ -23,6 +25,9 @@ export default function Install() {
 
     const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     setIsIOS(iOS);
+
+    const yandex = /YaBrowser|YaSearchBrowser/.test(navigator.userAgent);
+    setIsYandex(yandex);
 
     const android = /Android/.test(navigator.userAgent);
     setIsAndroid(android);
