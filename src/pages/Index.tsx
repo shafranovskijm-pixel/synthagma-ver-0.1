@@ -8,9 +8,10 @@ import { Testimonials } from "@/components/landing/Testimonials";
 import { CTA } from "@/components/landing/CTA";
 import { Footer } from "@/components/landing/Footer";
 import { ScrollToTop } from "@/components/ui/ScrollToTop";
+import { LandingContentProvider } from "@/components/landing/LandingContentContext";
 const Index = () => {
   return (
-    <>
+    <LandingContentProvider>
       <Helmet>
         <title>СИНТАГМА — Система дистанционного обучения и документооборота</title>
         <meta name="description" content="Современная СДО для организаций. Создавайте курсы с ИИ, автоматизируйте документооборот, выгружайте в ФРДО. Соответствует 273-ФЗ. От 8 000 ₽/мес." />
