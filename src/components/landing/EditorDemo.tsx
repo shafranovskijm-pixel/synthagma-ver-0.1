@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, Volume2, VolumeX, Heading1, AlignLeft, AlertTriangle, Loader2, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollReveal } from "@/components/ui/ScrollReveal";
+import { InlineEditable } from "./InlineEditable";
 
 interface DemoBlock {
   id: string;
