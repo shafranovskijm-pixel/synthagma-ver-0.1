@@ -498,7 +498,7 @@ export function CourseDetailsModal({
   const activeStudents = courseStudents.filter(s => s.status !== 'completed').length;
   const completedStudents = courseStudents.filter(s => s.status === 'completed').length;
   const avgProgress = totalStudents > 0 
-    ? Math.round(courseStudents.reduce((sum, s) => sum + s.progress, 0) / totalStudents) 
+    ? Math.min(Math.round(courseStudents.reduce((sum, s) => sum + Math.min(s.progress, 100), 0) / totalStudents), 100)
     : 0;
   const completionRate = totalStudents > 0 
     ? Math.round(completedStudents / totalStudents * 100) 
@@ -728,8 +728,8 @@ export function CourseDetailsModal({
                         </div>
                         <div className="flex items-center gap-4">
                           <div className="text-right">
-                            <div className="text-sm font-medium">{student.progress}%</div>
-                            <Progress value={student.progress} className="w-24 h-2" />
+                            <div className="text-sm font-medium">{Math.min(student.progress, 100)}%</div>
+                            <Progress value={Math.min(student.progress, 100)} className="w-24 h-2" />
                           </div>
                           <span className={`px-2 py-1 rounded-full text-xs ${
                             student.status === 'completed' 

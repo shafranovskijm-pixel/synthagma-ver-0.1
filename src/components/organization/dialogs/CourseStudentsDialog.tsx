@@ -167,8 +167,8 @@ export function CourseStudentsDialog({
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="flex items-center gap-2">
-                          <Progress value={s.progress} className="w-20 h-2" />
-                          <span className="text-sm">{s.progress}%</span>
+                          <Progress value={Math.min(s.progress, 100)} className="w-20 h-2" />
+                          <span className="text-sm">{Math.min(s.progress, 100)}%</span>
                         </div>
                         {s.progress > 0 && (
                           <AlertDialog>

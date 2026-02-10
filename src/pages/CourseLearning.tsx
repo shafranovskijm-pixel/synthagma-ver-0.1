@@ -194,6 +194,7 @@ const VideoPlayerInline = ({
 }: VideoPlayerInlineProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [watchedProgress, setWatchedProgress] = useState(0);
+  const [videoError, setVideoError] = useState(false);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -443,12 +444,32 @@ const VideoPlayerInline = ({
     }
   };
   
+  if (videoError) {
+    return (
+      <div className="aspect-video w-full rounded-2xl overflow-hidden bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 flex flex-col items-center justify-center gap-4">
+        <Video className="w-16 h-16 text-primary/60" />
+        <div className="text-center px-4">
+          <p className="text-sm font-medium text-foreground mb-1">Не удалось воспроизвести видео</p>
+          <p className="text-xs text-muted-foreground mb-3">Формат видео не поддерживается браузером</p>
+          <a
+            href={resolvedContent}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+          >
+            <Play className="w-4 h-4" />
+            Открыть видео в новом окне
+          </a>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="relative">
       <video 
         key={allowSeek ? "video-seek-enabled" : "video-seek-disabled"}
         ref={videoRef}
-        // IMPORTANT: when seeking is disabled we must remove native controls entirely.
         controls={allowSeek}
         className="w-full h-full rounded-2xl"
         src={resolvedContent}
@@ -458,8 +479,8 @@ const VideoPlayerInline = ({
         onRateChange={handleRateChange}
         onPlay={handlePlay}
         onPause={handlePause}
+        onError={() => setVideoError(true)}
         onContextMenu={(e) => {
-          // Prevent the browser's right-click menu (e.g., "Скачать") when restrictions are enabled.
           if (!allowSeek) e.preventDefault();
         }}
         controlsList={`nodownload${!allowSeek ? " noplaybackrate noremoteplayback" : ""}`}
@@ -1160,10 +1181,13 @@ const CourseLearning = () => {
         setEnrollmentId(enrollment.id);
       }
 
+      // Filter lesson_progress by current course lessons only
+      const courseLessonIds = (lessonsData || []).map((l: any) => l.id);
       const { data: progressData } = await supabase
         .from('lesson_progress')
         .select('lesson_id, completed')
-        .eq('user_id', user!.id);
+        .eq('user_id', user!.id)
+        .in('lesson_id', courseLessonIds);
 
       setLessonProgress(progressData || []);
     } catch (error) {
@@ -1265,8 +1289,9 @@ const CourseLearning = () => {
     
     // If count is null, show all questions
     if (count === null || count <= 0 || count >= allQuestions.length) {
-      console.log('[selectRandomQuestions] Showing all questions');
-      setTestQuestions(allQuestions);
+      console.log('[selectRandomQuestions] Showing all questions (shuffled)');
+      const shuffled = [...allQuestions].sort(() => Math.random() - 0.5);
+      setTestQuestions(shuffled);
       return;
     }
 
@@ -1383,7 +1408,7 @@ const CourseLearning = () => {
       { lesson_id: currentLesson.id, completed: true }
     ]);
 
-    const newProgress = Math.round(((completedCount + 1) / lessons.length) * 100);
+    const newProgress = Math.min(Math.round(((completedCount + 1) / lessons.length) * 100), 100);
     await supabase
       .from('enrollments')
       .update({ progress: newProgress })
@@ -1538,7 +1563,7 @@ const CourseLearning = () => {
         ]);
 
         // Update enrollment progress
-        const newProgress = Math.round(((completedCount + 1) / lessons.length) * 100);
+        const newProgress = Math.min(Math.round(((completedCount + 1) / lessons.length) * 100), 100);
         await supabase
           .from('enrollments')
           .update({ progress: newProgress })
@@ -1990,7 +2015,7 @@ const CourseLearning = () => {
                             { lesson_id: currentLesson.id, completed: true }
                           ]);
                           
-                          const newProgress = Math.round(((completedCount + 1) / lessons.length) * 100);
+                          const newProgress = Math.min(Math.round(((completedCount + 1) / lessons.length) * 100), 100);
                           await supabase
                             .from('enrollments')
                             .update({ progress: newProgress })
@@ -2135,6 +2160,9 @@ const CourseLearning = () => {
                       </span>
                       {question.question}
                     </h3>
+                    {(question as any).image_url && (
+                      <img src={(question as any).image_url} alt="К вопросу" className="max-h-64 rounded-lg border border-border object-contain mb-4" />
+                    )}
                     <div className="space-y-2">
                       {(Array.isArray(question.options) ? question.options : []).map((option: unknown, oIndex: number) => (
                         <div 
@@ -2176,6 +2204,9 @@ const CourseLearning = () => {
                         </span>
                         {question.question}
                       </h3>
+                      {(question as any).image_url && (
+                        <img src={(question as any).image_url} alt="К вопросу" className="max-h-64 rounded-lg border border-border object-contain mb-4" />
+                      )}
                       <div className="space-y-2">
                         {(Array.isArray(question.options) ? question.options : []).map((option: unknown, oIndex: number) => {
                           const isSelected = answers[question.id] === oIndex;
