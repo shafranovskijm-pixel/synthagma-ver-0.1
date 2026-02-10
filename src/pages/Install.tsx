@@ -130,25 +130,25 @@ export default function Install() {
 
               {/* Yandex Browser Instructions */}
               {isYandex && (
-                <Card className="text-left border-orange-500/30 bg-orange-500/5">
+                <Card className="text-left border-destructive/30 bg-destructive/5">
                   <CardContent className="py-6">
                     <div className="flex items-center gap-3 mb-4">
-                      <div className="w-10 h-10 rounded-lg bg-orange-500/20 flex items-center justify-center">
-                        <Globe className="w-5 h-5 text-orange-600" />
+                      <div className="w-10 h-10 rounded-lg bg-destructive/20 flex items-center justify-center">
+                        <Globe className="w-5 h-5 text-destructive" />
                       </div>
                       <h3 className="font-medium text-lg">Установка через Яндекс Браузер</h3>
                     </div>
                     <ol className="space-y-4 text-sm text-muted-foreground mb-6">
                       <li className="flex items-start gap-3">
-                        <span className="w-6 h-6 rounded-full bg-orange-500/20 text-orange-600 flex items-center justify-center text-xs font-medium shrink-0">1</span>
+                        <span className="w-6 h-6 rounded-full bg-destructive/20 text-destructive flex items-center justify-center text-xs font-medium shrink-0">1</span>
                         <span>Нажмите <MoreVertical className="w-4 h-4 inline mx-1" /> меню (три точки) внизу справа</span>
                       </li>
                       <li className="flex items-start gap-3">
-                        <span className="w-6 h-6 rounded-full bg-orange-500/20 text-orange-600 flex items-center justify-center text-xs font-medium shrink-0">2</span>
+                        <span className="w-6 h-6 rounded-full bg-destructive/20 text-destructive flex items-center justify-center text-xs font-medium shrink-0">2</span>
                         <span>Выберите «Добавить на главный экран»</span>
                       </li>
                       <li className="flex items-start gap-3">
-                        <span className="w-6 h-6 rounded-full bg-orange-500/20 text-orange-600 flex items-center justify-center text-xs font-medium shrink-0">3</span>
+                        <span className="w-6 h-6 rounded-full bg-destructive/20 text-destructive flex items-center justify-center text-xs font-medium shrink-0">3</span>
                         <span>Подтвердите добавление</span>
                       </li>
                     </ol>
