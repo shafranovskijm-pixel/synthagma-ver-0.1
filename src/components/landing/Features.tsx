@@ -12,6 +12,7 @@ import {
   Volume2,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { InlineEditable } from "./InlineEditable";
 
 const features = [
   {
@@ -197,13 +198,13 @@ export function Features() {
           <span className="text-sm text-accent font-medium tracking-widest uppercase mb-4 block">
             Возможности
           </span>
-          <h2 className="font-display text-4xl md:text-5xl font-medium mb-6 tracking-tight">
-            Всё для обучения
-          </h2>
+          <InlineEditable contentKey="features_title" defaultValue="Всё для обучения">
+            {(v) => <h2 className="font-display text-4xl md:text-5xl font-medium mb-6 tracking-tight">{v}</h2>}
+          </InlineEditable>
           <div className="divider mb-6" />
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Полный набор инструментов для дистанционного обучения и документооборота
-          </p>
+          <InlineEditable contentKey="features_subtitle" defaultValue="Полный набор инструментов для дистанционного обучения и документооборота">
+            {(v) => <p className="text-lg text-muted-foreground max-w-2xl mx-auto">{v}</p>}
+          </InlineEditable>
         </motion.div>
 
         {/* Features grid */}

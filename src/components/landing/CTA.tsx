@@ -2,6 +2,7 @@ import { ArrowRight, CheckCircle2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
+import { InlineEditable } from "./InlineEditable";
 
 export function CTA() {
   return (
@@ -91,15 +92,16 @@ export function CTA() {
             <span className="text-sm text-background/90 font-medium">Начните бесплатно</span>
           </motion.div>
 
-          <motion.h2
+          <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.8, delay: 0.1 }}
-            className="font-display text-4xl md:text-5xl lg:text-6xl font-medium text-background mb-8 leading-tight tracking-tight"
           >
-            Готовы автоматизировать обучение?
-          </motion.h2>
+            <InlineEditable contentKey="cta_title" defaultValue="Готовы автоматизировать обучение?">
+              {(v) => <h2 className="font-display text-4xl md:text-5xl lg:text-6xl font-medium text-background mb-8 leading-tight tracking-tight">{v}</h2>}
+            </InlineEditable>
+          </motion.div>
 
           {/* Decorative line with dots */}
           <motion.div
@@ -114,15 +116,17 @@ export function CTA() {
             <div className="w-2 h-2 rounded-full bg-accent/50" />
           </motion.div>
 
-          <motion.p
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.8, delay: 0.2 }}
-            className="text-lg md:text-xl text-background/70 mb-12 max-w-xl mx-auto leading-relaxed"
+            className="mb-12"
           >
-            Присоединяйтесь к организациям, которые уже используют нашу платформу
-          </motion.p>
+            <InlineEditable contentKey="cta_subtitle" defaultValue="Присоединяйтесь к организациям, которые уже используют нашу платформу">
+              {(v) => <p className="text-lg md:text-xl text-background/70 max-w-xl mx-auto leading-relaxed">{v}</p>}
+            </InlineEditable>
+          </motion.div>
 
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -136,7 +140,9 @@ export function CTA() {
                 size="lg"
                 className="bg-background text-foreground hover:bg-background/90 rounded-xl px-10 h-14 text-base font-medium gap-2 group shadow-lg"
               >
-                Попробовать бесплатно
+                <InlineEditable contentKey="cta_button" defaultValue="Попробовать бесплатно">
+                  {(v) => <>{v}</>}
+                </InlineEditable>
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
