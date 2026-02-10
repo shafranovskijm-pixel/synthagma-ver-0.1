@@ -397,7 +397,6 @@ const VideoPlayerInline = ({
     setIsMuted(v.muted);
   };
 
-  const containerRef = useRef<HTMLDivElement>(null);
 
   const requestFullscreen = async () => {
     const v = videoRef.current;
