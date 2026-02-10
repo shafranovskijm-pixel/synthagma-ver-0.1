@@ -558,7 +558,7 @@ const VideoPlayerInline = ({
             Открыть отдельно
           </a>
         </div>
-      )
+      )}
       {!allowSeek && (
         <div className="absolute inset-x-0 bottom-0 p-3">
           <div className="rounded-xl border border-border bg-background/80 backdrop-blur-md px-3 py-2 flex items-center gap-3">
