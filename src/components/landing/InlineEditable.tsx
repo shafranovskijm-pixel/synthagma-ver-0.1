@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, type ReactNode } from "react";
+import { useState, useRef, useEffect, forwardRef, type ReactNode } from "react";
 import { useLandingContent } from "./LandingContentContext";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,8 @@ interface InlineEditableProps {
   as?: "span" | "div";
 }
 
-export function InlineEditable({ contentKey, defaultValue, children, as: Tag = "span" }: InlineEditableProps) {
+export const InlineEditable = forwardRef<HTMLElement, InlineEditableProps>(
+  function InlineEditable({ contentKey, defaultValue, children, as: Tag = "span" }, _ref) {
   const { getValue, updateValue, isAdmin } = useLandingContent();
   const [open, setOpen] = useState(false);
   const [editValue, setEditValue] = useState("");
@@ -97,4 +98,4 @@ export function InlineEditable({ contentKey, defaultValue, children, as: Tag = "
       </PopoverContent>
     </Popover>
   );
-}
+});
