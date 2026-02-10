@@ -203,6 +203,7 @@ const VideoPlayerInline = ({
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [videoEnded, setVideoEnded] = useState(false);
   const maxWatchedRef = useRef(savedPosition);
   const completedRef = useRef(false);
   const seekGuardRef = useRef(false);
