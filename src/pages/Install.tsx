@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Download, Smartphone, Share, Plus, MoreVertical, Apple, Play } from "lucide-react";
+import { ArrowLeft, Download, Smartphone, Share, Plus, MoreVertical, Apple, Play, Monitor } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface BeforeInstallPromptEvent extends Event {
@@ -186,13 +186,26 @@ export default function Install() {
               {!isIOS && !isAndroid && !deferredPrompt && (
                 <Card className="text-left">
                   <CardContent className="py-6">
-                    <h3 className="font-medium text-lg mb-4">Установка на компьютер</h3>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Для установки приложения откройте эту страницу в браузере Chrome или Edge и нажмите на иконку установки в адресной строке.
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Или откройте эту страницу на мобильном устройстве для быстрой установки.
-                    </p>
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
+                        <Monitor className="w-5 h-5" />
+                      </div>
+                      <h3 className="font-medium text-lg">Установка на компьютер или телефон</h3>
+                    </div>
+                    <div className="space-y-4 text-sm text-muted-foreground">
+                      <p>
+                        <strong className="text-foreground">На компьютере:</strong> откройте эту страницу в браузере Chrome или Edge и нажмите на иконку установки <Download className="w-4 h-4 inline mx-1" /> в адресной строке.
+                      </p>
+                      <div className="border-t border-border/50 pt-4">
+                        <p className="mb-3">
+                          <strong className="text-foreground">На телефоне:</strong> откройте ссылку ниже в мобильном браузере:
+                        </p>
+                        <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 border border-border/30">
+                          <Smartphone className="w-4 h-4 shrink-0 text-accent" />
+                          <code className="text-xs break-all select-all text-foreground">synthagma-bloom.lovable.app/install</code>
+                        </div>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               )}

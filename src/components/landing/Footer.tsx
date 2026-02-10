@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Mail, Phone, ArrowUpRight, Apple, Play } from "lucide-react";
+import { Mail, Phone, ArrowUpRight, Download } from "lucide-react";
 import { motion } from "framer-motion";
 import { InlineEditable } from "./InlineEditable";
 
@@ -31,27 +31,14 @@ export function Footer() {
               {(v) => <p className="text-background/60 max-w-sm mb-8 leading-relaxed">{v}</p>}
             </InlineEditable>
             
-            {/* App Store Buttons */}
-            <div className="flex flex-wrap gap-3 mb-8">
+            {/* Install App Button */}
+            <div className="mb-8">
               <Link 
                 to="/install" 
-                className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-background/10 border border-background/20 hover:bg-background/15 transition-colors group"
+                className="inline-flex items-center gap-2 px-5 py-3 rounded-lg bg-background/10 border border-background/20 hover:bg-background/15 transition-colors group"
               >
-                <Apple className="w-5 h-5 text-background" />
-                <div className="text-left">
-                  <div className="text-[10px] text-background/60 leading-none">Скачать в</div>
-                  <div className="text-sm font-medium text-background leading-tight">App Store</div>
-                </div>
-              </Link>
-              <Link 
-                to="/install" 
-                className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-background/10 border border-background/20 hover:bg-background/15 transition-colors group"
-              >
-                <Play className="w-5 h-5 text-background fill-background" />
-                <div className="text-left">
-                  <div className="text-[10px] text-background/60 leading-none">Скачать в</div>
-                  <div className="text-sm font-medium text-background leading-tight">Google Play</div>
-                </div>
+                <Download className="w-5 h-5 text-background" />
+                <span className="text-sm font-medium text-background">Установить приложение</span>
               </Link>
             </div>
             
