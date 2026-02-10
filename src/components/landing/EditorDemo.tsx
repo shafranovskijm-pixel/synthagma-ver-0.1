@@ -274,12 +274,12 @@ export function EditorDemo() {
             <span className="inline-block px-4 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4">
               Интерактивный редактор
             </span>
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Создавайте курсы за минуты
-            </h2>
-            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Блоковый редактор с AI-генерацией и профессиональной озвучкой
-            </p>
+            <InlineEditable contentKey="editor_title" defaultValue="Создавайте курсы за минуты">
+              {(v) => <h2 className="text-3xl md:text-4xl font-bold mb-4">{v}</h2>}
+            </InlineEditable>
+            <InlineEditable contentKey="editor_subtitle" defaultValue="Блоковый редактор с AI-генерацией и профессиональной озвучкой">
+              {(v) => <p className="text-muted-foreground text-lg max-w-2xl mx-auto">{v}</p>}
+            </InlineEditable>
           </div>
         </ScrollReveal>
 

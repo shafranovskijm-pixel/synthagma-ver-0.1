@@ -67,7 +67,7 @@ const Index = () => {
         <Footer />
         <ScrollToTop />
       </div>
-    </>
+    </LandingContentProvider>
   );
 };
 

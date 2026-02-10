@@ -140,7 +140,9 @@ export function CTA() {
                 size="lg"
                 className="bg-background text-foreground hover:bg-background/90 rounded-xl px-10 h-14 text-base font-medium gap-2 group shadow-lg"
               >
-                Попробовать бесплатно
+                <InlineEditable contentKey="cta_button" defaultValue="Попробовать бесплатно">
+                  {(v) => <>{v}</>}
+                </InlineEditable>
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>

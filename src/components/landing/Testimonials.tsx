@@ -157,13 +157,13 @@ export function Testimonials() {
           <span className="text-sm text-accent font-medium tracking-widest uppercase mb-4 block">
             Отзывы
           </span>
-          <h2 className="font-display text-4xl md:text-5xl font-medium mb-6 tracking-tight">
-            Что говорят клиенты
-          </h2>
+          <InlineEditable contentKey="testimonials_title" defaultValue="Что говорят клиенты">
+            {(v) => <h2 className="font-display text-4xl md:text-5xl font-medium mb-6 tracking-tight">{v}</h2>}
+          </InlineEditable>
           <div className="divider mb-6" />
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Более 10 организаций уже получили лицензию с нашей платформой
-          </p>
+          <InlineEditable contentKey="testimonials_subtitle" defaultValue="Более 10 организаций уже получили лицензию с нашей платформой">
+            {(v) => <p className="text-lg text-muted-foreground max-w-2xl mx-auto">{v}</p>}
+          </InlineEditable>
         </motion.div>
 
         {/* Testimonials grid */}
