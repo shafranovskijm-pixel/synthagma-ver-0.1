@@ -1387,7 +1387,7 @@ const CourseLearning = () => {
       { lesson_id: currentLesson.id, completed: true }
     ]);
 
-    const newProgress = Math.round(((completedCount + 1) / lessons.length) * 100);
+    const newProgress = Math.min(Math.round(((completedCount + 1) / lessons.length) * 100), 100);
     await supabase
       .from('enrollments')
       .update({ progress: newProgress })
