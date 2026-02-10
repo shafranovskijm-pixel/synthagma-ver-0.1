@@ -1,16 +1,21 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { LandingLoginDialog } from "./LandingLoginDialog";
 
 interface LandingContentContextType {
   getValue: (key: string, defaultValue: string) => string;
   updateValue: (key: string, value: string) => Promise<void>;
   isAdmin: boolean;
+  isLoggedIn: boolean;
+  showLogin: () => void;
 }
 
 const LandingContentContext = createContext<LandingContentContextType>({
   getValue: (_, defaultValue) => defaultValue,
   updateValue: async () => {},
   isAdmin: false,
+  isLoggedIn: false,
+  showLogin: () => {},
 });
 
 export const useLandingContent = () => useContext(LandingContentContext);
@@ -18,6 +23,24 @@ export const useLandingContent = () => useContext(LandingContentContext);
 export function LandingContentProvider({ children }: { children: ReactNode }) {
   const [content, setContent] = useState<Record<string, string>>({});
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [loginOpen, setLoginOpen] = useState(false);
+
+  const checkAdminStatus = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      setIsLoggedIn(true);
+      const { data } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id);
+      const roles = (data || []).map((r: any) => r.role);
+      setIsAdmin(roles.includes("admin") || roles.includes("organization"));
+    } else {
+      setIsLoggedIn(false);
+      setIsAdmin(false);
+    }
+  }, []);
 
   useEffect(() => {
     // Load all landing content
@@ -34,20 +57,8 @@ export function LandingContentProvider({ children }: { children: ReactNode }) {
         }
       });
 
-    // Check if current user is admin or organization owner
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) {
-        supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", user.id)
-          .then(({ data }) => {
-            const roles = (data || []).map((r: any) => r.role);
-            setIsAdmin(roles.includes("admin") || roles.includes("organization"));
-          });
-      }
-    });
-  }, []);
+    checkAdminStatus();
+  }, [checkAdminStatus]);
 
   const getValue = useCallback(
     (key: string, defaultValue: string) => {
@@ -76,9 +87,18 @@ export function LandingContentProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const showLogin = useCallback(() => {
+    setLoginOpen(true);
+  }, []);
+
+  const handleLoginSuccess = useCallback(() => {
+    checkAdminStatus();
+  }, [checkAdminStatus]);
+
   return (
-    <LandingContentContext.Provider value={{ getValue, updateValue, isAdmin }}>
+    <LandingContentContext.Provider value={{ getValue, updateValue, isAdmin, isLoggedIn, showLogin }}>
       {children}
+      <LandingLoginDialog open={loginOpen} onOpenChange={setLoginOpen} onSuccess={handleLoginSuccess} />
     </LandingContentContext.Provider>
   );
 }
