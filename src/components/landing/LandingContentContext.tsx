@@ -34,17 +34,16 @@ export function LandingContentProvider({ children }: { children: ReactNode }) {
         }
       });
 
-    // Check if current user is admin
+    // Check if current user is admin or organization owner
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) {
         supabase
           .from("user_roles")
           .select("role")
           .eq("user_id", user.id)
-          .eq("role", "admin")
-          .maybeSingle()
           .then(({ data }) => {
-            setIsAdmin(!!data);
+            const roles = (data || []).map((r: any) => r.role);
+            setIsAdmin(roles.includes("admin") || roles.includes("organization"));
           });
       }
     });
