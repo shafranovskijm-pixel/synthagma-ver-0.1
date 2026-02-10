@@ -1065,6 +1065,30 @@ export type Database = {
           },
         ]
       }
+      landing_content: {
+        Row: {
+          content_key: string
+          content_value: string
+          id: string
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          content_key: string
+          content_value: string
+          id?: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          content_key?: string
+          content_value?: string
+          id?: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       lesson_progress: {
         Row: {
           completed: boolean
