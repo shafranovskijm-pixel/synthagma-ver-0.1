@@ -1,5 +1,6 @@
 import { Star, Quote } from "lucide-react";
 import { motion } from "framer-motion";
+import { InlineEditable } from "./InlineEditable";
 
 const testimonials = [
   {
