@@ -12,6 +12,7 @@ import {
   Volume2,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { InlineEditable } from "./InlineEditable";
 
 const features = [
   {
