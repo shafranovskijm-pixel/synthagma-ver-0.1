@@ -206,6 +206,7 @@ const VideoPlayerInline = ({
   const seekGuardRef = useRef(false);
   const hasRestoredPositionRef = useRef(false);
   const stalledTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   
   if (!content) return null;
   
@@ -396,19 +397,23 @@ const VideoPlayerInline = ({
     setIsMuted(v.muted);
   };
 
+
   const requestFullscreen = async () => {
     const v = videoRef.current;
     if (!v) return;
     try {
-      // @ts-expect-error - older Safari uses webkitEnterFullscreen
-      if (typeof v.webkitEnterFullscreen === 'function') {
-        // @ts-expect-error
-        v.webkitEnterFullscreen();
-        return;
-      }
       if (document.fullscreenElement) {
         await document.exitFullscreen();
+      } else if (!allowSeek && containerRef.current) {
+        // Fullscreen on container preserves custom overlay (hides native controls)
+        await containerRef.current.requestFullscreen();
       } else {
+        // @ts-expect-error - older Safari uses webkitEnterFullscreen
+        if (typeof v.webkitEnterFullscreen === 'function') {
+          // @ts-expect-error
+          v.webkitEnterFullscreen();
+          return;
+        }
         await v.requestFullscreen();
       }
     } catch {
@@ -517,15 +522,15 @@ const VideoPlayerInline = ({
   }
 
   return (
-    <div className="relative">
+    <div ref={containerRef} className="relative bg-black rounded-2xl">
       <video 
         key={allowSeek ? "video-seek-enabled" : "video-seek-disabled"}
         ref={videoRef}
         controls={allowSeek}
-        className="w-full h-full rounded-2xl"
+        className={`w-full h-full rounded-2xl${!allowSeek ? ' video-no-controls' : ''}`}
         src={resolvedContent}
         preload="metadata"
-        crossOrigin="anonymous"
+        
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
         onSeeking={handleSeeking}

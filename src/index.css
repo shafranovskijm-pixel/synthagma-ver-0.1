@@ -351,6 +351,14 @@
   .sigma-glow-accent {
     box-shadow: var(--shadow-glow);
   }
+
+  /* Hide native video controls when seek is disabled */
+  .video-no-controls::-webkit-media-controls {
+    display: none !important;
+  }
+  .video-no-controls::-webkit-media-controls-enclosure {
+    display: none !important;
+  }
 }
 
 @layer utilities {
