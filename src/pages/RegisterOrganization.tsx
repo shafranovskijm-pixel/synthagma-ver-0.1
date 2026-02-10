@@ -118,25 +118,7 @@ const RegisterOrganization = () => {
     setIsLoading(true);
     
     try {
-      // 1. Create organization using RPC function (bypasses RLS)
-      const { data: orgId, error: orgError } = await supabase
-        .rpc('create_organization', {
-          p_name: orgName,
-          p_email: email,
-          p_phone: phone || null,
-          p_inn: inn || null,
-          p_contact_name: contactName,
-          p_kpp: kpp || null,
-          p_ogrn: ogrn || null,
-          p_legal_address: address || null,
-          p_director_name: directorName || null
-        });
-
-      if (orgError) throw orgError;
-      
-      const orgData = { id: orgId };
-
-      // 2. Sign up user
+      // 1. Sign up user first (must be authenticated before creating org)
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
@@ -150,12 +132,27 @@ const RegisterOrganization = () => {
 
       if (authError) throw authError;
 
-      // 3. Update profile with organization_id and upgrade role securely
       if (authData.user) {
-        // Update profile with organization_id
+        // 2. Create organization using RPC function (now requires auth)
+        const { data: orgId, error: orgError } = await supabase
+          .rpc('create_organization', {
+            p_name: orgName,
+            p_email: email,
+            p_phone: phone || null,
+            p_inn: inn || null,
+            p_contact_name: contactName,
+            p_kpp: kpp || null,
+            p_ogrn: ogrn || null,
+            p_legal_address: address || null,
+            p_director_name: directorName || null
+          });
+
+        if (orgError) throw orgError;
+
+        // 3. Update profile with organization_id
         const { error: profileError } = await supabase
           .from('profiles')
-          .update({ organization_id: orgData.id })
+          .update({ organization_id: orgId })
           .eq('user_id', authData.user.id);
           
         if (profileError) {
@@ -165,12 +162,11 @@ const RegisterOrganization = () => {
         // 4. Use secure RPC function to upgrade role to 'organization'
         const { error: roleError } = await supabase.rpc('upgrade_to_organization_role', {
           p_user_id: authData.user.id,
-          p_organization_id: orgData.id
+          p_organization_id: orgId
         });
         
         if (roleError) {
           console.error("Role upgrade error:", roleError);
-          // Don't throw - user is created, just role upgrade failed
         }
         
         // Wait a bit for role to be set, then refresh
