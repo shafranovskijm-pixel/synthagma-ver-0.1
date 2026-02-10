@@ -362,7 +362,7 @@ export function StudentDocumentsUpload({
                               className="rounded-lg gap-1"
                               onClick={() =>
                                 existingDoc.file_url &&
-                                window.open(existingDoc.file_url, "_blank")
+                                openPrivateFile("student-documents", existingDoc.file_url)
                               }
                             >
                               <Eye className="w-4 h-4" />

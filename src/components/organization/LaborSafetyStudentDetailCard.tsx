@@ -1250,7 +1250,7 @@
                                      <Button
                                        variant="ghost"
                                        size="icon"
-                                       onClick={() => window.open(d.file_url!, '_blank')}
+                                       onClick={() => openPrivateFile("student-documents", d.file_url!)}
                                        title="Открыть"
                                      >
                                        <Eye className="w-4 h-4" />

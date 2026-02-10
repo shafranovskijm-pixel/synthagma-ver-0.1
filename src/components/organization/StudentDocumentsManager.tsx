@@ -330,7 +330,7 @@ export function StudentDocumentsManager({
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => window.open(doc.file_url!, "_blank")}
+                            onClick={() => openPrivateFile("student-documents", doc.file_url!)}
                           >
                             <Eye className="w-4 h-4" />
                           </Button>
