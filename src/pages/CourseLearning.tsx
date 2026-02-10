@@ -206,6 +206,7 @@ const VideoPlayerInline = ({
   const seekGuardRef = useRef(false);
   const hasRestoredPositionRef = useRef(false);
   const stalledTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   
   if (!content) return null;
   
