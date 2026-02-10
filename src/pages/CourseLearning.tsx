@@ -522,7 +522,7 @@ const VideoPlayerInline = ({
         key={allowSeek ? "video-seek-enabled" : "video-seek-disabled"}
         ref={videoRef}
         controls={allowSeek}
-        className="w-full h-full rounded-2xl"
+        className={`w-full h-full rounded-2xl${!allowSeek ? ' video-no-controls' : ''}`}
         src={resolvedContent}
         preload="metadata"
         
