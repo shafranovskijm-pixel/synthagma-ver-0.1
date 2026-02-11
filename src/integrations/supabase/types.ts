@@ -2809,6 +2809,53 @@ export type Database = {
           },
         ]
       }
+      testimonials: {
+        Row: {
+          author_name: string
+          author_role: string | null
+          content: string
+          created_at: string
+          highlight: string | null
+          id: string
+          is_approved: boolean
+          organization_id: string
+          rating: number
+          user_id: string
+        }
+        Insert: {
+          author_name: string
+          author_role?: string | null
+          content: string
+          created_at?: string
+          highlight?: string | null
+          id?: string
+          is_approved?: boolean
+          organization_id: string
+          rating?: number
+          user_id: string
+        }
+        Update: {
+          author_name?: string
+          author_role?: string | null
+          content?: string
+          created_at?: string
+          highlight?: string | null
+          id?: string
+          is_approved?: boolean
+          organization_id?: string
+          rating?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "testimonials_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_achievements: {
         Row: {
           achievement_id: string
