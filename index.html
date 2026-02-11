@@ -52,25 +52,7 @@
   <body>
     <!-- Yandex.Metrika noscript -->
     <noscript><div><img src="https://mc.yandex.ru/watch/105216554" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
-    <div id="root">
-      <pre id="debug-log" style="color:lime;background:#000;padding:20px;font-size:14px;white-space:pre-wrap;">Loading...</pre>
-    </div>
-    <script>
-      // Debug: log before module loads
-      var dbg = document.getElementById('debug-log');
-      function addLog(msg) {
-        console.log('[DEBUG] ' + msg);
-        if (dbg) dbg.textContent += '\n' + msg;
-      }
-      addLog('HTML loaded, Capacitor=' + (typeof window.Capacitor));
-      addLog('Protocol=' + location.protocol + ' URL=' + location.href);
-      window.addEventListener('error', function(e) {
-        addLog('GLOBAL ERROR: ' + e.message + ' at ' + e.filename + ':' + e.lineno);
-      });
-      window.addEventListener('unhandledrejection', function(e) {
-        addLog('PROMISE ERROR: ' + (e.reason && e.reason.message || e.reason));
-      });
-    </script>
+    <div id="root"></div>
     <script type="module" src="./src/main.tsx"></script>
   </body>
 </html>
