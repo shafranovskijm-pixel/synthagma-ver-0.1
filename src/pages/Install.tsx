@@ -123,6 +123,16 @@ export default function Install() {
                 <InstructionCard info={isDesktop ? iosInfo : installInfo} label={isDesktop ? "iPhone / iPad (PWA)" : installInfo.name} />
               )}
 
+              {/* APK download */}
+              <a
+                href="/downloads/app-debug.apk"
+                download
+                className="inline-flex items-center justify-center gap-2 w-full px-5 py-4 rounded-xl border border-foreground/20 text-foreground hover:bg-foreground/10 transition-colors text-base font-medium"
+              >
+                <Download className="w-5 h-5" />
+                Скачать APK для Android
+              </a>
+
               {/* Utility buttons */}
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <Button variant="outline" onClick={handleCopyLink} className="gap-2">
