@@ -47,3 +47,6 @@ verify_jwt = false
 
 [functions.get-external-storage-config]
 verify_jwt = false
+
+[functions.generate-course-content]
+verify_jwt = false
