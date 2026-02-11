@@ -101,47 +101,26 @@ export default function Install() {
               transition={{ duration: 0.6, delay: 0.2 }}
               className="space-y-6 mb-12"
             >
-              {/* Android: APK download */}
+              {/* PWA install prompt (Android/desktop) */}
+              {deferredPrompt && (
+                <Button
+                  size="lg"
+                  onClick={handleInstallClick}
+                  className="btn-gradient rounded-xl px-10 h-14 text-base gap-2 shadow-lg w-full"
+                >
+                  <Download className="w-5 h-5" />
+                  Установить приложение
+                </Button>
+              )}
+
+              {/* Android: PWA instructions */}
               {(os === 'android' || isDesktop) && (
-                <Card className="text-left">
-                  <CardContent className="py-6">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
-                        <Smartphone className="w-5 h-5 text-accent" />
-                      </div>
-                      <h3 className="font-medium text-lg">Android — Скачать APK</h3>
-                    </div>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Скачайте и установите приложение напрямую на ваше Android-устройство.
-                    </p>
-                    <a href="/downloads/synthagma.apk" download>
-                      <Button size="lg" className="btn-gradient rounded-xl px-10 h-14 text-base gap-2 shadow-lg w-full">
-                        <Download className="w-5 h-5" />
-                        Скачать APK для Android
-                      </Button>
-                    </a>
-                    <p className="text-xs text-muted-foreground mt-3">
-                      При установке может потребоваться разрешить установку из неизвестных источников в настройках устройства.
-                    </p>
-                  </CardContent>
-                </Card>
+                <InstructionCard info={isDesktop ? androidInfo : installInfo} label={isDesktop ? "Android (PWA)" : installInfo.name} />
               )}
 
               {/* iOS: PWA instructions */}
               {(os === 'ios' || isDesktop) && (
-                <>
-                  {deferredPrompt && os === 'ios' && (
-                    <Button
-                      size="lg"
-                      onClick={handleInstallClick}
-                      className="btn-gradient rounded-xl px-10 h-14 text-base gap-2 shadow-lg"
-                    >
-                      <Download className="w-5 h-5" />
-                      Установить приложение
-                    </Button>
-                  )}
-                  <InstructionCard info={isDesktop ? iosInfo : installInfo} label={isDesktop ? "iPhone / iPad (PWA)" : installInfo.name} />
-                </>
+                <InstructionCard info={isDesktop ? iosInfo : installInfo} label={isDesktop ? "iPhone / iPad (PWA)" : installInfo.name} />
               )}
 
               {/* Utility buttons */}
