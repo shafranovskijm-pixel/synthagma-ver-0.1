@@ -450,6 +450,92 @@ export type Database = {
           },
         ]
       }
+      course_reminders: {
+        Row: {
+          company_id: string | null
+          completed_at: string
+          course_id: string
+          created_at: string
+          enrollment_id: string
+          id: string
+          is_dismissed: boolean
+          is_sent: boolean
+          notify_company: boolean
+          notify_organization: boolean
+          notify_student: boolean
+          organization_id: string
+          reminder_date: string
+          reminder_text: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company_id?: string | null
+          completed_at: string
+          course_id: string
+          created_at?: string
+          enrollment_id: string
+          id?: string
+          is_dismissed?: boolean
+          is_sent?: boolean
+          notify_company?: boolean
+          notify_organization?: boolean
+          notify_student?: boolean
+          organization_id: string
+          reminder_date: string
+          reminder_text?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string | null
+          completed_at?: string
+          course_id?: string
+          created_at?: string
+          enrollment_id?: string
+          id?: string
+          is_dismissed?: boolean
+          is_sent?: boolean
+          notify_company?: boolean
+          notify_organization?: boolean
+          notify_student?: boolean
+          organization_id?: string
+          reminder_date?: string
+          reminder_text?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_reminders_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_reminders_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_reminders_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_reminders_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_requests: {
         Row: {
           budget_max: number | null
@@ -526,6 +612,7 @@ export type Database = {
           id: string
           is_published: boolean
           organization_id: string
+          retraining_period_months: number | null
           sequential_lessons: boolean
           skip_video_identification: boolean | null
           title: string
@@ -551,6 +638,7 @@ export type Database = {
           id?: string
           is_published?: boolean
           organization_id: string
+          retraining_period_months?: number | null
           sequential_lessons?: boolean
           skip_video_identification?: boolean | null
           title: string
@@ -576,6 +664,7 @@ export type Database = {
           id?: string
           is_published?: boolean
           organization_id?: string
+          retraining_period_months?: number | null
           sequential_lessons?: boolean
           skip_video_identification?: boolean | null
           title?: string

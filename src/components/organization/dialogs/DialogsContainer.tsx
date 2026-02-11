@@ -37,7 +37,7 @@ interface Organization {
   studentsCount?: number;
 }
 
-type CourseDetailsTabType = "students" | "materials" | "history" | "tests" | "settings";
+type CourseDetailsTabType = "students" | "materials" | "history" | "tests" | "settings" | "reminders";
 
 interface DialogsContainerProps {
   organizationId: string | null;
