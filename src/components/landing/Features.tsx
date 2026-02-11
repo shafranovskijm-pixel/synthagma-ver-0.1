@@ -342,14 +342,24 @@ export function Features() {
               ))}
             </div>
 
-            {/* Install app button */}
-            <Link
-              to="/install"
-              className="inline-flex items-center gap-2 px-5 py-3 rounded-lg bg-foreground text-background hover:bg-foreground/90 transition-colors"
-            >
-              <Download className="w-5 h-5" />
-              <span className="text-sm font-medium">Установить приложение</span>
-            </Link>
+            {/* Install app buttons */}
+            <div className="flex flex-wrap gap-3">
+              <Link
+                to="/install"
+                className="inline-flex items-center gap-2 px-5 py-3 rounded-lg bg-foreground text-background hover:bg-foreground/90 transition-colors"
+              >
+                <Download className="w-5 h-5" />
+                <span className="text-sm font-medium">Установить приложение</span>
+              </Link>
+              <a
+                href="/downloads/app-debug.apk"
+                download
+                className="inline-flex items-center gap-2 px-5 py-3 rounded-lg border border-foreground/20 text-foreground hover:bg-foreground/10 transition-colors"
+              >
+                <Download className="w-5 h-5" />
+                <span className="text-sm font-medium">Скачать APK</span>
+              </a>
+            </div>
           </motion.div>
 
           {/* Phone mockup */}
