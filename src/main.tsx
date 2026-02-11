@@ -12,8 +12,4 @@ if (!isNative) {
 
 const root = document.getElementById("root")!;
 
-try {
-  createRoot(root).render(<App />);
-} catch (e: any) {
-  root.innerHTML = `<pre style="color:red;padding:20px;">App Error: ${e?.message}\n${e?.stack}</pre>`;
-}
+createRoot(root).render(<App />);
