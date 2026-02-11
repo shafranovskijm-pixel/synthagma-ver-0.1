@@ -13,8 +13,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="СИНТАГМА" />
-    <link rel="apple-touch-icon" href="/pwa-192x192.png" />
-    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="./pwa-192x192.png" />
+    <link rel="manifest" href="./manifest.webmanifest" />
     
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
@@ -29,18 +29,19 @@
     
    <meta name="twitter:image" content="https://synthagma-bloom.lovable.app/og-image.png">
     
-    <link rel="icon" type="image/x-icon" href="https://storage.googleapis.com/gpt-engineer-file-uploads/PTpM50g6m7PLHlVz6xEAe06wJ5E3/uploads/1770626998031-Screenshot_54.jpg">
+    <link rel="icon" type="image/x-icon" href="./favicon.ico">
     
-    <!-- Yandex.Metrika counter -->
+    <!-- Yandex.Metrika counter (only in web context) -->
     <script type="text/javascript">
+      if (typeof window.Capacitor === 'undefined') {
         (function(m,e,t,r,i,k,a){
             m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
             m[i].l=1*new Date();
             for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
             k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
         })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105216554', 'ym');
-
         ym(105216554, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", referrer: document.referrer, url: location.href, accurateTrackBounce:true, trackLinks:true});
+      }
     </script>
     <!-- /Yandex.Metrika counter -->
     <meta property="og:title" content="СИНТАГМА — Система дистанционного обучения и документооборота организации">
@@ -52,6 +53,6 @@
     <!-- Yandex.Metrika noscript -->
     <noscript><div><img src="https://mc.yandex.ru/watch/105216554" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <script type="module" src="./src/main.tsx"></script>
   </body>
 </html>

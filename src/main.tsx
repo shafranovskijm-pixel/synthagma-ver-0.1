@@ -7,7 +7,13 @@ const isNative = typeof (window as any).Capacitor !== 'undefined';
 if (!isNative) {
   import('virtual:pwa-register').then(({ registerSW }) => {
     registerSW({ immediate: true });
-  });
+  }).catch(() => {});
 }
 
-createRoot(document.getElementById("root")!).render(<App />);
+const root = document.getElementById("root")!;
+
+try {
+  createRoot(root).render(<App />);
+} catch (e: any) {
+  root.innerHTML = `<pre style="color:red;padding:20px;">App Error: ${e?.message}\n${e?.stack}</pre>`;
+}
