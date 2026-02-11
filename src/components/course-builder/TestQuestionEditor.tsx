@@ -66,6 +66,7 @@ export const TestQuestionEditor = forwardRef<TestQuestionEditorRef, TestQuestion
   const [isSaving, setIsSaving] = useState(false);
   const [generatingExplanationId, setGeneratingExplanationId] = useState<string | null>(null);
   const [uploadingImageId, setUploadingImageId] = useState<string | null>(null);
+  const [hasFetched, setHasFetched] = useState(false);
   const { uploadFile, isExternalConfigured } = useExternalStorage();
 
   // Expose methods to parent via ref
@@ -103,23 +104,28 @@ export const TestQuestionEditor = forwardRef<TestQuestionEditorRef, TestQuestion
   }, [generatedQuestions]);
 
   useEffect(() => {
+    // Only fetch once on mount
+    if (hasFetched) return;
+    
     const fetchQuestions = async () => {
       // Skip fetching if we have initial questions from parent
       if (initialQuestions && initialQuestions.length > 0) {
         setIsLoading(false);
+        setHasFetched(true);
         return;
       }
 
       if (!lessonId) {
         setIsLoading(false);
+        setHasFetched(true);
         return;
       }
 
       // Check if lessonId is a valid UUID format before querying
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       if (!uuidRegex.test(lessonId)) {
-        // This is a temporary ID for a new lesson, skip fetching
         setIsLoading(false);
+        setHasFetched(true);
         return;
       }
 
@@ -130,9 +136,9 @@ export const TestQuestionEditor = forwardRef<TestQuestionEditorRef, TestQuestion
           .eq("id", lessonId)
           .maybeSingle();
 
-        // If lesson doesn't exist or RLS blocks access - this is expected for unsaved lessons
         if (lessonError || !lessonData) {
           setIsLoading(false);
+          setHasFetched(true);
           return;
         }
 
@@ -144,8 +150,7 @@ export const TestQuestionEditor = forwardRef<TestQuestionEditorRef, TestQuestion
 
         if (error) {
           console.error("Error fetching questions:", error);
-          // Don't show toast - this can happen for new lessons or RLS restrictions
-        } else if (data) {
+        } else if (data && data.length > 0) {
           setQuestions(data.map(q => ({
             id: q.id,
             question: q.question,
@@ -158,14 +163,14 @@ export const TestQuestionEditor = forwardRef<TestQuestionEditorRef, TestQuestion
         }
       } catch (err) {
         console.error("Error in fetchQuestions:", err);
-        // Silent catch - don't show toast for fetch errors on unsaved lessons
       }
 
       setIsLoading(false);
+      setHasFetched(true);
     };
 
     fetchQuestions();
-  }, [lessonId, initialQuestions]);
+  }, [lessonId, hasFetched]);
 
   const addQuestion = () => {
     const newQuestion: TestQuestion = {
