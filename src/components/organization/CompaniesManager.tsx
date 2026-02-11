@@ -471,6 +471,8 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
         setCompanyName={companiesManager.setNewCompanyName}
         companyInn={companiesManager.newCompanyInn}
         setCompanyInn={companiesManager.setNewCompanyInn}
+        companyEmail={companiesManager.newCompanyEmail}
+        setCompanyEmail={companiesManager.setNewCompanyEmail}
         isCreating={companiesManager.isCreating}
         isSearchingDadata={companiesManager.isSearchingDadata}
         dadataCompanyInfo={companiesManager.dadataCompanyInfo}
@@ -479,6 +481,7 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
         onClose={() => {
           companiesManager.setNewCompanyName("");
           companiesManager.setNewCompanyInn("");
+          companiesManager.setNewCompanyEmail("");
           companiesManager.setDadataCompanyInfo(null);
         }}
       />
@@ -491,6 +494,8 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
         setCompanyName={companiesManager.setEditCompanyName}
         companyInn={companiesManager.editCompanyInn}
         setCompanyInn={companiesManager.setEditCompanyInn}
+        companyEmail={companiesManager.editCompanyEmail}
+        setCompanyEmail={companiesManager.setEditCompanyEmail}
         isSaving={companiesManager.isSaving}
         isSearchingDadata={companiesManager.isSearchingDadataEdit}
         dadataCompanyInfo={companiesManager.dadataEditCompanyInfo}

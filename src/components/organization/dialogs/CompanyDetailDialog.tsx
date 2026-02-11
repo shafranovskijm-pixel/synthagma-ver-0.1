@@ -154,6 +154,11 @@ export function CompanyDetailDialog({
                     <span className="text-foreground/70">Руководитель:</span> {company.director}
                   </div>
                 )}
+                {company.email && (
+                  <div className="text-xs text-muted-foreground mt-1">
+                    <span className="text-foreground/70">Email:</span> {company.email}
+                  </div>
+                )}
                 {company.address && (
                   <div className="text-xs text-muted-foreground mt-1 max-w-xl truncate" title={company.address}>
                     <span className="text-foreground/70">Адрес:</span> {company.address}
