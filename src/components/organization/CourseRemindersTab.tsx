@@ -31,8 +31,8 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Bell, Plus, Send, Check, X, Loader2, Calendar, Building2, User, Edit2 } from "lucide-react";
-import { REMINDER_TEMPLATES, RETRAINING_PERIOD_OPTIONS } from "@/constants/reminderTemplates";
+import { Bell, Plus, Send, Check, X, Loader2, Calendar, Building2, User, Edit2, Copy, Eye } from "lucide-react";
+import { REMINDER_TEMPLATES, RETRAINING_PERIOD_OPTIONS, ReminderTemplate } from "@/constants/reminderTemplates";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 
@@ -73,6 +73,7 @@ export function CourseRemindersTab({ courseId, organizationId, retrainingPeriodM
   const [customPeriod, setCustomPeriod] = useState(false);
   const [customMonths, setCustomMonths] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [previewTemplate, setPreviewTemplate] = useState<ReminderTemplate | null>(null);
 
   const fetchReminders = useCallback(async () => {
     setLoading(true);
@@ -260,7 +261,7 @@ export function CourseRemindersTab({ courseId, organizationId, retrainingPeriodM
           Шаблоны комментариев
         </h4>
         <p className="text-sm text-muted-foreground">
-          Готовые тексты уведомлений. Нажмите для копирования.
+          Готовые тексты уведомлений. Нажмите для предпросмотра.
         </p>
         <div className="flex flex-wrap gap-2">
           {REMINDER_TEMPLATES.map(t => (
@@ -268,11 +269,9 @@ export function CourseRemindersTab({ courseId, organizationId, retrainingPeriodM
               key={t.id}
               variant="outline"
               className="cursor-pointer hover:bg-primary/10 transition-colors py-1.5 px-3"
-              onClick={() => {
-                navigator.clipboard.writeText(t.text);
-                toast.success(`Шаблон "${t.name}" скопирован`);
-              }}
+              onClick={() => setPreviewTemplate(t)}
             >
+              <Eye className="w-3 h-3 mr-1" />
               {t.name}
             </Badge>
           ))}
@@ -463,6 +462,46 @@ export function CourseRemindersTab({ courseId, organizationId, retrainingPeriodM
             <Button className="rounded-xl btn-gradient" onClick={handleSaveReminderEdit} disabled={isSaving}>
               {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
               Сохранить
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Template Preview Dialog */}
+      <Dialog open={!!previewTemplate} onOpenChange={open => !open && setPreviewTemplate(null)}>
+        <DialogContent className="rounded-2xl max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{previewTemplate?.name}</DialogTitle>
+          </DialogHeader>
+          {previewTemplate && (
+            <div className="space-y-4">
+              <Badge variant="secondary" className="text-sm">
+                Периодичность: {previewTemplate.periodMonths} мес.
+              </Badge>
+              <div className="bg-muted/50 rounded-xl p-4 max-h-80 overflow-y-auto">
+                <p className="text-sm whitespace-pre-wrap leading-relaxed">{previewTemplate.text}</p>
+              </div>
+            </div>
+          )}
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              className="rounded-xl"
+              onClick={() => setPreviewTemplate(null)}
+            >
+              Закрыть
+            </Button>
+            <Button
+              className="rounded-xl"
+              onClick={() => {
+                if (previewTemplate) {
+                  navigator.clipboard.writeText(previewTemplate.text);
+                  toast.success(`Шаблон "${previewTemplate.name}" скопирован`);
+                }
+              }}
+            >
+              <Copy className="w-4 h-4 mr-2" />
+              Скопировать текст
             </Button>
           </DialogFooter>
         </DialogContent>
