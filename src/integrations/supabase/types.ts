@@ -612,6 +612,7 @@ export type Database = {
           id: string
           is_published: boolean
           organization_id: string
+          reminder_advance_days: number
           retraining_period_months: number | null
           sequential_lessons: boolean
           skip_video_identification: boolean | null
@@ -638,6 +639,7 @@ export type Database = {
           id?: string
           is_published?: boolean
           organization_id: string
+          reminder_advance_days?: number
           retraining_period_months?: number | null
           sequential_lessons?: boolean
           skip_video_identification?: boolean | null
@@ -664,6 +666,7 @@ export type Database = {
           id?: string
           is_published?: boolean
           organization_id?: string
+          reminder_advance_days?: number
           retraining_period_months?: number | null
           sequential_lessons?: boolean
           skip_video_identification?: boolean | null

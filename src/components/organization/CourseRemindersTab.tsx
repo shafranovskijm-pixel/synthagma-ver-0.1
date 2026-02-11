@@ -63,9 +63,19 @@ interface CourseRemindersTabProps {
   organizationId: string;
   retrainingPeriodMonths: number | null;
   onPeriodChange: (months: number | null) => void;
+  reminderAdvanceDays: number;
+  onAdvanceDaysChange: (days: number) => void;
 }
 
-export function CourseRemindersTab({ courseId, organizationId, retrainingPeriodMonths, onPeriodChange }: CourseRemindersTabProps) {
+const ADVANCE_DAYS_OPTIONS = [
+  { value: 7, label: "За 7 дней" },
+  { value: 14, label: "За 14 дней" },
+  { value: 30, label: "За 30 дней" },
+  { value: 60, label: "За 60 дней" },
+  { value: 90, label: "За 90 дней" },
+];
+
+export function CourseRemindersTab({ courseId, organizationId, retrainingPeriodMonths, onPeriodChange, reminderAdvanceDays, onAdvanceDaysChange }: CourseRemindersTabProps) {
   const [reminders, setReminders] = useState<CourseReminder[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -254,8 +264,27 @@ export function CourseRemindersTab({ courseId, organizationId, retrainingPeriodM
             <Button size="sm" className="rounded-xl" onClick={handleCustomPeriodSave}>Сохранить</Button>
           </div>
         )}
-      </div>
 
+        {/* Advance Days Setting */}
+        {retrainingPeriodMonths && retrainingPeriodMonths > 0 && (
+          <div className="space-y-2 pt-3 border-t border-border/30">
+            <Label className="text-sm">За сколько дней до срока напоминать</Label>
+            <Select value={String(reminderAdvanceDays)} onValueChange={v => onAdvanceDaysChange(parseInt(v))}>
+              <SelectTrigger className="w-64 rounded-xl">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {ADVANCE_DAYS_OPTIONS.map(opt => (
+                  <SelectItem key={opt.value} value={String(opt.value)}>{opt.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Напоминание будет отправлено за {reminderAdvanceDays} дней до даты переобучения
+            </p>
+          </div>
+        )}
+      </div>
       {/* Reminder Templates */}
       <div className="bg-secondary/30 rounded-xl p-4 space-y-3">
         <h4 className="font-semibold flex items-center gap-2">
