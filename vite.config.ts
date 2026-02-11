@@ -70,13 +70,16 @@ export default defineConfig(({ mode }) => ({
     },
   },
   build: {
+    chunkSizeWarningLimit: 2000,
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
-          ui: ['@radix-ui/react-dialog', '@radix-ui/react-tabs', '@radix-ui/react-select', '@radix-ui/react-popover'],
-          supabase: ['@supabase/supabase-js'],
-          charts: ['recharts'],
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('recharts') || id.includes('d3-')) return 'charts';
+            if (id.includes('@radix-ui')) return 'ui';
+            if (id.includes('@supabase')) return 'supabase';
+            if (id.includes('react-dom')) return 'vendor';
+          }
         },
       },
     },
