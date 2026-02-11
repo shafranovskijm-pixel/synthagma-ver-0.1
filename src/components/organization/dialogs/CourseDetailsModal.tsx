@@ -136,6 +136,7 @@ export function CourseDetailsModal({
   const [allowVideoSeek, setAllowVideoSeek] = useState(course?.allow_video_seek !== false);
   const [trainingForm, setTrainingForm] = useState(course?.training_form || "Очная");
   const [retrainingPeriod, setRetrainingPeriod] = useState<number | null>(course?.retraining_period_months ?? null);
+  const [reminderAdvanceDays, setReminderAdvanceDays] = useState<number>((course as any)?.reminder_advance_days ?? 30);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [resetConfirmStudent, setResetConfirmStudent] = useState<Student | null>(null);
   const [isResetting, setIsResetting] = useState(false);
@@ -169,6 +170,7 @@ export function CourseDetailsModal({
       setAllowVideoSeek(course.allow_video_seek !== false);
       setTrainingForm(course.training_form || "Очная");
       setRetrainingPeriod(course.retraining_period_months ?? null);
+      setReminderAdvanceDays((course as any).reminder_advance_days ?? 30);
       // Load FRDO settings from course
       setFrdoSettings({
         frdo_program_type: course.frdo_program_type || null,
@@ -1084,6 +1086,7 @@ export function CourseDetailsModal({
                 courseId={course.id}
                 organizationId={organizationId || ""}
                 retrainingPeriodMonths={retrainingPeriod}
+                reminderAdvanceDays={reminderAdvanceDays}
                 onPeriodChange={async (months) => {
                   setRetrainingPeriod(months);
                   try {
@@ -1096,6 +1099,21 @@ export function CourseDetailsModal({
                     onCourseUpdated?.();
                   } catch (error) {
                     console.error("Error updating retraining period:", error);
+                    toast.error("Ошибка сохранения");
+                  }
+                }}
+                onAdvanceDaysChange={async (days) => {
+                  setReminderAdvanceDays(days);
+                  try {
+                    const { error } = await supabase
+                      .from("courses")
+                      .update({ reminder_advance_days: days } as any)
+                      .eq("id", course.id);
+                    if (error) throw error;
+                    toast.success(`Напоминание за ${days} дней`);
+                    onCourseUpdated?.();
+                  } catch (error) {
+                    console.error("Error updating advance days:", error);
                     toast.error("Ошибка сохранения");
                   }
                 }}
