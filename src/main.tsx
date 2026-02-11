@@ -1,8 +1,13 @@
 import { createRoot } from "react-dom/client";
-import { registerSW } from 'virtual:pwa-register';
 import App from "./App.tsx";
 import "./index.css";
 
-registerSW({ immediate: true });
+// Only register SW in browser context, not in Capacitor native
+const isNative = typeof (window as any).Capacitor !== 'undefined';
+if (!isNative) {
+  import('virtual:pwa-register').then(({ registerSW }) => {
+    registerSW({ immediate: true });
+  });
+}
 
 createRoot(document.getElementById("root")!).render(<App />);
