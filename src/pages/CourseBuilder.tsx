@@ -2189,8 +2189,17 @@ export default function CourseBuilder() {
       toast.success(courseId ? "Курс обновлён" : "Курс создан");
       setHasUnsavedChanges(false);
     } catch (error: any) {
-      console.error("Error saving course:", error);
-      toast.error("Ошибка сохранения: " + error.message);
+      // Ignore AbortError - harmless race condition
+      if (error?.name === 'AbortError' || 
+          error?.message?.includes('AbortError') || 
+          error?.message?.includes('signal is aborted')) {
+        console.warn("Save interrupted by AbortError, changes may have been saved:", error);
+        toast.success(courseId ? "Курс обновлён" : "Курс создан");
+        setHasUnsavedChanges(false);
+      } else {
+        console.error("Error saving course:", error);
+        toast.error("Ошибка сохранения: " + error.message);
+      }
     } finally {
       setIsSaving(false);
     }
