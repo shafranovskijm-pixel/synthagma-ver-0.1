@@ -1,4 +1,4 @@
-import { useState, useEffect, useImperativeHandle, forwardRef } from "react";
+import React, { useState, useEffect, useImperativeHandle, forwardRef, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -76,10 +76,13 @@ export const TestQuestionEditor = forwardRef<TestQuestionEditorRef, TestQuestion
     }
   }));
 
-  // Notify parent of question changes
+  // Notify parent of question changes - use ref to avoid infinite loop
+  const onQuestionsChangeRef = useRef(onQuestionsChange);
+  onQuestionsChangeRef.current = onQuestionsChange;
+  
   useEffect(() => {
-    onQuestionsChange?.(questions.filter(q => !q.isDeleted));
-  }, [questions, onQuestionsChange]);
+    onQuestionsChangeRef.current?.(questions.filter(q => !q.isDeleted));
+  }, [questions]);
 
   // Handle generated questions from AI
   useEffect(() => {
