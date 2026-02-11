@@ -42,7 +42,8 @@ import {
   FastForward,
   Search,
   UserPlus,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Bell
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -53,6 +54,7 @@ import {
   FRDO_TRAINING_FORMS,
   type CourseFRDOSettings,
 } from "@/constants/frdo";
+import { CourseRemindersTab } from "@/components/organization/CourseRemindersTab";
 
 interface Course {
   id: string;
@@ -68,6 +70,7 @@ interface Course {
   sequential_lessons?: boolean;
   allow_video_seek?: boolean;
   training_form?: string | null;
+  retraining_period_months?: number | null;
   // FRDO settings
   frdo_program_type?: string | null;
   frdo_document_type?: string | null;
@@ -104,8 +107,8 @@ interface CourseDetailsModalProps {
   course: Course | null;
   courseStudents: Student[];
   organizationId: string | null;
-  activeTab: "students" | "materials" | "history" | "tests" | "settings";
-  onTabChange: (tab: "students" | "materials" | "history" | "tests" | "settings") => void;
+  activeTab: "students" | "materials" | "history" | "tests" | "settings" | "reminders";
+  onTabChange: (tab: "students" | "materials" | "history" | "tests" | "settings" | "reminders") => void;
   onEnrollStudent: () => void;
   onCourseDeleted?: () => void;
   onCourseUpdated?: () => void;
@@ -132,6 +135,7 @@ export function CourseDetailsModal({
   const [sequentialLessons, setSequentialLessons] = useState(course?.sequential_lessons || false);
   const [allowVideoSeek, setAllowVideoSeek] = useState(course?.allow_video_seek !== false);
   const [trainingForm, setTrainingForm] = useState(course?.training_form || "Очная");
+  const [retrainingPeriod, setRetrainingPeriod] = useState<number | null>(course?.retraining_period_months ?? null);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [resetConfirmStudent, setResetConfirmStudent] = useState<Student | null>(null);
   const [isResetting, setIsResetting] = useState(false);
@@ -164,6 +168,7 @@ export function CourseDetailsModal({
       setSequentialLessons(course.sequential_lessons || false);
       setAllowVideoSeek(course.allow_video_seek !== false);
       setTrainingForm(course.training_form || "Очная");
+      setRetrainingPeriod(course.retraining_period_months ?? null);
       // Load FRDO settings from course
       setFrdoSettings({
         frdo_program_type: course.frdo_program_type || null,
@@ -626,6 +631,10 @@ export function CourseDetailsModal({
                 <Settings className="w-4 h-4" />
                 Настройки
               </TabsTrigger>
+              <TabsTrigger value="reminders" className="rounded-lg gap-2">
+                <Bell className="w-4 h-4" />
+                Напоминания
+              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -1068,6 +1077,29 @@ export function CourseDetailsModal({
                   </div>
                 </div>
               </div>
+            </TabsContent>
+
+            <TabsContent value="reminders" className="mt-0 h-full">
+              <CourseRemindersTab
+                courseId={course.id}
+                organizationId={organizationId || ""}
+                retrainingPeriodMonths={retrainingPeriod}
+                onPeriodChange={async (months) => {
+                  setRetrainingPeriod(months);
+                  try {
+                    const { error } = await supabase
+                      .from("courses")
+                      .update({ retraining_period_months: months } as any)
+                      .eq("id", course.id);
+                    if (error) throw error;
+                    toast.success(months ? `Периодичность: ${months} мес.` : "Периодичность отключена");
+                    onCourseUpdated?.();
+                  } catch (error) {
+                    console.error("Error updating retraining period:", error);
+                    toast.error("Ошибка сохранения");
+                  }
+                }}
+              />
             </TabsContent>
           </div>
         </Tabs>

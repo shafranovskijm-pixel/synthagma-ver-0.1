@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { Course } from "@/types/shared";
 
-type CourseDetailsTabType = "students" | "materials" | "history" | "tests" | "settings";
+type CourseDetailsTabType = "students" | "materials" | "history" | "tests" | "settings" | "reminders";
 
 export function useCourseDetailsModal() {
   const [showCourseDetailsModal, setShowCourseDetailsModal] = useState(false);
