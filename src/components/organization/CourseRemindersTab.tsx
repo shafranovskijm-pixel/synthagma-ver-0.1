@@ -31,7 +31,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Bell, Plus, Send, Check, X, Loader2, Calendar, Building2, User, Edit2, Copy, Eye } from "lucide-react";
+import { Bell, Plus, Send, Check, X, Loader2, Calendar, Building2, User, Edit2, Copy, Eye, Pencil } from "lucide-react";
 import { REMINDER_TEMPLATES, RETRAINING_PERIOD_OPTIONS, ReminderTemplate } from "@/constants/reminderTemplates";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -74,6 +74,8 @@ export function CourseRemindersTab({ courseId, organizationId, retrainingPeriodM
   const [customMonths, setCustomMonths] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [previewTemplate, setPreviewTemplate] = useState<ReminderTemplate | null>(null);
+  const [editingTemplate, setEditingTemplate] = useState<ReminderTemplate | null>(null);
+  const [editedText, setEditedText] = useState("");
 
   const fetchReminders = useCallback(async () => {
     setLoading(true);
@@ -492,6 +494,20 @@ export function CourseRemindersTab({ courseId, organizationId, retrainingPeriodM
               Закрыть
             </Button>
             <Button
+              variant="outline"
+              className="rounded-xl"
+              onClick={() => {
+                if (previewTemplate) {
+                  setEditingTemplate(previewTemplate);
+                  setEditedText(previewTemplate.text);
+                  setPreviewTemplate(null);
+                }
+              }}
+            >
+              <Pencil className="w-4 h-4 mr-2" />
+              Редактировать
+            </Button>
+            <Button
               className="rounded-xl"
               onClick={() => {
                 if (previewTemplate) {
@@ -502,6 +518,47 @@ export function CourseRemindersTab({ courseId, organizationId, retrainingPeriodM
             >
               <Copy className="w-4 h-4 mr-2" />
               Скопировать текст
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Template Edit Dialog */}
+      <Dialog open={!!editingTemplate} onOpenChange={open => !open && setEditingTemplate(null)}>
+        <DialogContent className="rounded-2xl max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Редактировать: {editingTemplate?.name}</DialogTitle>
+          </DialogHeader>
+          {editingTemplate && (
+            <div className="space-y-4">
+              <Badge variant="secondary" className="text-sm">
+                Периодичность: {editingTemplate.periodMonths} мес.
+              </Badge>
+              <Textarea
+                value={editedText}
+                onChange={e => setEditedText(e.target.value)}
+                className="rounded-xl min-h-[200px] text-sm"
+              />
+            </div>
+          )}
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              className="rounded-xl"
+              onClick={() => setEditingTemplate(null)}
+            >
+              Отмена
+            </Button>
+            <Button
+              className="rounded-xl"
+              onClick={() => {
+                navigator.clipboard.writeText(editedText);
+                toast.success("Отредактированный текст скопирован");
+                setEditingTemplate(null);
+              }}
+            >
+              <Copy className="w-4 h-4 mr-2" />
+              Скопировать
             </Button>
           </DialogFooter>
         </DialogContent>
