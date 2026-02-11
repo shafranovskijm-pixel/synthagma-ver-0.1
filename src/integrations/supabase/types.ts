@@ -206,6 +206,7 @@ export type Database = {
           address: string | null
           created_at: string
           director: string | null
+          email: string | null
           id: string
           inn: string | null
           kpp: string | null
@@ -220,6 +221,7 @@ export type Database = {
           address?: string | null
           created_at?: string
           director?: string | null
+          email?: string | null
           id?: string
           inn?: string | null
           kpp?: string | null
@@ -234,6 +236,7 @@ export type Database = {
           address?: string | null
           created_at?: string
           director?: string | null
+          email?: string | null
           id?: string
           inn?: string | null
           kpp?: string | null

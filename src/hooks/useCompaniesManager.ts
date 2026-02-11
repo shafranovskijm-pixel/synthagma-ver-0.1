@@ -10,6 +10,7 @@ interface Company {
   ogrn: string | null;
   address: string | null;
   director: string | null;
+  email: string | null;
   created_at: string;
   studentsCount?: number;
   stamp_url?: string | null;
@@ -95,6 +96,7 @@ export function useCompaniesManager(organizationId: string) {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newCompanyName, setNewCompanyName] = useState("");
   const [newCompanyInn, setNewCompanyInn] = useState("");
+  const [newCompanyEmail, setNewCompanyEmail] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [isSearchingDadata, setIsSearchingDadata] = useState(false);
   const [dadataCompanyInfo, setDadataCompanyInfo] = useState<DadataCompanyInfo | null>(null);
@@ -104,6 +106,7 @@ export function useCompaniesManager(organizationId: string) {
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
   const [editCompanyName, setEditCompanyName] = useState("");
   const [editCompanyInn, setEditCompanyInn] = useState("");
+  const [editCompanyEmail, setEditCompanyEmail] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isSearchingDadataEdit, setIsSearchingDadataEdit] = useState(false);
   const [dadataEditCompanyInfo, setDadataEditCompanyInfo] = useState<DadataCompanyInfo | null>(null);
@@ -248,7 +251,8 @@ export function useCompaniesManager(organizationId: string) {
         ogrn: dadataCompanyInfo?.ogrn || null,
         address: dadataCompanyInfo?.address || null,
         director: dadataCompanyInfo?.management || null,
-      });
+        email: newCompanyEmail.trim() || null,
+      } as any);
 
       if (error) throw error;
 
@@ -256,6 +260,7 @@ export function useCompaniesManager(organizationId: string) {
       setShowCreateDialog(false);
       setNewCompanyName("");
       setNewCompanyInn("");
+      setNewCompanyEmail("");
       setDadataCompanyInfo(null);
       fetchCompanies();
     } catch (error) {
@@ -270,6 +275,7 @@ export function useCompaniesManager(organizationId: string) {
     setEditingCompany(company);
     setEditCompanyName(company.name);
     setEditCompanyInn(company.inn || "");
+    setEditCompanyEmail(company.email || "");
     setDadataEditCompanyInfo(null);
     setShowEditDialog(true);
   };
@@ -285,6 +291,7 @@ export function useCompaniesManager(organizationId: string) {
       const updateData: any = {
         name: editCompanyName.trim(),
         inn: dadataEditCompanyInfo?.inn || editCompanyInn.trim() || editingCompany.inn,
+        email: editCompanyEmail.trim() || null,
       };
 
       if (dadataEditCompanyInfo) {
@@ -379,6 +386,8 @@ export function useCompaniesManager(organizationId: string) {
     setNewCompanyName,
     newCompanyInn,
     setNewCompanyInn,
+    newCompanyEmail,
+    setNewCompanyEmail,
     isCreating,
     isSearchingDadata,
     dadataCompanyInfo,
@@ -394,6 +403,8 @@ export function useCompaniesManager(organizationId: string) {
     setEditCompanyName,
     editCompanyInn,
     setEditCompanyInn,
+    editCompanyEmail,
+    setEditCompanyEmail,
     isSaving,
     isSearchingDadataEdit,
     setIsSearchingDadataEdit,

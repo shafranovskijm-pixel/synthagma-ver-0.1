@@ -32,6 +32,8 @@ interface CreateCompanyDialogProps {
   setCompanyName: (name: string) => void;
   companyInn: string;
   setCompanyInn: (inn: string) => void;
+  companyEmail: string;
+  setCompanyEmail: (email: string) => void;
   isCreating: boolean;
   isSearchingDadata: boolean;
   dadataCompanyInfo: DadataCompanyInfo | null;
@@ -47,6 +49,8 @@ export function CreateCompanyDialog({
   setCompanyName,
   companyInn,
   setCompanyInn,
+  companyEmail,
+  setCompanyEmail,
   isCreating,
   isSearchingDadata,
   dadataCompanyInfo,
@@ -111,8 +115,19 @@ export function CreateCompanyDialog({
             />
           </div>
 
+          <div className="space-y-2">
+            <Label>Email компании</Label>
+            <Input
+              type="email"
+              placeholder="info@company.ru"
+              className="rounded-xl"
+              value={companyEmail}
+              onChange={(e) => setCompanyEmail(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">Для отправки напоминаний о переобучении</p>
+          </div>
+
           <Button
-            className="w-full btn-gradient rounded-xl"
             onClick={onCreate}
             disabled={isCreating}
           >
@@ -139,6 +154,8 @@ interface EditCompanyDialogProps {
   setCompanyName: (name: string) => void;
   companyInn: string;
   setCompanyInn: (inn: string) => void;
+  companyEmail: string;
+  setCompanyEmail: (email: string) => void;
   isSaving: boolean;
   isSearchingDadata: boolean;
   dadataCompanyInfo: DadataCompanyInfo | null;
@@ -155,6 +172,8 @@ export function EditCompanyDialog({
   setCompanyName,
   companyInn,
   setCompanyInn,
+  companyEmail,
+  setCompanyEmail,
   isSaving,
   isSearchingDadata,
   dadataCompanyInfo,
@@ -217,6 +236,18 @@ export function EditCompanyDialog({
               value={companyName}
               onChange={(e) => setCompanyName(e.target.value)}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Email компании</Label>
+            <Input
+              type="email"
+              placeholder="info@company.ru"
+              className="rounded-xl"
+              value={companyEmail}
+              onChange={(e) => setCompanyEmail(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">Для отправки напоминаний о переобучении</p>
           </div>
 
           <Button

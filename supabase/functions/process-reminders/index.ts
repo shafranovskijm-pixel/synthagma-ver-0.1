@@ -6,6 +6,135 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+function base64Encode(str: string): string {
+  return btoa(unescape(encodeURIComponent(str)));
+}
+
+function encodeSubject(subject: string): string {
+  return `=?UTF-8?B?${base64Encode(subject)}?=`;
+}
+
+function encodeFromHeader(from: string): string {
+  const match = from.match(/^(.+?)\s*<(.+)>$/);
+  if (match) {
+    return `=?UTF-8?B?${base64Encode(match[1].trim())}?= <${match[2].trim()}>`;
+  }
+  return from;
+}
+
+async function sendEmailViaSMTP(
+  to: string,
+  subject: string,
+  htmlBody: string,
+  smtpHost: string,
+  smtpPort: string,
+  smtpUser: string,
+  smtpPass: string,
+  smtpFrom: string,
+): Promise<boolean> {
+  try {
+    const encodedSubject = encodeSubject(subject);
+    const encodedFrom = encodeFromHeader(smtpFrom);
+    const encodedHtml = base64Encode(htmlBody);
+
+    const rawEmail = [
+      `From: ${encodedFrom}`,
+      `To: ${to}`,
+      `Subject: ${encodedSubject}`,
+      `MIME-Version: 1.0`,
+      `Content-Type: text/html; charset=UTF-8`,
+      `Content-Transfer-Encoding: base64`,
+      ``,
+      encodedHtml.match(/.{1,76}/g)?.join('\r\n') || encodedHtml,
+    ].join('\r\n');
+
+    const conn = await Deno.connectTls({ hostname: smtpHost, port: parseInt(smtpPort, 10) });
+    const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
+
+    async function readResponse(): Promise<string> {
+      const buffer = new Uint8Array(1024);
+      const n = await conn.read(buffer);
+      return n === null ? "" : decoder.decode(buffer.subarray(0, n));
+    }
+
+    async function sendCommand(cmd: string): Promise<string> {
+      await conn.write(encoder.encode(cmd + "\r\n"));
+      return await readResponse();
+    }
+
+    await readResponse(); // greeting
+    await sendCommand(`EHLO localhost`);
+    await sendCommand(`AUTH LOGIN`);
+    await sendCommand(btoa(smtpUser));
+    await sendCommand(btoa(smtpPass));
+
+    const emailMatch = smtpFrom.match(/<([^>]+)>/) || [null, smtpFrom];
+    const fromEmail = emailMatch[1] || smtpFrom;
+
+    await sendCommand(`MAIL FROM:<${fromEmail}>`);
+    await sendCommand(`RCPT TO:<${to}>`);
+    await sendCommand(`DATA`);
+    await conn.write(encoder.encode(rawEmail + "\r\n.\r\n"));
+    await readResponse();
+    await sendCommand(`QUIT`);
+    conn.close();
+
+    console.log(`Email sent to ${to}`);
+    return true;
+  } catch (error) {
+    console.error(`Failed to send email to ${to}:`, error);
+    return false;
+  }
+}
+
+function buildReminderEmailHtml(
+  courseName: string,
+  studentName: string,
+  completedAt: string,
+  reminderDate: string,
+  orgName: string,
+  reminderText: string | null,
+  recipientType: "student" | "company" | "organization",
+): string {
+  const completedFormatted = new Date(completedAt).toLocaleDateString("ru-RU");
+  const reminderFormatted = new Date(reminderDate).toLocaleDateString("ru-RU");
+
+  const greeting = recipientType === "student"
+    ? `Здравствуйте${studentName ? `, ${studentName}` : ""}!`
+    : `Уважаемые коллеги!`;
+
+  const intro = recipientType === "student"
+    ? `Приближается срок повторного прохождения курса.`
+    : `Напоминаем о необходимости переобучения сотрудника.`;
+
+  return `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;font-family:Arial,sans-serif;line-height:1.6;color:#333;background:#f5f5f5;">
+<div style="max-width:600px;margin:0 auto;padding:20px;">
+<div style="background:white;border-radius:12px;overflow:hidden;box-shadow:0 4px 6px rgba(0,0,0,0.1);">
+  <div style="background:linear-gradient(135deg,#f59e0b,#d97706);color:white;padding:30px;text-align:center;">
+    <h1 style="margin:0;font-size:22px;">⏰ Напоминание о переобучении</h1>
+    <p style="margin:10px 0 0;opacity:0.9;">${orgName}</p>
+  </div>
+  <div style="padding:30px;">
+    <p style="font-size:16px;">${greeting}</p>
+    <p style="font-size:16px;">${intro}</p>
+    <div style="background:#fffbeb;border:1px solid #fbbf24;border-radius:8px;padding:20px;margin:20px 0;">
+      <p style="margin:0 0 8px;"><strong>📚 Курс:</strong> ${courseName}</p>
+      <p style="margin:0 0 8px;"><strong>👤 Слушатель:</strong> ${studentName || "—"}</p>
+      <p style="margin:0 0 8px;"><strong>📅 Дата прохождения:</strong> ${completedFormatted}</p>
+      <p style="margin:0;"><strong>⏰ Дата переобучения:</strong> ${reminderFormatted}</p>
+    </div>
+    ${reminderText ? `<div style="background:#f0f9ff;border:1px solid #93c5fd;border-radius:8px;padding:16px;margin:20px 0;"><p style="margin:0;">${reminderText}</p></div>` : ""}
+    <p style="font-size:14px;color:#64748b;margin-top:20px;">Пожалуйста, обеспечьте своевременное прохождение повторного обучения.</p>
+  </div>
+  <div style="background:#f8fafc;padding:15px;text-align:center;border-top:1px solid #e2e8f0;">
+    <p style="color:#9ca3af;font-size:12px;margin:0;">Автоматическое уведомление от платформы СИНТАГМА</p>
+  </div>
+</div></div></body></html>`;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -15,6 +144,12 @@ serve(async (req) => {
     const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const SMTP_HOST = Deno.env.get("SMTP_HOST");
+    const SMTP_PORT = Deno.env.get("SMTP_PORT");
+    const SMTP_USER = Deno.env.get("SMTP_USER");
+    const SMTP_PASS = Deno.env.get("SMTP_PASS");
+    const SMTP_FROM = Deno.env.get("SMTP_FROM");
+    const smtpConfigured = !!(SMTP_HOST && SMTP_PORT && SMTP_USER && SMTP_PASS && SMTP_FROM);
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -80,36 +215,53 @@ serve(async (req) => {
 
     for (const cr of courseReminders || []) {
       try {
-        // Get org telegram_chat_id if notify_organization
-        if (cr.notify_organization && TELEGRAM_BOT_TOKEN) {
-          const { data: org } = await supabase
-            .from("organizations")
-            .select("name, telegram_chat_id")
-            .eq("id", cr.organization_id)
+        // Get course name
+        const { data: course } = await supabase
+          .from("courses")
+          .select("title")
+          .eq("id", cr.course_id)
+          .maybeSingle();
+
+        // Get student info
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("full_name, email")
+          .eq("user_id", cr.user_id)
+          .maybeSingle();
+
+        // Get org info
+        const { data: org } = await supabase
+          .from("organizations")
+          .select("name, telegram_chat_id")
+          .eq("id", cr.organization_id)
+          .maybeSingle();
+
+        const courseName = course?.title || "Курс";
+        const studentName = profile?.full_name || "—";
+        const studentEmail = profile?.email || null;
+        const orgName = org?.name || "Организация";
+
+        // Get company info if linked
+        let companyEmail: string | null = null;
+        if (cr.company_id) {
+          const { data: company } = await supabase
+            .from("companies")
+            .select("email")
+            .eq("id", cr.company_id)
             .maybeSingle();
+          companyEmail = company?.email || null;
+        }
 
-          if (org?.telegram_chat_id) {
-            // Get course name
-            const { data: course } = await supabase
-              .from("courses")
-              .select("title")
-              .eq("id", cr.course_id)
-              .maybeSingle();
+        // --- Telegram to organization ---
+        if (cr.notify_organization && TELEGRAM_BOT_TOKEN && org?.telegram_chat_id) {
+          const message = `🔔 <b>Напоминание о переобучении</b>\n\n` +
+            `📚 Курс: <b>${courseName}</b>\n` +
+            `👤 Слушатель: ${studentName}\n` +
+            `📅 Дата прохождения: ${new Date(cr.completed_at).toLocaleDateString("ru-RU")}\n` +
+            `⏰ Дата переобучения: ${new Date(cr.reminder_date).toLocaleDateString("ru-RU")}\n` +
+            (cr.reminder_text ? `\n${cr.reminder_text}` : "");
 
-            // Get student name
-            const { data: profile } = await supabase
-              .from("profiles")
-              .select("full_name")
-              .eq("user_id", cr.user_id)
-              .maybeSingle();
-
-            const message = `🔔 <b>Напоминание о переобучении</b>\n\n` +
-              `📚 Курс: <b>${course?.title || "Курс"}</b>\n` +
-              `👤 Слушатель: ${profile?.full_name || "—"}\n` +
-              `📅 Дата прохождения: ${new Date(cr.completed_at).toLocaleDateString("ru-RU")}\n` +
-              `⏰ Дата переобучения: ${new Date(cr.reminder_date).toLocaleDateString("ru-RU")}\n` +
-              (cr.reminder_text ? `\n${cr.reminder_text}` : "");
-
+          try {
             const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -117,9 +269,25 @@ serve(async (req) => {
             });
             const tgResult = await response.json();
             if (tgResult.ok) {
-              console.log(`Sent course reminder ${cr.id} to org ${org.telegram_chat_id}`);
+              console.log(`Telegram sent for reminder ${cr.id} to org`);
             }
+          } catch (e) {
+            console.error(`Telegram error for ${cr.id}:`, e);
           }
+        }
+
+        // --- Email to student ---
+        if (cr.notify_student && smtpConfigured && studentEmail && !studentEmail.endsWith("@student.local")) {
+          const html = buildReminderEmailHtml(courseName, studentName, cr.completed_at, cr.reminder_date, orgName, cr.reminder_text, "student");
+          await sendEmailViaSMTP(studentEmail, `Напоминание о переобучении — ${courseName}`, html, SMTP_HOST!, SMTP_PORT!, SMTP_USER!, SMTP_PASS!, SMTP_FROM!);
+          console.log(`Email sent to student ${studentEmail} for reminder ${cr.id}`);
+        }
+
+        // --- Email to company ---
+        if (cr.notify_company && smtpConfigured && companyEmail) {
+          const html = buildReminderEmailHtml(courseName, studentName, cr.completed_at, cr.reminder_date, orgName, cr.reminder_text, "company");
+          await sendEmailViaSMTP(companyEmail, `Напоминание о переобучении сотрудника — ${courseName}`, html, SMTP_HOST!, SMTP_PORT!, SMTP_USER!, SMTP_PASS!, SMTP_FROM!);
+          console.log(`Email sent to company ${companyEmail} for reminder ${cr.id}`);
         }
 
         // Mark as sent
