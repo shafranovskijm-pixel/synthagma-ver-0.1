@@ -17,11 +17,19 @@ export async function fetchStudents(
     allEnrollments = enrollmentsData || [];
   }
 
-  // Fetch all profiles for the organization
+  // Fetch all profiles for the organization (without generated_password - it's encrypted)
   const { data: allProfilesData } = await supabase
     .from("profiles")
-    .select("id, user_id, full_name, email, login, generated_password, company_id")
+    .select("id, user_id, full_name, email, login, company_id")
     .eq("organization_id", organizationId);
+
+  // Fetch decrypted passwords via secure RPC
+  const { data: decryptedPasswords } = await supabase
+    .rpc("get_decrypted_student_passwords", { p_organization_id: organizationId });
+  const passwordMap = new Map<string, string>();
+  (decryptedPasswords || []).forEach((row: any) => {
+    if (row.decrypted_password) passwordMap.set(row.user_id, row.decrypted_password);
+  });
 
   // Fetch user roles to exclude organization/admin users from student list
   const userIds = (allProfilesData || []).map(p => p.user_id);
@@ -96,7 +104,7 @@ export async function fetchStudents(
       name: profile.full_name || "Без имени",
       email: profile.email || "",
       login: profile.login || null,
-      generated_password: profile.generated_password || null,
+      generated_password: passwordMap.get(profile.user_id) || null,
       course: courseNames.length > 0 ? courseNames.join(", ") : null,
       course_id: enrollments.length === 1 ? enrollments[0].course_id : null, // Only set if single enrollment
       progress: totalProgress,
