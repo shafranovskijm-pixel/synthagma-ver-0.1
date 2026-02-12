@@ -296,11 +296,15 @@ export async function fetchCourseStudents(courseId: string, courseTitle: string)
   for (const enrollment of enrollments || []) {
     const { data: profile } = await supabase
       .from("profiles")
-      .select("id, user_id, full_name, email, login, generated_password")
+      .select("id, user_id, full_name, email, login")
       .eq("user_id", enrollment.user_id)
       .single();
 
     if (profile) {
+      // Fetch decrypted password via secure RPC
+      const { data: decryptedPw } = await supabase
+        .rpc("get_decrypted_student_password", { p_user_id: profile.user_id });
+
       students.push({
         id: profile.id,
         user_id: profile.user_id,
@@ -308,7 +312,7 @@ export async function fetchCourseStudents(courseId: string, courseTitle: string)
         name: profile.full_name || "Без имени",
         email: profile.email || "",
         login: profile.login || null,
-        generated_password: profile.generated_password || null,
+        generated_password: decryptedPw || null,
         course: courseTitle,
         course_id: courseId,
         progress: enrollment.progress,

@@ -129,7 +129,7 @@ export function OrganizationsManager() {
           const [usersResult, coursesResult, credentialsResult] = await Promise.all([
             supabase.from("profiles").select("id", { count: "exact" }).eq("organization_id", org.id),
             supabase.from("courses").select("id", { count: "exact" }).eq("organization_id", org.id),
-            supabase.from("organization_credentials").select("login_email, login_password").eq("organization_id", org.id).maybeSingle(),
+            supabase.rpc("get_decrypted_org_credentials", { p_organization_id: org.id }).then(res => ({ data: res.data?.[0] || null, error: res.error })),
           ]);
           return {
             ...org,

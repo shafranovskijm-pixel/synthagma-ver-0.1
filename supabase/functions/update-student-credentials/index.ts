@@ -167,7 +167,12 @@ serve(async (req) => {
     }
 
    const loginToUse = new_login || effectiveProfile.login;
-   const passwordToUse = new_password || effectiveProfile.generated_password;
+   // Decrypt the stored password if using as fallback (passwords are now encrypted at rest)
+   let passwordToUse = new_password;
+   if (!passwordToUse && effectiveProfile.generated_password) {
+     const { data: decryptedPw } = await supabaseAdmin.rpc('decrypt_password', { p_text: effectiveProfile.generated_password });
+     passwordToUse = decryptedPw || effectiveProfile.generated_password;
+   }
 
     // Update auth.users - email is based on login, password is the actual password
     const authUpdateData: { email?: string; email_confirm?: boolean; password?: string } = {};
