@@ -172,29 +172,40 @@
        if (existingProfile) {
          // If password is missing in labor_safety_profiles, try to get from profiles table
          let profileData = existingProfile;
-         if (!existingProfile.generated_password && existingProfile.user_id) {
-           const { data: mainProfile } = await supabase
-             .from("profiles")
-             .select("generated_password, login")
-             .eq("user_id", existingProfile.user_id)
-             .maybeSingle();
-           
-           if (mainProfile?.generated_password) {
-             profileData = {
-               ...existingProfile,
-               generated_password: mainProfile.generated_password,
-               login: existingProfile.login || mainProfile.login,
-             };
-             // Update labor_safety_profiles with the password for future
-             await supabase
-               .from("labor_safety_profiles")
-               .update({
-                 generated_password: mainProfile.generated_password,
-                 login: existingProfile.login || mainProfile.login,
-               })
-               .eq("id", existingProfile.id);
-           }
-         }
+          if (!existingProfile.generated_password && existingProfile.user_id) {
+            // Try to get decrypted password from profiles via RPC
+            const { data: decryptedPw } = await supabase
+              .rpc("get_decrypted_student_password", { p_user_id: existingProfile.user_id });
+            
+            if (decryptedPw) {
+              const { data: mainProfile } = await supabase
+                .from("profiles")
+                .select("login")
+                .eq("user_id", existingProfile.user_id)
+                .maybeSingle();
+              
+              profileData = {
+                ...existingProfile,
+                generated_password: decryptedPw,
+                login: existingProfile.login || mainProfile?.login,
+              };
+              // Update labor_safety_profiles with the password for future
+              await supabase
+                .from("labor_safety_profiles")
+                .update({
+                  generated_password: decryptedPw,
+                  login: existingProfile.login || mainProfile?.login,
+                })
+                .eq("id", existingProfile.id);
+            }
+          } else if (existingProfile.generated_password) {
+            // Decrypt the stored password
+            const { data: decryptedPw } = await supabase
+              .rpc("get_decrypted_labor_password", { p_user_id: existingProfile.user_id });
+            if (decryptedPw) {
+              profileData = { ...existingProfile, generated_password: decryptedPw };
+            }
+          }
          setProfile(profileData);
          
          // Load enrollments

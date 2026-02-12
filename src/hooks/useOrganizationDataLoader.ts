@@ -124,8 +124,16 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
         // Fetch students
         const { data: allProfilesData } = await supabase
           .from("profiles")
-          .select("id, user_id, full_name, email, login, generated_password")
+          .select("id, user_id, full_name, email, login")
           .eq("organization_id", orgId);
+
+        // Fetch decrypted passwords via secure RPC
+        const { data: decryptedPasswords } = await supabase
+          .rpc("get_decrypted_student_passwords", { p_organization_id: orgId });
+        const passwordMap = new Map<string, string>();
+        (decryptedPasswords || []).forEach((row: any) => {
+          if (row.decrypted_password) passwordMap.set(row.user_id, row.decrypted_password);
+        });
 
         // IMPORTANT: exclude organization/admin accounts from all student-related UI & stats
         const profileUserIds = uniq((allProfilesData || []).map((p: any) => p.user_id));
@@ -165,7 +173,7 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
               name: profile.full_name || "Без имени",
               email: profile.email || "",
               login: profile.login || null,
-              generated_password: profile.generated_password || null,
+              generated_password: passwordMap.get(profile.user_id) || null,
               course: null,
               course_id: null,
               progress: 0,
@@ -182,7 +190,7 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
                 name: profile.full_name || "Без имени",
                 email: profile.email || "",
                 login: profile.login || null,
-                generated_password: profile.generated_password || null,
+                generated_password: passwordMap.get(profile.user_id) || null,
                 course: course?.title || "—",
                 course_id: enrollment.course_id,
                 progress: enrollment.progress || 0,

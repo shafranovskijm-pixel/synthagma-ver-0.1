@@ -3073,6 +3073,7 @@ export type Database = {
       }
     }
     Functions: {
+      _get_pw_key: { Args: never; Returns: string }
       admin_update_user_role: {
         Args: {
           p_new_role: Database["public"]["Enums"]["app_role"]
@@ -3110,6 +3111,30 @@ export type Database = {
             Returns: string
           }
       current_organization_id: { Args: never; Returns: string }
+      decrypt_password: { Args: { p_text: string }; Returns: string }
+      encrypt_password: { Args: { p_text: string }; Returns: string }
+      get_decrypted_labor_password: {
+        Args: { p_user_id: string }
+        Returns: string
+      }
+      get_decrypted_org_credentials: {
+        Args: { p_organization_id: string }
+        Returns: {
+          login_email: string
+          login_password: string
+        }[]
+      }
+      get_decrypted_student_password: {
+        Args: { p_user_id: string }
+        Returns: string
+      }
+      get_decrypted_student_passwords: {
+        Args: { p_organization_id: string }
+        Returns: {
+          decrypted_password: string
+          user_id: string
+        }[]
+      }
       get_registration_link_by_token: {
         Args: { link_token: string }
         Returns: {

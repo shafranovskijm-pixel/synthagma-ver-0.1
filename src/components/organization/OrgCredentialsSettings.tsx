@@ -27,16 +27,12 @@ export function OrgCredentialsSettings({ organizationId }: OrgCredentialsSetting
 
   const fetchCredentials = async () => {
     try {
-      const { data, error } = await supabase
-        .from('organization_credentials')
-        .select('login_email, login_password')
-        .eq('organization_id', organizationId)
-        .single();
+      const { data: rpcData, error } = await supabase
+        .rpc('get_decrypted_org_credentials', { p_organization_id: organizationId });
+      const data = rpcData?.[0] || null;
 
       if (error) {
-        if (error.code !== 'PGRST116') {
-          console.error('Error fetching credentials:', error);
-        }
+        console.error('Error fetching credentials:', error);
         return;
       }
 
