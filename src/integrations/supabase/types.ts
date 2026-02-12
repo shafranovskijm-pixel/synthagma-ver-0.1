@@ -3113,6 +3113,17 @@ export type Database = {
       current_organization_id: { Args: never; Returns: string }
       decrypt_password: { Args: { p_text: string }; Returns: string }
       encrypt_password: { Args: { p_text: string }; Returns: string }
+      get_decrypted_consent_passport: {
+        Args: { p_consent_id: string }
+        Returns: string
+      }
+      get_decrypted_consent_passports: {
+        Args: { p_consent_ids: string[] }
+        Returns: {
+          consent_id: string
+          decrypted_passport: string
+        }[]
+      }
       get_decrypted_labor_password: {
         Args: { p_user_id: string }
         Returns: string
