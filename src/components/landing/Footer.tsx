@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Mail, Phone, ArrowUpRight, Download } from "lucide-react";
 import { motion } from "framer-motion";
-import { InlineEditable } from "./InlineEditable";
+
 
 export function Footer() {
   return (
@@ -27,9 +27,7 @@ export function Footer() {
               </div>
               <span className="font-display font-medium text-xl text-background tracking-tight">СИНТАГМА</span>
             </Link>
-            <InlineEditable contentKey="footer_description" defaultValue="Современная система дистанционного обучения и документооборота для организаций.">
-              {(v) => <p className="text-background/60 max-w-sm mb-8 leading-relaxed">{v}</p>}
-            </InlineEditable>
+            <p className="text-background/60 max-w-sm mb-8 leading-relaxed">Современная система дистанционного обучения и документооборота для организаций.</p>
             
             {/* Install App Button */}
             <div className="mb-8">

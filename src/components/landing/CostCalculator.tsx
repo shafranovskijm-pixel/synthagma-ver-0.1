@@ -23,7 +23,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
-import { InlineEditable } from "./InlineEditable";
+
 
 interface FeatureModule {
   id: string;
@@ -386,13 +386,9 @@ export function CostCalculator() {
           <span className="text-sm text-accent font-medium tracking-widest uppercase mb-4 block">
             Стоимость
           </span>
-          <InlineEditable contentKey="calculator_title" defaultValue="Соберите свой тариф">
-            {(v) => <h2 className="font-display text-4xl md:text-5xl font-medium mb-6 tracking-tight">{v}</h2>}
-          </InlineEditable>
+          <h2 className="font-display text-4xl md:text-5xl font-medium mb-6 tracking-tight">Соберите свой тариф</h2>
           <div className="divider mb-6" />
-          <InlineEditable contentKey="calculator_subtitle" defaultValue="Выберите только нужные модули">
-            {(v) => <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-10">{v}</p>}
-          </InlineEditable>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-10">Выберите только нужные модули</p>
           
           {/* Billing toggle */}
           <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-secondary border border-border">

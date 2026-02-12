@@ -2,7 +2,7 @@ import { ArrowRight, CheckCircle2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { InlineEditable } from "./InlineEditable";
+
 
 export function CTA() {
   return (
@@ -98,9 +98,7 @@ export function CTA() {
             viewport={{ once: true }}
             transition={{ duration: 0.8, delay: 0.1 }}
           >
-            <InlineEditable contentKey="cta_title" defaultValue="Готовы автоматизировать обучение?">
-              {(v) => <h2 className="font-display text-4xl md:text-5xl lg:text-6xl font-medium text-background mb-8 leading-tight tracking-tight">{v}</h2>}
-            </InlineEditable>
+            <h2 className="font-display text-4xl md:text-5xl lg:text-6xl font-medium text-background mb-8 leading-tight tracking-tight">Готовы автоматизировать обучение?</h2>
           </motion.div>
 
           {/* Decorative line with dots */}
@@ -123,9 +121,7 @@ export function CTA() {
             transition={{ duration: 0.8, delay: 0.2 }}
             className="mb-12"
           >
-            <InlineEditable contentKey="cta_subtitle" defaultValue="Присоединяйтесь к организациям, которые уже используют нашу платформу">
-              {(v) => <p className="text-lg md:text-xl text-background/70 max-w-xl mx-auto leading-relaxed">{v}</p>}
-            </InlineEditable>
+            <p className="text-lg md:text-xl text-background/70 max-w-xl mx-auto leading-relaxed">Присоединяйтесь к организациям, которые уже используют нашу платформу</p>
           </motion.div>
 
           <motion.div
@@ -140,9 +136,7 @@ export function CTA() {
                 size="lg"
                 className="bg-background text-foreground hover:bg-background/90 rounded-xl px-10 h-14 text-base font-medium gap-2 group shadow-lg"
               >
-                <InlineEditable contentKey="cta_button" defaultValue="Попробовать бесплатно">
-                  {(v) => <>{v}</>}
-                </InlineEditable>
+                Попробовать бесплатно
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>

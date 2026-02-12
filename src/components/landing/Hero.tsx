@@ -3,7 +3,7 @@ import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { ArrowRight, Sparkles, Shield, FileCheck, GraduationCap } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { InlineEditable } from "./InlineEditable";
+
 
 const features = [
   { icon: GraduationCap, label: "Дистанционное обучение" },
@@ -260,9 +260,7 @@ export function Hero() {
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-accent/30 bg-accent/5 backdrop-blur-sm mb-10"
           >
             <Sparkles className="w-4 h-4 text-accent" />
-            <InlineEditable contentKey="hero_badge" defaultValue="Система дистанционного обучения">
-              {(v) => <span className="text-sm text-foreground/80 font-medium">{v}</span>}
-            </InlineEditable>
+            <span className="text-sm text-foreground/80 font-medium">Система дистанционного обучения</span>
           </motion.div>
 
           {/* Main headline */}
@@ -272,13 +270,9 @@ export function Hero() {
             transition={{ duration: 0.8, delay: 0.1 }}
           >
             <h1 className="font-display text-5xl md:text-6xl lg:text-7xl font-medium leading-[1.1] mb-8 tracking-tight">
-              <InlineEditable contentKey="hero_title" defaultValue="Обучение и документы">
-                {(v) => <>{v}</>}
-              </InlineEditable>
+              Обучение и документы
               <br />
-              <InlineEditable contentKey="hero_title_2" defaultValue="в одной системе">
-                {(v) => <span className="text-muted-foreground">{v}</span>}
-              </InlineEditable>
+              <span className="text-muted-foreground">в одной системе</span>
             </h1>
           </motion.div>
 
@@ -301,9 +295,7 @@ export function Hero() {
             transition={{ duration: 0.8, delay: 0.3 }}
             className="mb-12"
           >
-            <InlineEditable contentKey="hero_subtitle" defaultValue="Создавайте курсы, управляйте документами и отслеживайте прогресс учеников. Полное соответствие требованиям законодательства.">
-              {(v) => <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">{v}</p>}
-            </InlineEditable>
+            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">Создавайте курсы, управляйте документами и отслеживайте прогресс учеников. Полное соответствие требованиям законодательства.</p>
           </motion.div>
 
           {/* Single CTA button */}
@@ -315,9 +307,7 @@ export function Hero() {
           >
             <Link to="/register-organization">
               <Button size="lg" className="btn-gradient rounded-xl px-10 h-14 text-base gap-2 group shadow-lg shadow-accent/20">
-                <InlineEditable contentKey="hero_cta" defaultValue="Начать бесплатно">
-                  {(v) => <>{v}</>}
-                </InlineEditable>
+                Начать бесплатно
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>

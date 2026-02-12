@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { InlineEditable } from "./InlineEditable";
+
 import { 
   Smartphone, 
   KeyRound, 
@@ -182,13 +182,9 @@ export function Roadmap() {
           <span className="text-sm text-accent font-medium tracking-widest uppercase mb-4 block">
             Развитие
           </span>
-          <InlineEditable contentKey="roadmap_title" defaultValue="Дорожная карта">
-            {(v) => <h2 className="font-display text-4xl md:text-5xl font-medium mb-6 tracking-tight">{v}</h2>}
-          </InlineEditable>
+          <h2 className="font-display text-4xl md:text-5xl font-medium mb-6 tracking-tight">Дорожная карта</h2>
           <div className="divider mb-6" />
-          <InlineEditable contentKey="roadmap_subtitle" defaultValue="Мы постоянно работаем над улучшением платформы">
-            {(v) => <p className="text-lg text-muted-foreground max-w-2xl mx-auto">{v}</p>}
-          </InlineEditable>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">Мы постоянно работаем над улучшением платформы</p>
         </motion.div>
         
         {/* Roadmap grid */}
