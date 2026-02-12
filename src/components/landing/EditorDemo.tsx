@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, Volume2, VolumeX, Heading1, AlignLeft, AlertTriangle, Loader2, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollReveal } from "@/components/ui/ScrollReveal";
-import { InlineEditable } from "./InlineEditable";
+
 
 interface DemoBlock {
   id: string;
@@ -274,12 +274,8 @@ export function EditorDemo() {
             <span className="inline-block px-4 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4">
               Интерактивный редактор
             </span>
-            <InlineEditable contentKey="editor_title" defaultValue="Создавайте курсы за минуты">
-              {(v) => <h2 className="text-3xl md:text-4xl font-bold mb-4">{v}</h2>}
-            </InlineEditable>
-            <InlineEditable contentKey="editor_subtitle" defaultValue="Блоковый редактор с AI-генерацией и профессиональной озвучкой">
-              {(v) => <p className="text-muted-foreground text-lg max-w-2xl mx-auto">{v}</p>}
-            </InlineEditable>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">Создавайте курсы за минуты</h2>
+            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">Блоковый редактор с AI-генерацией и профессиональной озвучкой</p>
           </div>
         </ScrollReveal>
 
