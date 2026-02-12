@@ -22,12 +22,14 @@ export function useSwipeGesture<T extends HTMLElement = HTMLElement>(
   const touchStartY = useRef<number | null>(null);
   const touchEndX = useRef<number | null>(null);
   const touchEndY = useRef<number | null>(null);
+  const touchStartTime = useRef<number>(0);
 
   const handleTouchStart = useCallback((e: TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
     touchEndX.current = null;
     touchEndY.current = null;
+    touchStartTime.current = Date.now();
   }, []);
 
   const handleTouchMove = useCallback((e: TouchEvent) => {
@@ -42,9 +44,10 @@ export function useSwipeGesture<T extends HTMLElement = HTMLElement>(
 
     const deltaX = touchEndX.current - touchStartX.current;
     const deltaY = Math.abs(touchEndY.current - touchStartY.current);
+    const elapsed = Date.now() - touchStartTime.current;
     
-    // Only trigger swipe if horizontal movement is significant and greater than vertical
-    if (Math.abs(deltaX) > minSwipeDistance && Math.abs(deltaX) > deltaY * 0.5) {
+    // Only trigger swipe if: horizontal > vertical, fast enough (<500ms), and exceeds thresholds
+    if (Math.abs(deltaX) > minSwipeDistance && Math.abs(deltaX) > deltaY * 0.5 && elapsed < 500) {
       if (deltaX > threshold && onSwipeRight) {
         onSwipeRight();
       } else if (deltaX < -threshold && onSwipeLeft) {
