@@ -161,13 +161,24 @@ export default function OrganizationDashboard() {
       
       const enrolledList: any[] = [];
       
-      for (const enrollment of (enrollments || []).filter(e => !excludedUserIds.has(e.user_id))) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("id, user_id, full_name, email, login, generated_password")
-          .eq("user_id", enrollment.user_id)
-          .single();
-        
+      const filteredEnrollments = (enrollments || []).filter(e => !excludedUserIds.has(e.user_id));
+      const filteredUserIds = filteredEnrollments.map(e => e.user_id);
+      
+      // Fetch profiles without generated_password (encrypted column)
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, user_id, full_name, email, login")
+        .in("user_id", filteredUserIds);
+      
+      // Fetch decrypted passwords via RPC
+      const { data: passwordData } = await supabase
+        .rpc('get_decrypted_student_passwords', { p_organization_id: organizationId });
+      const passwordMap = new Map((passwordData || []).map((p: any) => [p.user_id, p.decrypted_password]));
+      
+      const profileMap = new Map((profiles || []).map(p => [p.user_id, p]));
+      
+      for (const enrollment of filteredEnrollments) {
+        const profile = profileMap.get(enrollment.user_id);
         if (profile) {
           enrolledList.push({
             id: profile.id,
@@ -176,7 +187,7 @@ export default function OrganizationDashboard() {
             name: profile.full_name || "Без имени",
             email: profile.email || "",
             login: profile.login || null,
-            generated_password: profile.generated_password || null,
+            generated_password: passwordMap.get(profile.user_id) || null,
             course: selectedCourseForDetails.title,
             course_id: selectedCourseForDetails.id,
             progress: enrollment.progress,
