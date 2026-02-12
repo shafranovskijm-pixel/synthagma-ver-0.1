@@ -89,13 +89,20 @@ export function UsersManager() {
 
   const fetchData = async () => {
     try {
-      // Fetch profiles with roles
+      // Fetch profiles with roles (exclude generated_password - it's encrypted)
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
-        .select("*")
+        .select("id, user_id, full_name, email, avatar_url, organization_id, login, company_id, created_at")
         .order("created_at", { ascending: false });
 
       if (profilesError) throw profilesError;
+
+      // Fetch decrypted passwords via admin RPC
+      const { data: decryptedPasswords } = await supabase.rpc("get_all_decrypted_passwords");
+      const passwordMap = new Map<string, string>();
+      (decryptedPasswords || []).forEach((row: any) => {
+        if (row.decrypted_password) passwordMap.set(row.user_id, row.decrypted_password);
+      });
 
       // Fetch user roles
       const { data: roles, error: rolesError } = await supabase.from("user_roles").select("*");
@@ -117,6 +124,7 @@ export function UsersManager() {
         const org = orgs?.find((o) => o.id === profile.organization_id);
         return {
           ...profile,
+          generated_password: passwordMap.get(profile.user_id) || null,
           role: userRole?.role || null,
           organization_name: org?.name || null,
         };
