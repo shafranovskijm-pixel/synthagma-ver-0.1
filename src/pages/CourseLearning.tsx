@@ -210,7 +210,24 @@ const VideoPlayerInline = ({
   const hasRestoredPositionRef = useRef(false);
   const stalledTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  
+
+  // Auto-rotate to landscape on fullscreen video
+  useEffect(() => {
+    const handleFullscreenChange = async () => {
+      try {
+        if (document.fullscreenElement && screen.orientation && 'lock' in screen.orientation) {
+          await (screen.orientation as any).lock('landscape').catch(() => {});
+        } else if (!document.fullscreenElement && screen.orientation && 'unlock' in screen.orientation) {
+          screen.orientation.unlock();
+        }
+      } catch {
+        // Screen Orientation API not supported (e.g. iOS Safari)
+      }
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
   if (!content) return null;
   
   // If it's a full iframe embed code, render it directly ONLY when seeking is allowed.
@@ -409,7 +426,6 @@ const VideoPlayerInline = ({
       if (document.fullscreenElement) {
         await document.exitFullscreen();
       } else if (!allowSeek && containerRef.current) {
-        // Fullscreen on container preserves custom overlay (hides native controls)
         await containerRef.current.requestFullscreen();
       } else {
         // @ts-expect-error - older Safari uses webkitEnterFullscreen
@@ -424,6 +440,7 @@ const VideoPlayerInline = ({
       // ignore
     }
   };
+
 
   const formatTime = (seconds: number) => {
     if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
@@ -1735,19 +1752,22 @@ const CourseLearning = () => {
     }
   }, [currentLessonIndex, triggerHapticFeedback]);
 
+  // Disable swipe on content area during active test to prevent accidental navigation
+  const isTestActive = currentLesson?.type === 'test' && !testSubmitted;
+
   const swipeRef = useSwipeGesture<HTMLDivElement>({
-    onSwipeLeft: isMobile ? handleSwipeLeft : undefined,
-    onSwipeRight: isMobile ? handleSwipeRight : undefined,
-    threshold: 60,
-    minSwipeDistance: 40,
+    onSwipeLeft: isMobile && !isTestActive ? handleSwipeLeft : undefined,
+    onSwipeRight: isMobile && !isTestActive ? handleSwipeRight : undefined,
+    threshold: 100,
+    minSwipeDistance: 70,
   });
 
   // Separate swipe ref for progress bar with lower threshold for quicker response
   const progressBarSwipeRef = useSwipeGesture<HTMLDivElement>({
     onSwipeLeft: isMobile ? handleSwipeLeft : undefined,
     onSwipeRight: isMobile ? handleSwipeRight : undefined,
-    threshold: 30,
-    minSwipeDistance: 20,
+    threshold: 40,
+    minSwipeDistance: 30,
   });
 
   if (loading) {
@@ -2268,7 +2288,7 @@ const CourseLearning = () => {
                           )}
                         >
                           <div className={cn(
-                            "w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors",
+                            "w-5 h-5 shrink-0 rounded-full border-2 flex items-center justify-center transition-colors",
                             answers[question.id] === oIndex 
                               ? "border-primary bg-primary" 
                               : "border-muted-foreground"
