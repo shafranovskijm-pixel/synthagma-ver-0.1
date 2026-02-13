@@ -29,6 +29,7 @@ export interface Organization {
   // Computed fields
   studentsCount?: number;
   coursesCount?: number;
+  subscription_plan?: string;
 }
 
 export interface BrandingSettings {

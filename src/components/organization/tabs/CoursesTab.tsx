@@ -18,6 +18,7 @@ import {
   MoveRight, Pencil, Video, VideoOff, Lock, Unlock, FastForward
 } from "lucide-react";
 import { useCourses } from "@/hooks/useCourses";
+import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Course, CourseCategory, CourseFilter, CourseViewMode } from "@/types";
@@ -31,6 +32,7 @@ interface CoursesTabProps {
 
 export function CoursesTab({ organizationId, onCourseClick, onOpenCourseDetails, onCoursesDeleted }: CoursesTabProps) {
   const navigate = useNavigate();
+  const { checkLimit } = useSubscriptionLimits(organizationId);
   
   const {
     courses,
@@ -147,6 +149,15 @@ export function CoursesTab({ organizationId, onCourseClick, onOpenCourseDetails,
     setNewCategoryName(category.name);
     setNewCategoryColor(category.color);
     setShowCategoryDialog(true);
+  };
+
+  const handleOpenCreateCourseDialog = () => {
+    const result = checkLimit('course');
+    if (!result.allowed) {
+      toast.error(result.message);
+      return;
+    }
+    setShowCreateCourseDialog(true);
   };
 
   const handleCreateCourse = async () => {
@@ -800,7 +811,7 @@ export function CoursesTab({ organizationId, onCourseClick, onOpenCourseDetails,
           <p>Нет курсов</p>
           <Button 
             className="mt-4 rounded-xl gap-2"
-            onClick={() => setShowCreateCourseDialog(true)}
+            onClick={handleOpenCreateCourseDialog}
           >
             <Plus className="w-4 h-4" />
             Создать первый курс

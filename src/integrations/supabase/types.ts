@@ -1936,6 +1936,7 @@ export type Database = {
           stamp_url: string | null
           storage_limit_bytes: number
           student_dashboard_settings: Json | null
+          subscription_plan: string
           tariff_type: string | null
           telegram_chat_id: string | null
           updated_at: string
@@ -1975,6 +1976,7 @@ export type Database = {
           stamp_url?: string | null
           storage_limit_bytes?: number
           student_dashboard_settings?: Json | null
+          subscription_plan?: string
           tariff_type?: string | null
           telegram_chat_id?: string | null
           updated_at?: string
@@ -2014,6 +2016,7 @@ export type Database = {
           stamp_url?: string | null
           storage_limit_bytes?: number
           student_dashboard_settings?: Json | null
+          subscription_plan?: string
           tariff_type?: string | null
           telegram_chat_id?: string | null
           updated_at?: string
@@ -3081,6 +3084,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      apply_free_plan_features: { Args: { org_id: string }; Returns: undefined }
       award_achievement: {
         Args: { p_achievement_code: string; p_user_id: string }
         Returns: undefined
