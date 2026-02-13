@@ -36,10 +36,13 @@ import {
   Menu,
   List,
   Play,
+  Maximize,
+  Minimize,
   Presentation,
   Lock,
   RotateCcw,
-  Settings2
+  Settings2,
+  Gauge
 } from "lucide-react";
 import {
   AlertDialog,
@@ -204,6 +207,10 @@ const VideoPlayerInline = ({
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [videoEnded, setVideoEnded] = useState(false);
+  const [playbackRate, setPlaybackRate] = useState(1);
+  const [showSpeedMenu, setShowSpeedMenu] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const speedMenuRef = useRef<HTMLDivElement>(null);
   const maxWatchedRef = useRef(savedPosition);
   const completedRef = useRef(false);
   const seekGuardRef = useRef(false);
@@ -211,9 +218,10 @@ const VideoPlayerInline = ({
   const stalledTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Auto-rotate to landscape on fullscreen video
+  // Auto-rotate to landscape on fullscreen video + track fullscreen state
   useEffect(() => {
     const handleFullscreenChange = async () => {
+      setIsFullscreen(!!document.fullscreenElement);
       try {
         if (document.fullscreenElement && screen.orientation && 'lock' in screen.orientation) {
           await (screen.orientation as any).lock('landscape').catch(() => {});
@@ -227,6 +235,18 @@ const VideoPlayerInline = ({
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
+
+  // Close speed menu on outside click
+  useEffect(() => {
+    if (!showSpeedMenu) return;
+    const handleClick = (e: MouseEvent) => {
+      if (speedMenuRef.current && !speedMenuRef.current.contains(e.target as Node)) {
+        setShowSpeedMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showSpeedMenu]);
 
   if (!content) return null;
   
@@ -418,23 +438,23 @@ const VideoPlayerInline = ({
     setIsMuted(v.muted);
   };
 
+  const SPEED_OPTIONS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
 
-  const requestFullscreen = async () => {
+  const changeSpeed = (rate: number) => {
     const v = videoRef.current;
     if (!v) return;
+    v.playbackRate = rate;
+    setPlaybackRate(rate);
+    setShowSpeedMenu(false);
+  };
+
+
+  const requestFullscreen = async () => {
     try {
       if (document.fullscreenElement) {
         await document.exitFullscreen();
-      } else if (!allowSeek && containerRef.current) {
+      } else if (containerRef.current) {
         await containerRef.current.requestFullscreen();
-      } else {
-        // @ts-expect-error - older Safari uses webkitEnterFullscreen
-        if (typeof v.webkitEnterFullscreen === 'function') {
-          // @ts-expect-error
-          v.webkitEnterFullscreen();
-          return;
-        }
-        await v.requestFullscreen();
       }
     } catch {
       // ignore
@@ -543,14 +563,15 @@ const VideoPlayerInline = ({
   }
 
   return (
-    <div ref={containerRef} className="relative bg-black rounded-2xl">
+    <div ref={containerRef} className="relative bg-black rounded-2xl group">
       <video 
         key={allowSeek ? "video-seek-enabled" : "video-seek-disabled"}
         ref={videoRef}
-        controls={allowSeek}
-        className={`w-full h-full rounded-2xl${!allowSeek ? ' video-no-controls' : ''}`}
+        controls={false}
+        className="w-full h-full rounded-2xl video-no-controls"
         src={resolvedContent}
         preload="metadata"
+        onClick={togglePlay}
         
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
@@ -586,50 +607,103 @@ const VideoPlayerInline = ({
           </a>
         </div>
       )}
-      {!allowSeek && (
-        <div className="absolute inset-x-0 bottom-0 p-3">
-          <div className="rounded-xl border border-border bg-background/80 backdrop-blur-md px-3 py-2 flex items-center gap-3">
-            <button
-              type="button"
-              onClick={togglePlay}
-              className="inline-flex items-center justify-center h-9 w-9 rounded-lg bg-primary text-primary-foreground"
-              aria-label={isPlaying ? "Пауза" : "Воспроизвести"}
-            >
-              {isPlaying ? <Square className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-            </button>
+      {/* Custom controls bar */}
+      <div className={cn("absolute inset-x-0 bottom-0 p-3 transition-opacity duration-300", isPlaying && allowSeek ? "opacity-0 group-hover:opacity-100" : "opacity-100")}>
+        {/* Seekable progress bar */}
+        {allowSeek && (
+          <div 
+            className="h-1.5 w-full rounded-full bg-white/30 overflow-hidden mb-2 cursor-pointer"
+            onClick={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              const x = e.clientX - rect.left;
+              const pct = x / rect.width;
+              if (videoRef.current && duration > 0) {
+                videoRef.current.currentTime = pct * duration;
+              }
+            }}
+          >
+            <div
+              className="h-full bg-primary"
+              style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
+            />
+          </div>
+        )}
+        <div className="rounded-xl border border-border bg-background/80 backdrop-blur-md px-3 py-2 flex items-center gap-3">
+          <button
+            type="button"
+            onClick={togglePlay}
+            className="inline-flex items-center justify-center h-9 w-9 rounded-lg bg-primary text-primary-foreground"
+            aria-label={isPlaying ? "Пауза" : "Воспроизвести"}
+          >
+            {isPlaying ? <Square className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+          </button>
 
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>{formatTime(currentTime)}</span>
-                <span>{formatTime(duration)}</span>
-              </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>{formatTime(currentTime)}</span>
+              <span>{formatTime(duration)}</span>
+            </div>
+            {!allowSeek && (
               <div className="mt-1 h-1.5 w-full rounded-full bg-muted overflow-hidden">
                 <div
                   className="h-full bg-primary"
                   style={{ width: `${Math.min(100, Math.max(0, watchedProgress))}%` }}
                 />
               </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={toggleMute}
-              className="inline-flex items-center justify-center h-9 w-9 rounded-lg bg-muted text-foreground"
-              aria-label={isMuted ? "Включить звук" : "Выключить звук"}
-            >
-              {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-            </button>
-            <button
-              type="button"
-              onClick={requestFullscreen}
-              className="inline-flex items-center justify-center h-9 w-9 rounded-lg bg-muted text-foreground"
-              aria-label="Во весь экран"
-            >
-              <Presentation className="w-4 h-4" />
-            </button>
+            )}
           </div>
+
+          <button
+            type="button"
+            onClick={toggleMute}
+            className="inline-flex items-center justify-center h-9 w-9 rounded-lg bg-muted text-foreground"
+            aria-label={isMuted ? "Включить звук" : "Выключить звук"}
+          >
+            {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+          </button>
+
+          {/* Speed control - only when seeking allowed */}
+          {allowSeek && (
+            <div className="relative" ref={speedMenuRef}>
+              <button
+                type="button"
+                onClick={() => setShowSpeedMenu(!showSpeedMenu)}
+                className="inline-flex items-center justify-center h-9 min-w-9 px-1.5 rounded-lg bg-muted text-foreground text-xs font-medium"
+                aria-label="Скорость воспроизведения"
+              >
+                {playbackRate === 1 ? <Gauge className="w-4 h-4" /> : `${playbackRate}x`}
+              </button>
+              {showSpeedMenu && (
+                <div className="absolute bottom-full mb-2 right-0 bg-background/95 backdrop-blur-md border border-border rounded-xl py-1 shadow-lg min-w-[100px] z-50">
+                  {SPEED_OPTIONS.map((rate) => (
+                    <button
+                      key={rate}
+                      type="button"
+                      onClick={() => changeSpeed(rate)}
+                      className={cn(
+                        "w-full text-left px-4 py-2 text-sm hover:bg-muted transition-colors flex items-center justify-between",
+                        rate === playbackRate && "text-primary font-medium"
+                      )}
+                    >
+                      <span>{rate === 1 ? 'Обычная' : rate}</span>
+                      {rate === playbackRate && <CheckCircle2 className="w-3.5 h-3.5" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={requestFullscreen}
+            className="inline-flex items-center justify-center h-9 w-9 rounded-lg bg-muted text-foreground"
+            aria-label={isFullscreen ? "Выйти из полноэкранного режима" : "Во весь экран"}
+          >
+            {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+          </button>
         </div>
-      )}
+      </div>
       {!allowSeek && !videoEnded && (
         <div className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm text-xs px-2 py-1 rounded-lg flex items-center gap-1">
           <Video className="w-3 h-3" />
