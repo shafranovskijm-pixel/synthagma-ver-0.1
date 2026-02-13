@@ -42,10 +42,10 @@ const FeatureCourseStore = () => {
               <span className="text-sm font-medium text-accent">Магазин курсов</span>
             </motion.div>
             <motion.h1 variants={fadeUp} className="font-display text-4xl md:text-5xl font-medium mb-6 tracking-tight">
-              Маркетплейс образовательных курсов
+              Дополнительный канал продаж ваших курсов
             </motion.h1>
             <motion.p variants={fadeUp} className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Покупайте и продавайте курсы между организациями и слушателями — доступно на всех тарифах, включая бесплатный
+              Выложите курс в маркетплейс — его увидят все ученики Синтагмы. Готовая аудитория без затрат на рекламу. Доступно на всех тарифах, включая бесплатный.
             </motion.p>
           </motion.div>
         </div>
@@ -55,7 +55,7 @@ const FeatureCourseStore = () => {
       <section className="py-16">
         <div className="container mx-auto px-6">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger} className="max-w-4xl mx-auto">
-            <motion.h2 variants={fadeUp} className="font-display text-3xl font-medium mb-8 text-center">Два режима работы</motion.h2>
+            <motion.h2 variants={fadeUp} className="font-display text-3xl font-medium mb-8 text-center">Выгодно для всех участников</motion.h2>
             <motion.div variants={fadeUp} className="grid md:grid-cols-2 gap-6">
               <Card className="h-full border-accent/20 bg-card/80 backdrop-blur-sm">
                 <CardContent className="p-8">
@@ -64,7 +64,7 @@ const FeatureCourseStore = () => {
                   </div>
                   <h3 className="font-display text-xl font-medium mb-3">Для организаций</h3>
                   <p className="text-muted-foreground text-sm">
-                    Размещайте свои курсы в маркетплейсе, устанавливайте цены для организаций и слушателей, управляйте заявками и отслеживайте продажи.
+                    Выложите курс в маркетплейс — его увидят все ученики Синтагмы. Это дополнительный канал продаж без затрат на рекламу. Устанавливайте свои цены, получайте заявки и расширяйте аудиторию.
                   </p>
                 </CardContent>
               </Card>
@@ -75,7 +75,7 @@ const FeatureCourseStore = () => {
                   </div>
                   <h3 className="font-display text-xl font-medium mb-3">Для слушателей</h3>
                   <p className="text-muted-foreground text-sm">
-                    Просматривайте каталог курсов, ищите нужные программы и отправляйте заявки на покупку. Отслеживайте статус заявок в личном кабинете.
+                    Откройте для себя курсы на разные темы от проверенных учебных организаций. Больше вариантов обучения — больше возможностей для профессионального роста.
                   </p>
                 </CardContent>
               </Card>
@@ -88,18 +88,18 @@ const FeatureCourseStore = () => {
       <section className="py-16 bg-secondary/30">
         <div className="container mx-auto px-6">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger} className="max-w-4xl mx-auto">
-            <motion.h2 variants={fadeUp} className="font-display text-3xl font-medium mb-4 text-center">Возможности маркетплейса</motion.h2>
+            <motion.h2 variants={fadeUp} className="font-display text-3xl font-medium mb-4 text-center">Как это работает</motion.h2>
             <motion.p variants={fadeUp} className="text-muted-foreground text-center mb-10 max-w-2xl mx-auto">
-              Удобный обмен образовательными курсами между участниками платформы
+              Простой путь от публикации до продажи
             </motion.p>
             <motion.div variants={fadeUp} className="grid sm:grid-cols-2 gap-4">
               {[
-                { icon: Search, text: "Каталог курсов с поиском и фильтрацией по категориям" },
-                { icon: ShoppingCart, text: "Заявки на покупку с отслеживанием статусов" },
-                { icon: Send, text: "Уведомления организациям о новых заявках" },
-                { icon: Star, text: "Отдельные цены для организаций и индивидуальных слушателей" },
-                { icon: BarChart3, text: "Статистика продаж и аналитика по курсам" },
-                { icon: Store, text: "Управление объявлениями: публикация, редактирование, снятие с продажи" },
+                { icon: BookOpen, text: "Организация публикует курс — он сразу виден всей аудитории платформы" },
+                { icon: Search, text: "Слушатели находят курс по нужной теме и отправляют заявку" },
+                { icon: Send, text: "Организация получает уведомление и обрабатывает заявку" },
+                { icon: Star, text: "Гибкие цены — разные тарифы для организаций и частных слушателей" },
+                { icon: BarChart3, text: "Аналитика продаж — отслеживайте спрос и доход" },
+                { icon: Store, text: "Полный контроль — публикуйте, редактируйте, снимайте с продажи в любой момент" },
               ].map((item, i) => (
                 <div key={i} className="flex items-start gap-3 p-4 rounded-xl bg-card/80 backdrop-blur-sm border border-border/50">
                   <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center shrink-0 mt-0.5">
@@ -118,10 +118,10 @@ const FeatureCourseStore = () => {
         <div className="container mx-auto px-6 text-center">
           <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger}>
             <motion.h2 variants={fadeUp} className="font-display text-3xl font-medium mb-4">
-              Начните продавать и покупать курсы
+              Расширьте аудиторию ваших курсов
             </motion.h2>
             <motion.p variants={fadeUp} className="text-muted-foreground mb-8 max-w-xl mx-auto">
-              Магазин курсов доступен на всех тарифах — начните прямо сейчас
+              Выложите свой первый курс в маркетплейс — это бесплатно
             </motion.p>
             <motion.div variants={fadeUp}>
               <Link to="/register-organization">
