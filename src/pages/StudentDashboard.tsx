@@ -558,6 +558,7 @@ export default function StudentDashboard() {
         <div className="space-y-1">
           {/* Courses - always visible */}
           <button
+            data-onboarding="courses"
             onClick={() => { setActiveTab("courses"); onNavigate?.(); }}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
               activeTab === "courses"
@@ -571,6 +572,7 @@ export default function StudentDashboard() {
           
           {dashboardSettings.showAiChat && (
             <button
+              data-onboarding="chat"
               onClick={() => { setActiveTab("chat"); onNavigate?.(); }}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
                 activeTab === "chat"
@@ -601,7 +603,8 @@ export default function StudentDashboard() {
             </button>
           )}
           
-          <button 
+          <button
+            data-onboarding="video-id"
             onClick={() => { setShowVideoIdentification(true); onNavigate?.(); }}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors"
           >
@@ -617,7 +620,8 @@ export default function StudentDashboard() {
             Согласие на ПД
           </button>
           
-          <button 
+          <button
+            data-onboarding="documents"
             onClick={() => { setShowDocumentsUpload(true); onNavigate?.(); }}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors"
           >

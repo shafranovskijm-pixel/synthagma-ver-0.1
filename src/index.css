@@ -495,3 +495,8 @@ html {
   background: hsl(var(--accent) / 0.2);
   color: hsl(var(--foreground));
 }
+
+@keyframes onboarding-pulse {
+  0%, 100% { box-shadow: 0 0 0 4px hsl(var(--primary) / 0.15), 0 0 20px 4px hsl(var(--primary) / 0.25); }
+  50% { box-shadow: 0 0 0 6px hsl(var(--primary) / 0.25), 0 0 30px 8px hsl(var(--primary) / 0.35); }
+}
