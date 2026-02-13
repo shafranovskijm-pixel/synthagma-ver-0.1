@@ -6,7 +6,8 @@ import {
   Car, 
   Stethoscope, 
   ShieldCheck,
-  Plug 
+  Plug,
+  Sparkles
 } from "lucide-react";
 
 const roadmapItems = [
@@ -184,7 +185,29 @@ export function Roadmap() {
           </span>
           <h2 className="font-display text-4xl md:text-5xl font-medium mb-6 tracking-tight">Дорожная карта</h2>
           <div className="divider mb-6" />
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">Мы постоянно работаем над улучшением платформы</p>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">Мы постоянно работаем над улучшением платформы. Каждая функция дорабатывается и настраивается практически персонально под потребности наших клиентов.</p>
+        </motion.div>
+
+        {/* Continuous improvement banner */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className="max-w-3xl mx-auto mb-12 rounded-2xl border border-accent/20 bg-accent/5 backdrop-blur-sm p-6 md:p-8"
+        >
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center shrink-0">
+              <Sparkles className="w-6 h-6 text-accent" />
+            </div>
+            <div>
+              <h3 className="font-display text-lg font-medium mb-1">Непрерывное улучшение</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Помимо крупных обновлений, мы ежедневно совершенствуем каждый модуль системы — от редактора курсов до документооборота. 
+                Мы прислушиваемся к обратной связи и адаптируем платформу под конкретные задачи каждой организации.
+              </p>
+            </div>
+          </div>
         </motion.div>
         
         {/* Roadmap grid */}
