@@ -5,7 +5,7 @@ import { EditorDemo } from "@/components/landing/EditorDemo";
 import { Roadmap } from "@/components/landing/Roadmap";
 import { PricingPlans } from "@/components/landing/PricingPlans";
 import { Testimonials } from "@/components/landing/Testimonials";
-import { CTA } from "@/components/landing/CTA";
+
 import { Footer } from "@/components/landing/Footer";
 import { ScrollToTop } from "@/components/ui/ScrollToTop";
 
@@ -60,10 +60,9 @@ const Index = () => {
         <Hero />
         <EditorDemo />
         <Features />
+        <PricingPlans />
         <Roadmap />
         <Testimonials />
-        <PricingPlans />
-        <CTA />
         <Footer />
         <ScrollToTop />
       </div>
