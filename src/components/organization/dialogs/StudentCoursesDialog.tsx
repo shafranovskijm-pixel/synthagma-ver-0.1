@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Loader2, GraduationCap, Plus, X, Search, RotateCcw } from "lucide-react";
+import { CourseGroupedList } from "./CourseGroupedList";
 interface CourseCategory {
   id: string;
   name: string;
@@ -206,42 +207,34 @@ export function StudentCoursesDialog({
                     />
                   </div>
                   
-                  <div className="space-y-2 max-h-48 overflow-auto border border-border rounded-xl p-2">
-                    {filteredCourses.map(course => {
-                      const isSelected = selectedCoursesToAdd.has(course.id);
-                      const category = getCategoryById(course.category_id);
-                      
-                      return (
-                        <div
-                          key={course.id}
-                          className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-colors ${
-                            isSelected ? 'bg-primary/10 border border-primary' : 'bg-secondary/30 hover:bg-secondary/50'
-                          }`}
-                          onClick={() => onToggleCourseSelection(course.id)}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => onToggleCourseSelection(course.id)}
-                            className="w-4 h-4 rounded"
-                          />
-                          <div className="flex-1">
-                            <div className="font-medium">{course.title}</div>
-                            {category && (
-                              <span
-                                className="text-xs px-2 py-0.5 rounded-full mt-1 inline-block"
-                                style={{
-                                  backgroundColor: category.color + '20',
-                                  color: category.color
-                                }}
-                              >
-                                {category.name}
-                              </span>
-                            )}
+                  <div className="space-y-1 max-h-60 overflow-auto border border-border rounded-xl p-2">
+                    <CourseGroupedList
+                      courses={filteredCourses}
+                      getCategoryById={getCategoryById}
+                      emptyMessage="Курсы не найдены"
+                      renderCourse={(course) => {
+                        const isSelected = selectedCoursesToAdd.has(course.id);
+                        return (
+                          <div
+                            key={course.id}
+                            className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-colors ${
+                              isSelected ? 'bg-primary/10 border border-primary' : 'bg-secondary/30 hover:bg-secondary/50'
+                            }`}
+                            onClick={() => onToggleCourseSelection(course.id)}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => onToggleCourseSelection(course.id)}
+                              className="w-4 h-4 rounded"
+                            />
+                            <div className="flex-1">
+                              <div className="font-medium">{course.title}</div>
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      }}
+                    />
                   </div>
                   
                   {selectedCoursesToAdd.size > 0 && (

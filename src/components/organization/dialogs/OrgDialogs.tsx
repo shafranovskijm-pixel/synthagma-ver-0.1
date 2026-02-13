@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Progress } from "@/components/ui/progress";
 import { Loader2, BookOpen, Users, GraduationCap, CheckCircle2, XCircle, Search, Send, Copy, Building2, Save, Key, Mail, Trash2 } from "lucide-react";
 import ImportStudentsForm from "@/components/ImportStudentsForm";
+import { CourseGroupedList } from "./CourseGroupedList";
 
 interface Company {
   id: string;
@@ -280,15 +281,12 @@ export function EnrollDialog({
               className="pl-10 rounded-xl" 
             />
           </div>
-          <div className="flex-1 overflow-auto border border-border rounded-xl p-2 space-y-2 min-h-[200px] max-h-[300px]">
-            {filteredCourses.length === 0 ? (
-              <div className="text-center text-muted-foreground py-8">
-                <BookOpen className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                <p>Курсы не найдены</p>
-              </div>
-            ) : (
-              filteredCourses.map(course => {
-                const category = getCategoryById(course.category_id);
+          <div className="flex-1 overflow-auto border border-border rounded-xl p-2 space-y-1 min-h-[200px] max-h-[300px]">
+            <CourseGroupedList
+              courses={filteredCourses}
+              getCategoryById={getCategoryById}
+              emptyMessage="Курсы не найдены"
+              renderCourse={(course) => {
                 const isSelected = selectedCourseId === course.id;
                 return (
                   <div 
@@ -312,28 +310,14 @@ export function EnrollDialog({
                           <span>{course.lessonsCount} уроков</span>
                           <span>•</span>
                           <span>{course.studentsCount} учеников</span>
-                          {category && (
-                            <>
-                              <span>•</span>
-                              <span 
-                                className="px-1.5 py-0.5 rounded text-xs" 
-                                style={{
-                                  backgroundColor: category.color + '20',
-                                  color: category.color
-                                }}
-                              >
-                                {category.name}
-                              </span>
-                            </>
-                          )}
                         </div>
                       </div>
                       {isSelected && <CheckCircle2 className="w-5 h-5 text-primary" />}
                     </div>
                   </div>
                 );
-              })
-            )}
+              }}
+            />
           </div>
           <Button 
             className="w-full btn-gradient rounded-xl" 
