@@ -45,7 +45,7 @@ import { VideoIdentification } from "@/components/student/VideoIdentification";
 import { StudentConsentForm } from "@/components/student/StudentConsentForm";
 import { StudentDocumentsUpload } from "@/components/student/StudentDocumentsUpload";
 import { AchievementsPanel } from "@/components/student/AchievementsPanel";
-import { CourseStoreManager } from "@/components/organization/CourseStoreManager";
+import { StudentCourseStore } from "@/components/student/StudentCourseStore";
 import { useTheme } from "next-themes";
 import {
   DropdownMenu,
@@ -1110,16 +1110,11 @@ export default function StudentDashboard() {
           </div>
         )}
 
-        {activeTab === "store" && profile?.organization_id && (
+        {activeTab === "store" && profile?.organization_id && user && (
           <div className="p-8">
-            <header className="mb-6">
-              <h1 className="font-display text-2xl font-bold">Магазин курсов</h1>
-              <p className="text-muted-foreground">Найдите и приобретите новые курсы</p>
-            </header>
-            <CourseStoreManager 
-              organizationId={profile.organization_id} 
-              userRole="student"
-              userId={user?.id}
+            <StudentCourseStore 
+              userId={user.id}
+              organizationId={profile.organization_id}
             />
           </div>
         )}
