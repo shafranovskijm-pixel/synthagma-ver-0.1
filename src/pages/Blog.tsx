@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { ArrowLeft, Calendar, Clock, ArrowRight, BookOpen, TrendingUp, Shield, Lightbulb, Loader2, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -187,6 +188,16 @@ const Blog = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <Helmet>
+        <title>Блог СИНТАГМА — Новости и статьи об онлайн-образовании</title>
+        <meta name="description" content="Актуальные статьи о дистанционном обучении, законодательстве в сфере ДПО, best practices для образовательных организаций." />
+        <meta name="keywords" content="блог, образование, ДПО, онлайн обучение, статьи" />
+        <link rel="canonical" href="https://synthagma-bloom.lovable.app/blog" />
+        <meta property="og:title" content="Блог СИНТАГМА — Новости и статьи об онлайн-образовании" />
+        <meta property="og:description" content="Актуальные статьи о дистанционном обучении, законодательстве в сфере ДПО, best practices для образовательных организаций." />
+        <meta property="og:url" content="https://synthagma-bloom.lovable.app/blog" />
+        <meta property="og:image" content="https://synthagma-bloom.lovable.app/og-image.png" />
+      </Helmet>
       {/* Header */}
       <header className="border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">

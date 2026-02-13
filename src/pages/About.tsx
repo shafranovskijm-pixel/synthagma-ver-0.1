@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -7,6 +8,16 @@ import { ArrowLeft, Building2, Mail, Phone, MapPin, FileText, Shield, Users, Tar
 const About = () => {
   return (
     <div className="min-h-screen bg-background">
+      <Helmet>
+        <title>О платформе СИНТАГМА — СДО нового поколения</title>
+        <meta name="description" content="Узнайте больше о платформе СИНТАГМА: история создания, команда разработчиков, преимущества для образовательных организаций." />
+        <meta name="keywords" content="о нас, СИНТАГМА, образовательная платформа, команда разработчиков" />
+        <link rel="canonical" href="https://synthagma-bloom.lovable.app/about" />
+        <meta property="og:title" content="О платформе СИНТАГМА — СДО нового поколения" />
+        <meta property="og:description" content="Узнайте больше о платформе СИНТАГМА: история создания, команда разработчиков, преимущества для образовательных организаций." />
+        <meta property="og:url" content="https://synthagma-bloom.lovable.app/about" />
+        <meta property="og:image" content="https://synthagma-bloom.lovable.app/og-image.png" />
+      </Helmet>
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">

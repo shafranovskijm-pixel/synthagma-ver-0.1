@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -464,6 +465,16 @@ export default function Features() {
 
   return (
     <div className="min-h-screen bg-background">
+      <Helmet>
+        <title>Возможности СИНТАГМА — Полный набор инструментов для ДПО</title>
+        <meta name="description" content="AI-генерация курсов, автоматический документооборот, интеграция с ФРДО, журналы и протоколы. Всё для работы образовательной организации." />
+        <meta name="keywords" content="возможности СДО, AI курсы, документооборот, ФРДО интеграция, автоматизация обучения" />
+        <link rel="canonical" href="https://synthagma-bloom.lovable.app/features" />
+        <meta property="og:title" content="Возможности СИНТАГМА — Полный набор инструментов для ДПО" />
+        <meta property="og:description" content="AI-генерация курсов, автоматический документооборот, интеграция с ФРДО, журналы и протоколы. Всё для работы образовательной организации." />
+        <meta property="og:url" content="https://synthagma-bloom.lovable.app/features" />
+        <meta property="og:image" content="https://synthagma-bloom.lovable.app/og-image.png" />
+      </Helmet>
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl">
         <div className="container mx-auto px-4 lg:px-6">
