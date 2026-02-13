@@ -30,8 +30,8 @@ const featureRows: { label: string; link?: string; getValue: (p: SubscriptionPla
   { label: "ФИС ФРДО", link: "/feature/frdo", getValue: (p: SubscriptionPlan) => p === 'maximum' },
   { label: "Отчеты 1-ПК / 1-ПО", getValue: (p: SubscriptionPlan) => p === 'maximum' },
   { label: "API для CRM", getValue: (p: SubscriptionPlan) => p === 'maximum' },
-  { label: "ИИ-генерация", getValue: (p: SubscriptionPlan) => SUBSCRIPTION_PLANS[p].limits.aiEnabled ? true : false },
-  { label: "ИИ-озвучка", getValue: (p: SubscriptionPlan) => SUBSCRIPTION_PLANS[p].limits.aiAudioEnabled ? true : false },
+  { label: "ИИ-генерация", link: "/feature/ai-courses", getValue: (p: SubscriptionPlan) => SUBSCRIPTION_PLANS[p].limits.aiEnabled ? true : false },
+  { label: "ИИ-озвучка", link: "/feature/ai-courses", getValue: (p: SubscriptionPlan) => SUBSCRIPTION_PLANS[p].limits.aiAudioEnabled ? true : false },
 ];
 
 function formatPrice(price: number): string {
