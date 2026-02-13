@@ -33,6 +33,7 @@ import FeatureVideoId from "./pages/FeatureVideoId";
 import FeatureLaborSafety from "./pages/FeatureLaborSafety";
 import FeatureCourseStore from "./pages/FeatureCourseStore";
 import FeatureDocumentChecklist from "./pages/FeatureDocumentChecklist";
+import FeatureCourseSettings from "./pages/FeatureCourseSettings";
 import RoadmapPage from "./pages/RoadmapPage";
 import NotFound from "./pages/NotFound";
 import { ScrollToTop } from "./components/ScrollToTop";
@@ -106,6 +107,7 @@ const App = () => (
                 <Route path="/feature/labor-safety" element={<FeatureLaborSafety />} />
                 <Route path="/feature/course-store" element={<FeatureCourseStore />} />
                 <Route path="/feature/document-checklist" element={<FeatureDocumentChecklist />} />
+                <Route path="/feature/course-settings" element={<FeatureCourseSettings />} />
                 <Route path="/roadmap" element={<RoadmapPage />} />
                 <Route path="/course-import" element={
                   <ProtectedRoute requiredRole="organization">

@@ -54,7 +54,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, PlanInfo> = {
       storageBytes: 1073741824, // 1 GB
       aiEnabled: false,
       aiAudioEnabled: false,
-      courseSettings: false,
+      courseSettings: true,
       documentChecklist: false,
       videoIdentification: false,
     },
