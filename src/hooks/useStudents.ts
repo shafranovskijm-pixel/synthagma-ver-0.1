@@ -1,5 +1,14 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import type { Student, StudentFRDOStatus, StudentStatusFilter, StudentDocsFilter } from "@/types";
+import { supabase } from "@/integrations/supabase/client";
+
+interface StudentGroup {
+  id: string;
+  name: string;
+  color: string;
+  organization_id: string;
+  created_at: string;
+}
 import { 
   fetchStudents,
   fetchFRDOStatus,
@@ -44,6 +53,11 @@ interface UseStudentsReturn {
   setStatusFilter: (filter: StudentStatusFilter) => void;
   courseFilter: string;
   setCourseFilter: (courseId: string) => void;
+  groupFilter: string;
+  setGroupFilter: (groupId: string) => void;
+  studentGroups: StudentGroup[];
+  refreshGroups: () => void;
+  studentGroupMap: Map<string, string | null>;
   docsFilter: StudentDocsFilter;
   setDocsFilter: (filter: StudentDocsFilter) => void;
   searchQuery: string;
@@ -66,8 +80,12 @@ export function useStudents(
   // Filters
   const [statusFilter, setStatusFilter] = useState<StudentStatusFilter>("all");
   const [courseFilter, setCourseFilter] = useState<string>("all");
+  const [groupFilter, setGroupFilter] = useState<string>("all");
   const [docsFilter, setDocsFilter] = useState<StudentDocsFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [studentGroups, setStudentGroups] = useState<StudentGroup[]>([]);
+  const [studentGroupMap, setStudentGroupMap] = useState<Map<string, string | null>>(new Map());
+  const [groupsRefreshKey, setGroupsRefreshKey] = useState(0);
 
   // Memoize courseIds join to prevent infinite loops
   const courseIdsKey = useMemo(() => courseIds.join(","), [courseIds]);
@@ -105,6 +123,47 @@ export function useStudents(
     load();
   }, [organizationId, courseIdsKey, refreshKey]);
 
+  // Load student groups
+  useEffect(() => {
+    const loadGroups = async () => {
+      if (!organizationId) return;
+      try {
+        const { data } = await supabase
+          .from("student_groups")
+          .select("*")
+          .eq("organization_id", organizationId)
+          .order("name");
+        setStudentGroups((data as any[]) || []);
+      } catch (e) {
+        console.error("Error loading student groups:", e);
+      }
+    };
+    loadGroups();
+  }, [organizationId, groupsRefreshKey]);
+
+  // Load student group assignments
+  useEffect(() => {
+    const loadGroupMap = async () => {
+      if (!organizationId) return;
+      try {
+        const { data } = await supabase
+          .from("profiles")
+          .select("user_id, student_group_id")
+          .eq("organization_id", organizationId);
+        const map = new Map<string, string | null>();
+        (data || []).forEach((p: any) => map.set(p.user_id, p.student_group_id));
+        setStudentGroupMap(map);
+      } catch (e) {
+        console.error("Error loading group map:", e);
+      }
+    };
+    loadGroupMap();
+  }, [organizationId, refreshKey, groupsRefreshKey]);
+
+  const refreshGroups = useCallback(() => {
+    setGroupsRefreshKey(prev => prev + 1);
+  }, []);
+
   // Filtered students
   const filteredStudents = useMemo(() => {
     return students.filter(student => {
@@ -126,10 +185,20 @@ export function useStudents(
         if (statusFilter === "completed" && !enrollments.some(e => e.status === "completed")) return false;
       }
 
-      // Course filter - check if student is enrolled in selected course
+      // Course filter
       if (courseFilter !== "all") {
         const enrollments = student.enrollments || [];
         if (!enrollments.some(e => e.course_id === courseFilter)) return false;
+      }
+
+      // Group filter
+      if (groupFilter !== "all") {
+        const studentGroupId = studentGroupMap.get(student.user_id);
+        if (groupFilter === "no_group") {
+          if (studentGroupId) return false;
+        } else {
+          if (studentGroupId !== groupFilter) return false;
+        }
       }
 
       // Documents filter
@@ -148,7 +217,7 @@ export function useStudents(
 
       return true;
     });
-  }, [students, searchQuery, statusFilter, courseFilter, docsFilter, studentDocsByUser]);
+  }, [students, searchQuery, statusFilter, courseFilter, groupFilter, docsFilter, studentDocsByUser, studentGroupMap]);
 
   // Selection helpers - use user_id for unique selection (one row per student)
   const toggleSelection = useCallback((uniqueId: string) => {
@@ -358,6 +427,11 @@ export function useStudents(
     setStatusFilter,
     courseFilter,
     setCourseFilter,
+    groupFilter,
+    setGroupFilter,
+    studentGroups,
+    refreshGroups,
+    studentGroupMap,
     docsFilter,
     setDocsFilter,
     searchQuery,
