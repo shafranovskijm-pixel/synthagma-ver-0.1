@@ -599,6 +599,7 @@ export type Database = {
         Row: {
           allow_video_seek: boolean
           category_id: string | null
+          completion_notify_emails: string | null
           created_at: string
           description: string | null
           duration: string | null
@@ -614,6 +615,7 @@ export type Database = {
           frdo_specialty_group: string | null
           id: string
           is_published: boolean
+          notify_on_completion: boolean
           organization_id: string
           reminder_advance_days: number
           retraining_period_months: number | null
@@ -626,6 +628,7 @@ export type Database = {
         Insert: {
           allow_video_seek?: boolean
           category_id?: string | null
+          completion_notify_emails?: string | null
           created_at?: string
           description?: string | null
           duration?: string | null
@@ -641,6 +644,7 @@ export type Database = {
           frdo_specialty_group?: string | null
           id?: string
           is_published?: boolean
+          notify_on_completion?: boolean
           organization_id: string
           reminder_advance_days?: number
           retraining_period_months?: number | null
@@ -653,6 +657,7 @@ export type Database = {
         Update: {
           allow_video_seek?: boolean
           category_id?: string | null
+          completion_notify_emails?: string | null
           created_at?: string
           description?: string | null
           duration?: string | null
@@ -668,6 +673,7 @@ export type Database = {
           frdo_specialty_group?: string | null
           id?: string
           is_published?: boolean
+          notify_on_completion?: boolean
           organization_id?: string
           reminder_advance_days?: number
           retraining_period_months?: number | null

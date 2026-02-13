@@ -13,6 +13,8 @@ export interface Course {
   sequential_lessons?: boolean;
   allow_video_seek?: boolean;
   training_form?: string | null;
+  notify_on_completion?: boolean;
+  completion_notify_emails?: string | null;
   // Computed fields
   lessonsCount?: number;
   studentsCount?: number;

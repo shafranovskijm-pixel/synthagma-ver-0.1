@@ -137,6 +137,8 @@ export function CourseDetailsModal({
   const [trainingForm, setTrainingForm] = useState(course?.training_form || "Очная");
   const [retrainingPeriod, setRetrainingPeriod] = useState<number | null>(course?.retraining_period_months ?? null);
   const [reminderAdvanceDays, setReminderAdvanceDays] = useState<number>((course as any)?.reminder_advance_days ?? 30);
+  const [notifyOnCompletion, setNotifyOnCompletion] = useState<boolean>((course as any)?.notify_on_completion ?? false);
+  const [completionNotifyEmails, setCompletionNotifyEmails] = useState<string | null>((course as any)?.completion_notify_emails ?? null);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [resetConfirmStudent, setResetConfirmStudent] = useState<Student | null>(null);
   const [isResetting, setIsResetting] = useState(false);
@@ -171,6 +173,8 @@ export function CourseDetailsModal({
       setTrainingForm(course.training_form || "Очная");
       setRetrainingPeriod(course.retraining_period_months ?? null);
       setReminderAdvanceDays((course as any).reminder_advance_days ?? 30);
+      setNotifyOnCompletion((course as any).notify_on_completion ?? false);
+      setCompletionNotifyEmails((course as any).completion_notify_emails ?? null);
       // Load FRDO settings from course
       setFrdoSettings({
         frdo_program_type: course.frdo_program_type || null,
@@ -1115,6 +1119,36 @@ export function CourseDetailsModal({
                   } catch (error) {
                     console.error("Error updating advance days:", error);
                     toast.error("Ошибка сохранения");
+                  }
+                }}
+                notifyOnCompletion={notifyOnCompletion}
+                completionNotifyEmails={completionNotifyEmails}
+                onNotifyOnCompletionChange={async (value) => {
+                  setNotifyOnCompletion(value);
+                  try {
+                    const { error } = await supabase
+                      .from("courses")
+                      .update({ notify_on_completion: value } as any)
+                      .eq("id", course.id);
+                    if (error) throw error;
+                    toast.success(value ? "Уведомления включены" : "Уведомления отключены");
+                    onCourseUpdated?.();
+                  } catch (error) {
+                    console.error("Error updating notify_on_completion:", error);
+                    toast.error("Ошибка сохранения");
+                  }
+                }}
+                onCompletionNotifyEmailsChange={async (value) => {
+                  setCompletionNotifyEmails(value || null);
+                  try {
+                    const { error } = await supabase
+                      .from("courses")
+                      .update({ completion_notify_emails: value || null } as any)
+                      .eq("id", course.id);
+                    if (error) throw error;
+                    onCourseUpdated?.();
+                  } catch (error) {
+                    console.error("Error updating completion_notify_emails:", error);
                   }
                 }}
               />

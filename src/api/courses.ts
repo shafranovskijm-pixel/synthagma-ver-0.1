@@ -63,6 +63,8 @@ export async function fetchCourses(organizationId: string): Promise<Course[]> {
       // DB default is true; treat NULL/undefined as true
       allow_video_seek: course.allow_video_seek ?? true,
       training_form: course.training_form ?? "Очная",
+      notify_on_completion: course.notify_on_completion ?? false,
+      completion_notify_emails: course.completion_notify_emails ?? null,
     };
   });
 }
