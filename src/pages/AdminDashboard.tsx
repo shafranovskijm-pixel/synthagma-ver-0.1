@@ -13,6 +13,7 @@ import { AdminSettings } from "@/components/admin/AdminSettings";
 import { BlogManager } from "@/components/admin/BlogManager";
 import { SubscribersManager } from "@/components/admin/SubscribersManager";
 import { TestimonialsManager } from "@/components/admin/TestimonialsManager";
+import { TariffsManager } from "@/components/admin/TariffsManager";
 
 const AdminDashboard = () => {
   const { user, signOut } = useAuth();
@@ -30,6 +31,7 @@ const AdminDashboard = () => {
     switch (activeTab) {
       case "analytics": return "Аналитика";
       case "organizations": return "Организации";
+      case "tariffs": return "Тарифы";
       case "orders": return "Заявки на курсы";
       case "users": return "Пользователи";
       case "features": return "Функции системы";
@@ -88,6 +90,7 @@ const AdminDashboard = () => {
           {/* Tab Content */}
           {activeTab === "analytics" && <AdminAnalytics />}
           {activeTab === "organizations" && <OrganizationsManager />}
+          {activeTab === "tariffs" && <TariffsManager />}
           {activeTab === "orders" && <ServiceOrdersManager />}
           {activeTab === "users" && <UsersManager />}
           {activeTab === "features" && <SystemFeaturesManager />}
