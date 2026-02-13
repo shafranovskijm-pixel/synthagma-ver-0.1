@@ -1,43 +1,30 @@
 
 
-# Брендирование доступно с тарифа «Стандарт»
+# Привязка ссылки и обновление аудио
 
-## Проблема
+## 1. Добавить ссылку на карточку «Управление курсами»
 
-Сейчас брендирование скрыто только для бесплатного тарифа (`isFreePlan`). Нужно ограничить доступ также для тарифа «Старт» и добавить эту функцию в таблицу тарифов на лендинге.
+**Файл:** `src/components/landing/Features.tsx`
 
-## Изменения
+- В массиве `features` (строка 24-29) добавить `link: "/feature/ai-courses"` к объекту «Управление курсами»
+- Карточка уже поддерживает свойство `link` и автоматически оборачивается в `<Link>` с кнопкой «Подробнее»
 
-### 1. Добавить `branding` в лимиты тарифов
+## 2. Перезаписать аудио для каждого курса
 
-**Файл:** `src/constants/subscriptionPlans.ts`
+**Файл:** `src/pages/FeatureAICourses.tsx`
 
-- Добавить поле `branding: boolean` в интерфейс `PlanLimits`
-- Установить `branding: false` для `free` и `start`
-- Установить `branding: true` для `standard`, `professional`, `maximum`
+- Заменить одинаковые `audioUrl` у трёх демо-курсов на уникальные файлы:
+  - Промышленная безопасность: `demo-safety.mp3`
+  - Пожарная безопасность: `demo-fire.mp3`
+  - Информационная безопасность: `demo-infosec.mp3`
 
-### 2. Добавить «Брендирование» в таблицу тарифов на лендинге
-
-**Файл:** `src/components/landing/PricingPlans.tsx`
-
-- Добавить строку «Брендирование» в массив `featureRows` (после «Видеоидентификация»)
-- Значение берётся из `SUBSCRIPTION_PLANS[p].limits.branding`
-
-### 3. Ограничить доступ к брендированию в настройках
-
-**Файл:** `src/components/organization/tabs/SettingsTab.tsx`
-
-- Заменить проверку `!isFreePlan` на проверку `hasBranding` для трёх секций:
-  - «Брендирование» (строка 322)
-  - «Брендирование страницы входа» (строка 559)
-  - Можно также для «Настройки личного кабинета ученика» (строка 582)
-- `hasBranding` = план не `free` и не `start` (т.е. standard+)
+**Важно:** Для этого потребуется сгенерировать три MP3-файла через ElevenLabs (edge-функция `elevenlabs-tts`) с текстом каждого курса и загрузить их в бакет `demo-assets`. Я вызову edge-функцию для генерации аудио, затем загружу файлы в хранилище и обновлю ссылки в коде.
 
 ### Затронутые файлы
 
 | Файл | Изменение |
 |---|---|
-| `src/constants/subscriptionPlans.ts` | Добавить `branding` в `PlanLimits`, задать значения |
-| `src/components/landing/PricingPlans.tsx` | Добавить строку «Брендирование» в featureRows |
-| `src/components/organization/tabs/SettingsTab.tsx` | Заменить `!isFreePlan` на проверку `plan >= standard` для брендинг-секций |
+| `src/components/landing/Features.tsx` | Добавить `link: "/feature/ai-courses"` |
+| `src/pages/FeatureAICourses.tsx` | Обновить `audioUrl` на уникальные файлы |
+| Бакет `demo-assets` | Загрузить 3 новых MP3-файла |
 
