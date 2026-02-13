@@ -134,8 +134,7 @@ ${errorsText}${photoUrl ? `\n\n<b>Скриншот:</b> ${photoUrl}` : ""}`;
   };
 
   return (
-    <div className="border-t border-border/50 pt-4 mt-4 space-y-3">
-      <h4 className="font-medium text-sm">Сообщить о проблеме</h4>
+    <div className="space-y-3">
       <Textarea
         placeholder="Опишите проблему или ошибку..."
         value={description}
