@@ -38,6 +38,8 @@ import FeatureBranding from "./pages/FeatureBranding";
 import FeatureAICourses from "./pages/FeatureAICourses";
 import RoadmapPage from "./pages/RoadmapPage";
 import PublicOffer from "./pages/PublicOffer";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import PersonalDataPolicy from "./pages/PersonalDataPolicy";
 import NotFound from "./pages/NotFound";
 import { ScrollToTop } from "./components/ScrollToTop";
 
@@ -115,6 +117,8 @@ const App = () => (
                 <Route path="/feature/ai-courses" element={<FeatureAICourses />} />
                 <Route path="/roadmap" element={<RoadmapPage />} />
                 <Route path="/public-offer" element={<PublicOffer />} />
+                <Route path="/privacy" element={<PrivacyPolicy />} />
+                <Route path="/personal-data" element={<PersonalDataPolicy />} />
                 <Route path="/course-import" element={
                   <ProtectedRoute requiredRole="organization">
                     <CourseImport />

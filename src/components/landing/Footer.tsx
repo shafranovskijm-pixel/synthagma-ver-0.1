@@ -129,9 +129,15 @@ export function Footer() {
               Создание сайтов — 24zxc.ru
             </a>
           </div>
-          <div className="flex gap-6 text-xs text-background/40">
+          <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-background/40">
             <Link to="/public-offer" className="hover:text-background/60 transition-colors">
               Условия использования
+            </Link>
+            <Link to="/privacy" className="hover:text-background/60 transition-colors">
+              Конфиденциальность
+            </Link>
+            <Link to="/personal-data" className="hover:text-background/60 transition-colors">
+              Обработка персональных данных
             </Link>
           </div>
         </div>
