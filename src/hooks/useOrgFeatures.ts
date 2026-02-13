@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getPlanInfo, type SubscriptionPlan } from "@/constants/subscriptionPlans";
 
 interface FeatureAccess {
   categoryEnabled: boolean;
@@ -225,12 +226,13 @@ export function useOrgFeatures(organizationId: string | null) {
     }
 
     try {
-      // Fetch global settings
-      const [globalCategoriesResult, globalFeaturesResult, orgCategoriesResult, orgFeaturesResult] = await Promise.all([
+      // Fetch global settings + subscription plan
+      const [globalCategoriesResult, globalFeaturesResult, orgCategoriesResult, orgFeaturesResult, orgPlanResult] = await Promise.all([
         supabase.from("system_feature_categories").select("category_id, is_enabled"),
         supabase.from("system_features").select("feature_id, is_enabled"),
         supabase.from("organization_feature_categories").select("category_id, is_enabled").eq("organization_id", organizationId),
         supabase.from("organization_features").select("feature_id, is_enabled").eq("organization_id", organizationId),
+        supabase.from("organizations").select("subscription_plan").eq("id", organizationId).single(),
       ]);
 
       const newFeatures = { ...defaultFeatures };
@@ -271,10 +273,25 @@ export function useOrgFeatures(organizationId: string | null) {
         }
       }
 
+      // Apply subscription plan restrictions on top
+      const subscriptionPlan = (orgPlanResult.data?.subscription_plan || 'free') as SubscriptionPlan;
+      const planInfo = getPlanInfo(subscriptionPlan);
+      const allCategories = ['courses', 'students', 'companies', 'documents', 'journals', 'frdo', 'links', 'library', 'services', 'settings', 'student_cabinet'];
+      
+      for (const cat of allCategories) {
+        if (!planInfo.enabledCategories.includes(cat)) {
+          (newFeatures as any)[cat] = false;
+        }
+      }
+
+      // Disable AI if plan doesn't support it
+      if (!planInfo.limits.aiEnabled) {
+        newFeatures.courses_ai = false;
+      }
+
       setFeatures(newFeatures);
     } catch (error) {
       console.error("Error fetching org features:", error);
-      // Keep defaults on error
     } finally {
       setLoading(false);
     }
