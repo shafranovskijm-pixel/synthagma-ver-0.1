@@ -2066,6 +2066,7 @@ export type Database = {
           last_visit_at: string | null
           login: string | null
           organization_id: string | null
+          student_group_id: string | null
           updated_at: string
           user_id: string
         }
@@ -2080,6 +2081,7 @@ export type Database = {
           last_visit_at?: string | null
           login?: string | null
           organization_id?: string | null
+          student_group_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -2094,6 +2096,7 @@ export type Database = {
           last_visit_at?: string | null
           login?: string | null
           organization_id?: string | null
+          student_group_id?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -2110,6 +2113,13 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_student_group_id_fkey"
+            columns: ["student_group_id"]
+            isOneToOne: false
+            referencedRelation: "student_groups"
             referencedColumns: ["id"]
           },
         ]
@@ -2553,6 +2563,41 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      student_groups: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          name: string
+          organization_id: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          organization_id: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          organization_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_groups_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       student_identity_documents: {
         Row: {

@@ -7,12 +7,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { 
   Users, Search, BookOpen, Filter, FileCheck, FileSpreadsheet, 
   GraduationCap, Key, Mail, XCircle, X, Loader2, Copy, Trash2, 
-  CheckCircle2, ChevronRight, AlertCircle, FileText
+  CheckCircle2, ChevronRight, AlertCircle, FileText, FolderOpen, Plus, Pencil
 } from "lucide-react";
 import { useStudents } from "@/hooks/useStudents";
 import { toast } from "sonner";
 import type { Student, Course, StudentFRDOStatus } from "@/types";
 import { useWordDocumentGenerator } from "@/hooks/useWordDocumentGenerator";
+import { supabase } from "@/integrations/supabase/client";
+import { format } from "date-fns";
+import { ru } from "date-fns/locale";
 
 interface StudentsTabProps {
   organizationId: string;
@@ -68,12 +71,61 @@ export function StudentsTab({
     setStatusFilter,
     courseFilter,
     setCourseFilter,
+    groupFilter,
+    setGroupFilter,
+    studentGroups,
+    refreshGroups,
+    studentGroupMap,
     docsFilter,
     setDocsFilter,
     searchQuery,
     setSearchQuery,
     removeStudent,
   } = useStudents(organizationId, courseIds, studentDocsByUser);
+
+  const [showGroupDialog, setShowGroupDialog] = useState(false);
+  const [newGroupName, setNewGroupName] = useState("");
+  const [newGroupColor, setNewGroupColor] = useState("#6366f1");
+  const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
+
+  const handleCreateGroup = async () => {
+    if (!newGroupName.trim()) return;
+    try {
+      const { error } = await supabase.from("student_groups").insert({
+        name: newGroupName.trim(),
+        color: newGroupColor,
+        organization_id: organizationId,
+      } as any);
+      if (error) throw error;
+      toast.success("Группа создана");
+      setNewGroupName("");
+      refreshGroups();
+    } catch (e) {
+      toast.error("Ошибка создания группы");
+    }
+  };
+
+  const handleDeleteGroup = async (groupId: string) => {
+    try {
+      const { error } = await supabase.from("student_groups").delete().eq("id", groupId);
+      if (error) throw error;
+      toast.success("Группа удалена");
+      if (groupFilter === groupId) setGroupFilter("all");
+      refreshGroups();
+    } catch (e) {
+      toast.error("Ошибка удаления группы");
+    }
+  };
+
+  const handleAssignGroup = async (userId: string, groupId: string | null) => {
+    try {
+      const { error } = await supabase.from("profiles").update({ student_group_id: groupId } as any).eq("user_id", userId);
+      if (error) throw error;
+      refreshGroups();
+    } catch (e) {
+      toast.error("Ошибка назначения группы");
+    }
+  };
 
   const getSelectedEnrollmentsCount = useCallback(() => {
     let count = 0;
@@ -357,6 +409,33 @@ export function StudentsTab({
               <SelectItem value="no_education">Нет образования</SelectItem>
             </SelectContent>
           </Select>
+          <Select value={groupFilter} onValueChange={setGroupFilter}>
+            <SelectTrigger className="w-32 lg:w-48 rounded-xl shrink-0 text-xs lg:text-sm">
+              <FolderOpen className="w-4 h-4 mr-1 lg:mr-2" />
+              <SelectValue placeholder="Группа" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все группы</SelectItem>
+              <SelectItem value="no_group">Без группы</SelectItem>
+              {studentGroups.map(g => (
+                <SelectItem key={g.id} value={g.id}>
+                  <span className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: g.color }} />
+                    {g.name}
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-xl gap-1 shrink-0 text-xs lg:text-sm"
+            onClick={() => setShowGroupDialog(true)}
+          >
+            <FolderOpen className="w-4 h-4" />
+            <span className="hidden sm:inline">Группы</span>
+          </Button>
           {/* Desktop search */}
           <div className="relative hidden lg:block">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -478,6 +557,7 @@ export function StudentsTab({
                     />
                   </th>
                   <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Ученик</th>
+                  <th className="text-left px-3 py-4 text-sm font-medium text-muted-foreground">Группа</th>
                   <th className="text-left px-4 py-4 text-sm font-medium text-muted-foreground">Документы</th>
                   <th className="text-left px-3 py-4 text-sm font-medium text-muted-foreground">ФРДО</th>
                   <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Курсы</th>
@@ -536,6 +616,33 @@ export function StudentsTab({
                             )}
                           </div>
                         </div>
+                      </td>
+                      <td className="px-3 py-4" onClick={e => e.stopPropagation()}>
+                        {(() => {
+                          const gId = studentGroupMap.get(student.user_id);
+                          const group = studentGroups.find(g => g.id === gId);
+                          return (
+                            <Select
+                              value={gId || "none"}
+                              onValueChange={v => handleAssignGroup(student.user_id, v === "none" ? null : v)}
+                            >
+                              <SelectTrigger className="w-28 h-7 text-xs rounded-lg">
+                                <SelectValue placeholder="—" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">—</SelectItem>
+                                {studentGroups.map(g => (
+                                  <SelectItem key={g.id} value={g.id}>
+                                    <span className="flex items-center gap-1.5">
+                                      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: g.color }} />
+                                      {g.name}
+                                    </span>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          );
+                        })()}
                       </td>
                       <td className="px-4 py-4">
                         {renderDocumentStatus(student)}
@@ -606,6 +713,66 @@ export function StudentsTab({
           </div>
         </>
       )}
+
+      {/* Group Management Dialog */}
+      <Dialog open={showGroupDialog} onOpenChange={setShowGroupDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Управление группами</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex gap-2">
+              <Input
+                placeholder="Название группы..."
+                value={newGroupName}
+                onChange={e => setNewGroupName(e.target.value)}
+                className="flex-1"
+                onKeyDown={e => e.key === "Enter" && handleCreateGroup()}
+              />
+              <input
+                type="color"
+                value={newGroupColor}
+                onChange={e => setNewGroupColor(e.target.value)}
+                className="w-10 h-10 rounded border border-border cursor-pointer"
+              />
+              <Button onClick={handleCreateGroup} size="icon">
+                <Plus className="w-4 h-4" />
+              </Button>
+            </div>
+            
+            {studentGroups.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">Нет групп</p>
+            ) : (
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {studentGroups.map(group => {
+                  const count = Array.from(studentGroupMap.values()).filter(v => v === group.id).length;
+                  return (
+                    <div key={group.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: group.color }} />
+                        <div>
+                          <div className="font-medium text-sm">{group.name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {count} уч. · {format(new Date(group.created_at), "d MMM yyyy", { locale: ru })}
+                          </div>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive hover:text-destructive h-8 w-8"
+                        onClick={() => handleDeleteGroup(group.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
