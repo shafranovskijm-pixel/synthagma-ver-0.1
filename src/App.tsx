@@ -35,6 +35,7 @@ import FeatureCourseStore from "./pages/FeatureCourseStore";
 import FeatureDocumentChecklist from "./pages/FeatureDocumentChecklist";
 import FeatureCourseSettings from "./pages/FeatureCourseSettings";
 import FeatureBranding from "./pages/FeatureBranding";
+import FeatureAICourses from "./pages/FeatureAICourses";
 import RoadmapPage from "./pages/RoadmapPage";
 import PublicOffer from "./pages/PublicOffer";
 import NotFound from "./pages/NotFound";
@@ -111,6 +112,7 @@ const App = () => (
                 <Route path="/feature/document-checklist" element={<FeatureDocumentChecklist />} />
                 <Route path="/feature/course-settings" element={<FeatureCourseSettings />} />
                 <Route path="/feature/branding" element={<FeatureBranding />} />
+                <Route path="/feature/ai-courses" element={<FeatureAICourses />} />
                 <Route path="/roadmap" element={<RoadmapPage />} />
                 <Route path="/public-offer" element={<PublicOffer />} />
                 <Route path="/course-import" element={
