@@ -98,7 +98,7 @@ export function OrgSidebar({
         <div className="space-y-2">
           {/* Courses */}
           {menuSettings.showCourses !== false && isEnabled("courses") && (
-            <button onClick={() => handleTabClick("courses")} className={tabButtonClass("courses")}>
+            <button data-onboarding="courses" onClick={() => handleTabClick("courses")} className={tabButtonClass("courses")}>
               <BookOpen className="w-5 h-5" />
               Курсы
             </button>
@@ -114,7 +114,7 @@ export function OrgSidebar({
           
           {/* Students */}
           {menuSettings.showStudents !== false && isEnabled("students") && (
-            <button onClick={() => handleTabClick("students")} className={tabButtonClass("students")}>
+            <button data-onboarding="students" onClick={() => handleTabClick("students")} className={tabButtonClass("students")}>
               <Users className="w-5 h-5" />
               Ученики
             </button>
@@ -146,7 +146,7 @@ export function OrgSidebar({
           
           {/* Documents */}
           {menuSettings.showDocuments && isEnabled("documents") && (
-            <button onClick={() => handleTabClick("documents")} className={tabButtonClass("documents")}>
+            <button data-onboarding="documents" onClick={() => handleTabClick("documents")} className={tabButtonClass("documents")}>
               <FileText className="w-5 h-5" />
               Документы
             </button>
@@ -178,7 +178,7 @@ export function OrgSidebar({
           
           {/* Settings - always visible, cannot be hidden */}
           {isEnabled("settings") && (
-            <button onClick={() => handleTabClick("settings")} className={tabButtonClass("settings")}>
+            <button data-onboarding="settings" onClick={() => handleTabClick("settings")} className={tabButtonClass("settings")}>
               <Settings className="w-5 h-5" />
               Настройки
             </button>

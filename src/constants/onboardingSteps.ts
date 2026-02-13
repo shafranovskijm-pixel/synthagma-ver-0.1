@@ -6,6 +6,7 @@ export interface OnboardingStep {
   title: string;
   description: string;
   tab?: string;
+  highlightSelector?: string;
 }
 
 export const organizationOnboardingSteps: OnboardingStep[] = [
@@ -21,6 +22,7 @@ export const organizationOnboardingSteps: OnboardingStep[] = [
     title: "Курсы",
     description: "Создавайте курсы с уроками, видео и тестами. Используйте ИИ для генерации контента или импортируйте готовые материалы. Публикуйте курсы и записывайте учеников.",
     tab: "courses",
+    highlightSelector: "[data-onboarding='courses']",
   },
   {
     id: "students",
@@ -28,6 +30,7 @@ export const organizationOnboardingSteps: OnboardingStep[] = [
     title: "Ученики",
     description: "Добавляйте учеников вручную, импортируйте из Excel или создавайте ссылки для самостоятельной регистрации. Группируйте учеников по категориям для удобного управления.",
     tab: "students",
+    highlightSelector: "[data-onboarding='students']",
   },
   {
     id: "documents",
@@ -35,6 +38,7 @@ export const organizationOnboardingSteps: OnboardingStep[] = [
     title: "Документы",
     description: "Автоматически формируйте приказы, протоколы, удостоверения и дипломы. Ведите журналы учёта и выгружайте данные в ФИС ФРДО.",
     tab: "documents",
+    highlightSelector: "[data-onboarding='documents']",
   },
   {
     id: "settings",
@@ -42,6 +46,7 @@ export const organizationOnboardingSteps: OnboardingStep[] = [
     title: "Настройки",
     description: "Настройте брендирование: логотип, обложку и цвета. Управляйте видимостью разделов меню, тарифом и интеграциями.",
     tab: "settings",
+    highlightSelector: "[data-onboarding='settings']",
   },
 ];
 
@@ -57,24 +62,28 @@ export const studentOnboardingSteps: OnboardingStep[] = [
     icon: Play,
     title: "Начните обучение",
     description: "Нажмите на любой доступный курс, чтобы перейти к урокам. Проходите материалы последовательно, смотрите видео и отвечайте на вопросы тестов.",
+    highlightSelector: "[data-onboarding='courses']",
   },
   {
     id: "documents",
     icon: Upload,
     title: "Загрузите документы",
     description: "В разделе «Мои документы» загрузите копию паспорта, СНИЛС и документ об образовании — это нужно для оформления итоговых документов.",
+    highlightSelector: "[data-onboarding='documents']",
   },
   {
     id: "video-id",
     icon: Video,
     title: "Видеоидентификация",
     description: "Пройдите видеоидентификацию для подтверждения личности. Это занимает пару минут — просто включите камеру и следуйте инструкциям.",
+    highlightSelector: "[data-onboarding='video-id']",
   },
   {
     id: "ai-chat",
     icon: MessageCircle,
     title: "ИИ-помощник",
     description: "Если у вас возникнут вопросы по материалам курса — используйте ИИ-помощника. Он поможет разобраться в сложных темах и ответит на ваши вопросы.",
+    highlightSelector: "[data-onboarding='chat']",
   },
 ];
 

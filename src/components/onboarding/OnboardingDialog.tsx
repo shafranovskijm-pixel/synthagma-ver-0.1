@@ -4,6 +4,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { ChevronRight, ChevronLeft, X } from "lucide-react";
+import { OnboardingHighlight } from "./OnboardingHighlight";
 import type { OnboardingStep } from "@/constants/onboardingSteps";
 
 interface OnboardingDialogProps {
@@ -47,6 +48,8 @@ export function OnboardingDialog({ open, onClose, steps, onNavigateToTab }: Onbo
   const Icon = step?.icon;
 
   return (
+    <>
+    <OnboardingHighlight selector={step?.highlightSelector} />
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent className="sm:max-w-md p-0 overflow-hidden gap-0 border-primary/20">
         {/* Progress bar */}
@@ -123,5 +126,6 @@ export function OnboardingDialog({ open, onClose, steps, onNavigateToTab }: Onbo
         </div>
       </DialogContent>
     </Dialog>
+    </>
   );
 }
