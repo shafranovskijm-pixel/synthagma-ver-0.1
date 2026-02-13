@@ -63,6 +63,25 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
   const detailManager = useCompanyDetailManager(organizationId);
   const studentsManager = useCompanyStudentsManager(organizationId);
 
+  // Categories for course grouping
+  const [categories, setCategories] = useState<{ id: string; name: string; color: string }[]>([]);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      const { data } = await supabase
+        .from("course_categories")
+        .select("id, name, color")
+        .eq("organization_id", organizationId);
+      if (data) setCategories(data.map(c => ({ ...c, color: c.color || '#888' })));
+    };
+    fetchCategories();
+  }, [organizationId]);
+
+  const getCategoryById = useCallback((id?: string | null) => {
+    if (!id) return undefined;
+    return categories.find(c => c.id === id);
+  }, [categories]);
+
   // View mode state
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
@@ -571,6 +590,8 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
         isEnrolling={studentsManager.isEnrolling}
         onToggleCourse={studentsManager.toggleCourseSelection}
         onEnroll={studentsManager.enrollCompanyToCourses}
+        categories={categories}
+        getCategoryById={getCategoryById}
       />
 
       {/* Document Generators */}

@@ -14,11 +14,19 @@ import {
   Check,
 } from "lucide-react";
 import type { Company } from "@/hooks/useCompaniesManager";
+import { CourseGroupedList } from "./CourseGroupedList";
+
+interface CourseCategory {
+  id: string;
+  name: string;
+  color: string;
+}
 
 interface Course {
   id: string;
   title: string;
   is_published: boolean;
+  category_id?: string | null;
 }
 
 interface BulkEnrollDialogProps {
@@ -31,6 +39,8 @@ interface BulkEnrollDialogProps {
   isEnrolling: boolean;
   onToggleCourse: (courseId: string) => void;
   onEnroll: () => void;
+  categories?: CourseCategory[];
+  getCategoryById?: (id?: string | null) => CourseCategory | undefined;
 }
 
 export function BulkEnrollDialog({
@@ -43,6 +53,8 @@ export function BulkEnrollDialog({
   isEnrolling,
   onToggleCourse,
   onEnroll,
+  categories = [],
+  getCategoryById = () => undefined,
 }: BulkEnrollDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -58,7 +70,6 @@ export function BulkEnrollDialog({
         </DialogHeader>
 
         <div className="py-4 space-y-4 flex-1 overflow-hidden flex flex-col">
-          {/* Selected count */}
           {selectedCourseIds.length > 0 && (
             <div className="flex items-center gap-2 px-3 py-2 bg-orange-500/10 rounded-lg w-fit">
               <Check className="w-4 h-4 text-orange-500" />
@@ -66,8 +77,7 @@ export function BulkEnrollDialog({
             </div>
           )}
 
-          {/* Courses list */}
-          <div className="flex-1 overflow-y-auto border border-border rounded-xl">
+          <div className="flex-1 overflow-y-auto border border-border rounded-xl p-2">
             {isLoading ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -78,14 +88,16 @@ export function BulkEnrollDialog({
                 <p>Нет доступных курсов</p>
               </div>
             ) : (
-              <div className="divide-y divide-border">
-                {courses.map((course) => {
+              <CourseGroupedList
+                courses={courses}
+                getCategoryById={getCategoryById}
+                emptyMessage="Нет доступных курсов"
+                renderCourse={(course) => {
                   const isSelected = selectedCourseIds.includes(course.id);
-                  
                   return (
                     <div
                       key={course.id}
-                      className={`flex items-center gap-4 p-4 hover:bg-secondary/50 transition-colors cursor-pointer ${
+                      className={`flex items-center gap-4 p-4 hover:bg-secondary/50 transition-colors cursor-pointer rounded-xl ${
                         isSelected ? "bg-orange-500/5" : ""
                       }`}
                       onClick={() => onToggleCourse(course.id)}
@@ -116,8 +128,8 @@ export function BulkEnrollDialog({
                       </span>
                     </div>
                   );
-                })}
-              </div>
+                }}
+              />
             )}
           </div>
         </div>
