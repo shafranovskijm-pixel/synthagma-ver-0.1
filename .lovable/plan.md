@@ -1,129 +1,100 @@
 
-
-# Исправление реактивности тарифов при смене плана
+# Исправление оставшихся проблем тарифной системы
 
 ## Найденные проблемы
 
-### 1. Тариф не обновляется без перезагрузки страницы
-`useSubscriptionLimits` и `useOrgFeatures` загружают данные один раз при монтировании. Когда администратор меняет тариф организации — интерфейс организации продолжает работать по старому тарифу до полной перезагрузки страницы.
+### 1. Модуль «Охрана труда» виден на всех тарифах
+Сайдбар проверяет `isEnabled("labor_safety")`, но ключ `labor_safety` отсутствует в `OrgFeaturesState`. Функция `isEnabled()` возвращает `features[featureId] ?? true`, поэтому для неизвестного ключа всегда возвращается `true`. В результате «Охрана труда» отображается даже на бесплатном тарифе, хотя доступна только начиная с Профессионального.
 
-### 2. Некорректный текст ошибки для настроек курсов
-Сообщение «Настройки курсов доступны начиная с тарифа Стандарт» неверно — `courseSettings: true` начинается с тарифа **Старт** (3 490 руб.), а не Стандарт.
+### 2. Подсчёт учеников включает администратора организации
+`useSubscriptionLimits` считает ВСЕ записи в `profiles` с `organization_id`, включая аккаунт самой организации. Пример из БД: организация имеет 60 profiles, но лишь 34 из них — ученики. На бесплатном тарифе (лимит 10) аккаунт администратора занимает 1 место, оставляя только 9 для учеников.
 
-### 3. Подсчёт учеников через enrollments считает дубли
-Один ученик, записанный на 2 курса, считается как 2 ученика. Это приводит к преждевременному срабатыванию лимита.
+### 3. Realtime-обновление не обновляет счётчики использования
+При смене тарифа через Realtime обновляется только `plan`, но `coursesCount` и `studentsCount` остаются устаревшими до перезагрузки страницы.
+
+---
 
 ## Что будет исправлено
 
-### 1. Подписка на изменения тарифа в реальном времени
-
-**Файл:** `src/hooks/useSubscriptionLimits.ts`
-
-- Добавить Realtime-подписку на таблицу `organizations` с фильтром по `id = organizationId`
-- При получении события `UPDATE` — автоматически обновлять `plan` из `subscription_plan`
-- Отписываться при размонтировании компонента
-
-### 2. Подписка на изменения в useOrgFeatures
+### 1. Добавить `labor_safety` в OrgFeaturesState
 
 **Файл:** `src/hooks/useOrgFeatures.ts`
 
-- Аналогично добавить Realtime-подписку на `organizations` для автоматического `refetch` при смене плана
+- Добавить ключ `labor_safety: boolean` в интерфейс `OrgFeaturesState`
+- Добавить `labor_safety: true` в `defaultFeatures`
+- Добавить `'labor_safety'` в массив `allCategories` внутри `fetchFeatures()`
 
-### 3. Исправление текста ошибки
+После этого логика `enabledCategories` корректно отключит `labor_safety` для тарифов ниже Профессионального.
 
-**Файл:** `src/components/organization/tabs/CoursesTab.tsx`
-
-- Изменить текст с «Стандарт» на «Старт»
-
-### 4. Подсчёт уникальных учеников
+### 2. Фильтрация подсчёта учеников по роли
 
 **Файл:** `src/hooks/useSubscriptionLimits.ts`
 
-- Заменить подсчёт enrollments на подсчёт уникальных `user_id` через `profiles` с фильтром `organization_id`, что даст точное число учеников в организации
-
-## Технические детали
-
-### `src/hooks/useSubscriptionLimits.ts`
-
+Заменить текущий запрос:
 ```typescript
-// Добавить Realtime-подписку
-useEffect(() => {
-  if (!organizationId) return;
-
-  const channel = supabase
-    .channel(`org-plan-${organizationId}`)
-    .on(
-      'postgres_changes',
-      {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'organizations',
-        filter: `id=eq.${organizationId}`,
-      },
-      (payload) => {
-        if (payload.new.subscription_plan) {
-          setPlan(payload.new.subscription_plan as SubscriptionPlan);
-        }
-      }
-    )
-    .subscribe();
-
-  return () => { supabase.removeChannel(channel); };
-}, [organizationId]);
-
-// Заменить подсчёт учеников:
-// Вместо enrollments считать уникальные profiles
 supabase
   .from("profiles")
-  .select("user_id", { count: "exact", head: true })
+  .select("id", { count: "exact", head: true })
   .eq("organization_id", organizationId)
-  .eq("role", "student")  // если есть роль
 ```
+
+На запрос с подсчётом через `user_roles`:
+```typescript
+supabase
+  .from("profiles")
+  .select("id, user_roles!inner(role)", { count: "exact", head: true })
+  .eq("organization_id", organizationId)
+  .eq("user_roles.role", "student")
+```
+
+Это будет считать только пользователей с ролью `student`, исключая администратора организации.
+
+### 3. Добавить refetch при Realtime-событии
+
+**Файл:** `src/hooks/useSubscriptionLimits.ts`
+
+В обработчике Realtime-события после обновления `plan` вызывать `fetchData()` заново, чтобы обновить и счётчики `coursesCount`/`studentsCount`.
+
+---
+
+## Технические детали
 
 ### `src/hooks/useOrgFeatures.ts`
 
 ```typescript
-// Добавить Realtime-подписку
-useEffect(() => {
-  if (!organizationId) return;
+// В интерфейсе OrgFeaturesState добавить:
+labor_safety: boolean;
 
-  const channel = supabase
-    .channel(`org-features-${organizationId}`)
-    .on(
-      'postgres_changes',
-      {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'organizations',
-        filter: `id=eq.${organizationId}`,
-      },
-      () => { fetchFeatures(); }
-    )
-    .subscribe();
+// В defaultFeatures добавить:
+labor_safety: true,
 
-  return () => { supabase.removeChannel(channel); };
-}, [organizationId, fetchFeatures]);
+// В массиве allCategories (строка ~279) добавить 'labor_safety':
+const allCategories = ['courses', 'students', 'companies', 'documents', 'journals', 'frdo', 'links', 'library', 'services', 'settings', 'student_cabinet', 'labor_safety'];
 ```
 
-### `src/components/organization/tabs/CoursesTab.tsx`
+### `src/hooks/useSubscriptionLimits.ts`
 
 ```typescript
-// Строка 282: изменить текст
-toast.error('Настройки курсов доступны начиная с тарифа «Старт». Перейдите на следующий тариф.');
-```
+// Подсчёт только студентов (строка ~48):
+supabase
+  .from("profiles")
+  .select("id, user_roles!inner(role)", { count: "exact", head: true })
+  .eq("organization_id", organizationId)
+  .eq("user_roles.role", "student")
 
-### Включение Realtime для таблицы organizations
-
-```sql
-ALTER PUBLICATION supabase_realtime ADD TABLE public.organizations;
+// В Realtime-обработчике (строка ~83):
+(payload) => {
+  if (payload.new.subscription_plan) {
+    setPlan(payload.new.subscription_plan as SubscriptionPlan);
+  }
+  // Обновить счётчики использования
+  fetchData();
+}
 ```
 
 ### Затронутые файлы
 
 | Файл | Изменение |
 |---|---|
-| `src/hooks/useSubscriptionLimits.ts` | Realtime-подписка + исправление подсчёта учеников |
-| `src/hooks/useOrgFeatures.ts` | Realtime-подписка при смене плана |
-| `src/components/organization/tabs/CoursesTab.tsx` | Исправление текста ошибки |
-| SQL-миграция | Включение Realtime для `organizations` |
-
+| `src/hooks/useOrgFeatures.ts` | Добавить `labor_safety` в состояние и массив категорий |
+| `src/hooks/useSubscriptionLimits.ts` | Фильтрация по роли `student` + refetch при Realtime |
