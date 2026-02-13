@@ -32,6 +32,7 @@ import FeatureDocuments from "./pages/FeatureDocuments";
 import FeatureVideoId from "./pages/FeatureVideoId";
 import RoadmapPage from "./pages/RoadmapPage";
 import NotFound from "./pages/NotFound";
+import { ScrollToTop } from "./components/ScrollToTop";
 
 const queryClient = new QueryClient();
 
@@ -44,6 +45,7 @@ const App = () => (
       <QueryClientProvider client={queryClient}>
         <Router>
           <AuthProvider>
+            <ScrollToTop />
             <TooltipProvider>
               <Toaster />
               <Sonner />
