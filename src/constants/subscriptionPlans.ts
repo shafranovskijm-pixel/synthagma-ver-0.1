@@ -40,7 +40,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, PlanInfo> = {
       documentChecklist: false,
       videoIdentification: false,
     },
-    enabledCategories: ['courses', 'students', 'settings', 'student_cabinet'],
+    enabledCategories: ['courses', 'students', 'services', 'settings', 'student_cabinet'],
   },
   start: {
     id: 'start',
@@ -58,7 +58,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, PlanInfo> = {
       documentChecklist: false,
       videoIdentification: false,
     },
-    enabledCategories: ['courses', 'students', 'companies', 'links', 'settings', 'student_cabinet'],
+    enabledCategories: ['courses', 'students', 'companies', 'links', 'services', 'settings', 'student_cabinet'],
   },
   standard: {
     id: 'standard',
@@ -73,8 +73,8 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, PlanInfo> = {
       aiEnabled: false,
       aiAudioEnabled: false,
       courseSettings: true,
-      documentChecklist: false,
-      videoIdentification: false,
+      documentChecklist: true,
+      videoIdentification: true,
     },
     enabledCategories: ['courses', 'students', 'companies', 'links', 'services', 'settings', 'student_cabinet'],
   },
@@ -94,7 +94,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, PlanInfo> = {
       documentChecklist: true,
       videoIdentification: true,
     },
-    enabledCategories: ['courses', 'students', 'companies', 'documents', 'journals', 'frdo', 'links', 'library', 'services', 'settings', 'student_cabinet', 'labor_safety'],
+    enabledCategories: ['courses', 'students', 'companies', 'documents', 'journals', 'links', 'library', 'services', 'settings', 'student_cabinet', 'labor_safety'],
   },
   maximum: {
     id: 'maximum',
