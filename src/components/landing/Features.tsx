@@ -5,47 +5,74 @@ import {
   FileCheck,
   ClipboardList,
   Database,
-  GraduationCap,
+  Settings,
+  ShoppingCart,
+  FileSearch,
+  Video,
+  HardHat,
   Smartphone,
   Bell,
   MessageCircle,
   Volume2,
   Download,
+  ArrowRight,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 
 
-const features = [
+const features: { icon: any; title: string; description: string; link?: string }[] = [
   {
     icon: BookOpen,
     title: "Управление курсами",
     description: "Современный редактор с ИИ для создания интерактивных курсов. Импорт с любых платформ.",
   },
   {
-    icon: Users,
-    title: "Слушатели",
-    description: "Массовый импорт, автоматическая рассылка логинов. Сбор документов через личный кабинет.",
+    icon: Settings,
+    title: "Настройки курсов",
+    description: "Запрет перемотки видео, последовательное прохождение уроков, напоминания и сбор данных слушателей.",
+    link: "/feature/course-settings",
   },
   {
-    icon: Building2,
-    title: "Компании",
-    description: "Привязка групп к компаниям. Уникальные ссылки для регистрации. Хранение договоров.",
+    icon: ShoppingCart,
+    title: "Магазин курсов",
+    description: "Дополнительный канал продаж — ваши курсы видны всем ученикам платформы.",
+    link: "/feature/course-store",
+  },
+  {
+    icon: FileSearch,
+    title: "Чек-лист документов",
+    description: "Сбор и хранение документов слушателей. Упрощение проверок Рособрнадзора.",
+    link: "/feature/document-checklist",
+  },
+  {
+    icon: Video,
+    title: "Видеоидентификация",
+    description: "Подтверждение личности слушателя перед началом обучения.",
+    link: "/feature/video-id",
+  },
+  {
+    icon: HardHat,
+    title: "Охрана труда",
+    description: "Обучение охране труда с протоколами и подписями комиссии.",
+    link: "/feature/labor-safety",
   },
   {
     icon: FileCheck,
     title: "Документооборот",
-    description: "Автоматическое создание договоров, счетов, актов. Сбор согласий и приказы.",
-  },
-  {
-    icon: ClipboardList,
-    title: "Журналы",
-    description: "Посещаемость, оценки, протоколы аттестации. Экспорт в Excel одним кликом.",
+    description: "Договоры, счета, акты, приказы — формируются автоматически.",
+    link: "/feature/documents",
   },
   {
     icon: Database,
-    title: "ФРДО",
-    description: "Автоматическое формирование выгрузки. Готовность к интеграции с ЕР ЦРДО.",
+    title: "ФИС ФРДО",
+    description: "Автоматическая выгрузка данных о выданных документах.",
+    link: "/feature/frdo",
+  },
+  {
+    icon: Users,
+    title: "Слушатели",
+    description: "Массовый импорт, автоматическая рассылка логинов. Сбор документов через личный кабинет.",
   },
 ];
 
@@ -213,9 +240,12 @@ export function Features() {
           viewport={{ once: true, margin: "-50px" }}
           className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-32"
         >
-          {features.map((feature, index) => (
+          {features.map((feature, index) => {
+            const Wrapper = feature.link ? Link : 'div';
+            const wrapperProps = feature.link ? { to: feature.link } : {};
+            return (
+            <Wrapper key={feature.title} {...wrapperProps as any}>
             <motion.div
-              key={feature.title}
               variants={itemVariants}
               whileHover={{ 
                 y: -12,
@@ -223,7 +253,7 @@ export function Features() {
                 rotateY: index % 3 === 0 ? -3 : index % 3 === 2 ? 3 : 0,
                 transition: { duration: 0.4, ease: "easeOut" }
               }}
-              className="group relative rounded-2xl p-[1px] cursor-pointer"
+              className="group relative rounded-2xl p-[1px] cursor-pointer h-full"
               style={{ perspective: '1000px' }}
             >
               {/* Animated gradient border */}
@@ -296,11 +326,20 @@ export function Features() {
                   </p>
                   
                   {/* Bottom accent line */}
-                  <div className="mt-6 h-0.5 w-0 group-hover:w-12 bg-gradient-to-r from-accent to-accent/30 rounded-full transition-all duration-500 ease-out" />
+                  <div className="mt-6 flex items-center gap-2">
+                    <div className="h-0.5 w-0 group-hover:w-12 bg-gradient-to-r from-accent to-accent/30 rounded-full transition-all duration-500 ease-out" />
+                    {feature.link && (
+                      <span className="text-xs text-accent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-center gap-1">
+                        Подробнее <ArrowRight className="w-3 h-3" />
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             </motion.div>
-          ))}
+            </Wrapper>
+            );
+          })}
         </motion.div>
 
         {/* Mobile App Section */}
@@ -410,7 +449,7 @@ export function Features() {
                         <div key={course.title} className="bg-card rounded-lg p-2.5 border border-border/30">
                           <div className="flex items-center gap-2">
                             <div className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center">
-                              <GraduationCap className="w-4 h-4 text-muted-foreground" />
+                              <BookOpen className="w-4 h-4 text-muted-foreground" />
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="font-medium text-[10px] truncate">{course.title}</div>
