@@ -6,7 +6,8 @@ import {
   UserCog, 
   Car, 
   Stethoscope, 
-  ShieldCheck 
+  ShieldCheck,
+  Plug 
 } from "lucide-react";
 
 const roadmapItems = [
@@ -51,6 +52,13 @@ const roadmapItems = [
     icon: Stethoscope,
     status: "planned",
     quarter: "Q4 2026",
+  },
+  {
+    title: "API интеграция с CRM",
+    description: "Подключение к популярным CRM-системам через API",
+    icon: Plug,
+    status: "planned",
+    quarter: "Q1 2027",
   },
 ];
 

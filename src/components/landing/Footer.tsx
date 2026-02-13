@@ -68,7 +68,7 @@ export function Footer() {
             <ul className="space-y-3">
               {[
                 { label: "Возможности", href: "#features" },
-                { label: "Дорожная карта", href: "#roadmap" },
+                { label: "Дорожная карта", to: "/roadmap" },
                 { label: "Стоимость", href: "#calculator" },
                 { label: "Блог", to: "/blog" },
               ].map((link) => (

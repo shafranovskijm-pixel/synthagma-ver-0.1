@@ -30,6 +30,7 @@ import Install from "./pages/Install";
 import FeatureFRDO from "./pages/FeatureFRDO";
 import FeatureDocuments from "./pages/FeatureDocuments";
 import FeatureVideoId from "./pages/FeatureVideoId";
+import RoadmapPage from "./pages/RoadmapPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -97,6 +98,7 @@ const App = () => (
                 <Route path="/feature/frdo" element={<FeatureFRDO />} />
                 <Route path="/feature/documents" element={<FeatureDocuments />} />
                 <Route path="/feature/video-id" element={<FeatureVideoId />} />
+                <Route path="/roadmap" element={<RoadmapPage />} />
                 <Route path="/course-import" element={
                   <ProtectedRoute requiredRole="organization">
                     <CourseImport />
