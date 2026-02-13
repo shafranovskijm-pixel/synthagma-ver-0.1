@@ -45,11 +45,9 @@ export function useSubscriptionLimits(organizationId: string | null): Subscripti
           .select("id", { count: "exact", head: true })
           .eq("organization_id", organizationId),
         supabase
-          .from("enrollments")
-          .select("user_id", { count: "exact", head: true })
-          .in("course_id", 
-            (await supabase.from("courses").select("id").eq("organization_id", organizationId)).data?.map(c => c.id) || []
-          ),
+          .from("profiles")
+          .select("id", { count: "exact", head: true })
+          .eq("organization_id", organizationId),
       ]);
 
       if (orgResult.data?.subscription_plan) {
@@ -67,6 +65,31 @@ export function useSubscriptionLimits(organizationId: string | null): Subscripti
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Realtime subscription for plan changes
+  useEffect(() => {
+    if (!organizationId) return;
+
+    const channel = supabase
+      .channel(`org-plan-${organizationId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'organizations',
+          filter: `id=eq.${organizationId}`,
+        },
+        (payload) => {
+          if (payload.new.subscription_plan) {
+            setPlan(payload.new.subscription_plan as SubscriptionPlan);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [organizationId]);
 
   const planInfo = useMemo(() => getPlanInfo(plan), [plan]);
   const limits = planInfo.limits;

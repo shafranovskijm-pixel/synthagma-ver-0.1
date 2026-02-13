@@ -301,6 +301,27 @@ export function useOrgFeatures(organizationId: string | null) {
     fetchFeatures();
   }, [fetchFeatures]);
 
+  // Realtime subscription for plan changes
+  useEffect(() => {
+    if (!organizationId) return;
+
+    const channel = supabase
+      .channel(`org-features-${organizationId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'organizations',
+          filter: `id=eq.${organizationId}`,
+        },
+        () => { fetchFeatures(); }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [organizationId, fetchFeatures]);
+
   // Helper function to check if a feature is enabled
   const isEnabled = useCallback((featureId: keyof OrgFeaturesState): boolean => {
     return features[featureId] ?? true;
