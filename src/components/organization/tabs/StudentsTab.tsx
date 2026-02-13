@@ -449,6 +449,53 @@ export function StudentsTab({
         </div>
       </div>
 
+      {/* Groups section - displayed as cards above students */}
+      {studentGroups.length > 0 && groupFilter === "all" && (
+        <div className="px-4 lg:px-6 pt-4 pb-2 border-b border-border">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <FolderOpen className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm font-medium text-muted-foreground">{studentGroups.length} групп</span>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-xl gap-1 text-xs"
+              onClick={() => setShowGroupDialog(true)}
+            >
+              <Plus className="w-3 h-3" />
+              Создать группу
+            </Button>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 lg:gap-3">
+            {studentGroups.map(group => {
+              const count = Array.from(studentGroupMap.values()).filter(v => v === group.id).length;
+              return (
+                <button
+                  key={group.id}
+                  onClick={() => setGroupFilter(group.id)}
+                  className="text-left p-3 lg:p-4 rounded-xl border border-border hover:border-primary/30 hover:bg-primary/5 transition-colors"
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: group.color }} />
+                    <span className="font-medium text-sm truncate">{group.name}</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <Users className="w-3 h-3" />
+                      {count}
+                    </span>
+                    <span>
+                      {format(new Date(group.created_at), "dd.MM.yyyy", { locale: ru })}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
