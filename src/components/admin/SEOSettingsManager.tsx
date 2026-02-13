@@ -284,7 +284,7 @@ const DEFAULT_PAGES: PageSEO[] = [
          <div className="flex flex-col md:flex-row">
            {/* Page List */}
            <div className="md:w-64 border-b md:border-b-0 md:border-r border-border">
-             <div className="p-2">
+             <div className="p-2 max-h-[400px] overflow-y-auto">
                {pages.map((page) => (
                  <button
                    key={page.path}
