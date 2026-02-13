@@ -24,6 +24,7 @@ const featureRows: { label: string; link?: string; getValue: (p: SubscriptionPla
   { label: "Чек-лист документов", getValue: (p: SubscriptionPlan) => SUBSCRIPTION_PLANS[p].limits.documentChecklist ? true : false },
   { label: "Видеоидентификация", link: "/feature/video-id", getValue: (p: SubscriptionPlan) => SUBSCRIPTION_PLANS[p].limits.videoIdentification ? true : false },
   { label: "Документы для ЛОО", link: "/feature/documents", getValue: (p: SubscriptionPlan) => (p === 'professional' || p === 'maximum') ? true : false },
+  { label: "Охрана труда", getValue: (p: SubscriptionPlan) => (p === 'professional' || p === 'maximum') ? true : false },
   { label: "ФИС ФРДО", link: "/feature/frdo", getValue: (p: SubscriptionPlan) => (p === 'professional' || p === 'maximum') ? true : false },
   { label: "Отчеты 1-ПК / 1-ПО", getValue: (p: SubscriptionPlan) => (p === 'professional' || p === 'maximum') ? true : false },
   { label: "ИИ-генерация", getValue: (p: SubscriptionPlan) => SUBSCRIPTION_PLANS[p].limits.aiEnabled ? true : false },
