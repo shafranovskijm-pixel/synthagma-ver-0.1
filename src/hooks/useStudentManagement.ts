@@ -18,6 +18,7 @@ interface UseStudentManagementProps {
     averageProgress: number;
   }>>;
   onRefresh: () => void;
+  checkStudentLimit?: () => { allowed: boolean; message: string };
 }
 
 export function useStudentManagement({
@@ -29,6 +30,7 @@ export function useStudentManagement({
   setAllProfiles,
   setStats,
   onRefresh,
+  checkStudentLimit,
 }: UseStudentManagementProps) {
   // Add student dialog state
   const [showAddStudentDialog, setShowAddStudentDialog] = useState(false);
@@ -45,6 +47,13 @@ export function useStudentManagement({
 
   // Create student
   const createStudent = useCallback(async () => {
+    if (checkStudentLimit) {
+      const result = checkStudentLimit();
+      if (!result.allowed) {
+        toast.error(result.message);
+        return false;
+      }
+    }
     if (!organizationId || !newStudentName.trim() || !newStudentEmail.trim()) {
       toast.error("Заполните ФИО и Email");
       return false;
@@ -135,7 +144,7 @@ export function useStudentManagement({
     } finally {
       setIsCreatingStudent(false);
     }
-  }, [organizationId, newStudentName, newStudentEmail, noLoginStudent, selectedCourseId, selectedCompanyId, courses, students, allProfiles, setStudents, setAllProfiles, setStats, onRefresh]);
+  }, [organizationId, newStudentName, newStudentEmail, noLoginStudent, selectedCourseId, selectedCompanyId, courses, students, allProfiles, setStudents, setAllProfiles, setStats, onRefresh, checkStudentLimit]);
 
   // Enroll existing student
   const enrollExistingStudent = useCallback(async () => {
