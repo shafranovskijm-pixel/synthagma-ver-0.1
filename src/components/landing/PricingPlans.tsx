@@ -20,7 +20,7 @@ const featureRows: { label: string; link?: string; getValue: (p: SubscriptionPla
     return l.maxTrainedPerMonth === -1 ? "Безлимит" : String(l.maxTrainedPerMonth);
   }},
   { label: "Хранилище", getValue: (p: SubscriptionPlan) => formatStorageSize(SUBSCRIPTION_PLANS[p].limits.storageBytes) },
-  { label: "Настройки курсов", getValue: (p: SubscriptionPlan) => SUBSCRIPTION_PLANS[p].limits.courseSettings ? true : false },
+  { label: "Настройки курсов", link: "/feature/course-settings", getValue: (p: SubscriptionPlan) => SUBSCRIPTION_PLANS[p].limits.courseSettings ? true : false },
   { label: "Магазин курсов", link: "/feature/course-store", getValue: () => true },
   { label: "Чек-лист документов", link: "/feature/document-checklist", getValue: (p: SubscriptionPlan) => SUBSCRIPTION_PLANS[p].limits.documentChecklist ? true : false },
   { label: "Видеоидентификация", link: "/feature/video-id", getValue: (p: SubscriptionPlan) => SUBSCRIPTION_PLANS[p].limits.videoIdentification ? true : false },
