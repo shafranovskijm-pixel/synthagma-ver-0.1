@@ -245,7 +245,7 @@ export function PricingPlans() {
                                 <X className="w-4 h-4 text-muted-foreground/40 shrink-0" />
                               )
                             ) : (
-                              <span className="w-4 text-center text-xs font-semibold text-accent shrink-0">
+                              <span className="min-w-5 text-center text-xs font-semibold text-accent shrink-0">
                                 {val === 'Безлимит' ? '∞' : val}
                               </span>
                             )}
