@@ -20,6 +20,7 @@ interface OrgFeaturesState {
   services: boolean;
   settings: boolean;
   student_cabinet: boolean;
+  labor_safety: boolean;
   
   // Individual features - courses
   courses_create: boolean;
@@ -129,6 +130,7 @@ const defaultFeatures: OrgFeaturesState = {
   services: true,
   settings: true,
   student_cabinet: true,
+  labor_safety: true,
   
   // Individual features - all enabled by default
   courses_create: true,
@@ -276,7 +278,7 @@ export function useOrgFeatures(organizationId: string | null) {
       // Apply subscription plan restrictions on top
       const subscriptionPlan = (orgPlanResult.data?.subscription_plan || 'free') as SubscriptionPlan;
       const planInfo = getPlanInfo(subscriptionPlan);
-      const allCategories = ['courses', 'students', 'companies', 'documents', 'journals', 'frdo', 'links', 'library', 'services', 'settings', 'student_cabinet'];
+      const allCategories = ['courses', 'students', 'companies', 'documents', 'journals', 'frdo', 'links', 'library', 'services', 'settings', 'student_cabinet', 'labor_safety'];
       
       for (const cat of allCategories) {
         if (!planInfo.enabledCategories.includes(cat)) {
