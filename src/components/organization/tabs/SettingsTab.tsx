@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
 import { 
   Palette, Sun, Moon, FileText, Building2, LayoutGrid, 
   Library, BarChart3, Link, ShoppingBag, Save, Settings,
@@ -81,6 +82,8 @@ export function SettingsTab({
   isUploadingLogo,
   onPreviewStudentDashboard
 }: SettingsTabProps) {
+  const { plan } = useSubscriptionLimits(organizationId);
+  const isFreePlan = plan === 'free';
 
   const handleSaveStudentSettings = async () => {
     if (!organizationId) return;
@@ -161,7 +164,7 @@ export function SettingsTab({
       </details>
 
       {/* Document Autofill Settings */}
-      <details className="bg-card rounded-xl lg:rounded-2xl border border-border group">
+      {!isFreePlan && <details className="bg-card rounded-xl lg:rounded-2xl border border-border group">
         <summary className="p-4 lg:p-6 cursor-pointer list-none flex items-center justify-between">
           <h3 className="font-display font-semibold text-base lg:text-lg flex items-center gap-2">
             <FileText className="w-4 h-4 lg:w-5 lg:h-5" />
@@ -195,10 +198,10 @@ export function SettingsTab({
             {organizationId && <ConsentGenerator organizationId={organizationId} organizationName={organizationName} />}
           </div>
         </div>
-      </details>
+      </details>}
 
       {/* Menu Items Settings */}
-      <details className="bg-card rounded-xl lg:rounded-2xl border border-border group">
+      {!isFreePlan && <details className="bg-card rounded-xl lg:rounded-2xl border border-border group">
         <summary className="p-4 lg:p-6 cursor-pointer list-none flex items-center justify-between">
           <h3 className="font-display font-semibold text-base lg:text-lg flex items-center gap-2">
             <LayoutGrid className="w-4 h-4 lg:w-5 lg:h-5" />
@@ -313,10 +316,10 @@ export function SettingsTab({
             </Button>
           </div>
         </div>
-      </details>
+      </details>}
 
       {/* Branding Settings */}
-      <details className="bg-card rounded-2xl border border-border group">
+      {!isFreePlan && <details className="bg-card rounded-2xl border border-border group">
         <summary className="p-6 cursor-pointer list-none flex items-center justify-between">
           <h3 className="font-display font-semibold text-lg flex items-center gap-2">
             <Image className="w-5 h-5" />
@@ -550,10 +553,10 @@ export function SettingsTab({
             </Button>
           </div>
         </div>
-      </details>
+      </details>}
 
       {/* Login Page Branding */}
-      <details className="bg-card rounded-2xl border border-border group">
+      {!isFreePlan && <details className="bg-card rounded-2xl border border-border group">
         <summary className="p-6 cursor-pointer list-none flex items-center justify-between">
           <h3 className="font-display font-semibold text-lg flex items-center gap-2">
             <LogIn className="w-5 h-5" />
@@ -573,10 +576,10 @@ export function SettingsTab({
             />
           )}
         </div>
-      </details>
+      </details>}
 
       {/* Student Dashboard Settings */}
-      <details className="bg-card rounded-2xl border border-border group">
+      {!isFreePlan && <details className="bg-card rounded-2xl border border-border group">
         <summary className="p-6 cursor-pointer list-none flex items-center justify-between">
           <h3 className="font-display font-semibold text-lg flex items-center gap-2">
             <Settings className="w-5 h-5" />
@@ -668,7 +671,7 @@ export function SettingsTab({
             </Button>
           </div>
         </div>
-      </details>
+      </details>}
 
       {/* Organization Credentials Settings */}
       <details className="bg-card rounded-xl lg:rounded-2xl border border-border group">
@@ -688,7 +691,7 @@ export function SettingsTab({
       </details>
 
       {/* System Diagnostics */}
-      <details className="bg-card rounded-xl lg:rounded-2xl border border-border group">
+      {!isFreePlan && <details className="bg-card rounded-xl lg:rounded-2xl border border-border group">
         <summary className="p-4 lg:p-6 cursor-pointer list-none flex items-center justify-between">
           <h3 className="font-display font-semibold text-base lg:text-lg flex items-center gap-2">
             <AlertCircle className="w-4 h-4 lg:w-5 lg:h-5" />
@@ -699,7 +702,7 @@ export function SettingsTab({
         <div className="px-4 lg:px-6 pb-4 lg:pb-6">
           {organizationId && <SystemDiagnostics organizationId={organizationId} />}
         </div>
-      </details>
+      </details>}
 
       {/* System Info */}
       <div className="bg-card rounded-xl lg:rounded-2xl border border-border p-4 lg:p-6">
