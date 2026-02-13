@@ -24,6 +24,7 @@ const featureRows: { label: string; link?: string; getValue: (p: SubscriptionPla
   { label: "Магазин курсов", link: "/feature/course-store", getValue: () => true },
   { label: "Чек-лист документов", link: "/feature/document-checklist", getValue: (p: SubscriptionPlan) => SUBSCRIPTION_PLANS[p].limits.documentChecklist ? true : false },
   { label: "Видеоидентификация", link: "/feature/video-id", getValue: (p: SubscriptionPlan) => SUBSCRIPTION_PLANS[p].limits.videoIdentification ? true : false },
+  { label: "Брендирование", getValue: (p: SubscriptionPlan) => SUBSCRIPTION_PLANS[p].limits.branding ? true : false },
   { label: "Документы для ЛОО", link: "/feature/documents", getValue: (p: SubscriptionPlan) => (p === 'professional' || p === 'maximum') ? true : false },
   { label: "Охрана труда", link: "/feature/labor-safety", getValue: (p: SubscriptionPlan) => (p === 'professional' || p === 'maximum') ? true : false },
   { label: "ФИС ФРДО", link: "/feature/frdo", getValue: (p: SubscriptionPlan) => p === 'maximum' },
