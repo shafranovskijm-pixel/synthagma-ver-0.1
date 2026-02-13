@@ -89,7 +89,7 @@ export function CourseGroupedList<T extends CourseWithCategory>({
   return (
     <>
       {groups.map((group) => (
-        <Collapsible key={group.category?.id || "__none"} defaultOpen>
+        <Collapsible key={group.category?.id || "__none"} defaultOpen={false}>
           <CollapsibleTrigger className="flex items-center gap-2 w-full px-2 py-2 hover:bg-secondary/30 rounded-lg transition-colors text-sm font-medium group">
             <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
             {group.category ? (
