@@ -1,38 +1,94 @@
 
 
-# Перестановка секций и актуализация «Возможности»
+# Исправление лимитов бесплатного тарифа
 
-## 1. Поменять местами секции на главной
+## Проблемы
 
-В `src/pages/Index.tsx` текущий порядок: Hero → EditorDemo → **Features** → **PricingPlans** → Testimonials → Footer.
+1. **Лимит учеников не проверяется** — кнопки «Добавить ученика» и «Импорт учеников» не проверяют `checkLimit('student')`, позволяя бесплатным аккаунтам добавлять неограниченное число учеников.
+2. **Настройки курсов не заблокированы** — кнопки переключения видеоидентификации, последовательности уроков и перемотки видео в `CoursesTab` видны и работают даже на бесплатном тарифе, хотя `courseSettings: false`.
 
-Новый порядок: Hero → EditorDemo → **PricingPlans** → **Features** → Testimonials → Footer.
+## Что будет исправлено
 
-## 2. Актуализировать карточки возможностей
+### 1. Проверка лимита учеников при добавлении
 
-В `src/components/landing/Features.tsx` обновить массив `features` — добавить ссылки (`link`) на созданные страницы и актуализировать описания:
+**Файл:** `src/pages/OrganizationDashboard.tsx`
 
-| Карточка | Ссылка | Описание |
-|---|---|---|
-| Управление курсами | — | Без изменений |
-| Настройки курсов | `/feature/course-settings` | Запрет перемотки, последовательность уроков, напоминания, сбор данных |
-| Магазин курсов | `/feature/course-store` | Дополнительный канал продаж — курсы видны всем ученикам платформы |
-| Чек-лист документов | `/feature/document-checklist` | Сбор и хранение документов слушателей, упрощение проверок Рособрнадзора |
-| Видеоидентификация | `/feature/video-id` | Подтверждение личности перед обучением |
-| Охрана труда | `/feature/labor-safety` | Обучение охране труда с протоколами и подписями комиссии |
-| Документооборот | `/feature/documents` | Договоры, счета, акты, приказы — автоматически |
-| ФИС ФРДО | `/feature/frdo` | Автоматическая выгрузка данных о документах |
-| Слушатели | — | Без изменений |
+- Подключить `useSubscriptionLimits` (уже есть в дочерних компонентах, добавим в дашборд)
+- Перед открытием диалога «Добавить ученика» и «Импорт учеников» вызывать `checkLimit('student')` 
+- Если лимит превышен — показывать `toast.error` с сообщением о тарифе и блокировать действие
 
-Карточки с ссылкой станут кликабельными (обёрнуты в `Link`), остальные останутся как есть.
+### 2. Проверка лимита внутри `useStudentManagement.createStudent()`
+
+**Файл:** `src/hooks/useStudentManagement.ts`
+
+- Добавить параметр `checkStudentLimit` (функция) в пропсы хука
+- В начале `createStudent()` вызывать проверку и прерывать создание при превышении лимита
+- Это защитит от обхода через прямой вызов функции
+
+### 3. Блокировка настроек курсов на бесплатном тарифе
+
+**Файл:** `src/components/organization/tabs/CoursesTab.tsx`
+
+- Расширить деструктуризацию `useSubscriptionLimits` — получить `hasCourseSettings`
+- В функции `handleToggleCourseSetting`: если `!hasCourseSettings`, показывать toast с предупреждением и прерывать действие
+- Визуально: кнопки настроек (видеоидентификация, последовательность, перемотка) отображать как `disabled` с пониженной прозрачностью, когда `!hasCourseSettings`
 
 ## Технические детали
 
-### `src/pages/Index.tsx`
-Поменять строки `<Features />` и `<PricingPlans />` местами.
+### `src/pages/OrganizationDashboard.tsx`
 
-### `src/components/landing/Features.tsx`
-- Добавить поле `link?: string` в объекты массива `features`
-- Обновить список карточек (9 штук вместо 6) с актуальными описаниями
-- В рендере: если у карточки есть `link`, обернуть её в `<Link to={link}>`, иначе оставить как `div`
+```
+// Добавить:
+const { checkLimit } = useSubscriptionLimits(organizationId);
+
+// Кнопка «Добавить ученика»:
+onClick={() => {
+  const result = checkLimit('student');
+  if (!result.allowed) {
+    toast.error(result.message);
+    return;
+  }
+  studentManagement.setShowAddStudentDialog(true);
+}}
+
+// Кнопка «Импорт учеников» — аналогично
+```
+
+### `src/hooks/useStudentManagement.ts`
+
+```
+// В createStudent(), в начале:
+if (checkStudentLimit) {
+  const result = checkStudentLimit();
+  if (!result.allowed) {
+    toast.error(result.message);
+    return false;
+  }
+}
+```
+
+### `src/components/organization/tabs/CoursesTab.tsx`
+
+```
+// Расширить деструктуризацию:
+const { checkLimit, hasCourseSettings } = useSubscriptionLimits(organizationId);
+
+// В handleToggleCourseSetting:
+if (!hasCourseSettings) {
+  toast.error('Настройки курсов доступны начиная с тарифа Старт');
+  return;
+}
+
+// В JSX: добавить disabled и opacity к кнопкам настроек
+disabled={!hasCourseSettings}
+className={`... ${!hasCourseSettings ? 'opacity-40 cursor-not-allowed' : ''}`}
+```
+
+### Затронутые файлы
+
+| Файл | Изменение |
+|---|---|
+| `src/pages/OrganizationDashboard.tsx` | Проверка `checkLimit('student')` перед добавлением/импортом |
+| `src/hooks/useStudentManagement.ts` | Дополнительная проверка лимита в `createStudent()` |
+| `src/components/organization/tabs/CoursesTab.tsx` | Блокировка настроек курсов при `!hasCourseSettings` |
 
