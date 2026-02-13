@@ -2,6 +2,7 @@ import { useState } from "react";
 import { HelpCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import type { HelpTip } from "@/constants/onboardingSteps";
+import { SupportRequestForm } from "./SupportRequestForm";
 
 interface HelpButtonProps {
   tips: HelpTip[];
@@ -60,6 +61,7 @@ function HelpDialog({ open, onClose, tips }: { open: boolean; onClose: () => voi
               <p className="text-xs text-muted-foreground leading-relaxed">{tip.description}</p>
             </div>
           ))}
+          <SupportRequestForm />
         </div>
       </DialogContent>
     </Dialog>

@@ -6,48 +6,91 @@ const corsHeaders = {
 };
 
 interface TelegramRequest {
-  chat_id: string;
+  chat_id?: string;
   message: string;
+  photo_url?: string;
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
     const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
-    
     if (!TELEGRAM_BOT_TOKEN) {
       throw new Error("TELEGRAM_BOT_TOKEN не настроен");
     }
 
-    const { chat_id, message }: TelegramRequest = await req.json();
+    const { chat_id, message, photo_url }: TelegramRequest = await req.json();
 
-    if (!chat_id || !message) {
-      throw new Error("chat_id и message обязательны");
+    // Use provided chat_id or fallback to global support chat
+    const targetChatId = chat_id || Deno.env.get("TELEGRAM_SUPPORT_CHAT_ID");
+
+    if (!targetChatId) {
+      throw new Error("chat_id не указан и TELEGRAM_SUPPORT_CHAT_ID не настроен");
     }
 
-    // Send message via Telegram Bot API
-    const telegramUrl = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
-    
-    const response = await fetch(telegramUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        chat_id: chat_id,
-        text: message,
-        parse_mode: "HTML",
-      }),
-    });
+    if (!message) {
+      throw new Error("message обязателен");
+    }
 
-    const result = await response.json();
+    let result;
+
+    if (photo_url) {
+      // Send photo with caption
+      const telegramUrl = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`;
+      const response = await fetch(telegramUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: targetChatId,
+          photo: photo_url,
+          caption: message.slice(0, 1024),
+          parse_mode: "HTML",
+        }),
+      });
+      result = await response.json();
+    } else {
+      // Send text message
+      const telegramUrl = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+      const response = await fetch(telegramUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: targetChatId,
+          text: message,
+          parse_mode: "HTML",
+        }),
+      });
+      result = await response.json();
+    }
 
     if (!result.ok) {
       console.error("Telegram API error:", result);
+
+      // If photo failed, try sending as text with link
+      if (photo_url) {
+        const fallbackUrl = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+        const fallbackResponse = await fetch(fallbackUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: targetChatId,
+            text: message,
+            parse_mode: "HTML",
+          }),
+        });
+        const fallbackResult = await fallbackResponse.json();
+        if (!fallbackResult.ok) {
+          throw new Error(fallbackResult.description || "Ошибка отправки в Telegram");
+        }
+        return new Response(
+          JSON.stringify({ success: true, message_id: fallbackResult.result.message_id }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       throw new Error(result.description || "Ошибка отправки в Telegram");
     }
 
