@@ -27,6 +27,9 @@ import About from "./pages/About";
 import Blog from "./pages/Blog";
 import BlogPost from "./pages/BlogPost";
 import Install from "./pages/Install";
+import FeatureFRDO from "./pages/FeatureFRDO";
+import FeatureDocuments from "./pages/FeatureDocuments";
+import FeatureVideoId from "./pages/FeatureVideoId";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -91,6 +94,9 @@ const App = () => (
                 <Route path="/blog" element={<Blog />} />
                 <Route path="/blog/:slug" element={<BlogPost />} />
                 <Route path="/install" element={<Install />} />
+                <Route path="/feature/frdo" element={<FeatureFRDO />} />
+                <Route path="/feature/documents" element={<FeatureDocuments />} />
+                <Route path="/feature/video-id" element={<FeatureVideoId />} />
                 <Route path="/course-import" element={
                   <ProtectedRoute requiredRole="organization">
                     <CourseImport />

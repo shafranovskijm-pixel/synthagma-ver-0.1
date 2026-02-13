@@ -6,7 +6,7 @@ import { SUBSCRIPTION_PLANS, YEARLY_DISCOUNT, formatStorageSize, type Subscripti
 
 const planOrder: SubscriptionPlan[] = ['free', 'start', 'standard', 'professional', 'maximum'];
 
-const featureRows = [
+const featureRows: { label: string; link?: string; getValue: (p: SubscriptionPlan) => string | boolean }[] = [
   { label: "Курсы", getValue: (p: SubscriptionPlan) => {
     const l = SUBSCRIPTION_PLANS[p].limits;
     return l.maxCourses === -1 ? "Безлимит" : String(l.maxCourses);
@@ -22,9 +22,9 @@ const featureRows = [
   { label: "Хранилище", getValue: (p: SubscriptionPlan) => formatStorageSize(SUBSCRIPTION_PLANS[p].limits.storageBytes) },
   { label: "Настройки курсов", getValue: (p: SubscriptionPlan) => SUBSCRIPTION_PLANS[p].limits.courseSettings ? true : false },
   { label: "Чек-лист документов", getValue: (p: SubscriptionPlan) => SUBSCRIPTION_PLANS[p].limits.documentChecklist ? true : false },
-  { label: "Видеоидентификация", getValue: (p: SubscriptionPlan) => SUBSCRIPTION_PLANS[p].limits.videoIdentification ? true : false },
-  { label: "Документы для ЛОО", getValue: (p: SubscriptionPlan) => (p === 'professional' || p === 'maximum') ? true : false },
-  { label: "ФИС ФРДО", getValue: (p: SubscriptionPlan) => (p === 'professional' || p === 'maximum') ? true : false },
+  { label: "Видеоидентификация", link: "/feature/video-id", getValue: (p: SubscriptionPlan) => SUBSCRIPTION_PLANS[p].limits.videoIdentification ? true : false },
+  { label: "Документы для ЛОО", link: "/feature/documents", getValue: (p: SubscriptionPlan) => (p === 'professional' || p === 'maximum') ? true : false },
+  { label: "ФИС ФРДО", link: "/feature/frdo", getValue: (p: SubscriptionPlan) => (p === 'professional' || p === 'maximum') ? true : false },
   { label: "Отчеты 1-ПК / 1-ПО", getValue: (p: SubscriptionPlan) => (p === 'professional' || p === 'maximum') ? true : false },
   { label: "ИИ-генерация", getValue: (p: SubscriptionPlan) => SUBSCRIPTION_PLANS[p].limits.aiEnabled ? true : false },
   { label: "ИИ-озвучка", getValue: (p: SubscriptionPlan) => SUBSCRIPTION_PLANS[p].limits.aiAudioEnabled ? true : false },
@@ -248,9 +248,15 @@ export function PricingPlans() {
                                 {val === 'Безлимит' ? '∞' : val}
                               </span>
                             )}
-                            <span className={isBool && !val ? 'text-muted-foreground/50' : 'text-foreground/80'}>
-                              {row.label}
-                            </span>
+                            {row.link ? (
+                              <Link to={row.link} className={`underline decoration-dotted underline-offset-2 hover:text-accent transition-colors ${isBool && !val ? 'text-muted-foreground/50' : 'text-foreground/80'}`}>
+                                {row.label}
+                              </Link>
+                            ) : (
+                              <span className={isBool && !val ? 'text-muted-foreground/50' : 'text-foreground/80'}>
+                                {row.label}
+                              </span>
+                            )}
                           </div>
                         );
                       })}
@@ -274,20 +280,6 @@ export function PricingPlans() {
               </motion.div>
             );
           })}
-        </motion.div>
-
-        {/* Licensed org note */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ delay: 0.5 }}
-          className="mt-10 max-w-3xl mx-auto text-center"
-        >
-          <p className="text-sm text-muted-foreground leading-relaxed flex items-start justify-center gap-2">
-            <Crown className="w-4 h-4 text-accent shrink-0 mt-0.5" />
-            Тарифы «Профессиональный» и «Максимальный» ориентированы на лицензированные учебные центры для упрощения ведения обязательной документации, отчётности ФИС ФРДО и статистических форм 1-ПК / 1-ПО.
-          </p>
         </motion.div>
 
         {/* Bottom note */}
