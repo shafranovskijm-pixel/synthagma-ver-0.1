@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { Hero } from "@/components/landing/Hero";
 import { Features } from "@/components/landing/Features";
@@ -8,8 +10,20 @@ import { Testimonials } from "@/components/landing/Testimonials";
 
 import { Footer } from "@/components/landing/Footer";
 import { ScrollToTop } from "@/components/ui/ScrollToTop";
+import { useAuth } from "@/hooks/useAuth";
 
 const Index = () => {
+  const { user, userRole, loading } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!loading && user && userRole) {
+      if (userRole === 'admin') navigate('/admin', { replace: true });
+      else if (userRole === 'organization') navigate('/organization', { replace: true });
+      else navigate('/student', { replace: true });
+    }
+  }, [user, userRole, loading, navigate]);
+
   return (
     <>
       <Helmet>
