@@ -3,7 +3,7 @@ import { Hero } from "@/components/landing/Hero";
 import { Features } from "@/components/landing/Features";
 import { EditorDemo } from "@/components/landing/EditorDemo";
 import { Roadmap } from "@/components/landing/Roadmap";
-import { CostCalculator } from "@/components/landing/CostCalculator";
+import { PricingPlans } from "@/components/landing/PricingPlans";
 import { Testimonials } from "@/components/landing/Testimonials";
 import { CTA } from "@/components/landing/CTA";
 import { Footer } from "@/components/landing/Footer";
@@ -14,7 +14,7 @@ const Index = () => {
     <>
       <Helmet>
         <title>СИНТАГМА — Система дистанционного обучения и документооборота</title>
-        <meta name="description" content="Современная СДО для организаций. Создавайте курсы с ИИ, автоматизируйте документооборот, выгружайте в ФРДО. Соответствует 273-ФЗ. От 8 000 ₽/мес." />
+        <meta name="description" content="Современная СДО для организаций. Создавайте курсы с ИИ, автоматизируйте документооборот, выгружайте в ФРДО. Соответствует 273-ФЗ. От 0 ₽." />
         <meta name="keywords" content="СДО, дистанционное обучение, документооборот, ФРДО, 273-ФЗ, онлайн курсы, образовательная платформа, ДПО" />
         <link rel="canonical" href="https://synthagma-bloom.lovable.app/" />
         
@@ -43,7 +43,7 @@ const Index = () => {
             "description": "Система дистанционного обучения и документооборота для организаций",
             "offers": {
               "@type": "Offer",
-              "price": "8000",
+              "price": "0",
               "priceCurrency": "RUB",
               "priceValidUntil": "2026-12-31"
             },
@@ -62,7 +62,7 @@ const Index = () => {
         <Features />
         <Roadmap />
         <Testimonials />
-        <CostCalculator />
+        <PricingPlans />
         <CTA />
         <Footer />
         <ScrollToTop />
