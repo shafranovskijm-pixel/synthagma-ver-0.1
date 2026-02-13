@@ -50,3 +50,6 @@ verify_jwt = false
 
 [functions.generate-course-content]
 verify_jwt = false
+
+[functions.send-telegram-notification]
+verify_jwt = false
