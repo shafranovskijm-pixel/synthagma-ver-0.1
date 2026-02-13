@@ -4,6 +4,10 @@ import { Sparkles, Volume2, VolumeX, Heading1, AlignLeft, AlertTriangle, Loader2
 import { Button } from "@/components/ui/button";
 import { ScrollReveal } from "@/components/ui/ScrollReveal";
 
+const DEMO_AUDIO_BASE = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/demo-assets`;
+const DEMO_AUDIO_3 = `${DEMO_AUDIO_BASE}/editor-demo-3blocks.mp3`;
+const DEMO_AUDIO_4 = `${DEMO_AUDIO_BASE}/editor-demo-4blocks.mp3`;
+
 
 interface DemoBlock {
   id: string;
@@ -60,8 +64,6 @@ export function EditorDemo() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [displayedText, setDisplayedText] = useState("");
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [ttsError, setTtsError] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const handleGenerate = async () => {
@@ -96,9 +98,7 @@ export function EditorDemo() {
     setIsGenerating(false);
   };
 
-  const handleSpeak = async () => {
-    setTtsError(null);
-
+  const handleSpeak = () => {
     if (isPlaying && audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
@@ -106,68 +106,20 @@ export function EditorDemo() {
       return;
     }
 
-    setIsLoading(true);
+    const audioUrl = blocks.length > 3 ? DEMO_AUDIO_4 : DEMO_AUDIO_3;
 
-    try {
-      const textToSpeak = blocks.map(b => b.content).join(". ");
-      
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
-          body: JSON.stringify({ 
-            text: textToSpeak, 
-            voiceId: "JBFqnCBsd6RMkjVDRZzb" 
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        // Edge function may return JSON error for non-2xx statuses
-        const contentType = response.headers.get("Content-Type") || "";
-        const isJson = contentType.includes("application/json");
-        const errorPayload = isJson ? await response.json().catch(() => null) : null;
-        const message =
-          (errorPayload && typeof errorPayload.error === "string" && errorPayload.error) ||
-          `Озвучка недоступна (HTTP ${response.status})`;
-
-        setTtsError(message);
-        return;
-      }
-
-      const audioBlob = await response.blob();
-      const audioUrl = URL.createObjectURL(audioBlob);
-      
-      if (audioRef.current) {
-        audioRef.current.pause();
-      }
-      
-      const audio = new Audio(audioUrl);
-      audioRef.current = audio;
-      
-      audio.onended = () => {
-        setIsPlaying(false);
-        URL.revokeObjectURL(audioUrl);
-      };
-      
-      audio.onerror = () => {
-        setIsPlaying(false);
-        URL.revokeObjectURL(audioUrl);
-      };
-
-      await audio.play();
-      setIsPlaying(true);
-    } catch (error) {
-      console.error("TTS error:", error);
-      setTtsError("Не удалось запустить озвучку. Попробуйте ещё раз.");
-    } finally {
-      setIsLoading(false);
+    if (audioRef.current) {
+      audioRef.current.pause();
     }
+
+    const audio = new Audio(audioUrl);
+    audioRef.current = audio;
+
+    audio.onended = () => setIsPlaying(false);
+    audio.onerror = () => setIsPlaying(false);
+
+    audio.play();
+    setIsPlaying(true);
   };
 
   return (
@@ -379,16 +331,10 @@ export function EditorDemo() {
 
                 <Button
                   onClick={handleSpeak}
-                  disabled={isLoading}
                   variant="outline"
                   className="gap-2"
                 >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Загрузка...
-                    </>
-                  ) : isPlaying ? (
+                  {isPlaying ? (
                     <>
                       <VolumeX className="w-4 h-4" />
                       Остановить
@@ -405,14 +351,6 @@ export function EditorDemo() {
                   Нажмите на кнопки для демонстрации
                 </span>
               </div>
-
-              {ttsError && (
-                <div className="px-6 pb-6">
-                  <div className="rounded-lg border border-border/60 bg-muted/30 p-4 text-sm text-muted-foreground">
-                    {ttsError}
-                  </div>
-                </div>
-              )}
             </motion.div>
 
             {/* Decorative glow */}
