@@ -10,6 +10,7 @@ export interface PlanLimits {
   courseSettings: boolean; // запрет перемотки, последовательность уроков
   documentChecklist: boolean;
   videoIdentification: boolean;
+  branding: boolean;
 }
 
 export interface PlanInfo {
@@ -39,6 +40,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, PlanInfo> = {
       courseSettings: false,
       documentChecklist: false,
       videoIdentification: false,
+      branding: false,
     },
     enabledCategories: ['courses', 'students', 'services', 'settings', 'student_cabinet'],
   },
@@ -57,6 +59,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, PlanInfo> = {
       courseSettings: true,
       documentChecklist: false,
       videoIdentification: false,
+      branding: false,
     },
     enabledCategories: ['courses', 'students', 'companies', 'links', 'services', 'settings', 'student_cabinet'],
   },
@@ -75,6 +78,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, PlanInfo> = {
       courseSettings: true,
       documentChecklist: true,
       videoIdentification: true,
+      branding: true,
     },
     enabledCategories: ['courses', 'students', 'companies', 'links', 'services', 'settings', 'student_cabinet'],
   },
@@ -93,6 +97,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, PlanInfo> = {
       courseSettings: true,
       documentChecklist: true,
       videoIdentification: true,
+      branding: true,
     },
     enabledCategories: ['courses', 'students', 'companies', 'documents', 'journals', 'links', 'library', 'services', 'settings', 'student_cabinet', 'labor_safety'],
   },
@@ -111,6 +116,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, PlanInfo> = {
       courseSettings: true,
       documentChecklist: true,
       videoIdentification: true,
+      branding: true,
     },
     enabledCategories: ['courses', 'students', 'companies', 'documents', 'journals', 'frdo', 'links', 'library', 'services', 'settings', 'student_cabinet', 'labor_safety'],
   },

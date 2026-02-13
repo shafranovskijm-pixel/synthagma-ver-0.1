@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
+import { SUBSCRIPTION_PLANS } from "@/constants/subscriptionPlans";
 import { 
   Palette, Sun, Moon, FileText, Building2, LayoutGrid, 
   Library, BarChart3, Link, ShoppingBag, Save, Settings,
@@ -84,6 +85,7 @@ export function SettingsTab({
 }: SettingsTabProps) {
   const { plan } = useSubscriptionLimits(organizationId);
   const isFreePlan = plan === 'free';
+  const hasBranding = SUBSCRIPTION_PLANS[plan]?.limits?.branding ?? false;
 
   const handleSaveStudentSettings = async () => {
     if (!organizationId) return;
@@ -319,7 +321,7 @@ export function SettingsTab({
       </details>}
 
       {/* Branding Settings */}
-      {!isFreePlan && <details className="bg-card rounded-2xl border border-border group">
+      {hasBranding && <details className="bg-card rounded-2xl border border-border group">
         <summary className="p-6 cursor-pointer list-none flex items-center justify-between">
           <h3 className="font-display font-semibold text-lg flex items-center gap-2">
             <Image className="w-5 h-5" />
@@ -556,7 +558,7 @@ export function SettingsTab({
       </details>}
 
       {/* Login Page Branding */}
-      {!isFreePlan && <details className="bg-card rounded-2xl border border-border group">
+      {hasBranding && <details className="bg-card rounded-2xl border border-border group">
         <summary className="p-6 cursor-pointer list-none flex items-center justify-between">
           <h3 className="font-display font-semibold text-lg flex items-center gap-2">
             <LogIn className="w-5 h-5" />
@@ -579,7 +581,7 @@ export function SettingsTab({
       </details>}
 
       {/* Student Dashboard Settings */}
-      {!isFreePlan && <details className="bg-card rounded-2xl border border-border group">
+      {hasBranding && <details className="bg-card rounded-2xl border border-border group">
         <summary className="p-6 cursor-pointer list-none flex items-center justify-between">
           <h3 className="font-display font-semibold text-lg flex items-center gap-2">
             <Settings className="w-5 h-5" />
