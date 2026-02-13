@@ -46,8 +46,9 @@ export function useSubscriptionLimits(organizationId: string | null): Subscripti
           .eq("organization_id", organizationId),
         supabase
           .from("profiles")
-          .select("id", { count: "exact", head: true })
-          .eq("organization_id", organizationId),
+          .select("id, user_roles!inner(role)", { count: "exact", head: true })
+          .eq("organization_id", organizationId)
+          .eq("user_roles.role", "student"),
       ]);
 
       if (orgResult.data?.subscription_plan) {
@@ -84,6 +85,7 @@ export function useSubscriptionLimits(organizationId: string | null): Subscripti
           if (payload.new.subscription_plan) {
             setPlan(payload.new.subscription_plan as SubscriptionPlan);
           }
+          fetchData();
         }
       )
       .subscribe();
