@@ -2065,6 +2065,7 @@ export type Database = {
           id: string
           last_visit_at: string | null
           login: string | null
+          onboarding_completed: boolean
           organization_id: string | null
           student_group_id: string | null
           updated_at: string
@@ -2080,6 +2081,7 @@ export type Database = {
           id?: string
           last_visit_at?: string | null
           login?: string | null
+          onboarding_completed?: boolean
           organization_id?: string | null
           student_group_id?: string | null
           updated_at?: string
@@ -2095,6 +2097,7 @@ export type Database = {
           id?: string
           last_visit_at?: string | null
           login?: string | null
+          onboarding_completed?: boolean
           organization_id?: string | null
           student_group_id?: string | null
           updated_at?: string

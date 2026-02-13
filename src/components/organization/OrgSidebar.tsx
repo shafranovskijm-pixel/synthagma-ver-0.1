@@ -5,6 +5,8 @@ import {
   Building2, ClipboardList, HardHat
 } from "lucide-react";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
+import { HelpButton } from "@/components/onboarding/HelpButton";
+import { organizationHelpTips } from "@/constants/onboardingSteps";
 import type { MenuSettings } from "@/types";
 
 export type TabType = 
@@ -197,6 +199,7 @@ export function OrgSidebar({
             Магазин курсов
           </button>
         )}
+        <HelpButton tips={organizationHelpTips[activeTab] || organizationHelpTips.default} />
         <button 
           onClick={onLogout} 
           className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-destructive hover:bg-destructive/10 transition-colors"

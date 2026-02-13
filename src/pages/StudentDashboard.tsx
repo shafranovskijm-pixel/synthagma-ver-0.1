@@ -9,6 +9,9 @@ import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { PullToRefreshIndicator } from "@/components/ui/PullToRefreshIndicator";
 import { supabase } from "@/integrations/supabase/client";
+import { OnboardingDialog } from "@/components/onboarding/OnboardingDialog";
+import { studentOnboardingSteps, studentHelpTips } from "@/constants/onboardingSteps";
+import { HelpButton } from "@/components/onboarding/HelpButton";
 import { toast } from "sonner";
 import {
   BookOpen,
@@ -120,6 +123,33 @@ export default function StudentDashboard() {
   const [documentsProgress, setDocumentsProgress] = useState({ completed: 0, total: 3 });
   const [isVideoIdentified, setIsVideoIdentified] = useState(false);
   const { theme, setTheme } = useTheme();
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  // Check onboarding status
+  useEffect(() => {
+    if (!user) return;
+    const checkOnboarding = async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("onboarding_completed")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (data && !data.onboarding_completed) {
+        setShowOnboarding(true);
+      }
+    };
+    checkOnboarding();
+  }, [user]);
+
+  const handleOnboardingClose = async () => {
+    setShowOnboarding(false);
+    if (user) {
+      await supabase
+        .from("profiles")
+        .update({ onboarding_completed: true })
+        .eq("user_id", user.id);
+    }
+  };
 
   useEffect(() => {
     // Check for preview mode
@@ -652,6 +682,7 @@ export default function StudentDashboard() {
           <Store className="w-4 h-4" />
           Магазин курсов
         </button>
+        <HelpButton tips={studentHelpTips} />
         <button
           onClick={handleLogout}
           className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-destructive hover:bg-destructive/10 transition-colors"
@@ -1089,6 +1120,13 @@ export default function StudentDashboard() {
           </div>
         )}
       </main>
+
+      {/* Onboarding Tour */}
+      <OnboardingDialog
+        open={showOnboarding}
+        onClose={handleOnboardingClose}
+        steps={studentOnboardingSteps}
+      />
     </div>
   );
 }

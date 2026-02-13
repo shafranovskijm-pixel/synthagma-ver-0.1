@@ -32,6 +32,8 @@ import { Button } from "@/components/ui/button";
 import { Eye, Plus, Upload, FileSpreadsheet, X, Menu } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { OnboardingDialog } from "@/components/onboarding/OnboardingDialog";
+import { organizationOnboardingSteps } from "@/constants/onboardingSteps";
 
 export default function OrganizationDashboard() {
   const navigate = useNavigate();
@@ -44,6 +46,7 @@ export default function OrganizationDashboard() {
   const [showBulkUploadDialog, setShowBulkUploadDialog] = useState(false);
   const [studentStatusFilter, setStudentStatusFilter] = useState<"all" | "active" | "completed" | "not_enrolled">("all");
   const [studentCourseFilter, setStudentCourseFilter] = useState<string>("all");
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   // Category management hook
   const categoryActions = useCategoryActions(null);
@@ -65,6 +68,32 @@ export default function OrganizationDashboard() {
   useEffect(() => {
     if (organizationId) categoryActions.setOrganizationId(organizationId);
   }, [organizationId]);
+
+  // Check onboarding status
+  useEffect(() => {
+    if (!user) return;
+    const checkOnboarding = async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("onboarding_completed")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (data && !data.onboarding_completed) {
+        setShowOnboarding(true);
+      }
+    };
+    checkOnboarding();
+  }, [user]);
+
+  const handleOnboardingClose = async () => {
+    setShowOnboarding(false);
+    if (user) {
+      await supabase
+        .from("profiles")
+        .update({ onboarding_completed: true })
+        .eq("user_id", user.id);
+    }
+  };
   
   const { isEnabled } = useOrgFeatures(organizationId);
 
@@ -632,6 +661,14 @@ export default function OrganizationDashboard() {
         setShowBulkDeleteConfirm={setShowBulkDeleteConfirm}
         isBulkDeleting={isBulkDeleting}
         onBulkDelete={() => bulkDelete(students)}
+      />
+
+      {/* Onboarding Tour */}
+      <OnboardingDialog
+        open={showOnboarding}
+        onClose={handleOnboardingClose}
+        steps={organizationOnboardingSteps}
+        onNavigateToTab={(tab) => setActiveTab(tab as any)}
       />
     </div>
   );
