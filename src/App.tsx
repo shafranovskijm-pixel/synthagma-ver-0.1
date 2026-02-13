@@ -30,6 +30,9 @@ import Install from "./pages/Install";
 import FeatureFRDO from "./pages/FeatureFRDO";
 import FeatureDocuments from "./pages/FeatureDocuments";
 import FeatureVideoId from "./pages/FeatureVideoId";
+import FeatureLaborSafety from "./pages/FeatureLaborSafety";
+import FeatureCourseStore from "./pages/FeatureCourseStore";
+import FeatureDocumentChecklist from "./pages/FeatureDocumentChecklist";
 import RoadmapPage from "./pages/RoadmapPage";
 import NotFound from "./pages/NotFound";
 import { ScrollToTop } from "./components/ScrollToTop";
@@ -100,6 +103,9 @@ const App = () => (
                 <Route path="/feature/frdo" element={<FeatureFRDO />} />
                 <Route path="/feature/documents" element={<FeatureDocuments />} />
                 <Route path="/feature/video-id" element={<FeatureVideoId />} />
+                <Route path="/feature/labor-safety" element={<FeatureLaborSafety />} />
+                <Route path="/feature/course-store" element={<FeatureCourseStore />} />
+                <Route path="/feature/document-checklist" element={<FeatureDocumentChecklist />} />
                 <Route path="/roadmap" element={<RoadmapPage />} />
                 <Route path="/course-import" element={
                   <ProtectedRoute requiredRole="organization">

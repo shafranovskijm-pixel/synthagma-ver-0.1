@@ -193,7 +193,7 @@ const FeatureFRDO = () => {
               Автоматизируйте работу с ФИС ФРДО
             </motion.h2>
             <motion.p variants={fadeUp} className="text-muted-foreground mb-8 max-w-xl mx-auto">
-              Начните бесплатно и откройте доступ к ФРДО на тарифе «Профессиональный»
+              Начните бесплатно и откройте доступ к ФРДО на тарифе «Максимальный»
             </motion.p>
             <motion.div variants={fadeUp}>
               <Link to="/register-organization">
