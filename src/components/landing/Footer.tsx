@@ -130,12 +130,9 @@ export function Footer() {
             </a>
           </div>
           <div className="flex gap-6 text-xs text-background/40">
-            <a href="#" className="hover:text-background/60 transition-colors">
-              Политика конфиденциальности
-            </a>
-            <a href="#" className="hover:text-background/60 transition-colors">
+            <Link to="/public-offer" className="hover:text-background/60 transition-colors">
               Условия использования
-            </a>
+            </Link>
           </div>
         </div>
       </div>
