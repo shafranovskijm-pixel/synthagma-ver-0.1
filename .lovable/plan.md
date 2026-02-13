@@ -1,94 +1,129 @@
 
 
-# Исправление лимитов бесплатного тарифа
+# Исправление реактивности тарифов при смене плана
 
-## Проблемы
+## Найденные проблемы
 
-1. **Лимит учеников не проверяется** — кнопки «Добавить ученика» и «Импорт учеников» не проверяют `checkLimit('student')`, позволяя бесплатным аккаунтам добавлять неограниченное число учеников.
-2. **Настройки курсов не заблокированы** — кнопки переключения видеоидентификации, последовательности уроков и перемотки видео в `CoursesTab` видны и работают даже на бесплатном тарифе, хотя `courseSettings: false`.
+### 1. Тариф не обновляется без перезагрузки страницы
+`useSubscriptionLimits` и `useOrgFeatures` загружают данные один раз при монтировании. Когда администратор меняет тариф организации — интерфейс организации продолжает работать по старому тарифу до полной перезагрузки страницы.
+
+### 2. Некорректный текст ошибки для настроек курсов
+Сообщение «Настройки курсов доступны начиная с тарифа Стандарт» неверно — `courseSettings: true` начинается с тарифа **Старт** (3 490 руб.), а не Стандарт.
+
+### 3. Подсчёт учеников через enrollments считает дубли
+Один ученик, записанный на 2 курса, считается как 2 ученика. Это приводит к преждевременному срабатыванию лимита.
 
 ## Что будет исправлено
 
-### 1. Проверка лимита учеников при добавлении
+### 1. Подписка на изменения тарифа в реальном времени
 
-**Файл:** `src/pages/OrganizationDashboard.tsx`
+**Файл:** `src/hooks/useSubscriptionLimits.ts`
 
-- Подключить `useSubscriptionLimits` (уже есть в дочерних компонентах, добавим в дашборд)
-- Перед открытием диалога «Добавить ученика» и «Импорт учеников» вызывать `checkLimit('student')` 
-- Если лимит превышен — показывать `toast.error` с сообщением о тарифе и блокировать действие
+- Добавить Realtime-подписку на таблицу `organizations` с фильтром по `id = organizationId`
+- При получении события `UPDATE` — автоматически обновлять `plan` из `subscription_plan`
+- Отписываться при размонтировании компонента
 
-### 2. Проверка лимита внутри `useStudentManagement.createStudent()`
+### 2. Подписка на изменения в useOrgFeatures
 
-**Файл:** `src/hooks/useStudentManagement.ts`
+**Файл:** `src/hooks/useOrgFeatures.ts`
 
-- Добавить параметр `checkStudentLimit` (функция) в пропсы хука
-- В начале `createStudent()` вызывать проверку и прерывать создание при превышении лимита
-- Это защитит от обхода через прямой вызов функции
+- Аналогично добавить Realtime-подписку на `organizations` для автоматического `refetch` при смене плана
 
-### 3. Блокировка настроек курсов на бесплатном тарифе
+### 3. Исправление текста ошибки
 
 **Файл:** `src/components/organization/tabs/CoursesTab.tsx`
 
-- Расширить деструктуризацию `useSubscriptionLimits` — получить `hasCourseSettings`
-- В функции `handleToggleCourseSetting`: если `!hasCourseSettings`, показывать toast с предупреждением и прерывать действие
-- Визуально: кнопки настроек (видеоидентификация, последовательность, перемотка) отображать как `disabled` с пониженной прозрачностью, когда `!hasCourseSettings`
+- Изменить текст с «Стандарт» на «Старт»
+
+### 4. Подсчёт уникальных учеников
+
+**Файл:** `src/hooks/useSubscriptionLimits.ts`
+
+- Заменить подсчёт enrollments на подсчёт уникальных `user_id` через `profiles` с фильтром `organization_id`, что даст точное число учеников в организации
 
 ## Технические детали
 
-### `src/pages/OrganizationDashboard.tsx`
+### `src/hooks/useSubscriptionLimits.ts`
 
+```typescript
+// Добавить Realtime-подписку
+useEffect(() => {
+  if (!organizationId) return;
+
+  const channel = supabase
+    .channel(`org-plan-${organizationId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'organizations',
+        filter: `id=eq.${organizationId}`,
+      },
+      (payload) => {
+        if (payload.new.subscription_plan) {
+          setPlan(payload.new.subscription_plan as SubscriptionPlan);
+        }
+      }
+    )
+    .subscribe();
+
+  return () => { supabase.removeChannel(channel); };
+}, [organizationId]);
+
+// Заменить подсчёт учеников:
+// Вместо enrollments считать уникальные profiles
+supabase
+  .from("profiles")
+  .select("user_id", { count: "exact", head: true })
+  .eq("organization_id", organizationId)
+  .eq("role", "student")  // если есть роль
 ```
-// Добавить:
-const { checkLimit } = useSubscriptionLimits(organizationId);
 
-// Кнопка «Добавить ученика»:
-onClick={() => {
-  const result = checkLimit('student');
-  if (!result.allowed) {
-    toast.error(result.message);
-    return;
-  }
-  studentManagement.setShowAddStudentDialog(true);
-}}
+### `src/hooks/useOrgFeatures.ts`
 
-// Кнопка «Импорт учеников» — аналогично
-```
+```typescript
+// Добавить Realtime-подписку
+useEffect(() => {
+  if (!organizationId) return;
 
-### `src/hooks/useStudentManagement.ts`
+  const channel = supabase
+    .channel(`org-features-${organizationId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'organizations',
+        filter: `id=eq.${organizationId}`,
+      },
+      () => { fetchFeatures(); }
+    )
+    .subscribe();
 
-```
-// В createStudent(), в начале:
-if (checkStudentLimit) {
-  const result = checkStudentLimit();
-  if (!result.allowed) {
-    toast.error(result.message);
-    return false;
-  }
-}
+  return () => { supabase.removeChannel(channel); };
+}, [organizationId, fetchFeatures]);
 ```
 
 ### `src/components/organization/tabs/CoursesTab.tsx`
 
+```typescript
+// Строка 282: изменить текст
+toast.error('Настройки курсов доступны начиная с тарифа «Старт». Перейдите на следующий тариф.');
 ```
-// Расширить деструктуризацию:
-const { checkLimit, hasCourseSettings } = useSubscriptionLimits(organizationId);
 
-// В handleToggleCourseSetting:
-if (!hasCourseSettings) {
-  toast.error('Настройки курсов доступны начиная с тарифа Старт');
-  return;
-}
+### Включение Realtime для таблицы organizations
 
-// В JSX: добавить disabled и opacity к кнопкам настроек
-disabled={!hasCourseSettings}
-className={`... ${!hasCourseSettings ? 'opacity-40 cursor-not-allowed' : ''}`}
+```sql
+ALTER PUBLICATION supabase_realtime ADD TABLE public.organizations;
 ```
 
 ### Затронутые файлы
 
 | Файл | Изменение |
 |---|---|
-| `src/pages/OrganizationDashboard.tsx` | Проверка `checkLimit('student')` перед добавлением/импортом |
-| `src/hooks/useStudentManagement.ts` | Дополнительная проверка лимита в `createStudent()` |
-| `src/components/organization/tabs/CoursesTab.tsx` | Блокировка настроек курсов при `!hasCourseSettings` |
+| `src/hooks/useSubscriptionLimits.ts` | Realtime-подписка + исправление подсчёта учеников |
+| `src/hooks/useOrgFeatures.ts` | Realtime-подписка при смене плана |
+| `src/components/organization/tabs/CoursesTab.tsx` | Исправление текста ошибки |
+| SQL-миграция | Включение Realtime для `organizations` |
 
