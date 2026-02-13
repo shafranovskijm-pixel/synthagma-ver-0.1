@@ -23,6 +23,7 @@ import { useDashboardSettings } from "@/hooks/useDashboardSettings";
 import { useStudentDetailCard } from "@/hooks/useStudentDetailCard";
 import { useStudentDetailsDialog } from "@/hooks/useStudentDetailsDialog";
 import { useOrganizationDataLoader } from "@/hooks/useOrganizationDataLoader";
+import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
 import { useOrganizationsTab } from "@/hooks/useOrganizationsTab";
 import { useEmailInvitation } from "@/hooks/useEmailInvitation";
 import { useStudentDocsDialog } from "@/hooks/useStudentDocsDialog";
@@ -96,6 +97,7 @@ export default function OrganizationDashboard() {
   };
   
   const { isEnabled } = useOrgFeatures(organizationId);
+  const { checkLimit } = useSubscriptionLimits(organizationId);
 
   // Registration links hook
   const registrationLinks = useRegistrationLinks(organizationId);
@@ -123,6 +125,7 @@ export default function OrganizationDashboard() {
   const studentManagement = useStudentManagement({
     organizationId, courses, students, allProfiles,
     setStudents, setAllProfiles, setStats, onRefresh: refreshData,
+    checkStudentLimit: () => checkLimit('student'),
   });
 
   // Student actions hook
@@ -365,12 +368,20 @@ export default function OrganizationDashboard() {
               )}
               {activeTab === "students" && (
                 <>
-                  <Button variant="outline" className="rounded-xl gap-2 text-xs lg:text-sm" onClick={() => setShowImportDialog(true)}>
+                  <Button variant="outline" className="rounded-xl gap-2 text-xs lg:text-sm" onClick={() => {
+                    const result = checkLimit('student');
+                    if (!result.allowed) { toast.error(result.message); return; }
+                    setShowImportDialog(true);
+                  }}>
                     <FileSpreadsheet className="w-4 h-4" />
                     <span className="hidden sm:inline">Импорт учеников</span>
                     <span className="sm:hidden">Импорт</span>
                   </Button>
-                  <Button className="btn-gradient rounded-xl gap-2 text-xs lg:text-sm" onClick={() => studentManagement.setShowAddStudentDialog(true)}>
+                  <Button className="btn-gradient rounded-xl gap-2 text-xs lg:text-sm" onClick={() => {
+                    const result = checkLimit('student');
+                    if (!result.allowed) { toast.error(result.message); return; }
+                    studentManagement.setShowAddStudentDialog(true);
+                  }}>
                     <Plus className="w-4 h-4" />
                     <span className="hidden sm:inline">Добавить ученика</span>
                     <span className="sm:hidden">Добавить</span>

@@ -32,7 +32,7 @@ interface CoursesTabProps {
 
 export function CoursesTab({ organizationId, onCourseClick, onOpenCourseDetails, onCoursesDeleted }: CoursesTabProps) {
   const navigate = useNavigate();
-  const { checkLimit } = useSubscriptionLimits(organizationId);
+  const { checkLimit, hasCourseSettings } = useSubscriptionLimits(organizationId);
   
   const {
     courses,
@@ -278,6 +278,10 @@ export function CoursesTab({ organizationId, onCourseClick, onOpenCourseDetails,
   // Toggle course settings with optimistic update
   const handleToggleCourseSetting = async (course: Course, setting: 'skip_video_identification' | 'sequential_lessons' | 'allow_video_seek', e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!hasCourseSettings) {
+      toast.error('Настройки курсов доступны начиная с тарифа «Стандарт». Перейдите на следующий тариф.');
+      return;
+    }
     const currentValue = course[setting] ?? (setting === 'allow_video_seek' ? true : false);
     const newValue = !currentValue;
     
@@ -401,7 +405,7 @@ export function CoursesTab({ organizationId, onCourseClick, onOpenCourseDetails,
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        className={`h-7 w-7 ${course.skip_video_identification ? 'text-muted-foreground' : 'text-sigma-green'}`}
+                        className={`h-7 w-7 ${!hasCourseSettings ? 'opacity-40 cursor-not-allowed' : ''} ${course.skip_video_identification ? 'text-muted-foreground' : 'text-sigma-green'}`}
                         onClick={e => handleToggleCourseSetting(course, 'skip_video_identification', e)}
                       >
                         {course.skip_video_identification ? <VideoOff className="w-3.5 h-3.5" /> : <Video className="w-3.5 h-3.5" />}
@@ -417,7 +421,7 @@ export function CoursesTab({ organizationId, onCourseClick, onOpenCourseDetails,
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        className={`h-7 w-7 ${course.sequential_lessons ? 'text-amber-500' : 'text-muted-foreground'}`}
+                        className={`h-7 w-7 ${!hasCourseSettings ? 'opacity-40 cursor-not-allowed' : ''} ${course.sequential_lessons ? 'text-amber-500' : 'text-muted-foreground'}`}
                         onClick={e => handleToggleCourseSetting(course, 'sequential_lessons', e)}
                       >
                         {course.sequential_lessons ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
@@ -433,7 +437,7 @@ export function CoursesTab({ organizationId, onCourseClick, onOpenCourseDetails,
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        className={`h-7 w-7 ${course.allow_video_seek === false ? 'text-destructive' : 'text-muted-foreground'}`}
+                        className={`h-7 w-7 ${!hasCourseSettings ? 'opacity-40 cursor-not-allowed' : ''} ${course.allow_video_seek === false ? 'text-destructive' : 'text-muted-foreground'}`}
                         onClick={e => handleToggleCourseSetting(course, 'allow_video_seek', e)}
                       >
                         <FastForward className="w-3.5 h-3.5" />
@@ -537,7 +541,7 @@ export function CoursesTab({ organizationId, onCourseClick, onOpenCourseDetails,
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  className={`h-7 w-7 bg-background/80 backdrop-blur-sm ${course.skip_video_identification ? 'text-muted-foreground' : 'text-sigma-green'}`}
+                  className={`h-7 w-7 bg-background/80 backdrop-blur-sm ${!hasCourseSettings ? 'opacity-40 cursor-not-allowed' : ''} ${course.skip_video_identification ? 'text-muted-foreground' : 'text-sigma-green'}`}
                   onClick={e => handleToggleCourseSetting(course, 'skip_video_identification', e)}
                 >
                   {course.skip_video_identification ? <VideoOff className="w-3.5 h-3.5" /> : <Video className="w-3.5 h-3.5" />}
@@ -553,7 +557,7 @@ export function CoursesTab({ organizationId, onCourseClick, onOpenCourseDetails,
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  className={`h-7 w-7 bg-background/80 backdrop-blur-sm ${course.sequential_lessons ? 'text-amber-500' : 'text-muted-foreground'}`}
+                  className={`h-7 w-7 bg-background/80 backdrop-blur-sm ${!hasCourseSettings ? 'opacity-40 cursor-not-allowed' : ''} ${course.sequential_lessons ? 'text-amber-500' : 'text-muted-foreground'}`}
                   onClick={e => handleToggleCourseSetting(course, 'sequential_lessons', e)}
                 >
                   {course.sequential_lessons ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
@@ -569,7 +573,7 @@ export function CoursesTab({ organizationId, onCourseClick, onOpenCourseDetails,
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  className={`h-7 w-7 bg-background/80 backdrop-blur-sm ${course.allow_video_seek === false ? 'text-destructive' : 'text-muted-foreground'}`}
+                  className={`h-7 w-7 bg-background/80 backdrop-blur-sm ${!hasCourseSettings ? 'opacity-40 cursor-not-allowed' : ''} ${course.allow_video_seek === false ? 'text-destructive' : 'text-muted-foreground'}`}
                   onClick={e => handleToggleCourseSetting(course, 'allow_video_seek', e)}
                 >
                   <FastForward className="w-3.5 h-3.5" />
