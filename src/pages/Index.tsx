@@ -27,7 +27,7 @@ const Index = () => {
   return (
     <>
       <Helmet>
-        <title>СИНТАГМА — Система дистанционного обучения и документооборота</title>
+        <title>СИНТАГМА — СДО и документооборот для организаций</title>
         <meta name="description" content="Современная СДО для организаций. Создавайте курсы с ИИ, автоматизируйте документооборот, выгружайте в ФРДО. Соответствует 273-ФЗ. От 0 ₽." />
         <meta name="keywords" content="СДО, дистанционное обучение, документооборот, ФРДО, 273-ФЗ, онлайн курсы, образовательная платформа, ДПО" />
         <link rel="canonical" href="https://synthagma-bloom.lovable.app/" />
@@ -35,14 +35,14 @@ const Index = () => {
         {/* Open Graph */}
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://synthagma-bloom.lovable.app/" />
-        <meta property="og:title" content="СИНТАГМА — Система дистанционного обучения" />
+        <meta property="og:title" content="СИНТАГМА — СДО и документооборот для организаций" />
         <meta property="og:description" content="Современная СДО для организаций. Создавайте курсы с ИИ, автоматизируйте документооборот, выгружайте в ФРДО." />
         <meta property="og:image" content="https://synthagma-bloom.lovable.app/og-image.png" />
         <meta property="og:locale" content="ru_RU" />
         
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="СИНТАГМА — Система дистанционного обучения" />
+        <meta name="twitter:title" content="СИНТАГМА — СДО и документооборот для организаций" />
         <meta name="twitter:description" content="Современная СДО для организаций. Создавайте курсы с ИИ, автоматизируйте документооборот." />
         <meta name="twitter:image" content="https://synthagma-bloom.lovable.app/og-image.png" />
         

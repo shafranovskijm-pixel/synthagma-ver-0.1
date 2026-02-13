@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Helmet } from "react-helmet-async";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "react-router-dom";
@@ -59,6 +60,16 @@ export default function Install() {
 
   return (
     <div className="min-h-screen bg-background">
+      <Helmet>
+        <title>Установка приложения — СИНТАГМА СДО</title>
+        <meta name="description" content="Установите приложение СИНТАГМА на телефон или компьютер для быстрого доступа к платформе." />
+        <meta name="keywords" content="установка, приложение, PWA, мобильное приложение" />
+        <link rel="canonical" href="https://synthagma-bloom.lovable.app/install" />
+        <meta property="og:title" content="Установка приложения — СИНТАГМА СДО" />
+        <meta property="og:description" content="Установите приложение СИНТАГМА на телефон или компьютер для быстрого доступа к платформе." />
+        <meta property="og:url" content="https://synthagma-bloom.lovable.app/install" />
+        <meta property="og:image" content="https://synthagma-bloom.lovable.app/og-image.png" />
+      </Helmet>
       <header className="border-b border-border/50 bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-6 py-4">
           <Link to="/" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
