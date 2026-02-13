@@ -219,9 +219,9 @@ export function Hero() {
             <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors text-sm tracking-wide">
               Возможности
             </a>
-            <a href="#roadmap" className="text-muted-foreground hover:text-foreground transition-colors text-sm tracking-wide">
+            <Link to="/roadmap" className="text-muted-foreground hover:text-foreground transition-colors text-sm tracking-wide">
               Развитие
-            </a>
+            </Link>
             <a href="#calculator" className="text-muted-foreground hover:text-foreground transition-colors text-sm tracking-wide">
               Стоимость
             </a>
