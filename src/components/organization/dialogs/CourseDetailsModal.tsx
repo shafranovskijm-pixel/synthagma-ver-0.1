@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useOrgFeatures } from "@/hooks/useOrgFeatures";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
@@ -129,6 +130,8 @@ export function CourseDetailsModal({
   onRefreshStudents
 }: CourseDetailsModalProps) {
   const navigate = useNavigate();
+  const { isEnabled } = useOrgFeatures(organizationId);
+  const isFrdoEnabled = isEnabled('frdo');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [skipVideoId, setSkipVideoId] = useState(course?.skip_video_identification || false);
@@ -872,8 +875,8 @@ export function CourseDetailsModal({
                 </div>
               </div>
 
-              {/* FRDO Settings Section */}
-              <div className="space-y-4 mt-6">
+              {/* FRDO Settings Section - only for plans with frdo access */}
+              {isFrdoEnabled && <div className="space-y-4 mt-6">
                 <div className="flex items-center gap-2">
                   <FileSpreadsheet className="w-5 h-5 text-primary" />
                   <h3 className="font-semibold">Настройки ФИС ФРДО</h3>
@@ -1082,7 +1085,7 @@ export function CourseDetailsModal({
                     </Select>
                   </div>
                 </div>
-              </div>
+              </div>}
             </TabsContent>
 
             <TabsContent value="reminders" className="mt-0 h-full">
