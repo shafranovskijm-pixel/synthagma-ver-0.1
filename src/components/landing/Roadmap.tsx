@@ -1,7 +1,6 @@
 import { motion } from "framer-motion";
 
 import { 
-  Smartphone, 
   KeyRound, 
   UserCog, 
   Car, 
@@ -22,13 +21,6 @@ const roadmapItems = [
     title: "Подключение ЭЦП",
     description: "Электронная подпись для документооборота",
     icon: KeyRound,
-    status: "planned",
-    quarter: "Q2 2026",
-  },
-  {
-    title: "Мобильное приложение",
-    description: "Приложение для студентов и организаций",
-    icon: Smartphone,
     status: "planned",
     quarter: "Q2 2026",
   },
