@@ -23,6 +23,9 @@ const featureRows = [
   { label: "Настройки курсов", getValue: (p: SubscriptionPlan) => SUBSCRIPTION_PLANS[p].limits.courseSettings ? true : false },
   { label: "Чек-лист документов", getValue: (p: SubscriptionPlan) => SUBSCRIPTION_PLANS[p].limits.documentChecklist ? true : false },
   { label: "Видеоидентификация", getValue: (p: SubscriptionPlan) => SUBSCRIPTION_PLANS[p].limits.videoIdentification ? true : false },
+  { label: "Документы для ЛОО", getValue: (p: SubscriptionPlan) => (p === 'professional' || p === 'maximum') ? true : false },
+  { label: "ФИС ФРДО", getValue: (p: SubscriptionPlan) => (p === 'professional' || p === 'maximum') ? true : false },
+  { label: "Отчеты 1-ПК / 1-ПО", getValue: (p: SubscriptionPlan) => (p === 'professional' || p === 'maximum') ? true : false },
   { label: "ИИ-генерация", getValue: (p: SubscriptionPlan) => SUBSCRIPTION_PLANS[p].limits.aiEnabled ? true : false },
   { label: "ИИ-озвучка", getValue: (p: SubscriptionPlan) => SUBSCRIPTION_PLANS[p].limits.aiAudioEnabled ? true : false },
 ];
@@ -273,13 +276,27 @@ export function PricingPlans() {
           })}
         </motion.div>
 
+        {/* Licensed org note */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.5 }}
+          className="mt-10 max-w-3xl mx-auto text-center"
+        >
+          <p className="text-sm text-muted-foreground leading-relaxed flex items-start justify-center gap-2">
+            <Crown className="w-4 h-4 text-accent shrink-0 mt-0.5" />
+            Тарифы «Профессиональный» и «Максимальный» ориентированы на лицензированные учебные центры для упрощения ведения обязательной документации, отчётности ФИС ФРДО и статистических форм 1-ПК / 1-ПО.
+          </p>
+        </motion.div>
+
         {/* Bottom note */}
         <motion.p
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
           transition={{ delay: 0.6 }}
-          className="text-center text-sm text-muted-foreground mt-10 flex items-center justify-center gap-1.5"
+          className="text-center text-sm text-muted-foreground mt-4 flex items-center justify-center gap-1.5"
         >
           <Sparkles className="w-4 h-4 text-accent" />
           Все тарифы включают бесплатную техническую поддержку
