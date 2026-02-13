@@ -26,6 +26,7 @@ const features: { icon: any; title: string; description: string; link?: string }
     icon: BookOpen,
     title: "Управление курсами",
     description: "Современный редактор с ИИ для создания интерактивных курсов. Импорт с любых платформ.",
+    link: "/feature/ai-courses",
   },
   {
     icon: Settings,

@@ -22,7 +22,7 @@ const courseDemos = [
   {
     title: "Промышленная безопасность",
     fileName: "lesson-01-safety.md",
-    audioUrl: `${DEMO_AUDIO_BASE}/editor-demo-3blocks.mp3`,
+    audioUrl: `${DEMO_AUDIO_BASE}/demo-safety.mp3`,
     initialBlocks: [
       { id: "s1", type: "heading1" as const, content: "Промышленная безопасность" },
       { id: "s2", type: "paragraph" as const, content: "Работодатель обязан организовать обучение работников безопасным методам и приёмам выполнения работ, а также оказанию первой помощи пострадавшим." },
@@ -38,7 +38,7 @@ const courseDemos = [
   {
     title: "Пожарная безопасность",
     fileName: "lesson-01-fire.md",
-    audioUrl: `${DEMO_AUDIO_BASE}/editor-demo-3blocks.mp3`,
+    audioUrl: `${DEMO_AUDIO_BASE}/demo-fire.mp3`,
     initialBlocks: [
       { id: "f1", type: "heading1" as const, content: "Пожарная безопасность" },
       { id: "f2", type: "paragraph" as const, content: "Все сотрудники обязаны пройти инструктаж по пожарной безопасности при приёме на работу и не реже одного раза в год повторно." },
@@ -54,7 +54,7 @@ const courseDemos = [
   {
     title: "Информационная безопасность",
     fileName: "lesson-01-infosec.md",
-    audioUrl: `${DEMO_AUDIO_BASE}/editor-demo-3blocks.mp3`,
+    audioUrl: `${DEMO_AUDIO_BASE}/demo-infosec.mp3`,
     initialBlocks: [
       { id: "i1", type: "heading1" as const, content: "Информационная безопасность" },
       { id: "i2", type: "paragraph" as const, content: "Федеральный закон 152-ФЗ обязывает операторов персональных данных обеспечивать их защиту от несанкционированного доступа и утечек." },
