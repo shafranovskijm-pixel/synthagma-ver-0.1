@@ -2,9 +2,10 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
-import { ArrowLeft, Sparkles, Volume2, BookOpen, ShieldCheck, Flame, HardHat, Brain, Zap, FileText, Mic } from "lucide-react";
+import { ArrowLeft, Sparkles, Brain, FileText, Mic } from "lucide-react";
 import { motion } from "framer-motion";
 import { Footer } from "@/components/landing/Footer";
+import { CourseEditorDemo } from "@/components/landing/CourseEditorDemo";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 30 },
@@ -15,39 +16,56 @@ const stagger = {
   visible: { transition: { staggerChildren: 0.12 } },
 };
 
-const courseTemplates = [
+const DEMO_AUDIO_BASE = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/demo-assets`;
+
+const courseDemos = [
   {
-    icon: HardHat,
     title: "Промышленная безопасность",
-    description: "Полный курс по безопасности на производственных объектах: правила работы с оборудованием, средства защиты, действия при аварии",
-    lessons: 12,
-    duration: "24 часа",
-    color: "text-amber-500",
-    bgColor: "bg-amber-500/10",
-    borderColor: "border-amber-500/20",
-    tags: ["Охрана труда", "Производство", "Аттестация"],
+    fileName: "lesson-01-safety.md",
+    audioUrl: `${DEMO_AUDIO_BASE}/editor-demo-3blocks.mp3`,
+    initialBlocks: [
+      { id: "s1", type: "heading1" as const, content: "Промышленная безопасность" },
+      { id: "s2", type: "paragraph" as const, content: "Работодатель обязан организовать обучение работников безопасным методам и приёмам выполнения работ, а также оказанию первой помощи пострадавшим." },
+      { id: "s3", type: "callout" as const, content: "Нарушение требований промышленной безопасности на опасных производственных объектах влечёт штраф до 1 000 000 рублей." },
+    ],
+    generatedBlock: {
+      id: "s4",
+      type: "paragraph" as const,
+      content: "К опасным производственным факторам относятся: работа на высоте, эксплуатация грузоподъёмного оборудования, работа в замкнутых пространствах и обращение с вредными химическими веществами.",
+      isNew: true,
+    },
   },
   {
-    icon: Flame,
     title: "Пожарная безопасность",
-    description: "Курс по пожарно-техническому минимуму: профилактика пожаров, средства тушения, планы эвакуации, первая помощь при ожогах",
-    lessons: 8,
-    duration: "16 часов",
-    color: "text-red-500",
-    bgColor: "bg-red-500/10",
-    borderColor: "border-red-500/20",
-    tags: ["ПТМ", "Эвакуация", "Огнетушители"],
+    fileName: "lesson-01-fire.md",
+    audioUrl: `${DEMO_AUDIO_BASE}/editor-demo-3blocks.mp3`,
+    initialBlocks: [
+      { id: "f1", type: "heading1" as const, content: "Пожарная безопасность" },
+      { id: "f2", type: "paragraph" as const, content: "Все сотрудники обязаны пройти инструктаж по пожарной безопасности при приёме на работу и не реже одного раза в год повторно." },
+      { id: "f3", type: "callout" as const, content: "При обнаружении пожара немедленно сообщите по телефону 112, оповестите окружающих и приступайте к эвакуации." },
+    ],
+    generatedBlock: {
+      id: "f4",
+      type: "paragraph" as const,
+      content: "Огнетушители подразделяются на порошковые (ОП), углекислотные (ОУ) и воздушно-пенные (ОВП). Выбор типа зависит от класса пожара и характера горючего материала.",
+      isNew: true,
+    },
   },
   {
-    icon: ShieldCheck,
     title: "Информационная безопасность",
-    description: "Защита данных и цифровая гигиена: работа с персональными данными, предотвращение утечек, кибербезопасность для сотрудников",
-    lessons: 10,
-    duration: "20 часов",
-    color: "text-sigma-cyan",
-    bgColor: "bg-sigma-cyan/10",
-    borderColor: "border-sigma-cyan/20",
-    tags: ["152-ФЗ", "Персональные данные", "Кибербезопасность"],
+    fileName: "lesson-01-infosec.md",
+    audioUrl: `${DEMO_AUDIO_BASE}/editor-demo-3blocks.mp3`,
+    initialBlocks: [
+      { id: "i1", type: "heading1" as const, content: "Информационная безопасность" },
+      { id: "i2", type: "paragraph" as const, content: "Федеральный закон 152-ФЗ обязывает операторов персональных данных обеспечивать их защиту от несанкционированного доступа и утечек." },
+      { id: "i3", type: "callout" as const, content: "Передача персональных данных третьим лицам без согласия субъекта влечёт административную и уголовную ответственность." },
+    ],
+    generatedBlock: {
+      id: "i4",
+      type: "paragraph" as const,
+      content: "Базовые правила цифровой гигиены: используйте сложные пароли, не открывайте подозрительные вложения, блокируйте экран при отходе от рабочего места и регулярно обновляйте ПО.",
+      isNew: true,
+    },
   },
 ];
 
@@ -56,19 +74,16 @@ const aiFeatures = [
     icon: Brain,
     title: "ИИ-генерация контента",
     description: "Создавайте структуру курса, уроки и тестовые вопросы с помощью искусственного интеллекта. Просто опишите тему — ИИ сделает остальное.",
-    link: "/feature/course-settings",
   },
   {
     icon: Mic,
     title: "ИИ-озвучка уроков",
     description: "Профессиональная озвучка текстов через ElevenLabs — реалистичные голоса на русском и английском языках. Превратите текст в аудио-лекцию.",
-    link: "/features",
   },
   {
     icon: FileText,
     title: "Генерация тестов",
     description: "ИИ автоматически создаёт вопросы по содержанию урока. Итеративно наращивайте базу вопросов нажатием одной кнопки.",
-    link: "/features",
   },
 ];
 
@@ -135,50 +150,31 @@ const FeatureAICourses = () => {
         </div>
       </section>
 
-      {/* Course Templates */}
+      {/* Interactive Course Demos */}
       <section className="py-16 bg-secondary/30">
         <div className="container mx-auto px-6">
-          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger} className="max-w-5xl mx-auto">
+          <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger} className="max-w-6xl mx-auto">
             <motion.h2 variants={fadeUp} className="font-display text-3xl font-medium mb-4 text-center">
-              Примеры курсов для генерации
+              Попробуйте прямо сейчас
             </motion.h2>
             <motion.p variants={fadeUp} className="text-muted-foreground text-center mb-10 max-w-xl mx-auto">
-              Опишите тему — ИИ создаст полную структуру с уроками и тестами
+              Нажмите «Сгенерировать» или «Озвучить» — демонстрация работы ИИ
             </motion.p>
             <motion.div variants={fadeUp} className="grid md:grid-cols-3 gap-6">
-              {courseTemplates.map((course, i) => (
-                <motion.div
+              {courseDemos.map((demo, i) => (
+                <CourseEditorDemo
                   key={i}
-                  variants={fadeUp}
-                  className={`rounded-2xl border ${course.borderColor} bg-card/80 backdrop-blur-sm p-6 hover:shadow-lg transition-all group`}
-                >
-                  <div className={`w-12 h-12 rounded-xl ${course.bgColor} flex items-center justify-center mb-4`}>
-                    <course.icon className={`w-6 h-6 ${course.color}`} />
-                  </div>
-                  <h3 className="font-display text-lg font-medium mb-2">{course.title}</h3>
-                  <p className="text-sm text-muted-foreground mb-4">{course.description}</p>
-                  
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground mb-4">
-                    <span className="flex items-center gap-1">
-                      <BookOpen className="w-3.5 h-3.5" />
-                      {course.lessons} уроков
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Zap className="w-3.5 h-3.5" />
-                      {course.duration}
-                    </span>
-                  </div>
-
-                  <div className="flex flex-wrap gap-1.5">
-                    {course.tags.map((tag) => (
-                      <span key={tag} className={`text-xs px-2 py-0.5 rounded-full ${course.bgColor} ${course.color}`}>
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                </motion.div>
+                  title={demo.title}
+                  fileName={demo.fileName}
+                  initialBlocks={demo.initialBlocks}
+                  generatedBlock={demo.generatedBlock}
+                  audioUrl={demo.audioUrl}
+                />
               ))}
             </motion.div>
+            <p className="text-center text-xs text-muted-foreground mt-6">
+              В демонстрации используется алгоритм вместо реального ИИ. Полноценный ИИ доступен после регистрации.
+            </p>
           </motion.div>
         </div>
       </section>
