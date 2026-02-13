@@ -1542,6 +1542,21 @@ const CourseLearning = () => {
       if (protocolName) {
         toast.success('Курс завершён! Протокол аттестационной комиссии создан.');
       }
+
+      // Send completion notification email if enabled
+      if ((course as any).notify_on_completion) {
+        try {
+          await supabase.functions.invoke('notify-course-completion', {
+            body: {
+              enrollment_id: enrollmentId,
+              course_id: courseId,
+              user_id: user.id,
+            }
+          });
+        } catch (notifyErr) {
+          console.error('Error sending completion notification:', notifyErr);
+        }
+      }
     } catch (error) {
       console.error('Error handling course completion:', error);
     }

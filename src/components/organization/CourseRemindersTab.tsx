@@ -65,6 +65,10 @@ interface CourseRemindersTabProps {
   onPeriodChange: (months: number | null) => void;
   reminderAdvanceDays: number;
   onAdvanceDaysChange: (days: number) => void;
+  notifyOnCompletion: boolean;
+  completionNotifyEmails: string | null;
+  onNotifyOnCompletionChange: (value: boolean) => void;
+  onCompletionNotifyEmailsChange: (value: string) => void;
 }
 
 const ADVANCE_DAYS_OPTIONS = [
@@ -75,7 +79,7 @@ const ADVANCE_DAYS_OPTIONS = [
   { value: 90, label: "За 90 дней" },
 ];
 
-export function CourseRemindersTab({ courseId, organizationId, retrainingPeriodMonths, onPeriodChange, reminderAdvanceDays, onAdvanceDaysChange }: CourseRemindersTabProps) {
+export function CourseRemindersTab({ courseId, organizationId, retrainingPeriodMonths, onPeriodChange, reminderAdvanceDays, onAdvanceDaysChange, notifyOnCompletion, completionNotifyEmails, onNotifyOnCompletionChange, onCompletionNotifyEmailsChange }: CourseRemindersTabProps) {
   const [reminders, setReminders] = useState<CourseReminder[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -226,6 +230,38 @@ export function CourseRemindersTab({ courseId, organizationId, retrainingPeriodM
 
   return (
     <div className="space-y-6">
+      {/* Completion Notification Setting */}
+      <div className="bg-secondary/30 rounded-xl p-4 space-y-4">
+        <div className="flex items-center gap-2 mb-2">
+          <Send className="w-5 h-5 text-primary" />
+          <h4 className="font-semibold">Уведомление о завершении курса</h4>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          При завершении курса слушателем на указанные адреса будет отправлено письмо с ФИО и результатами тестирования
+        </p>
+        <div className="flex items-center gap-3">
+          <Switch
+            checked={notifyOnCompletion}
+            onCheckedChange={onNotifyOnCompletionChange}
+          />
+          <Label className="text-sm">Уведомлять о завершении курса по email</Label>
+        </div>
+        {notifyOnCompletion && (
+          <div className="space-y-2 pt-3 border-t border-border/30">
+            <Label className="text-sm">Дополнительные email-адреса (через запятую)</Label>
+            <Input
+              placeholder="admin@example.com, manager@example.com"
+              value={completionNotifyEmails || ""}
+              onChange={(e) => onCompletionNotifyEmailsChange(e.target.value)}
+              className="rounded-xl"
+            />
+            <p className="text-xs text-muted-foreground">
+              Письмо также отправляется на email организации. Укажите дополнительные адреса через запятую.
+            </p>
+          </div>
+        )}
+      </div>
+
       {/* Period Setting */}
       <div className="bg-secondary/30 rounded-xl p-4 space-y-4">
         <div className="flex items-center gap-2 mb-2">
