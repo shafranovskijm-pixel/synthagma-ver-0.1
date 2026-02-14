@@ -194,6 +194,15 @@ export function useAdminMarketplace() {
         })
         .eq("id", editingCourse.id);
       if (error) throw error;
+
+      // Update duration in courses table
+      if (editingCourse.course?.id) {
+        await supabase
+          .from("courses")
+          .update({ duration: editingCourse.course.duration || null })
+          .eq("id", editingCourse.course.id);
+      }
+
       toast.success("Курс обновлён");
       setShowEditDialog(false);
       fetchCourses();

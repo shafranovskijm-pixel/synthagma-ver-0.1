@@ -310,7 +310,16 @@ export function AdminMarketplaceManager() {
                     onChange={(e) => h.setEditingCourse({ ...h.editingCourse!, price_organization: parseFloat(e.target.value) || 0 })}
                     className="rounded-xl"
                   />
-                </div>
+              </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Длительность</Label>
+                <Input
+                  value={h.editingCourse.course?.duration || ""}
+                  onChange={(e) => h.setEditingCourse({ ...h.editingCourse!, course: { ...h.editingCourse!.course!, duration: e.target.value } })}
+                  placeholder="40 часов"
+                  className="rounded-xl"
+                />
               </div>
               <div className="space-y-2">
                 <Label>Краткое описание</Label>
