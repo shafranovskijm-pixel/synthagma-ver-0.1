@@ -21,455 +21,276 @@ import { StudentDetailCard } from "@/components/organization/StudentDetailCard";
 import { BulkFRDOExport } from "@/components/organization/BulkFRDOExport";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Loader2 } from "lucide-react";
-import type { Course, Company, Student, CourseCategory } from "@/types/shared";
+import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 
-// Local organization interface for admin view
-interface Organization {
-  id: string;
-  name: string;
-  email: string;
-  contact_name: string | null;
-  phone: string | null;
-  inn: string | null;
-  ai_enabled: boolean;
-  created_at: string;
-  coursesCount?: number;
-  studentsCount?: number;
-}
+export function DialogsContainer() {
+  const d = useOrgDashboard();
 
-type CourseDetailsTabType = "students" | "materials" | "history" | "tests" | "settings" | "reminders";
-
-interface DialogsContainerProps {
-  organizationId: string | null;
-  courses: Course[];
-  companies: Company[];
-  categories: CourseCategory[];
-  getCategoryById: (id: string) => CourseCategory | undefined;
-  students: Student[];
-  allProfiles: any[];
-  
-  // Import dialog
-  showImportDialog: boolean;
-  setShowImportDialog: (v: boolean) => void;
-  
-  // Unenroll dialog
-  showUnenrollConfirm: boolean;
-  setShowUnenrollConfirm: (v: boolean) => void;
-  selectedEnrollmentsCount: number;
-  isUnenrolling: boolean;
-  onBulkUnenroll: () => void;
-  
-  // Add student dialog
-  showAddStudentDialog: boolean;
-  setShowAddStudentDialog: (v: boolean) => void;
-  isCreatingStudent: boolean;
-  onCreateStudent: (name: string, email: string, courseId: string, companyId: string, noLogin: boolean) => Promise<void>;
-  
-  // Enroll dialog
-  showEnrollDialog: boolean;
-  setShowEnrollDialog: (v: boolean) => void;
-  selectedStudentIdsSize: number;
-  isEnrolling: boolean;
-  onEnroll: (courseId: string) => Promise<void>;
-  
-  // Category dialog
-  showCategoryDialog: boolean;
-  setShowCategoryDialog: (v: boolean) => void;
-  isCreatingCategory: boolean;
-  onCreateCategory: (name: string, color: string) => Promise<void>;
-  
-  // Course details modal
-  showCourseDetailsModal: boolean;
-  setShowCourseDetailsModal: (v: boolean) => void;
-  selectedCourseForDetails: Course | null;
-  courseStudents: any[];
-  courseDetailsTab: CourseDetailsTabType;
-  onTabChange: (tab: CourseDetailsTabType) => void;
-  onEnrollStudent: () => void;
-  onCourseDeleted?: () => void;
-  onCourseUpdated?: () => void;
-  onRefreshCourseStudents?: () => void;
-  
-  // Course students dialog
-  showCourseStudentsDialog: boolean;
-  setShowCourseStudentsDialog: (v: boolean) => void;
-  selectedCourse: Course | null;
-  availableStudentsForCourse: any[];
-  isLoadingCourseStudents: boolean;
-  selectedStudentsToAdd: Set<string>;
-  onToggleStudentSelection: (id: string) => void;
-  onAddStudentsToCourse: () => void;
-  isAddingStudentsToCourse: boolean;
-  onRemoveFromCourse: (enrollmentId: string) => void;
-  onCourseStudentsRefresh?: () => void;
-  
-  // Email invitation dialog
-  showInviteEmailDialog: boolean;
-  setShowInviteEmailDialog: (v: boolean) => void;
-  isSendingInvitation: boolean;
-  onSendInvitation: (email: string) => Promise<void>;
-  
-  // Student details dialog
-  showStudentDialog: boolean;
-  setShowStudentDialog: (v: boolean) => void;
-  selectedStudent: any;
-  isLoadingStudentDetails: boolean;
-  studentCompanyId: string;
-  setStudentCompanyId: (id: string) => void;
-  isSavingStudentCompany: boolean;
-  onAttachStudentToCompany: () => void;
-  isCreatingCredentials: boolean;
-  onCreateStudentCredentials: () => void;
-  isSendingCredentials: boolean;
-  onSendCredentials: () => void;
-  isSendingCredentialsEmail: boolean;
-  onSendCredentialsEmail: () => void;
-  isDeletingStudent: boolean;
-  onDeleteStudent: () => void;
-  onCopyCredentials: (login: string, password: string) => void;
-  
-  // Company dialogs
-  showAddCompanyDialog: boolean;
-  setShowAddCompanyDialog: (v: boolean) => void;
-  newCompanyName: string;
-  setNewCompanyName: (v: string) => void;
-  newCompanyEmail: string;
-  setNewCompanyEmail: (v: string) => void;
-  newCompanyInn: string;
-  setNewCompanyInn: (v: string) => void;
-  newCompanyContactName: string;
-  setNewCompanyContactName: (v: string) => void;
-  newCompanyPhone: string;
-  setNewCompanyPhone: (v: string) => void;
-  isCreatingCompany: boolean;
-  onCreateCompany: () => void;
-  
-  showEditCompanyDialog: boolean;
-  setShowEditCompanyDialog: (v: boolean) => void;
-  editCompanyName: string;
-  setEditCompanyName: (v: string) => void;
-  editCompanyEmail: string;
-  setEditCompanyEmail: (v: string) => void;
-  editCompanyInn: string;
-  setEditCompanyInn: (v: string) => void;
-  editCompanyContactName: string;
-  setEditCompanyContactName: (v: string) => void;
-  editCompanyPhone: string;
-  setEditCompanyPhone: (v: string) => void;
-  isSavingCompany: boolean;
-  onSaveCompany: () => void;
-  
-  // Org details dialog
-  showOrgDetails: boolean;
-  setShowOrgDetails: (v: boolean) => void;
-  selectedOrg: Organization | null;
-  orgStudents: any[];
-  isLoadingOrgDetails: boolean;
-  
-  // Student courses dialog
-  showStudentCoursesDialog: boolean;
-  setShowStudentCoursesDialog: (v: boolean) => void;
-  selectedStudentForCourses: any;
-  isLoadingStudentCourses: boolean;
-  studentEnrollments: any[];
-  availableCoursesForStudent: Course[];
-  selectedCoursesToAdd: Set<string>;
-  studentCoursesSearchQuery: string;
-  setStudentCoursesSearchQuery: (v: string) => void;
-  onToggleCourseSelection: (id: string) => void;
-  isAddingCoursesToStudent: boolean;
-  onAddCourses: () => void;
-  onRemoveEnrollment: (enrollmentId: string) => void;
-  onResetProgress: (enrollmentId: string, courseTitle: string) => void;
-  
-  // Create link dialog
-  showCreateLinkDialog: boolean;
-  setShowCreateLinkDialog: (v: boolean) => void;
-  newLinkCompanyName: string;
-  setNewLinkCompanyName: (v: string) => void;
-  newLinkInn: string;
-  setNewLinkInn: (v: string) => void;
-  isCreatingLink: boolean;
-  onCreateLink: () => void;
-  
-  // Course docs dialog
-  showCourseDocsDialog: boolean;
-  selectedCourseForDocs: { id: string; title: string } | null;
-  closeCourseDocs: () => void;
-  
-  // Student docs dialog
-  showStudentDocsDialog: boolean;
-  selectedStudentForDocs: { enrollmentId: string; studentName: string; courseName: string } | null;
-  closeStudentDocs: () => void;
-  openStudentDocs: (enrollmentId: string, studentName: string, courseName: string) => void;
-  
-  // Bulk upload dialog
-  showBulkUploadDialog: boolean;
-  setShowBulkUploadDialog: (v: boolean) => void;
-  
-  // Student detail card
-  showStudentDetailCard: boolean;
-  setShowStudentDetailCard: (v: boolean) => void;
-  studentDetailCardData: any;
-  studentDetailCardEnrollments: any[];
-  
-  // Bulk FRDO export
-  showBulkFRDOExport: boolean;
-  setShowBulkFRDOExport: (v: boolean) => void;
-  selectedStudentIds: Set<string>;
-  
-  // Bulk delete
-  showBulkDeleteConfirm: boolean;
-  setShowBulkDeleteConfirm: (v: boolean) => void;
-  isBulkDeleting: boolean;
-  onBulkDelete: () => void;
-}
-
-export function DialogsContainer(props: DialogsContainerProps) {
   return (
     <>
       <ImportStudentsDialog
-        open={props.showImportDialog}
-        onOpenChange={props.setShowImportDialog}
-        organizationId={props.organizationId}
-        courses={props.courses}
-        companies={props.companies}
+        open={d.showImportDialog}
+        onOpenChange={d.setShowImportDialog}
+        organizationId={d.organizationId}
+        courses={d.courses}
+        companies={d.companies}
       />
 
       <UnenrollConfirmDialog
-        open={props.showUnenrollConfirm}
-        onOpenChange={props.setShowUnenrollConfirm}
-        selectedCount={props.selectedEnrollmentsCount}
-        isUnenrolling={props.isUnenrolling}
-        onConfirm={props.onBulkUnenroll}
+        open={d.enrollmentActions.showUnenrollConfirm}
+        onOpenChange={d.enrollmentActions.setShowUnenrollConfirm}
+        selectedCount={d.getSelectedEnrollmentsCount()}
+        isUnenrolling={d.enrollmentActions.isUnenrolling}
+        onConfirm={d.handleBulkUnenroll}
       />
 
       <AddStudentDialog
-        open={props.showAddStudentDialog}
-        onOpenChange={props.setShowAddStudentDialog}
-        courses={props.courses}
-        companies={props.companies}
-        onSubmit={props.onCreateStudent}
-        isCreating={props.isCreatingStudent}
+        open={d.studentManagement.showAddStudentDialog}
+        onOpenChange={d.studentManagement.setShowAddStudentDialog}
+        courses={d.courses}
+        companies={d.companies}
+        onSubmit={async (name, email, courseId, companyId, noLogin) => {
+          d.studentManagement.setNewStudentName(name);
+          d.studentManagement.setNewStudentEmail(email);
+          d.studentManagement.setSelectedCourseId(courseId);
+          d.studentManagement.setSelectedCompanyId(companyId);
+          d.studentManagement.setNoLoginStudent(noLogin);
+          await d.studentManagement.createStudent();
+        }}
+        isCreating={d.studentManagement.isCreatingStudent}
       />
 
       <EnrollDialog
-        open={props.showEnrollDialog}
-        onOpenChange={props.setShowEnrollDialog}
-        selectedCount={props.selectedStudentIdsSize}
-        courses={props.courses}
-        categories={props.categories}
-        getCategoryById={props.getCategoryById}
-        isEnrolling={props.isEnrolling}
-        onEnroll={props.onEnroll}
+        open={d.enrollmentActions.showEnrollDialog}
+        onOpenChange={d.enrollmentActions.setShowEnrollDialog}
+        selectedCount={d.enrollmentActions.selectedStudentIds.size}
+        courses={d.courses}
+        categories={d.categories}
+        getCategoryById={d.getCategoryById}
+        isEnrolling={d.enrollmentActions.isEnrolling}
+        onEnroll={async (courseId) => {
+          d.enrollmentActions.setEnrollCourseId(courseId);
+          await d.enrollmentActions.bulkEnroll(courseId, d.students, d.allProfiles, d.courses);
+        }}
       />
 
       <CategoryDialog
-        open={props.showCategoryDialog}
-        onOpenChange={props.setShowCategoryDialog}
-        isCreating={props.isCreatingCategory}
-        onCreate={props.onCreateCategory}
+        open={d.showCategoryDialog}
+        onOpenChange={d.setShowCategoryDialog}
+        isCreating={d.isCreatingCategory}
+        onCreate={async (name, color) => {
+          d.categoryActions.setNewCategoryName(name);
+          d.categoryActions.setNewCategoryColor(color);
+          await d.categoryActions.createCategory();
+        }}
       />
 
       <CourseDetailsModal
-        open={props.showCourseDetailsModal}
-        onOpenChange={props.setShowCourseDetailsModal}
-        course={props.selectedCourseForDetails}
-        courseStudents={props.courseStudents}
-        organizationId={props.organizationId}
-        activeTab={props.courseDetailsTab}
-        onTabChange={props.onTabChange}
-        onEnrollStudent={props.onEnrollStudent}
-        onCourseDeleted={props.onCourseDeleted}
-        onCourseUpdated={props.onCourseUpdated}
-        onRefreshStudents={props.onRefreshCourseStudents}
+        open={d.courseDetailsModal.showCourseDetailsModal}
+        onOpenChange={d.courseDetailsModal.setShowCourseDetailsModal}
+        course={d.courseDetailsModal.selectedCourseForDetails}
+        courseStudents={d.courseStudentsManager.courseStudents}
+        organizationId={d.organizationId}
+        activeTab={d.courseDetailsModal.courseDetailsTab}
+        onTabChange={d.courseDetailsModal.setCourseDetailsTab}
+        onEnrollStudent={() => {
+          if (d.courseDetailsModal.selectedCourseForDetails) {
+            d.setStudentCourseFilter(d.courseDetailsModal.selectedCourseForDetails.id);
+            d.setStudentStatusFilter("not_enrolled");
+            d.tabNavigation.setActiveTab("students");
+            d.courseDetailsModal.setShowCourseDetailsModal(false);
+          }
+        }}
+        onCourseDeleted={d.refreshData}
+        onCourseUpdated={d.refreshData}
+        onRefreshStudents={d.loadCourseStudentsForModal}
       />
 
       <CourseStudentsDialog
-        open={props.showCourseStudentsDialog}
-        onOpenChange={props.setShowCourseStudentsDialog}
-        course={props.selectedCourse}
-        courseStudents={props.courseStudents}
-        availableStudents={props.availableStudentsForCourse}
-        organizationId={props.organizationId}
-        isLoading={props.isLoadingCourseStudents}
-        selectedStudentsToAdd={props.selectedStudentsToAdd}
-        onToggleStudentSelection={props.onToggleStudentSelection}
-        onAddStudentsToCourse={props.onAddStudentsToCourse}
-        isAddingStudents={props.isAddingStudentsToCourse}
-        onRemoveFromCourse={props.onRemoveFromCourse}
-        onShowInviteEmailDialog={() => props.setShowInviteEmailDialog(true)}
-        onShowStudentDocs={props.openStudentDocs}
-        onRefresh={props.onCourseStudentsRefresh}
+        open={d.courseStudentsManager.showCourseStudentsDialog}
+        onOpenChange={d.courseStudentsManager.setShowCourseStudentsDialog}
+        course={d.courseStudentsManager.selectedCourse}
+        courseStudents={d.courseStudentsManager.courseStudents}
+        availableStudents={d.courseStudentsManager.availableStudentsForCourse}
+        organizationId={d.organizationId}
+        isLoading={d.courseStudentsManager.isLoadingCourseStudents}
+        selectedStudentsToAdd={d.courseStudentsManager.selectedStudentsToAdd}
+        onToggleStudentSelection={d.courseStudentsManager.toggleStudentSelection}
+        onAddStudentsToCourse={d.courseStudentsManager.addStudentsToCourse}
+        isAddingStudents={d.courseStudentsManager.isAddingStudentsToCourse}
+        onRemoveFromCourse={d.courseStudentsManager.removeStudentFromCourse}
+        onShowInviteEmailDialog={() => d.emailInvitation.setShowInviteEmailDialog(true)}
+        onShowStudentDocs={d.studentDocsDialog.openStudentDocs}
+        onRefresh={d.refreshData}
       />
 
       <InviteEmailDialog
-        open={props.showInviteEmailDialog}
-        onOpenChange={props.setShowInviteEmailDialog}
-        courseTitle={props.selectedCourse?.title}
-        isSending={props.isSendingInvitation}
-        onSend={props.onSendInvitation}
+        open={d.emailInvitation.showInviteEmailDialog}
+        onOpenChange={d.emailInvitation.setShowInviteEmailDialog}
+        courseTitle={d.courseStudentsManager.selectedCourse?.title}
+        isSending={d.emailInvitation.isSendingInvitation}
+        onSend={async (email) => { await d.emailInvitation.sendInvitationDirect(email, d.courseStudentsManager.selectedCourse); }}
       />
 
       <StudentDetailsDialog
-        open={props.showStudentDialog}
-        onOpenChange={props.setShowStudentDialog}
-        studentDetails={props.selectedStudent}
-        isLoading={props.isLoadingStudentDetails}
-        companies={props.companies}
-        studentCompanyId={props.studentCompanyId}
-        onStudentCompanyIdChange={props.setStudentCompanyId}
-        isSavingStudentCompany={props.isSavingStudentCompany}
-        onAttachToCompany={props.onAttachStudentToCompany}
-        isCreatingCredentials={props.isCreatingCredentials}
-        onCreateCredentials={props.onCreateStudentCredentials}
-        isSendingCredentials={props.isSendingCredentials}
-        onSendCredentials={props.onSendCredentials}
-        isSendingCredentialsEmail={props.isSendingCredentialsEmail}
-        onSendCredentialsEmail={props.onSendCredentialsEmail}
-        isDeletingStudent={props.isDeletingStudent}
-        onDeleteStudent={props.onDeleteStudent}
-        onCopyCredentials={props.onCopyCredentials}
+        open={d.studentDetailsDialog.showStudentDialog}
+        onOpenChange={d.studentDetailsDialog.setShowStudentDialog}
+        studentDetails={d.studentDetailsDialog.selectedStudent}
+        isLoading={d.studentDetailsDialog.isLoadingStudentDetails}
+        companies={d.companies}
+        studentCompanyId={d.studentDetailsDialog.studentCompanyId}
+        onStudentCompanyIdChange={d.studentDetailsDialog.setStudentCompanyId}
+        isSavingStudentCompany={d.studentDetailsDialog.isSavingStudentCompany}
+        onAttachToCompany={d.studentDetailsDialog.handleAttachStudentToCompany}
+        isCreatingCredentials={d.studentActions.isCreatingCredentials}
+        onCreateCredentials={d.studentDetailsDialog.handleCreateStudentCredentials}
+        isSendingCredentials={d.studentActions.isSendingCredentials}
+        onSendCredentials={d.studentDetailsDialog.handleSendCredentials}
+        isSendingCredentialsEmail={d.studentActions.isSendingCredentialsEmail}
+        onSendCredentialsEmail={d.studentDetailsDialog.handleSendCredentialsEmail}
+        isDeletingStudent={d.studentActions.isDeletingStudent}
+        onDeleteStudent={d.studentDetailsDialog.handleDeleteStudentCompletely}
+        onCopyCredentials={d.studentDetailsDialog.handleCopyCredentials}
       />
 
       <AddCompanyDialog
-        open={props.showAddCompanyDialog}
-        onOpenChange={props.setShowAddCompanyDialog}
-        name={props.newCompanyName}
-        onNameChange={props.setNewCompanyName}
-        email={props.newCompanyEmail}
-        onEmailChange={props.setNewCompanyEmail}
-        inn={props.newCompanyInn}
-        onInnChange={props.setNewCompanyInn}
-        contactName={props.newCompanyContactName}
-        onContactNameChange={props.setNewCompanyContactName}
-        phone={props.newCompanyPhone}
-        onPhoneChange={props.setNewCompanyPhone}
-        isCreating={props.isCreatingCompany}
-        onCreate={props.onCreateCompany}
+        open={d.companyActions.showAddCompanyDialog}
+        onOpenChange={d.companyActions.setShowAddCompanyDialog}
+        name={d.companyActions.newCompanyName}
+        onNameChange={d.companyActions.setNewCompanyName}
+        email={d.companyActions.newCompanyEmail}
+        onEmailChange={d.companyActions.setNewCompanyEmail}
+        inn={d.companyActions.newCompanyInn}
+        onInnChange={d.companyActions.setNewCompanyInn}
+        contactName={d.companyActions.newCompanyContactName}
+        onContactNameChange={d.companyActions.setNewCompanyContactName}
+        phone={d.companyActions.newCompanyPhone}
+        onPhoneChange={d.companyActions.setNewCompanyPhone}
+        isCreating={d.companyActions.isCreatingCompany}
+        onCreate={d.handleCompanyCreate}
       />
 
       <EditCompanyDialog
-        open={props.showEditCompanyDialog}
-        onOpenChange={props.setShowEditCompanyDialog}
-        name={props.editCompanyName}
-        onNameChange={props.setEditCompanyName}
-        email={props.editCompanyEmail}
-        onEmailChange={props.setEditCompanyEmail}
-        inn={props.editCompanyInn}
-        onInnChange={props.setEditCompanyInn}
-        contactName={props.editCompanyContactName}
-        onContactNameChange={props.setEditCompanyContactName}
-        phone={props.editCompanyPhone}
-        onPhoneChange={props.setEditCompanyPhone}
-        isSaving={props.isSavingCompany}
-        onSave={props.onSaveCompany}
+        open={d.companyActions.showEditCompanyDialog}
+        onOpenChange={d.companyActions.setShowEditCompanyDialog}
+        name={d.companyActions.editCompanyName}
+        onNameChange={d.companyActions.setEditCompanyName}
+        email={d.companyActions.editCompanyEmail}
+        onEmailChange={d.companyActions.setEditCompanyEmail}
+        inn={d.companyActions.editCompanyInn}
+        onInnChange={d.companyActions.setEditCompanyInn}
+        contactName={d.companyActions.editCompanyContactName}
+        onContactNameChange={d.companyActions.setEditCompanyContactName}
+        phone={d.companyActions.editCompanyPhone}
+        onPhoneChange={d.companyActions.setEditCompanyPhone}
+        isSaving={d.companyActions.isSavingCompany}
+        onSave={d.handleCompanySave}
       />
 
       <OrgDetailsDialog
-        open={props.showOrgDetails}
-        onOpenChange={props.setShowOrgDetails}
-        organization={props.selectedOrg}
-        students={props.orgStudents}
-        isLoading={props.isLoadingOrgDetails}
+        open={d.organizationsTab.showOrgDetails}
+        onOpenChange={d.organizationsTab.setShowOrgDetails}
+        organization={d.organizationsTab.selectedOrg}
+        students={d.organizationsTab.orgStudents}
+        isLoading={d.organizationsTab.isLoadingOrgDetails}
       />
 
       <StudentCoursesDialog
-        open={props.showStudentCoursesDialog}
-        onOpenChange={props.setShowStudentCoursesDialog}
-        student={props.selectedStudentForCourses}
-        isLoading={props.isLoadingStudentCourses}
-        studentEnrollments={props.studentEnrollments}
-        availableCourses={props.availableCoursesForStudent}
-        selectedCoursesToAdd={props.selectedCoursesToAdd}
-        searchQuery={props.studentCoursesSearchQuery}
-        onSearchQueryChange={props.setStudentCoursesSearchQuery}
-        onToggleCourseSelection={props.onToggleCourseSelection}
-        isAddingCourses={props.isAddingCoursesToStudent}
-        onAddCourses={props.onAddCourses}
-        onRemoveEnrollment={props.onRemoveEnrollment}
-        onResetProgress={props.onResetProgress}
-        getCategoryById={props.getCategoryById}
+        open={d.studentCoursesDialog.showStudentCoursesDialog}
+        onOpenChange={d.studentCoursesDialog.setShowStudentCoursesDialog}
+        student={d.studentCoursesDialog.selectedStudentForCourses}
+        isLoading={d.studentCoursesDialog.isLoadingStudentCourses}
+        studentEnrollments={d.studentCoursesDialog.studentEnrollments}
+        availableCourses={d.studentCoursesDialog.availableCoursesForStudent}
+        selectedCoursesToAdd={d.studentCoursesDialog.selectedCoursesToAdd}
+        searchQuery={d.studentCoursesDialog.studentCoursesSearchQuery}
+        onSearchQueryChange={d.studentCoursesDialog.setStudentCoursesSearchQuery}
+        onToggleCourseSelection={d.studentCoursesDialog.toggleCourseSelection}
+        isAddingCourses={d.studentCoursesDialog.isAddingCoursesToStudent}
+        onAddCourses={d.studentCoursesDialog.addCourses}
+        onRemoveEnrollment={d.studentCoursesDialog.removeEnrollment}
+        onResetProgress={d.studentCoursesDialog.resetProgress}
+        getCategoryById={d.getCategoryById}
       />
 
       <CreateLinkDialog
-        open={props.showCreateLinkDialog}
-        onOpenChange={props.setShowCreateLinkDialog}
-        companyName={props.newLinkCompanyName}
-        onCompanyNameChange={props.setNewLinkCompanyName}
-        inn={props.newLinkInn}
-        onInnChange={props.setNewLinkInn}
-        isCreating={props.isCreatingLink}
-        onCreate={props.onCreateLink}
+        open={d.registrationLinks.showCreateLinkDialog}
+        onOpenChange={d.registrationLinks.setShowCreateLinkDialog}
+        companyName={d.registrationLinks.newLinkCompanyName}
+        onCompanyNameChange={d.registrationLinks.setNewLinkCompanyName}
+        inn={d.registrationLinks.newLinkInn}
+        onInnChange={d.registrationLinks.setNewLinkInn}
+        isCreating={d.registrationLinks.isCreatingLink}
+        onCreate={d.registrationLinks.createLink}
       />
 
       {/* Course Documents Manager */}
-      {props.selectedCourseForDocs && (
+      {d.courseDocsDialog.selectedCourseForDocs && (
         <CourseDocumentsManager 
-          courseId={props.selectedCourseForDocs.id} 
-          courseName={props.selectedCourseForDocs.title} 
-          isOpen={props.showCourseDocsDialog} 
-          onClose={props.closeCourseDocs} 
+          courseId={d.courseDocsDialog.selectedCourseForDocs.id} 
+          courseName={d.courseDocsDialog.selectedCourseForDocs.title} 
+          isOpen={d.courseDocsDialog.showCourseDocsDialog} 
+          onClose={d.courseDocsDialog.closeCourseDocs} 
         />
       )}
 
       {/* Student Documents Manager */}
-      {props.selectedStudentForDocs && (
+      {d.studentDocsDialog.selectedStudentForDocs && (
         <StudentDocumentsManager 
-          enrollmentId={props.selectedStudentForDocs.enrollmentId} 
-          studentName={props.selectedStudentForDocs.studentName} 
-          courseName={props.selectedStudentForDocs.courseName} 
-          isOpen={props.showStudentDocsDialog} 
-          onClose={props.closeStudentDocs} 
+          enrollmentId={d.studentDocsDialog.selectedStudentForDocs.enrollmentId} 
+          studentName={d.studentDocsDialog.selectedStudentForDocs.studentName} 
+          courseName={d.studentDocsDialog.selectedStudentForDocs.courseName} 
+          isOpen={d.studentDocsDialog.showStudentDocsDialog} 
+          onClose={d.studentDocsDialog.closeStudentDocs} 
         />
       )}
 
       {/* Bulk Document Upload */}
-      {props.organizationId && (
+      {d.organizationId && (
         <BulkDocumentUpload 
-          organizationId={props.organizationId} 
-          isOpen={props.showBulkUploadDialog} 
-          onClose={() => props.setShowBulkUploadDialog(false)} 
+          organizationId={d.organizationId} 
+          isOpen={d.showBulkUploadDialog} 
+          onClose={() => d.setShowBulkUploadDialog(false)} 
         />
       )}
 
       {/* Student Detail Card */}
-      {props.organizationId && (
+      {d.organizationId && (
         <StudentDetailCard
-          isOpen={props.showStudentDetailCard}
-          onOpenChange={props.setShowStudentDetailCard}
-          student={props.studentDetailCardData}
-          organizationId={props.organizationId}
-          enrollments={props.studentDetailCardEnrollments}
+          isOpen={d.studentDetailCard.showStudentDetailCard}
+          onOpenChange={d.studentDetailCard.setShowStudentDetailCard}
+          student={d.studentDetailCard.studentDetailCardData}
+          organizationId={d.organizationId}
+          enrollments={d.studentDetailCard.studentDetailCardEnrollments}
         />
       )}
       
       <BulkFRDOExport
-        isOpen={props.showBulkFRDOExport}
-        onOpenChange={props.setShowBulkFRDOExport}
-        organizationId={props.organizationId}
-        selectedStudentIds={props.selectedStudentIds}
-        students={props.students}
+        isOpen={d.enrollmentActions.showBulkFRDOExport}
+        onOpenChange={d.enrollmentActions.setShowBulkFRDOExport}
+        organizationId={d.organizationId}
+        selectedStudentIds={d.enrollmentActions.selectedStudentIds}
+        students={d.students}
       />
 
       {/* Bulk Delete Confirmation Dialog */}
-      <AlertDialog open={props.showBulkDeleteConfirm} onOpenChange={props.setShowBulkDeleteConfirm}>
+      <AlertDialog open={d.enrollmentActions.showBulkDeleteConfirm} onOpenChange={d.enrollmentActions.setShowBulkDeleteConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Удалить учеников?</AlertDialogTitle>
             <AlertDialogDescription>
-              Вы уверены, что хотите удалить {props.selectedStudentIds.size} учеников?
+              Вы уверены, что хотите удалить {d.enrollmentActions.selectedStudentIds.size} учеников?
               Это действие нельзя отменить. Все данные учеников, включая зачисления и документы, будут удалены.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={props.isBulkDeleting}>Отмена</AlertDialogCancel>
+            <AlertDialogCancel disabled={d.enrollmentActions.isBulkDeleting}>Отмена</AlertDialogCancel>
             <AlertDialogAction 
-              onClick={props.onBulkDelete} 
-              disabled={props.isBulkDeleting}
+              onClick={() => d.enrollmentActions.bulkDelete(d.students)} 
+              disabled={d.enrollmentActions.isBulkDeleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {props.isBulkDeleting ? (
+              {d.enrollmentActions.isBulkDeleting ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   Удаление...
