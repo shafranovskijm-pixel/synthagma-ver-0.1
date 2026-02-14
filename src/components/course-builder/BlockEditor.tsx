@@ -22,6 +22,7 @@ import {
   Upload,
   Presentation,
   Loader2,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -855,6 +856,7 @@ function AccordionBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (u
 }
 
 function QuizBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void }) {
+  const [isGenerating, setIsGenerating] = useState(false);
   const options = block.quizOptions || [{ text: "", isCorrect: true }, { text: "", isCorrect: false }];
 
   const updateOption = (index: number, updates: Partial<QuizOption>) => {
@@ -865,11 +867,42 @@ function QuizBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (update
   const addOption = () => onUpdate({ quizOptions: [...options, { text: "", isCorrect: false }] });
   const removeOption = (index: number) => { if (options.length > 2) onUpdate({ quizOptions: options.filter((_, i) => i !== index) }); };
 
+  const handleGenerateWithAI = async () => {
+    setIsGenerating(true);
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data, error } = await supabase.functions.invoke("generate-course-content", {
+        body: { contentType: "quiz", lessonTitle: block.quizQuestion || "Общий вопрос по теме", courseTitle: "Курс" },
+      });
+      if (error) throw error;
+      if (data?.quiz) {
+        const q = data.quiz;
+        onUpdate({
+          quizQuestion: q.question || "",
+          quizOptions: (q.options || []).map((o: any) => ({ text: o.text, isCorrect: !!o.isCorrect })),
+          quizExplanation: q.explanation || "",
+        });
+      }
+    } catch (e) {
+      console.error("Quiz AI generation error:", e);
+      const { toast } = await import("sonner");
+      toast.error("Ошибка генерации квиза");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   return (
     <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-3">
-      <div className="flex items-center gap-2 text-primary">
-        <HelpCircle className="w-5 h-5" />
-        <span className="font-medium">Мини-квиз</span>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-primary">
+          <HelpCircle className="w-5 h-5" />
+          <span className="font-medium">Мини-квиз</span>
+        </div>
+        <Button variant="outline" size="sm" onClick={handleGenerateWithAI} disabled={isGenerating} className="gap-2 text-xs">
+          {isGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+          {isGenerating ? "Генерация..." : "Сгенерировать с ИИ"}
+        </Button>
       </div>
       <Input value={block.quizQuestion || ""} onChange={(e) => onUpdate({ quizQuestion: e.target.value })} placeholder="Введите вопрос..." className="font-medium" />
       <div className="space-y-2">
