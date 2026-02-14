@@ -39,6 +39,7 @@ import {
   Star,
   Check,
   X,
+  Eraser,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -599,6 +600,15 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
+          )}
+          {canStyle && (
+            <button
+              className="h-8 w-8 flex items-center justify-center hover:bg-white/20 rounded-full transition-colors"
+              title="Сбросить стиль"
+              onClick={() => onUpdate({ textAlign: undefined, bgColor: undefined, textColor: undefined, textSize: undefined, bold: undefined, italic: undefined, strikethrough: undefined, underline: undefined, uppercase: undefined, lineHeight: undefined })}
+            >
+              <Eraser className="w-4 h-4" />
+            </button>
           )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
