@@ -470,10 +470,25 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
 function BlockContent({ block, onUpdate }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void }) {
   const [isEditing, setIsEditing] = useState(false);
 
+  const editorStyleClasses = (() => {
+    const classes: string[] = [];
+    if (block.textAlign === 'center') classes.push('text-center');
+    if (block.textAlign === 'right') classes.push('text-right');
+    if (block.textSize === 'sm') classes.push('text-sm');
+    if (block.textSize === 'lg') classes.push('text-lg');
+    if (block.bold) classes.push('font-bold');
+    if (block.italic) classes.push('italic');
+    if (block.bgColor) {
+      const preset = bgColorPresets.find(p => p.value === block.bgColor);
+      if (preset?.class) classes.push(preset.class, 'rounded-lg', 'p-3');
+    }
+    return classes.join(' ');
+  })();
+
   switch (block.type) {
     case "paragraph":
       return (
-        <div className="py-2 min-h-[40px] cursor-text" onClick={() => setIsEditing(true)}>
+        <div className={cn("py-2 min-h-[40px] cursor-text", editorStyleClasses)} onClick={() => setIsEditing(true)}>
           {isEditing ? (
             <Textarea autoFocus value={block.content} onChange={(e) => onUpdate({ content: e.target.value })} onBlur={() => setIsEditing(false)} placeholder="Введите текст..." className="min-h-[60px] border-0 bg-transparent resize-none focus-visible:ring-0 px-0" />
           ) : (
@@ -483,22 +498,22 @@ function BlockContent({ block, onUpdate }: { block: ContentBlock; onUpdate: (upd
       );
 
     case "heading1":
-      return <Input value={block.content} onChange={(e) => onUpdate({ content: e.target.value })} placeholder="Заголовок 1" className="text-2xl font-bold border-0 bg-transparent focus-visible:ring-0 px-0 h-auto py-2" />;
+      return <Input value={block.content} onChange={(e) => onUpdate({ content: e.target.value })} placeholder="Заголовок 1" className={cn("text-2xl font-bold border-0 bg-transparent focus-visible:ring-0 px-0 h-auto py-2", editorStyleClasses)} />;
 
     case "heading2":
-      return <Input value={block.content} onChange={(e) => onUpdate({ content: e.target.value })} placeholder="Заголовок 2" className="text-xl font-semibold border-0 bg-transparent focus-visible:ring-0 px-0 h-auto py-2" />;
+      return <Input value={block.content} onChange={(e) => onUpdate({ content: e.target.value })} placeholder="Заголовок 2" className={cn("text-xl font-semibold border-0 bg-transparent focus-visible:ring-0 px-0 h-auto py-2", editorStyleClasses)} />;
 
     case "bulletList":
     case "numberedList":
       return (
-        <div className="space-y-1 py-2">
+        <div className={cn("space-y-1 py-2", editorStyleClasses)}>
           <Textarea value={block.content} onChange={(e) => onUpdate({ content: e.target.value })} placeholder="Элемент списка (каждая строка — отдельный пункт)" className="min-h-[60px] border-0 bg-secondary/30 resize-none focus-visible:ring-1 rounded-lg text-sm" />
         </div>
       );
 
     case "quote":
       return (
-        <div className="border-l-4 border-muted-foreground/30 pl-4 py-2">
+        <div className={cn("border-l-4 border-muted-foreground/30 pl-4 py-2", editorStyleClasses)}>
           <Textarea value={block.content} onChange={(e) => onUpdate({ content: e.target.value })} placeholder="Введите цитату..." className="min-h-[60px] border-0 bg-transparent resize-none focus-visible:ring-0 px-0 italic text-muted-foreground" />
         </div>
       );
