@@ -518,7 +518,10 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
       className={cn("group relative rounded-lg transition-all", isFocused && "bg-secondary/30")}
       onClick={onFocus}
     >
-      {/* Top-center floating toolbar */}
+      <div className="min-w-0">
+        <BlockContent block={block} onUpdate={onUpdate} courseTitle={courseTitle} lessonTitle={lessonTitle} existingContent={existingContent} />
+      </div>
+      {/* Bottom-center floating toolbar */}
       <div className="flex items-center justify-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity py-1">
         <div className="flex items-center gap-0.5 bg-foreground/80 backdrop-blur-sm text-background rounded-full px-2 py-1 shadow-lg">
           <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing hover:bg-white/20 rounded-full h-8 w-8 flex items-center justify-center touch-none transition-colors">
@@ -722,9 +725,6 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
             <Trash2 className="w-4 h-4" />
           </button>
         </div>
-      </div>
-      <div className="min-w-0">
-        <BlockContent block={block} onUpdate={onUpdate} courseTitle={courseTitle} lessonTitle={lessonTitle} existingContent={existingContent} />
       </div>
     </div>
   );
