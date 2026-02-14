@@ -21,6 +21,7 @@ import {
   Video,
   Upload,
   Presentation,
+  Headphones,
   Loader2,
   Sparkles,
   Wand2,
@@ -103,6 +104,7 @@ export type BlockType =
   | "quiz"
   | "image"
   | "video"
+  | "audio"
   | "slider"
   | "divider";
 
@@ -130,6 +132,7 @@ export interface ContentBlock {
   imageSrc?: string;
   imageAlt?: string;
   videoUrl?: string;
+  audioUrl?: string;
   sliderSlides?: SliderSlide[];
   sliderCurrentIndex?: number;
   textAlign?: 'left' | 'center' | 'right';
@@ -172,6 +175,7 @@ const blockTypeConfig: Record<BlockType, { icon: any; label: string; color: stri
   quiz: { icon: HelpCircle, label: "Мини-квиз", color: "text-primary" },
   image: { icon: ImageIcon, label: "Изображение", color: "text-green-500" },
   video: { icon: Video, label: "Видео", color: "text-red-500" },
+  audio: { icon: Headphones, label: "Аудио", color: "text-teal-500" },
   slider: { icon: Presentation, label: "Слайдер презентации", color: "text-orange-500" },
   divider: { icon: Minus, label: "Разделитель", color: "text-muted-foreground" },
 };
@@ -191,6 +195,7 @@ const createBlock = (type: BlockType): ContentBlock => ({
   }),
   ...(type === "image" && { imageSrc: "", imageAlt: "" }),
   ...(type === "video" && { videoUrl: "" }),
+  ...(type === "audio" && { audioUrl: "" }),
   ...(type === "slider" && { sliderSlides: [], sliderCurrentIndex: 0 }),
 });
 
@@ -339,6 +344,9 @@ function AddBlockButton({ onAdd }: { onAdd: (type: BlockType) => void }) {
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => onAdd("video")}>
           <Video className="w-4 h-4 mr-2 text-red-500" />Видео
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onAdd("audio")}>
+          <Headphones className="w-4 h-4 mr-2 text-teal-500" />Аудио
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => onAdd("slider")}>
           <Presentation className="w-4 h-4 mr-2 text-orange-500" />Слайдер презентации
@@ -811,6 +819,9 @@ function BlockContent({ block, onUpdate, courseTitle, lessonTitle, existingConte
     case "video":
       return <VideoBlock block={block} onUpdate={onUpdate} />;
 
+    case "audio":
+      return <AudioBlock block={block} onUpdate={onUpdate} />;
+
     case "slider":
       return <SliderBlock block={block} onUpdate={onUpdate} />;
 
@@ -1150,6 +1161,67 @@ function VideoBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updat
   );
 }
 
+function AudioBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void }) {
+  const [isUploading, setIsUploading] = useState(false);
+  const audioUrl = block.audioUrl || "";
+
+  const handleFileUpload = async (file: File) => {
+    if (!file.type.startsWith("audio/")) { return; }
+    if (file.size > 50 * 1024 * 1024) { return; }
+    setIsUploading(true);
+    try {
+      const fileName = `audio_${crypto.randomUUID()}.${file.name.split('.').pop() || 'mp3'}`;
+      const { data: configData } = await (await import("@/integrations/supabase/client")).supabase.functions.invoke('get-external-storage-config');
+      const useExternal = configData?.configured && configData?.url && configData?.key;
+      const bucket = useExternal ? 'course-videos' : 'course-files';
+      const supabaseClient = (await import("@/integrations/supabase/client")).supabase;
+
+      let uploadedViaInternal = false;
+      const { error } = await supabaseClient.storage.from(bucket).upload(fileName, file, { upsert: true });
+      if (!error) {
+        uploadedViaInternal = true;
+      }
+
+      const baseUrl = uploadedViaInternal ? import.meta.env.VITE_SUPABASE_URL : configData?.url;
+      const publicUrl = `${baseUrl}/storage/v1/object/public/${bucket}/${fileName}`;
+      onUpdate({ audioUrl: publicUrl });
+    } catch (e) {
+      console.error("Audio upload error:", e);
+    } finally { setIsUploading(false); }
+  };
+
+  return (
+    <div className="py-2">
+      {audioUrl ? (
+        <div className="space-y-2">
+          <audio controls src={audioUrl} className="w-full rounded-lg" />
+          <div className="flex gap-2">
+            <Input value={audioUrl} onChange={(e) => onUpdate({ audioUrl: e.target.value })} className="text-xs flex-1" />
+            <Button variant="ghost" size="sm" onClick={() => onUpdate({ audioUrl: "" })}>
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-muted rounded-xl p-6 space-y-4">
+          <div className="text-center">
+            <Headphones className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground mb-2">Добавьте аудио</p>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Button variant="outline" size="sm" className="mx-auto" onClick={() => document.getElementById(`audio-upload-${block.id}`)?.click()} disabled={isUploading}>
+              {isUploading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
+              Загрузить файл
+            </Button>
+            <input id={`audio-upload-${block.id}`} type="file" accept="audio/*" className="hidden" onChange={(e) => { if (e.target.files?.[0]) handleFileUpload(e.target.files[0]); }} />
+            <div className="text-center text-xs text-muted-foreground">или</div>
+            <Input value={audioUrl} onChange={(e) => onUpdate({ audioUrl: e.target.value })} placeholder="https://example.com/audio.mp3" className="text-sm" />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 function SliderBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
