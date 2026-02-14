@@ -387,7 +387,7 @@ interface SortableBlockItemProps {
   onPresetsChange: (presets: { name: string; style: StylePreset }[]) => void;
 }
 
-const convertibleTypes: BlockType[] = ["paragraph", "heading1", "heading2", "bulletList", "numberedList", "quote", "callout-info", "callout-warning", "callout-tip", "callout-success", "callout-danger", "highlight", "accordion"];
+const convertibleTypes: BlockType[] = ["paragraph", "heading1", "heading2", "bulletList", "numberedList", "quote", "callout-info", "callout-warning", "callout-tip", "callout-success", "callout-danger", "highlight", "accordion", "audio"];
 
 const textStyleableTypes: BlockType[] = ["paragraph", "heading1", "heading2", "bulletList", "numberedList", "quote", "callout-info", "callout-warning", "callout-tip", "callout-success", "callout-danger", "highlight"];
 
@@ -428,6 +428,7 @@ const wrapTargets: { type: BlockType; icon: any; label: string; color: string }[
   { type: "highlight", icon: Highlighter, label: "Выделение", color: "text-yellow-500" },
   { type: "quote", icon: Quote, label: "Цитата", color: "text-muted-foreground" },
   { type: "accordion", icon: ChevronDown, label: "Сворачиваемая секция", color: "text-purple-500" },
+  { type: "audio", icon: Headphones, label: "Аудио (TTS)", color: "text-teal-500" },
   { type: "paragraph", icon: Type, label: "Обычный текст", color: "text-foreground" },
 ];
 
@@ -510,7 +511,49 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
   const canConvert = convertibleTypes.includes(block.type);
   const canStyle = textStyleableTypes.includes(block.type);
 
-  const handleConvert = (newType: BlockType) => {
+  const handleConvert = async (newType: BlockType) => {
+    if (newType === "audio") {
+      // Extract plain text from block content for TTS
+      const plainText = (block.content || "").replace(/<[^>]+>/g, "").trim();
+      if (!plainText) {
+        const { toast } = await import("sonner");
+        toast.error("Нет текста для озвучивания");
+        return;
+      }
+      const { toast } = await import("sonner");
+      toast.info("Генерация аудио из текста...");
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            },
+            body: JSON.stringify({ text: plainText }),
+          }
+        );
+        if (!response.ok) {
+          const errData = await response.json().catch(() => null);
+          throw new Error(errData?.error || `Ошибка: ${response.status}`);
+        }
+        const audioBlob = await response.blob();
+        // Upload to storage
+        const { supabase } = await import("@/integrations/supabase/client");
+        const fileName = `tts_${crypto.randomUUID()}.mp3`;
+        const { error } = await supabase.storage.from("course-files").upload(fileName, audioBlob, { contentType: "audio/mpeg", upsert: true });
+        if (error) throw error;
+        const audioUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/course-files/${fileName}`;
+        onUpdate({ type: "audio", audioUrl });
+        toast.success("Аудио сгенерировано!");
+      } catch (e: any) {
+        console.error("TTS convert error:", e);
+        toast.error(e.message || "Ошибка генерации аудио");
+      }
+      return;
+    }
     const updates: Partial<ContentBlock> = { type: newType };
     if (newType === "accordion" && !block.accordionTitle) {
       updates.accordionTitle = "Заголовок секции";
