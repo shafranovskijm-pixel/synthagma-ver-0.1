@@ -293,6 +293,15 @@ const CATEGORY_LABELS: Record<RecCategory, string> = {
   performance: "Производительность",
 };
 
+interface CodeAnalysisItem {
+  id: string;
+  severity: RecSeverity;
+  title: string;
+  category: string;
+  detail: string;
+  suggestion?: string;
+}
+
 // ─── Component ───────────────────────────────────────────────────
 export function DevToolsPanel() {
   const [activeTab, setActiveTab] = useState("database");
@@ -301,15 +310,6 @@ export function DevToolsPanel() {
   const [lastChecked, setLastChecked] = useState<string | null>(null);
   const [showCodeAnalysis, setShowCodeAnalysis] = useState(false);
   const [codeLastUpdated, setCodeLastUpdated] = useState<string | null>(null);
-
-  interface CodeAnalysisItem {
-    id: string;
-    severity: RecSeverity;
-    title: string;
-    category: string;
-    detail: string;
-    suggestion?: string;
-  }
 
   const codeAnalysisItems = useMemo<CodeAnalysisItem[]>(() => {
     const items: CodeAnalysisItem[] = [];
