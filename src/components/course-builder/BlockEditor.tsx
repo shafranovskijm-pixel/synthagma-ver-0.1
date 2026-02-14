@@ -40,6 +40,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "./RichTextEditor";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -538,7 +539,7 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
 }
 
 function BlockContent({ block, onUpdate, courseTitle, lessonTitle, existingContent }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void; courseTitle?: string; lessonTitle?: string; existingContent?: string }) {
-  const [isEditing, setIsEditing] = useState(false);
+  
 
   const editorStyleClasses = (() => {
     const classes: string[] = [];
@@ -567,12 +568,8 @@ function BlockContent({ block, onUpdate, courseTitle, lessonTitle, existingConte
   switch (block.type) {
     case "paragraph":
       return (
-        <div className={cn("py-2 min-h-[40px] cursor-text", editorStyleClasses)} onClick={() => setIsEditing(true)}>
-          {isEditing ? (
-            <Textarea autoFocus value={block.content} onChange={(e) => onUpdate({ content: e.target.value })} onBlur={() => setIsEditing(false)} placeholder="Введите текст..." className="min-h-[60px] border-0 bg-transparent resize-none focus-visible:ring-0 px-0" />
-          ) : (
-            <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: sanitizeHtml(block.content) || '<span class="text-muted-foreground">Введите текст...</span>' }} />
-          )}
+        <div className={cn("py-2 min-h-[40px]", editorStyleClasses)}>
+          <RichTextEditor value={block.content} onChange={(val) => onUpdate({ content: val })} placeholder="Введите текст..." />
         </div>
       );
 
@@ -1149,7 +1146,7 @@ function QuoteBlock({ block, onUpdate, courseTitle, lessonTitle, existingContent
       <div className="flex justify-end">
         <AIGenerateButton isGenerating={isGenerating} onClick={handleGenerate} />
       </div>
-      <Textarea value={block.content} onChange={(e) => onUpdate({ content: e.target.value })} placeholder="Введите цитату..." className="min-h-[60px] border-0 bg-transparent resize-none focus-visible:ring-0 px-0 italic text-muted-foreground" />
+      <RichTextEditor value={block.content} onChange={(val) => onUpdate({ content: val })} placeholder="Введите цитату..." className="italic text-muted-foreground" />
     </div>
   );
 }
@@ -1186,7 +1183,7 @@ function CalloutBlock({ block, onUpdate, courseTitle, lessonTitle, existingConte
         <Icon className={cn("w-5 h-5 flex-shrink-0", style.iconColor)} />
         <AIGenerateButton isGenerating={isGenerating} onClick={handleGenerate} />
       </div>
-      <Textarea value={block.content} onChange={(e) => onUpdate({ content: e.target.value })} placeholder="Введите текст..." className="min-h-[40px] border-0 bg-transparent resize-none focus-visible:ring-0 px-0 flex-1" />
+      <RichTextEditor value={block.content} onChange={(val) => onUpdate({ content: val })} placeholder="Введите текст..." minHeight="40px" />
     </div>
   );
 }
@@ -1224,7 +1221,7 @@ function AccordionBlock({ block, onUpdate, courseTitle, lessonTitle, existingCon
       </div>
       {isOpen && (
         <div className="p-3 pt-0 border-t border-purple-500/20">
-          <Textarea value={block.content} onChange={(e) => onUpdate({ content: e.target.value })} placeholder="Скрытое содержимое..." className="min-h-[80px] border-0 bg-transparent resize-none focus-visible:ring-0 px-0" />
+          <RichTextEditor value={block.content} onChange={(val) => onUpdate({ content: val })} placeholder="Скрытое содержимое..." minHeight="80px" />
         </div>
       )}
     </div>

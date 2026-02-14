@@ -1,0 +1,127 @@
+import { useRef, useEffect, useState, useCallback } from "react";
+import { Bold, Italic, Underline, Strikethrough } from "lucide-react";
+import { cn } from "@/lib/utils";
+import DOMPurify from "dompurify";
+
+interface RichTextEditorProps {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  className?: string;
+  minHeight?: string;
+}
+
+const ALLOWED_TAGS = ['strong', 'b', 'em', 'i', 'u', 's', 'br', 'p', 'span', 'div'];
+const ALLOWED_ATTR = ['style'];
+
+function sanitize(html: string): string {
+  return DOMPurify.sanitize(html, { ALLOWED_TAGS, ALLOWED_ATTR, ALLOW_DATA_ATTR: false });
+}
+
+export function RichTextEditor({ value, onChange, placeholder, className, minHeight = "60px" }: RichTextEditorProps) {
+  const editorRef = useRef<HTMLDivElement>(null);
+  const [showToolbar, setShowToolbar] = useState(false);
+  const [toolbarPos, setToolbarPos] = useState({ top: 0, left: 0 });
+  const isInternalChange = useRef(false);
+
+  // Sync external value changes
+  useEffect(() => {
+    if (isInternalChange.current) {
+      isInternalChange.current = false;
+      return;
+    }
+    const el = editorRef.current;
+    if (el && el.innerHTML !== value) {
+      el.innerHTML = value || "";
+    }
+  }, [value]);
+
+  const handleInput = useCallback(() => {
+    const el = editorRef.current;
+    if (!el) return;
+    isInternalChange.current = true;
+    const html = sanitize(el.innerHTML);
+    onChange(html);
+  }, [onChange]);
+
+  const handleSelectionChange = useCallback(() => {
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed || !sel.rangeCount) {
+      setShowToolbar(false);
+      return;
+    }
+    const range = sel.getRangeAt(0);
+    const editor = editorRef.current;
+    if (!editor || !editor.contains(range.commonAncestorContainer)) {
+      setShowToolbar(false);
+      return;
+    }
+    const rect = range.getBoundingClientRect();
+    const editorRect = editor.getBoundingClientRect();
+    setToolbarPos({
+      top: rect.top - editorRect.top - 40,
+      left: rect.left - editorRect.left + rect.width / 2,
+    });
+    setShowToolbar(true);
+  }, []);
+
+  useEffect(() => {
+    document.addEventListener("selectionchange", handleSelectionChange);
+    return () => document.removeEventListener("selectionchange", handleSelectionChange);
+  }, [handleSelectionChange]);
+
+  const execFormat = (command: string) => {
+    document.execCommand(command, false);
+    handleInput();
+    // Keep focus on editor
+    editorRef.current?.focus();
+  };
+
+  const toolbarButtons = [
+    { command: "bold", icon: Bold, title: "Жирный (Ctrl+B)" },
+    { command: "italic", icon: Italic, title: "Курсив (Ctrl+I)" },
+    { command: "underline", icon: Underline, title: "Подчёркнутый (Ctrl+U)" },
+    { command: "strikethrough", icon: Strikethrough, title: "Зачёркнутый" },
+  ];
+
+  return (
+    <div className="relative">
+      {/* Floating inline toolbar */}
+      {showToolbar && (
+        <div
+          className="absolute z-50 flex items-center gap-0.5 bg-foreground/90 backdrop-blur-sm text-background rounded-lg px-1 py-0.5 shadow-lg pointer-events-auto"
+          style={{ top: toolbarPos.top, left: toolbarPos.left, transform: "translateX(-50%)" }}
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          {toolbarButtons.map(({ command, icon: Icon, title }) => (
+            <button
+              key={command}
+              onMouseDown={(e) => { e.preventDefault(); execFormat(command); }}
+              className="h-7 w-7 flex items-center justify-center hover:bg-white/20 rounded transition-colors"
+              title={title}
+            >
+              <Icon className="w-3.5 h-3.5" />
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Editable area */}
+      <div
+        ref={editorRef}
+        contentEditable
+        suppressContentEditableWarning
+        onInput={handleInput}
+        onBlur={() => setTimeout(() => setShowToolbar(false), 200)}
+        data-placeholder={placeholder}
+        className={cn(
+          "outline-none prose prose-sm dark:prose-invert max-w-none",
+          "empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground empty:before:pointer-events-none",
+          className
+        )}
+        style={{ minHeight }}
+        dangerouslySetInnerHTML={{ __html: value || "" }}
+      />
+    </div>
+  );
+}
