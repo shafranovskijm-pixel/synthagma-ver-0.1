@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { 
   Users, ClipboardList, Award, GraduationCap, FileCheck, 
   FileText, Upload, BookOpen
@@ -17,7 +17,7 @@ interface DocumentsTabProps {
   isOrdersEnabled?: boolean;
 }
 
-export function DocumentsTab({ organizationId, onShowBulkUploadDialog, isOrdersEnabled = true }: DocumentsTabProps) {
+export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, onShowBulkUploadDialog, isOrdersEnabled = true }: DocumentsTabProps) {
   const [activeDocTab, setActiveDocTab] = useState<DocumentSubTab>("org");
 
   if (!organizationId) {
@@ -132,4 +132,4 @@ export function DocumentsTab({ organizationId, onShowBulkUploadDialog, isOrdersE
       </div>
     </div>
   );
-}
+});
