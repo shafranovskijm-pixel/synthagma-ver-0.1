@@ -76,9 +76,11 @@ interface UseCourseStoreManagerProps {
   organizationId: string;
   userRole?: 'organization' | 'student';
   userId?: string;
+  orgBalance?: number;
+  deductBalance?: (amount: number, description: string, orderId?: string) => Promise<boolean>;
 }
 
-export function useCourseStoreManager({ organizationId, userRole = 'organization', userId }: UseCourseStoreManagerProps) {
+export function useCourseStoreManager({ organizationId, userRole = 'organization', userId, orgBalance, deductBalance }: UseCourseStoreManagerProps) {
   const [activeTab, setActiveTab] = useState<'catalog' | 'my-courses' | 'orders' | 'my-orders'>('catalog');
   const [isLoading, setIsLoading] = useState(true);
   const [catalogCourses, setCatalogCourses] = useState<MarketplaceCourse[]>([]);
@@ -103,7 +105,7 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
   const [studentsCount, setStudentsCount] = useState(1);
   const [isOrdering, setIsOrdering] = useState(false);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
-
+  const [payFromBalance, setPayFromBalance] = useState(false);
   // Edit dialog
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editingCourse, setEditingCourse] = useState<MarketplaceCourse | null>(null);
@@ -277,15 +279,35 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
     setIsOrdering(true);
     try {
       const price = userRole === 'student' ? selectedCourseForOrder.price_student : selectedCourseForOrder.price_organization * studentsCount;
-      const { error } = await supabase.from('marketplace_orders').insert({
+      
+      // If paying from balance, check and deduct
+      let orderStatus = 'pending';
+      if (payFromBalance && userRole === 'organization' && deductBalance) {
+        if ((orgBalance ?? 0) < price) {
+          toast.error('Недостаточно средств на балансе');
+          setIsOrdering(false);
+          return;
+        }
+      }
+
+      const { data: orderData, error } = await supabase.from('marketplace_orders').insert({
         marketplace_course_id: selectedCourseForOrder.id,
         buyer_user_id: userRole === 'student' ? userId : null,
         buyer_organization_id: userRole === 'organization' ? organizationId : null,
         buyer_type: userRole, price,
         students_count: userRole === 'organization' ? studentsCount : 1,
-        notes: orderNotes || null, status: 'pending',
-      });
+        notes: orderNotes || null, 
+        status: payFromBalance ? 'paid' : 'pending',
+        payment_method: payFromBalance ? 'balance' : null,
+        paid_at: payFromBalance ? new Date().toISOString() : null,
+      }).select('id').single();
       if (error) throw error;
+
+      // Deduct balance after order created
+      if (payFromBalance && deductBalance && orderData) {
+        const courseName = selectedCourseForOrder.course?.title || 'Курс';
+        await deductBalance(price, `Покупка курса "${courseName}"`, orderData.id);
+      }
 
       try {
         let buyerName = 'Неизвестный покупатель';
@@ -298,7 +320,7 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
         }
         await supabase.functions.invoke('notify-course-order', {
           body: {
-            orderId: 'new', courseName: selectedCourseForOrder.course?.title || 'Курс',
+            orderId: orderData?.id || 'new', courseName: selectedCourseForOrder.course?.title || 'Курс',
             buyerName, buyerType: userRole,
             studentsCount: userRole === 'organization' ? studentsCount : 1,
             price, notes: orderNotes || undefined,
@@ -307,7 +329,7 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
         });
       } catch (notifyError) { console.error('Failed to send notification:', notifyError); }
 
-      setShowOrderDialog(false); setShowSuccessDialog(true); setOrderNotes(""); setStudentsCount(1); fetchOrders();
+      setShowOrderDialog(false); setShowSuccessDialog(true); setOrderNotes(""); setStudentsCount(1); setPayFromBalance(false); fetchOrders();
     } catch (error: any) {
       console.error('Error creating order:', error); toast.error('Ошибка при создании заявки');
     } finally { setIsOrdering(false); }
@@ -368,6 +390,7 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
     showOrderDialog, setShowOrderDialog, selectedCourseForOrder, setSelectedCourseForOrder,
     orderNotes, setOrderNotes, studentsCount, setStudentsCount, isOrdering, handleOrder,
     showSuccessDialog, setShowSuccessDialog,
+    payFromBalance, setPayFromBalance, orgBalance,
     // Edit dialog
     showEditDialog, setShowEditDialog, editingCourse, setEditingCourse, handleEditCourse,
     // Order details

@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Plus, FileSpreadsheet, Menu } from "lucide-react";
+import { Plus, FileSpreadsheet, Menu, Wallet } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
@@ -11,7 +11,7 @@ export function OrgDashboardHeader() {
   const activeTab = d.tabNavigation.activeTab;
   const organizationName = d.organizationName;
   const customName = d.branding.brandingSettings.customName;
-  const isMobile = d.isMobile;
+  const balance = d.balance;
 
   const handleStudentAction = (action: () => void) => {
     const result = d.checkLimit('student');
@@ -51,7 +51,14 @@ export function OrgDashboardHeader() {
             )}
           </div>
         </div>
-        <div className="flex gap-2 lg:gap-3 flex-wrap">
+        <div className="flex items-center gap-2 lg:gap-3 flex-wrap">
+          {/* Balance indicator */}
+          {balance !== undefined && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 rounded-xl border border-primary/20">
+              <Wallet className="w-4 h-4 text-primary" />
+              <span className="text-sm font-semibold text-primary">{balance.toLocaleString()} ₽</span>
+            </div>
+          )}
           {activeTab === "links" && (
             <Button className="btn-gradient rounded-xl gap-2 text-xs lg:text-sm" onClick={() => d.registrationLinks.setShowCreateLinkDialog(true)}>
               <Plus className="w-4 h-4" />
