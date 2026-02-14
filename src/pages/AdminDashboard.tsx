@@ -14,6 +14,7 @@ import { BlogManager } from "@/components/admin/BlogManager";
 import { SubscribersManager } from "@/components/admin/SubscribersManager";
 import { TestimonialsManager } from "@/components/admin/TestimonialsManager";
 import { TariffsManager } from "@/components/admin/TariffsManager";
+import { DevToolsPanel } from "@/components/admin/DevToolsPanel";
 
 const AdminDashboard = () => {
   const { user, signOut } = useAuth();
@@ -37,6 +38,7 @@ const AdminDashboard = () => {
       case "blog": return "Блог";
       case "subscribers": return "Подписчики";
       case "testimonials": return "Отзывы";
+      case "devtools": return "Developer Tools";
       case "settings": return "Настройки";
       default: return "";
     }
@@ -95,6 +97,7 @@ const AdminDashboard = () => {
           {activeTab === "blog" && <BlogManager />}
           {activeTab === "subscribers" && <SubscribersManager />}
           {activeTab === "testimonials" && <TestimonialsManager />}
+          {activeTab === "devtools" && <DevToolsPanel />}
           {activeTab === "settings" && <AdminSettings />}
         </div>
       </main>
