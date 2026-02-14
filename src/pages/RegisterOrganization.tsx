@@ -3,13 +3,21 @@ import { Button } from "@/components/ui/button";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Mail, Lock, User, Building, Phone, Loader2, Search, CheckCircle2 } from "lucide-react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { ArrowLeft, Mail, Lock, User, Building, Phone, Loader2, Search, CheckCircle2, Tag, Check } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { SUBSCRIPTION_PLANS, YEARLY_DISCOUNT, type SubscriptionPlan } from "@/constants/subscriptionPlans";
+
+const planKeys: SubscriptionPlan[] = ['free', 'start', 'standard', 'professional', 'maximum'];
 
 const RegisterOrganization = () => {
+  const [searchParams] = useSearchParams();
+  const planParam = searchParams.get('plan') as SubscriptionPlan | null;
+  const selectedPlan = planParam && planKeys.includes(planParam) ? planParam : 'free';
+  const planInfo = SUBSCRIPTION_PLANS[selectedPlan];
+
   const [orgName, setOrgName] = useState("");
   const [contactName, setContactName] = useState("");
   const [email, setEmail] = useState("");
@@ -24,6 +32,12 @@ const RegisterOrganization = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingInn, setIsLoadingInn] = useState(false);
   const [innLoaded, setInnLoaded] = useState(false);
+
+  // Promo code state
+  const [promoCode, setPromoCode] = useState("");
+  const [promoDiscount, setPromoDiscount] = useState(0);
+  const [promoApplied, setPromoApplied] = useState(false);
+  const [isCheckingPromo, setIsCheckingPromo] = useState(false);
   
   const { user, loading, refreshUserRole } = useAuth();
   const navigate = useNavigate();
@@ -84,6 +98,49 @@ const RegisterOrganization = () => {
       navigate("/organization");
     }
   }, [user, loading, navigate]);
+
+  const handleCheckPromo = async () => {
+    if (!promoCode.trim()) return;
+    setIsCheckingPromo(true);
+    try {
+      const { data, error } = await supabase
+        .from("promo_codes")
+        .select("*")
+        .eq("code", promoCode.trim().toUpperCase())
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (!data) {
+        toast({ title: "Промокод не найден", variant: "destructive" });
+        setPromoApplied(false);
+        setPromoDiscount(0);
+        return;
+      }
+
+      const promo = data as any;
+      if (promo.valid_until && new Date(promo.valid_until) < new Date()) {
+        toast({ title: "Промокод истёк", variant: "destructive" });
+        setPromoApplied(false);
+        setPromoDiscount(0);
+        return;
+      }
+      if (promo.max_uses && promo.used_count >= promo.max_uses) {
+        toast({ title: "Промокод исчерпан", variant: "destructive" });
+        setPromoApplied(false);
+        setPromoDiscount(0);
+        return;
+      }
+
+      setPromoDiscount(promo.discount_percent);
+      setPromoApplied(true);
+      toast({ title: `Скидка ${promo.discount_percent}% применена!` });
+    } catch {
+      toast({ title: "Ошибка проверки промокода", variant: "destructive" });
+    } finally {
+      setIsCheckingPromo(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -148,6 +205,17 @@ const RegisterOrganization = () => {
           });
 
         if (orgError) throw orgError;
+
+        // 2b. Set subscription plan on the org
+        await supabase
+          .from('organizations')
+          .update({ subscription_plan: selectedPlan } as any)
+          .eq('id', orgId);
+
+        // 2c. Increment promo code usage if applied
+        if (promoApplied && promoCode) {
+          await supabase.rpc('increment_promo_usage' as any, { p_code: promoCode.trim().toUpperCase() });
+        }
 
         // 3. Update profile with organization_id
         const { error: profileError } = await supabase
@@ -239,9 +307,70 @@ const RegisterOrganization = () => {
           <SigmaLogo size="lg" className="mb-8" />
           
           <h1 className="font-display text-3xl font-bold mb-2">Регистрация организации</h1>
-          <p className="text-muted-foreground mb-8">
+          <p className="text-muted-foreground mb-4">
             Создайте аккаунт для вашей организации
           </p>
+
+          {/* Selected Plan Card */}
+          {selectedPlan !== 'free' && (
+            <div className="p-4 rounded-xl border-2 border-primary/30 bg-primary/5 mb-6">
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-display font-semibold text-lg">{planInfo.name}</span>
+                <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">{planInfo.description}</span>
+              </div>
+              <div className="flex items-baseline gap-2">
+                {promoApplied ? (
+                  <>
+                    <span className="font-display text-2xl font-bold text-primary">
+                      {Math.round(planInfo.price * (1 - promoDiscount / 100)).toLocaleString('ru-RU')} ₽/мес
+                    </span>
+                    <span className="text-sm text-muted-foreground line-through">
+                      {planInfo.price.toLocaleString('ru-RU')} ₽/мес
+                    </span>
+                    <span className="text-xs font-semibold text-green-600 bg-green-500/10 px-2 py-0.5 rounded-full">
+                      −{promoDiscount}%
+                    </span>
+                  </>
+                ) : (
+                  <span className="font-display text-2xl font-bold">
+                    {planInfo.price.toLocaleString('ru-RU')} ₽/мес
+                  </span>
+                )}
+              </div>
+
+              {/* Promo code input */}
+              <div className="mt-3 flex gap-2">
+                <div className="relative flex-1">
+                  <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Промокод"
+                    className="pl-9 h-10 rounded-xl uppercase"
+                    value={promoCode}
+                    onChange={(e) => {
+                      setPromoCode(e.target.value.toUpperCase());
+                      if (promoApplied) { setPromoApplied(false); setPromoDiscount(0); }
+                    }}
+                    disabled={isLoading}
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant={promoApplied ? "default" : "outline"}
+                  className={`h-10 rounded-xl px-4 ${promoApplied ? 'bg-green-600 hover:bg-green-700 text-white' : ''}`}
+                  onClick={handleCheckPromo}
+                  disabled={isLoading || isCheckingPromo || !promoCode.trim()}
+                >
+                  {isCheckingPromo ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : promoApplied ? (
+                    <><Check className="w-4 h-4 mr-1" /> Применён</>
+                  ) : (
+                    "Применить"
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* INN with search button - FIRST and highlighted */}

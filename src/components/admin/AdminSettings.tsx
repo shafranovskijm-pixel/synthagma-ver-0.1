@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { 
   Sun, Moon, Palette, ChevronRight, Database, 
-   Shield, Bell, Loader2, Save, AlertCircle, Package, Globe
+   Shield, Bell, Loader2, Save, AlertCircle, Package, Globe, Tag
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,8 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { PatchUpdatesManager } from "./PatchUpdatesManager";
- import { SEOSettingsManager } from "./SEOSettingsManager";
+import { SEOSettingsManager } from "./SEOSettingsManager";
+import { PromoCodesManager } from "./PromoCodesManager";
 
 interface SystemSettings {
   maintenanceMode: boolean;
@@ -276,6 +277,20 @@ export function AdminSettings() {
               </>
             )}
           </Button>
+        </div>
+      </details>
+
+      {/* Promo Codes */}
+      <details className="bg-card rounded-xl lg:rounded-2xl border border-border group">
+        <summary className="p-4 lg:p-6 cursor-pointer list-none flex items-center justify-between">
+          <h3 className="font-display font-semibold text-base lg:text-lg flex items-center gap-2">
+            <Tag className="w-4 h-4 lg:w-5 lg:h-5" />
+            Промоакции
+          </h3>
+          <ChevronRight className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90" />
+        </summary>
+        <div className="px-4 lg:px-6 pb-4 lg:pb-6">
+          <PromoCodesManager />
         </div>
       </details>
 
