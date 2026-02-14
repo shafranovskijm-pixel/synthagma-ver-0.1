@@ -410,11 +410,18 @@ function savePresets(presets: { name: string; style: StylePreset }[]) {
 }
 
 function extractStyle(block: ContentBlock): StylePreset {
-  const style: any = {};
-  for (const key of STYLE_PRESET_KEYS) {
-    style[key] = block[key];
-  }
-  return style;
+  return {
+    textAlign: block.textAlign || undefined,
+    bgColor: block.bgColor || undefined,
+    textColor: block.textColor || undefined,
+    textSize: block.textSize || 'base',
+    bold: block.bold || false,
+    italic: block.italic || false,
+    strikethrough: block.strikethrough || false,
+    underline: block.underline || false,
+    uppercase: block.uppercase || false,
+    lineHeight: block.lineHeight || 'normal',
+  };
 }
 
 function describeStyle(style: StylePreset): string {
@@ -583,7 +590,10 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
                 </DropdownMenuItem>
                 {presets.length > 0 && <DropdownMenuSeparator />}
                 {presets.map((p, i) => (
-                  <DropdownMenuItem key={i} className="flex items-center justify-between group/preset" onClick={() => onUpdate(p.style)}>
+                  <DropdownMenuItem key={i} className="flex items-center justify-between group/preset" onClick={() => {
+                    const applied = { ...p.style, textSize: p.style.textSize === 'base' ? undefined : p.style.textSize, lineHeight: p.style.lineHeight === 'normal' ? undefined : p.style.lineHeight };
+                    onUpdate(applied);
+                  }}>
                     <span className="flex-1 truncate text-xs">{p.name}</span>
                     <button
                       className="ml-2 opacity-0 group-hover/preset:opacity-100 h-5 w-5 flex items-center justify-center hover:bg-destructive/20 rounded transition-all"
