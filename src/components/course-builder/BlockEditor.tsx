@@ -26,6 +26,13 @@ import {
   ArrowRightLeft,
   Info,
   AlertTriangle,
+  Settings2,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  Bold,
+  Italic,
+  Minus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +44,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import {
   DndContext,
@@ -78,7 +86,8 @@ export type BlockType =
   | "quiz"
   | "image"
   | "video"
-  | "slider";
+  | "slider"
+  | "divider";
 
 export interface QuizOption {
   text: string;
@@ -106,6 +115,11 @@ export interface ContentBlock {
   videoUrl?: string;
   sliderSlides?: SliderSlide[];
   sliderCurrentIndex?: number;
+  textAlign?: 'left' | 'center' | 'right';
+  bgColor?: string;
+  textSize?: 'sm' | 'base' | 'lg';
+  bold?: boolean;
+  italic?: boolean;
 }
 
 interface BlockEditorProps {
@@ -129,6 +143,7 @@ const blockTypeConfig: Record<BlockType, { icon: any; label: string; color: stri
   image: { icon: ImageIcon, label: "Изображение", color: "text-green-500" },
   video: { icon: Video, label: "Видео", color: "text-red-500" },
   slider: { icon: Presentation, label: "Слайдер презентации", color: "text-orange-500" },
+  divider: { icon: Minus, label: "Разделитель", color: "text-muted-foreground" },
 };
 
 const createBlock = (type: BlockType): ContentBlock => ({
@@ -283,6 +298,10 @@ function AddBlockButton({ onAdd }: { onAdd: (type: BlockType) => void }) {
         <DropdownMenuItem onClick={() => onAdd("slider")}>
           <Presentation className="w-4 h-4 mr-2 text-orange-500" />Слайдер презентации
         </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => onAdd("divider")}>
+          <Minus className="w-4 h-4 mr-2 text-muted-foreground" />Разделитель
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -298,6 +317,24 @@ interface SortableBlockItemProps {
 }
 
 const convertibleTypes: BlockType[] = ["paragraph", "heading1", "heading2", "bulletList", "numberedList", "quote", "callout-info", "callout-warning", "callout-tip", "accordion"];
+
+const textStyleableTypes: BlockType[] = ["paragraph", "heading1", "heading2", "bulletList", "numberedList", "quote", "callout-info", "callout-warning", "callout-tip"];
+
+const bgColorPresets = [
+  { value: "", label: "Без фона", class: "" },
+  { value: "gray", label: "Серый", class: "bg-muted" },
+  { value: "blue", label: "Голубой", class: "bg-blue-50 dark:bg-blue-950/30" },
+  { value: "yellow", label: "Жёлтый", class: "bg-yellow-50 dark:bg-yellow-950/30" },
+  { value: "green", label: "Зелёный", class: "bg-green-50 dark:bg-green-950/30" },
+];
+
+const bgColorDotStyles: Record<string, string> = {
+  "": "bg-background border border-border",
+  "gray": "bg-muted",
+  "blue": "bg-blue-200 dark:bg-blue-800",
+  "yellow": "bg-yellow-200 dark:bg-yellow-800",
+  "green": "bg-green-200 dark:bg-green-800",
+};
 
 const wrapTargets: { type: BlockType; icon: any; label: string; color: string }[] = [
   { type: "callout-info", icon: Info, label: "Информация", color: "text-blue-500" },
@@ -319,6 +356,7 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
   };
 
   const canConvert = convertibleTypes.includes(block.type);
+  const canStyle = textStyleableTypes.includes(block.type);
 
   const handleConvert = (newType: BlockType) => {
     const updates: Partial<ContentBlock> = { type: newType };
@@ -355,6 +393,56 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
+        )}
+        {canStyle && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-6 w-6" title="Настройки блока">
+                <Settings2 className="w-3 h-3" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-64 p-3 space-y-3">
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-1.5">Выравнивание</p>
+                <div className="flex gap-1">
+                  {([['left', AlignLeft], ['center', AlignCenter], ['right', AlignRight]] as const).map(([align, Icon]) => (
+                    <Button key={align} variant={block.textAlign === align || (!block.textAlign && align === 'left') ? "default" : "outline"} size="icon" className="h-7 w-7" onClick={() => onUpdate({ textAlign: align === 'left' ? undefined : align })}>
+                      <Icon className="w-3.5 h-3.5" />
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-1.5">Фон блока</p>
+                <div className="flex gap-1.5">
+                  {bgColorPresets.map((preset) => (
+                    <button key={preset.value} onClick={() => onUpdate({ bgColor: preset.value || undefined })} className={cn("w-6 h-6 rounded-full transition-all", bgColorDotStyles[preset.value], (block.bgColor || "") === preset.value && "ring-2 ring-primary ring-offset-1")} title={preset.label} />
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-1.5">Размер текста</p>
+                <div className="flex gap-1">
+                  {([['sm', 'A-'], ['base', 'A'], ['lg', 'A+']] as const).map(([size, label]) => (
+                    <Button key={size} variant={(block.textSize || 'base') === size ? "default" : "outline"} size="sm" className="h-7 px-2.5 text-xs" onClick={() => onUpdate({ textSize: size === 'base' ? undefined : size })}>
+                      {label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-1.5">Стиль текста</p>
+                <div className="flex gap-1">
+                  <Button variant={block.bold ? "default" : "outline"} size="icon" className="h-7 w-7" onClick={() => onUpdate({ bold: !block.bold })}>
+                    <Bold className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button variant={block.italic ? "default" : "outline"} size="icon" className="h-7 w-7" onClick={() => onUpdate({ italic: !block.italic })}>
+                    <Italic className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
         )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -434,6 +522,9 @@ function BlockContent({ block, onUpdate }: { block: ContentBlock; onUpdate: (upd
 
     case "slider":
       return <SliderBlock block={block} onUpdate={onUpdate} />;
+
+    case "divider":
+      return <div className="py-4"><hr className="border-border" /></div>;
 
     default:
       return null;
@@ -1076,25 +1167,42 @@ function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSub
 }) {
   const [accordionOpen, setAccordionOpen] = useState(false);
 
+  const getBlockStyleClasses = () => {
+    const classes: string[] = [];
+    if (block.textAlign === 'center') classes.push('text-center');
+    if (block.textAlign === 'right') classes.push('text-right');
+    if (block.textSize === 'sm') classes.push('text-sm');
+    if (block.textSize === 'lg') classes.push('text-lg');
+    if (block.bold) classes.push('font-bold');
+    if (block.italic) classes.push('italic');
+    if (block.bgColor) {
+      const preset = bgColorPresets.find(p => p.value === block.bgColor);
+      if (preset?.class) classes.push(preset.class, 'rounded-lg', 'p-3');
+    }
+    return classes.join(' ');
+  };
+
+  const styleClasses = getBlockStyleClasses();
+
   switch (block.type) {
     case "paragraph":
-      return <p dangerouslySetInnerHTML={{ __html: sanitizeHtml(block.content) }} />;
+      return <p className={styleClasses} dangerouslySetInnerHTML={{ __html: sanitizeHtml(block.content) }} />;
     case "heading1":
-      return <h1 className="text-2xl font-bold">{block.content}</h1>;
+      return <h1 className={cn("text-2xl font-bold", styleClasses)}>{block.content}</h1>;
     case "heading2":
-      return <h2 className="text-xl font-semibold">{block.content}</h2>;
+      return <h2 className={cn("text-xl font-semibold", styleClasses)}>{block.content}</h2>;
     case "bulletList":
-      return <ul className="list-disc pl-6">{(block.content || "").split("\n").filter(Boolean).map((item, i) => <li key={i}>{item}</li>)}</ul>;
+      return <ul className={cn("list-disc pl-6", styleClasses)}>{(block.content || "").split("\n").filter(Boolean).map((item, i) => <li key={i}>{item}</li>)}</ul>;
     case "numberedList":
-      return <ol className="list-decimal pl-6">{(block.content || "").split("\n").filter(Boolean).map((item, i) => <li key={i}>{item}</li>)}</ol>;
+      return <ol className={cn("list-decimal pl-6", styleClasses)}>{(block.content || "").split("\n").filter(Boolean).map((item, i) => <li key={i}>{item}</li>)}</ol>;
     case "quote":
-      return <blockquote className="border-l-4 border-muted-foreground/30 pl-4 italic text-muted-foreground">{block.content}</blockquote>;
+      return <blockquote className={cn("border-l-4 border-muted-foreground/30 pl-4 italic text-muted-foreground", styleClasses)}>{block.content}</blockquote>;
     case "callout-info":
-      return <div className="rounded-xl p-4 bg-blue-500/10 border border-blue-500/30 flex gap-3 not-prose"><AlertCircle className="w-5 h-5 text-blue-500 flex-shrink-0" /><p className="text-sm">{block.content}</p></div>;
+      return <div className={cn("rounded-xl p-4 bg-blue-500/10 border border-blue-500/30 flex gap-3 not-prose", styleClasses)}><AlertCircle className="w-5 h-5 text-blue-500 flex-shrink-0" /><p className="text-sm">{block.content}</p></div>;
     case "callout-warning":
-      return <div className="rounded-xl p-4 bg-amber-500/10 border border-amber-500/30 flex gap-3 not-prose"><AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0" /><p className="text-sm">{block.content}</p></div>;
+      return <div className={cn("rounded-xl p-4 bg-amber-500/10 border border-amber-500/30 flex gap-3 not-prose", styleClasses)}><AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0" /><p className="text-sm">{block.content}</p></div>;
     case "callout-tip":
-      return <div className="rounded-xl p-4 bg-green-500/10 border border-green-500/30 flex gap-3 not-prose"><Lightbulb className="w-5 h-5 text-green-500 flex-shrink-0" /><p className="text-sm">{block.content}</p></div>;
+      return <div className={cn("rounded-xl p-4 bg-green-500/10 border border-green-500/30 flex gap-3 not-prose", styleClasses)}><Lightbulb className="w-5 h-5 text-green-500 flex-shrink-0" /><p className="text-sm">{block.content}</p></div>;
     case "accordion":
       return (
         <div className="rounded-xl border border-purple-500/30 bg-purple-500/5 overflow-hidden not-prose">
@@ -1105,6 +1213,8 @@ function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSub
           {accordionOpen && <div className="p-3 pt-0 border-t border-purple-500/20"><p className="text-sm">{block.content}</p></div>}
         </div>
       );
+    case "divider":
+      return <hr className="border-border my-2" />;
     case "quiz":
       const options = block.quizOptions || [];
       const correctIndex = options.findIndex(o => o.isCorrect);
