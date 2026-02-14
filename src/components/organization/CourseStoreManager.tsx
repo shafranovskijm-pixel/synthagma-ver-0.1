@@ -4,7 +4,7 @@ import {
   Store, ShoppingCart, GraduationCap, Loader2, CheckCircle,
   Eye, Edit, Trash2, Plus, Users, Building2, Search,
   DollarSign, Tag, Package, MessageSquarePlus, Megaphone, Send,
-  Clock, Wallet, ChevronDown,
+  Clock, Wallet, ChevronDown, ArrowLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -72,82 +72,144 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
 
         {/* Catalog Tab */}
         <TabsContent value="catalog" className="space-y-6">
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input placeholder="Поиск курсов..." value={h.searchQuery} onChange={(e) => h.setSearchQuery(e.target.value)} className="pl-10 rounded-xl" />
-            </div>
-            <Button variant="outline" className="rounded-xl gap-2" onClick={() => h.setShowRequestDialog(true)}>
-              <MessageSquarePlus className="w-4 h-4" /><span className="hidden sm:inline">Разместить объявление</span>
-            </Button>
-          </div>
+          {selectedCourseDetail ? (
+            <div className="animate-in fade-in slide-in-from-right-4 duration-300 space-y-6">
+              <Button variant="ghost" className="gap-2 -ml-2" onClick={() => setSelectedCourseDetail(null)}>
+                <ArrowLeft className="w-4 h-4" />Назад к каталогу
+              </Button>
 
-          {/* Course Requests */}
-          {h.courseRequests.length > 0 && (
-            <Card className="border-amber-500/30 bg-amber-500/5 overflow-hidden">
-              <button
-                onClick={() => setRequestsOpen(!requestsOpen)}
-                className="w-full px-6 py-4 flex items-center justify-between hover:bg-amber-500/5 transition-colors"
-              >
-                <div className="flex items-center gap-2">
-                  <Megaphone className="w-5 h-5 text-amber-500" />
-                  <span className="font-semibold">Ищут курсы</span>
+              <div>
+                <h2 className="text-2xl font-display font-bold">{selectedCourseDetail.course?.title}</h2>
+                <p className="text-muted-foreground flex items-center gap-1.5 mt-1">
+                  <Building2 className="w-4 h-4" />{selectedCourseDetail.organization?.name}
+                </p>
+              </div>
+
+              {selectedCourseDetail.course?.duration && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Clock className="w-4 h-4" />
+                  <span>Длительность: {selectedCourseDetail.course.duration}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary" className="bg-amber-500/10 text-amber-600">{h.courseRequests.length} объявлений</Badge>
-                  <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${requestsOpen ? 'rotate-180' : ''}`} />
-                </div>
-              </button>
-              {requestsOpen && (
-                <CardContent className="space-y-3 pt-0">
-                  {h.courseRequests.slice(0, 5).map((request) => (
-                    <div key={request.id} className="p-4 rounded-xl bg-card border border-border hover:border-primary/30 transition-colors">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-medium line-clamp-1">{request.title}</h4>
-                          {request.description && <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{request.description}</p>}
-                          <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-muted-foreground">
-                            {(request.budget_min || request.budget_max) && (
-                              <span className="flex items-center gap-1"><DollarSign className="w-3 h-3" />
-                                {request.budget_min && request.budget_max ? `${request.budget_min.toLocaleString()} - ${request.budget_max.toLocaleString()} ₽` : request.budget_max ? `до ${request.budget_max.toLocaleString()} ₽` : `от ${request.budget_min?.toLocaleString()} ₽`}
-                              </span>
-                            )}
-                            {request.students_count && request.students_count > 1 && <span className="flex items-center gap-1"><Users className="w-3 h-3" />{request.students_count} чел.</span>}
-                            <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{format(new Date(request.created_at), 'd MMM', { locale: ru })}</span>
-                          </div>
-                        </div>
-                        <Button size="sm" variant="outline" className="rounded-lg shrink-0" onClick={() => { h.setSelectedRequest(request); h.setShowProposeDialog(true); }}>
-                          <Send className="w-3 h-3 mr-1" />Предложить
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </CardContent>
               )}
-            </Card>
-          )}
 
-          {h.filteredCatalog.length === 0 ? (
-            <Card className="border-dashed"><CardContent className="py-12 text-center"><Package className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" /><p className="text-muted-foreground">{h.searchQuery ? 'Курсы не найдены' : 'В каталоге пока нет курсов'}</p></CardContent></Card>
-          ) : (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {h.filteredCatalog.map((item) => (
-                <Card key={item.id} className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer" onClick={() => setSelectedCourseDetail(item)}>
-                  <CardHeader>
-                    <CardTitle className="font-display text-lg leading-tight">{item.course?.title}</CardTitle>
-                    <CardDescription className="mt-1 flex items-center gap-1"><Building2 className="w-3 h-3" />{item.organization?.name}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {item.description_short && <p className="text-sm text-muted-foreground line-clamp-2">{item.description_short}</p>}
-                    {item.course?.duration && <Badge variant="outline" className="text-xs">{item.course.duration}</Badge>}
-                    <div className="grid grid-cols-2 gap-3 pt-2">
-                      <div className="text-center p-3 bg-secondary/50 rounded-xl"><div className="text-xs text-muted-foreground mb-1 flex items-center justify-center gap-1"><Users className="w-3 h-3" />Для студентов</div><div className="font-bold text-primary">{item.price_student.toLocaleString()} ₽</div></div>
-                      <div className="text-center p-3 bg-secondary/50 rounded-xl"><div className="text-xs text-muted-foreground mb-1 flex items-center justify-center gap-1"><Building2 className="w-3 h-3" />Для организаций</div><div className="font-bold text-primary">{item.price_organization.toLocaleString()} ₽</div></div>
-                    </div>
+              {(selectedCourseDetail.description_short || selectedCourseDetail.course?.description) && (
+                <Card>
+                  <CardHeader><CardTitle className="text-base">Описание курса</CardTitle></CardHeader>
+                  <CardContent className="space-y-3">
+                    {selectedCourseDetail.description_short && (
+                      <p className="text-muted-foreground leading-relaxed">{selectedCourseDetail.description_short}</p>
+                    )}
+                    {selectedCourseDetail.course?.description && (
+                      <p className="leading-relaxed">{selectedCourseDetail.course.description}</p>
+                    )}
                   </CardContent>
                 </Card>
-              ))}
+              )}
+
+              <div className="grid sm:grid-cols-2 gap-4">
+                <Card className="text-center">
+                  <CardContent className="pt-6">
+                    <div className="text-sm text-muted-foreground mb-1 flex items-center justify-center gap-1"><Users className="w-4 h-4" />Для студентов</div>
+                    <div className="text-2xl font-bold text-primary">{selectedCourseDetail.price_student.toLocaleString()} ₽</div>
+                  </CardContent>
+                </Card>
+                <Card className="text-center">
+                  <CardContent className="pt-6">
+                    <div className="text-sm text-muted-foreground mb-1 flex items-center justify-center gap-1"><Building2 className="w-4 h-4" />Для организаций</div>
+                    <div className="text-2xl font-bold text-primary">{selectedCourseDetail.price_organization.toLocaleString()} ₽</div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <Button variant="outline" className="flex-1 rounded-xl gap-2" onClick={() => { const id = selectedCourseDetail.course_id; setSelectedCourseDetail(null); navigate(`/course-preview/${id}?from=store`); }}>
+                  <Eye className="w-4 h-4" />Просмотр
+                </Button>
+                <Button className="flex-1 btn-gradient rounded-xl gap-2" onClick={() => { const item = selectedCourseDetail; setSelectedCourseDetail(null); h.setSelectedCourseForOrder(item); h.setShowOrderDialog(true); }}>
+                  <ShoppingCart className="w-4 h-4" />Оставить заявку
+                </Button>
+              </div>
             </div>
+          ) : (
+            <>
+              <div className="flex items-center gap-4">
+                <div className="relative flex-1 max-w-md">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input placeholder="Поиск курсов..." value={h.searchQuery} onChange={(e) => h.setSearchQuery(e.target.value)} className="pl-10 rounded-xl" />
+                </div>
+                <Button variant="outline" className="rounded-xl gap-2" onClick={() => h.setShowRequestDialog(true)}>
+                  <MessageSquarePlus className="w-4 h-4" /><span className="hidden sm:inline">Разместить объявление</span>
+                </Button>
+              </div>
+
+              {/* Course Requests */}
+              {h.courseRequests.length > 0 && (
+                <Card className="border-amber-500/30 bg-amber-500/5 overflow-hidden">
+                  <button
+                    onClick={() => setRequestsOpen(!requestsOpen)}
+                    className="w-full px-6 py-4 flex items-center justify-between hover:bg-amber-500/5 transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Megaphone className="w-5 h-5 text-amber-500" />
+                      <span className="font-semibold">Ищут курсы</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="bg-amber-500/10 text-amber-600">{h.courseRequests.length} объявлений</Badge>
+                      <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${requestsOpen ? 'rotate-180' : ''}`} />
+                    </div>
+                  </button>
+                  {requestsOpen && (
+                    <CardContent className="space-y-3 pt-0">
+                      {h.courseRequests.slice(0, 5).map((request) => (
+                        <div key={request.id} className="p-4 rounded-xl bg-card border border-border hover:border-primary/30 transition-colors">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-medium line-clamp-1">{request.title}</h4>
+                              {request.description && <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{request.description}</p>}
+                              <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-muted-foreground">
+                                {(request.budget_min || request.budget_max) && (
+                                  <span className="flex items-center gap-1"><DollarSign className="w-3 h-3" />
+                                    {request.budget_min && request.budget_max ? `${request.budget_min.toLocaleString()} - ${request.budget_max.toLocaleString()} ₽` : request.budget_max ? `до ${request.budget_max.toLocaleString()} ₽` : `от ${request.budget_min?.toLocaleString()} ₽`}
+                                  </span>
+                                )}
+                                {request.students_count && request.students_count > 1 && <span className="flex items-center gap-1"><Users className="w-3 h-3" />{request.students_count} чел.</span>}
+                                <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{format(new Date(request.created_at), 'd MMM', { locale: ru })}</span>
+                              </div>
+                            </div>
+                            <Button size="sm" variant="outline" className="rounded-lg shrink-0" onClick={() => { h.setSelectedRequest(request); h.setShowProposeDialog(true); }}>
+                              <Send className="w-3 h-3 mr-1" />Предложить
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </CardContent>
+                  )}
+                </Card>
+              )}
+
+              {h.filteredCatalog.length === 0 ? (
+                <Card className="border-dashed"><CardContent className="py-12 text-center"><Package className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" /><p className="text-muted-foreground">{h.searchQuery ? 'Курсы не найдены' : 'В каталоге пока нет курсов'}</p></CardContent></Card>
+              ) : (
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {h.filteredCatalog.map((item) => (
+                    <Card key={item.id} className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer" onClick={() => setSelectedCourseDetail(item)}>
+                      <CardHeader>
+                        <CardTitle className="font-display text-lg leading-tight">{item.course?.title}</CardTitle>
+                        <CardDescription className="mt-1 flex items-center gap-1"><Building2 className="w-3 h-3" />{item.organization?.name}</CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        {item.description_short && <p className="text-sm text-muted-foreground line-clamp-2">{item.description_short}</p>}
+                        {item.course?.duration && <Badge variant="outline" className="text-xs">{item.course.duration}</Badge>}
+                        <div className="grid grid-cols-2 gap-3 pt-2">
+                          <div className="text-center p-3 bg-secondary/50 rounded-xl"><div className="text-xs text-muted-foreground mb-1 flex items-center justify-center gap-1"><Users className="w-3 h-3" />Для студентов</div><div className="font-bold text-primary">{item.price_student.toLocaleString()} ₽</div></div>
+                          <div className="text-center p-3 bg-secondary/50 rounded-xl"><div className="text-xs text-muted-foreground mb-1 flex items-center justify-center gap-1"><Building2 className="w-3 h-3" />Для организаций</div><div className="font-bold text-primary">{item.price_organization.toLocaleString()} ₽</div></div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </TabsContent>
 
@@ -369,53 +431,8 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
         </DialogContent>
       </Dialog>
 
-      {/* Course Detail Dialog */}
-      <Dialog open={!!selectedCourseDetail} onOpenChange={(open) => { if (!open) setSelectedCourseDetail(null); }}>
-        <DialogContent className="rounded-2xl max-w-lg">
-          {selectedCourseDetail && (
-            <>
-              <DialogHeader>
-                <DialogTitle className="font-display text-xl">{selectedCourseDetail.course?.title}</DialogTitle>
-                <DialogDescription className="flex items-center gap-1 mt-1">
-                  <Building2 className="w-3.5 h-3.5" />{selectedCourseDetail.organization?.name}
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-5 py-4">
-                {selectedCourseDetail.description_short && (
-                  <p className="text-sm text-muted-foreground leading-relaxed">{selectedCourseDetail.description_short}</p>
-                )}
-                {selectedCourseDetail.course?.description && (
-                  <p className="text-sm leading-relaxed">{selectedCourseDetail.course.description}</p>
-                )}
-                {selectedCourseDetail.course?.duration && (
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">Длительность: {selectedCourseDetail.course.duration}</span>
-                  </div>
-                )}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="text-center p-4 bg-secondary/50 rounded-xl">
-                    <div className="text-xs text-muted-foreground mb-1 flex items-center justify-center gap-1"><Users className="w-3 h-3" />Для студентов</div>
-                    <div className="font-bold text-lg text-primary">{selectedCourseDetail.price_student.toLocaleString()} ₽</div>
-                  </div>
-                  <div className="text-center p-4 bg-secondary/50 rounded-xl">
-                    <div className="text-xs text-muted-foreground mb-1 flex items-center justify-center gap-1"><Building2 className="w-3 h-3" />Для организаций</div>
-                    <div className="font-bold text-lg text-primary">{selectedCourseDetail.price_organization.toLocaleString()} ₽</div>
-                  </div>
-                </div>
-              </div>
-              <DialogFooter className="flex gap-2 sm:gap-2">
-                <Button variant="outline" className="flex-1 rounded-xl gap-2" onClick={() => { setSelectedCourseDetail(null); navigate(`/course-preview/${selectedCourseDetail.course_id}?from=store`); }}>
-                  <Eye className="w-4 h-4" />Просмотр
-                </Button>
-                <Button className="flex-1 btn-gradient rounded-xl gap-2" onClick={() => { const item = selectedCourseDetail; setSelectedCourseDetail(null); h.setSelectedCourseForOrder(item); h.setShowOrderDialog(true); }}>
-                  <ShoppingCart className="w-4 h-4" />Заявка
-                </Button>
-              </DialogFooter>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+
+
     </div>
   );
 }
