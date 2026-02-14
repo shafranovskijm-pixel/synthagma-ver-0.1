@@ -112,6 +112,54 @@ export type Database = {
           },
         ]
       }
+      balance_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string | null
+          id: string
+          organization_id: string
+          performed_by: string | null
+          related_order_id: string | null
+          type: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          organization_id: string
+          performed_by?: string | null
+          related_order_id?: string | null
+          type: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          organization_id?: string
+          performed_by?: string | null
+          related_order_id?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "balance_transactions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "balance_transactions_related_order_id_fkey"
+            columns: ["related_order_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       blog_posts: {
         Row: {
           author: string
@@ -1384,7 +1432,7 @@ export type Database = {
           description_short: string | null
           id: string
           is_active: boolean
-          organization_id: string
+          organization_id: string | null
           preview_image_url: string | null
           price_organization: number
           price_student: number
@@ -1396,7 +1444,7 @@ export type Database = {
           description_short?: string | null
           id?: string
           is_active?: boolean
-          organization_id: string
+          organization_id?: string | null
           preview_image_url?: string | null
           price_organization?: number
           price_student?: number
@@ -1408,7 +1456,7 @@ export type Database = {
           description_short?: string | null
           id?: string
           is_active?: boolean
-          organization_id?: string
+          organization_id?: string | null
           preview_image_url?: string | null
           price_organization?: number
           price_student?: number
@@ -1912,6 +1960,7 @@ export type Database = {
           actual_address: string | null
           ai_enabled: boolean
           ai_tokens_limit: number
+          balance: number
           bank_account: string | null
           bank_bik: string | null
           bank_corr_account: string | null
@@ -1953,6 +2002,7 @@ export type Database = {
           actual_address?: string | null
           ai_enabled?: boolean
           ai_tokens_limit?: number
+          balance?: number
           bank_account?: string | null
           bank_bik?: string | null
           bank_corr_account?: string | null
@@ -1994,6 +2044,7 @@ export type Database = {
           actual_address?: string | null
           ai_enabled?: boolean
           ai_tokens_limit?: number
+          balance?: number
           bank_account?: string | null
           bank_bik?: string | null
           bank_corr_account?: string | null
