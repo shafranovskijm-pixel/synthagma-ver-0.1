@@ -18,10 +18,10 @@ export function DevToolsPanel() {
   const errorCount = CODE_RECOMMENDATIONS.filter(r => r.severity === "error" && r.status !== "skipped" && r.status !== "applied").length;
 
   const metricCards = [
-    { label: "Таблиц", value: "65", icon: <Database className="w-5 h-5" />, color: "#8b5cf6" },
-    { label: "Edge-функций", value: "32", icon: <Zap className="w-5 h-5" />, color: "#10b981" },
-    { label: "Компонентов", value: `~${TOTAL_FILES}`, icon: <Code2 className="w-5 h-5" />, color: "#0ea5e9" },
-    { label: "Строк кода", value: `~${(TOTAL_LINES / 1000).toFixed(1)}k`, icon: <FileCode className="w-5 h-5" />, color: "#f59e0b" },
+    { label: "Таблиц", value: "65", icon: <Database className="w-5 h-5" />, colorClass: "bg-violet-500", bgClass: "bg-violet-500" },
+    { label: "Edge-функций", value: "32", icon: <Zap className="w-5 h-5" />, colorClass: "bg-emerald-500", bgClass: "bg-emerald-500" },
+    { label: "Компонентов", value: `~${TOTAL_FILES}`, icon: <Code2 className="w-5 h-5" />, colorClass: "bg-sky-500", bgClass: "bg-sky-500" },
+    { label: "Строк кода", value: `~${(TOTAL_LINES / 1000).toFixed(1)}k`, icon: <FileCode className="w-5 h-5" />, colorClass: "bg-amber-500", bgClass: "bg-amber-500" },
   ];
 
   return (
@@ -41,9 +41,11 @@ export function DevToolsPanel() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {metricCards.map((m) => (
           <div key={m.label} className="relative overflow-hidden rounded-xl border border-border bg-card p-4 group hover:border-primary/40 transition-colors">
-            <div className="absolute top-0 right-0 w-20 h-20 rounded-full opacity-[0.07]" style={{ background: m.color, filter: "blur(20px)" }} />
+            <div className={`absolute top-0 right-0 w-20 h-20 rounded-full opacity-[0.07] blur-[20px] ${
+              m.colorClass
+            }`} />
             <div className="flex items-center gap-2 mb-2">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white" style={{ backgroundColor: m.color }}>
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white ${m.bgClass}`}>
                 {m.icon}
               </div>
             </div>
@@ -87,7 +89,7 @@ export function DevToolsPanel() {
             return (
               <div key={catKey} className="rounded-xl border border-border bg-card overflow-hidden">
                 <div className="p-3 flex items-center gap-2 border-b border-border bg-secondary/20">
-                  <div className="w-6 h-6 rounded-md flex items-center justify-center text-white" style={{ backgroundColor: catMeta.color }}>{catMeta.icon}</div>
+                  <div className={`w-6 h-6 rounded-md flex items-center justify-center text-white ${catMeta.bgClass}`}>{catMeta.icon}</div>
                   <span className="font-medium text-sm">{catMeta.label}</span>
                   <Badge variant="outline" className="ml-auto font-mono text-xs">{fns.length}</Badge>
                 </div>

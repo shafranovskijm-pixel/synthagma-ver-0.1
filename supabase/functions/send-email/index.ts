@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limiter.ts";
 
 const RESEND_API_URL = "https://api.resend.com/emails";
 
@@ -33,6 +34,12 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const { to, subject, html, from }: EmailRequest = await req.json();
+
+    // Rate limiting: 20 emails per minute per recipient
+    const rl = checkRateLimit(`email:${to}`, { maxRequests: 20, windowSeconds: 60 });
+    if (!rl.allowed) {
+      return rateLimitResponse(rl, corsHeaders);
+    }
 
     if (!to || !subject || !html) {
       console.error("Missing required fields:", { to: !!to, subject: !!subject, html: !!html });

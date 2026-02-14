@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limiter.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -475,6 +476,12 @@ serve(async (req) => {
       .select('organization_id')
       .eq('user_id', user.id)
       .single();
+
+    // Rate limiting: 10 AI generation requests per minute per user
+    const rl = checkRateLimit(`ai:${user.id}`, { maxRequests: 10, windowSeconds: 60 });
+    if (!rl.allowed) {
+      return rateLimitResponse(rl, corsHeaders);
+    }
 
     const body = await req.json();
     const { courseId, organizationId, lessonTitle, courseTitle, courseDescription, contentType } = body;
