@@ -23,16 +23,18 @@ export function RichTextEditor({ value, onChange, placeholder, className, minHei
   const [showToolbar, setShowToolbar] = useState(false);
   const [toolbarPos, setToolbarPos] = useState({ top: 0, left: 0 });
   const isInternalChange = useRef(false);
+  const lastEmittedHtml = useRef(value || "");
 
-  // Sync external value changes
+  // Sync external value changes only when value truly differs from what we emitted
   useEffect(() => {
     if (isInternalChange.current) {
       isInternalChange.current = false;
       return;
     }
     const el = editorRef.current;
-    if (el && el.innerHTML !== value) {
+    if (el && value !== lastEmittedHtml.current) {
       el.innerHTML = value || "";
+      lastEmittedHtml.current = value || "";
     }
   }, [value]);
 
@@ -40,8 +42,23 @@ export function RichTextEditor({ value, onChange, placeholder, className, minHei
     const el = editorRef.current;
     if (!el) return;
     isInternalChange.current = true;
-    const html = sanitize(el.innerHTML);
-    onChange(html);
+    const raw = el.innerHTML;
+    lastEmittedHtml.current = raw;
+    onChange(raw);
+  }, [onChange]);
+
+  const handleBlur = useCallback(() => {
+    setTimeout(() => setShowToolbar(false), 200);
+    // Sanitize on blur to avoid cursor issues during typing
+    const el = editorRef.current;
+    if (!el) return;
+    const cleaned = sanitize(el.innerHTML);
+    if (cleaned !== el.innerHTML) {
+      el.innerHTML = cleaned;
+    }
+    lastEmittedHtml.current = cleaned;
+    isInternalChange.current = true;
+    onChange(cleaned);
   }, [onChange]);
 
   const handleSelectionChange = useCallback(() => {
@@ -112,7 +129,7 @@ export function RichTextEditor({ value, onChange, placeholder, className, minHei
         contentEditable
         suppressContentEditableWarning
         onInput={handleInput}
-        onBlur={() => setTimeout(() => setShowToolbar(false), 200)}
+        onBlur={handleBlur}
         data-placeholder={placeholder}
         className={cn(
           "outline-none prose prose-sm dark:prose-invert max-w-none [&]:!font-[inherit] [&]:!tracking-[inherit]",
