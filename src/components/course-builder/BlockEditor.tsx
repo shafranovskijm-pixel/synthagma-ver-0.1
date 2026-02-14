@@ -411,7 +411,7 @@ function savePresets(presets: { name: string; style: StylePreset }[]) {
 function extractStyle(block: ContentBlock): StylePreset {
   const style: any = {};
   for (const key of STYLE_PRESET_KEYS) {
-    if (block[key] !== undefined) style[key] = block[key];
+    style[key] = block[key];
   }
   return style;
 }
