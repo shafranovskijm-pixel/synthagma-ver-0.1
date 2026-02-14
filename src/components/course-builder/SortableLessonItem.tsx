@@ -95,7 +95,7 @@ export function SortableLessonItem({
                   </div>
                 </div>
               ) : (
-                <BlockEditor blocks={lesson.blocks || []} onChange={(blocks) => onUpdate({ blocks, content: blocksToJson(blocks) })} />
+                <BlockEditor blocks={lesson.blocks || []} onChange={(blocks) => onUpdate({ blocks, content: blocksToJson(blocks) })} courseTitle={courseTitle} lessonTitle={lesson.title} />
               )}
             </div>
           )}
