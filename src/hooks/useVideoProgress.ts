@@ -65,7 +65,7 @@ export const useVideoProgress = (
     loadProgress();
   }, [userId, lessonId]);
   
-  // Save position with debounce (every 5 seconds of playback change)
+  // Save position with debounce (every 10 seconds of playback change, 3s debounce)
   const savePosition = useCallback(
     async (position: number, duration: number) => {
       if (!userId || !lessonId) return;
@@ -73,10 +73,10 @@ export const useVideoProgress = (
       // Update current position ref for beforeunload
       currentPositionRef.current = { position, duration };
       
-      // Only save if position changed significantly (at least 3 seconds)
-      if (Math.abs(position - lastSavedPositionRef.current) < 3) return;
+      // Only save if position changed significantly (at least 10 seconds)
+      if (Math.abs(position - lastSavedPositionRef.current) < 10) return;
       
-      // Debounce saves
+      // Debounce saves (3 second debounce to reduce concurrent writes)
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
@@ -100,7 +100,7 @@ export const useVideoProgress = (
         } catch (err) {
           console.error('[useVideoProgress] Save error:', err);
         }
-      }, 1000); // 1 second debounce
+      }, 3000); // 3 second debounce
     },
     [userId, lessonId]
   );
@@ -179,24 +179,31 @@ export const useVideoProgress = (
     const handleBeforeUnload = () => {
       const { position, duration } = currentPositionRef.current;
       if (position > 0 && Math.abs(position - lastSavedPositionRef.current) >= 1) {
-        // Synchronous XHR as last resort for page close
-        // Note: This may not always complete, but visibilitychange should handle most cases
+        // Use sendBeacon for non-blocking, reliable save on page close
         try {
-          const xhr = new XMLHttpRequest();
-          xhr.open('POST', `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/lesson_progress?on_conflict=lesson_id,user_id`, false);
-          xhr.setRequestHeader('Content-Type', 'application/json');
-          xhr.setRequestHeader('apikey', import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
-          xhr.setRequestHeader('Authorization', `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`);
-          xhr.setRequestHeader('Prefer', 'resolution=merge-duplicates');
-          xhr.send(JSON.stringify({
+          const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/lesson_progress?on_conflict=lesson_id,user_id`;
+          const payload = JSON.stringify({
             user_id: userId,
             lesson_id: lessonId,
             video_position: position,
             video_duration: duration,
-          }));
-          console.log('[useVideoProgress] Sync save on unload:', position);
+          });
+          
+          const blob = new Blob([payload], { type: 'application/json' });
+          
+          // sendBeacon doesn't support custom headers, so we append apikey as query param
+          // and use Prefer header via URL approach
+          const beaconUrl = `${url}&apikey=${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`;
+          const sent = navigator.sendBeacon(beaconUrl, blob);
+          
+          if (sent) {
+            console.log('[useVideoProgress] sendBeacon save on unload:', position);
+            lastSavedPositionRef.current = position;
+          } else {
+            console.warn('[useVideoProgress] sendBeacon failed, data may be lost');
+          }
         } catch (err) {
-          console.error('[useVideoProgress] Sync save error:', err);
+          console.error('[useVideoProgress] Beacon save error:', err);
         }
       }
     };

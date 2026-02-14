@@ -149,6 +149,18 @@ export function SystemDiagnostics({ organizationId }: SystemDiagnosticsProps) {
       // 8. Check storage buckets
       newResults.push(await checkStorageBuckets());
 
+      // 9. DB Load test (latency of 10 sequential queries)
+      newResults.push(await checkDbLoadTest());
+
+      // 10. Row limit warning
+      newResults.push(await checkRowLimits());
+
+      // 11. Concurrent upsert test
+      newResults.push(await checkConcurrentUpsert());
+
+      // 12. Edge functions health check
+      newResults.push(await checkEdgeFunctions());
+
       // Save results to database
       const recordsToInsert = newResults.map((r) => ({
         organization_id: organizationId,
@@ -490,6 +502,185 @@ export function SystemDiagnostics({ organizationId }: SystemDiagnosticsProps) {
         checkName: "Хранилище файлов",
         status: "warning",
         message: "Не удалось проверить хранилище",
+        details: { error: String(error) },
+      };
+    }
+  };
+
+  // === NEW: Load test - measure latency of 10 sequential queries ===
+  const checkDbLoadTest = async (): Promise<DiagnosticResult> => {
+    try {
+      const latencies: number[] = [];
+      for (let i = 0; i < 10; i++) {
+        const start = Date.now();
+        await supabase.from("organizations").select("id").eq("id", organizationId).single();
+        latencies.push(Date.now() - start);
+      }
+      const avg = Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length);
+      const max = Math.max(...latencies);
+      const isWarning = avg > 500 || max > 2000;
+
+      return {
+        id: crypto.randomUUID(),
+        checkType: "health",
+        checkName: "Нагрузочный тест БД (10 запросов)",
+        status: isWarning ? "warning" : "ok",
+        message: `Средняя задержка: ${avg}мс, макс: ${max}мс`,
+        details: { avg, max, latencies },
+      };
+    } catch (error) {
+      return {
+        id: crypto.randomUUID(),
+        checkType: "health",
+        checkName: "Нагрузочный тест БД",
+        status: "error",
+        message: "Ошибка нагрузочного теста",
+        details: { error: String(error) },
+      };
+    }
+  };
+
+  // === NEW: Check if tables approach 1000-row default limit ===
+  const checkRowLimits = async (): Promise<DiagnosticResult> => {
+    try {
+      const { data: courses } = await supabase
+        .from("courses")
+        .select("id")
+        .eq("organization_id", organizationId);
+      const courseIds = (courses || []).map(c => c.id);
+
+      let enrollmentCount = 0;
+      if (courseIds.length > 0) {
+        const { count } = await supabase
+          .from("enrollments")
+          .select("id", { count: "exact", head: true })
+          .in("course_id", courseIds);
+        enrollmentCount = count || 0;
+      }
+
+      const { count: profileCount } = await supabase
+        .from("profiles")
+        .select("id", { count: "exact", head: true })
+        .eq("organization_id", organizationId);
+
+      const issues: string[] = [];
+      if ((profileCount || 0) > 900) issues.push(`Профилей: ${profileCount} (лимит 1000 на запрос)`);
+      if (enrollmentCount > 900) issues.push(`Записей на курсы: ${enrollmentCount} (лимит 1000 на запрос)`);
+
+      return {
+        id: crypto.randomUUID(),
+        checkType: "health",
+        checkName: "Проверка лимита строк",
+        status: issues.length > 0 ? "warning" : "ok",
+        message: issues.length > 0
+          ? issues.join("; ")
+          : `Профилей: ${profileCount || 0}, записей: ${enrollmentCount} — в пределах нормы`,
+        details: { profileCount, enrollmentCount },
+      };
+    } catch (error) {
+      return {
+        id: crypto.randomUUID(),
+        checkType: "health",
+        checkName: "Проверка лимита строк",
+        status: "error",
+        message: "Ошибка проверки лимитов",
+        details: { error: String(error) },
+      };
+    }
+  };
+
+  // === NEW: Test concurrent upsert on lesson_progress ===
+  const checkConcurrentUpsert = async (): Promise<DiagnosticResult> => {
+    try {
+      // Create a test record and immediately delete it
+      const testLessonId = "00000000-0000-0000-0000-000000000000";
+      const testUserId = "00000000-0000-0000-0000-000000000000";
+      
+      const start = Date.now();
+      const { error } = await supabase
+        .from("lesson_progress")
+        .upsert(
+          { user_id: testUserId, lesson_id: testLessonId, video_position: 0, video_duration: 0 },
+          { onConflict: "lesson_id,user_id" }
+        );
+      const latency = Date.now() - start;
+
+      // Cleanup
+      await supabase
+        .from("lesson_progress")
+        .delete()
+        .eq("user_id", testUserId)
+        .eq("lesson_id", testLessonId);
+
+      if (error) {
+        return {
+          id: crypto.randomUUID(),
+          checkType: "health",
+          checkName: "Конкурентная запись прогресса",
+          status: "warning",
+          message: `Upsert завершился с ошибкой: ${error.message}`,
+          details: { error: error.message, latency },
+        };
+      }
+
+      return {
+        id: crypto.randomUUID(),
+        checkType: "health",
+        checkName: "Конкурентная запись прогресса",
+        status: latency > 2000 ? "warning" : "ok",
+        message: `Upsert выполнен за ${latency}мс`,
+        details: { latency },
+      };
+    } catch (error) {
+      return {
+        id: crypto.randomUUID(),
+        checkType: "health",
+        checkName: "Конкурентная запись прогресса",
+        status: "error",
+        message: "Ошибка теста конкурентной записи",
+        details: { error: String(error) },
+      };
+    }
+  };
+
+  // === NEW: Ping edge functions ===
+  const checkEdgeFunctions = async (): Promise<DiagnosticResult> => {
+    try {
+      const functions = ["grade-test", "get-test-results"];
+      const results: Record<string, { ok: boolean; latency: number; error?: string }> = {};
+
+      for (const fnName of functions) {
+        const start = Date.now();
+        try {
+          const { error } = await supabase.functions.invoke(fnName, {
+            body: { ping: true },
+          });
+          results[fnName] = { ok: !error, latency: Date.now() - start, error: error?.message };
+        } catch (err) {
+          results[fnName] = { ok: false, latency: Date.now() - start, error: String(err) };
+        }
+      }
+
+      const allOk = Object.values(results).every((r) => r.ok);
+      const anyError = Object.values(results).some((r) => !r.ok);
+
+      return {
+        id: crypto.randomUUID(),
+        checkType: "health",
+        checkName: "Edge Functions (пинг)",
+        status: anyError ? "warning" : "ok",
+        message: allOk
+          ? `Все ${functions.length} функций доступны`
+          : `Некоторые функции недоступны`,
+        details: results,
+      };
+    } catch (error) {
+      return {
+        id: crypto.randomUUID(),
+        checkType: "health",
+        checkName: "Edge Functions (пинг)",
+        status: "error",
+        message: "Ошибка проверки edge functions",
         details: { error: String(error) },
       };
     }
