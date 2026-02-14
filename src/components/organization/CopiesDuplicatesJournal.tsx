@@ -60,7 +60,7 @@ import {
 import { format, parseISO, startOfYear, endOfYear, isWithinInterval } from "date-fns";
 import { ru } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import * as XLSX from "xlsx";
+import { getXLSX } from "@/utils/xlsxHelper";
 import { Badge } from "@/components/ui/badge";
 
 interface CopyDuplicateRecord {
@@ -302,12 +302,13 @@ export function CopiesDuplicatesJournal({
   };
 
   // Export to Excel
-  const exportToExcel = () => {
+  const exportToExcel = async () => {
     if (filteredRecords.length === 0) {
       toast.error("Нет данных для экспорта");
       return;
     }
 
+    const XLSX = await getXLSX();
     const exportData = filteredRecords.map((record, index) => ({
       "№ п/п": index + 1,
       "Рег. номер": record.reg_number,

@@ -41,7 +41,7 @@ import {
 import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 import { ru } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import * as XLSX from "xlsx";
+import { getXLSX } from "@/utils/xlsxHelper";
 import { Badge } from "@/components/ui/badge";
 
 interface FinalAttestationRecord {
@@ -285,18 +285,19 @@ export function AutoFinalAttestationJournal({
   }, [filteredRecords]);
 
   // Export to Excel
-  const exportToExcel = () => {
+  const exportToExcel = async () => {
     if (filteredRecords.length === 0) {
       toast.error("Нет данных для экспорта");
       return;
     }
 
+    const XLSX = await getXLSX();
     const exportData = filteredRecords.map((record) => ({
       "ФИО ученика": record.student_name,
       "Email": record.student_email,
       "Курс": record.course_title,
-      "Статус обучения": record.enrollment_status === "completed" ? "Завершено" : "В процессе",
-      "Прогресс": `${record.progress}%`,
+      "Статус": record.enrollment_status === "completed" ? "Завершён" : "В процессе",
+      "Прогресс (%)": record.progress,
       "Дата начала": format(parseISO(record.started_at), "dd.MM.yyyy", { locale: ru }),
       "Дата завершения": record.completed_at 
         ? format(parseISO(record.completed_at), "dd.MM.yyyy", { locale: ru }) 

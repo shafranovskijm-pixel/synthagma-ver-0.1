@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Upload, FileSpreadsheet, Loader2, Download, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
-import * as XLSX from "xlsx";
+import { getXLSX } from "@/utils/xlsxHelper";
 
 interface ImportedQuestion {
   question: string;
@@ -30,6 +30,7 @@ export function TestImportDialog({ onImport, children }: TestImportDialogProps) 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const parseExcelFile = async (file: File): Promise<ImportedQuestion[]> => {
+    const XLSX = await getXLSX();
     const arrayBuffer = await file.arrayBuffer();
     const workbook = XLSX.read(arrayBuffer, { type: "array" });
     const sheetName = workbook.SheetNames[0];
@@ -134,7 +135,8 @@ export function TestImportDialog({ onImport, children }: TestImportDialogProps) 
     toast.success(`Импортировано ${previewData.length} вопросов`);
   };
 
-  const handleDownloadTemplate = () => {
+  const handleDownloadTemplate = async () => {
+    const XLSX = await getXLSX();
     const templateData = [
       ["Текст вопроса", "Ответ 1", "Ответ 2", "Ответ 3", "Ответ 4"],
       ["Какой цвет у неба?", "*Голубой", "Красный", "Зелёный", "Жёлтый"],

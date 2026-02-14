@@ -40,7 +40,7 @@ import {
 import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 import { ru } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import * as XLSX from "xlsx";
+import { getXLSX } from "@/utils/xlsxHelper";
 
 interface AttendanceRecord {
   id: string;
@@ -226,12 +226,13 @@ export function AutoAttendanceJournal({
   }, [filteredRecords]);
 
   // Export to Excel
-  const exportToExcel = () => {
+  const exportToExcel = async () => {
     if (filteredRecords.length === 0) {
       toast.error("Нет данных для экспорта");
       return;
     }
 
+    const XLSX = await getXLSX();
     const exportData = filteredRecords.map((record) => ({
       "ФИО ученика": record.student_name,
       "Email": record.student_email,
