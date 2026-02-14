@@ -484,7 +484,8 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { courseId, organizationId, lessonTitle, courseTitle, courseDescription, contentType } = body;
+    const { courseId, organizationId, lessonTitle, courseTitle, courseDescription, contentType, existingContent } = body;
+    const contextSuffix = existingContent ? `\n\nВАЖНО: В уроке уже есть следующий контент, НЕ ПОВТОРЯЙ его и не дублируй идеи:\n---\n${existingContent.slice(0, 1500)}\n---` : "";
 
     // Handle description generation
     if (contentType === "description" && courseTitle) {
@@ -625,7 +626,7 @@ serve(async (req) => {
           };
 
           const quizResult = await generateWithAI(
-            `Создай мини-квиз по теме "${lessonTitle}" для курса "${courseTitle || "Курс"}"`,
+            `Создай мини-квиз по теме "${lessonTitle}" для курса "${courseTitle || "Курс"}"${contextSuffix}`,
             quizSystemPrompt,
             quizTool
           );
@@ -643,7 +644,7 @@ serve(async (req) => {
           const calloutType = body.calloutType || "info";
           const typeLabels: Record<string, string> = { "callout-info": "информационный блок", "callout-warning": "предупреждение", "callout-tip": "полезный совет" };
           const label = typeLabels[calloutType] || "информационный блок";
-          const calloutPrompt = `Ты эксперт по образовательному контенту. Напиши краткий ${label} (1-3 предложения) по теме "${lessonTitle}" для курса "${courseTitle || "Курс"}". Только текст, без заголовков и форматирования. На русском языке.`;
+          const calloutPrompt = `Ты эксперт по образовательному контенту. Напиши краткий ${label} (1-3 предложения) по теме "${lessonTitle}" для курса "${courseTitle || "Курс"}". Только текст, без заголовков и форматирования. На русском языке.${contextSuffix}`;
           const result = await generateWithAI(calloutPrompt, "Ты пишешь образовательный контент на русском языке.");
           return new Response(
             JSON.stringify({ success: true, content: result.content || "" }),
@@ -652,7 +653,7 @@ serve(async (req) => {
         }
 
         case "quote": {
-          const quotePrompt = `Найди или составь вдохновляющую цитату известного человека, связанную с темой "${lessonTitle}" курса "${courseTitle || "Курс"}". Формат: "Текст цитаты" — Автор. На русском языке.`;
+          const quotePrompt = `Найди или составь вдохновляющую цитату известного человека, связанную с темой "${lessonTitle}" курса "${courseTitle || "Курс"}". Формат: "Текст цитаты" — Автор. На русском языке.${contextSuffix}`;
           const result = await generateWithAI(quotePrompt, "Ты эксперт по образовательному контенту.");
           return new Response(
             JSON.stringify({ success: true, content: result.content || "" }),
@@ -678,7 +679,7 @@ serve(async (req) => {
             }
           };
           const accordionResult = await generateWithAI(
-            `Создай сворачиваемую секцию с дополнительной информацией по теме "${lessonTitle}" для курса "${courseTitle || "Курс"}". Заголовок должен быть кратким и интригующим, содержимое — подробным и полезным. На русском языке.`,
+            `Создай сворачиваемую секцию с дополнительной информацией по теме "${lessonTitle}" для курса "${courseTitle || "Курс"}". Заголовок должен быть кратким и интригующим, содержимое — подробным и полезным. На русском языке.${contextSuffix}`,
             "Ты эксперт по созданию образовательного контента.",
             accordionTool
           );

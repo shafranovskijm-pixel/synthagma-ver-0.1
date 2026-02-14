@@ -239,6 +239,7 @@ export function BlockEditor({ blocks, onChange, readOnly = false, courseTitle, l
                 onAddAfter={(type) => addBlock(type, index)}
                 courseTitle={courseTitle}
                 lessonTitle={lessonTitle}
+                existingContent={summarizeExistingContent(blocks)}
               />
             ))}
           </SortableContext>
@@ -319,6 +320,19 @@ function AddBlockButton({ onAdd }: { onAdd: (type: BlockType) => void }) {
   );
 }
 
+function summarizeExistingContent(blocks: ContentBlock[]): string {
+  return blocks
+    .filter(b => b.content || b.quizQuestion || b.accordionTitle)
+    .map(b => {
+      if (b.quizQuestion) return `[Квиз] ${b.quizQuestion}`;
+      if (b.accordionTitle) return `[Секция] ${b.accordionTitle}: ${b.content || ''}`;
+      return b.content;
+    })
+    .filter(Boolean)
+    .join('\n')
+    .slice(0, 2000);
+}
+
 interface SortableBlockItemProps {
   block: ContentBlock;
   isFocused: boolean;
@@ -328,6 +342,7 @@ interface SortableBlockItemProps {
   onAddAfter: (type: BlockType) => void;
   courseTitle?: string;
   lessonTitle?: string;
+  existingContent?: string;
 }
 
 const convertibleTypes: BlockType[] = ["paragraph", "heading1", "heading2", "bulletList", "numberedList", "quote", "callout-info", "callout-warning", "callout-tip", "accordion"];
@@ -368,7 +383,7 @@ const wrapTargets: { type: BlockType; icon: any; label: string; color: string }[
   { type: "paragraph", icon: Type, label: "Обычный текст", color: "text-foreground" },
 ];
 
-function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAddAfter, courseTitle, lessonTitle }: SortableBlockItemProps) {
+function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAddAfter, courseTitle, lessonTitle, existingContent }: SortableBlockItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
 
   const style = {
@@ -516,13 +531,13 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
         </div>
       </div>
       <div className="min-w-0">
-        <BlockContent block={block} onUpdate={onUpdate} courseTitle={courseTitle} lessonTitle={lessonTitle} />
+        <BlockContent block={block} onUpdate={onUpdate} courseTitle={courseTitle} lessonTitle={lessonTitle} existingContent={existingContent} />
       </div>
     </div>
   );
 }
 
-function BlockContent({ block, onUpdate, courseTitle, lessonTitle }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void; courseTitle?: string; lessonTitle?: string }) {
+function BlockContent({ block, onUpdate, courseTitle, lessonTitle, existingContent }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void; courseTitle?: string; lessonTitle?: string; existingContent?: string }) {
   const [isEditing, setIsEditing] = useState(false);
 
   const editorStyleClasses = (() => {
@@ -576,18 +591,18 @@ function BlockContent({ block, onUpdate, courseTitle, lessonTitle }: { block: Co
       );
 
     case "quote":
-      return <QuoteBlock block={block} onUpdate={onUpdate} courseTitle={courseTitle} lessonTitle={lessonTitle} />;
+      return <QuoteBlock block={block} onUpdate={onUpdate} courseTitle={courseTitle} lessonTitle={lessonTitle} existingContent={existingContent} />;
 
     case "callout-info":
     case "callout-warning":
     case "callout-tip":
-      return <CalloutBlock block={block} onUpdate={onUpdate} courseTitle={courseTitle} lessonTitle={lessonTitle} />;
+      return <CalloutBlock block={block} onUpdate={onUpdate} courseTitle={courseTitle} lessonTitle={lessonTitle} existingContent={existingContent} />;
 
     case "accordion":
-      return <AccordionBlock block={block} onUpdate={onUpdate} courseTitle={courseTitle} lessonTitle={lessonTitle} />;
+      return <AccordionBlock block={block} onUpdate={onUpdate} courseTitle={courseTitle} lessonTitle={lessonTitle} existingContent={existingContent} />;
 
     case "quiz":
-      return <QuizBlock block={block} onUpdate={onUpdate} courseTitle={courseTitle} lessonTitle={lessonTitle} />;
+      return <QuizBlock block={block} onUpdate={onUpdate} courseTitle={courseTitle} lessonTitle={lessonTitle} existingContent={existingContent} />;
 
     case "image":
       return <ImageBlock block={block} onUpdate={onUpdate} />;
@@ -1112,14 +1127,14 @@ function AIGenerateButton({ isGenerating, onClick }: { isGenerating: boolean; on
   );
 }
 
-function QuoteBlock({ block, onUpdate, courseTitle, lessonTitle }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void; courseTitle?: string; lessonTitle?: string }) {
+function QuoteBlock({ block, onUpdate, courseTitle, lessonTitle, existingContent }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void; courseTitle?: string; lessonTitle?: string; existingContent?: string }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const handleGenerate = async () => {
     setIsGenerating(true);
     try {
       const { supabase } = await import("@/integrations/supabase/client");
       const { data, error } = await supabase.functions.invoke("generate-course-content", {
-        body: { contentType: "quote", lessonTitle: lessonTitle || "Общая тема", courseTitle: courseTitle || "Курс" },
+        body: { contentType: "quote", lessonTitle: lessonTitle || "Общая тема", courseTitle: courseTitle || "Курс", existingContent },
       });
       if (error) throw error;
       if (data?.content) onUpdate({ content: data.content });
@@ -1139,7 +1154,7 @@ function QuoteBlock({ block, onUpdate, courseTitle, lessonTitle }: { block: Cont
   );
 }
 
-function CalloutBlock({ block, onUpdate, courseTitle, lessonTitle }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void; courseTitle?: string; lessonTitle?: string }) {
+function CalloutBlock({ block, onUpdate, courseTitle, lessonTitle, existingContent }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void; courseTitle?: string; lessonTitle?: string; existingContent?: string }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const styles = {
     "callout-info": { bg: "bg-blue-500/10", border: "border-blue-500/30", icon: AlertCircle, iconColor: "text-blue-500" },
@@ -1154,7 +1169,7 @@ function CalloutBlock({ block, onUpdate, courseTitle, lessonTitle }: { block: Co
     try {
       const { supabase } = await import("@/integrations/supabase/client");
       const { data, error } = await supabase.functions.invoke("generate-course-content", {
-        body: { contentType: "callout", calloutType: block.type, lessonTitle: lessonTitle || "Общая тема", courseTitle: courseTitle || "Курс" },
+        body: { contentType: "callout", calloutType: block.type, lessonTitle: lessonTitle || "Общая тема", courseTitle: courseTitle || "Курс", existingContent },
       });
       if (error) throw error;
       if (data?.content) onUpdate({ content: data.content });
@@ -1176,7 +1191,7 @@ function CalloutBlock({ block, onUpdate, courseTitle, lessonTitle }: { block: Co
   );
 }
 
-function AccordionBlock({ block, onUpdate, courseTitle, lessonTitle }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void; courseTitle?: string; lessonTitle?: string }) {
+function AccordionBlock({ block, onUpdate, courseTitle, lessonTitle, existingContent }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void; courseTitle?: string; lessonTitle?: string; existingContent?: string }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const isOpen = block.accordionOpen ?? true;
 
@@ -1185,7 +1200,7 @@ function AccordionBlock({ block, onUpdate, courseTitle, lessonTitle }: { block: 
     try {
       const { supabase } = await import("@/integrations/supabase/client");
       const { data, error } = await supabase.functions.invoke("generate-course-content", {
-        body: { contentType: "accordion", lessonTitle: lessonTitle || "Общая тема", courseTitle: courseTitle || "Курс" },
+        body: { contentType: "accordion", lessonTitle: lessonTitle || "Общая тема", courseTitle: courseTitle || "Курс", existingContent },
       });
       if (error) throw error;
       if (data?.accordion) {
@@ -1216,7 +1231,7 @@ function AccordionBlock({ block, onUpdate, courseTitle, lessonTitle }: { block: 
   );
 }
 
-function QuizBlock({ block, onUpdate, courseTitle, lessonTitle }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void; courseTitle?: string; lessonTitle?: string }) {
+function QuizBlock({ block, onUpdate, courseTitle, lessonTitle, existingContent }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void; courseTitle?: string; lessonTitle?: string; existingContent?: string }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const options = block.quizOptions || [{ text: "", isCorrect: true }, { text: "", isCorrect: false }];
 
@@ -1233,7 +1248,7 @@ function QuizBlock({ block, onUpdate, courseTitle, lessonTitle }: { block: Conte
     try {
       const { supabase } = await import("@/integrations/supabase/client");
       const { data, error } = await supabase.functions.invoke("generate-course-content", {
-        body: { contentType: "quiz", lessonTitle: lessonTitle || block.quizQuestion || "Общий вопрос по теме", courseTitle: courseTitle || "Курс" },
+        body: { contentType: "quiz", lessonTitle: lessonTitle || block.quizQuestion || "Общий вопрос по теме", courseTitle: courseTitle || "Курс", existingContent },
       });
       if (error) throw error;
       if (data?.quiz) {
