@@ -1,0 +1,220 @@
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, Building2, Users, GraduationCap, Briefcase, FileText, BookOpen, Library, HardHat, ShoppingCart, Settings, MoreHorizontal, ArrowRight, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+interface TableGroup {
+  name: string;
+  icon: React.ReactNode;
+  color: string;
+  tables: string[];
+  connections: string[]; // connected group names
+}
+
+const TABLE_GROUPS: TableGroup[] = [
+  {
+    name: "Организации",
+    icon: <Building2 className="w-4 h-4" />,
+    color: "hsl(var(--primary))",
+    tables: [
+      "organizations", "organization_credentials", "organization_comments",
+      "organization_features", "organization_feature_categories",
+      "organization_feature_usage", "organization_offer_acceptances",
+      "organization_reminders", "org_notifications", "org_documents"
+    ],
+    connections: ["Пользователи", "Курсы", "Компании", "Документы"]
+  },
+  {
+    name: "Пользователи",
+    icon: <Users className="w-4 h-4" />,
+    color: "#8b5cf6",
+    tables: ["profiles", "user_roles", "user_achievements", "achievements"],
+    connections: ["Организации", "Курсы"]
+  },
+  {
+    name: "Курсы",
+    icon: <GraduationCap className="w-4 h-4" />,
+    color: "#0ea5e9",
+    tables: [
+      "courses", "lessons", "test_questions", "course_categories",
+      "enrollments", "enrollment_history", "lesson_progress",
+      "test_attempts", "course_reminders", "course_documents"
+    ],
+    connections: ["Организации", "Пользователи", "Документы"]
+  },
+  {
+    name: "Компании",
+    icon: <Briefcase className="w-4 h-4" />,
+    color: "#f59e0b",
+    tables: ["companies", "company_documents", "registration_links"],
+    connections: ["Организации"]
+  },
+  {
+    name: "Документы",
+    icon: <FileText className="w-4 h-4" />,
+    color: "#ef4444",
+    tables: [
+      "student_documents", "consent_documents",
+      "student_identity_documents", "student_frdo_data",
+      "document_issuance_log", "education_document_records", "student_consents"
+    ],
+    connections: ["Курсы", "Организации"]
+  },
+  {
+    name: "Журналы",
+    icon: <BookOpen className="w-4 h-4" />,
+    color: "#14b8a6",
+    tables: ["journal_instances", "journal_entries", "audit_logs"],
+    connections: ["Организации", "Курсы"]
+  },
+  {
+    name: "Библиотека",
+    icon: <Library className="w-4 h-4" />,
+    color: "#6366f1",
+    tables: ["library_folders", "library_documents"],
+    connections: ["Организации"]
+  },
+  {
+    name: "Охрана труда",
+    icon: <HardHat className="w-4 h-4" />,
+    color: "#f97316",
+    tables: ["labor_safety_groups", "labor_safety_records", "labor_safety_profiles"],
+    connections: ["Организации"]
+  },
+  {
+    name: "Маркетплейс",
+    icon: <ShoppingCart className="w-4 h-4" />,
+    color: "#ec4899",
+    tables: ["marketplace_courses", "marketplace_orders", "course_requests", "service_orders"],
+    connections: ["Организации", "Курсы"]
+  },
+  {
+    name: "Система",
+    icon: <Settings className="w-4 h-4" />,
+    color: "#64748b",
+    tables: [
+      "system_settings", "system_features", "system_feature_categories",
+      "system_patches", "system_diagnostics", "promo_codes", "landing_content",
+      "blog_posts"
+    ],
+    connections: []
+  },
+  {
+    name: "Прочее",
+    icon: <MoreHorizontal className="w-4 h-4" />,
+    color: "#a1a1aa",
+    tables: [
+      "newsletter_subscribers", "testimonials", "chat_messages",
+      "video_identifications", "program_categories", "program_documents",
+      "program_folders", "student_groups", "organization_usage", "plan_requests"
+    ],
+    connections: ["Организации"]
+  }
+];
+
+export function DatabaseMap() {
+  const [tableCounts, setTableCounts] = useState<Record<string, number>>({});
+  const [loading, setLoading] = useState(false);
+  const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
+
+  const fetchCounts = async () => {
+    setLoading(true);
+    const allTables = TABLE_GROUPS.flatMap(g => g.tables);
+    const counts: Record<string, number> = {};
+
+    // Fetch counts in batches
+    const promises = allTables.map(async (table) => {
+      try {
+        const { count, error } = await supabase
+          .from(table as any)
+          .select("*", { count: "exact", head: true });
+        counts[table] = error ? -1 : (count || 0);
+      } catch {
+        counts[table] = -1;
+      }
+    });
+
+    await Promise.all(promises);
+    setTableCounts(counts);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchCounts();
+  }, []);
+
+  const totalTables = TABLE_GROUPS.reduce((acc, g) => acc + g.tables.length, 0);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="text-sm text-muted-foreground">
+          {totalTables} таблиц в {TABLE_GROUPS.length} группах
+        </div>
+        <Button variant="outline" size="sm" onClick={fetchCounts} disabled={loading} className="gap-2 rounded-xl">
+          {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+          Обновить
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {TABLE_GROUPS.map((group) => {
+          const isExpanded = expandedGroup === group.name;
+          const groupTotal = group.tables.reduce((acc, t) => {
+            const c = tableCounts[t];
+            return acc + (c && c > 0 ? c : 0);
+          }, 0);
+
+          return (
+            <div
+              key={group.name}
+              className="bg-secondary/30 rounded-xl border border-border p-3 cursor-pointer hover:bg-secondary/50 transition-colors"
+              onClick={() => setExpandedGroup(isExpanded ? null : group.name)}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <div
+                    className="w-7 h-7 rounded-lg flex items-center justify-center text-white"
+                    style={{ backgroundColor: group.color }}
+                  >
+                    {group.icon}
+                  </div>
+                  <div>
+                    <div className="font-medium text-sm">{group.name}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {group.tables.length} таблиц · {loading ? "..." : groupTotal} записей
+                    </div>
+                  </div>
+                </div>
+                {group.connections.length > 0 && (
+                  <div className="flex items-center gap-1 flex-wrap justify-end">
+                    <ArrowRight className="w-3 h-3 text-muted-foreground shrink-0" />
+                    {group.connections.map(c => (
+                      <span key={c} className="text-[10px] bg-muted px-1.5 py-0.5 rounded-full text-muted-foreground">
+                        {c}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {isExpanded && (
+                <div className="mt-3 pt-3 border-t border-border space-y-1">
+                  {group.tables.map(table => (
+                    <div key={table} className="flex items-center justify-between text-xs py-1 px-2 rounded-lg hover:bg-muted/50">
+                      <span className="font-mono text-muted-foreground">{table}</span>
+                      <Badge variant="outline" className="text-[10px] h-5">
+                        {loading ? "..." : (tableCounts[table] === -1 ? "—" : (tableCounts[table] ?? "..."))}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}

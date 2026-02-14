@@ -8,7 +8,7 @@ import { OrganizationsManager } from "@/components/admin/OrganizationsManager";
 import { UsersManager } from "@/components/admin/UsersManager";
 import { AdminAnalytics } from "@/components/admin/AdminAnalytics";
 import { ServiceOrdersManager } from "@/components/admin/ServiceOrdersManager";
-import { SystemFeaturesManager } from "@/components/admin/SystemFeaturesManager";
+
 import { AdminSettings } from "@/components/admin/AdminSettings";
 import { BlogManager } from "@/components/admin/BlogManager";
 import { SubscribersManager } from "@/components/admin/SubscribersManager";
@@ -19,7 +19,7 @@ const AdminDashboard = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const [activeTab, setActiveTab] = useState<AdminTabType>("analytics");
+  const [activeTab, setActiveTab] = useState<AdminTabType>("organizations");
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   const handleSignOut = async () => {
@@ -34,7 +34,6 @@ const AdminDashboard = () => {
       case "tariffs": return "Тарифы";
       case "orders": return "Заявки на курсы";
       case "users": return "Пользователи";
-      case "features": return "Функции системы";
       case "blog": return "Блог";
       case "subscribers": return "Подписчики";
       case "testimonials": return "Отзывы";
@@ -93,7 +92,6 @@ const AdminDashboard = () => {
           {activeTab === "tariffs" && <TariffsManager />}
           {activeTab === "orders" && <ServiceOrdersManager />}
           {activeTab === "users" && <UsersManager />}
-          {activeTab === "features" && <SystemFeaturesManager />}
           {activeTab === "blog" && <BlogManager />}
           {activeTab === "subscribers" && <SubscribersManager />}
           {activeTab === "testimonials" && <TestimonialsManager />}

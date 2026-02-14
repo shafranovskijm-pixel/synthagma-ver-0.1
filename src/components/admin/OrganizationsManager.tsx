@@ -698,16 +698,14 @@ export function OrganizationsManager() {
                 <TableHead>Статус</TableHead>
                 <TableHead>Контакты</TableHead>
                 <TableHead>Учётные данные</TableHead>
-                <TableHead className="text-center">Сотрудники</TableHead>
-                <TableHead className="text-center">Курсы</TableHead>
-                <TableHead>Создана</TableHead>
+                <TableHead className="text-center">Статистика</TableHead>
                 <TableHead className="text-right">Действия</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredOrganizations.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                     <Building2 className="w-12 h-12 mx-auto mb-2 opacity-50" />
                     {searchQuery ? "Ничего не найдено" : "Организации не найдены"}
                   </TableCell>
@@ -851,19 +849,16 @@ export function OrganizationsManager() {
                       )}
                     </TableCell>
                     <TableCell className="text-center">
-                      <Badge variant="secondary" className="gap-1">
-                        <Users className="w-3 h-3" />
-                        {org.users_count}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant="secondary" className="gap-1">
-                        <BookOpen className="w-3 h-3" />
-                        {org.courses_count}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-sm">
-                      {format(new Date(org.created_at), "d MMM yyyy", { locale: ru })}
+                      <div className="flex items-center justify-center gap-1.5">
+                        <Badge variant="secondary" className="gap-1 text-xs">
+                          <Users className="w-3 h-3" />
+                          {org.users_count}
+                        </Badge>
+                        <Badge variant="secondary" className="gap-1 text-xs">
+                          <BookOpen className="w-3 h-3" />
+                          {org.courses_count}
+                        </Badge>
+                      </div>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">

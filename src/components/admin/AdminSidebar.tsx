@@ -1,5 +1,5 @@
 import { 
-  BarChart3, Building2, Users, ShoppingBag, Sparkles, Crown, 
+  BarChart3, Building2, Users, ShoppingBag, Crown, 
   LogOut, Shield, Settings, FileText, Mail, MessageSquare
 } from "lucide-react";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -10,7 +10,6 @@ export type AdminTabType =
   | "tariffs"
   | "orders" 
   | "users" 
-  | "features"
   | "blog"
   | "subscribers"
   | "testimonials"
@@ -68,12 +67,6 @@ export function AdminSidebar({
       {/* Navigation */}
       <nav className="flex-1 p-4 overflow-y-auto scrollbar-hide">
         <div className="space-y-2">
-          {/* Analytics */}
-          <button onClick={() => handleTabClick("analytics")} className={tabButtonClass("analytics")}>
-            <BarChart3 className="w-5 h-5" />
-            Аналитика
-          </button>
-          
           {/* Organizations */}
           <button onClick={() => handleTabClick("organizations")} className={tabButtonClass("organizations")}>
             <Building2 className="w-5 h-5" />
@@ -98,12 +91,6 @@ export function AdminSidebar({
             Пользователи
           </button>
           
-          {/* Features */}
-          <button onClick={() => handleTabClick("features")} className={tabButtonClass("features")}>
-            <Sparkles className="w-5 h-5" />
-            Функции системы
-          </button>
-          
           {/* Blog */}
           <button onClick={() => handleTabClick("blog")} className={tabButtonClass("blog")}>
             <FileText className="w-5 h-5" />
@@ -120,6 +107,12 @@ export function AdminSidebar({
           <button onClick={() => handleTabClick("testimonials")} className={tabButtonClass("testimonials")}>
             <MessageSquare className="w-5 h-5" />
             Отзывы
+          </button>
+
+          {/* Analytics */}
+          <button onClick={() => handleTabClick("analytics")} className={tabButtonClass("analytics")}>
+            <BarChart3 className="w-5 h-5" />
+            Аналитика
           </button>
           
           {/* Settings - always visible */}
