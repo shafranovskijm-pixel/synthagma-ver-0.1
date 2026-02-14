@@ -12,121 +12,13 @@ import { CourseStoreManager } from "@/components/organization/CourseStoreManager
 import { FRDOManager } from "@/components/organization/FRDOManager";
 import { JournalsManager } from "@/components/organization/JournalsManager";
 import { LaborSafetyManager } from "@/components/organization/LaborSafetyManager";
-import type { TabType } from "../OrgSidebar";
-import type { OrganizationStats, DocumentsStats, Course, MenuSettings } from "@/types";
+import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 
-export interface BrandingSettings {
-  coverUrl: string;
-  logoUrl: string;
-  primaryColor: string;
-  secondaryColor: string;
-  showOrgName: boolean;
-  coverPosition: 'cover' | 'contain' | 'center' | 'top' | 'bottom';
-  customName: string;
-  customSubtitle: string;
-}
+export function TabContentRenderer() {
+  const d = useOrgDashboard();
+  const activeTab = d.tabNavigation.activeTab;
+  const organizationId = d.organizationId;
 
-export interface StudentDashboardSettings {
-  showLibrary: boolean;
-  showAchievements: boolean;
-  showAiChat: boolean;
-}
-
-interface TabContentRendererProps {
-  activeTab: TabType;
-  organizationId: string | null;
-  organizationName: string;
-  userId?: string;
-  stats: OrganizationStats;
-  documentsStats: DocumentsStats;
-  courses: Course[];
-  studentDocsByUser: Map<string, string[]>;
-  
-  // Callbacks
-  onOpenCourseDetails: (course: Course) => void;
-  onShowBulkUploadDialog: () => void;
-  setActiveTab: (tab: TabType) => void;
-  onCreateLinkClick: () => void;
-  onCoursesDeleted?: () => void;
-  
-  // Student tab props
-  onViewStudent: (student: any) => void;
-  onCopyCredentials: (login: string, password: string) => void;
-  onBulkCreateCredentials?: (userIds: string[]) => Promise<void>;
-  onBulkSendCredentials?: (userIds: string[]) => Promise<void>;
-  onBulkSendDocReminders?: () => Promise<void>;
-  onShowEnrollDialog?: (selectedIds: string[]) => void;
-  onShowUnenrollConfirm?: (selectedIds: string[]) => void;
-  onShowBulkFRDOExport?: (selectedIds: string[]) => void;
-  onShowBulkDeleteConfirm?: (selectedUserIds: string[]) => void;
-  isCreatingBulkCredentials: boolean;
-  isSendingBulkCredentials: boolean;
-  isSendingBulkDocReminders: boolean;
-  
-  // Settings props
-  isDarkMode: boolean;
-  setIsDarkMode: (v: boolean) => void;
-  menuSettings: MenuSettings;
-  setMenuSettings: React.Dispatch<React.SetStateAction<MenuSettings>>;
-  studentDashboardSettings: StudentDashboardSettings;
-  setStudentDashboardSettings: React.Dispatch<React.SetStateAction<StudentDashboardSettings>>;
-  brandingSettings: BrandingSettings;
-  setBrandingSettings: React.Dispatch<React.SetStateAction<BrandingSettings>>;
-  isSavingSettings: boolean;
-  setIsSavingSettings: (v: boolean) => void;
-  isSavingBranding: boolean;
-  onSaveBranding: () => Promise<void>;
-  onCoverUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onLogoUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  isUploadingCover: boolean;
-  isUploadingLogo: boolean;
-  onPreviewStudentDashboard: () => void;
-}
-
-export function TabContentRenderer({
-  activeTab,
-  organizationId,
-  organizationName,
-  userId,
-  stats,
-  documentsStats,
-  courses,
-  studentDocsByUser,
-  onOpenCourseDetails,
-  onShowBulkUploadDialog,
-  setActiveTab,
-  onCoursesDeleted,
-  onCreateLinkClick,
-  onViewStudent,
-  onCopyCredentials,
-  onBulkCreateCredentials,
-  onBulkSendCredentials,
-  onBulkSendDocReminders,
-  onShowEnrollDialog,
-  onShowUnenrollConfirm,
-  onShowBulkFRDOExport,
-  onShowBulkDeleteConfirm,
-  isCreatingBulkCredentials,
-  isSendingBulkCredentials,
-  isSendingBulkDocReminders,
-  isDarkMode,
-  setIsDarkMode,
-  menuSettings,
-  setMenuSettings,
-  studentDashboardSettings,
-  setStudentDashboardSettings,
-  brandingSettings,
-  setBrandingSettings,
-  isSavingSettings,
-  setIsSavingSettings,
-  isSavingBranding,
-  onSaveBranding,
-  onCoverUpload,
-  onLogoUpload,
-  isUploadingCover,
-  isUploadingLogo,
-  onPreviewStudentDashboard,
-}: TabContentRendererProps) {
   const shouldShowStatsCards = activeTab !== "organizations" && 
     activeTab !== "services" && 
     activeTab !== "settings" && 
@@ -140,15 +32,19 @@ export function TabContentRenderer({
   return (
     <>
       {/* Stats cards */}
-      {shouldShowStatsCards && <StatsCards stats={stats} />}
-      {activeTab === "students" && <DocumentsStatsCards stats={documentsStats} />}
+      {shouldShowStatsCards && <StatsCards stats={d.stats} />}
+      {activeTab === "students" && <DocumentsStatsCards stats={d.documentsStats} />}
 
       {/* Courses Tab */}
       {activeTab === "courses" && organizationId && (
         <CoursesTab 
           organizationId={organizationId} 
-          onOpenCourseDetails={onOpenCourseDetails}
-          onCoursesDeleted={onCoursesDeleted}
+          onOpenCourseDetails={(course) => {
+            d.courseDetailsModal.setSelectedCourseForDetails(course);
+            d.courseDetailsModal.setCourseDetailsTab("students");
+            d.courseDetailsModal.setShowCourseDetailsModal(true);
+          }}
+          onCoursesDeleted={d.refreshData}
         />
       )}
 
@@ -161,33 +57,56 @@ export function TabContentRenderer({
       {activeTab === "students" && organizationId && (
         <StudentsTab
           organizationId={organizationId}
-          courses={courses}
-          studentDocsByUser={studentDocsByUser}
-          onViewStudent={onViewStudent}
-          onCopyCredentials={onCopyCredentials}
-          onBulkCreateCredentials={onBulkCreateCredentials}
-          onBulkSendCredentials={onBulkSendCredentials}
-          onBulkSendDocReminders={onBulkSendDocReminders}
-          onShowEnrollDialog={onShowEnrollDialog}
-          onShowUnenrollConfirm={onShowUnenrollConfirm}
-          onShowBulkFRDOExport={onShowBulkFRDOExport}
-          onShowBulkDeleteConfirm={onShowBulkDeleteConfirm}
-          isCreatingBulkCredentials={isCreatingBulkCredentials}
-          isSendingBulkCredentials={isSendingBulkCredentials}
-          isSendingBulkDocReminders={isSendingBulkDocReminders}
+          courses={d.courses}
+          studentDocsByUser={d.studentDocsByUser}
+          onViewStudent={d.handleViewStudent}
+          onCopyCredentials={d.studentDetailsDialog.handleCopyCredentials}
+          onBulkCreateCredentials={d.handleBulkCreateCredentials}
+          onBulkSendCredentials={d.handleBulkSendCredentials}
+          onBulkSendDocReminders={d.studentActions.bulkSendDocReminders}
+          onShowEnrollDialog={(selectedIds) => {
+            if (selectedIds && selectedIds.length > 0) {
+              d.enrollmentActions.setSelectedStudentIds(new Set(selectedIds));
+            }
+            if (d.studentCourseFilter !== "all") d.enrollmentActions.setEnrollCourseId(d.studentCourseFilter);
+            d.enrollmentActions.setShowEnrollDialog(true);
+          }}
+          onShowUnenrollConfirm={(selectedIds) => {
+            if (selectedIds && selectedIds.length > 0) {
+              d.enrollmentActions.setSelectedStudentIds(new Set(selectedIds));
+            }
+            d.enrollmentActions.setShowUnenrollConfirm(true);
+          }}
+          onShowBulkFRDOExport={(selectedIds) => {
+            if (selectedIds && selectedIds.length > 0) {
+              d.enrollmentActions.setSelectedStudentIds(new Set(selectedIds));
+            }
+            d.enrollmentActions.setShowBulkFRDOExport(true);
+          }}
+          onShowBulkDeleteConfirm={(selectedUserIds) => {
+            if (selectedUserIds && selectedUserIds.length > 0) {
+              const selectionIds = d.students.filter(s => selectedUserIds.includes(s.user_id))
+                .map(s => s.enrollment_id || s.user_id);
+              d.enrollmentActions.setSelectedStudentIds(new Set(selectionIds));
+            }
+            d.enrollmentActions.setShowBulkDeleteConfirm(true);
+          }}
+          isCreatingBulkCredentials={d.studentActions.isCreatingBulkCredentials}
+          isSendingBulkCredentials={d.studentActions.isSendingBulkCredentials}
+          isSendingBulkDocReminders={d.studentActions.isSendingBulkDocReminders}
         />
       )}
 
       {/* Stats Tab */}
       {activeTab === "stats" && organizationId && (
-        <StatsTab organizationId={organizationId} stats={stats} />
+        <StatsTab organizationId={organizationId} stats={d.stats} />
       )}
 
       {/* Links Tab */}
       {activeTab === "links" && organizationId && (
         <LinksTab 
           organizationId={organizationId} 
-          onCreateLinkClick={onCreateLinkClick} 
+          onCreateLinkClick={() => d.registrationLinks.setShowCreateLinkDialog(true)} 
         />
       )}
 
@@ -200,7 +119,7 @@ export function TabContentRenderer({
       {activeTab === "documents" && organizationId && (
         <DocumentsTab 
           organizationId={organizationId} 
-          onShowBulkUploadDialog={onShowBulkUploadDialog}
+          onShowBulkUploadDialog={() => d.setShowBulkUploadDialog(true)}
         />
       )}
 
@@ -221,33 +140,32 @@ export function TabContentRenderer({
 
       {/* Course Store Tab */}
       {activeTab === "services" && organizationId && (
-        <CourseStoreManager organizationId={organizationId} userId={userId} />
+        <CourseStoreManager organizationId={organizationId} userId={d.user?.id} />
       )}
-
 
       {/* Settings Tab */}
       {activeTab === "settings" && (
         <SettingsTab
           organizationId={organizationId}
-          organizationName={organizationName}
-          userId={userId}
-          isDarkMode={isDarkMode}
-          setIsDarkMode={setIsDarkMode}
-          menuSettings={menuSettings}
-          setMenuSettings={setMenuSettings}
-          studentDashboardSettings={studentDashboardSettings}
-          setStudentDashboardSettings={setStudentDashboardSettings}
-          brandingSettings={brandingSettings}
-          setBrandingSettings={setBrandingSettings}
-          isSavingSettings={isSavingSettings}
-          setIsSavingSettings={setIsSavingSettings}
-          isSavingBranding={isSavingBranding}
-          onSaveBranding={onSaveBranding}
-          onCoverUpload={onCoverUpload}
-          onLogoUpload={onLogoUpload}
-          isUploadingCover={isUploadingCover}
-          isUploadingLogo={isUploadingLogo}
-          onPreviewStudentDashboard={onPreviewStudentDashboard}
+          organizationName={d.organizationName}
+          userId={d.user?.id}
+          isDarkMode={d.dashboardSettings.isDarkMode}
+          setIsDarkMode={d.dashboardSettings.setIsDarkMode}
+          menuSettings={d.dashboardSettings.menuSettings}
+          setMenuSettings={d.dashboardSettings.setMenuSettings}
+          studentDashboardSettings={d.dashboardSettings.studentDashboardSettings}
+          setStudentDashboardSettings={d.dashboardSettings.setStudentDashboardSettings}
+          brandingSettings={d.branding.brandingSettings}
+          setBrandingSettings={d.branding.setBrandingSettings}
+          isSavingSettings={d.dashboardSettings.isSavingSettings}
+          setIsSavingSettings={d.dashboardSettings.setIsSavingSettings}
+          isSavingBranding={d.branding.isSavingBranding}
+          onSaveBranding={d.branding.saveBranding}
+          onCoverUpload={d.branding.handleCoverUpload}
+          onLogoUpload={d.branding.handleLogoUpload}
+          isUploadingCover={d.branding.isUploadingCover}
+          isUploadingLogo={d.branding.isUploadingLogo}
+          onPreviewStudentDashboard={d.dashboardSettings.previewStudentDashboard}
         />
       )}
     </>

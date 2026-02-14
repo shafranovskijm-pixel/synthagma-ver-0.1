@@ -7,6 +7,5 @@ export { LinksTab } from './LinksTab';
 export { StatsTab } from './StatsTab';
 export { DocumentsTab } from './DocumentsTab';
 export { TabContentRenderer } from './TabContentRenderer';
-export type { BrandingSettings, StudentDashboardSettings } from './TabContentRenderer';
 export type { TabType } from '../OrgSidebar';
 export { OrgSidebar } from '../OrgSidebar';

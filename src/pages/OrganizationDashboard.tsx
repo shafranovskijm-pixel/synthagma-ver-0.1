@@ -95,77 +95,7 @@ function OrganizationDashboardContent() {
           />
           
           <AnimatedTabContent tabKey={d.tabNavigation.activeTab} direction={d.tabNavigation.swipeDirection} isMobile={d.isMobile}>
-            <TabContentRenderer
-              activeTab={d.tabNavigation.activeTab}
-              organizationId={d.organizationId}
-              organizationName={d.organizationName}
-              userId={d.user?.id}
-              stats={d.stats}
-              documentsStats={d.documentsStats}
-              courses={d.courses}
-              studentDocsByUser={d.studentDocsByUser}
-              onOpenCourseDetails={(course) => {
-                d.courseDetailsModal.setSelectedCourseForDetails(course);
-                d.courseDetailsModal.setCourseDetailsTab("students");
-                d.courseDetailsModal.setShowCourseDetailsModal(true);
-              }}
-              onShowBulkUploadDialog={() => d.setShowBulkUploadDialog(true)}
-              setActiveTab={d.tabNavigation.setActiveTab}
-              onCreateLinkClick={() => d.registrationLinks.setShowCreateLinkDialog(true)}
-              onCoursesDeleted={d.refreshData}
-              onViewStudent={d.handleViewStudent}
-              onCopyCredentials={d.studentDetailsDialog.handleCopyCredentials}
-              onBulkCreateCredentials={d.handleBulkCreateCredentials}
-              onBulkSendCredentials={d.handleBulkSendCredentials}
-              onBulkSendDocReminders={d.studentActions.bulkSendDocReminders}
-              onShowEnrollDialog={(selectedIds) => {
-                if (selectedIds && selectedIds.length > 0) {
-                  d.enrollmentActions.setSelectedStudentIds(new Set(selectedIds));
-                }
-                if (d.studentCourseFilter !== "all") d.enrollmentActions.setEnrollCourseId(d.studentCourseFilter);
-                d.enrollmentActions.setShowEnrollDialog(true);
-              }}
-              onShowUnenrollConfirm={(selectedIds) => {
-                if (selectedIds && selectedIds.length > 0) {
-                  d.enrollmentActions.setSelectedStudentIds(new Set(selectedIds));
-                }
-                d.enrollmentActions.setShowUnenrollConfirm(true);
-              }}
-              onShowBulkFRDOExport={(selectedIds) => {
-                if (selectedIds && selectedIds.length > 0) {
-                  d.enrollmentActions.setSelectedStudentIds(new Set(selectedIds));
-                }
-                d.enrollmentActions.setShowBulkFRDOExport(true);
-              }}
-              onShowBulkDeleteConfirm={(selectedUserIds) => {
-                if (selectedUserIds && selectedUserIds.length > 0) {
-                  const selectionIds = d.students.filter(s => selectedUserIds.includes(s.user_id))
-                    .map(s => s.enrollment_id || s.user_id);
-                  d.enrollmentActions.setSelectedStudentIds(new Set(selectionIds));
-                }
-                d.enrollmentActions.setShowBulkDeleteConfirm(true);
-              }}
-              isCreatingBulkCredentials={d.studentActions.isCreatingBulkCredentials}
-              isSendingBulkCredentials={d.studentActions.isSendingBulkCredentials}
-              isSendingBulkDocReminders={d.studentActions.isSendingBulkDocReminders}
-              isDarkMode={d.dashboardSettings.isDarkMode}
-              setIsDarkMode={d.dashboardSettings.setIsDarkMode}
-              menuSettings={d.dashboardSettings.menuSettings}
-              setMenuSettings={d.dashboardSettings.setMenuSettings}
-              studentDashboardSettings={d.dashboardSettings.studentDashboardSettings}
-              setStudentDashboardSettings={d.dashboardSettings.setStudentDashboardSettings}
-              brandingSettings={d.branding.brandingSettings}
-              setBrandingSettings={d.branding.setBrandingSettings}
-              isSavingSettings={d.dashboardSettings.isSavingSettings}
-              setIsSavingSettings={d.dashboardSettings.setIsSavingSettings}
-              isSavingBranding={d.branding.isSavingBranding}
-              onSaveBranding={d.branding.saveBranding}
-              onCoverUpload={d.branding.handleCoverUpload}
-              onLogoUpload={d.branding.handleLogoUpload}
-              isUploadingCover={d.branding.isUploadingCover}
-              isUploadingLogo={d.branding.isUploadingLogo}
-              onPreviewStudentDashboard={d.dashboardSettings.previewStudentDashboard}
-            />
+            <TabContentRenderer />
           </AnimatedTabContent>
         </div>
 
@@ -191,7 +121,7 @@ function OrganizationDashboardContent() {
         )}
       </main>
 
-      {/* All Dialogs - now reads from context, no props needed */}
+      {/* All Dialogs - reads from context */}
       <DialogsContainer />
 
       {/* Onboarding Tour */}
