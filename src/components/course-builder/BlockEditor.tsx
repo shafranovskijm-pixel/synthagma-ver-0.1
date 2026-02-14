@@ -180,6 +180,7 @@ const createBlock = (type: BlockType): ContentBlock => ({
 
 export function BlockEditor({ blocks, onChange, readOnly = false, courseTitle, lessonTitle }: BlockEditorProps) {
   const [focusedBlockId, setFocusedBlockId] = useState<string | null>(null);
+  const [stylePresets, setStylePresets] = useState(() => loadPresets());
 
   const addBlock = useCallback((type: BlockType, afterIndex?: number) => {
     const newBlock = createBlock(type);
@@ -244,6 +245,8 @@ export function BlockEditor({ blocks, onChange, readOnly = false, courseTitle, l
                 courseTitle={courseTitle}
                 lessonTitle={lessonTitle}
                 existingContent={summarizeExistingContent(blocks)}
+                presets={stylePresets}
+                onPresetsChange={(p) => { setStylePresets(p); savePresets(p); }}
               />
             ))}
           </SortableContext>
@@ -347,6 +350,8 @@ interface SortableBlockItemProps {
   courseTitle?: string;
   lessonTitle?: string;
   existingContent?: string;
+  presets: { name: string; style: StylePreset }[];
+  onPresetsChange: (presets: { name: string; style: StylePreset }[]) => void;
 }
 
 const convertibleTypes: BlockType[] = ["paragraph", "heading1", "heading2", "bulletList", "numberedList", "quote", "callout-info", "callout-warning", "callout-tip", "accordion"];
@@ -429,8 +434,7 @@ function describeStyle(style: StylePreset): string {
   return parts.length ? parts.join(' ') : 'Стандарт';
 }
 
-function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAddAfter, courseTitle, lessonTitle, existingContent }: SortableBlockItemProps) {
-  const [presets, setPresets] = useState(() => loadPresets());
+function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAddAfter, courseTitle, lessonTitle, existingContent, presets, onPresetsChange }: SortableBlockItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
 
   const style = {
@@ -569,8 +573,7 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
                 <DropdownMenuItem onClick={() => {
                   const name = describeStyle(extractStyle(block));
                   const newPresets = [...presets, { name, style: extractStyle(block) }];
-                  savePresets(newPresets);
-                  setPresets(newPresets);
+                  onPresetsChange(newPresets);
                   import("sonner").then(({ toast }) => toast.success("Пресет сохранён"));
                 }}>
                   <Star className="w-4 h-4 mr-2 text-yellow-500" />Сохранить текущий стиль
@@ -584,8 +587,7 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
                       onClick={(e) => {
                         e.stopPropagation();
                         const newPresets = presets.filter((_, j) => j !== i);
-                        savePresets(newPresets);
-                        setPresets(newPresets);
+                        onPresetsChange(newPresets);
                       }}
                     >
                       <X className="w-3 h-3" />
