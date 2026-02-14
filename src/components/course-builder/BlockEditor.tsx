@@ -677,7 +677,7 @@ function BlockContent({ block, onUpdate, courseTitle, lessonTitle, existingConte
     case "paragraph":
       return (
         <div className={cn("py-2 min-h-[40px]", editorStyleClasses)}>
-          <RichTextEditor value={block.content} onChange={(val) => onUpdate({ content: val })} placeholder="Введите текст..." />
+          <RichTextEditor value={block.content} onChange={(val) => onUpdate({ content: val })} placeholder="Введите текст..." className={editorStyleClasses} />
         </div>
       );
 
