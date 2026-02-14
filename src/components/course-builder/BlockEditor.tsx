@@ -728,17 +728,16 @@ function BlockContent({ block, onUpdate, courseTitle, lessonTitle, existingConte
 
 function ImageBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void }) {
   const [isUploading, setIsUploading] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [showAiInput, setShowAiInput] = useState(false);
   const fileInputRef = useCallback((node: HTMLInputElement | null) => {
     if (node) node.value = "";
   }, []);
 
   const handleFileUpload = async (file: File) => {
-    if (!file.type.startsWith("image/")) {
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      return;
-    }
+    if (!file.type.startsWith("image/")) return;
+    if (file.size > 10 * 1024 * 1024) return;
     setIsUploading(true);
     try {
       const { supabase } = await import("@/integrations/supabase/client");
@@ -749,8 +748,7 @@ function ImageBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updat
       try { const { data } = await supabase.functions.invoke('get-external-storage-config'); externalConfig = data; } catch {}
 
       const useExternal = externalConfig?.configured && externalConfig?.url && externalConfig?.key;
-      const client = useExternal ? null : supabase;
-      const bucket = useExternal ? 'course-files' : 'course-files';
+      const bucket = 'course-files';
       const baseUrl = useExternal ? externalConfig!.url : import.meta.env.VITE_SUPABASE_URL;
       const apiKey = useExternal ? externalConfig!.key : import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
@@ -762,15 +760,10 @@ function ImageBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updat
 
       const { error } = await supabase.storage.from(bucket).upload(fileName, file, { cacheControl: '3600', upsert: true });
       if (error) {
-        // Try with XHR as fallback
         const uploadUrl = `${baseUrl}/storage/v1/object/${bucket}/${fileName}`;
         const resp = await fetch(uploadUrl, {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${authToken}`,
-            'apikey': apiKey!,
-            'x-upsert': 'true',
-          },
+          headers: { 'Authorization': `Bearer ${authToken}`, 'apikey': apiKey!, 'x-upsert': 'true' },
           body: file,
         });
         if (!resp.ok) throw new Error('Upload failed');
@@ -782,6 +775,30 @@ function ImageBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updat
       console.error("Image upload error:", err);
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const handleAiGenerate = async () => {
+    if (!aiPrompt.trim()) return;
+    setIsGenerating(true);
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data, error } = await supabase.functions.invoke('generate-image', {
+        body: { prompt: aiPrompt.trim() },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      if (data?.url) {
+        onUpdate({ imageSrc: data.url, imageAlt: aiPrompt.trim() });
+        setAiPrompt("");
+        setShowAiInput(false);
+      }
+    } catch (err) {
+      console.error("AI image generation error:", err);
+      const { toast } = await import("sonner");
+      toast.error(err instanceof Error ? err.message : "Ошибка генерации изображения");
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -804,7 +821,7 @@ function ImageBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updat
               <Button
                 variant="outline"
                 size="sm"
-                disabled={isUploading}
+                disabled={isUploading || isGenerating}
                 onClick={() => {
                   const input = document.createElement('input');
                   input.type = 'file';
@@ -819,8 +836,38 @@ function ImageBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updat
                 {isUploading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Upload className="w-4 h-4 mr-1" />}
                 {isUploading ? "Загрузка..." : "Загрузить файл"}
               </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isUploading || isGenerating}
+                onClick={() => setShowAiInput(!showAiInput)}
+                className={showAiInput ? "border-primary text-primary" : ""}
+              >
+                <Sparkles className="w-4 h-4 mr-1" />
+                ИИ генерация
+              </Button>
             </div>
           </div>
+          {showAiInput && (
+            <div className="space-y-2">
+              <Input
+                value={aiPrompt}
+                onChange={(e) => setAiPrompt(e.target.value)}
+                placeholder="Опишите изображение, например: схема работы нейронной сети..."
+                className="text-sm"
+                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAiGenerate(); } }}
+                disabled={isGenerating}
+              />
+              <Button
+                size="sm"
+                disabled={!aiPrompt.trim() || isGenerating}
+                onClick={handleAiGenerate}
+                className="w-full"
+              >
+                {isGenerating ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> Генерация...</> : <><Wand2 className="w-4 h-4 mr-1" /> Сгенерировать</>}
+              </Button>
+            </div>
+          )}
           <Input value={block.imageSrc || ""} onChange={(e) => onUpdate({ imageSrc: e.target.value })} placeholder="https://example.com/image.jpg" className="text-sm" />
         </div>
       )}
