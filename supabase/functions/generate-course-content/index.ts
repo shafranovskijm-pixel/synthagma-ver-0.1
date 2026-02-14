@@ -638,6 +638,55 @@ serve(async (req) => {
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
+
+        case "callout": {
+          const calloutType = body.calloutType || "info";
+          const typeLabels: Record<string, string> = { "callout-info": "информационный блок", "callout-warning": "предупреждение", "callout-tip": "полезный совет" };
+          const label = typeLabels[calloutType] || "информационный блок";
+          const calloutPrompt = `Ты эксперт по образовательному контенту. Напиши краткий ${label} (1-3 предложения) по теме "${lessonTitle}" для курса "${courseTitle || "Курс"}". Только текст, без заголовков и форматирования. На русском языке.`;
+          const result = await generateWithAI(calloutPrompt, "Ты пишешь образовательный контент на русском языке.");
+          return new Response(
+            JSON.stringify({ success: true, content: result.content || "" }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        case "quote": {
+          const quotePrompt = `Найди или составь вдохновляющую цитату известного человека, связанную с темой "${lessonTitle}" курса "${courseTitle || "Курс"}". Формат: "Текст цитаты" — Автор. На русском языке.`;
+          const result = await generateWithAI(quotePrompt, "Ты эксперт по образовательному контенту.");
+          return new Response(
+            JSON.stringify({ success: true, content: result.content || "" }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        case "accordion": {
+          const accordionTool = {
+            type: "function",
+            function: {
+              name: "create_accordion",
+              description: "Создает сворачиваемую секцию с заголовком и содержимым",
+              parameters: {
+                type: "object",
+                properties: {
+                  title: { type: "string", description: "Краткий заголовок секции" },
+                  content: { type: "string", description: "Подробное содержимое секции" }
+                },
+                required: ["title", "content"],
+                additionalProperties: false
+              }
+            }
+          };
+          const accordionResult = await generateWithAI(
+            `Создай сворачиваемую секцию с дополнительной информацией по теме "${lessonTitle}" для курса "${courseTitle || "Курс"}". Заголовок должен быть кратким и интригующим, содержимое — подробным и полезным. На русском языке.`,
+            "Ты эксперт по созданию образовательного контента.",
+            accordionTool
+          );
+          return new Response(
+            JSON.stringify({ success: true, accordion: accordionResult }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
         
         default:
           return new Response(
