@@ -61,8 +61,8 @@ export const HealthTab = React.forwardRef<HTMLDivElement, React.HTMLAttributes<H
       setRecommendations(prev => prev.map(r => r.id === id ? { ...r, status: "skipped" as RecStatus } : r));
     };
 
-    const errorCount = recommendations.filter(r => r.severity === "error" && r.status !== "skipped").length;
-    const warnCount = recommendations.filter(r => r.severity === "warn" && r.status !== "skipped").length;
+    const errorCount = recommendations.filter(r => r.severity === "error" && r.status !== "skipped" && r.status !== "applied").length;
+    const warnCount = recommendations.filter(r => r.severity === "warn" && r.status !== "skipped" && r.status !== "applied").length;
     const appliedCount = recommendations.filter(r => r.status === "applied").length;
 
     return (
