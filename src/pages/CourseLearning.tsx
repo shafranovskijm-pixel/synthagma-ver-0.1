@@ -1320,41 +1320,27 @@ const CourseLearning = () => {
 
   const fetchCourseData = async () => {
     try {
-      const { data: courseData, error: courseError } = await supabase
-        .from('courses')
-        .select('*')
-        .eq('id', courseId)
-        .single();
+      // Parallel fetch: course + lessons + enrollment
+      const [courseResult, lessonsResult, enrollmentResult] = await Promise.all([
+        supabase.from('courses').select('*').eq('id', courseId).single(),
+        supabase.from('lessons').select('*').eq('course_id', courseId).order('order_index'),
+        supabase.from('enrollments').select('*').eq('course_id', courseId).eq('user_id', user!.id).maybeSingle(),
+      ]);
 
-      if (courseError) throw courseError;
-      setCourse(courseData);
+      if (courseResult.error) throw courseResult.error;
+      setCourse(courseResult.data);
 
-      const { data: lessonsData, error: lessonsError } = await supabase
-        .from('lessons')
-        .select('*')
-        .eq('course_id', courseId)
-        .order('order_index');
+      if (lessonsResult.error) throw lessonsResult.error;
+      const lessonsData = lessonsResult.data || [];
+      setLessons(lessonsData);
 
-      if (lessonsError) throw lessonsError;
-      setLessons(lessonsData || []);
-
-      let { data: enrollment, error: enrollmentError } = await supabase
-        .from('enrollments')
-        .select('*')
-        .eq('course_id', courseId)
-        .eq('user_id', user!.id)
-        .single();
-
-      if (enrollmentError && enrollmentError.code === 'PGRST116') {
+      let enrollment = enrollmentResult.data;
+      if (!enrollment) {
         const { data: newEnrollment, error: createError } = await supabase
           .from('enrollments')
-          .insert({
-            course_id: courseId,
-            user_id: user!.id
-          })
+          .insert({ course_id: courseId, user_id: user!.id })
           .select()
           .single();
-        
         if (createError) throw createError;
         enrollment = newEnrollment;
       }
@@ -1363,15 +1349,18 @@ const CourseLearning = () => {
         setEnrollmentId(enrollment.id);
       }
 
-      // Filter lesson_progress by current course lessons only
-      const courseLessonIds = (lessonsData || []).map((l: any) => l.id);
-      const { data: progressData } = await supabase
-        .from('lesson_progress')
-        .select('lesson_id, completed')
-        .eq('user_id', user!.id)
-        .in('lesson_id', courseLessonIds);
-
-      setLessonProgress(progressData || []);
+      // Fetch progress in parallel after we have lesson IDs
+      const courseLessonIds = lessonsData.map((l: any) => l.id);
+      if (courseLessonIds.length > 0) {
+        const { data: progressData } = await supabase
+          .from('lesson_progress')
+          .select('lesson_id, completed')
+          .eq('user_id', user!.id)
+          .in('lesson_id', courseLessonIds);
+        setLessonProgress(progressData || []);
+      } else {
+        setLessonProgress([]);
+      }
     } catch (error) {
       console.error('Error fetching course:', error);
       toast.error('Ошибка загрузки курса');

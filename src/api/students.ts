@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/utils/retryFetch";
 import type { Student, StudentFRDOStatus, StudentEnrollment } from "@/types";
 
 // ============= Students API =============
@@ -7,21 +8,29 @@ export async function fetchStudents(
   organizationId: string,
   courseIds: string[]
 ): Promise<{ students: Student[]; allProfiles: Student[] }> {
-  // Get all enrollments for org courses
+  // Get all enrollments for org courses (with pagination to bypass 1000-row limit)
   let allEnrollments: any[] = [];
   if (courseIds.length > 0) {
-    const { data: enrollmentsData } = await supabase
-      .from("enrollments")
-      .select("*")
-      .in("course_id", courseIds);
-    allEnrollments = enrollmentsData || [];
+    allEnrollments = await fetchAllRows<any>(({ from, to }) =>
+      supabase
+        .from("enrollments")
+        .select("*")
+        .in("course_id", courseIds)
+        .range(from, to)
+        .then(r => ({ data: r.data as any[] | null, error: r.error }))
+    );
   }
 
   // Fetch all profiles for the organization (without generated_password - it's encrypted)
-  const { data: allProfilesData } = await supabase
-    .from("profiles")
-    .select("id, user_id, full_name, email, login, company_id")
-    .eq("organization_id", organizationId);
+  // Fetch all profiles with pagination
+  const allProfilesData: any[] = await fetchAllRows<any>(({ from, to }) =>
+    supabase
+      .from("profiles")
+      .select("id, user_id, full_name, email, login, company_id")
+      .eq("organization_id", organizationId)
+      .range(from, to)
+      .then(r => ({ data: r.data as any[] | null, error: r.error }))
+  );
 
   // Fetch decrypted passwords via secure RPC
   const { data: decryptedPasswords } = await supabase
