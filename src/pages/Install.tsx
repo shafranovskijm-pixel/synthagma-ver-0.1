@@ -135,14 +135,25 @@ export default function Install() {
               )}
 
               {/* APK download */}
-              <a
-                href="/downloads/app-debug.apk"
-                download
-                className="inline-flex items-center justify-center gap-2 w-full px-5 py-4 rounded-xl border border-foreground/20 text-foreground hover:bg-foreground/10 transition-colors text-base font-medium"
-              >
-                <Download className="w-5 h-5" />
-                Скачать APK для Android
-              </a>
+              <Card className="border-accent/30 bg-accent/5">
+                <CardContent className="py-6">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+                    <span className="text-sm font-medium text-accent">Бета-версия</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Мобильное приложение для Android находится в активной разработке. Текущая версия APK проходит тестирование и может содержать ошибки. Мы будем благодарны за обратную связь!
+                  </p>
+                  <a
+                    href="/downloads/app-debug.apk"
+                    download
+                    className="inline-flex items-center justify-center gap-2 w-full px-5 py-4 rounded-xl border border-foreground/20 text-foreground hover:bg-foreground/10 transition-colors text-base font-medium"
+                  >
+                    <Download className="w-5 h-5" />
+                    Скачать APK
+                  </a>
+                </CardContent>
+              </Card>
 
               {/* Utility buttons */}
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
