@@ -40,6 +40,11 @@ import {
   Check,
   X,
   Eraser,
+  CheckCircle,
+  XCircle,
+  Highlighter,
+  Square,
+  RectangleHorizontal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -90,6 +95,9 @@ export type BlockType =
   | "callout-info"
   | "callout-warning"
   | "callout-tip"
+  | "callout-success"
+  | "callout-danger"
+  | "highlight"
   | "accordion"
   | "quiz"
   | "image"
@@ -133,6 +141,9 @@ export interface ContentBlock {
   uppercase?: boolean;
   textColor?: string;
   lineHeight?: 'tight' | 'normal' | 'relaxed';
+  fontFamily?: 'sans' | 'mono';
+  borderStyle?: 'none' | 'thin' | 'bold' | 'dashed';
+  borderRadius?: 'none' | 'md' | 'xl';
 }
 
 interface BlockEditorProps {
@@ -153,6 +164,9 @@ const blockTypeConfig: Record<BlockType, { icon: any; label: string; color: stri
   "callout-info": { icon: AlertCircle, label: "Информация", color: "text-blue-500" },
   "callout-warning": { icon: AlertCircle, label: "Предупреждение", color: "text-amber-500" },
   "callout-tip": { icon: Lightbulb, label: "Совет", color: "text-green-500" },
+  "callout-success": { icon: CheckCircle, label: "Выполнено", color: "text-emerald-500" },
+  "callout-danger": { icon: XCircle, label: "Ошибка", color: "text-red-500" },
+  highlight: { icon: Highlighter, label: "Выделение", color: "text-yellow-500" },
   accordion: { icon: ChevronDown, label: "Сворачиваемая секция", color: "text-purple-500" },
   quiz: { icon: HelpCircle, label: "Мини-квиз", color: "text-primary" },
   image: { icon: ImageIcon, label: "Изображение", color: "text-green-500" },
@@ -302,6 +316,15 @@ function AddBlockButton({ onAdd }: { onAdd: (type: BlockType) => void }) {
         <DropdownMenuItem onClick={() => onAdd("callout-tip")}>
           <Lightbulb className="w-4 h-4 mr-2 text-green-500" />Совет
         </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onAdd("callout-success")}>
+          <CheckCircle className="w-4 h-4 mr-2 text-emerald-500" />Выполнено
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onAdd("callout-danger")}>
+          <XCircle className="w-4 h-4 mr-2 text-red-500" />Ошибка
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onAdd("highlight")}>
+          <Highlighter className="w-4 h-4 mr-2 text-yellow-500" />Выделение
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => onAdd("accordion")}>
           <ChevronDown className="w-4 h-4 mr-2 text-purple-500" />Сворачиваемая секция
@@ -355,9 +378,9 @@ interface SortableBlockItemProps {
   onPresetsChange: (presets: { name: string; style: StylePreset }[]) => void;
 }
 
-const convertibleTypes: BlockType[] = ["paragraph", "heading1", "heading2", "bulletList", "numberedList", "quote", "callout-info", "callout-warning", "callout-tip", "accordion"];
+const convertibleTypes: BlockType[] = ["paragraph", "heading1", "heading2", "bulletList", "numberedList", "quote", "callout-info", "callout-warning", "callout-tip", "callout-success", "callout-danger", "highlight", "accordion"];
 
-const textStyleableTypes: BlockType[] = ["paragraph", "heading1", "heading2", "bulletList", "numberedList", "quote", "callout-info", "callout-warning", "callout-tip"];
+const textStyleableTypes: BlockType[] = ["paragraph", "heading1", "heading2", "bulletList", "numberedList", "quote", "callout-info", "callout-warning", "callout-tip", "callout-success", "callout-danger", "highlight"];
 
 const bgColorPresets = [
   { value: "", label: "Без фона", class: "" },
@@ -365,6 +388,7 @@ const bgColorPresets = [
   { value: "blue", label: "Голубой", class: "bg-blue-50 dark:bg-blue-950/30" },
   { value: "yellow", label: "Жёлтый", class: "bg-yellow-50 dark:bg-yellow-950/30" },
   { value: "green", label: "Зелёный", class: "bg-green-50 dark:bg-green-950/30" },
+  { value: "red", label: "Красный", class: "bg-red-50 dark:bg-red-950/30" },
 ];
 
 const bgColorDotStyles: Record<string, string> = {
@@ -373,6 +397,7 @@ const bgColorDotStyles: Record<string, string> = {
   "blue": "bg-blue-200 dark:bg-blue-800",
   "yellow": "bg-yellow-200 dark:bg-yellow-800",
   "green": "bg-green-200 dark:bg-green-800",
+  "red": "bg-red-200 dark:bg-red-800",
 };
 
 const textColorPresets = [
@@ -382,18 +407,33 @@ const textColorPresets = [
   { value: "red", label: "Красный", class: "text-red-600 dark:text-red-400", dot: "bg-red-500" },
   { value: "green", label: "Зелёный", class: "text-green-600 dark:text-green-400", dot: "bg-green-500" },
   { value: "purple", label: "Фиолетовый", class: "text-purple-600 dark:text-purple-400", dot: "bg-purple-500" },
+  { value: "white", label: "Белый", class: "text-white", dot: "bg-white border border-border" },
 ];
 
 const wrapTargets: { type: BlockType; icon: any; label: string; color: string }[] = [
   { type: "callout-info", icon: Info, label: "Информация", color: "text-blue-500" },
   { type: "callout-warning", icon: AlertTriangle, label: "Предупреждение", color: "text-amber-500" },
   { type: "callout-tip", icon: Lightbulb, label: "Совет", color: "text-green-500" },
+  { type: "callout-success", icon: CheckCircle, label: "Выполнено", color: "text-emerald-500" },
+  { type: "callout-danger", icon: XCircle, label: "Ошибка", color: "text-red-500" },
+  { type: "highlight", icon: Highlighter, label: "Выделение", color: "text-yellow-500" },
   { type: "quote", icon: Quote, label: "Цитата", color: "text-muted-foreground" },
   { type: "accordion", icon: ChevronDown, label: "Сворачиваемая секция", color: "text-purple-500" },
   { type: "paragraph", icon: Type, label: "Обычный текст", color: "text-foreground" },
 ];
+
+// Quick style templates
+const quickStyles: { name: string; icon: string; style: Partial<ContentBlock> }[] = [
+  { name: "Акцент", icon: "💛", style: { bold: true, bgColor: "yellow", textColor: undefined, textSize: undefined, italic: false, uppercase: false, fontFamily: 'sans' } },
+  { name: "Заметка", icon: "📝", style: { italic: true, textColor: "gray", textSize: "sm", textAlign: "right", bold: false, uppercase: false, bgColor: undefined, fontFamily: 'sans' } },
+  { name: "Важно!", icon: "🔴", style: { bold: true, bgColor: "red", textColor: "white", textSize: "lg", italic: false, uppercase: false, fontFamily: 'sans' } },
+  { name: "Код", icon: "💻", style: { fontFamily: "mono", bgColor: "gray", bold: false, italic: false, textColor: undefined, textSize: undefined, uppercase: false } },
+  { name: "Маркер", icon: "🖍️", style: { bgColor: "yellow", bold: false, italic: false, textColor: undefined, textSize: undefined, uppercase: false, fontFamily: 'sans' } },
+  { name: "Заголовок", icon: "📌", style: { bold: true, textSize: "lg", textAlign: "center", uppercase: true, italic: false, bgColor: undefined, textColor: undefined, fontFamily: 'sans' } },
+];
+
 // Style preset keys to save/apply
-const STYLE_PRESET_KEYS = ['textAlign', 'bgColor', 'textColor', 'textSize', 'bold', 'italic', 'strikethrough', 'underline', 'uppercase', 'lineHeight'] as const;
+const STYLE_PRESET_KEYS = ['textAlign', 'bgColor', 'textColor', 'textSize', 'bold', 'italic', 'strikethrough', 'underline', 'uppercase', 'lineHeight', 'fontFamily', 'borderStyle', 'borderRadius'] as const;
 type StylePreset = Pick<ContentBlock, typeof STYLE_PRESET_KEYS[number]>;
 
 const PRESETS_STORAGE_KEY = 'block-style-presets';
@@ -421,6 +461,9 @@ function extractStyle(block: ContentBlock): StylePreset {
     underline: block.underline || false,
     uppercase: block.uppercase || false,
     lineHeight: block.lineHeight || 'normal',
+    fontFamily: block.fontFamily || 'sans',
+    borderStyle: block.borderStyle || 'none',
+    borderRadius: block.borderRadius || 'none',
   };
 }
 
@@ -439,6 +482,9 @@ function describeStyle(style: StylePreset): string {
   if (style.textColor) parts.push(`Цвет: ${style.textColor}`);
   if (style.lineHeight === 'tight') parts.push('Плотный');
   if (style.lineHeight === 'relaxed') parts.push('Свободн.');
+  if (style.fontFamily === 'mono') parts.push('Моно');
+  if (style.borderStyle && style.borderStyle !== 'none') parts.push(`Рамка: ${style.borderStyle}`);
+  if (style.borderRadius && style.borderRadius !== 'none') parts.push(`Скругл: ${style.borderRadius}`);
   return parts.length ? parts.join(', ') : 'Стандарт';
 }
 
@@ -567,6 +613,47 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
                     ))}
                   </div>
                 </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-1.5">Шрифт</p>
+                  <div className="flex gap-1">
+                    {([['sans', 'Обычный'], ['mono', 'Моно']] as const).map(([ff, label]) => (
+                      <Button key={ff} variant={(block.fontFamily || 'sans') === ff ? "default" : "outline"} size="sm" className="h-7 px-2.5 text-xs" onClick={() => onUpdate({ fontFamily: ff === 'sans' ? undefined : ff })}>
+                        {label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-1.5">Рамка</p>
+                  <div className="flex gap-1">
+                    {([['none', 'Нет'], ['thin', 'Тонкая'], ['bold', 'Жирная'], ['dashed', 'Пунктир']] as const).map(([bs, label]) => (
+                      <Button key={bs} variant={(block.borderStyle || 'none') === bs ? "default" : "outline"} size="sm" className="h-7 px-2.5 text-xs" onClick={() => onUpdate({ borderStyle: bs === 'none' ? undefined : bs })}>
+                        {label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-1.5">Скругление</p>
+                  <div className="flex gap-1">
+                    {([['none', '⬜'], ['md', '◻️'], ['xl', '⭕']] as const).map(([br, label]) => (
+                      <Button key={br} variant={(block.borderRadius || 'none') === br ? "default" : "outline"} size="sm" className="h-7 px-2.5 text-xs" onClick={() => onUpdate({ borderRadius: br === 'none' ? undefined : br })}>
+                        {label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-1.5">Готовые стили</p>
+                  <div className="grid grid-cols-3 gap-1">
+                    {quickStyles.map((qs) => (
+                      <button key={qs.name} onClick={() => onUpdate(qs.style)} className="flex flex-col items-center gap-0.5 p-1.5 rounded-md border border-border hover:border-primary/50 hover:bg-primary/5 transition-all text-xs">
+                        <span>{qs.icon}</span>
+                        <span className="truncate w-full text-center">{qs.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </PopoverContent>
             </Popover>
           )}
@@ -615,7 +702,7 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
             <button
               className="h-8 w-8 flex items-center justify-center hover:bg-white/20 rounded-full transition-colors"
               title="Сбросить стиль"
-              onClick={() => onUpdate({ textAlign: undefined, bgColor: undefined, textColor: undefined, textSize: undefined, bold: undefined, italic: undefined, strikethrough: undefined, underline: undefined, uppercase: undefined, lineHeight: undefined })}
+              onClick={() => onUpdate({ textAlign: undefined, bgColor: undefined, textColor: undefined, textSize: undefined, bold: undefined, italic: undefined, strikethrough: undefined, underline: undefined, uppercase: undefined, lineHeight: undefined, fontFamily: undefined, borderStyle: undefined, borderRadius: undefined })}
             >
               <Eraser className="w-4 h-4" />
             </button>
@@ -662,6 +749,7 @@ function BlockContent({ block, onUpdate, courseTitle, lessonTitle, existingConte
     if (block.uppercase) classes.push('uppercase');
     if (block.lineHeight === 'tight') classes.push('leading-tight');
     if (block.lineHeight === 'relaxed') classes.push('leading-relaxed');
+    if (block.fontFamily === 'mono') classes.push('font-mono');
     if (block.textColor) {
       const preset = textColorPresets.find(p => p.value === block.textColor);
       if (preset?.class) classes.push(preset.class);
@@ -670,6 +758,12 @@ function BlockContent({ block, onUpdate, courseTitle, lessonTitle, existingConte
       const preset = bgColorPresets.find(p => p.value === block.bgColor);
       if (preset?.class) classes.push(preset.class, 'rounded-lg', 'p-3');
     }
+    if (block.borderStyle === 'thin') classes.push('border border-border');
+    if (block.borderStyle === 'bold') classes.push('border-2 border-foreground/30');
+    if (block.borderStyle === 'dashed') classes.push('border border-dashed border-border');
+    if (block.borderRadius === 'md') classes.push('rounded-lg');
+    if (block.borderRadius === 'xl') classes.push('rounded-2xl');
+    if ((block.borderStyle && block.borderStyle !== 'none') && !block.bgColor) classes.push('p-3');
     return classes.join(' ');
   })();
 
@@ -701,7 +795,12 @@ function BlockContent({ block, onUpdate, courseTitle, lessonTitle, existingConte
     case "callout-info":
     case "callout-warning":
     case "callout-tip":
+    case "callout-success":
+    case "callout-danger":
       return <CalloutBlock block={block} onUpdate={onUpdate} courseTitle={courseTitle} lessonTitle={lessonTitle} existingContent={existingContent} />;
+
+    case "highlight":
+      return <HighlightBlock block={block} onUpdate={onUpdate} courseTitle={courseTitle} lessonTitle={lessonTitle} existingContent={existingContent} />;
 
     case "accordion":
       return <AccordionBlock block={block} onUpdate={onUpdate} courseTitle={courseTitle} lessonTitle={lessonTitle} existingContent={existingContent} />;
@@ -1368,6 +1467,8 @@ function CalloutBlock({ block, onUpdate, courseTitle, lessonTitle, existingConte
     "callout-info": { bg: "bg-blue-500/10", border: "border-blue-500/30", icon: AlertCircle, iconColor: "text-blue-500" },
     "callout-warning": { bg: "bg-amber-500/10", border: "border-amber-500/30", icon: AlertCircle, iconColor: "text-amber-500" },
     "callout-tip": { bg: "bg-green-500/10", border: "border-green-500/30", icon: Lightbulb, iconColor: "text-green-500" },
+    "callout-success": { bg: "bg-emerald-500/10", border: "border-emerald-500/30", icon: CheckCircle, iconColor: "text-emerald-500" },
+    "callout-danger": { bg: "bg-red-500/10", border: "border-red-500/30", icon: XCircle, iconColor: "text-red-500" },
   };
   const style = styles[block.type as keyof typeof styles];
   const Icon = style.icon;
@@ -1395,6 +1496,37 @@ function CalloutBlock({ block, onUpdate, courseTitle, lessonTitle, existingConte
         <AIGenerateButton isGenerating={isGenerating} onClick={handleGenerate} />
       </div>
       <RichTextEditor value={block.content} onChange={(val) => onUpdate({ content: val })} placeholder="Введите текст..." minHeight="40px" />
+    </div>
+  );
+}
+
+function HighlightBlock({ block, onUpdate, courseTitle, lessonTitle, existingContent }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void; courseTitle?: string; lessonTitle?: string; existingContent?: string }) {
+  const [isGenerating, setIsGenerating] = useState(false);
+  const handleGenerate = async () => {
+    setIsGenerating(true);
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data, error } = await supabase.functions.invoke("generate-course-content", {
+        body: { contentType: "callout", calloutType: "highlight", lessonTitle: lessonTitle || "Общая тема", courseTitle: courseTitle || "Курс", existingContent },
+      });
+      if (error) throw error;
+      if (data?.content) onUpdate({ content: data.content });
+    } catch (e) {
+      console.error("Highlight AI error:", e);
+      const { toast } = await import("sonner");
+      toast.error("Ошибка генерации");
+    } finally { setIsGenerating(false); }
+  };
+  return (
+    <div className="rounded-xl p-4 border border-yellow-400/40 bg-gradient-to-r from-yellow-400/10 via-amber-400/5 to-transparent relative overflow-hidden">
+      <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-yellow-400 via-amber-500 to-orange-500" />
+      <div className="pl-3">
+        <div className="flex items-center justify-between mb-2">
+          <Highlighter className="w-5 h-5 text-yellow-500 flex-shrink-0" />
+          <AIGenerateButton isGenerating={isGenerating} onClick={handleGenerate} />
+        </div>
+        <RichTextEditor value={block.content} onChange={(val) => onUpdate({ content: val })} placeholder="Введите текст выделения..." minHeight="40px" />
+      </div>
     </div>
   );
 }
@@ -1554,6 +1686,7 @@ function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSub
     if (block.uppercase) classes.push('uppercase');
     if (block.lineHeight === 'tight') classes.push('leading-tight');
     if (block.lineHeight === 'relaxed') classes.push('leading-relaxed');
+    if (block.fontFamily === 'mono') classes.push('font-mono');
     if (block.textColor) {
       const preset = textColorPresets.find(p => p.value === block.textColor);
       if (preset?.class) classes.push(preset.class);
@@ -1562,6 +1695,12 @@ function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSub
       const preset = bgColorPresets.find(p => p.value === block.bgColor);
       if (preset?.class) classes.push(preset.class, 'rounded-lg', 'p-3');
     }
+    if (block.borderStyle === 'thin') classes.push('border border-border');
+    if (block.borderStyle === 'bold') classes.push('border-2 border-foreground/30');
+    if (block.borderStyle === 'dashed') classes.push('border border-dashed border-border');
+    if (block.borderRadius === 'md') classes.push('rounded-lg');
+    if (block.borderRadius === 'xl') classes.push('rounded-2xl');
+    if ((block.borderStyle && block.borderStyle !== 'none') && !block.bgColor) classes.push('p-3');
     return classes.join(' ');
   };
 
@@ -1586,6 +1725,20 @@ function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSub
       return <div className={cn("rounded-xl p-4 bg-amber-500/10 border border-amber-500/30 flex gap-3 not-prose", styleClasses)}><AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0" /><p className="text-sm">{block.content}</p></div>;
     case "callout-tip":
       return <div className={cn("rounded-xl p-4 bg-green-500/10 border border-green-500/30 flex gap-3 not-prose", styleClasses)}><Lightbulb className="w-5 h-5 text-green-500 flex-shrink-0" /><p className="text-sm">{block.content}</p></div>;
+    case "callout-success":
+      return <div className={cn("rounded-xl p-4 bg-emerald-500/10 border border-emerald-500/30 flex gap-3 not-prose", styleClasses)}><CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0" /><p className="text-sm">{block.content}</p></div>;
+    case "callout-danger":
+      return <div className={cn("rounded-xl p-4 bg-red-500/10 border border-red-500/30 flex gap-3 not-prose", styleClasses)}><XCircle className="w-5 h-5 text-red-500 flex-shrink-0" /><p className="text-sm">{block.content}</p></div>;
+    case "highlight":
+      return (
+        <div className={cn("rounded-xl p-4 border border-yellow-400/40 bg-gradient-to-r from-yellow-400/10 via-amber-400/5 to-transparent relative overflow-hidden not-prose", styleClasses)}>
+          <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-yellow-400 via-amber-500 to-orange-500" />
+          <div className="pl-3 flex gap-3">
+            <Highlighter className="w-5 h-5 text-yellow-500 flex-shrink-0" />
+            <p className="text-sm">{block.content}</p>
+          </div>
+        </div>
+      );
     case "accordion":
       return (
         <div className="rounded-xl border border-purple-500/30 bg-purple-500/5 overflow-hidden not-prose">
