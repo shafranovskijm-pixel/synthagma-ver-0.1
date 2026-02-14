@@ -115,11 +115,11 @@ export function RichTextEditor({ value, onChange, placeholder, className, minHei
         onBlur={() => setTimeout(() => setShowToolbar(false), 200)}
         data-placeholder={placeholder}
         className={cn(
-          "outline-none prose prose-sm dark:prose-invert max-w-none",
+          "outline-none prose prose-sm dark:prose-invert max-w-none [&]:!font-[inherit] [&]:!tracking-[inherit]",
           "empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground empty:before:pointer-events-none",
           className
         )}
-        style={{ minHeight }}
+        style={{ minHeight, fontStyle: className?.includes('italic') ? 'italic' : undefined, fontWeight: className?.includes('font-bold') ? 'bold' : undefined, textDecoration: [className?.includes('underline') ? 'underline' : '', className?.includes('line-through') ? 'line-through' : ''].filter(Boolean).join(' ') || undefined }}
         dangerouslySetInnerHTML={{ __html: value || "" }}
       />
     </div>
