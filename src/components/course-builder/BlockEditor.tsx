@@ -58,6 +58,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import {
   DndContext,
@@ -546,114 +547,110 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
                   <Pencil className="w-4 h-4" />
                 </button>
               </PopoverTrigger>
-              <PopoverContent align="center" className="w-72 p-3 space-y-3">
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground mb-1.5">Выравнивание</p>
-                  <div className="flex gap-1">
-                    {([['left', AlignLeft], ['center', AlignCenter], ['right', AlignRight]] as const).map(([align, Icon]) => (
-                      <Button key={align} variant={block.textAlign === align || (!block.textAlign && align === 'left') ? "default" : "outline"} size="icon" className="h-7 w-7" onClick={() => onUpdate({ textAlign: align === 'left' ? undefined : align })}>
-                        <Icon className="w-3.5 h-3.5" />
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground mb-1.5">Стиль текста</p>
-                  <div className="flex gap-1">
-                    <Button variant={block.bold ? "default" : "outline"} size="icon" className="h-7 w-7" onClick={() => onUpdate({ bold: !block.bold })} title="Жирный">
-                      <Bold className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button variant={block.italic ? "default" : "outline"} size="icon" className="h-7 w-7" onClick={() => onUpdate({ italic: !block.italic })} title="Курсив">
-                      <Italic className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button variant={block.strikethrough ? "default" : "outline"} size="icon" className="h-7 w-7" onClick={() => onUpdate({ strikethrough: !block.strikethrough })} title="Зачёркнутый">
-                      <Strikethrough className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button variant={block.underline ? "default" : "outline"} size="icon" className="h-7 w-7" onClick={() => onUpdate({ underline: !block.underline })} title="Подчёркнутый">
-                      <Underline className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button variant={block.uppercase ? "default" : "outline"} size="icon" className="h-7 w-7" onClick={() => onUpdate({ uppercase: !block.uppercase })} title="UPPERCASE">
-                      <CaseSensitive className="w-3.5 h-3.5" />
-                    </Button>
-                  </div>
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground mb-1.5">Цвет текста</p>
-                  <div className="flex gap-1.5">
-                    {textColorPresets.map((preset) => (
-                      <button key={preset.value} onClick={() => onUpdate({ textColor: preset.value || undefined })} className={cn("w-6 h-6 rounded-full transition-all", preset.dot, (block.textColor || "") === preset.value && "ring-2 ring-primary ring-offset-1")} title={preset.label} />
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground mb-1.5">Фон блока</p>
-                  <div className="flex gap-1.5">
-                    {bgColorPresets.map((preset) => (
-                      <button key={preset.value} onClick={() => onUpdate({ bgColor: preset.value || undefined })} className={cn("w-6 h-6 rounded-full transition-all", bgColorDotStyles[preset.value], (block.bgColor || "") === preset.value && "ring-2 ring-primary ring-offset-1")} title={preset.label} />
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground mb-1.5">Размер текста</p>
-                  <div className="flex gap-1">
-                    {([['sm', 'A-'], ['base', 'A'], ['lg', 'A+']] as const).map(([size, label]) => (
-                      <Button key={size} variant={(block.textSize || 'base') === size ? "default" : "outline"} size="sm" className="h-7 px-2.5 text-xs" onClick={() => onUpdate({ textSize: size === 'base' ? undefined : size })}>
-                        {label}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground mb-1.5">Межстрочный интервал</p>
-                  <div className="flex gap-1">
-                    {([['tight', 'Плотный'], ['normal', 'Обычный'], ['relaxed', 'Свободный']] as const).map(([lh, label]) => (
-                      <Button key={lh} variant={(block.lineHeight || 'normal') === lh ? "default" : "outline"} size="sm" className="h-7 px-2.5 text-xs" onClick={() => onUpdate({ lineHeight: lh === 'normal' ? undefined : lh })}>
-                        {label}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground mb-1.5">Шрифт</p>
-                  <div className="flex gap-1">
-                    {([['sans', 'Обычный'], ['mono', 'Моно']] as const).map(([ff, label]) => (
-                      <Button key={ff} variant={(block.fontFamily || 'sans') === ff ? "default" : "outline"} size="sm" className="h-7 px-2.5 text-xs" onClick={() => onUpdate({ fontFamily: ff === 'sans' ? undefined : ff })}>
-                        {label}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground mb-1.5">Рамка</p>
-                  <div className="flex gap-1">
-                    {([['none', 'Нет'], ['thin', 'Тонкая'], ['bold', 'Жирная'], ['dashed', 'Пунктир']] as const).map(([bs, label]) => (
-                      <Button key={bs} variant={(block.borderStyle || 'none') === bs ? "default" : "outline"} size="sm" className="h-7 px-2.5 text-xs" onClick={() => onUpdate({ borderStyle: bs === 'none' ? undefined : bs })}>
-                        {label}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground mb-1.5">Скругление</p>
-                  <div className="flex gap-1">
-                    {([['none', '⬜'], ['md', '◻️'], ['xl', '⭕']] as const).map(([br, label]) => (
-                      <Button key={br} variant={(block.borderRadius || 'none') === br ? "default" : "outline"} size="sm" className="h-7 px-2.5 text-xs" onClick={() => onUpdate({ borderRadius: br === 'none' ? undefined : br })}>
-                        {label}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground mb-1.5">Готовые стили</p>
-                  <div className="grid grid-cols-3 gap-1">
-                    {quickStyles.map((qs) => (
-                      <button key={qs.name} onClick={() => onUpdate(qs.style)} className="flex flex-col items-center gap-0.5 p-1.5 rounded-md border border-border hover:border-primary/50 hover:bg-primary/5 transition-all text-xs">
-                        <span>{qs.icon}</span>
-                        <span className="truncate w-full text-center">{qs.name}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
+              <PopoverContent align="center" className="w-72 p-2">
+                <Tabs defaultValue="style" className="w-full">
+                  <TabsList className="w-full h-8 p-0.5 grid grid-cols-4">
+                    <TabsTrigger value="style" className="h-7 px-1 text-xs gap-1"><Type className="w-3 h-3" />Стиль</TabsTrigger>
+                    <TabsTrigger value="font" className="h-7 px-1 text-xs gap-1"><CaseSensitive className="w-3 h-3" />Шрифт</TabsTrigger>
+                    <TabsTrigger value="border" className="h-7 px-1 text-xs gap-1"><Square className="w-3 h-3" />Рамка</TabsTrigger>
+                    <TabsTrigger value="presets" className="h-7 px-1 text-xs gap-1"><Sparkles className="w-3 h-3" />Стили</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="style" className="mt-2 space-y-3">
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1.5">Выравнивание</p>
+                      <div className="flex gap-1">
+                        {([['left', AlignLeft], ['center', AlignCenter], ['right', AlignRight]] as const).map(([align, Icon]) => (
+                          <Button key={align} variant={block.textAlign === align || (!block.textAlign && align === 'left') ? "default" : "outline"} size="icon" className="h-7 w-7" onClick={() => onUpdate({ textAlign: align === 'left' ? undefined : align })}>
+                            <Icon className="w-3.5 h-3.5" />
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1.5">Стиль текста</p>
+                      <div className="flex gap-1">
+                        <Button variant={block.bold ? "default" : "outline"} size="icon" className="h-7 w-7" onClick={() => onUpdate({ bold: !block.bold })} title="Жирный"><Bold className="w-3.5 h-3.5" /></Button>
+                        <Button variant={block.italic ? "default" : "outline"} size="icon" className="h-7 w-7" onClick={() => onUpdate({ italic: !block.italic })} title="Курсив"><Italic className="w-3.5 h-3.5" /></Button>
+                        <Button variant={block.strikethrough ? "default" : "outline"} size="icon" className="h-7 w-7" onClick={() => onUpdate({ strikethrough: !block.strikethrough })} title="Зачёркнутый"><Strikethrough className="w-3.5 h-3.5" /></Button>
+                        <Button variant={block.underline ? "default" : "outline"} size="icon" className="h-7 w-7" onClick={() => onUpdate({ underline: !block.underline })} title="Подчёркнутый"><Underline className="w-3.5 h-3.5" /></Button>
+                        <Button variant={block.uppercase ? "default" : "outline"} size="icon" className="h-7 w-7" onClick={() => onUpdate({ uppercase: !block.uppercase })} title="UPPERCASE"><CaseSensitive className="w-3.5 h-3.5" /></Button>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1.5">Цвет текста</p>
+                      <div className="flex gap-1.5">
+                        {textColorPresets.map((preset) => (
+                          <button key={preset.value} onClick={() => onUpdate({ textColor: preset.value || undefined })} className={cn("w-6 h-6 rounded-full transition-all", preset.dot, (block.textColor || "") === preset.value && "ring-2 ring-primary ring-offset-1")} title={preset.label} />
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1.5">Фон блока</p>
+                      <div className="flex gap-1.5">
+                        {bgColorPresets.map((preset) => (
+                          <button key={preset.value} onClick={() => onUpdate({ bgColor: preset.value || undefined })} className={cn("w-6 h-6 rounded-full transition-all", bgColorDotStyles[preset.value], (block.bgColor || "") === preset.value && "ring-2 ring-primary ring-offset-1")} title={preset.label} />
+                        ))}
+                      </div>
+                    </div>
+                  </TabsContent>
+                  <TabsContent value="font" className="mt-2 space-y-3">
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1.5">Шрифт</p>
+                      <div className="flex gap-1">
+                        {([['sans', 'Обычный'], ['mono', 'Моно']] as const).map(([ff, label]) => (
+                          <Button key={ff} variant={(block.fontFamily || 'sans') === ff ? "default" : "outline"} size="sm" className="h-7 px-2.5 text-xs" onClick={() => onUpdate({ fontFamily: ff === 'sans' ? undefined : ff })}>{label}</Button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1.5">Размер текста</p>
+                      <div className="flex gap-1">
+                        {([['sm', 'A-'], ['base', 'A'], ['lg', 'A+']] as const).map(([size, label]) => (
+                          <Button key={size} variant={(block.textSize || 'base') === size ? "default" : "outline"} size="sm" className="h-7 px-2.5 text-xs" onClick={() => onUpdate({ textSize: size === 'base' ? undefined : size })}>{label}</Button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1.5">Межстрочный интервал</p>
+                      <div className="flex gap-1">
+                        {([['tight', 'Плотный'], ['normal', 'Обычный'], ['relaxed', 'Свободный']] as const).map(([lh, label]) => (
+                          <Button key={lh} variant={(block.lineHeight || 'normal') === lh ? "default" : "outline"} size="sm" className="h-7 px-2.5 text-xs" onClick={() => onUpdate({ lineHeight: lh === 'normal' ? undefined : lh })}>{label}</Button>
+                        ))}
+                      </div>
+                    </div>
+                  </TabsContent>
+                  <TabsContent value="border" className="mt-2 space-y-3">
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1.5">Рамка</p>
+                      <div className="flex gap-1">
+                        {([['none', 'Нет'], ['thin', 'Тонкая'], ['bold', 'Жирная'], ['dashed', 'Пунктир']] as const).map(([bs, label]) => (
+                          <Button key={bs} variant={(block.borderStyle || 'none') === bs ? "default" : "outline"} size="sm" className="h-7 px-2.5 text-xs" onClick={() => onUpdate({ borderStyle: bs === 'none' ? undefined : bs })}>{label}</Button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1.5">Скругление</p>
+                      <div className="flex gap-1">
+                        {([['none', '⬜'], ['md', '◻️'], ['xl', '⭕']] as const).map(([br, label]) => (
+                          <Button key={br} variant={(block.borderRadius || 'none') === br ? "default" : "outline"} size="sm" className="h-7 px-2.5 text-xs" onClick={() => onUpdate({ borderRadius: br === 'none' ? undefined : br })}>{label}</Button>
+                        ))}
+                      </div>
+                    </div>
+                  </TabsContent>
+                  <TabsContent value="presets" className="mt-2 space-y-3">
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1.5">Готовые стили</p>
+                      <div className="grid grid-cols-3 gap-1">
+                        {quickStyles.map((qs) => (
+                          <button key={qs.name} onClick={() => onUpdate(qs.style)} className="flex flex-col items-center gap-0.5 p-1.5 rounded-md border border-border hover:border-primary/50 hover:bg-primary/5 transition-all text-xs">
+                            <span>{qs.icon}</span>
+                            <span className="truncate w-full text-center">{qs.name}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </TabsContent>
+                </Tabs>
               </PopoverContent>
             </Popover>
           )}
