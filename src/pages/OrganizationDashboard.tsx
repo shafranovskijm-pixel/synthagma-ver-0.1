@@ -30,7 +30,8 @@ import { useStudentDocsDialog } from "@/hooks/useStudentDocsDialog";
 import { useCourseDocsDialog } from "@/hooks/useCourseDocsDialog";
 import { useCourseDetailsModal } from "@/hooks/useCourseDetailsModal";
 import { Button } from "@/components/ui/button";
-import { Eye, Plus, Upload, FileSpreadsheet, X, Menu } from "lucide-react";
+import { Eye, X } from "lucide-react";
+import { OrgDashboardHeader } from "@/components/organization/OrgDashboardHeader";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { OnboardingDialog } from "@/components/onboarding/OnboardingDialog";
@@ -330,74 +331,17 @@ export default function OrganizationDashboard() {
         )}
         
         {/* Header */}
-        <header className="bg-card border-b border-border px-4 lg:px-8 py-4 lg:py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <button onClick={() => setIsMobileSidebarOpen(true)} className="lg:hidden p-2 rounded-lg hover:bg-secondary">
-                <Menu className="w-6 h-6" />
-              </button>
-              <div>
-                {activeTab !== "organizations" && activeTab !== "frdo" && activeTab !== "labor-safety" && (
-                  <h1 className="font-display text-xl lg:text-2xl font-bold">
-                    {activeTab === "courses" && "Управление курсами"}
-                    {activeTab === "students" && "Все ученики"}
-                    {activeTab === "library" && "Библиотека материалов"}
-                    {activeTab === "stats" && "Статистика обучения"}
-                    {activeTab === "links" && "Ссылки для регистрации"}
-                    {activeTab === "documents" && "Документооборот"}
-                    {activeTab === "journals" && "Журналы учёта"}
-                    {activeTab === "services" && "Магазин курсов"}
-                    {activeTab === "settings" && "Настройки"}
-                  </h1>
-                )}
-                {activeTab === "labor-safety" && (
-                  <h1 className="font-display text-xl lg:text-2xl font-bold">Охрана труда</h1>
-                )}
-                {activeTab !== "organizations" && activeTab !== "frdo" && activeTab !== "labor-safety" && (
-                  <p className="text-muted-foreground text-sm lg:text-base">{brandingSettings.customName || organizationName}</p>
-                )}
-              </div>
-            </div>
-            <div className="flex gap-2 lg:gap-3 flex-wrap">
-              {activeTab === "links" && (
-                <Button className="btn-gradient rounded-xl gap-2 text-xs lg:text-sm" onClick={() => setShowCreateLinkDialog(true)}>
-                  <Plus className="w-4 h-4" />
-                  <span className="hidden sm:inline">Создать ссылку</span>
-                  <span className="sm:hidden">Создать</span>
-                </Button>
-              )}
-              {activeTab === "students" && (
-                <>
-                  <Button variant="outline" className="rounded-xl gap-2 text-xs lg:text-sm" onClick={() => {
-                    const result = checkLimit('student');
-                    if (!result.allowed) { toast.error(result.message); return; }
-                    setShowImportDialog(true);
-                  }}>
-                    <FileSpreadsheet className="w-4 h-4" />
-                    <span className="hidden sm:inline">Импорт учеников</span>
-                    <span className="sm:hidden">Импорт</span>
-                  </Button>
-                  <Button className="btn-gradient rounded-xl gap-2 text-xs lg:text-sm" onClick={() => {
-                    const result = checkLimit('student');
-                    if (!result.allowed) { toast.error(result.message); return; }
-                    studentManagement.setShowAddStudentDialog(true);
-                  }}>
-                    <Plus className="w-4 h-4" />
-                    <span className="hidden sm:inline">Добавить ученика</span>
-                    <span className="sm:hidden">Добавить</span>
-                  </Button>
-                </>
-              )}
-              {activeTab === "courses" && (
-                <Button className="btn-gradient rounded-xl gap-2 text-xs lg:text-sm" onClick={() => navigate("/course-builder")}>
-                  <Plus className="w-4 h-4" />
-                  <span className="hidden sm:inline">Создать курс</span>
-                  <span className="sm:hidden">Создать</span>
-                </Button>
-              )}
-            </div>
-          </div>
-        </header>
+        <OrgDashboardHeader
+          activeTab={activeTab}
+          organizationName={organizationName}
+          customName={brandingSettings.customName}
+          isMobile={isMobile}
+          onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}
+          onCreateLink={() => setShowCreateLinkDialog(true)}
+          onImportStudents={() => setShowImportDialog(true)}
+          onAddStudent={() => studentManagement.setShowAddStudentDialog(true)}
+          checkStudentLimit={() => checkLimit('student')}
+        />
 
         <div className="p-4 lg:p-8 overflow-hidden">
           {/* Alert for students without credentials */}
