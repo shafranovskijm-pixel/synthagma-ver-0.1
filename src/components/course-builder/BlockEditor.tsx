@@ -2116,6 +2116,21 @@ function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSub
           </div>
         </div>
       );
+    case "audio":
+      return block.audioUrl ? (
+        <div className="rounded-xl border border-teal-500/30 bg-teal-500/5 p-4 not-prose">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-lg bg-teal-500/10 flex items-center justify-center">
+              <Headphones className="w-5 h-5 text-teal-500" />
+            </div>
+            <span className="font-medium text-sm">Аудио</span>
+          </div>
+          <audio controls className="w-full">
+            <source src={block.audioUrl} type="audio/mpeg" />
+            Ваш браузер не поддерживает аудио.
+          </audio>
+        </div>
+      ) : null;
     default:
       return null;
   }
