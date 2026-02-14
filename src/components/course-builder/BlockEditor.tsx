@@ -729,8 +729,11 @@ function BlockContent({ block, onUpdate, courseTitle, lessonTitle, existingConte
 function ImageBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void }) {
   const [isUploading, setIsUploading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
+  const [editPrompt, setEditPrompt] = useState("");
   const [showAiInput, setShowAiInput] = useState(false);
+  const [showEditInput, setShowEditInput] = useState(false);
   const fileInputRef = useCallback((node: HTMLInputElement | null) => {
     if (node) node.value = "";
   }, []);
@@ -802,14 +805,67 @@ function ImageBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updat
     }
   };
 
+  const handleAiEdit = async () => {
+    if (!editPrompt.trim() || !block.imageSrc) return;
+    setIsEditing(true);
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data, error } = await supabase.functions.invoke('generate-image', {
+        body: { prompt: editPrompt.trim(), imageUrl: block.imageSrc },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      if (data?.url) {
+        onUpdate({ imageSrc: data.url });
+        setEditPrompt("");
+        setShowEditInput(false);
+        const { toast } = await import("sonner");
+        toast.success("Изображение отредактировано");
+      }
+    } catch (err) {
+      console.error("AI image edit error:", err);
+      const { toast } = await import("sonner");
+      toast.error(err instanceof Error ? err.message : "Ошибка редактирования изображения");
+    } finally {
+      setIsEditing(false);
+    }
+  };
+
   return (
     <div className="py-2">
       {block.imageSrc ? (
         <div className="space-y-2">
           <div className="relative group/img">
             <img src={block.imageSrc} alt={block.imageAlt || ""} className="rounded-lg max-w-full h-auto max-h-[400px] object-contain" />
-            <Button variant="secondary" size="sm" className="absolute top-2 right-2 opacity-0 group-hover/img:opacity-100" onClick={() => onUpdate({ imageSrc: "", imageAlt: "" })}>Удалить</Button>
+            <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover/img:opacity-100 transition-opacity">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setShowEditInput(!showEditInput)}
+                className={showEditInput ? "border-primary" : ""}
+                disabled={isEditing}
+              >
+                <Wand2 className="w-3.5 h-3.5 mr-1" />
+                Редактировать ИИ
+              </Button>
+              <Button variant="secondary" size="sm" onClick={() => onUpdate({ imageSrc: "", imageAlt: "" })}>Удалить</Button>
+            </div>
           </div>
+          {showEditInput && (
+            <div className="flex gap-2">
+              <Input
+                value={editPrompt}
+                onChange={(e) => setEditPrompt(e.target.value)}
+                placeholder="Опишите что исправить, например: замени текст ЗАБОЕВАНИЙ на ЗАБОЛЕВАНИЙ..."
+                className="text-sm flex-1"
+                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAiEdit(); } }}
+                disabled={isEditing}
+              />
+              <Button size="sm" disabled={!editPrompt.trim() || isEditing} onClick={handleAiEdit}>
+                {isEditing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+              </Button>
+            </div>
+          )}
           <Input value={block.imageAlt || ""} onChange={(e) => onUpdate({ imageAlt: e.target.value })} placeholder="Подпись к изображению..." className="text-sm border-0 bg-secondary/30 focus-visible:ring-1 rounded-lg" />
         </div>
       ) : (
