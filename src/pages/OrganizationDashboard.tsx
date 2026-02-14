@@ -36,21 +36,8 @@ function OrganizationDashboardContent() {
       {/* Mobile Overlay */}
       {d.isMobileSidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => d.setIsMobileSidebarOpen(false)} />}
       
-      {/* Sidebar */}
-      <OrgSidebar
-        activeTab={d.tabNavigation.activeTab}
-        setActiveTab={d.tabNavigation.setActiveTab}
-        organizationName={d.organizationName}
-        customName={d.branding.brandingSettings.customName}
-        customSubtitle={d.branding.brandingSettings.customSubtitle}
-        logoUrl={d.branding.brandingSettings.logoUrl}
-        isFrdoEnabled={d.isFrdoEnabled}
-        menuSettings={d.dashboardSettings.menuSettings}
-        isEnabled={d.isEnabled}
-        isMobileSidebarOpen={d.isMobileSidebarOpen}
-        setIsMobileSidebarOpen={d.setIsMobileSidebarOpen}
-        onLogout={d.handleLogout}
-      />
+      {/* Sidebar - no props needed */}
+      <OrgSidebar />
 
       {/* Main content */}
       <main ref={d.swipeRef} className={`flex-1 overflow-auto lg:ml-64 ${d.isAdminView ? 'mt-10' : ''}`}>
@@ -74,18 +61,8 @@ function OrganizationDashboardContent() {
           </div>
         )}
         
-        {/* Header */}
-        <OrgDashboardHeader
-          activeTab={d.tabNavigation.activeTab}
-          organizationName={d.organizationName}
-          customName={d.branding.brandingSettings.customName}
-          isMobile={d.isMobile}
-          onOpenMobileSidebar={() => d.setIsMobileSidebarOpen(true)}
-          onCreateLink={() => d.registrationLinks.setShowCreateLinkDialog(true)}
-          onImportStudents={() => d.setShowImportDialog(true)}
-          onAddStudent={() => d.studentManagement.setShowAddStudentDialog(true)}
-          checkStudentLimit={() => d.checkLimit('student')}
-        />
+        {/* Header - no props needed */}
+        <OrgDashboardHeader />
 
         <div className="p-4 lg:p-8 overflow-hidden">
           <MissingCredentialsAlert 
@@ -121,7 +98,7 @@ function OrganizationDashboardContent() {
         )}
       </main>
 
-      {/* All Dialogs - reads from context */}
+      {/* All Dialogs */}
       <DialogsContainer />
 
       {/* Onboarding Tour */}
