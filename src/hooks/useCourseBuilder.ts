@@ -41,13 +41,18 @@ export function useCourseBuilder() {
     markAsChanged();
   }, [markAsChanged]);
 
-  const handleBackClick = () => {
-    if (hasUnsavedChanges) setShowExitDialog(true);
-    else navigate("/organization");
+  const getBackPath = () => {
+    const adminView = localStorage.getItem("adminViewAsOrg");
+    return adminView ? "/admin" : "/organization";
   };
 
-  const handleSaveAndExit = async () => { await saveCourse(); setShowExitDialog(false); navigate("/organization"); };
-  const handleExitWithoutSave = () => { setShowExitDialog(false); navigate("/organization"); };
+  const handleBackClick = () => {
+    if (hasUnsavedChanges) setShowExitDialog(true);
+    else navigate(getBackPath());
+  };
+
+  const handleSaveAndExit = async () => { await saveCourse(); setShowExitDialog(false); navigate(getBackPath()); };
+  const handleExitWithoutSave = () => { setShowExitDialog(false); navigate(getBackPath()); };
 
   // Import files
   const handleFileImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
