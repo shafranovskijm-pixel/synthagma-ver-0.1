@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -396,6 +396,8 @@ const CoursePreview = () => {
   const { courseId } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const fromStore = searchParams.get('from') === 'store';
   const contentRef = useRef<HTMLDivElement>(null);
   
   const [course, setCourse] = useState<Course | null>(null);
@@ -563,11 +565,11 @@ const CoursePreview = () => {
           <Button 
             variant="ghost" 
             size="sm" 
-            onClick={() => navigate(`/course-builder/${courseId}`)}
+            onClick={() => fromStore ? navigate('/organization') : navigate(`/course-builder/${courseId}`)}
             className="mb-4 hover:bg-secondary"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Назад в редактор
+            {fromStore ? 'Назад в магазин' : 'Назад в редактор'}
           </Button>
           
           <div className="flex items-center gap-2 mb-2">
@@ -575,7 +577,7 @@ const CoursePreview = () => {
               <Eye className="w-3 h-3" />
               Предпросмотр
             </Badge>
-            {!course.is_published && (
+            {!fromStore && !course.is_published && (
               <Badge variant="secondary" className="text-muted-foreground">
                 Черновик
               </Badge>
@@ -649,14 +651,16 @@ const CoursePreview = () => {
             </div>
           </div>
           
-          <Button 
-            onClick={() => navigate(`/course-builder/${courseId}`)}
-            className="w-full gap-2"
-            variant="outline"
-          >
-            <Edit className="w-4 h-4" />
-            Редактировать
-          </Button>
+          {!fromStore && (
+            <Button 
+              onClick={() => navigate(`/course-builder/${courseId}`)}
+              className="w-full gap-2"
+              variant="outline"
+            >
+              <Edit className="w-4 h-4" />
+              Редактировать
+            </Button>
+          )}
         </div>
       </aside>
 
@@ -887,6 +891,14 @@ const CoursePreview = () => {
                 >
                   Следующий
                   <ChevronRight className="w-4 h-4" />
+                </Button>
+              ) : fromStore ? (
+                <Button
+                  onClick={() => navigate('/organization')}
+                  className="gap-2"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Назад в магазин
                 </Button>
               ) : (
                 <Button

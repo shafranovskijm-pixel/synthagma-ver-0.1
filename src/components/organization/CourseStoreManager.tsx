@@ -145,7 +145,7 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
                     </div>
                   </CardContent>
                   <CardFooter className="flex gap-2">
-                    <Button variant="outline" className="flex-1 rounded-xl gap-2" onClick={() => navigate(`/course-preview/${item.course_id}`)}><Eye className="w-4 h-4" />Просмотр</Button>
+                    <Button variant="outline" className="flex-1 rounded-xl gap-2" onClick={() => navigate(`/course-preview/${item.course_id}?from=store`)}><Eye className="w-4 h-4" />Просмотр</Button>
                     <Button className="flex-1 btn-gradient rounded-xl gap-2" onClick={() => { h.setSelectedCourseForOrder(item); h.setShowOrderDialog(true); }}><ShoppingCart className="w-4 h-4" />Заявка</Button>
                   </CardFooter>
                 </Card>
