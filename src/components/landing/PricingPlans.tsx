@@ -268,7 +268,7 @@ export function PricingPlans() {
 
                     {/* CTA */}
                     <Link
-                      to="/register-organization"
+                      to={`/register-organization?plan=${planId}`}
                       className={`block w-full text-center py-3 rounded-xl text-sm font-medium transition-all duration-300 ${
                         isRecommended
                           ? 'btn-accent shadow-md hover:shadow-lg'

@@ -2281,6 +2281,39 @@ export type Database = {
           },
         ]
       }
+      promo_codes: {
+        Row: {
+          code: string
+          created_at: string | null
+          discount_percent: number
+          id: string
+          is_active: boolean | null
+          max_uses: number | null
+          used_count: number | null
+          valid_until: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string | null
+          discount_percent: number
+          id?: string
+          is_active?: boolean | null
+          max_uses?: number | null
+          used_count?: number | null
+          valid_until?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string | null
+          discount_percent?: number
+          id?: string
+          is_active?: boolean | null
+          max_uses?: number | null
+          used_count?: number | null
+          valid_until?: string | null
+        }
+        Relationships: []
+      }
       registration_links: {
         Row: {
           company_id: string | null
@@ -3263,6 +3296,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_promo_usage: { Args: { p_code: string }; Returns: undefined }
       lookup_profile_by_login: {
         Args: { p_login: string }
         Returns: {
