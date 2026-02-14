@@ -563,6 +563,27 @@ serve(async (req) => {
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
+
+        case "paragraph_text": {
+          const customPrompt = body.customPrompt || "";
+          const paragraphSystemPrompt = `Ты эксперт по созданию образовательного контента. Напиши текст для блока урока.
+Правила:
+1. Текст должен быть понятным и структурированным
+2. Подходящий для образовательного контекста
+3. На русском языке
+4. Без заголовков — только текст абзаца (можно несколько абзацев)
+5. Можно использовать HTML-форматирование: <strong>, <em>, <ul>, <li>`;
+          
+          const prompt = customPrompt 
+            ? `Напиши текст по запросу: "${customPrompt}". Контекст: урок "${lessonTitle}" курса "${courseTitle || "Курс"}".${contextSuffix}`
+            : `Напиши информативный текстовый блок по теме "${lessonTitle}" для курса "${courseTitle || "Курс"}".${contextSuffix}`;
+          
+          const result = await generateWithAI(prompt, paragraphSystemPrompt);
+          return new Response(
+            JSON.stringify({ success: true, content: result.content || "" }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
         
         case "image": {
           const imageUrl = await generateImage(`${lessonTitle}. Context: ${courseTitle || "educational course"}`);
