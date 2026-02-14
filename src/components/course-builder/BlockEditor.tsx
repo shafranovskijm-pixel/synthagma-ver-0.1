@@ -857,8 +857,10 @@ function ImageBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updat
         authToken = session?.session?.access_token || apiKey;
       }
 
+      let uploadedViaInternal = false;
       const { error } = await supabase.storage.from(bucket).upload(fileName, file, { cacheControl: '3600', upsert: true });
       if (error) {
+        // Fallback: try external or direct upload
         const uploadUrl = `${baseUrl}/storage/v1/object/${bucket}/${fileName}`;
         const resp = await fetch(uploadUrl, {
           method: 'POST',
@@ -866,9 +868,13 @@ function ImageBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updat
           body: file,
         });
         if (!resp.ok) throw new Error('Upload failed');
+      } else {
+        uploadedViaInternal = true;
       }
 
-      const publicUrl = `${baseUrl}/storage/v1/object/public/${bucket}/${fileName}`;
+      // Use the correct base URL depending on where the file was actually uploaded
+      const actualBaseUrl = uploadedViaInternal ? import.meta.env.VITE_SUPABASE_URL : baseUrl;
+      const publicUrl = `${actualBaseUrl}/storage/v1/object/public/${bucket}/${fileName}`;
       onUpdate({ imageSrc: publicUrl, imageAlt: block.imageAlt || file.name.replace(/\.[^.]+$/, '') });
     } catch (err) {
       console.error("Image upload error:", err);
