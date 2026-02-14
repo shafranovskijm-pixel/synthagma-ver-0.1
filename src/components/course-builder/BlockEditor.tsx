@@ -547,7 +547,7 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
                   <Pencil className="w-4 h-4" />
                 </button>
               </PopoverTrigger>
-              <PopoverContent align="center" className="w-72 p-2">
+              <PopoverContent side="right" align="start" sideOffset={12} className="w-72 p-2">
                 <Tabs defaultValue="style" className="w-full">
                   <TabsList className="w-full h-8 p-0.5 grid grid-cols-4">
                     <TabsTrigger value="style" className="h-7 px-1 text-xs gap-1"><Type className="w-3 h-3" />Стиль</TabsTrigger>
