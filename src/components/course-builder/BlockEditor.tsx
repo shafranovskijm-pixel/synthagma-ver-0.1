@@ -441,6 +441,64 @@ function BlockContent({ block, onUpdate }: { block: ContentBlock; onUpdate: (upd
 }
 
 function ImageBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void }) {
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useCallback((node: HTMLInputElement | null) => {
+    if (node) node.value = "";
+  }, []);
+
+  const handleFileUpload = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      return;
+    }
+    setIsUploading(true);
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const fileExt = file.name.split(".").pop()?.toLowerCase() || "png";
+      const fileName = `block-images/${block.id}-${Date.now()}.${fileExt}`;
+
+      let externalConfig: { configured: boolean; url: string | null; key: string | null } | null = null;
+      try { const { data } = await supabase.functions.invoke('get-external-storage-config'); externalConfig = data; } catch {}
+
+      const useExternal = externalConfig?.configured && externalConfig?.url && externalConfig?.key;
+      const client = useExternal ? null : supabase;
+      const bucket = useExternal ? 'course-files' : 'course-files';
+      const baseUrl = useExternal ? externalConfig!.url : import.meta.env.VITE_SUPABASE_URL;
+      const apiKey = useExternal ? externalConfig!.key : import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+      let authToken = apiKey;
+      if (!useExternal) {
+        const { data: session } = await supabase.auth.getSession();
+        authToken = session?.session?.access_token || apiKey;
+      }
+
+      const { error } = await supabase.storage.from(bucket).upload(fileName, file, { cacheControl: '3600', upsert: true });
+      if (error) {
+        // Try with XHR as fallback
+        const uploadUrl = `${baseUrl}/storage/v1/object/${bucket}/${fileName}`;
+        const resp = await fetch(uploadUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+            'apikey': apiKey!,
+            'x-upsert': 'true',
+          },
+          body: file,
+        });
+        if (!resp.ok) throw new Error('Upload failed');
+      }
+
+      const publicUrl = `${baseUrl}/storage/v1/object/public/${bucket}/${fileName}`;
+      onUpdate({ imageSrc: publicUrl, imageAlt: block.imageAlt || file.name.replace(/\.[^.]+$/, '') });
+    } catch (err) {
+      console.error("Image upload error:", err);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   return (
     <div className="py-2">
       {block.imageSrc ? (
@@ -455,7 +513,27 @@ function ImageBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updat
         <div className="bg-muted rounded-xl p-6 space-y-4">
           <div className="text-center">
             <ImageIcon className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground mb-4">Добавьте изображение по ссылке</p>
+            <p className="text-sm text-muted-foreground mb-3">Загрузите изображение или вставьте ссылку</p>
+            <div className="flex gap-2 justify-center">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isUploading}
+                onClick={() => {
+                  const input = document.createElement('input');
+                  input.type = 'file';
+                  input.accept = 'image/*';
+                  input.onchange = (e) => {
+                    const f = (e.target as HTMLInputElement).files?.[0];
+                    if (f) handleFileUpload(f);
+                  };
+                  input.click();
+                }}
+              >
+                {isUploading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Upload className="w-4 h-4 mr-1" />}
+                {isUploading ? "Загрузка..." : "Загрузить файл"}
+              </Button>
+            </div>
           </div>
           <Input value={block.imageSrc || ""} onChange={(e) => onUpdate({ imageSrc: e.target.value })} placeholder="https://example.com/image.jpg" className="text-sm" />
         </div>
