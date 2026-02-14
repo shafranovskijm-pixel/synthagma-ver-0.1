@@ -33,6 +33,9 @@ import {
   Bold,
   Italic,
   Minus,
+  Strikethrough,
+  Underline,
+  CaseSensitive,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -120,6 +123,11 @@ export interface ContentBlock {
   textSize?: 'sm' | 'base' | 'lg';
   bold?: boolean;
   italic?: boolean;
+  strikethrough?: boolean;
+  underline?: boolean;
+  uppercase?: boolean;
+  textColor?: string;
+  lineHeight?: 'tight' | 'normal' | 'relaxed';
 }
 
 interface BlockEditorProps {
@@ -336,6 +344,15 @@ const bgColorDotStyles: Record<string, string> = {
   "green": "bg-green-200 dark:bg-green-800",
 };
 
+const textColorPresets = [
+  { value: "", label: "По умолчанию", class: "", dot: "bg-foreground" },
+  { value: "gray", label: "Серый", class: "text-gray-500", dot: "bg-gray-500" },
+  { value: "blue", label: "Синий", class: "text-blue-600 dark:text-blue-400", dot: "bg-blue-500" },
+  { value: "red", label: "Красный", class: "text-red-600 dark:text-red-400", dot: "bg-red-500" },
+  { value: "green", label: "Зелёный", class: "text-green-600 dark:text-green-400", dot: "bg-green-500" },
+  { value: "purple", label: "Фиолетовый", class: "text-purple-600 dark:text-purple-400", dot: "bg-purple-500" },
+];
+
 const wrapTargets: { type: BlockType; icon: any; label: string; color: string }[] = [
   { type: "callout-info", icon: Info, label: "Информация", color: "text-blue-500" },
   { type: "callout-warning", icon: AlertTriangle, label: "Предупреждение", color: "text-amber-500" },
@@ -374,92 +391,123 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
       className={cn("group relative rounded-lg transition-all", isFocused && "bg-secondary/30")}
       onClick={onFocus}
     >
-      {/* Top-center toolbar */}
-      <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity py-1">
-        <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch-none">
-          <GripVertical className="w-4 h-4" />
-        </div>
-        {canConvert && (
+      {/* Top-center floating toolbar */}
+      <div className="flex items-center justify-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity py-1">
+        <div className="flex items-center gap-0.5 bg-foreground/80 backdrop-blur-sm text-background rounded-full px-2 py-1 shadow-lg">
+          <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing hover:bg-white/20 rounded-full h-8 w-8 flex items-center justify-center touch-none transition-colors">
+            <GripVertical className="w-4 h-4" />
+          </div>
+          {canConvert && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="h-8 w-8 flex items-center justify-center hover:bg-white/20 rounded-full transition-colors" title="Обернуть / Преобразовать">
+                  <ArrowRightLeft className="w-4 h-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="center" className="w-52">
+                {wrapTargets.filter(t => t.type !== block.type).map((t) => (
+                  <DropdownMenuItem key={t.type} onClick={() => handleConvert(t.type)}>
+                    <t.icon className={cn("w-4 h-4 mr-2", t.color)} />{t.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+          {canStyle && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="h-8 w-8 flex items-center justify-center hover:bg-white/20 rounded-full transition-colors" title="Настройки блока">
+                  <Settings2 className="w-4 h-4" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="center" className="w-72 p-3 space-y-3">
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-1.5">Выравнивание</p>
+                  <div className="flex gap-1">
+                    {([['left', AlignLeft], ['center', AlignCenter], ['right', AlignRight]] as const).map(([align, Icon]) => (
+                      <Button key={align} variant={block.textAlign === align || (!block.textAlign && align === 'left') ? "default" : "outline"} size="icon" className="h-7 w-7" onClick={() => onUpdate({ textAlign: align === 'left' ? undefined : align })}>
+                        <Icon className="w-3.5 h-3.5" />
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-1.5">Стиль текста</p>
+                  <div className="flex gap-1">
+                    <Button variant={block.bold ? "default" : "outline"} size="icon" className="h-7 w-7" onClick={() => onUpdate({ bold: !block.bold })} title="Жирный">
+                      <Bold className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button variant={block.italic ? "default" : "outline"} size="icon" className="h-7 w-7" onClick={() => onUpdate({ italic: !block.italic })} title="Курсив">
+                      <Italic className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button variant={block.strikethrough ? "default" : "outline"} size="icon" className="h-7 w-7" onClick={() => onUpdate({ strikethrough: !block.strikethrough })} title="Зачёркнутый">
+                      <Strikethrough className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button variant={block.underline ? "default" : "outline"} size="icon" className="h-7 w-7" onClick={() => onUpdate({ underline: !block.underline })} title="Подчёркнутый">
+                      <Underline className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button variant={block.uppercase ? "default" : "outline"} size="icon" className="h-7 w-7" onClick={() => onUpdate({ uppercase: !block.uppercase })} title="UPPERCASE">
+                      <CaseSensitive className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-1.5">Цвет текста</p>
+                  <div className="flex gap-1.5">
+                    {textColorPresets.map((preset) => (
+                      <button key={preset.value} onClick={() => onUpdate({ textColor: preset.value || undefined })} className={cn("w-6 h-6 rounded-full transition-all", preset.dot, (block.textColor || "") === preset.value && "ring-2 ring-primary ring-offset-1")} title={preset.label} />
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-1.5">Фон блока</p>
+                  <div className="flex gap-1.5">
+                    {bgColorPresets.map((preset) => (
+                      <button key={preset.value} onClick={() => onUpdate({ bgColor: preset.value || undefined })} className={cn("w-6 h-6 rounded-full transition-all", bgColorDotStyles[preset.value], (block.bgColor || "") === preset.value && "ring-2 ring-primary ring-offset-1")} title={preset.label} />
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-1.5">Размер текста</p>
+                  <div className="flex gap-1">
+                    {([['sm', 'A-'], ['base', 'A'], ['lg', 'A+']] as const).map(([size, label]) => (
+                      <Button key={size} variant={(block.textSize || 'base') === size ? "default" : "outline"} size="sm" className="h-7 px-2.5 text-xs" onClick={() => onUpdate({ textSize: size === 'base' ? undefined : size })}>
+                        {label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-1.5">Межстрочный интервал</p>
+                  <div className="flex gap-1">
+                    {([['tight', 'Плотный'], ['normal', 'Обычный'], ['relaxed', 'Свободный']] as const).map(([lh, label]) => (
+                      <Button key={lh} variant={(block.lineHeight || 'normal') === lh ? "default" : "outline"} size="sm" className="h-7 px-2.5 text-xs" onClick={() => onUpdate({ lineHeight: lh === 'normal' ? undefined : lh })}>
+                        {label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-6 w-6" title="Обернуть / Преобразовать">
-                <ArrowRightLeft className="w-3 h-3" />
-              </Button>
+              <button className="h-8 w-8 flex items-center justify-center hover:bg-white/20 rounded-full transition-colors" title="Добавить блок">
+                <Plus className="w-4 h-4" />
+              </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="center" className="w-52">
-              {wrapTargets.filter(t => t.type !== block.type).map((t) => (
-                <DropdownMenuItem key={t.type} onClick={() => handleConvert(t.type)}>
-                  <t.icon className={cn("w-4 h-4 mr-2", t.color)} />{t.label}
+            <DropdownMenuContent align="center" className="w-48">
+              {Object.entries(blockTypeConfig).map(([type, cfg]) => (
+                <DropdownMenuItem key={type} onClick={() => onAddAfter(type as BlockType)}>
+                  <cfg.icon className={cn("w-4 h-4 mr-2", cfg.color)} />{cfg.label}
                 </DropdownMenuItem>
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
-        )}
-        {canStyle && (
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-6 w-6" title="Настройки блока">
-                <Settings2 className="w-3 h-3" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="center" className="w-64 p-3 space-y-3">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1.5">Выравнивание</p>
-                <div className="flex gap-1">
-                  {([['left', AlignLeft], ['center', AlignCenter], ['right', AlignRight]] as const).map(([align, Icon]) => (
-                    <Button key={align} variant={block.textAlign === align || (!block.textAlign && align === 'left') ? "default" : "outline"} size="icon" className="h-7 w-7" onClick={() => onUpdate({ textAlign: align === 'left' ? undefined : align })}>
-                      <Icon className="w-3.5 h-3.5" />
-                    </Button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1.5">Фон блока</p>
-                <div className="flex gap-1.5">
-                  {bgColorPresets.map((preset) => (
-                    <button key={preset.value} onClick={() => onUpdate({ bgColor: preset.value || undefined })} className={cn("w-6 h-6 rounded-full transition-all", bgColorDotStyles[preset.value], (block.bgColor || "") === preset.value && "ring-2 ring-primary ring-offset-1")} title={preset.label} />
-                  ))}
-                </div>
-              </div>
-              <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1.5">Размер текста</p>
-                <div className="flex gap-1">
-                  {([['sm', 'A-'], ['base', 'A'], ['lg', 'A+']] as const).map(([size, label]) => (
-                    <Button key={size} variant={(block.textSize || 'base') === size ? "default" : "outline"} size="sm" className="h-7 px-2.5 text-xs" onClick={() => onUpdate({ textSize: size === 'base' ? undefined : size })}>
-                      {label}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1.5">Стиль текста</p>
-                <div className="flex gap-1">
-                  <Button variant={block.bold ? "default" : "outline"} size="icon" className="h-7 w-7" onClick={() => onUpdate({ bold: !block.bold })}>
-                    <Bold className="w-3.5 h-3.5" />
-                  </Button>
-                  <Button variant={block.italic ? "default" : "outline"} size="icon" className="h-7 w-7" onClick={() => onUpdate({ italic: !block.italic })}>
-                    <Italic className="w-3.5 h-3.5" />
-                  </Button>
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
-        )}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-6 w-6"><Plus className="w-3 h-3" /></Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="center" className="w-48">
-            {Object.entries(blockTypeConfig).map(([type, cfg]) => (
-              <DropdownMenuItem key={type} onClick={() => onAddAfter(type as BlockType)}>
-                <cfg.icon className={cn("w-4 h-4 mr-2", cfg.color)} />{cfg.label}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={(e) => { e.stopPropagation(); onDelete(); }}>
-          <Trash2 className="w-3 h-3" />
-        </Button>
+          <button className="h-8 w-8 flex items-center justify-center hover:bg-red-500/30 rounded-full transition-colors" onClick={(e) => { e.stopPropagation(); onDelete(); }} title="Удалить блок">
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
       </div>
       <div className="min-w-0">
         <BlockContent block={block} onUpdate={onUpdate} />
@@ -479,6 +527,15 @@ function BlockContent({ block, onUpdate }: { block: ContentBlock; onUpdate: (upd
     if (block.textSize === 'lg') classes.push('text-lg');
     if (block.bold) classes.push('font-bold');
     if (block.italic) classes.push('italic');
+    if (block.strikethrough) classes.push('line-through');
+    if (block.underline) classes.push('underline');
+    if (block.uppercase) classes.push('uppercase');
+    if (block.lineHeight === 'tight') classes.push('leading-tight');
+    if (block.lineHeight === 'relaxed') classes.push('leading-relaxed');
+    if (block.textColor) {
+      const preset = textColorPresets.find(p => p.value === block.textColor);
+      if (preset?.class) classes.push(preset.class);
+    }
     if (block.bgColor) {
       const preset = bgColorPresets.find(p => p.value === block.bgColor);
       if (preset?.class) classes.push(preset.class, 'rounded-lg', 'p-3');
@@ -1191,6 +1248,15 @@ function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSub
     if (block.textSize === 'lg') classes.push('text-lg');
     if (block.bold) classes.push('font-bold');
     if (block.italic) classes.push('italic');
+    if (block.strikethrough) classes.push('line-through');
+    if (block.underline) classes.push('underline');
+    if (block.uppercase) classes.push('uppercase');
+    if (block.lineHeight === 'tight') classes.push('leading-tight');
+    if (block.lineHeight === 'relaxed') classes.push('leading-relaxed');
+    if (block.textColor) {
+      const preset = textColorPresets.find(p => p.value === block.textColor);
+      if (preset?.class) classes.push(preset.class);
+    }
     if (block.bgColor) {
       const preset = bgColorPresets.find(p => p.value === block.bgColor);
       if (preset?.class) classes.push(preset.class, 'rounded-lg', 'p-3');
