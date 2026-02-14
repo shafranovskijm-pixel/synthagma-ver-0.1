@@ -13,6 +13,11 @@ interface MenuSettings {
   showDocuments: boolean;
   showLibrary: boolean;
   showServices: boolean;
+  showCourses?: boolean;
+  showCompanies?: boolean;
+  showStudents?: boolean;
+  showJournals?: boolean;
+  showFrdo?: boolean;
 }
 
 export function useDashboardSettings(organizationId: string | null) {

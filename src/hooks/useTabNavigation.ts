@@ -7,6 +7,11 @@ interface MenuSettings {
   showLinks: boolean;
   showDocuments: boolean;
   showServices: boolean;
+  showCourses?: boolean;
+  showCompanies?: boolean;
+  showStudents?: boolean;
+  showJournals?: boolean;
+  showFrdo?: boolean;
 }
 
 interface UseTabNavigationProps {
