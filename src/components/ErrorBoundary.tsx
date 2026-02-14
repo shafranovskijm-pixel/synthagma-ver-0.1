@@ -1,5 +1,6 @@
 import React, { Component, ErrorInfo, ReactNode } from "react";
 import { AlertTriangle, RefreshCw } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Props {
   children: ReactNode;
@@ -20,6 +21,30 @@ export class ErrorBoundary extends Component<Props, State> {
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("[ErrorBoundary] Uncaught error:", error, errorInfo);
+    // Log to database for production monitoring
+    this.logErrorToDb(error, errorInfo);
+  }
+
+  private async logErrorToDb(error: Error, errorInfo: ErrorInfo) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("organization_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (!profile?.organization_id) return;
+      await supabase.from("system_diagnostics").insert({
+        organization_id: profile.organization_id,
+        check_type: "error_boundary",
+        check_name: error.name || "Runtime Error",
+        status: "error",
+        message: `${error.message}\n${errorInfo.componentStack?.slice(0, 300) || ""}`.slice(0, 500),
+        executed_by: user.id,
+        details: { url: window.location.href, stack: error.stack?.slice(0, 500) },
+      });
+    } catch { /* silent */ }
   }
 
   private handleReset = () => {
