@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,7 +30,7 @@ interface CoursesTabProps {
   onCoursesDeleted?: () => void;
 }
 
-export function CoursesTab({ organizationId, onCourseClick, onOpenCourseDetails, onCoursesDeleted }: CoursesTabProps) {
+export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCourseClick, onOpenCourseDetails, onCoursesDeleted }: CoursesTabProps) {
   const navigate = useNavigate();
   const { checkLimit, hasCourseSettings } = useSubscriptionLimits(organizationId);
   
@@ -1204,4 +1204,4 @@ export function CoursesTab({ organizationId, onCourseClick, onOpenCourseDetails,
       </AlertDialog>
     </div>
   );
-}
+});

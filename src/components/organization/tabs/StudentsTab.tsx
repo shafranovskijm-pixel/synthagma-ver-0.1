@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
@@ -36,7 +36,7 @@ interface StudentsTabProps {
   isSendingBulkDocReminders?: boolean;
 }
 
-export function StudentsTab({
+export const StudentsTab = React.memo(function StudentsTab({
   organizationId,
   courses,
   studentDocsByUser,
@@ -822,4 +822,4 @@ export function StudentsTab({
       </Dialog>
     </div>
   );
-}
+});

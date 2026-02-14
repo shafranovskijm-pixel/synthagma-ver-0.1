@@ -1,0 +1,58 @@
+import {
+  FileText, Video, Image, FileQuestion, Headphones, Presentation,
+} from "lucide-react";
+import type { ContentBlock } from "@/components/course-builder/BlockEditor";
+
+export type LessonType = "text" | "video" | "image" | "test" | "audio" | "lesson" | "slider";
+
+export interface TestQuestionLocal {
+  id: string;
+  question: string;
+  options: { text: string }[];
+  correct_answer: number;
+  order_index: number;
+  explanation?: string;
+  image_url?: string | null;
+  isNew?: boolean;
+  isDeleted?: boolean;
+}
+
+export interface Lesson {
+  id: string;
+  type: LessonType;
+  title: string;
+  content: string;
+  expanded: boolean;
+  blocks?: ContentBlock[];
+  thumbnailUrl?: string;
+  videoScript?: string;
+  testPassingScore?: number;
+  testQuestionsToShow?: number | null;
+  questions?: TestQuestionLocal[];
+}
+
+export interface GeneratedQuestion {
+  question: string;
+  options: string[];
+  correctAnswer: number;
+}
+
+export const lessonIcons: Record<LessonType, any> = {
+  text: FileText,
+  video: Video,
+  image: Image,
+  test: FileQuestion,
+  audio: Headphones,
+  lesson: FileText,
+  slider: Presentation,
+};
+
+export const lessonColors: Record<LessonType, string> = {
+  text: "text-primary bg-primary/10",
+  video: "text-sigma-purple bg-sigma-purple/10",
+  image: "text-sigma-cyan bg-sigma-cyan/10",
+  test: "text-sigma-orange bg-sigma-orange/10",
+  audio: "text-green-500 bg-green-500/10",
+  lesson: "text-primary bg-primary/10",
+  slider: "text-amber-500 bg-amber-500/10",
+};

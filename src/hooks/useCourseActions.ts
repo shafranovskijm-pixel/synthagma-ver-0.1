@@ -1,33 +1,8 @@
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-
-interface Course {
-  id: string;
-  title: string;
-  description: string | null;
-  is_published: boolean;
-  created_at: string;
-  lessonsCount?: number;
-  studentsCount?: number;
-  duration?: string;
-  category_id?: string | null;
-}
-
-interface Student {
-  id: string;
-  user_id: string;
-  enrollment_id: string | null;
-  name: string;
-  email: string;
-  login: string | null;
-  generated_password: string | null;
-  course: string | null;
-  course_id: string | null;
-  progress: number;
-  lastActivity: string | null;
-  status: string | null;
-}
+import type { Course } from "@/types/course";
+import type { Student } from "@/types/student";
 
 export function useCourseActions(organizationId: string | null, onRefresh: () => void) {
   const [isLoadingCourseStudents, setIsLoadingCourseStudents] = useState(false);
