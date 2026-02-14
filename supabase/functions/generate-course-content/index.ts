@@ -486,6 +486,25 @@ serve(async (req) => {
     const body = await req.json();
     const { courseId, organizationId, lessonTitle, courseTitle, courseDescription, contentType } = body;
 
+    // Handle description generation
+    if (contentType === "description" && courseTitle) {
+      console.log(`Generating description for course: ${courseTitle} (user: ${user.id})`);
+      const systemPrompt = `Ты эксперт по созданию описаний учебных курсов. Напиши привлекательное и информативное описание курса.
+Правила:
+1. 2-4 абзаца
+2. Опиши цели курса, для кого он подходит, что студент получит
+3. Профессиональный тон
+4. На русском языке`;
+      const result = await generateWithAI(
+        `Напиши описание для курса: "${courseTitle}"`,
+        systemPrompt
+      );
+      return new Response(
+        JSON.stringify({ success: true, content: result.content || "" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Handle individual content generation requests
     if (contentType && lessonTitle) {
       console.log(`Generating ${contentType} for: ${lessonTitle} (user: ${user.id})`);

@@ -2,8 +2,10 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Store, Plus, Search, Edit, Trash2, Eye, Loader2,
-  Package, ShoppingCart, Building2, Users, Tag,
+  Package, ShoppingCart, Building2, Users, Tag, Sparkles,
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -30,6 +32,24 @@ const statusLabels: Record<string, { label: string; color: string }> = {
 export function AdminMarketplaceManager() {
   const navigate = useNavigate();
   const h = useAdminMarketplace();
+  const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
+
+  const handleGenerateDescription = async () => {
+    if (!h.newTitle.trim()) { toast.error("Сначала введите название курса"); return; }
+    setIsGeneratingDesc(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-course-content", {
+        body: { contentType: "description", courseTitle: h.newTitle },
+      });
+      if (error) throw error;
+      if (data?.content) h.setNewDescription(data.content);
+    } catch (e: any) {
+      console.error(e);
+      toast.error("Ошибка генерации описания");
+    } finally {
+      setIsGeneratingDesc(false);
+    }
+  };
 
   if (h.isLoading) {
     return (
@@ -140,7 +160,13 @@ export function AdminMarketplaceManager() {
                 <Input value={h.newTitle} onChange={(e) => h.setNewTitle(e.target.value)} placeholder="Название курса" className="rounded-xl" />
               </div>
               <div className="space-y-2">
-                <Label>Описание</Label>
+                <div className="flex items-center justify-between">
+                  <Label>Описание</Label>
+                  <Button variant="ghost" size="sm" onClick={handleGenerateDescription} disabled={isGeneratingDesc || !h.newTitle.trim()}>
+                    {isGeneratingDesc ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Sparkles className="w-3.5 h-3.5 mr-1" />}
+                    Сгенерировать с ИИ
+                  </Button>
+                </div>
                 <Textarea value={h.newDescription} onChange={(e) => h.setNewDescription(e.target.value)} placeholder="Подробное описание курса..." className="rounded-xl" rows={3} />
               </div>
               <div className="space-y-2">
