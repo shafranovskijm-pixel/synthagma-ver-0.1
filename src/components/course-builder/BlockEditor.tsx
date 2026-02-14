@@ -1574,14 +1574,55 @@ function SliderBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (upda
         <div className="p-6 min-h-[250px]">
           {currentSlide && (
             <div className="space-y-4">
-              {currentSlide.imageUrl && (
-                <div className="rounded-lg overflow-hidden border border-border bg-secondary/20">
+              {currentSlide.imageUrl ? (
+                <div className="relative group rounded-lg overflow-hidden border border-border bg-secondary/20">
                   <img 
                     src={currentSlide.imageUrl} 
                     alt={currentSlide.title || 'Слайд'} 
                     className="w-full max-h-[400px] object-contain"
                   />
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                    <label className="cursor-pointer px-3 py-2 bg-background/90 rounded-lg text-xs font-medium hover:bg-background transition-colors flex items-center gap-1.5">
+                      <Upload className="w-3.5 h-3.5" />
+                      Заменить
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                          const newSlides = [...slides];
+                          newSlides[currentIndex] = { ...newSlides[currentIndex], imageUrl: reader.result as string };
+                          onUpdate({ sliderSlides: newSlides });
+                        };
+                        reader.readAsDataURL(file);
+                      }} />
+                    </label>
+                    <Button variant="destructive" size="sm" className="h-8 text-xs gap-1.5" onClick={() => {
+                      const newSlides = [...slides];
+                      newSlides[currentIndex] = { ...newSlides[currentIndex], imageUrl: undefined };
+                      onUpdate({ sliderSlides: newSlides });
+                    }}>
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Удалить
+                    </Button>
+                  </div>
                 </div>
+              ) : (
+                <label className="flex flex-col items-center justify-center gap-2 p-8 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-orange-500/50 hover:bg-orange-500/5 transition-colors">
+                  <ImageIcon className="w-8 h-8 text-muted-foreground/50" />
+                  <span className="text-sm text-muted-foreground">Загрузить изображение для слайда</span>
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                      const newSlides = [...slides];
+                      newSlides[currentIndex] = { ...newSlides[currentIndex], imageUrl: reader.result as string };
+                      onUpdate({ sliderSlides: newSlides });
+                    };
+                    reader.readAsDataURL(file);
+                  }} />
+                </label>
               )}
               <h3 className="text-lg font-semibold">{currentSlide.title}</h3>
               {currentSlide.content && (
