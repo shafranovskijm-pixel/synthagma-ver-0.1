@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import DOMPurify from "dompurify";
 import {
   Plus,
@@ -46,6 +46,8 @@ import {
   Highlighter,
   Square,
   RectangleHorizontal,
+  Undo2,
+  Redo2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -203,6 +205,65 @@ export function BlockEditor({ blocks, onChange, readOnly = false, courseTitle, l
   const [focusedBlockId, setFocusedBlockId] = useState<string | null>(null);
   const [stylePresets, setStylePresets] = useState(() => loadPresets());
 
+  // Undo/Redo history
+  const historyRef = useRef<ContentBlock[][]>([JSON.parse(JSON.stringify(blocks))]);
+  const historyIndexRef = useRef(0);
+  const isUndoRedoRef = useRef(false);
+
+  // Track changes for undo history
+  const pushHistory = useCallback((newBlocks: ContentBlock[]) => {
+    if (isUndoRedoRef.current) {
+      isUndoRedoRef.current = false;
+      return;
+    }
+    const history = historyRef.current;
+    const idx = historyIndexRef.current;
+    // Remove any future states
+    historyRef.current = history.slice(0, idx + 1);
+    historyRef.current.push(JSON.parse(JSON.stringify(newBlocks)));
+    // Keep max 50 states
+    if (historyRef.current.length > 50) historyRef.current.shift();
+    historyIndexRef.current = historyRef.current.length - 1;
+  }, []);
+
+  const handleUndo = useCallback(() => {
+    if (historyIndexRef.current <= 0) return;
+    historyIndexRef.current--;
+    isUndoRedoRef.current = true;
+    const restored = JSON.parse(JSON.stringify(historyRef.current[historyIndexRef.current]));
+    onChange(restored);
+  }, [onChange]);
+
+  const handleRedo = useCallback(() => {
+    if (historyIndexRef.current >= historyRef.current.length - 1) return;
+    historyIndexRef.current++;
+    isUndoRedoRef.current = true;
+    const restored = JSON.parse(JSON.stringify(historyRef.current[historyIndexRef.current]));
+    onChange(restored);
+  }, [onChange]);
+
+  // Wrap onChange to track history
+  const onChangeWithHistory = useCallback((newBlocks: ContentBlock[]) => {
+    pushHistory(newBlocks);
+    onChange(newBlocks);
+  }, [onChange, pushHistory]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        if (e.shiftKey) { e.preventDefault(); handleRedo(); }
+        else { e.preventDefault(); handleUndo(); }
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'y') { e.preventDefault(); handleRedo(); }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [handleUndo, handleRedo]);
+
+  const canUndo = historyIndexRef.current > 0;
+  const canRedo = historyIndexRef.current < historyRef.current.length - 1;
+
   const addBlock = useCallback((type: BlockType, afterIndex?: number) => {
     const newBlock = createBlock(type);
     const newBlocks = [...blocks];
@@ -211,17 +272,17 @@ export function BlockEditor({ blocks, onChange, readOnly = false, courseTitle, l
     } else {
       newBlocks.push(newBlock);
     }
-    onChange(newBlocks);
+    onChangeWithHistory(newBlocks);
     setFocusedBlockId(newBlock.id);
-  }, [blocks, onChange]);
+  }, [blocks, onChangeWithHistory]);
 
   const updateBlock = useCallback((id: string, updates: Partial<ContentBlock>) => {
-    onChange(blocks.map(b => b.id === id ? { ...b, ...updates } : b));
-  }, [blocks, onChange]);
+    onChangeWithHistory(blocks.map(b => b.id === id ? { ...b, ...updates } : b));
+  }, [blocks, onChangeWithHistory]);
 
   const deleteBlock = useCallback((id: string) => {
-    onChange(blocks.filter(b => b.id !== id));
-  }, [blocks, onChange]);
+    onChangeWithHistory(blocks.filter(b => b.id !== id));
+  }, [blocks, onChangeWithHistory]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -233,7 +294,7 @@ export function BlockEditor({ blocks, onChange, readOnly = false, courseTitle, l
     if (over && active.id !== over.id) {
       const oldIndex = blocks.findIndex((b) => b.id === active.id);
       const newIndex = blocks.findIndex((b) => b.id === over.id);
-      onChange(arrayMove(blocks, oldIndex, newIndex));
+      onChangeWithHistory(arrayMove(blocks, oldIndex, newIndex));
     }
   };
 
@@ -243,6 +304,15 @@ export function BlockEditor({ blocks, onChange, readOnly = false, courseTitle, l
 
   return (
     <div className="space-y-2">
+      {/* Undo/Redo toolbar */}
+      <div className="flex items-center gap-1 justify-end">
+        <Button variant="ghost" size="sm" onClick={handleUndo} disabled={!canUndo} title="Отменить (Ctrl+Z)" className="h-8 w-8 p-0">
+          <Undo2 className="w-4 h-4" />
+        </Button>
+        <Button variant="ghost" size="sm" onClick={handleRedo} disabled={!canRedo} title="Вернуть (Ctrl+Shift+Z)" className="h-8 w-8 p-0">
+          <Redo2 className="w-4 h-4" />
+        </Button>
+      </div>
       {blocks.length === 0 && (
         <div className="text-center py-8 text-muted-foreground border-2 border-dashed border-border rounded-xl">
           <Type className="w-8 h-8 mx-auto mb-2 opacity-50" />
