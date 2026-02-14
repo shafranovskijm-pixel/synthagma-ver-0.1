@@ -35,7 +35,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Building2, Loader2, Users, BookOpen, Key, Eye, EyeOff, Copy, Check, Download, ExternalLink, Search, X, FolderOpen, DollarSign, Calendar, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import * as XLSX from "xlsx";
+import { getXLSX } from "@/utils/xlsxHelper";
 import { OrganizationDetailsView } from "./OrganizationDetailsView";
 
 interface Organization {
@@ -453,7 +453,8 @@ export function OrganizationsManager() {
     }
   };
 
-  const exportToExcel = () => {
+  const exportToExcel = async () => {
+    const XLSX = await getXLSX();
     const data = organizations.map((org, index) => ({
       "№": index + 1,
       "Название": org.name,

@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import * as XLSX from "xlsx";
+import { getXLSX } from "@/utils/xlsxHelper";
 
 interface DocumentLog {
   id: string;
@@ -119,7 +119,8 @@ export function DocumentIssuanceLog({ organizationId }: DocumentIssuanceLogProps
     }
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
+    const XLSX = await getXLSX();
     const exportData = filteredLogs.map((log, index) => ({
       "№": index + 1,
       "Дата": format(new Date(log.issued_at), "dd.MM.yyyy", { locale: ru }),

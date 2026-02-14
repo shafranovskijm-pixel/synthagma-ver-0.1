@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
-import * as XLSX from "xlsx";
+import { getXLSX } from "@/utils/xlsxHelper";
 
 interface Course {
   id: string;
@@ -136,7 +136,8 @@ export function ClassJournalExport({ organizationId }: ClassJournalExportProps) 
     return matchesCourse && matchesSearch;
   });
 
-  const handleExport = () => {
+  const handleExport = async () => {
+    const XLSX = await getXLSX();
     const exportData = filteredEnrollments.map((e, index) => ({
       "№": index + 1,
       "ФИО": e.user_name,
