@@ -1938,6 +1938,7 @@ export type Database = {
           ogrn: string | null
           paid_until: string | null
           phone: string | null
+          promo_code: string | null
           signature_url: string | null
           stamp_url: string | null
           storage_limit_bytes: number
@@ -1978,6 +1979,7 @@ export type Database = {
           ogrn?: string | null
           paid_until?: string | null
           phone?: string | null
+          promo_code?: string | null
           signature_url?: string | null
           stamp_url?: string | null
           storage_limit_bytes?: number
@@ -2018,6 +2020,7 @@ export type Database = {
           ogrn?: string | null
           paid_until?: string | null
           phone?: string | null
+          promo_code?: string | null
           signature_url?: string | null
           stamp_url?: string | null
           storage_limit_bytes?: number
