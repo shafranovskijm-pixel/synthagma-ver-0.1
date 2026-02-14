@@ -166,7 +166,7 @@ export const CODE_RECOMMENDATIONS: Recommendation[] = [
     severity: "warn",
     category: "architecture",
     title: "✅ Декомпозиция крупных компонентов выполнена",
-    detail: "DevToolsPanel, CourseBuilder, OrganizationDashboard — разбиты на подкомпоненты, helpers и хуки.",
+    detail: "DevToolsPanel, CourseBuilder (VideoPreviewInline, SliderLessonEditor), OrganizationDashboard (OrgDashboardHeader) — разбиты на подкомпоненты.",
     actionable: false,
     status: "applied",
   },
