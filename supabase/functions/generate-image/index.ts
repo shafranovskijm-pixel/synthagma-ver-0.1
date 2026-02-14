@@ -9,13 +9,22 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { prompt } = await req.json();
+    const { prompt, imageUrl } = await req.json();
     if (!prompt) throw new Error("Prompt is required");
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    console.log("Generating image with prompt:", prompt);
+    const isEditing = !!imageUrl;
+    console.log(isEditing ? "Editing image with prompt:" : "Generating image with prompt:", prompt);
+
+    // Build message content: text-only for generation, multipart for editing
+    const messageContent = isEditing
+      ? [
+          { type: "text", text: prompt },
+          { type: "image_url", image_url: { url: imageUrl } },
+        ]
+      : `Generate an image: ${prompt}. Make it high quality, clean, and suitable for an educational course.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -28,7 +37,7 @@ serve(async (req) => {
         messages: [
           {
             role: "user",
-            content: `Generate an image: ${prompt}. Make it high quality, clean, and suitable for an educational course.`,
+            content: messageContent,
           },
         ],
         modalities: ["image", "text"],
