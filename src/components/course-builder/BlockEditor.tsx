@@ -23,10 +23,10 @@ import {
   Presentation,
   Loader2,
   Sparkles,
-  ArrowRightLeft,
+  Wand2,
   Info,
   AlertTriangle,
-  Settings2,
+  Pencil,
   AlignLeft,
   AlignCenter,
   AlignRight,
@@ -407,7 +407,7 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="h-8 w-8 flex items-center justify-center hover:bg-white/20 rounded-full transition-colors" title="Обернуть / Преобразовать">
-                  <ArrowRightLeft className="w-4 h-4" />
+                  <Wand2 className="w-4 h-4" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="center" className="w-52">
@@ -423,7 +423,7 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
             <Popover>
               <PopoverTrigger asChild>
                 <button className="h-8 w-8 flex items-center justify-center hover:bg-white/20 rounded-full transition-colors" title="Настройки блока">
-                  <Settings2 className="w-4 h-4" />
+                  <Pencil className="w-4 h-4" />
                 </button>
               </PopoverTrigger>
               <PopoverContent align="center" className="w-72 p-3 space-y-3">
