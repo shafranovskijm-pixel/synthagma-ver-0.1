@@ -2,7 +2,7 @@ import {
   Store, ShoppingCart, GraduationCap, Loader2, CheckCircle,
   Eye, Edit, Trash2, Plus, Users, Building2, Search,
   DollarSign, Tag, Package, MessageSquarePlus, Megaphone, Send,
-  Clock,
+  Clock, Wallet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -31,10 +31,12 @@ interface CourseStoreManagerProps {
   organizationId: string;
   userRole?: 'organization' | 'student';
   userId?: string;
+  orgBalance?: number;
+  deductBalance?: (amount: number, description: string, orderId?: string) => Promise<boolean>;
 }
 
-export function CourseStoreManager({ organizationId, userRole = 'organization', userId }: CourseStoreManagerProps) {
-  const h = useCourseStoreManager({ organizationId, userRole, userId });
+export function CourseStoreManager({ organizationId, userRole = 'organization', userId, orgBalance, deductBalance }: CourseStoreManagerProps) {
+  const h = useCourseStoreManager({ organizationId, userRole, userId, orgBalance, deductBalance });
 
   if (h.isLoading) {
     return (
@@ -247,9 +249,19 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
                 <div className="text-sm text-muted-foreground">Итого: <span className="font-bold text-primary">{((h.selectedCourseForOrder?.price_organization || 0) * h.studentsCount).toLocaleString()} ₽</span></div>
               </div>
             )}
+            {h.userRole === 'organization' && (orgBalance ?? 0) > 0 && (
+              <div className="flex items-center justify-between p-3 bg-primary/5 rounded-xl border border-primary/20">
+                <div className="flex items-center gap-2">
+                  <Wallet className="w-4 h-4 text-primary" />
+                  <span className="text-sm">Оплатить с баланса</span>
+                  <span className="text-xs text-muted-foreground">({(orgBalance ?? 0).toLocaleString()} ₽)</span>
+                </div>
+                <Switch checked={h.payFromBalance} onCheckedChange={h.setPayFromBalance} />
+              </div>
+            )}
             <div className="space-y-2"><Label>Комментарий</Label><Textarea value={h.orderNotes} onChange={(e) => h.setOrderNotes(e.target.value)} placeholder="Дополнительная информация..." className="rounded-xl" /></div>
           </div>
-          <DialogFooter><Button className="w-full btn-gradient rounded-xl" onClick={h.handleOrder} disabled={h.isOrdering}>{h.isOrdering ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Отправка...</> : 'Отправить заявку'}</Button></DialogFooter>
+          <DialogFooter><Button className="w-full btn-gradient rounded-xl" onClick={h.handleOrder} disabled={h.isOrdering}>{h.isOrdering ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Отправка...</> : h.payFromBalance ? 'Оплатить с баланса' : 'Отправить заявку'}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 

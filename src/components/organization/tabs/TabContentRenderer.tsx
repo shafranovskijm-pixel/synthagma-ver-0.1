@@ -140,7 +140,7 @@ export function TabContentRenderer() {
 
       {/* Course Store Tab */}
       {activeTab === "services" && organizationId && (
-        <CourseStoreManager organizationId={organizationId} userId={d.user?.id} />
+        <CourseStoreManager organizationId={organizationId} userId={d.user?.id} orgBalance={d.orgBalance?.balance} deductBalance={d.orgBalance?.deductBalance} />
       )}
 
       {/* Settings Tab */}

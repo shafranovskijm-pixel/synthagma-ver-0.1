@@ -23,6 +23,7 @@ import { useCourseDetailsModal } from "@/hooks/useCourseDetailsModal";
 import { useTabNavigation } from "@/hooks/useTabNavigation";
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useOrgBalance } from "@/hooks/useOrgBalance";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -149,6 +150,9 @@ export function useOrganizationDashboard() {
 
   // Branding settings
   const branding = useBrandingSettings(organizationId, user?.id);
+
+  // Balance
+  const orgBalance = useOrgBalance(organizationId);
 
   // Load course students when course details modal opens
   const loadCourseStudentsForModal = useCallback(async () => {
@@ -297,5 +301,8 @@ export function useOrganizationDashboard() {
     organizationsTab,
     // Branding
     branding,
+    // Balance
+    balance: orgBalance.balance,
+    orgBalance,
   };
 }
