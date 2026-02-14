@@ -134,6 +134,8 @@ interface BlockEditorProps {
   blocks: ContentBlock[];
   onChange: (blocks: ContentBlock[]) => void;
   readOnly?: boolean;
+  courseTitle?: string;
+  lessonTitle?: string;
 }
 
 const blockTypeConfig: Record<BlockType, { icon: any; label: string; color: string }> = {
@@ -172,7 +174,7 @@ const createBlock = (type: BlockType): ContentBlock => ({
   ...(type === "slider" && { sliderSlides: [], sliderCurrentIndex: 0 }),
 });
 
-export function BlockEditor({ blocks, onChange, readOnly = false }: BlockEditorProps) {
+export function BlockEditor({ blocks, onChange, readOnly = false, courseTitle, lessonTitle }: BlockEditorProps) {
   const [focusedBlockId, setFocusedBlockId] = useState<string | null>(null);
 
   const addBlock = useCallback((type: BlockType, afterIndex?: number) => {
@@ -235,6 +237,8 @@ export function BlockEditor({ blocks, onChange, readOnly = false }: BlockEditorP
                 onUpdate={(updates) => updateBlock(block.id, updates)}
                 onDelete={() => deleteBlock(block.id)}
                 onAddAfter={(type) => addBlock(type, index)}
+                courseTitle={courseTitle}
+                lessonTitle={lessonTitle}
               />
             ))}
           </SortableContext>
@@ -322,6 +326,8 @@ interface SortableBlockItemProps {
   onUpdate: (updates: Partial<ContentBlock>) => void;
   onDelete: () => void;
   onAddAfter: (type: BlockType) => void;
+  courseTitle?: string;
+  lessonTitle?: string;
 }
 
 const convertibleTypes: BlockType[] = ["paragraph", "heading1", "heading2", "bulletList", "numberedList", "quote", "callout-info", "callout-warning", "callout-tip", "accordion"];
@@ -362,7 +368,7 @@ const wrapTargets: { type: BlockType; icon: any; label: string; color: string }[
   { type: "paragraph", icon: Type, label: "Обычный текст", color: "text-foreground" },
 ];
 
-function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAddAfter }: SortableBlockItemProps) {
+function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAddAfter, courseTitle, lessonTitle }: SortableBlockItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
 
   const style = {
@@ -510,13 +516,13 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
         </div>
       </div>
       <div className="min-w-0">
-        <BlockContent block={block} onUpdate={onUpdate} />
+        <BlockContent block={block} onUpdate={onUpdate} courseTitle={courseTitle} lessonTitle={lessonTitle} />
       </div>
     </div>
   );
 }
 
-function BlockContent({ block, onUpdate }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void }) {
+function BlockContent({ block, onUpdate, courseTitle, lessonTitle }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void; courseTitle?: string; lessonTitle?: string }) {
   const [isEditing, setIsEditing] = useState(false);
 
   const editorStyleClasses = (() => {
@@ -585,7 +591,7 @@ function BlockContent({ block, onUpdate }: { block: ContentBlock; onUpdate: (upd
       return <AccordionBlock block={block} onUpdate={onUpdate} />;
 
     case "quiz":
-      return <QuizBlock block={block} onUpdate={onUpdate} />;
+      return <QuizBlock block={block} onUpdate={onUpdate} courseTitle={courseTitle} lessonTitle={lessonTitle} />;
 
     case "image":
       return <ImageBlock block={block} onUpdate={onUpdate} />;
@@ -1138,7 +1144,7 @@ function AccordionBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (u
   );
 }
 
-function QuizBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void }) {
+function QuizBlock({ block, onUpdate, courseTitle, lessonTitle }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void; courseTitle?: string; lessonTitle?: string }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const options = block.quizOptions || [{ text: "", isCorrect: true }, { text: "", isCorrect: false }];
 
@@ -1155,7 +1161,7 @@ function QuizBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (update
     try {
       const { supabase } = await import("@/integrations/supabase/client");
       const { data, error } = await supabase.functions.invoke("generate-course-content", {
-        body: { contentType: "quiz", lessonTitle: block.quizQuestion || "Общий вопрос по теме", courseTitle: "Курс" },
+        body: { contentType: "quiz", lessonTitle: lessonTitle || block.quizQuestion || "Общий вопрос по теме", courseTitle: courseTitle || "Курс" },
       });
       if (error) throw error;
       if (data?.quiz) {
