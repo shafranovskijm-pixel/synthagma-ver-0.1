@@ -418,20 +418,20 @@ function extractStyle(block: ContentBlock): StylePreset {
 
 function describeStyle(style: StylePreset): string {
   const parts: string[] = [];
-  if (style.bold) parts.push('Ж');
-  if (style.italic) parts.push('К');
-  if (style.underline) parts.push('П');
-  if (style.strikethrough) parts.push('З');
-  if (style.uppercase) parts.push('AA');
-  if (style.textSize === 'sm') parts.push('A-');
-  if (style.textSize === 'lg') parts.push('A+');
-  if (style.textAlign === 'center') parts.push('⟺');
-  if (style.textAlign === 'right') parts.push('→');
-  if (style.bgColor) parts.push(`фон:${style.bgColor}`);
-  if (style.textColor) parts.push(`цвет:${style.textColor}`);
-  if (style.lineHeight === 'tight') parts.push('↕-');
-  if (style.lineHeight === 'relaxed') parts.push('↕+');
-  return parts.length ? parts.join(' ') : 'Стандарт';
+  if (style.bold) parts.push('Жирный');
+  if (style.italic) parts.push('Курсив');
+  if (style.underline) parts.push('Подчёрк.');
+  if (style.strikethrough) parts.push('Зачёрк.');
+  if (style.uppercase) parts.push('ВЕРХН.');
+  if (style.textSize === 'sm') parts.push('Мелкий');
+  if (style.textSize === 'lg') parts.push('Крупный');
+  if (style.textAlign === 'center') parts.push('По центру');
+  if (style.textAlign === 'right') parts.push('Справа');
+  if (style.bgColor) parts.push(`Фон: ${style.bgColor}`);
+  if (style.textColor) parts.push(`Цвет: ${style.textColor}`);
+  if (style.lineHeight === 'tight') parts.push('Плотный');
+  if (style.lineHeight === 'relaxed') parts.push('Свободн.');
+  return parts.length ? parts.join(', ') : 'Стандарт';
 }
 
 function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAddAfter, courseTitle, lessonTitle, existingContent, presets, onPresetsChange }: SortableBlockItemProps) {
@@ -571,10 +571,12 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
               </DropdownMenuTrigger>
               <DropdownMenuContent align="center" className="w-56">
                 <DropdownMenuItem onClick={() => {
-                  const name = describeStyle(extractStyle(block));
-                  const newPresets = [...presets, { name, style: extractStyle(block) }];
+                  const style = extractStyle(block);
+                  console.log('[Preset] Saving style:', JSON.stringify(style));
+                  const name = describeStyle(style);
+                  const newPresets = [...presets, { name, style }];
                   onPresetsChange(newPresets);
-                  import("sonner").then(({ toast }) => toast.success("Пресет сохранён"));
+                  import("sonner").then(({ toast }) => toast.success(`Пресет сохранён: ${name}`));
                 }}>
                   <Star className="w-4 h-4 mr-2 text-yellow-500" />Сохранить текущий стиль
                 </DropdownMenuItem>
