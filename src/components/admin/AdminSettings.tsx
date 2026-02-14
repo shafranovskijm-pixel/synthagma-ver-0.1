@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { 
-  Sun, Moon, Palette, ChevronRight, Database, 
+  Sun, Moon, Palette, ChevronRight, Database, MapPin,
    Shield, Bell, Loader2, Save, AlertCircle, Package, Globe, Tag
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { PatchUpdatesManager } from "./PatchUpdatesManager";
 import { SEOSettingsManager } from "./SEOSettingsManager";
 import { PromoCodesManager } from "./PromoCodesManager";
+import { DatabaseMap } from "./DatabaseMap";
 
 interface SystemSettings {
   maintenanceMode: boolean;
@@ -313,6 +314,21 @@ export function AdminSettings() {
               Функция уведомлений находится в разработке
             </span>
           </div>
+        </div>
+      </details>
+
+      {/* Database Map */}
+      <details className="bg-card rounded-xl lg:rounded-2xl border border-border group">
+        <summary className="p-4 lg:p-6 cursor-pointer list-none flex items-center justify-between">
+          <h3 className="font-display font-semibold text-base lg:text-lg flex items-center gap-2">
+            <MapPin className="w-4 h-4 lg:w-5 lg:h-5" />
+            Карта базы данных
+            <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">Dev</span>
+          </h3>
+          <ChevronRight className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90" />
+        </summary>
+        <div className="px-4 lg:px-6 pb-4 lg:pb-6">
+          <DatabaseMap />
         </div>
       </details>
 
