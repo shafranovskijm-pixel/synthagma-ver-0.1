@@ -25,7 +25,17 @@ export function RichTextEditor({ value, onChange, placeholder, className, minHei
   const isInternalChange = useRef(false);
   const lastEmittedHtml = useRef(value || "");
 
-  // Sync external value changes only when value truly differs from what we emitted
+  // Set initial content on mount
+  useEffect(() => {
+    const el = editorRef.current;
+    if (el) {
+      el.innerHTML = value || "";
+      lastEmittedHtml.current = value || "";
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Sync only truly external value changes (not our own emissions)
   useEffect(() => {
     if (isInternalChange.current) {
       isInternalChange.current = false;
@@ -137,7 +147,6 @@ export function RichTextEditor({ value, onChange, placeholder, className, minHei
           className
         )}
         style={{ minHeight, fontStyle: className?.includes('italic') ? 'italic' : undefined, fontWeight: className?.includes('font-bold') ? 'bold' : undefined, textDecoration: [className?.includes('underline') ? 'underline' : '', className?.includes('line-through') ? 'line-through' : ''].filter(Boolean).join(' ') || undefined }}
-        dangerouslySetInnerHTML={{ __html: value || "" }}
       />
     </div>
   );
