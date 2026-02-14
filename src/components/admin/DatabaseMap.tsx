@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Building2, Users, GraduationCap, Briefcase, FileText, BookOpen, Library, HardHat, ShoppingCart, Settings, MoreHorizontal, ArrowRight, RefreshCw } from "lucide-react";
+import { Loader2, Building2, Users, GraduationCap, Briefcase, FileText, BookOpen, Library, HardHat, ShoppingCart, Settings, MoreHorizontal, ArrowRight, RefreshCw, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 interface TableGroup {
   name: string;
@@ -170,16 +171,44 @@ export function DatabaseMap() {
 
   const totalTables = TABLE_GROUPS.reduce((acc, g) => acc + g.tables.length, 0);
 
+  const handleExportJSON = () => {
+    const exportData = {
+      exportDate: new Date().toISOString().split("T")[0],
+      totalTables,
+      totalGroups: TABLE_GROUPS.length,
+      groups: TABLE_GROUPS.map(g => ({
+        name: g.name,
+        tables: g.tables,
+        counts: Object.fromEntries(g.tables.map(t => [t, tableCounts[t] ?? null])),
+        connections: g.connections,
+      })),
+    };
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `db-map-${exportData.exportDate}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Карта БД экспортирована");
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="text-sm text-muted-foreground">
           {totalTables} таблиц в {TABLE_GROUPS.length} группах
         </div>
-        <Button variant="outline" size="sm" onClick={fetchCounts} disabled={loading} className="gap-2 rounded-xl">
-          {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-          Обновить
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleExportJSON} disabled={loading} className="gap-2 rounded-xl">
+            <Download className="w-3 h-3" />
+            Скачать JSON
+          </Button>
+          <Button variant="outline" size="sm" onClick={fetchCounts} disabled={loading} className="gap-2 rounded-xl">
+            {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+            Обновить
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
