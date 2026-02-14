@@ -41,6 +41,7 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
   const navigate = useNavigate();
   const h = useCourseStoreManager({ organizationId, userRole, userId, orgBalance, deductBalance });
   const [requestsOpen, setRequestsOpen] = useState(false);
+  const [selectedCourseDetail, setSelectedCourseDetail] = useState<any>(null);
 
   if (h.isLoading) {
     return (
@@ -131,7 +132,7 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {h.filteredCatalog.map((item) => (
-                <Card key={item.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                <Card key={item.id} className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer" onClick={() => setSelectedCourseDetail(item)}>
                   <CardHeader>
                     <CardTitle className="font-display text-lg leading-tight">{item.course?.title}</CardTitle>
                     <CardDescription className="mt-1 flex items-center gap-1"><Building2 className="w-3 h-3" />{item.organization?.name}</CardDescription>
@@ -144,10 +145,6 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
                       <div className="text-center p-3 bg-secondary/50 rounded-xl"><div className="text-xs text-muted-foreground mb-1 flex items-center justify-center gap-1"><Building2 className="w-3 h-3" />Для организаций</div><div className="font-bold text-primary">{item.price_organization.toLocaleString()} ₽</div></div>
                     </div>
                   </CardContent>
-                  <CardFooter className="flex gap-2">
-                    <Button variant="outline" className="flex-1 rounded-xl gap-2" onClick={() => navigate(`/course-preview/${item.course_id}?from=store`)}><Eye className="w-4 h-4" />Просмотр</Button>
-                    <Button className="flex-1 btn-gradient rounded-xl gap-2" onClick={() => { h.setSelectedCourseForOrder(item); h.setShowOrderDialog(true); }}><ShoppingCart className="w-4 h-4" />Заявка</Button>
-                  </CardFooter>
                 </Card>
               ))}
             </div>
@@ -369,6 +366,54 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
             <div className="space-y-2"><Label>Сообщение</Label><Textarea value={h.proposeMessage} onChange={(e) => h.setProposeMessage(e.target.value)} placeholder="Дополнительная информация..." className="rounded-xl" /></div>
           </div>
           <DialogFooter><Button className="w-full btn-gradient rounded-xl" onClick={h.handleProposeCourse} disabled={h.isProposing || !h.selectedCourseToPropose}>{h.isProposing ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Отправка...</> : 'Отправить предложение'}</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Course Detail Dialog */}
+      <Dialog open={!!selectedCourseDetail} onOpenChange={(open) => { if (!open) setSelectedCourseDetail(null); }}>
+        <DialogContent className="rounded-2xl max-w-lg">
+          {selectedCourseDetail && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="font-display text-xl">{selectedCourseDetail.course?.title}</DialogTitle>
+                <DialogDescription className="flex items-center gap-1 mt-1">
+                  <Building2 className="w-3.5 h-3.5" />{selectedCourseDetail.organization?.name}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-5 py-4">
+                {selectedCourseDetail.description_short && (
+                  <p className="text-sm text-muted-foreground leading-relaxed">{selectedCourseDetail.description_short}</p>
+                )}
+                {selectedCourseDetail.course?.description && (
+                  <p className="text-sm leading-relaxed">{selectedCourseDetail.course.description}</p>
+                )}
+                {selectedCourseDetail.course?.duration && (
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">Длительность: {selectedCourseDetail.course.duration}</span>
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="text-center p-4 bg-secondary/50 rounded-xl">
+                    <div className="text-xs text-muted-foreground mb-1 flex items-center justify-center gap-1"><Users className="w-3 h-3" />Для студентов</div>
+                    <div className="font-bold text-lg text-primary">{selectedCourseDetail.price_student.toLocaleString()} ₽</div>
+                  </div>
+                  <div className="text-center p-4 bg-secondary/50 rounded-xl">
+                    <div className="text-xs text-muted-foreground mb-1 flex items-center justify-center gap-1"><Building2 className="w-3 h-3" />Для организаций</div>
+                    <div className="font-bold text-lg text-primary">{selectedCourseDetail.price_organization.toLocaleString()} ₽</div>
+                  </div>
+                </div>
+              </div>
+              <DialogFooter className="flex gap-2 sm:gap-2">
+                <Button variant="outline" className="flex-1 rounded-xl gap-2" onClick={() => { setSelectedCourseDetail(null); navigate(`/course-preview/${selectedCourseDetail.course_id}?from=store`); }}>
+                  <Eye className="w-4 h-4" />Просмотр
+                </Button>
+                <Button className="flex-1 btn-gradient rounded-xl gap-2" onClick={() => { const item = selectedCourseDetail; setSelectedCourseDetail(null); h.setSelectedCourseForOrder(item); h.setShowOrderDialog(true); }}>
+                  <ShoppingCart className="w-4 h-4" />Заявка
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </div>
