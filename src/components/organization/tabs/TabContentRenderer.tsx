@@ -144,30 +144,7 @@ export function TabContentRenderer() {
       )}
 
       {/* Settings Tab */}
-      {activeTab === "settings" && (
-        <SettingsTab
-          organizationId={organizationId}
-          organizationName={d.organizationName}
-          userId={d.user?.id}
-          isDarkMode={d.dashboardSettings.isDarkMode}
-          setIsDarkMode={d.dashboardSettings.setIsDarkMode}
-          menuSettings={d.dashboardSettings.menuSettings}
-          setMenuSettings={d.dashboardSettings.setMenuSettings}
-          studentDashboardSettings={d.dashboardSettings.studentDashboardSettings}
-          setStudentDashboardSettings={d.dashboardSettings.setStudentDashboardSettings}
-          brandingSettings={d.branding.brandingSettings}
-          setBrandingSettings={d.branding.setBrandingSettings}
-          isSavingSettings={d.dashboardSettings.isSavingSettings}
-          setIsSavingSettings={d.dashboardSettings.setIsSavingSettings}
-          isSavingBranding={d.branding.isSavingBranding}
-          onSaveBranding={d.branding.saveBranding}
-          onCoverUpload={d.branding.handleCoverUpload}
-          onLogoUpload={d.branding.handleLogoUpload}
-          isUploadingCover={d.branding.isUploadingCover}
-          isUploadingLogo={d.branding.isUploadingLogo}
-          onPreviewStudentDashboard={d.dashboardSettings.previewStudentDashboard}
-        />
-      )}
+      {activeTab === "settings" && <SettingsTab />}
     </>
   );
 }

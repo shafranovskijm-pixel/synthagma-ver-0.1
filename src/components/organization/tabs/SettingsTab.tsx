@@ -19,70 +19,28 @@ import { SystemFeaturesReport } from "@/components/organization/SystemFeaturesRe
 import { SystemDiagnostics } from "@/components/organization/SystemDiagnostics";
 import { LoginBrandingSettings } from "@/components/organization/LoginBrandingSettings";
 import { OrgCredentialsSettings } from "@/components/organization/OrgCredentialsSettings";
-import type { MenuSettings } from "@/types";
+import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 
-interface BrandingSettings {
-  coverUrl: string;
-  logoUrl: string;
-  primaryColor: string;
-  secondaryColor: string;
-  showOrgName: boolean;
-  coverPosition: 'cover' | 'contain' | 'center' | 'top' | 'bottom';
-  customName: string;
-  customSubtitle: string;
-}
+export function SettingsTab() {
+  const d = useOrgDashboard();
+  const organizationId = d.organizationId;
+  const organizationName = d.organizationName;
+  const userId = d.user?.id;
+  const {
+    isDarkMode, setIsDarkMode,
+    menuSettings, setMenuSettings,
+    studentDashboardSettings, setStudentDashboardSettings,
+    isSavingSettings, setIsSavingSettings,
+    previewStudentDashboard,
+  } = d.dashboardSettings;
+  const {
+    brandingSettings, setBrandingSettings,
+    isSavingBranding, saveBranding: onSaveBranding,
+    handleCoverUpload: onCoverUpload,
+    handleLogoUpload: onLogoUpload,
+    isUploadingCover, isUploadingLogo,
+  } = d.branding;
 
-interface StudentDashboardSettings {
-  showLibrary: boolean;
-  showAchievements: boolean;
-  showAiChat: boolean;
-}
-
-interface SettingsTabProps {
-  organizationId: string | null;
-  organizationName: string;
-  userId?: string;
-  isDarkMode: boolean;
-  setIsDarkMode: (value: boolean) => void;
-  menuSettings: MenuSettings;
-  setMenuSettings: React.Dispatch<React.SetStateAction<MenuSettings>>;
-  studentDashboardSettings: StudentDashboardSettings;
-  setStudentDashboardSettings: React.Dispatch<React.SetStateAction<StudentDashboardSettings>>;
-  brandingSettings: BrandingSettings;
-  setBrandingSettings: React.Dispatch<React.SetStateAction<BrandingSettings>>;
-  isSavingSettings: boolean;
-  setIsSavingSettings: (value: boolean) => void;
-  isSavingBranding: boolean;
-  onSaveBranding: () => Promise<void>;
-  onCoverUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onLogoUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  isUploadingCover: boolean;
-  isUploadingLogo: boolean;
-  onPreviewStudentDashboard: () => void;
-}
-
-export function SettingsTab({
-  organizationId,
-  organizationName,
-  userId,
-  isDarkMode,
-  setIsDarkMode,
-  menuSettings,
-  setMenuSettings,
-  studentDashboardSettings,
-  setStudentDashboardSettings,
-  brandingSettings,
-  setBrandingSettings,
-  isSavingSettings,
-  setIsSavingSettings,
-  isSavingBranding,
-  onSaveBranding,
-  onCoverUpload,
-  onLogoUpload,
-  isUploadingCover,
-  isUploadingLogo,
-  onPreviewStudentDashboard
-}: SettingsTabProps) {
   const { plan } = useSubscriptionLimits(organizationId);
   const isFreePlan = plan === 'free';
   const hasBranding = SUBSCRIPTION_PLANS[plan]?.limits?.branding ?? false;
@@ -354,7 +312,7 @@ export function SettingsTab({
                           brandingSettings.coverPosition === 'top' ? 'center top' 
                           : brandingSettings.coverPosition === 'bottom' ? 'center bottom' 
                           : brandingSettings.coverPosition === 'contain' ? 'center center'
-                          : 'center center', // Default to center - balanced cropping
+                          : 'center center',
                         backgroundColor: 'hsl(var(--muted))'
                       }}
                     />
@@ -549,7 +507,7 @@ export function SettingsTab({
                 </>
               )}
             </Button>
-            <Button variant="outline" className="rounded-xl gap-2" onClick={onPreviewStudentDashboard}>
+            <Button variant="outline" className="rounded-xl gap-2" onClick={previewStudentDashboard}>
               <Eye className="w-4 h-4" />
               Предпросмотр
             </Button>
@@ -594,7 +552,7 @@ export function SettingsTab({
             <p className="text-sm text-muted-foreground">
               Настройте, какие разделы будут отображаться в личном кабинете учеников
             </p>
-            <Button variant="outline" size="sm" className="rounded-xl gap-2" onClick={onPreviewStudentDashboard}>
+            <Button variant="outline" size="sm" className="rounded-xl gap-2" onClick={previewStudentDashboard}>
               <ExternalLink className="w-4 h-4" />
               Просмотр кабинета
             </Button>
