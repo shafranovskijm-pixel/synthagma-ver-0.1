@@ -63,14 +63,14 @@ serve(async (req) => {
     }
 
     const data = await response.json();
-    const imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    const generatedImageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
 
-    if (!imageUrl) {
+    if (!generatedImageUrl) {
       throw new Error("No image generated");
     }
 
     // Convert base64 to binary and upload to storage
-    const base64Data = imageUrl.replace(/^data:image\/\w+;base64,/, "");
+    const base64Data = generatedImageUrl.replace(/^data:image\/\w+;base64,/, "");
     const binaryData = Uint8Array.from(atob(base64Data), (c) => c.charCodeAt(0));
 
     const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
