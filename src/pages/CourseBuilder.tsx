@@ -70,7 +70,7 @@ export default function CourseBuilder() {
                 <h2 className="font-display text-xl font-semibold">Содержание курса</h2>
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={isImporting}><FileUp className="w-4 h-4 mr-2" />{isImporting ? 'Импорт...' : 'Импорт'}</Button>
-                  <input type="file" ref={fileInputRef} onChange={handleFileImport} multiple accept=".docx,.txt,.md" className="hidden" />
+                  <input type="file" ref={fileInputRef} onChange={handleFileImport} multiple accept=".docx,.txt,.md,.html,.htm" className="hidden" />
                   <Button variant="outline" size="sm" onClick={handleGenerateStructure} disabled={isGenerating}><Wand2 className="w-4 h-4 mr-2" />{isGenerating ? 'Генерация...' : 'AI Структура'}</Button>
                 </div>
               </div>

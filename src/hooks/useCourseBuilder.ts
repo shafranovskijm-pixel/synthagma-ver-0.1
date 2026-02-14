@@ -10,6 +10,7 @@ import {
 } from "@dnd-kit/core";
 import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { getExternalStorageConfig, uploadToStorage } from "@/utils/courseBuilderHelpers";
+import { isHtmlContent, parseHtmlCourse } from "@/utils/htmlCourseParser";
 import {
   type LessonType, type TestQuestionLocal, type Lesson, type GeneratedQuestion,
 } from "@/components/course-builder/LessonTypeConfig";
@@ -62,8 +63,48 @@ export function useCourseBuilder() {
     setIsImporting(true);
     try {
       let totalImported = 0;
-      for (let offset = 0; offset < allFiles.length; offset += CHUNK_SIZE) {
-        const chunk = allFiles.slice(offset, offset + CHUNK_SIZE);
+
+      // Check if any files are HTML — parse client-side
+      const htmlFiles: File[] = [];
+      const otherFiles: File[] = [];
+      for (const file of allFiles) {
+        const ext = file.name.split('.').pop()?.toLowerCase();
+        if (ext === 'html' || ext === 'htm') {
+          htmlFiles.push(file);
+        } else {
+          // Read first bytes to detect HTML in .txt files
+          const head = await file.slice(0, 500).text();
+          if (isHtmlContent(head)) {
+            htmlFiles.push(file);
+          } else {
+            otherFiles.push(file);
+          }
+        }
+      }
+
+      // Parse HTML files client-side
+      for (const file of htmlFiles) {
+        const text = await file.text();
+        const parsed = parseHtmlCourse(text);
+        if (!courseTitle && parsed.title) setCourseTitle(parsed.title);
+        if (!courseDescription && parsed.description) setCourseDescription(parsed.description);
+        const importedLessons: Lesson[] = parsed.lessons.map((l) => ({
+          id: l.id,
+          type: l.type,
+          title: l.title,
+          content: l.content,
+          blocks: l.blocks,
+          expanded: false,
+          questions: l.questions,
+          testPassingScore: l.testPassingScore,
+        }));
+        totalImported += importedLessons.length;
+        setLessons(prev => [...prev, ...importedLessons]);
+      }
+
+      // Process other files via edge function
+      for (let offset = 0; offset < otherFiles.length; offset += CHUNK_SIZE) {
+        const chunk = otherFiles.slice(offset, offset + CHUNK_SIZE);
         const formData = new FormData();
         chunk.forEach((file, i) => formData.append(`file_${offset + i}`, file));
         const { data, error } = await supabase.functions.invoke("import-course", { body: formData });
@@ -77,7 +118,12 @@ export function useCourseBuilder() {
         totalImported += importedLessons.length;
         setLessons(prev => [...prev, ...importedLessons]);
       }
-      toast.success(`Импортировано ${totalImported} ${totalImported === 1 ? 'лекция' : totalImported < 5 ? 'лекции' : 'лекций'}`);
+
+      if (totalImported > 0) {
+        toast.success(`Импортировано ${totalImported} ${totalImported === 1 ? 'урок' : totalImported < 5 ? 'урока' : 'уроков'}`);
+      } else {
+        toast.warning("Не удалось извлечь уроки из файла");
+      }
     } catch (error: any) { console.error('Import error:', error); toast.error(error.message || 'Ошибка импорта файлов'); }
     finally { setIsImporting(false); if (fileInputRef.current) fileInputRef.current.value = ''; }
   };
