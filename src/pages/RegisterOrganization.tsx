@@ -243,6 +243,25 @@ const RegisterOrganization = () => {
         // Wait a bit for role to be set, then refresh
         await new Promise(resolve => setTimeout(resolve, 500));
         await refreshUserRole();
+
+        // Send Telegram notification (non-blocking)
+        try {
+          const planLabel = selectedPlan || "free";
+          const telegramMessage = `🏢 <b>Новая организация зарегистрирована!</b>
+
+<b>Название:</b> ${orgName}
+<b>Контактное лицо:</b> ${contactName || "—"}
+<b>Email:</b> ${email}
+<b>Телефон:</b> ${phone || "—"}
+<b>ИНН:</b> ${inn || "—"}
+<b>Тариф:</b> ${planLabel}${promoCode ? `\n<b>Промокод:</b> ${promoCode}` : ""}`;
+
+          await supabase.functions.invoke("send-telegram-notification", {
+            body: { message: telegramMessage },
+          });
+        } catch (tgErr) {
+          console.error("Telegram notification error:", tgErr);
+        }
       }
 
       toast({
