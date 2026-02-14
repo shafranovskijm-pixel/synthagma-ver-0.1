@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import DOMPurify from "dompurify";
 import {
   Plus,
@@ -36,6 +36,9 @@ import {
   Strikethrough,
   Underline,
   CaseSensitive,
+  Star,
+  Check,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -383,8 +386,51 @@ const wrapTargets: { type: BlockType; icon: any; label: string; color: string }[
   { type: "accordion", icon: ChevronDown, label: "Сворачиваемая секция", color: "text-purple-500" },
   { type: "paragraph", icon: Type, label: "Обычный текст", color: "text-foreground" },
 ];
+// Style preset keys to save/apply
+const STYLE_PRESET_KEYS = ['textAlign', 'bgColor', 'textColor', 'textSize', 'bold', 'italic', 'strikethrough', 'underline', 'uppercase', 'lineHeight'] as const;
+type StylePreset = Pick<ContentBlock, typeof STYLE_PRESET_KEYS[number]>;
+
+const PRESETS_STORAGE_KEY = 'block-style-presets';
+
+function loadPresets(): { name: string; style: StylePreset }[] {
+  try {
+    const raw = localStorage.getItem(PRESETS_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function savePresets(presets: { name: string; style: StylePreset }[]) {
+  localStorage.setItem(PRESETS_STORAGE_KEY, JSON.stringify(presets));
+}
+
+function extractStyle(block: ContentBlock): StylePreset {
+  const style: any = {};
+  for (const key of STYLE_PRESET_KEYS) {
+    if (block[key] !== undefined) style[key] = block[key];
+  }
+  return style;
+}
+
+function describeStyle(style: StylePreset): string {
+  const parts: string[] = [];
+  if (style.bold) parts.push('Ж');
+  if (style.italic) parts.push('К');
+  if (style.underline) parts.push('П');
+  if (style.strikethrough) parts.push('З');
+  if (style.uppercase) parts.push('AA');
+  if (style.textSize === 'sm') parts.push('A-');
+  if (style.textSize === 'lg') parts.push('A+');
+  if (style.textAlign === 'center') parts.push('⟺');
+  if (style.textAlign === 'right') parts.push('→');
+  if (style.bgColor) parts.push(`фон:${style.bgColor}`);
+  if (style.textColor) parts.push(`цвет:${style.textColor}`);
+  if (style.lineHeight === 'tight') parts.push('↕-');
+  if (style.lineHeight === 'relaxed') parts.push('↕+');
+  return parts.length ? parts.join(' ') : 'Стандарт';
+}
 
 function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAddAfter, courseTitle, lessonTitle, existingContent }: SortableBlockItemProps) {
+  const [presets, setPresets] = useState(() => loadPresets());
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
 
   const style = {
@@ -511,6 +557,43 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
                 </div>
               </PopoverContent>
             </Popover>
+          )}
+          {canStyle && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className={cn("h-8 w-8 flex items-center justify-center hover:bg-white/20 rounded-full transition-colors", presets.length > 0 && "text-yellow-400")} title="Пресеты стиля">
+                  <Star className="w-4 h-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="center" className="w-56">
+                <DropdownMenuItem onClick={() => {
+                  const name = describeStyle(extractStyle(block));
+                  const newPresets = [...presets, { name, style: extractStyle(block) }];
+                  savePresets(newPresets);
+                  setPresets(newPresets);
+                  import("sonner").then(({ toast }) => toast.success("Пресет сохранён"));
+                }}>
+                  <Star className="w-4 h-4 mr-2 text-yellow-500" />Сохранить текущий стиль
+                </DropdownMenuItem>
+                {presets.length > 0 && <DropdownMenuSeparator />}
+                {presets.map((p, i) => (
+                  <DropdownMenuItem key={i} className="flex items-center justify-between group/preset">
+                    <span className="flex-1 truncate text-xs" onClick={() => onUpdate(p.style)}>{p.name}</span>
+                    <button
+                      className="ml-2 opacity-0 group-hover/preset:opacity-100 h-5 w-5 flex items-center justify-center hover:bg-destructive/20 rounded transition-all"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const newPresets = presets.filter((_, j) => j !== i);
+                        savePresets(newPresets);
+                        setPresets(newPresets);
+                      }}
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
