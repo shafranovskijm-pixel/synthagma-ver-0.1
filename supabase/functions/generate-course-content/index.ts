@@ -585,6 +585,59 @@ serve(async (req) => {
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
+
+        case "quiz": {
+          const quizSystemPrompt = `Ты эксперт по созданию образовательных мини-квизов. Создай один вопрос с вариантами ответов для проверки понимания материала.
+Правила:
+1. Один чёткий вопрос по теме
+2. 3-4 варианта ответа
+3. Только один правильный ответ
+4. Краткое пояснение почему ответ правильный
+5. На русском языке`;
+
+          const quizTool = {
+            type: "function",
+            function: {
+              name: "create_quiz",
+              description: "Создает мини-квиз с вопросом и вариантами ответов",
+              parameters: {
+                type: "object",
+                properties: {
+                  question: { type: "string", description: "Вопрос квиза" },
+                  options: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        text: { type: "string" },
+                        isCorrect: { type: "boolean" }
+                      },
+                      required: ["text", "isCorrect"],
+                      additionalProperties: false
+                    }
+                  },
+                  explanation: { type: "string", description: "Пояснение к правильному ответу" }
+                },
+                required: ["question", "options", "explanation"],
+                additionalProperties: false
+              }
+            }
+          };
+
+          const quizResult = await generateWithAI(
+            `Создай мини-квиз по теме "${lessonTitle}" для курса "${courseTitle || "Курс"}"`,
+            quizSystemPrompt,
+            quizTool
+          );
+
+          return new Response(
+            JSON.stringify({ 
+              success: true, 
+              quiz: quizResult
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
         
         default:
           return new Response(
