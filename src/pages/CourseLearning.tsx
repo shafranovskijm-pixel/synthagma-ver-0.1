@@ -33,8 +33,8 @@ const CourseLearning = () => {
     user, navigate, isMobile, contentRef,
     course, lessons, currentLessonIndex, lessonProgress, loading,
     sidebarOpen, setSidebarOpen, isTransitioning,
-    testQuestions, testSubmitted, testScore, testPassingScore, testQuestionsCount, allBankQuestions,
-    answers, setAnswers, usedQuestionIds,
+    testQuestions, testSubmitted, testScore, testPassingScore, allBankQuestions,
+    answers, setAnswers,
     isSpeaking, speakText, ttsSettingsOpen, setTtsSettingsOpen, ttsSettings, setTtsSettings, elevenLabsTTS,
     isChatOpen, setIsChatOpen, chatMessages, chatInput, setChatInput, isChatLoading, chatScrollRef, sendChatMessage,
     videoWatchProgress, setVideoWatchProgress, savedPosition, isVideoProgressLoading, saveVideoPosition,
@@ -102,7 +102,7 @@ const CourseLearning = () => {
               <button key={lesson.id} onClick={() => { goToLesson(index); onNavigate?.(); }} disabled={!isAccessible}
                 className={cn("w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all duration-200", isCurrent ? "bg-primary/10 text-primary shadow-sm" : isAccessible ? "hover:bg-muted" : "opacity-50 cursor-not-allowed")}>
                 {completed ? <div className="w-8 h-8 rounded-full bg-sigma-green/10 flex items-center justify-center shrink-0"><CheckCircle2 className="w-5 h-5 text-sigma-green" /></div> : !isAccessible ? <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0"><Lock className="w-4 h-4 text-muted-foreground" /></div> : <div className={cn("w-8 h-8 rounded-full flex items-center justify-center shrink-0", isCurrent ? "bg-primary/10" : "bg-muted")}><Circle className={cn("w-5 h-5", isCurrent ? "text-primary" : "text-muted-foreground")} /></div>}
-                <div className="flex-1 min-w-0"><div className="text-sm font-medium line-clamp-2">{lesson.title}</div><div className="flex items-center gap-1 text-xs text-muted-foreground mt-1"><Icon className="w-3 h-3" />{lesson.type === 'text' && 'Текст'}{lesson.type === 'video' && 'Видео'}{lesson.type === 'test' && 'Тест'}{lesson.type === 'audio' && 'Аудио'}{!isAccessible && <span className="ml-1">• Заблокировано</span>}</div></div>
+                <div className="flex-1 min-w-0"><div className="text-sm font-medium line-clamp-2">{lesson.title}</div><div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">{lesson.type === 'text' && 'Текст'}{lesson.type === 'video' && 'Видео'}{lesson.type === 'test' && 'Тест'}{lesson.type === 'audio' && 'Аудио'}{!isAccessible && <span className="ml-1">• Заблокировано</span>}</div></div>
               </button>
             );
           })}
@@ -155,7 +155,7 @@ const CourseLearning = () => {
                   <div className={cn("rounded-xl bg-primary/10 flex items-center justify-center shrink-0", isMobile ? "w-8 h-8" : "w-10 h-10")}><FileText className={cn(isMobile ? "w-4 h-4" : "w-5 h-5", "text-primary")} /></div>
                   <div className="min-w-0"><h1 className={cn("font-display font-bold line-clamp-2", isMobile ? "text-lg" : "text-2xl")}>{currentLesson.title}</h1><p className="text-xs md:text-sm text-muted-foreground">Урок {currentLessonIndex + 1}</p></div>
                 </div>
-                {currentLesson.blocks && currentLesson.blocks.length > 0 ? <BlockRenderer blocks={currentLesson.blocks} /> : <div className="prose prose-lg max-w-none dark:prose-invert"><div className="whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: currentLesson.content?.replace(/\n/g, '<br/>') || '' }} /></div>}
+                {(() => { const blocks = currentLesson.content ? (() => { try { const p = JSON.parse(currentLesson.content); return Array.isArray(p) && p.every((x: any) => x.type && x.id) ? p : []; } catch { return []; } })() : []; return blocks.length > 0 ? <BlockRenderer blocks={blocks} /> : <div className="prose prose-lg max-w-none dark:prose-invert"><div className="whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: currentLesson.content?.replace(/\n/g, '<br/>') || '' }} /></div>; })()}
               </div>
             )}
 
