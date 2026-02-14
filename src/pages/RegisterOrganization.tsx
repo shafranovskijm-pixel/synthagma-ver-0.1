@@ -206,10 +206,13 @@ const RegisterOrganization = () => {
 
         if (orgError) throw orgError;
 
-        // 2b. Set subscription plan on the org
+        // 2b. Set subscription plan and promo code on the org
         await supabase
           .from('organizations')
-          .update({ subscription_plan: selectedPlan } as any)
+          .update({ 
+            subscription_plan: selectedPlan,
+            promo_code: promoApplied ? promoCode.trim().toUpperCase() : null
+          } as any)
           .eq('id', orgId);
 
         // 2c. Increment promo code usage if applied

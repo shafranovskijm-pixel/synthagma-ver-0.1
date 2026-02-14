@@ -47,6 +47,8 @@ interface Organization {
   contact_name: string | null;
   ai_enabled: boolean;
   created_at: string;
+  subscription_plan?: string;
+  promo_code?: string | null;
   is_paid?: boolean;
   paid_until?: string | null;
   tariff_type?: string;
@@ -118,7 +120,7 @@ export function OrganizationsManager() {
     try {
       const { data, error } = await supabase
         .from("organizations")
-        .select("*, is_paid, paid_until, tariff_type, monthly_price")
+        .select("*, is_paid, paid_until, tariff_type, monthly_price, subscription_plan, promo_code")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -666,6 +668,11 @@ export function OrganizationsManager() {
                           <div className="font-medium text-primary hover:underline">{org.name}</div>
                           {org.inn && (
                             <div className="text-sm text-muted-foreground">ИНН: {org.inn}</div>
+                          )}
+                          {org.promo_code && (
+                            <Badge variant="outline" className="text-xs mt-0.5 border-green-500 text-green-600">
+                              🎟 {org.promo_code}
+                            </Badge>
                           )}
                         </div>
                       </div>
