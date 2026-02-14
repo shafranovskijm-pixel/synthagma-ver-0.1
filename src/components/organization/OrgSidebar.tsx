@@ -7,7 +7,7 @@ import {
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { HelpButton } from "@/components/onboarding/HelpButton";
 import { organizationHelpTips } from "@/constants/onboardingSteps";
-import type { MenuSettings } from "@/types";
+import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 
 export type TabType = 
   | "courses" 
@@ -28,36 +28,21 @@ export type TabType =
   | "settings" 
   | "frdo";
 
-interface OrgSidebarProps {
-  activeTab: TabType;
-  setActiveTab: (tab: TabType) => void;
-  organizationName: string;
-  customName?: string;
-  customSubtitle?: string;
-  logoUrl?: string;
-  isFrdoEnabled: boolean;
-  menuSettings: MenuSettings;
-  isEnabled: (feature: string) => boolean;
-  isMobileSidebarOpen: boolean;
-  setIsMobileSidebarOpen: (open: boolean) => void;
-  onLogout: () => void;
-}
+export function OrgSidebar() {
+  const d = useOrgDashboard();
+  const activeTab = d.tabNavigation.activeTab;
+  const setActiveTab = d.tabNavigation.setActiveTab;
+  const organizationName = d.organizationName;
+  const customName = d.branding.brandingSettings.customName;
+  const customSubtitle = d.branding.brandingSettings.customSubtitle;
+  const logoUrl = d.branding.brandingSettings.logoUrl;
+  const isFrdoEnabled = d.isFrdoEnabled;
+  const menuSettings = d.dashboardSettings.menuSettings;
+  const isEnabled = d.isEnabled;
+  const isMobileSidebarOpen = d.isMobileSidebarOpen;
+  const setIsMobileSidebarOpen = d.setIsMobileSidebarOpen;
+  const onLogout = d.handleLogout;
 
-export function OrgSidebar({
-  activeTab,
-  setActiveTab,
-  organizationName,
-  customName,
-  customSubtitle,
-  logoUrl,
-  isFrdoEnabled,
-  menuSettings,
-  isEnabled,
-  isMobileSidebarOpen,
-  setIsMobileSidebarOpen,
-  onLogout
-}: OrgSidebarProps) {
-  
   const handleTabClick = (tab: TabType) => {
     setActiveTab(tab);
     setIsMobileSidebarOpen(false);
@@ -99,7 +84,6 @@ export function OrgSidebar({
       {/* Navigation */}
       <nav className="flex-1 p-4 overflow-y-auto scrollbar-hide">
         <div className="space-y-2">
-          {/* Courses */}
           {menuSettings.showCourses !== false && isEnabled("courses") && (
             <button data-onboarding="courses" onClick={() => handleTabClick("courses")} className={tabButtonClass("courses")} aria-label="Курсы" aria-current={activeTab === "courses" ? "page" : undefined}>
               <BookOpen className="w-5 h-5" aria-hidden="true" />
@@ -107,7 +91,6 @@ export function OrgSidebar({
             </button>
           )}
           
-          {/* Companies */}
           {menuSettings.showCompanies !== false && isEnabled("companies") && (
             <button onClick={() => handleTabClick("organizations")} className={tabButtonClass("organizations")} aria-label="Компании" aria-current={activeTab === "organizations" ? "page" : undefined}>
               <Building2 className="w-5 h-5" aria-hidden="true" />
@@ -115,7 +98,6 @@ export function OrgSidebar({
             </button>
           )}
           
-          {/* Students */}
           {menuSettings.showStudents !== false && isEnabled("students") && (
             <button data-onboarding="students" onClick={() => handleTabClick("students")} className={tabButtonClass("students")} aria-label="Ученики" aria-current={activeTab === "students" ? "page" : undefined}>
               <Users className="w-5 h-5" aria-hidden="true" />
@@ -123,7 +105,6 @@ export function OrgSidebar({
             </button>
           )}
           
-          {/* Library */}
           {menuSettings.showLibrary && isEnabled("library") && (
             <button onClick={() => handleTabClick("library")} className={tabButtonClass("library")}>
               <Library className="w-5 h-5" />
@@ -131,7 +112,6 @@ export function OrgSidebar({
             </button>
           )}
           
-          {/* Stats */}
           {menuSettings.showStats && (
             <button onClick={() => handleTabClick("stats")} className={tabButtonClass("stats")}>
               <BarChart3 className="w-5 h-5" />
@@ -139,7 +119,6 @@ export function OrgSidebar({
             </button>
           )}
           
-          {/* Links */}
           {menuSettings.showLinks && isEnabled("links") && (
             <button onClick={() => handleTabClick("links")} className={tabButtonClass("links")}>
               <Link className="w-5 h-5" />
@@ -147,7 +126,6 @@ export function OrgSidebar({
             </button>
           )}
           
-          {/* Documents */}
           {menuSettings.showDocuments && isEnabled("documents") && (
             <button data-onboarding="documents" onClick={() => handleTabClick("documents")} className={tabButtonClass("documents")}>
               <FileText className="w-5 h-5" />
@@ -155,7 +133,6 @@ export function OrgSidebar({
             </button>
           )}
           
-          {/* Journals */}
           {menuSettings.showJournals !== false && isEnabled("journals") && (
             <button onClick={() => handleTabClick("journals")} className={tabButtonClass("journals")}>
               <ClipboardList className="w-5 h-5" />
@@ -163,7 +140,6 @@ export function OrgSidebar({
             </button>
           )}
           
-          {/* Labor Safety */}
           {isEnabled("labor_safety") && (
             <button onClick={() => handleTabClick("labor-safety")} className={tabButtonClass("labor-safety")}>
               <HardHat className="w-5 h-5" />
@@ -171,7 +147,6 @@ export function OrgSidebar({
             </button>
           )}
           
-          {/* FRDO */}
           {menuSettings.showFrdo !== false && isFrdoEnabled && isEnabled("frdo") && (
             <button onClick={() => handleTabClick("frdo")} className={tabButtonClass("frdo")}>
               <FileSpreadsheet className="w-5 h-5" />
@@ -179,7 +154,6 @@ export function OrgSidebar({
             </button>
           )}
           
-          {/* Settings - always visible, cannot be hidden */}
           {isEnabled("settings") && (
             <button data-onboarding="settings" onClick={() => handleTabClick("settings")} className={tabButtonClass("settings")}>
               <Settings className="w-5 h-5" />

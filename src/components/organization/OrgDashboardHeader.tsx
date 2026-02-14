@@ -1,36 +1,20 @@
 import { Button } from "@/components/ui/button";
-import { Plus, Upload, FileSpreadsheet, Menu } from "lucide-react";
+import { Plus, FileSpreadsheet, Menu } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import type { TabType } from "@/components/organization/OrgSidebar";
+import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 
-interface OrgDashboardHeaderProps {
-  activeTab: TabType;
-  organizationName: string;
-  customName?: string;
-  isMobile: boolean;
-  onOpenMobileSidebar: () => void;
-  onCreateLink: () => void;
-  onImportStudents: () => void;
-  onAddStudent: () => void;
-  checkStudentLimit: () => { allowed: boolean; message?: string };
-}
-
-export function OrgDashboardHeader({
-  activeTab,
-  organizationName,
-  customName,
-  isMobile,
-  onOpenMobileSidebar,
-  onCreateLink,
-  onImportStudents,
-  onAddStudent,
-  checkStudentLimit,
-}: OrgDashboardHeaderProps) {
+export function OrgDashboardHeader() {
   const navigate = useNavigate();
+  const d = useOrgDashboard();
+  
+  const activeTab = d.tabNavigation.activeTab;
+  const organizationName = d.organizationName;
+  const customName = d.branding.brandingSettings.customName;
+  const isMobile = d.isMobile;
 
   const handleStudentAction = (action: () => void) => {
-    const result = checkStudentLimit();
+    const result = d.checkLimit('student');
     if (!result.allowed) {
       toast.error(result.message);
       return;
@@ -42,7 +26,7 @@ export function OrgDashboardHeader({
     <header className="bg-card border-b border-border px-4 lg:px-8 py-4 lg:py-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <button onClick={onOpenMobileSidebar} className="lg:hidden p-2 rounded-lg hover:bg-secondary">
+          <button onClick={() => d.setIsMobileSidebarOpen(true)} className="lg:hidden p-2 rounded-lg hover:bg-secondary">
             <Menu className="w-6 h-6" />
           </button>
           <div>
@@ -69,7 +53,7 @@ export function OrgDashboardHeader({
         </div>
         <div className="flex gap-2 lg:gap-3 flex-wrap">
           {activeTab === "links" && (
-            <Button className="btn-gradient rounded-xl gap-2 text-xs lg:text-sm" onClick={onCreateLink}>
+            <Button className="btn-gradient rounded-xl gap-2 text-xs lg:text-sm" onClick={() => d.registrationLinks.setShowCreateLinkDialog(true)}>
               <Plus className="w-4 h-4" />
               <span className="hidden sm:inline">Создать ссылку</span>
               <span className="sm:hidden">Создать</span>
@@ -77,12 +61,12 @@ export function OrgDashboardHeader({
           )}
           {activeTab === "students" && (
             <>
-              <Button variant="outline" className="rounded-xl gap-2 text-xs lg:text-sm" onClick={() => handleStudentAction(onImportStudents)}>
+              <Button variant="outline" className="rounded-xl gap-2 text-xs lg:text-sm" onClick={() => handleStudentAction(() => d.setShowImportDialog(true))}>
                 <FileSpreadsheet className="w-4 h-4" />
                 <span className="hidden sm:inline">Импорт учеников</span>
                 <span className="sm:hidden">Импорт</span>
               </Button>
-              <Button className="btn-gradient rounded-xl gap-2 text-xs lg:text-sm" onClick={() => handleStudentAction(onAddStudent)}>
+              <Button className="btn-gradient rounded-xl gap-2 text-xs lg:text-sm" onClick={() => handleStudentAction(() => d.studentManagement.setShowAddStudentDialog(true))}>
                 <Plus className="w-4 h-4" />
                 <span className="hidden sm:inline">Добавить ученика</span>
                 <span className="sm:hidden">Добавить</span>
