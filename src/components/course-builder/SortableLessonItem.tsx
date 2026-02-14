@@ -1,18 +1,16 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import DOMPurify from "dompurify";
 import {
   GripVertical, FileText, Video, Image, FileQuestion,
   Trash2, Eye, Sparkles, Upload, ChevronDown, ChevronUp,
   Loader2, Headphones, Volume2, Pause, Play, Square,
   Presentation, FileSpreadsheet,
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { BlockEditor, ContentBlock, blocksToJson } from "@/components/course-builder/BlockEditor";
+import { BlockEditor, blocksToJson } from "@/components/course-builder/BlockEditor";
 import { TestQuestionEditor } from "@/components/course-builder/TestQuestionEditor";
 import { TestImportDialog } from "@/components/course-builder/TestImportDialog";
 import { useSortable } from "@dnd-kit/sortable";
@@ -24,6 +22,7 @@ import {
 } from "@/components/course-builder/LessonTypeConfig";
 import { VideoPreviewInline } from "@/components/course-builder/VideoPreviewInline";
 import { SliderLessonEditor } from "@/components/course-builder/SliderLessonEditor";
+import { useLessonMedia } from "@/hooks/useLessonMedia";
 
 interface SortableLessonProps {
   lesson: Lesson;
@@ -44,189 +43,43 @@ export function SortableLessonItem({
   generatedQuestions, onQuestionsProcessed,
 }: SortableLessonProps) {
   const [isPreviewMode, setIsPreviewMode] = useState(false);
-  const [isGeneratingContent, setIsGeneratingContent] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [isSpeechPaused, setIsSpeechPaused] = useState(false);
-  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
-  const [videoUploadProgress, setVideoUploadProgress] = useState<number | null>(null);
-  const videoUploadXhrRef = useRef<XMLHttpRequest | null>(null);
-  const videoInputRef = useRef<HTMLInputElement | null>(null);
+  const media = useLessonMedia(lesson.id, courseId, onUpdate);
 
-  const {
-    attributes, listeners, setNodeRef, transform, transition, isDragging,
-  } = useSortable({ id: lesson.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-    zIndex: isDragging ? 1000 : 'auto' as const,
-  };
-
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: lesson.id });
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, zIndex: isDragging ? 1000 : 'auto' as const };
   const Icon = lessonIcons[lesson.type] || FileText;
 
-  const extractTextFromBlocks = (blocks: ContentBlock[]): string => {
-    return blocks
-      .filter(b => ["heading1", "heading2", "quote", "bulletList", "numberedList", "paragraph"].includes(b.type))
-      .map(b => (b.content || "").replace(/<[^>]+>/g, ""))
-      .filter(t => t.trim())
-      .join(". ");
-  };
+  useEffect(() => { if (!isPreviewMode) media.handleStopSpeech(); }, [isPreviewMode]);
 
-  const handlePlayAudio = () => {
-    const blocks = lesson.blocks || [];
-    const textToSpeak = extractTextFromBlocks(blocks);
-    if (!textToSpeak.trim()) { toast.error("Нет текста для озвучивания"); return; }
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) { toast.error("Озвучка не поддерживается"); return; }
-
-    if (isSpeaking) {
-      if (isSpeechPaused) { window.speechSynthesis.resume(); setIsSpeechPaused(false); }
-      else { window.speechSynthesis.pause(); setIsSpeechPaused(true); }
-      return;
-    }
-
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(textToSpeak);
-    utterance.lang = "ru-RU"; utterance.rate = 1; utterance.pitch = 1;
-    utterance.onend = () => { setIsSpeaking(false); setIsSpeechPaused(false); utteranceRef.current = null; };
-    utterance.onerror = () => { setIsSpeaking(false); setIsSpeechPaused(false); utteranceRef.current = null; toast.error("Ошибка озвучивания"); };
-    utteranceRef.current = utterance;
-    setIsSpeaking(true); setIsSpeechPaused(false);
-    window.speechSynthesis.speak(utterance);
-  };
-
-  const handleStopSpeech = () => {
-    if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
-    setIsSpeaking(false); setIsSpeechPaused(false); utteranceRef.current = null;
-  };
-
-  useEffect(() => { if (!isPreviewMode) handleStopSpeech(); }, [isPreviewMode]);
-
-  const handleGenerateContent = async () => {
-    setIsGeneratingContent(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("generate-lesson-content", {
-        body: { lessonTitle: lesson.title, lessonType: lesson.type, courseTitle, courseDescription }
-      });
-      if (error) throw new Error(error.message || "Ошибка генерации");
-      if (!data.success) throw new Error(data.error || "Ошибка генерации контента");
-
-      if (lesson.type === "test") {
-        const questions = data.questions || [];
-        if (questions.length > 0) {
-          onUpdate({ content: JSON.stringify({ generatedQuestions: questions }) });
-          toast.success(`Сгенерировано ${questions.length} вопросов`);
-        }
-      } else {
-        const blocks: ContentBlock[] = (data.blocks || []).map((b: any) => ({
-          id: crypto.randomUUID(), type: b.type, content: b.content
-        }));
-        if (blocks.length > 0) { onUpdate({ blocks, content: blocksToJson(blocks) }); toast.success("Контент сгенерирован"); }
-        else toast.error("AI не вернул контент");
-      }
-    } catch (error: any) {
-      console.error("Generate content error:", error);
-      toast.error(error.message || "Ошибка генерации контента");
-    } finally { setIsGeneratingContent(false); }
-  };
-
-  const handleVideoUpload = async (file: File) => {
-    const maxSize = 500 * 1024 * 1024;
-    if (file.size > maxSize) { toast.error("Файл слишком большой. Максимум 500 МБ"); return; }
-    if (!courseId) { toast.error("Сначала сохраните курс"); return; }
-
-    setVideoUploadProgress(0);
-    try {
-      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'mp4';
-      const fileName = `video_${lesson.id}_${Date.now()}.${fileExt}`;
-      const filePath = `${courseId}/${fileName}`;
-
-      let externalConfig: { configured: boolean; url: string | null; key: string | null } | null = null;
-      try { const { data } = await supabase.functions.invoke('get-external-storage-config'); externalConfig = data; } catch {}
-
-      const useExternal = externalConfig?.configured && externalConfig?.url && externalConfig?.key;
-      const baseUrl = useExternal ? externalConfig.url : import.meta.env.VITE_SUPABASE_URL;
-      const apiKey = useExternal ? externalConfig.key : import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-      const bucketName = useExternal ? 'course-videos' : 'course-files';
-
-      let authToken = apiKey;
-      if (!useExternal) {
-        const { data: session } = await supabase.auth.getSession();
-        authToken = session?.session?.access_token || apiKey;
-      }
-
-      const xhr = new XMLHttpRequest();
-      videoUploadXhrRef.current = xhr;
-      const uploadUrl = `${baseUrl}/storage/v1/object/${bucketName}/${filePath}`;
-
-      xhr.upload.addEventListener('progress', (event) => {
-        if (event.lengthComputable) setVideoUploadProgress(Math.round((event.loaded / event.total) * 100));
-      });
-      xhr.addEventListener('load', () => {
-        videoUploadXhrRef.current = null;
-        if (xhr.status >= 200 && xhr.status < 300) {
-          const publicUrl = `${baseUrl}/storage/v1/object/public/${bucketName}/${filePath}`;
-          onUpdate({ content: publicUrl });
-          toast.success(useExternal ? "Видео загружено во внешнее хранилище!" : "Видео загружено!");
-        } else toast.error(`Ошибка загрузки: ${xhr.statusText || 'Неизвестная ошибка'}`);
-        setVideoUploadProgress(null);
-        if (videoInputRef.current) videoInputRef.current.value = '';
-      });
-      xhr.addEventListener('error', () => { videoUploadXhrRef.current = null; toast.error("Ошибка соединения при загрузке"); setVideoUploadProgress(null); if (videoInputRef.current) videoInputRef.current.value = ''; });
-      xhr.addEventListener('abort', () => { videoUploadXhrRef.current = null; setVideoUploadProgress(null); if (videoInputRef.current) videoInputRef.current.value = ''; });
-
-      xhr.open('POST', uploadUrl, true);
-      xhr.setRequestHeader('Authorization', `Bearer ${authToken}`);
-      xhr.setRequestHeader('apikey', apiKey!);
-      xhr.setRequestHeader('x-upsert', 'true');
-      xhr.send(file);
-    } catch (error: any) {
-      console.error("Video upload error:", error);
-      toast.error(`Ошибка загрузки: ${error.message}`);
-      setVideoUploadProgress(null); videoUploadXhrRef.current = null;
-      if (videoInputRef.current) videoInputRef.current.value = '';
-    }
-  };
-
-  const cancelVideoUpload = () => {
-    if (videoUploadXhrRef.current) { videoUploadXhrRef.current.abort(); videoUploadXhrRef.current = null; }
-    setVideoUploadProgress(null);
-    if (videoInputRef.current) videoInputRef.current.value = '';
-    toast.info("Загрузка отменена");
-  };
+  const onGenerate = () => media.handleGenerateContent(lesson.title, lesson.type, courseTitle, courseDescription, lesson.blocks);
 
   return (
     <div ref={setNodeRef} style={style} className="border border-border rounded-xl overflow-hidden bg-card">
+      {/* Header */}
       <div className="flex items-center gap-3 p-4 cursor-pointer hover:bg-secondary/50 transition-colors" onClick={onToggle}>
         <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing touch-none" onClick={(e) => e.stopPropagation()}>
           <GripVertical className="w-4 h-4 text-muted-foreground" />
         </div>
         <span className="text-sm font-medium text-muted-foreground w-8">{index + 1}.</span>
-        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${lessonColors[lesson.type]}`}>
-          <Icon className="w-4 h-4" />
-        </div>
+        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${lessonColors[lesson.type]}`}><Icon className="w-4 h-4" /></div>
         <Input value={lesson.title} onChange={(e) => { e.stopPropagation(); onUpdate({ title: e.target.value }); }} onClick={(e) => e.stopPropagation()} className="flex-1 border-0 bg-transparent focus-visible:ring-0 px-0" />
-        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onDelete(); }} className="text-destructive hover:text-destructive">
-          <Trash2 className="w-4 h-4" />
-        </Button>
+        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onDelete(); }} className="text-destructive hover:text-destructive"><Trash2 className="w-4 h-4" /></Button>
         {lesson.expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
       </div>
 
       {lesson.expanded && (
         <div className="p-4 pt-0 border-t border-border">
-          {/* Text / Lesson type */}
+          {/* Text / Lesson */}
           {(lesson.type === "text" || lesson.type === "lesson") && (
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
                 <div className="flex items-center gap-2">
                   <Button variant={isPreviewMode ? "outline" : "default"} size="sm" className="rounded-lg text-xs" onClick={() => setIsPreviewMode(false)}>Редактор</Button>
-                  <Button variant={isPreviewMode ? "default" : "outline"} size="sm" className="rounded-lg text-xs gap-1" onClick={() => setIsPreviewMode(true)}>
-                    <Eye className="w-3 h-3" />Предпросмотр
-                  </Button>
+                  <Button variant={isPreviewMode ? "default" : "outline"} size="sm" className="rounded-lg text-xs gap-1" onClick={() => setIsPreviewMode(true)}><Eye className="w-3 h-3" />Предпросмотр</Button>
                 </div>
-                <Button variant="outline" size="sm" className="rounded-lg text-xs gap-1 border-primary text-primary hover:bg-primary/10" onClick={handleGenerateContent} disabled={isGeneratingContent}>
-                  {isGeneratingContent ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                  {isGeneratingContent ? "Генерация..." : "Написать с AI"}
+                <Button variant="outline" size="sm" className="rounded-lg text-xs gap-1 border-primary text-primary hover:bg-primary/10" onClick={onGenerate} disabled={media.isGeneratingContent}>
+                  {media.isGeneratingContent ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                  {media.isGeneratingContent ? "Генерация..." : "Написать с AI"}
                 </Button>
               </div>
               {isPreviewMode ? (
@@ -235,14 +88,10 @@ export function SortableLessonItem({
                     <BlockEditor blocks={lesson.blocks || []} onChange={() => {}} readOnly />
                   </div>
                   <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2">
-                    <Button onClick={handlePlayAudio} variant="default" size="icon" className="w-12 h-12 rounded-full shadow-lg" title={isSpeaking ? (isSpeechPaused ? "Продолжить" : "Пауза") : "Озвучить"}>
-                      {isSpeaking ? (isSpeechPaused ? <Play className="w-5 h-5" /> : <Pause className="w-5 h-5" />) : <Volume2 className="w-5 h-5" />}
+                    <Button onClick={() => media.handlePlayAudio(lesson.blocks || [])} variant="default" size="icon" className="w-12 h-12 rounded-full shadow-lg">
+                      {media.isSpeaking ? (media.isSpeechPaused ? <Play className="w-5 h-5" /> : <Pause className="w-5 h-5" />) : <Volume2 className="w-5 h-5" />}
                     </Button>
-                    {isSpeaking && (
-                      <Button onClick={handleStopSpeech} variant="destructive" size="icon" className="w-12 h-12 rounded-full shadow-lg" title="Остановить">
-                        <Square className="w-5 h-5" />
-                      </Button>
-                    )}
+                    {media.isSpeaking && <Button onClick={media.handleStopSpeech} variant="destructive" size="icon" className="w-12 h-12 rounded-full shadow-lg"><Square className="w-5 h-5" /></Button>}
                   </div>
                 </div>
               ) : (
@@ -251,28 +100,28 @@ export function SortableLessonItem({
             </div>
           )}
 
-          {/* Video type */}
+          {/* Video */}
           {lesson.type === "video" && (
             <div className="space-y-4">
               {(lesson.thumbnailUrl || lesson.videoScript) && (
                 <div className="bg-gradient-to-r from-sigma-purple/10 to-primary/10 rounded-xl p-4 border border-sigma-purple/20">
                   <h4 className="font-medium text-sm mb-3 flex items-center gap-2"><Sparkles className="w-4 h-4 text-sigma-purple" />AI-сгенерированный контент</h4>
-                  {lesson.thumbnailUrl && (<div className="mb-3"><p className="text-xs text-muted-foreground mb-2">Превью:</p><img src={lesson.thumbnailUrl} alt="Превью видео" className="rounded-lg max-h-48 object-contain border border-border" /></div>)}
-                  {lesson.videoScript && (<div><p className="text-xs text-muted-foreground mb-2">Сценарий:</p><div className="bg-background/50 rounded-lg p-3 text-sm max-h-40 overflow-y-auto">{lesson.videoScript}</div></div>)}
+                  {lesson.thumbnailUrl && <div className="mb-3"><p className="text-xs text-muted-foreground mb-2">Превью:</p><img src={lesson.thumbnailUrl} alt="Превью видео" className="rounded-lg max-h-48 object-contain border border-border" /></div>}
+                  {lesson.videoScript && <div><p className="text-xs text-muted-foreground mb-2">Сценарий:</p><div className="bg-background/50 rounded-lg p-3 text-sm max-h-40 overflow-y-auto">{lesson.videoScript}</div></div>}
                   <p className="text-xs text-muted-foreground mt-3">💡 Для создания видео используйте: Runway ML, Pika Labs, или загрузите готовое видео</p>
                 </div>
               )}
               <div className="border-2 border-dashed border-border rounded-xl p-6 text-center hover:border-sigma-purple/50 transition-colors">
-                {videoUploadProgress !== null ? (
+                {media.videoUploadProgress !== null ? (
                   <div className="space-y-4">
                     <Video className="w-10 h-10 mx-auto text-sigma-purple animate-pulse" />
                     <div className="space-y-2">
                       <div className="flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin text-sigma-purple" /><span className="text-sm font-medium">Загрузка видео...</span></div>
                       <div className="w-full max-w-xs mx-auto">
-                        <div className="h-2 bg-secondary rounded-full overflow-hidden"><div className="h-full bg-sigma-purple transition-all duration-300 ease-out" style={{ width: `${videoUploadProgress}%` }} /></div>
-                        <p className="text-sm text-muted-foreground mt-1">{videoUploadProgress}%</p>
+                        <div className="h-2 bg-secondary rounded-full overflow-hidden"><div className="h-full bg-sigma-purple transition-all duration-300 ease-out" style={{ width: `${media.videoUploadProgress}%` }} /></div>
+                        <p className="text-sm text-muted-foreground mt-1">{media.videoUploadProgress}%</p>
                       </div>
-                      <Button variant="outline" size="sm" className="mt-2 gap-1 text-destructive hover:text-destructive border-destructive/50 hover:bg-destructive/10" onClick={cancelVideoUpload}><Trash2 className="w-3 h-3" />Отменить</Button>
+                      <Button variant="outline" size="sm" className="mt-2 gap-1 text-destructive hover:text-destructive border-destructive/50 hover:bg-destructive/10" onClick={media.cancelVideoUpload}><Trash2 className="w-3 h-3" />Отменить</Button>
                     </div>
                   </div>
                 ) : (
@@ -282,7 +131,7 @@ export function SortableLessonItem({
                     <p className="text-xs text-muted-foreground mb-4">MP4, WebM, MOV — до 500 МБ</p>
                     <label className="inline-flex items-center gap-2 px-4 py-2 bg-sigma-purple text-white rounded-lg cursor-pointer hover:bg-sigma-purple/90 transition-colors">
                       <Upload className="w-4 h-4" /><span className="text-sm font-medium">Выбрать файл</span>
-                      <input ref={videoInputRef} type="file" accept="video/mp4,video/webm,video/quicktime,video/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) handleVideoUpload(file); }} />
+                      <input ref={media.videoInputRef} type="file" accept="video/mp4,video/webm,video/quicktime,video/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) media.handleVideoUpload(file); }} />
                     </label>
                   </>
                 )}
@@ -301,13 +150,13 @@ export function SortableLessonItem({
                       <video controls className="w-full rounded-xl border border-border" src={lesson.content}>Ваш браузер не поддерживает видео.</video>
                       <Button variant="ghost" size="sm" className="absolute top-2 right-2 h-8 text-destructive hover:text-destructive bg-background/80 backdrop-blur-sm" onClick={() => onUpdate({ content: '' })}><Trash2 className="w-4 h-4" /></Button>
                     </div>
-                  ) : (<VideoPreviewInline content={lesson.content} />)}
+                  ) : <VideoPreviewInline content={lesson.content} />}
                 </div>
               )}
             </div>
           )}
 
-          {/* Audio type */}
+          {/* Audio */}
           {lesson.type === "audio" && (
             <div className="space-y-3">
               <Input value={lesson.content} onChange={(e) => onUpdate({ content: e.target.value })} placeholder="Вставьте ссылку на аудио или загрузите файл" className="rounded-xl" />
@@ -335,7 +184,7 @@ export function SortableLessonItem({
             </div>
           )}
 
-          {/* Image type */}
+          {/* Image */}
           {lesson.type === "image" && (
             <div className="space-y-3">
               <Input value={lesson.content} onChange={(e) => onUpdate({ content: e.target.value })} placeholder="Вставьте ссылку на изображение или загрузите файл" className="rounded-xl" />
@@ -363,7 +212,7 @@ export function SortableLessonItem({
             </div>
           )}
 
-          {/* Test type */}
+          {/* Test */}
           {lesson.type === "test" && (
             <div className="space-y-4">
               <div className="bg-secondary/30 rounded-xl p-4 border border-border">
@@ -389,9 +238,9 @@ export function SortableLessonItem({
                 }}>
                   <Button variant="outline" size="sm" className="rounded-lg text-xs gap-1"><FileSpreadsheet className="w-3 h-3" />Импорт из Excel</Button>
                 </TestImportDialog>
-                <Button variant="outline" size="sm" className="rounded-lg text-xs gap-1 border-primary text-primary hover:bg-primary/10" onClick={handleGenerateContent} disabled={isGeneratingContent}>
-                  {isGeneratingContent ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                  {isGeneratingContent ? "Генерация..." : "Сгенерировать вопросы с AI"}
+                <Button variant="outline" size="sm" className="rounded-lg text-xs gap-1 border-primary text-primary hover:bg-primary/10" onClick={onGenerate} disabled={media.isGeneratingContent}>
+                  {media.isGeneratingContent ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                  {media.isGeneratingContent ? "Генерация..." : "Сгенерировать вопросы с AI"}
                 </Button>
               </div>
               <TestQuestionEditor
@@ -404,7 +253,7 @@ export function SortableLessonItem({
             </div>
           )}
 
-          {/* Slider type */}
+          {/* Slider */}
           {lesson.type === "slider" && <SliderLessonEditor lesson={lesson} courseId={courseId} onUpdate={onUpdate} />}
         </div>
       )}
