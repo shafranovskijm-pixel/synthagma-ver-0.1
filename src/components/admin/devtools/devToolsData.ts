@@ -98,6 +98,66 @@ export const CODE_TREE: CodeTreeGroup[] = [
 export const TOTAL_FILES = CODE_TREE.reduce((a, g) => a + g.totalFiles, 0);
 export const TOTAL_LINES = CODE_TREE.reduce((a, g) => a + g.totalLines, 0);
 
+// ─── Largest Files ──────────────────────────────────────────────
+export interface LargeFile {
+  path: string;
+  lines: number;
+  status: "optimized" | "needs-work" | "ok";
+  note?: string;
+}
+
+export const LARGEST_FILES: LargeFile[] = [
+  { path: "src/pages/CourseBuilder.tsx", lines: 1250, status: "optimized", note: "Было 2027 → 1250 (-41%)" },
+  { path: "src/components/organization/DialogsContainer.tsx", lines: 950, status: "needs-work", note: "~160 props, нужен Context" },
+  { path: "src/components/organization/JournalEditor.tsx", lines: 880, status: "ok" },
+  { path: "src/components/course-builder/SortableLessonItem.tsx", lines: 780, status: "optimized", note: "Вынесен из CourseBuilder" },
+  { path: "src/hooks/useOrganizationDashboard.ts", lines: 750, status: "optimized", note: "Объединяющий хук" },
+  { path: "src/hooks/useCourseStoreManager.ts", lines: 700, status: "optimized", note: "Вынесен из компонента" },
+  { path: "src/hooks/useLaborSafetyManager.ts", lines: 650, status: "optimized", note: "Вынесен из компонента" },
+  { path: "src/components/organization/EducationDocumentsJournal.tsx", lines: 550, status: "optimized", note: "Было 1789 → 550" },
+  { path: "src/components/organization/CompaniesManager.tsx", lines: 520, status: "ok" },
+  { path: "src/components/organization/FRDOManager.tsx", lines: 500, status: "ok" },
+];
+
+// ─── Dependency Stats ───────────────────────────────────────────
+export interface DepStat {
+  name: string;
+  category: string;
+  sizeKb: number;
+  loadStrategy: "static" | "dynamic" | "lazy";
+}
+
+export const KEY_DEPENDENCIES: DepStat[] = [
+  { name: "react + react-dom", category: "core", sizeKb: 130, loadStrategy: "static" },
+  { name: "@supabase/supabase-js", category: "backend", sizeKb: 85, loadStrategy: "static" },
+  { name: "recharts", category: "charts", sizeKb: 220, loadStrategy: "lazy" },
+  { name: "@radix-ui/*", category: "ui", sizeKb: 180, loadStrategy: "lazy" },
+  { name: "xlsx", category: "documents", sizeKb: 800, loadStrategy: "dynamic" },
+  { name: "mammoth", category: "documents", sizeKb: 200, loadStrategy: "dynamic" },
+  { name: "pdfjs-dist", category: "documents", sizeKb: 400, loadStrategy: "dynamic" },
+  { name: "framer-motion", category: "animation", sizeKb: 120, loadStrategy: "static" },
+  { name: "docx-templates", category: "documents", sizeKb: 90, loadStrategy: "dynamic" },
+  { name: "dompurify", category: "security", sizeKb: 25, loadStrategy: "static" },
+];
+
+// ─── Code Quality Metrics ───────────────────────────────────────
+export interface QualityMetric {
+  label: string;
+  value: number;
+  max: number;
+  unit: string;
+  status: "good" | "warning" | "critical";
+}
+
+export const QUALITY_METRICS: QualityMetric[] = [
+  { label: "Средний размер файла", value: Math.round(TOTAL_LINES / TOTAL_FILES), max: 300, unit: "строк", status: Math.round(TOTAL_LINES / TOTAL_FILES) > 250 ? "warning" : "good" },
+  { label: "Покрытие тестами", value: 3, max: 50, unit: "файлов", status: "warning" },
+  { label: "Lazy-loaded страниц", value: 30, max: 30, unit: "из 30", status: "good" },
+  { label: "Dynamic imports", value: 4, max: 4, unit: "библиотек", status: "good" },
+  { label: "Кастомные хуки", value: 53, max: 100, unit: "штук", status: "good" },
+  { label: "Edge-функции", value: 32, max: 50, unit: "штук", status: "good" },
+];
+
 // ─── Edge Functions ─────────────────────────────────────────────
 export interface EdgeFunc {
   name: string;
