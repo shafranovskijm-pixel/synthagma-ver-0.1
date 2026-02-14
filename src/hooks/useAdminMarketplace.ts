@@ -88,28 +88,13 @@ export function useAdminMarketplace() {
     setOrders(data || []);
   };
 
-  const handleCreateCourse = async () => {
+  const handleCreateCourse = async (): Promise<string | null> => {
     if (!newTitle.trim() || !newPriceStudent || !newPriceOrg) {
       toast.error("Заполните все обязательные поля");
-      return;
+      return null;
     }
     setIsCreating(true);
     try {
-      // 1. Create a course record without organization_id — use a special approach
-      // Since courses.organization_id is NOT NULL, we need a platform org or workaround.
-      // For admin courses, we'll create a course with a null-safe approach using raw insert
-      // Actually courses table requires organization_id. Let's check if we can use RPC or direct SQL.
-      // Workaround: create a "platform" pseudo-entry. For now, use the first available org or skip.
-      
-      // Better approach: create the course via the courses table with a dummy org,
-      // then the marketplace_courses entry with organization_id = NULL
-      // But courses.organization_id is NOT NULL... 
-      // The plan says marketplace_courses.organization_id is nullable, but courses still needs one.
-      // We need to handle this. Let's create a simple approach:
-      // Admin creates the course entry AND marketplace listing in one go.
-      // For the underlying course, we'll need a platform org.
-
-      // Check if platform org exists, create if not
       let platformOrgId: string;
       const { data: existingOrg } = await supabase
         .from("organizations")
@@ -129,7 +114,6 @@ export function useAdminMarketplace() {
         platformOrgId = newOrg.id;
       }
 
-      // 2. Create the course
       const { data: courseData, error: courseError } = await supabase
         .from("courses")
         .insert({
@@ -143,7 +127,6 @@ export function useAdminMarketplace() {
         .single();
       if (courseError) throw courseError;
 
-      // 3. Create marketplace listing (no organization_id = platform course)
       const { error: mpError } = await supabase
         .from("marketplace_courses")
         .insert({
@@ -156,13 +139,14 @@ export function useAdminMarketplace() {
         });
       if (mpError) throw mpError;
 
-      toast.success("Курс создан и добавлен в маркетплейс!");
+      toast.success("Курс создан! Перенаправление в редактор...");
       resetCreateForm();
-      setActiveTab("catalog");
       fetchCourses();
+      return courseData.id;
     } catch (error: any) {
       console.error("Error creating course:", error);
       toast.error("Ошибка при создании курса");
+      return null;
     } finally {
       setIsCreating(false);
     }

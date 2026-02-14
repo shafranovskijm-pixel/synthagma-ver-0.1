@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Store, Plus, Search, Edit, Trash2, Eye, Loader2,
   Package, ShoppingCart, Building2, Users, Tag,
@@ -27,6 +28,7 @@ const statusLabels: Record<string, { label: string; color: string }> = {
 };
 
 export function AdminMarketplaceManager() {
+  const navigate = useNavigate();
   const h = useAdminMarketplace();
 
   if (h.isLoading) {
@@ -161,10 +163,15 @@ export function AdminMarketplaceManager() {
               </div>
               <Button
                 className="w-full btn-gradient rounded-xl"
-                onClick={h.handleCreateCourse}
+                onClick={async () => {
+                  const courseId = await h.handleCreateCourse();
+                  if (courseId) {
+                    navigate(`/course-builder/${courseId}`);
+                  }
+                }}
                 disabled={h.isCreating || !h.newTitle.trim() || !h.newPriceStudent || !h.newPriceOrg}
               >
-                {h.isCreating ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Создание...</> : <><Plus className="w-4 h-4 mr-2" />Создать и опубликовать</>}
+                {h.isCreating ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Создание...</> : <><Plus className="w-4 h-4 mr-2" />Создать и перейти к редактированию</>}
               </Button>
             </CardContent>
           </Card>
