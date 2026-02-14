@@ -269,8 +269,70 @@ export function OrganizationsManager() {
     if (!deleteOrg) return;
 
     try {
-      const { error } = await supabase.from("organizations").delete().eq("id", deleteOrg.id);
+      const orgId = deleteOrg.id;
 
+      // 1. Get all course IDs for this organization
+      const { data: courses } = await supabase
+        .from("courses")
+        .select("id")
+        .eq("organization_id", orgId);
+      const courseIds = (courses || []).map((c) => c.id);
+
+      if (courseIds.length > 0) {
+        // 2. Delete enrollments linked to these courses
+        await supabase.from("enrollments").delete().in("course_id", courseIds);
+        // 3. Delete course_reminders linked to these courses
+        await supabase.from("course_reminders").delete().in("course_id", courseIds);
+        // 4. Delete course_documents linked to these courses
+        await supabase.from("course_documents").delete().in("course_id", courseIds);
+        // 5. Delete lessons linked to these courses
+        await supabase.from("lessons").delete().in("course_id", courseIds);
+        // 6. Delete courses
+        await supabase.from("courses").delete().eq("organization_id", orgId);
+      }
+
+      // 7. Delete companies and their documents
+      const { data: companies } = await supabase
+        .from("companies")
+        .select("id")
+        .eq("organization_id", orgId);
+      const companyIds = (companies || []).map((c) => c.id);
+      if (companyIds.length > 0) {
+        await supabase.from("company_documents").delete().in("company_id", companyIds);
+        await supabase.from("companies").delete().eq("organization_id", orgId);
+      }
+
+      // 8. Delete other related records
+      await Promise.all([
+        supabase.from("profiles").delete().eq("organization_id", orgId),
+        supabase.from("registration_links").delete().eq("organization_id", orgId),
+        supabase.from("organization_credentials").delete().eq("organization_id", orgId),
+        supabase.from("org_documents").delete().eq("organization_id", orgId),
+        supabase.from("org_notifications").delete().eq("organization_id", orgId),
+        supabase.from("organization_comments").delete().eq("organization_id", orgId),
+        supabase.from("audit_logs").delete().eq("organization_id", orgId),
+        supabase.from("consent_documents").delete().eq("organization_id", orgId),
+        supabase.from("course_categories").delete().eq("organization_id", orgId),
+        supabase.from("journal_instances").delete().eq("organization_id", orgId),
+        supabase.from("library_folders").delete().eq("organization_id", orgId),
+        supabase.from("library_documents").delete().eq("organization_id", orgId),
+        supabase.from("document_issuance_log").delete().eq("organization_id", orgId),
+        supabase.from("education_document_records").delete().eq("organization_id", orgId),
+        supabase.from("system_diagnostics").delete().eq("organization_id", orgId),
+        supabase.from("organization_feature_categories").delete().eq("organization_id", orgId),
+        supabase.from("organization_feature_usage").delete().eq("organization_id", orgId),
+        supabase.from("organization_features").delete().eq("organization_id", orgId),
+        supabase.from("marketplace_courses").delete().eq("organization_id", orgId),
+        supabase.from("labor_safety_groups").delete().eq("organization_id", orgId),
+        supabase.from("labor_safety_profiles").delete().eq("organization_id", orgId),
+        supabase.from("student_groups").delete().eq("organization_id", orgId),
+        supabase.from("testimonials").delete().eq("organization_id", orgId),
+        supabase.from("student_consents").delete().eq("organization_id", orgId),
+        supabase.from("program_categories").delete().eq("organization_id", orgId),
+      ]);
+
+      // 9. Finally delete the organization itself
+      const { error } = await supabase.from("organizations").delete().eq("id", orgId);
       if (error) throw error;
 
       toast({ title: "Успешно", description: "Организация удалена" });
@@ -280,7 +342,7 @@ export function OrganizationsManager() {
       console.error("Error deleting organization:", error);
       toast({
         title: "Ошибка",
-        description: "Не удалось удалить организацию. Возможно, есть связанные данные.",
+        description: "Не удалось удалить организацию. Проверьте консоль для деталей.",
         variant: "destructive",
       });
     }
