@@ -237,6 +237,57 @@ const parseSliderContent = (content: string | null): SliderContent => {
   }
 };
 
+// Inline slider viewer for slides without PPTX file
+const InlineSliderPreview = ({ slides, title }: { slides: SliderSlide[]; title: string }) => {
+  const [currentIdx, setCurrentIdx] = useState(0);
+  const currentSlide = slides[currentIdx];
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center">
+          <Presentation className="w-6 h-6 text-amber-500" />
+        </div>
+        <div className="flex-1">
+          <h3 className="font-display font-bold text-lg">{title}</h3>
+          <p className="text-sm text-muted-foreground">{slides.length} слайдов</p>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-amber-500/30 bg-card overflow-hidden shadow-lg">
+        <div className="p-6 min-h-[350px]">
+          {currentSlide && (
+            <div className="space-y-4">
+              {currentSlide.imageUrl && (
+                <div className="rounded-lg overflow-hidden border border-border bg-secondary/20">
+                  <img src={currentSlide.imageUrl} alt={currentSlide.title || 'Слайд'} className="w-full max-h-[500px] object-contain" />
+                </div>
+              )}
+              <h3 className="text-lg font-semibold">{currentSlide.title}</h3>
+              {currentSlide.content && (
+                <div className="text-sm text-muted-foreground whitespace-pre-wrap">{currentSlide.content}</div>
+              )}
+            </div>
+          )}
+        </div>
+        <div className="flex items-center justify-between p-3 border-t border-amber-500/20 bg-amber-500/5">
+          <Button variant="ghost" size="sm" onClick={() => setCurrentIdx(i => Math.max(0, i - 1))} disabled={currentIdx === 0} className="gap-1">
+            <ChevronLeft className="w-4 h-4" /> Назад
+          </Button>
+          <div className="flex gap-1.5">
+            {slides.map((_, i) => (
+              <button key={i} onClick={() => setCurrentIdx(i)} className={`w-2.5 h-2.5 rounded-full transition-colors ${i === currentIdx ? "bg-amber-500" : "bg-amber-500/30 hover:bg-amber-500/50"}`} />
+            ))}
+          </div>
+          <Button variant="ghost" size="sm" onClick={() => setCurrentIdx(i => Math.min(slides.length - 1, i + 1))} disabled={currentIdx === slides.length - 1} className="gap-1">
+            Далее <ChevronRight className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Slider Preview Component
 const SliderPreview = ({ content, title }: { content: string | null; title: string }) => {
   const [isLoading, setIsLoading] = useState(true);
@@ -324,7 +375,11 @@ const SliderPreview = ({ content, title }: { content: string | null; title: stri
     );
   }
 
-  // No PPTX URL available
+  // No PPTX URL — render slides inline if available
+  if (slides.length > 0) {
+    return <InlineSliderPreview slides={slides} title={title} />;
+  }
+
   return (
     <div className="space-y-6">
       <div className="rounded-2xl border-2 border-dashed border-border p-8 flex items-center justify-center min-h-[300px]">
