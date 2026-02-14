@@ -23,6 +23,9 @@ import {
   Presentation,
   Loader2,
   Sparkles,
+  ArrowRightLeft,
+  Info,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -294,6 +297,17 @@ interface SortableBlockItemProps {
   onAddAfter: (type: BlockType) => void;
 }
 
+const convertibleTypes: BlockType[] = ["paragraph", "heading1", "heading2", "bulletList", "numberedList", "quote", "callout-info", "callout-warning", "callout-tip", "accordion"];
+
+const wrapTargets: { type: BlockType; icon: any; label: string; color: string }[] = [
+  { type: "callout-info", icon: Info, label: "Информация", color: "text-blue-500" },
+  { type: "callout-warning", icon: AlertTriangle, label: "Предупреждение", color: "text-amber-500" },
+  { type: "callout-tip", icon: Lightbulb, label: "Совет", color: "text-green-500" },
+  { type: "quote", icon: Quote, label: "Цитата", color: "text-muted-foreground" },
+  { type: "accordion", icon: ChevronDown, label: "Сворачиваемая секция", color: "text-purple-500" },
+  { type: "paragraph", icon: Type, label: "Обычный текст", color: "text-foreground" },
+];
+
 function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAddAfter }: SortableBlockItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
 
@@ -302,6 +316,17 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
     transition,
     opacity: isDragging ? 0.5 : 1,
     zIndex: isDragging ? 1000 : 'auto',
+  };
+
+  const canConvert = convertibleTypes.includes(block.type);
+
+  const handleConvert = (newType: BlockType) => {
+    const updates: Partial<ContentBlock> = { type: newType };
+    if (newType === "accordion" && !block.accordionTitle) {
+      updates.accordionTitle = "Заголовок секции";
+      updates.accordionOpen = true;
+    }
+    onUpdate(updates);
   };
 
   return (
@@ -315,6 +340,22 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
         <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch-none">
           <GripVertical className="w-4 h-4" />
         </div>
+        {canConvert && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-6 w-6" title="Обернуть / Преобразовать">
+                <ArrowRightLeft className="w-3 h-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-52">
+              {wrapTargets.filter(t => t.type !== block.type).map((t) => (
+                <DropdownMenuItem key={t.type} onClick={() => handleConvert(t.type)}>
+                  <t.icon className={cn("w-4 h-4 mr-2", t.color)} />{t.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="h-6 w-6"><Plus className="w-3 h-3" /></Button>
