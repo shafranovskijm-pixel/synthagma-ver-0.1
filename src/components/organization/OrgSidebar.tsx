@@ -73,7 +73,10 @@ export function OrgSidebar({
   };
 
   return (
-    <aside className={`
+    <aside
+      role="navigation"
+      aria-label="Основная навигация"
+      className={`
       fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border 
       flex flex-col transition-transform duration-300
       ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
@@ -98,24 +101,24 @@ export function OrgSidebar({
         <div className="space-y-2">
           {/* Courses */}
           {menuSettings.showCourses !== false && isEnabled("courses") && (
-            <button data-onboarding="courses" onClick={() => handleTabClick("courses")} className={tabButtonClass("courses")}>
-              <BookOpen className="w-5 h-5" />
+            <button data-onboarding="courses" onClick={() => handleTabClick("courses")} className={tabButtonClass("courses")} aria-label="Курсы" aria-current={activeTab === "courses" ? "page" : undefined}>
+              <BookOpen className="w-5 h-5" aria-hidden="true" />
               Курсы
             </button>
           )}
           
           {/* Companies */}
           {menuSettings.showCompanies !== false && isEnabled("companies") && (
-            <button onClick={() => handleTabClick("organizations")} className={tabButtonClass("organizations")}>
-              <Building2 className="w-5 h-5" />
+            <button onClick={() => handleTabClick("organizations")} className={tabButtonClass("organizations")} aria-label="Компании" aria-current={activeTab === "organizations" ? "page" : undefined}>
+              <Building2 className="w-5 h-5" aria-hidden="true" />
               Компании
             </button>
           )}
           
           {/* Students */}
           {menuSettings.showStudents !== false && isEnabled("students") && (
-            <button data-onboarding="students" onClick={() => handleTabClick("students")} className={tabButtonClass("students")}>
-              <Users className="w-5 h-5" />
+            <button data-onboarding="students" onClick={() => handleTabClick("students")} className={tabButtonClass("students")} aria-label="Ученики" aria-current={activeTab === "students" ? "page" : undefined}>
+              <Users className="w-5 h-5" aria-hidden="true" />
               Ученики
             </button>
           )}
@@ -203,8 +206,9 @@ export function OrgSidebar({
         <button 
           onClick={onLogout} 
           className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-destructive hover:bg-destructive/10 transition-colors"
+          aria-label="Выйти из аккаунта"
         >
-          <LogOut className="w-5 h-5" />
+          <LogOut className="w-5 h-5" aria-hidden="true" />
           Выйти
         </button>
       </div>

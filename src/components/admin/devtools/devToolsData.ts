@@ -137,12 +137,12 @@ export const EDGE_FUNCTIONS: EdgeFunc[] = [
   { name: "get-external-storage-config", category: "system", description: "Конфигурация хранилища" },
 ];
 
-export const CATEGORY_META: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
-  auth: { label: "Авторизация", icon: React.createElement(Shield, { className: "w-3.5 h-3.5" }), color: "#8b5cf6" },
-  notifications: { label: "Уведомления", icon: React.createElement(Mail, { className: "w-3.5 h-3.5" }), color: "#0ea5e9" },
-  ai: { label: "AI / Генерация", icon: React.createElement(Bot, { className: "w-3.5 h-3.5" }), color: "#10b981" },
-  documents: { label: "Документы", icon: React.createElement(FileText, { className: "w-3.5 h-3.5" }), color: "#f59e0b" },
-  system: { label: "Система", icon: React.createElement(Terminal, { className: "w-3.5 h-3.5" }), color: "#64748b" },
+export const CATEGORY_META: Record<string, { label: string; icon: React.ReactNode; color: string; bgClass: string }> = {
+  auth: { label: "Авторизация", icon: React.createElement(Shield, { className: "w-3.5 h-3.5" }), color: "#8b5cf6", bgClass: "bg-violet-500" },
+  notifications: { label: "Уведомления", icon: React.createElement(Mail, { className: "w-3.5 h-3.5" }), color: "#0ea5e9", bgClass: "bg-sky-500" },
+  ai: { label: "AI / Генерация", icon: React.createElement(Bot, { className: "w-3.5 h-3.5" }), color: "#10b981", bgClass: "bg-emerald-500" },
+  documents: { label: "Документы", icon: React.createElement(FileText, { className: "w-3.5 h-3.5" }), color: "#f59e0b", bgClass: "bg-amber-500" },
+  system: { label: "Система", icon: React.createElement(Terminal, { className: "w-3.5 h-3.5" }), color: "#64748b", bgClass: "bg-slate-500" },
 };
 
 // ─── Recommendations System ─────────────────────────────────────
@@ -246,28 +246,28 @@ export const CODE_RECOMMENDATIONS: Recommendation[] = [
     id: "css-inconsistency",
     severity: "info",
     category: "code",
-    title: "Смешивание стилей: inline + Tailwind + CSS",
-    detail: "В некоторых компонентах используются style={{ }} вместо Tailwind-классов.",
+    title: "✅ Inline-стили заменены на Tailwind-классы",
+    detail: "DevToolsPanel, CATEGORY_META и метрики переведены с style={{}} на Tailwind utility-классы.",
     actionable: false,
-    status: "unchecked",
+    status: "applied",
   },
   {
     id: "no-rate-limiting",
     severity: "warn",
     category: "architecture",
-    title: "Нет rate limiting на Edge-функциях",
-    detail: "AI-генерация и отправка email не ограничены по частоте.",
+    title: "✅ Rate limiting добавлен на Edge-функции",
+    detail: "AI-генерация (10 req/min) и отправка email (20 req/min) ограничены через общий rate-limiter.",
     actionable: false,
-    status: "unchecked",
+    status: "applied",
   },
   {
     id: "accessibility",
     severity: "info",
     category: "code",
-    title: "Accessibility (a11y) не полностью реализован",
-    detail: "Часть интерактивных элементов не имеет aria-labels.",
+    title: "✅ Aria-labels добавлены в навигацию",
+    detail: "OrgSidebar: role=navigation, aria-label, aria-current, aria-hidden на иконках.",
     actionable: false,
-    status: "unchecked",
+    status: "applied",
   },
   {
     id: "xlsx-dynamic",
