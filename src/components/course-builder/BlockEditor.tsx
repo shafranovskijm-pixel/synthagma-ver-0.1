@@ -371,10 +371,11 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
     <div
       ref={setNodeRef}
       style={style}
-      className={cn("group relative flex gap-2 rounded-lg transition-all", isFocused && "bg-secondary/30")}
+      className={cn("group relative rounded-lg transition-all", isFocused && "bg-secondary/30")}
       onClick={onFocus}
     >
-      <div className="flex flex-col items-center gap-1 pt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+      {/* Top-center toolbar */}
+      <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity py-1">
         <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch-none">
           <GripVertical className="w-4 h-4" />
         </div>
@@ -385,7 +386,7 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
                 <ArrowRightLeft className="w-3 h-3" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-52">
+            <DropdownMenuContent align="center" className="w-52">
               {wrapTargets.filter(t => t.type !== block.type).map((t) => (
                 <DropdownMenuItem key={t.type} onClick={() => handleConvert(t.type)}>
                   <t.icon className={cn("w-4 h-4 mr-2", t.color)} />{t.label}
@@ -401,7 +402,7 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
                 <Settings2 className="w-3 h-3" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent align="start" className="w-64 p-3 space-y-3">
+            <PopoverContent align="center" className="w-64 p-3 space-y-3">
               <div>
                 <p className="text-xs font-medium text-muted-foreground mb-1.5">Выравнивание</p>
                 <div className="flex gap-1">
@@ -448,7 +449,7 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="h-6 w-6"><Plus className="w-3 h-3" /></Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-48">
+          <DropdownMenuContent align="center" className="w-48">
             {Object.entries(blockTypeConfig).map(([type, cfg]) => (
               <DropdownMenuItem key={type} onClick={() => onAddAfter(type as BlockType)}>
                 <cfg.icon className={cn("w-4 h-4 mr-2", cfg.color)} />{cfg.label}
@@ -460,7 +461,7 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
           <Trash2 className="w-3 h-3" />
         </Button>
       </div>
-      <div className="flex-1 min-w-0">
+      <div className="min-w-0">
         <BlockContent block={block} onUpdate={onUpdate} />
       </div>
     </div>
