@@ -1,12 +1,13 @@
 import { useState } from "react";
 import {
-  Database, Code2, Zap, HeartPulse, Terminal, FileCode,
+  Database, Code2, Zap, HeartPulse, Terminal, FileCode, Radio,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { DatabaseMap } from "./DatabaseMap";
 import { CodeMapTab } from "./devtools/CodeMapTab";
 import { HealthTab } from "./devtools/HealthTab";
+import { ApiMonitorTab } from "./devtools/ApiMonitorTab";
 import {
   EDGE_FUNCTIONS, CATEGORY_META, TOTAL_FILES, TOTAL_LINES,
   CODE_RECOMMENDATIONS,
@@ -67,6 +68,9 @@ export function DevToolsPanel() {
           <TabsTrigger value="functions" className="rounded-lg gap-2 data-[state=active]:bg-card text-xs sm:text-sm">
             <Zap className="w-4 h-4" /> Edge-функции
           </TabsTrigger>
+          <TabsTrigger value="api-monitor" className="rounded-lg gap-2 data-[state=active]:bg-card text-xs sm:text-sm">
+            <Radio className="w-4 h-4" /> API Monitor
+          </TabsTrigger>
           <TabsTrigger value="health" className="rounded-lg gap-2 data-[state=active]:bg-card text-xs sm:text-sm">
             <HeartPulse className="w-4 h-4" /> Здоровье
             {errorCount > 0 && <Badge variant="destructive" className="text-[10px] h-4 px-1.5 ml-1">{errorCount}</Badge>}
@@ -107,6 +111,10 @@ export function DevToolsPanel() {
               </div>
             );
           })}
+        </TabsContent>
+
+        <TabsContent value="api-monitor" className="mt-0">
+          <ApiMonitorTab />
         </TabsContent>
 
         <TabsContent value="health" className="mt-0">

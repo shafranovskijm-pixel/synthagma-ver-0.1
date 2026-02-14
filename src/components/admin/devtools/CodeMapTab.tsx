@@ -3,10 +3,12 @@ import {
   FolderTree, RefreshCw, Lightbulb, HelpCircle, BarChart3,
   FileCode2, Package, Activity, ChevronDown, ChevronRight,
   CheckCircle2, AlertTriangle as AlertTriangleIcon, Circle,
+  Search,
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
@@ -33,6 +35,7 @@ export const CodeMapTab = React.forwardRef<HTMLDivElement, React.HTMLAttributes<
     const [showCodeAnalysis, setShowCodeAnalysis] = useState(false);
     const [codeLastUpdated, setCodeLastUpdated] = useState<string | null>(null);
     const [activeSection, setActiveSection] = useState("tree");
+    const [searchQuery, setSearchQuery] = useState("");
 
     const codeAnalysisItems = useMemo<CodeAnalysisItem[]>(() => {
       const items: CodeAnalysisItem[] = [];
@@ -78,6 +81,27 @@ export const CodeMapTab = React.forwardRef<HTMLDivElement, React.HTMLAttributes<
     const totalDepSize = KEY_DEPENDENCIES.reduce((a, d) => a + d.sizeKb, 0);
     const optimizedFiles = LARGEST_FILES.filter(f => f.status === "optimized").length;
 
+    const filteredFiles = useMemo(() => {
+      if (!searchQuery) return LARGEST_FILES;
+      const q = searchQuery.toLowerCase();
+      return LARGEST_FILES.filter(f => f.path.toLowerCase().includes(q) || f.note?.toLowerCase().includes(q));
+    }, [searchQuery]);
+
+    const filteredTree = useMemo(() => {
+      if (!searchQuery) return CODE_TREE;
+      const q = searchQuery.toLowerCase();
+      return CODE_TREE.filter(g =>
+        g.folder.toLowerCase().includes(q) ||
+        g.subfolders.some(sf => sf.name.toLowerCase().includes(q))
+      );
+    }, [searchQuery]);
+
+    const filteredDeps = useMemo(() => {
+      if (!searchQuery) return KEY_DEPENDENCIES;
+      const q = searchQuery.toLowerCase();
+      return KEY_DEPENDENCIES.filter(d => d.name.toLowerCase().includes(q) || d.category.toLowerCase().includes(q));
+    }, [searchQuery]);
+
     return (
       <div ref={ref} {...props} className="space-y-4">
         {/* Header */}
@@ -109,6 +133,17 @@ export const CodeMapTab = React.forwardRef<HTMLDivElement, React.HTMLAttributes<
               Анализ
             </Button>
           </div>
+        </div>
+
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+          <Input
+            placeholder="Поиск файлов, папок, зависимостей..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9 h-8 text-xs rounded-xl bg-secondary/30 border-border"
+          />
         </div>
 
         {/* Quick Metrics Row */}
@@ -161,7 +196,7 @@ export const CodeMapTab = React.forwardRef<HTMLDivElement, React.HTMLAttributes<
               </div>
             </div>
 
-            {CODE_TREE.map((group) => {
+            {filteredTree.map((group) => {
               const pct = Math.round((group.totalLines / TOTAL_LINES) * 100);
               const isLarge = pct > 40;
               return (
@@ -209,7 +244,7 @@ export const CodeMapTab = React.forwardRef<HTMLDivElement, React.HTMLAttributes<
             </div>
 
             <div className="space-y-2">
-              {LARGEST_FILES.map((file, idx) => {
+              {filteredFiles.map((file, idx) => {
                 const barWidth = Math.min(100, Math.round((file.lines / LARGEST_FILES[0].lines) * 100));
                 return (
                   <div key={file.path} className="rounded-xl border border-border bg-card p-3 space-y-2">
@@ -257,7 +292,7 @@ export const CodeMapTab = React.forwardRef<HTMLDivElement, React.HTMLAttributes<
             </div>
 
             <div className="grid gap-2">
-              {KEY_DEPENDENCIES.sort((a, b) => b.sizeKb - a.sizeKb).map((dep) => {
+              {filteredDeps.sort((a, b) => b.sizeKb - a.sizeKb).map((dep) => {
                 const barWidth = Math.min(100, Math.round((dep.sizeKb / KEY_DEPENDENCIES[0].sizeKb) * 100));
                 return (
                   <div key={dep.name} className="rounded-xl border border-border bg-card p-3">

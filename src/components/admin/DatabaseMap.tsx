@@ -193,8 +193,68 @@ export function DatabaseMap() {
     toast.success("Карта БД экспортирована");
   };
 
+  const totalRecords = Object.values(tableCounts).reduce((a, c) => a + (c > 0 ? c : 0), 0);
+  const largestGroup = TABLE_GROUPS.reduce((a, g) => {
+    const cnt = g.tables.reduce((s, t) => s + (tableCounts[t] > 0 ? tableCounts[t] : 0), 0);
+    return cnt > a.count ? { name: g.name, count: cnt } : a;
+  }, { name: "", count: 0 });
+
   return (
     <div className="space-y-4">
+      {/* Summary Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="rounded-xl border border-border bg-card p-3 text-center">
+          <div className="text-lg font-mono font-bold text-foreground">{totalTables}</div>
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Таблиц</div>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-3 text-center">
+          <div className="text-lg font-mono font-bold text-foreground">{TABLE_GROUPS.length}</div>
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Групп</div>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-3 text-center">
+          <div className="text-lg font-mono font-bold text-foreground">{loading ? "..." : totalRecords.toLocaleString()}</div>
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Записей</div>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-3 text-center">
+          <div className="text-lg font-mono font-bold text-primary truncate">{loading ? "..." : largestGroup.name || "—"}</div>
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Крупнейшая</div>
+        </div>
+      </div>
+
+      {/* Size Distribution */}
+      {!loading && totalRecords > 0 && (
+        <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+          <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Распределение данных</h4>
+          <div className="flex h-3 rounded-full overflow-hidden bg-secondary">
+            {TABLE_GROUPS.map((group) => {
+              const cnt = group.tables.reduce((s, t) => s + (tableCounts[t] > 0 ? tableCounts[t] : 0), 0);
+              const pct = totalRecords > 0 ? (cnt / totalRecords) * 100 : 0;
+              if (pct < 0.5) return null;
+              return (
+                <div
+                  key={group.name}
+                  className="h-full transition-all"
+                  style={{ width: `${pct}%`, backgroundColor: group.color }}
+                  title={`${group.name}: ${cnt.toLocaleString()} (${Math.round(pct)}%)`}
+                />
+              );
+            })}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {TABLE_GROUPS.map((group) => {
+              const cnt = group.tables.reduce((s, t) => s + (tableCounts[t] > 0 ? tableCounts[t] : 0), 0);
+              if (cnt === 0) return null;
+              return (
+                <div key={group.name} className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: group.color }} />
+                  {group.name} ({cnt.toLocaleString()})
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div className="text-sm text-muted-foreground">
           {totalTables} таблиц в {TABLE_GROUPS.length} группах
