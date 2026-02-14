@@ -1,88 +1,135 @@
 
-# План улучшений кодовой базы — v2
 
-Актуальное состояние после рефакторинга. Отмечено что сделано (✅) и что осталось.
+## Plan: Marketplace Course Management in Admin Panel + Organization Balance System
+
+### Overview
+Two new features for the admin panel:
+1. **Admin Marketplace Manager** -- create/manage courses for the marketplace directly from the admin panel (similar to how organizations do it, but without organization binding)
+2. **Organization Balance System** -- a balance field on organizations that admins can top up, and organizations can spend on marketplace course purchases
 
 ---
 
-## ✅ Выполнено
+### Phase 1: Database Changes
 
-| Задача | Результат |
+**1.1 Add `balance` column to `organizations` table**
+```sql
+ALTER TABLE public.organizations 
+  ADD COLUMN balance NUMERIC NOT NULL DEFAULT 0;
+```
+
+**1.2 Create `balance_transactions` table for audit trail**
+```sql
+CREATE TABLE public.balance_transactions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  amount NUMERIC NOT NULL,          -- positive = top-up, negative = purchase
+  type TEXT NOT NULL,               -- 'topup', 'purchase', 'refund'
+  description TEXT,
+  related_order_id UUID REFERENCES marketplace_orders(id),
+  performed_by UUID,                -- admin user_id for top-ups
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+ALTER TABLE public.balance_transactions ENABLE ROW LEVEL SECURITY;
+```
+
+RLS: admins can do everything; organizations can SELECT their own transactions.
+
+**1.3 Allow `marketplace_courses` without `organization_id` (admin-created)**
+
+Currently `organization_id` is NOT NULL. Admin-created courses need a way to be attributed. Two options:
+- Option A: Make `organization_id` nullable (admin courses have NULL org).
+- Option B: Create a special "platform" organization for admin courses.
+
+**Chosen: Option A** -- add nullable support and adjust RLS so admins can insert with `organization_id = NULL` and all users can see such courses in the catalog.
+
+```sql
+ALTER TABLE public.marketplace_courses ALTER COLUMN organization_id DROP NOT NULL;
+```
+
+Update the "Anyone can view active marketplace courses" policy to also show admin courses (org_id IS NULL).
+
+---
+
+### Phase 2: Admin Panel -- Marketplace Tab
+
+**2.1 New sidebar tab: "Маркетплейс"**
+- Add `"marketplace"` to `AdminTabType` in `AdminSidebar.tsx`
+- Add a `Store` icon button in the sidebar nav
+
+**2.2 New component: `src/components/admin/AdminMarketplaceManager.tsx`**
+
+Tabs inside:
+- **Каталог** -- view all marketplace courses (from all orgs + admin-created)
+- **Создать курс** -- form to create a new course directly for the marketplace:
+  - Title, description, lessons (simplified -- or link to course builder)
+  - Prices for students and organizations
+  - Toggle active/inactive
+- **Заявки** -- view and manage all marketplace orders across all organizations
+
+The admin creates a `course` record (with `organization_id = NULL` or a platform org), then lists it in `marketplace_courses`.
+
+**2.3 New hook: `src/hooks/useAdminMarketplace.ts`**
+- Fetch all marketplace courses (with org names)
+- CRUD for admin-created courses
+- Manage orders globally
+
+---
+
+### Phase 3: Admin Panel -- Balance Management
+
+**3.1 Add balance display and top-up in `OrganizationDetailsView.tsx`**
+- Show current balance in the organization details
+- "Top up balance" button with amount input
+- Transaction history table
+
+**3.2 New component: `src/components/admin/OrgBalanceManager.tsx`**
+- Balance display with formatting
+- Top-up dialog (amount + description)
+- Transaction history with filters
+- On top-up: INSERT into `balance_transactions` + UPDATE `organizations.balance`
+
+**3.3 New hook: `src/hooks/useOrgBalance.ts`**
+- `topUpBalance(orgId, amount, description)` -- inserts transaction + updates org balance
+- `fetchTransactions(orgId)` -- returns transaction history
+- `deductBalance(orgId, amount, orderId)` -- for purchases
+
+---
+
+### Phase 4: Organization-side Balance Integration
+
+**4.1 Show balance in organization dashboard**
+- Display current balance in the stats area or header
+- Show balance in the CourseStoreManager when ordering
+
+**4.2 Payment via balance in `useCourseStoreManager.ts`**
+- Add "Pay from balance" option in the order dialog
+- Check sufficient balance before allowing purchase
+- On order: deduct balance, create transaction, create order with status "paid"
+
+---
+
+### Phase 5: Wire Everything Together
+
+**5.1 Update `AdminDashboard.tsx`**
+- Import and render `AdminMarketplaceManager` for the new tab
+
+**5.2 Update `AdminSidebar.tsx`**
+- Add "marketplace" tab type and button
+
+**5.3 Test scenarios**
+- Admin creates a marketplace course
+- Admin tops up org balance
+- Organization purchases course using balance
+- Transaction history is accurate
+
+---
+
+### Technical Summary
+
+| Item | Action |
 |---|---|
-| Context-миграция OrgSidebar, OrgDashboardHeader | Оба на `useOrgDashboard()`, 0 props |
-| OrganizationDashboard.tsx | 121 строка (было ~800) |
-| Декомпозиция CourseBuilder.tsx | 149 строк + `useCourseBuilder.ts` |
-| Декомпозиция CourseLearning.tsx | 281 строка + `useCourseLearning.ts` |
-| Декомпозиция StudentDashboard.tsx | 175 строк + `useStudentDashboard.ts` |
-| Декомпозиция ContractGenerator.tsx | 90 строк + `useContractGenerator.ts` |
-| Декомпозиция JournalEditor.tsx | 106 строк + `useJournalEditor.ts` |
-| Декомпозиция FRDOManager.tsx | 80 строк + `useFRDOManager.ts` |
-| Unit-тесты для хуков | 5 тестовых файлов |
+| DB migration | Add `balance` to orgs, create `balance_transactions`, make `marketplace_courses.organization_id` nullable |
+| New files | `AdminMarketplaceManager.tsx`, `OrgBalanceManager.tsx`, `useAdminMarketplace.ts`, `useOrgBalance.ts` |
+| Modified files | `AdminSidebar.tsx`, `AdminDashboard.tsx`, `OrganizationDetailsView.tsx`, `useCourseStoreManager.ts`, `OrgDashboardHeader.tsx` |
+| RLS policies | balance_transactions (admin full, org select own), updated marketplace_courses policies |
 
----
-
-## Фаза 7: Декомпозиция оставшихся крупных компонентов
-
-| Файл | Строк | Действие |
-|---|---|---|
-| `CompaniesManager.tsx` | 636 | Вынести логику в `useCompaniesManager.ts`, UI-части в подкомпоненты |
-| `StudentDetailCard.tsx` | 451 | Разбить на табы: `StudentInfoTab`, `StudentDocsTab`, `StudentHistoryTab` |
-| `SortableLessonItem.tsx` | 413 | Вынести preview-рендер каждого типа в отдельные компоненты |
-
----
-
-## Фаза 8: Расширение тестового покрытия
-
-| Задача | Описание |
-|---|---|
-| Тесты для `useContractGenerator` | Генерация, валидация, форматирование |
-| Тесты для `useOrganizationDashboard` | Загрузка данных, фильтры, действия |
-| Тесты для `useCompaniesManager` | CRUD компаний |
-| Тесты для `useJournalEditor` | CRUD записей журнала |
-| Тесты для `useFRDOManager` | Фильтрация, экспорт |
-| Тесты для утилит | `frdoExcelExport`, `credentials`, `courseBuilderHelpers` |
-
----
-
-## Фаза 9: Производительность
-
-| Задача | Описание |
-|---|---|
-| React.memo для тяжёлых списков | `StudentsTab`, `CoursesTab` — мемоизировать строки таблиц |
-| Виртуализация длинных списков | Внедрить `react-window` для таблиц >100 строк (студенты, ФРДО) |
-| Оптимизация ре-рендеров OrgDashboard | Разделить контекст на `OrgDataContext` + `OrgUIContext` |
-| Lazy import тяжёлых компонентов | `ContractGenerator`, `JournalEditor`, `EducationDocumentsJournal` — dynamic import |
-
----
-
-## Фаза 10: Обновление DevTools-метрик
-
-| Задача | Описание |
-|---|---|
-| Обновить `devToolsData.ts` | Актуальные LoC, количество файлов |
-| Добавить метрику «Тестовое покрытие» | Количество тестов и покрытых хуков |
-| Добавить pending-рекомендации | Виртуализация, разделение контекста, e2e-тесты |
-| Отметить выполненные оптимизации | Все фазы 1-5 как «applied» |
-
----
-
-## Фаза 11: Качество кода и DX
-
-| Задача | Описание |
-|---|---|
-| Типизация — убрать `any` | Поиск всех `as any` и замена на точные типы |
-| Консистентный error handling | Единый паттерн `try/catch` + toast + логирование |
-| Константы вместо magic strings | Вынести названия табов, статусы, роли в `constants/` |
-| JSDoc для публичных хуков | Документация параметров и возвращаемых значений |
-
----
-
-## Сводка приоритетов
-
-| Приоритет | Фаза | Сложность | Влияние |
-|---|---|---|---|
-| 🔴 Высокий | Фаза 7 (крупные компоненты) | Средняя | Читаемость, поддержка |
-| 🟡 Средний | Фаза 8 (тесты) | Низкая | Стабильность |
-| 🟡 Средний | Фаза 9 (производительность) | Средняя | UX при >500 студентов |
-| 🟢 Низкий | Фаза 10 (DevTools) | Низкая | DX |
-| 🟢 Низкий | Фаза 11 (качество) | Низкая | Долгосрочная поддержка |
