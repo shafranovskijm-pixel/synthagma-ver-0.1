@@ -23,12 +23,7 @@ import {
   Upload,
   Sparkles,
 } from "lucide-react";
-import mammoth from "mammoth";
-import * as pdfjsLib from "pdfjs-dist";
 import { HighlightedTemplateEditor } from "./HighlightedTemplateEditor";
-
-// Set worker path for PDF.js
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
 
 interface ContractTemplateEditorProps {
   organizationId: string;
@@ -206,6 +201,8 @@ export function ContractTemplateEditor({
   };
 
   const extractTextFromPDF = async (file: File): Promise<string> => {
+    const pdfjsLib = await import("pdfjs-dist");
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     let text = "";
@@ -223,6 +220,7 @@ export function ContractTemplateEditor({
   };
 
   const extractTextFromDOCX = async (file: File): Promise<string> => {
+    const mammoth = await import("mammoth");
     const arrayBuffer = await file.arrayBuffer();
     const result = await mammoth.extractRawText({ arrayBuffer });
     return result.value;
