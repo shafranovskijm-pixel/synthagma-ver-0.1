@@ -909,9 +909,7 @@ function BlockContent({ block, onUpdate, courseTitle, lessonTitle, existingConte
   switch (block.type) {
     case "paragraph":
       return (
-        <div className={cn("py-2 min-h-[40px]", editorStyleClasses)}>
-          <RichTextEditor value={block.content} onChange={(val) => onUpdate({ content: val })} placeholder="Введите текст..." className={editorStyleClasses} />
-        </div>
+        <ParagraphBlock block={block} onUpdate={onUpdate} courseTitle={courseTitle} lessonTitle={lessonTitle} existingContent={existingContent} editorStyleClasses={editorStyleClasses} />
       );
 
     case "heading1":
@@ -1640,6 +1638,65 @@ function AIGenerateButton({ isGenerating, onClick }: { isGenerating: boolean; on
       {isGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
       {isGenerating ? "Генерация..." : "Сгенерировать с ИИ"}
     </Button>
+  );
+}
+
+function ParagraphBlock({ block, onUpdate, courseTitle, lessonTitle, existingContent, editorStyleClasses }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void; courseTitle?: string; lessonTitle?: string; existingContent?: string; editorStyleClasses: string }) {
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [showPrompt, setShowPrompt] = useState(false);
+  const [customPrompt, setCustomPrompt] = useState("");
+
+  const handleGenerate = async (prompt?: string) => {
+    setIsGenerating(true);
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data, error } = await supabase.functions.invoke("generate-course-content", {
+        body: { contentType: "paragraph_text", lessonTitle: lessonTitle || "Общая тема", courseTitle: courseTitle || "Курс", existingContent, customPrompt: prompt || "" },
+      });
+      if (error) throw error;
+      if (data?.content) onUpdate({ content: data.content });
+      setShowPrompt(false);
+      setCustomPrompt("");
+    } catch (e) {
+      console.error("Paragraph AI error:", e);
+      const { toast } = await import("sonner");
+      toast.error("Ошибка генерации текста");
+    } finally { setIsGenerating(false); }
+  };
+
+  return (
+    <div className={cn("py-2 min-h-[40px] space-y-2", editorStyleClasses)}>
+      {!block.content && !isGenerating && (
+        <div className="flex items-center gap-2 justify-end">
+          <AIGenerateButton isGenerating={isGenerating} onClick={() => handleGenerate()} />
+          <Button variant="ghost" size="sm" onClick={() => setShowPrompt(!showPrompt)} className="gap-1 text-xs h-7">
+            <Pencil className="w-3 h-3" />
+            С промптом
+          </Button>
+        </div>
+      )}
+      {showPrompt && (
+        <div className="flex gap-2 items-end">
+          <Textarea
+            value={customPrompt}
+            onChange={(e) => setCustomPrompt(e.target.value)}
+            placeholder="Напишите, о чём сгенерировать текст..."
+            className="text-sm min-h-[60px] resize-none flex-1"
+          />
+          <Button size="sm" onClick={() => handleGenerate(customPrompt)} disabled={isGenerating || !customPrompt.trim()} className="gap-1">
+            {isGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+            Создать
+          </Button>
+        </div>
+      )}
+      {isGenerating && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground py-4 justify-center">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          Генерация текста...
+        </div>
+      )}
+      <RichTextEditor value={block.content} onChange={(val) => onUpdate({ content: val })} placeholder="Введите текст..." className={editorStyleClasses} />
+    </div>
   );
 }
 
