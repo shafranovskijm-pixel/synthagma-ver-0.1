@@ -33,6 +33,7 @@ export function AdminMarketplaceManager() {
   const navigate = useNavigate();
   const h = useAdminMarketplace();
   const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
+  const [isGeneratingShortDesc, setIsGeneratingShortDesc] = useState(false);
 
   const handleGenerateDescription = async () => {
     if (!h.newTitle.trim()) { toast.error("Сначала введите название курса"); return; }
@@ -48,6 +49,23 @@ export function AdminMarketplaceManager() {
       toast.error("Ошибка генерации описания");
     } finally {
       setIsGeneratingDesc(false);
+    }
+  };
+
+  const handleGenerateShortDesc = async () => {
+    if (!h.newTitle.trim()) { toast.error("Сначала введите название курса"); return; }
+    setIsGeneratingShortDesc(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-course-content", {
+        body: { contentType: "short_description", courseTitle: h.newTitle, courseDescription: h.newDescription },
+      });
+      if (error) throw error;
+      if (data?.content) h.setNewShortDesc(data.content);
+    } catch (e: any) {
+      console.error(e);
+      toast.error("Ошибка генерации описания");
+    } finally {
+      setIsGeneratingShortDesc(false);
     }
   };
 
@@ -184,7 +202,13 @@ export function AdminMarketplaceManager() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Краткое описание для каталога</Label>
+                <div className="flex items-center justify-between">
+                  <Label>Краткое описание для каталога</Label>
+                  <Button variant="ghost" size="sm" onClick={handleGenerateShortDesc} disabled={isGeneratingShortDesc || !h.newTitle.trim()}>
+                    {isGeneratingShortDesc ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Sparkles className="w-3.5 h-3.5 mr-1" />}
+                    Сгенерировать с ИИ
+                  </Button>
+                </div>
                 <Textarea value={h.newShortDesc} onChange={(e) => h.setNewShortDesc(e.target.value)} placeholder="Краткое описание..." className="rounded-xl" rows={2} />
               </div>
               <Button

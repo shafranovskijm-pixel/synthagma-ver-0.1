@@ -505,6 +505,25 @@ serve(async (req) => {
       );
     }
 
+    // Handle short description generation
+    if (contentType === "short_description" && courseTitle) {
+      console.log(`Generating short description for course: ${courseTitle} (user: ${user.id})`);
+      const systemPrompt = `Ты эксперт по маркетингу образовательных курсов. Напиши краткое, цепляющее описание курса для каталога.
+Правила:
+1. Максимум 2-3 предложения
+2. Ёмко и привлекательно
+3. Подчеркни ключевую ценность курса
+4. На русском языке`;
+      const prompt = courseDescription
+        ? `Напиши краткое описание для каталога. Курс: "${courseTitle}". Полное описание: "${courseDescription}"`
+        : `Напиши краткое описание для каталога. Курс: "${courseTitle}"`;
+      const result = await generateWithAI(prompt, systemPrompt);
+      return new Response(
+        JSON.stringify({ success: true, content: result.content || "" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Handle individual content generation requests
     if (contentType && lessonTitle) {
       console.log(`Generating ${contentType} for: ${lessonTitle} (user: ${user.id})`);
