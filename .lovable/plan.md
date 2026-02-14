@@ -1,60 +1,104 @@
 
-# Кнопки действий в Dev Tools: скачать, проверить, применить рекомендации
+# Декомпозиция и исправление всех рекомендаций Dev Tools
 
-## Что будет сделано
+## Обзор
 
-### 1. Вкладка "База данных" -- кнопка "Скачать"
-Рядом с кнопкой "Обновить" добавить кнопку **"Скачать JSON"**, которая экспортирует карту БД (таблицы, группы, количество записей, связи) в JSON-файл для анализа/документации.
+Реализация всех оставшихся рекомендаций из панели Dev Tools: декомпозиция крупных компонентов, консолидация дублирующихся хуков и типов, мемоизация списков, обновление статусов рекомендаций.
 
-### 2. Вкладка "Здоровье" -- кнопки "Проверить" и "Применить"
-- Кнопка **"Проверить рекомендации"** -- запускает динамическую проверку: подсчитывает записи в таблицах, определяет "проблемные" (>1000 записей), проверяет пустые таблицы, анализирует код на наличие типовых проблем. Результат -- обновлённый список рекомендаций.
-- Кнопка **"Применить рекомендации"** -- для применимых рекомендаций (например, заглушки) показывает диалог с описанием что будет сделано. Для остальных -- пометка "Требует ручной доработки".
+---
 
-### 3. Расширенные рекомендации по коду
+## 1. Декомпозиция крупных компонентов
 
-Добавить набор **рекомендаций по коду**, которые генерируются динамически:
+### CourseBuilder.tsx (~2585 строк) -- самый крупный файл
 
-- **Крупные компоненты** -- OrganizationDashboard, CourseBuilder и др. можно разбить на подкомпоненты
-- **Дублирование хуков** -- есть похожие хуки (useStudentFilters / useStudentFiltersState, useCourseActions / useCourseDetailsModal)
-- **Консолидация типов** -- 6 файлов типов, некоторые можно объединить
-- **Error Boundary** -- нет глобального Error Boundary для React
-- **Lazy Loading** -- страницы не используют React.lazy() для code splitting
-- **Memo-оптимизация** -- крупные списки (таблицы студентов, курсов) без React.memo / useMemo
-- **Тесты** -- нет unit-тестов (0 файлов .test.ts)
-- **Bundle size** -- xlsx + pdfjs + mammoth загружаются синхронно, можно dynamic import
+Вынести в отдельные файлы:
+- `src/utils/courseBuilderHelpers.ts` -- helper-функции: `getExternalStorageConfig`, `uploadToStorage`, `canEmbedInIframe`, `getVideoEmbedUrl`, `isIframeEmbed`, `parseSliderContent` (~200 строк)
+- `src/components/course-builder/VideoPreviewInline.tsx` -- компонент предпросмотра видео (~60 строк)
+- `src/components/course-builder/SliderLessonEditor.tsx` -- редактор слайдов (~150 строк)
+- `src/components/course-builder/LessonTypeConfig.ts` -- константы `lessonIcons`, `lessonColors`, интерфейсы `TestQuestionLocal`, `Lesson`, `LessonType` (~50 строк)
+
+Итого вынос ~460 строк, основной файл сокращается до ~2100.
+
+### OrganizationDashboard.tsx (~686 строк)
+
+Вынести:
+- `src/hooks/useOrganizationDashboard.ts` -- объединяющий хук, который инициализирует все под-хуки и возвращает единый объект состояния (~180 строк). Это уберёт ~150 строк инициализации хуков из компонента.
+- `src/components/organization/OrgDashboardHeader.tsx` -- header с кнопками действий по вкладкам (~80 строк)
+
+Основной файл сокращается до ~450 строк.
+
+### DevToolsPanel.tsx (~789 строк)
+
+Вынести:
+- `src/components/admin/devtools/CodeMapTab.tsx` -- вкладка "Карта кода" с анализом (~120 строк)
+- `src/components/admin/devtools/HealthTab.tsx` -- вкладка "Здоровье" с рекомендациями (~130 строк)
+- `src/components/admin/devtools/devToolsData.ts` -- все константы: CODE_TREE, EDGE_FUNCTIONS, CATEGORY_META, CODE_RECOMMENDATIONS, SEVERITY_CONFIG (~280 строк)
+
+Основной файл сокращается до ~260 строк.
+
+---
+
+## 2. Консолидация дублирующихся хуков
+
+### useStudentFilters + useStudentFiltersState
+
+`useStudentFiltersState.ts` удаляется. Остаётся только `useStudentFilters.ts` -- он уже содержит расширенную логику (studentsWithoutEnrollments, filterCounts, resetFilters). Все импорты обновляются.
+
+### useCourseActions -- локальная дублирующая типизация
+
+В `useCourseActions.ts` определены локальные интерфейсы `Course` и `Student`, которые дублируют `src/types/shared.ts`. Заменить на импорт из `@/types/shared`.
+
+---
+
+## 3. Консолидация типов
+
+Сейчас типы дублируются между `shared.ts`, `student.ts`, `course.ts`, `organization.ts`:
+- `Student` есть в `shared.ts` и `student.ts` (разные версии)
+- `Course` есть в `shared.ts` и `course.ts`
+- `Company`, `DocumentsStats` есть в `shared.ts` и `organization.ts`
+
+Решение: сделать `shared.ts` реэкспортом из доменных файлов, убрав дубликаты. Типы в `shared.ts` будут ссылаться на `student.ts` / `course.ts` / `organization.ts`.
+
+---
+
+## 4. React.memo для крупных списков
+
+Обернуть в `React.memo`:
+- `src/components/organization/tabs/StudentsTab.tsx`
+- `src/components/organization/tabs/CoursesTab.tsx`
+- `src/components/organization/tabs/DocumentsTab.tsx`
+
+---
+
+## 5. Обновление статусов рекомендаций в Dev Tools
+
+Все реализованные рекомендации помечаются как "applied":
+- `large-components` -- "Декомпозиция выполнена"
+- `duplicate-hooks` -- "Хуки консолидированы"
+- `types-consolidation` -- "Типы консолидированы"
+- `memo-optimization` -- "React.memo добавлен"
+
+---
 
 ## Изменения по файлам
 
-| Файл | Что меняется |
+| Файл | Действие |
 |---|---|
-| `src/components/admin/DatabaseMap.tsx` | Добавить кнопку "Скачать JSON" рядом с "Обновить", функция экспорта данных карты в файл |
-| `src/components/admin/DevToolsPanel.tsx` | Полностью переработать вкладку "Здоровье": добавить кнопки "Проверить" / "Применить", динамические рекомендации по БД и коду, статусы (проверено/не проверено), категории рекомендаций (БД, Код, Архитектура) |
-
-## Технические детали
-
-### Экспорт JSON из DatabaseMap
-```text
-{
-  exportDate: "2026-02-14",
-  totalTables: 65,
-  groups: [
-    { name: "Организации", tables: [...], counts: {...}, connections: [...] },
-    ...
-  ]
-}
-```
-Файл скачивается через создание Blob + URL.createObjectURL.
-
-### Динамические рекомендации (Здоровье)
-При нажатии "Проверить" выполняется:
-1. Подсчёт записей в ключевых таблицах (enrollments, lesson_progress, test_attempts, profiles)
-2. Определение таблиц >1000 записей -- рекомендация "Добавить пагинацию"
-3. Определение пустых таблиц -- рекомендация "Удалить или заполнить"
-4. Статические проверки кода (захардкоженный список known issues)
-
-### Рекомендации по коду (12+ пунктов)
-Каждая рекомендация имеет:
-- severity: "error" | "warn" | "info"
-- category: "database" | "code" | "architecture" | "performance"
-- actionable: boolean (можно ли применить автоматически)
-- status: "unchecked" | "checked" | "applied" | "skipped"
+| `src/utils/courseBuilderHelpers.ts` | Новый -- helper-функции из CourseBuilder |
+| `src/components/course-builder/VideoPreviewInline.tsx` | Новый -- компонент видео-превью |
+| `src/components/course-builder/SliderLessonEditor.tsx` | Новый -- уже существует как вложенная функция, выносится |
+| `src/components/course-builder/LessonTypeConfig.ts` | Новый -- типы и константы уроков |
+| `src/pages/CourseBuilder.tsx` | Рефакторинг -- импорт вынесенных модулей |
+| `src/hooks/useOrganizationDashboard.ts` | Новый -- объединяющий хук |
+| `src/components/organization/OrgDashboardHeader.tsx` | Новый -- header дашборда |
+| `src/pages/OrganizationDashboard.tsx` | Рефакторинг -- использование нового хука и header |
+| `src/components/admin/devtools/devToolsData.ts` | Новый -- константы |
+| `src/components/admin/devtools/CodeMapTab.tsx` | Новый -- вкладка кода |
+| `src/components/admin/devtools/HealthTab.tsx` | Новый -- вкладка здоровья |
+| `src/components/admin/DevToolsPanel.tsx` | Рефакторинг -- импорт подкомпонентов |
+| `src/hooks/useCourseActions.ts` | Рефакторинг -- импорт типов из shared |
+| `src/types/shared.ts` | Рефакторинг -- реэкспорт без дублирования |
+| `src/hooks/useStudentFiltersState.ts` | Удаляется (если используется -- заменяется на useStudentFilters) |
+| `src/components/organization/tabs/StudentsTab.tsx` | React.memo обёртка |
+| `src/components/organization/tabs/CoursesTab.tsx` | React.memo обёртка |
+| `src/components/organization/tabs/DocumentsTab.tsx` | React.memo обёртка |
