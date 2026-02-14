@@ -304,16 +304,14 @@ export function BlockEditor({ blocks, onChange, readOnly = false, courseTitle, l
 
   return (
     <div className="space-y-2">
-      {/* Undo/Redo toolbar - sticky */}
-      <div className="sticky top-2 z-20 flex items-center gap-2 justify-end">
-        <div className="flex items-center gap-1 bg-background/80 backdrop-blur-sm border border-border rounded-lg p-1 shadow-md">
-          <Button variant="ghost" size="sm" onClick={handleUndo} disabled={!canUndo} title="Отменить (Ctrl+Z)" className="h-9 w-9 p-0">
-            <Undo2 className="w-5 h-5" />
-          </Button>
-          <Button variant="ghost" size="sm" onClick={handleRedo} disabled={!canRedo} title="Вернуть (Ctrl+Shift+Z)" className="h-9 w-9 p-0">
-            <Redo2 className="w-5 h-5" />
-          </Button>
-        </div>
+      {/* Undo/Redo toolbar - fixed */}
+      <div className="fixed bottom-24 right-6 z-50 flex items-center gap-1 bg-background/90 backdrop-blur-sm border border-border rounded-lg p-1.5 shadow-lg">
+        <Button variant="ghost" size="sm" onClick={handleUndo} disabled={!canUndo} title="Отменить (Ctrl+Z)" className="h-10 w-10 p-0">
+          <Undo2 className="w-5 h-5" />
+        </Button>
+        <Button variant="ghost" size="sm" onClick={handleRedo} disabled={!canRedo} title="Вернуть (Ctrl+Shift+Z)" className="h-10 w-10 p-0">
+          <Redo2 className="w-5 h-5" />
+        </Button>
       </div>
       {blocks.length === 0 && (
         <div className="text-center py-8 text-muted-foreground border-2 border-dashed border-border rounded-xl">
