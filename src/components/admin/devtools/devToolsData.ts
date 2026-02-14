@@ -28,7 +28,7 @@ export const CODE_TREE: CodeTreeGroup[] = [
     color: "#8b5cf6",
     subfolders: [
       { name: "admin/ (devtools вынесены)", files: 20, lines: 4100 },
-      { name: "organization/ (хуки извлечены)", files: 43, lines: 7200 },
+      { name: "organization/ (хуки: EduDocs, LaborSafety, CourseStore, StudentDetail)", files: 43, lines: 5100 },
       { name: "student/", files: 6, lines: 1400 },
       { name: "landing/", files: 12, lines: 2800 },
       { name: "course-builder/ (SortableLesson, Slider, Video вынесены)", files: 7, lines: 1900 },
@@ -37,7 +37,7 @@ export const CODE_TREE: CodeTreeGroup[] = [
       { name: "ui/", files: 52, lines: 3200 },
     ],
     totalFiles: 150,
-    totalLines: 23000,
+    totalLines: 20900,
   },
   {
     folder: "src/hooks/",
@@ -48,10 +48,11 @@ export const CODE_TREE: CodeTreeGroup[] = [
       { name: "useStudents, useCourses...", files: 18, lines: 3600 },
       { name: "useCompanies, useJournals...", files: 10, lines: 1800 },
       { name: "useEducationDocs, useLaborSafety (NEW)", files: 2, lines: 1650 },
+      { name: "useCourseStore, useStudentDetail (NEW)", files: 2, lines: 1600 },
       { name: "Остальные хуки", files: 8, lines: 1200 },
     ],
-    totalFiles: 50,
-    totalLines: 10650,
+    totalFiles: 52,
+    totalLines: 12250,
   },
   {
     folder: "src/pages/",
