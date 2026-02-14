@@ -580,11 +580,12 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
                 </DropdownMenuItem>
                 {presets.length > 0 && <DropdownMenuSeparator />}
                 {presets.map((p, i) => (
-                  <DropdownMenuItem key={i} className="flex items-center justify-between group/preset">
-                    <span className="flex-1 truncate text-xs" onClick={() => onUpdate(p.style)}>{p.name}</span>
+                  <DropdownMenuItem key={i} className="flex items-center justify-between group/preset" onClick={() => onUpdate(p.style)}>
+                    <span className="flex-1 truncate text-xs">{p.name}</span>
                     <button
                       className="ml-2 opacity-0 group-hover/preset:opacity-100 h-5 w-5 flex items-center justify-center hover:bg-destructive/20 rounded transition-all"
                       onClick={(e) => {
+                        e.preventDefault();
                         e.stopPropagation();
                         const newPresets = presets.filter((_, j) => j !== i);
                         onPresetsChange(newPresets);
