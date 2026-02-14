@@ -117,6 +117,30 @@ export function DatabaseMap() {
   const [tableCounts, setTableCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(false);
   const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
+  const [hoveredGroup, setHoveredGroup] = useState<string | null>(null);
+
+  const getConnectedGroups = (groupName: string): Set<string> => {
+    const connected = new Set<string>();
+    TABLE_GROUPS.forEach(g => {
+      if (g.name === groupName) {
+        g.connections.forEach(c => connected.add(c));
+      } else if (g.connections.includes(groupName)) {
+        connected.add(g.name);
+      }
+    });
+    return connected;
+  };
+
+  const isHighlighted = (groupName: string): boolean => {
+    if (!hoveredGroup) return false;
+    if (groupName === hoveredGroup) return true;
+    return getConnectedGroups(hoveredGroup).has(groupName);
+  };
+
+  const isDimmed = (groupName: string): boolean => {
+    if (!hoveredGroup) return false;
+    return !isHighlighted(groupName);
+  };
 
   const fetchCounts = async () => {
     setLoading(true);
@@ -169,8 +193,16 @@ export function DatabaseMap() {
           return (
             <div
               key={group.name}
-              className="bg-secondary/30 rounded-xl border border-border p-3 cursor-pointer hover:bg-secondary/50 transition-colors"
+              className={`bg-secondary/30 rounded-xl border p-3 cursor-pointer transition-all duration-200 ${
+                isDimmed(group.name)
+                  ? "opacity-30 border-border"
+                  : hoveredGroup && isHighlighted(group.name) && group.name !== hoveredGroup
+                  ? "opacity-100 border-primary/60 ring-1 ring-primary/40 bg-primary/5"
+                  : "border-border hover:bg-secondary/50"
+              }`}
               onClick={() => setExpandedGroup(isExpanded ? null : group.name)}
+              onMouseEnter={() => setHoveredGroup(group.name)}
+              onMouseLeave={() => setHoveredGroup(null)}
             >
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
