@@ -253,7 +253,7 @@ export function useStudentDashboard() {
     isPreviewMode, showVideoIdentification, setShowVideoIdentification,
     showConsentForm, setShowConsentForm, showDocumentsUpload, setShowDocumentsUpload,
     showAchievements, setShowAchievements, mobileMenuOpen, setMobileMenuOpen,
-    documentsProgress, isVideoIdentified, showOnboarding, handleOnboardingClose,
+    documentsProgress, isVideoIdentified, setIsVideoIdentified, showOnboarding, handleOnboardingClose,
     handleLogout, pullToRefreshRef, pullDistance, isRefreshing, canRefresh,
     signOut,
   };

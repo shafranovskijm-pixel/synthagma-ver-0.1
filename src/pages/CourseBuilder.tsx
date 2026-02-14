@@ -78,14 +78,17 @@ export default function CourseBuilder() {
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                 <SortableContext items={lessons.map(l => l.id)} strategy={verticalListSortingStrategy}>
                   <div className="space-y-4">
-                    {lessons.map((lesson) => (
+                    {lessons.map((lesson, index) => (
                       <SortableLessonItem
                         key={lesson.id}
-                        id={lesson.id}
                         lesson={lesson}
+                        index={index}
                         onUpdate={(updates) => updateLesson(lesson.id, updates)}
                         onDelete={() => deleteLesson(lesson.id)}
                         onToggle={() => toggleLesson(lesson.id)}
+                        courseId={courseId}
+                        courseTitle={courseTitle}
+                        courseDescription={courseDescription}
                       />
                     ))}
                   </div>
@@ -140,7 +143,7 @@ export default function CourseBuilder() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <AIGenerateDialog open={showAIGenerateDialog} onOpenChange={setShowAIGenerateDialog} onGenerate={handleAIGenerate} isGenerating={isGenerating} />
+      <AIGenerateDialog open={showAIGenerateDialog} onOpenChange={setShowAIGenerateDialog} onGenerate={handleAIGenerate} courseTitle={courseTitle} courseDescription={courseDescription} />
     </div>
   );
 }
