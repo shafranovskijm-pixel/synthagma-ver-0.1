@@ -842,12 +842,12 @@ const CoursePreview = () => {
                                       : "border-border hover:border-primary/50 hover:bg-muted/50"
                                   )}
                                 >
-                                  <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-3">
                                     <div className={cn(
-                                      "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all",
+                                      "w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-all",
                                       selectedAnswers[question.id] === oIndex
                                         ? "border-primary bg-primary"
-                                        : "border-muted-foreground"
+                                        : "border-muted-foreground/40"
                                     )}>
                                       {selectedAnswers[question.id] === oIndex && (
                                         <div className="w-2 h-2 rounded-full bg-primary-foreground" />
@@ -860,10 +860,6 @@ const CoursePreview = () => {
                             })}
                           </div>
                           
-                          {/* Show correct answer indicator for preview */}
-                          <div className="mt-4 ml-12 text-xs text-muted-foreground">
-                            Правильный ответ: {question.correct_answer + 1}
-                          </div>
                         </div>
                       );
                     })}
