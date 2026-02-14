@@ -353,80 +353,94 @@ export function BlockEditor({ blocks, onChange, readOnly = false, courseTitle, l
   );
 }
 
-function AddBlockButton({ onAdd }: { onAdd: (type: BlockType) => void }) {
+const blockCategories = {
+  text: {
+    label: "Текст",
+    items: [
+      { type: "paragraph" as BlockType, icon: Type, label: "Параграф" },
+      { type: "heading1" as BlockType, icon: Heading1, label: "Заголовок 1" },
+      { type: "heading2" as BlockType, icon: Heading2, label: "Заголовок 2" },
+      { type: "bulletList" as BlockType, icon: List, label: "Маркир. список" },
+      { type: "numberedList" as BlockType, icon: ListOrdered, label: "Нумер. список" },
+      { type: "quote" as BlockType, icon: Quote, label: "Цитата", color: "text-muted-foreground" },
+    ],
+  },
+  callouts: {
+    label: "Выделение",
+    items: [
+      { type: "callout-info" as BlockType, icon: AlertCircle, label: "Информация", color: "text-blue-500" },
+      { type: "callout-warning" as BlockType, icon: AlertCircle, label: "Предупреждение", color: "text-amber-500" },
+      { type: "callout-tip" as BlockType, icon: Lightbulb, label: "Совет", color: "text-green-500" },
+      { type: "callout-success" as BlockType, icon: CheckCircle, label: "Выполнено", color: "text-emerald-500" },
+      { type: "callout-danger" as BlockType, icon: XCircle, label: "Ошибка", color: "text-red-500" },
+      { type: "highlight" as BlockType, icon: Highlighter, label: "Выделение", color: "text-yellow-500" },
+    ],
+  },
+  media: {
+    label: "Медиа",
+    items: [
+      { type: "image" as BlockType, icon: ImageIcon, label: "Изображение", color: "text-green-500" },
+      { type: "video" as BlockType, icon: Video, label: "Видео", color: "text-red-500" },
+      { type: "audio" as BlockType, icon: Headphones, label: "Аудио", color: "text-teal-500" },
+      { type: "slider" as BlockType, icon: Presentation, label: "Слайдер", color: "text-orange-500" },
+    ],
+  },
+  other: {
+    label: "Ещё",
+    items: [
+      { type: "accordion" as BlockType, icon: ChevronDown, label: "Свор. секция", color: "text-purple-500" },
+      { type: "quiz" as BlockType, icon: HelpCircle, label: "Мини-квиз", color: "text-primary" },
+      { type: "divider" as BlockType, icon: Minus, label: "Разделитель", color: "text-muted-foreground" },
+    ],
+  },
+};
+
+function BlockCategoryGrid({ items, onSelect }: { items: typeof blockCategories.text.items; onSelect: (type: BlockType) => void }) {
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
+    <div className="grid grid-cols-2 gap-1">
+      {items.map((item) => (
+        <button
+          key={item.type}
+          onClick={() => onSelect(item.type)}
+          className="flex items-center gap-2 px-2 py-1.5 rounded-md text-sm hover:bg-accent transition-colors text-left"
+        >
+          <item.icon className={cn("w-4 h-4 shrink-0", item.color || "text-foreground")} />
+          <span className="truncate">{item.label}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function AddBlockButton({ onAdd }: { onAdd: (type: BlockType) => void }) {
+  const [open, setOpen] = useState(false);
+  const handleSelect = (type: BlockType) => {
+    setOpen(false);
+    onAdd(type);
+  };
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
         <Button variant="outline" size="sm" className="rounded-lg gap-2">
           <Plus className="w-4 h-4" />
           Добавить блок
         </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="center" className="w-56">
-        <DropdownMenuItem onClick={() => onAdd("paragraph")}>
-          <Type className="w-4 h-4 mr-2" />Параграф
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onAdd("heading1")}>
-          <Heading1 className="w-4 h-4 mr-2" />Заголовок 1
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onAdd("heading2")}>
-          <Heading2 className="w-4 h-4 mr-2" />Заголовок 2
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => onAdd("bulletList")}>
-          <List className="w-4 h-4 mr-2" />Маркированный список
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onAdd("numberedList")}>
-          <ListOrdered className="w-4 h-4 mr-2" />Нумерованный список
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onAdd("quote")}>
-          <Quote className="w-4 h-4 mr-2" />Цитата
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => onAdd("callout-info")}>
-          <AlertCircle className="w-4 h-4 mr-2 text-blue-500" />Информация
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onAdd("callout-warning")}>
-          <AlertCircle className="w-4 h-4 mr-2 text-amber-500" />Предупреждение
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onAdd("callout-tip")}>
-          <Lightbulb className="w-4 h-4 mr-2 text-green-500" />Совет
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onAdd("callout-success")}>
-          <CheckCircle className="w-4 h-4 mr-2 text-emerald-500" />Выполнено
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onAdd("callout-danger")}>
-          <XCircle className="w-4 h-4 mr-2 text-red-500" />Ошибка
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onAdd("highlight")}>
-          <Highlighter className="w-4 h-4 mr-2 text-yellow-500" />Выделение
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => onAdd("accordion")}>
-          <ChevronDown className="w-4 h-4 mr-2 text-purple-500" />Сворачиваемая секция
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onAdd("quiz")}>
-          <HelpCircle className="w-4 h-4 mr-2 text-primary" />Мини-квиз
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => onAdd("image")}>
-          <ImageIcon className="w-4 h-4 mr-2 text-green-500" />Изображение
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onAdd("video")}>
-          <Video className="w-4 h-4 mr-2 text-red-500" />Видео
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onAdd("audio")}>
-          <Headphones className="w-4 h-4 mr-2 text-teal-500" />Аудио
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onAdd("slider")}>
-          <Presentation className="w-4 h-4 mr-2 text-orange-500" />Слайдер презентации
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => onAdd("divider")}>
-          <Minus className="w-4 h-4 mr-2 text-muted-foreground" />Разделитель
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </PopoverTrigger>
+      <PopoverContent align="center" className="w-72 p-2">
+        <Tabs defaultValue="text">
+          <TabsList className="w-full h-8 p-0.5">
+            {Object.entries(blockCategories).map(([key, cat]) => (
+              <TabsTrigger key={key} value={key} className="text-xs px-2 py-1 h-7">{cat.label}</TabsTrigger>
+            ))}
+          </TabsList>
+          {Object.entries(blockCategories).map(([key, cat]) => (
+            <TabsContent key={key} value={key} className="mt-2">
+              <BlockCategoryGrid items={cat.items} onSelect={handleSelect} />
+            </TabsContent>
+          ))}
+        </Tabs>
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -828,20 +842,27 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
               <Eraser className="w-4 h-4" />
             </button>
           )}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+          <Popover>
+            <PopoverTrigger asChild>
               <button className="h-8 w-8 flex items-center justify-center hover:bg-white/20 rounded-full transition-colors" title="Добавить блок">
                 <Plus className="w-4 h-4" />
               </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="center" className="w-48">
-              {Object.entries(blockTypeConfig).map(([type, cfg]) => (
-                <DropdownMenuItem key={type} onClick={() => onAddAfter(type as BlockType)}>
-                  <cfg.icon className={cn("w-4 h-4 mr-2", cfg.color)} />{cfg.label}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+            </PopoverTrigger>
+            <PopoverContent align="center" className="w-72 p-2">
+              <Tabs defaultValue="text">
+                <TabsList className="w-full h-8 p-0.5">
+                  {Object.entries(blockCategories).map(([key, cat]) => (
+                    <TabsTrigger key={key} value={key} className="text-xs px-2 py-1 h-7">{cat.label}</TabsTrigger>
+                  ))}
+                </TabsList>
+                {Object.entries(blockCategories).map(([key, cat]) => (
+                  <TabsContent key={key} value={key} className="mt-2">
+                    <BlockCategoryGrid items={cat.items} onSelect={(type) => onAddAfter(type)} />
+                  </TabsContent>
+                ))}
+              </Tabs>
+            </PopoverContent>
+          </Popover>
           <button className="h-8 w-8 flex items-center justify-center hover:bg-red-500/30 rounded-full transition-colors" onClick={(e) => { e.stopPropagation(); onDelete(); }} title="Удалить блок">
             <Trash2 className="w-4 h-4" />
           </button>
