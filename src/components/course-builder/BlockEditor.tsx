@@ -576,19 +576,15 @@ function BlockContent({ block, onUpdate, courseTitle, lessonTitle }: { block: Co
       );
 
     case "quote":
-      return (
-        <div className={cn("border-l-4 border-muted-foreground/30 pl-4 py-2", editorStyleClasses)}>
-          <Textarea value={block.content} onChange={(e) => onUpdate({ content: e.target.value })} placeholder="Введите цитату..." className="min-h-[60px] border-0 bg-transparent resize-none focus-visible:ring-0 px-0 italic text-muted-foreground" />
-        </div>
-      );
+      return <QuoteBlock block={block} onUpdate={onUpdate} courseTitle={courseTitle} lessonTitle={lessonTitle} />;
 
     case "callout-info":
     case "callout-warning":
     case "callout-tip":
-      return <CalloutBlock block={block} onUpdate={onUpdate} />;
+      return <CalloutBlock block={block} onUpdate={onUpdate} courseTitle={courseTitle} lessonTitle={lessonTitle} />;
 
     case "accordion":
-      return <AccordionBlock block={block} onUpdate={onUpdate} />;
+      return <AccordionBlock block={block} onUpdate={onUpdate} courseTitle={courseTitle} lessonTitle={lessonTitle} />;
 
     case "quiz":
       return <QuizBlock block={block} onUpdate={onUpdate} courseTitle={courseTitle} lessonTitle={lessonTitle} />;
@@ -1107,7 +1103,44 @@ function SliderBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (upda
   );
 }
 
-function CalloutBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void }) {
+function AIGenerateButton({ isGenerating, onClick }: { isGenerating: boolean; onClick: () => void }) {
+  return (
+    <Button variant="outline" size="sm" onClick={onClick} disabled={isGenerating} className="gap-2 text-xs">
+      {isGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+      {isGenerating ? "Генерация..." : "Сгенерировать с ИИ"}
+    </Button>
+  );
+}
+
+function QuoteBlock({ block, onUpdate, courseTitle, lessonTitle }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void; courseTitle?: string; lessonTitle?: string }) {
+  const [isGenerating, setIsGenerating] = useState(false);
+  const handleGenerate = async () => {
+    setIsGenerating(true);
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data, error } = await supabase.functions.invoke("generate-course-content", {
+        body: { contentType: "quote", lessonTitle: lessonTitle || "Общая тема", courseTitle: courseTitle || "Курс" },
+      });
+      if (error) throw error;
+      if (data?.content) onUpdate({ content: data.content });
+    } catch (e) {
+      console.error("Quote AI error:", e);
+      const { toast } = await import("sonner");
+      toast.error("Ошибка генерации цитаты");
+    } finally { setIsGenerating(false); }
+  };
+  return (
+    <div className="border-l-4 border-muted-foreground/30 pl-4 py-2 space-y-2">
+      <div className="flex justify-end">
+        <AIGenerateButton isGenerating={isGenerating} onClick={handleGenerate} />
+      </div>
+      <Textarea value={block.content} onChange={(e) => onUpdate({ content: e.target.value })} placeholder="Введите цитату..." className="min-h-[60px] border-0 bg-transparent resize-none focus-visible:ring-0 px-0 italic text-muted-foreground" />
+    </div>
+  );
+}
+
+function CalloutBlock({ block, onUpdate, courseTitle, lessonTitle }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void; courseTitle?: string; lessonTitle?: string }) {
+  const [isGenerating, setIsGenerating] = useState(false);
   const styles = {
     "callout-info": { bg: "bg-blue-500/10", border: "border-blue-500/30", icon: AlertCircle, iconColor: "text-blue-500" },
     "callout-warning": { bg: "bg-amber-500/10", border: "border-amber-500/30", icon: AlertCircle, iconColor: "text-amber-500" },
@@ -1116,24 +1149,63 @@ function CalloutBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (upd
   const style = styles[block.type as keyof typeof styles];
   const Icon = style.icon;
 
+  const handleGenerate = async () => {
+    setIsGenerating(true);
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data, error } = await supabase.functions.invoke("generate-course-content", {
+        body: { contentType: "callout", calloutType: block.type, lessonTitle: lessonTitle || "Общая тема", courseTitle: courseTitle || "Курс" },
+      });
+      if (error) throw error;
+      if (data?.content) onUpdate({ content: data.content });
+    } catch (e) {
+      console.error("Callout AI error:", e);
+      const { toast } = await import("sonner");
+      toast.error("Ошибка генерации");
+    } finally { setIsGenerating(false); }
+  };
+
   return (
     <div className={cn("rounded-xl p-4 border", style.bg, style.border)}>
-      <div className="flex items-start gap-3">
-        <Icon className={cn("w-5 h-5 mt-0.5 flex-shrink-0", style.iconColor)} />
-        <Textarea value={block.content} onChange={(e) => onUpdate({ content: e.target.value })} placeholder="Введите текст..." className="min-h-[40px] border-0 bg-transparent resize-none focus-visible:ring-0 px-0 flex-1" />
+      <div className="flex items-center justify-between mb-2">
+        <Icon className={cn("w-5 h-5 flex-shrink-0", style.iconColor)} />
+        <AIGenerateButton isGenerating={isGenerating} onClick={handleGenerate} />
       </div>
+      <Textarea value={block.content} onChange={(e) => onUpdate({ content: e.target.value })} placeholder="Введите текст..." className="min-h-[40px] border-0 bg-transparent resize-none focus-visible:ring-0 px-0 flex-1" />
     </div>
   );
 }
 
-function AccordionBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void }) {
+function AccordionBlock({ block, onUpdate, courseTitle, lessonTitle }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void; courseTitle?: string; lessonTitle?: string }) {
+  const [isGenerating, setIsGenerating] = useState(false);
   const isOpen = block.accordionOpen ?? true;
+
+  const handleGenerate = async () => {
+    setIsGenerating(true);
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data, error } = await supabase.functions.invoke("generate-course-content", {
+        body: { contentType: "accordion", lessonTitle: lessonTitle || "Общая тема", courseTitle: courseTitle || "Курс" },
+      });
+      if (error) throw error;
+      if (data?.accordion) {
+        onUpdate({ accordionTitle: data.accordion.title || block.accordionTitle, content: data.accordion.content || "" });
+      }
+    } catch (e) {
+      console.error("Accordion AI error:", e);
+      const { toast } = await import("sonner");
+      toast.error("Ошибка генерации");
+    } finally { setIsGenerating(false); }
+  };
 
   return (
     <div className="rounded-xl border border-purple-500/30 bg-purple-500/5 overflow-hidden">
       <div className="flex items-center gap-2 p-3 cursor-pointer hover:bg-purple-500/10" onClick={() => onUpdate({ accordionOpen: !isOpen })}>
         {isOpen ? <ChevronDown className="w-4 h-4 text-purple-500" /> : <ChevronRight className="w-4 h-4 text-purple-500" />}
-        <Input value={block.accordionTitle || ""} onChange={(e) => { e.stopPropagation(); onUpdate({ accordionTitle: e.target.value }); }} onClick={(e) => e.stopPropagation()} placeholder="Заголовок секции" className="border-0 bg-transparent focus-visible:ring-0 px-0 font-medium" />
+        <Input value={block.accordionTitle || ""} onChange={(e) => { e.stopPropagation(); onUpdate({ accordionTitle: e.target.value }); }} onClick={(e) => e.stopPropagation()} placeholder="Заголовок секции" className="border-0 bg-transparent focus-visible:ring-0 px-0 font-medium flex-1" />
+        <div onClick={(e) => e.stopPropagation()}>
+          <AIGenerateButton isGenerating={isGenerating} onClick={handleGenerate} />
+        </div>
       </div>
       {isOpen && (
         <div className="p-3 pt-0 border-t border-purple-500/20">
