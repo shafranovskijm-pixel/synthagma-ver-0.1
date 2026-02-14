@@ -1,128 +1,88 @@
 
+# План улучшений кодовой базы — v2
 
-# Глобальный план оптимизации кодовой базы
-
-Полный план всех оставшихся улучшений, сгруппированный по приоритетам. Выполняется за один проход без пауз.
-
----
-
-## Фаза 1: Завершение Context-миграции (OrgSidebar + OrgDashboardHeader)
-
-OrgSidebar (217 строк, 12 props) и OrgDashboardHeader (103 строки, 8 props) до сих пор получают props вручную из OrganizationDashboard.tsx.
-
-**Действия:**
-- OrgSidebar.tsx -- убрать interface, подключить `useOrgDashboard()`
-- OrgDashboardHeader.tsx -- убрать interface, подключить `useOrgDashboard()`
-- OrganizationDashboard.tsx -- убрать передачу ~20 props, файл сократится до ~100 строк
+Актуальное состояние после рефакторинга. Отмечено что сделано (✅) и что осталось.
 
 ---
 
-## Фаза 2: Декомпозиция CourseLearning.tsx (2758 строк -- самый большой файл)
+## ✅ Выполнено
 
-Разбить на:
+| Задача | Результат |
+|---|---|
+| Context-миграция OrgSidebar, OrgDashboardHeader | Оба на `useOrgDashboard()`, 0 props |
+| OrganizationDashboard.tsx | 121 строка (было ~800) |
+| Декомпозиция CourseBuilder.tsx | 149 строк + `useCourseBuilder.ts` |
+| Декомпозиция CourseLearning.tsx | 281 строка + `useCourseLearning.ts` |
+| Декомпозиция StudentDashboard.tsx | 175 строк + `useStudentDashboard.ts` |
+| Декомпозиция ContractGenerator.tsx | 90 строк + `useContractGenerator.ts` |
+| Декомпозиция JournalEditor.tsx | 106 строк + `useJournalEditor.ts` |
+| Декомпозиция FRDOManager.tsx | 80 строк + `useFRDOManager.ts` |
+| Unit-тесты для хуков | 5 тестовых файлов |
 
-| Новый файл | Содержимое | ~Строк |
+---
+
+## Фаза 7: Декомпозиция оставшихся крупных компонентов
+
+| Файл | Строк | Действие |
 |---|---|---|
-| `src/hooks/useCourseLearning.ts` | Вся бизнес-логика: загрузка курса, навигация по урокам, прогресс, тест-логика | ~600 |
-| `src/hooks/useTestLesson.ts` | Логика тестирования: ответы, таймер, отправка, результат | ~300 |
-| `src/components/course-learning/LessonContent.tsx` | Рендер контента: текст, видео, аудио, слайдер, изображение | ~400 |
-| `src/components/course-learning/TestView.tsx` | Интерфейс тестирования: вопросы, варианты, результат | ~350 |
-| `src/components/course-learning/LessonSidebar.tsx` | Боковая панель со списком уроков | ~150 |
-| `src/components/course-learning/CourseCompletionScreen.tsx` | Экран завершения курса | ~100 |
-
-**Результат:** CourseLearning.tsx сократится с 2758 до ~500 строк.
+| `CompaniesManager.tsx` | 636 | Вынести логику в `useCompaniesManager.ts`, UI-части в подкомпоненты |
+| `StudentDetailCard.tsx` | 451 | Разбить на табы: `StudentInfoTab`, `StudentDocsTab`, `StudentHistoryTab` |
+| `SortableLessonItem.tsx` | 413 | Вынести preview-рендер каждого типа в отдельные компоненты |
 
 ---
 
-## Фаза 3: Декомпозиция StudentDashboard.tsx (1131 строк)
+## Фаза 8: Расширение тестового покрытия
 
-Разбить на:
-
-| Новый файл | Содержимое | ~Строк |
-|---|---|---|
-| `src/hooks/useStudentDashboard.ts` | Загрузка курсов, чат, настройки, логика | ~350 |
-| `src/components/student/StudentCoursesList.tsx` | Список курсов с карточками | ~200 |
-| `src/components/student/StudentChatPanel.tsx` | AI-чат панель | ~200 |
-| `src/components/student/StudentSettingsPanel.tsx` | Панель настроек студента | ~150 |
-
-**Результат:** StudentDashboard.tsx сократится до ~300 строк.
+| Задача | Описание |
+|---|---|
+| Тесты для `useContractGenerator` | Генерация, валидация, форматирование |
+| Тесты для `useOrganizationDashboard` | Загрузка данных, фильтры, действия |
+| Тесты для `useCompaniesManager` | CRUD компаний |
+| Тесты для `useJournalEditor` | CRUD записей журнала |
+| Тесты для `useFRDOManager` | Фильтрация, экспорт |
+| Тесты для утилит | `frdoExcelExport`, `credentials`, `courseBuilderHelpers` |
 
 ---
 
-## Фаза 4: Декомпозиция CourseBuilder.tsx (1196 строк)
+## Фаза 9: Производительность
 
-Вынести оставшуюся логику:
-
-| Новый файл | Содержимое | ~Строк |
-|---|---|---|
-| `src/hooks/useCourseBuilder.ts` | Состояние, загрузка/сохранение курса, AI-генерация, импорт | ~500 |
-| `src/components/course-builder/CourseBuilderHeader.tsx` | Шапка с кнопками сохранения, импорта, AI | ~100 |
-| `src/components/course-builder/LessonTypeSelector.tsx` | Панель выбора типа урока (text, video, test...) | ~80 |
-
-**Результат:** CourseBuilder.tsx сократится до ~400 строк.
+| Задача | Описание |
+|---|---|
+| React.memo для тяжёлых списков | `StudentsTab`, `CoursesTab` — мемоизировать строки таблиц |
+| Виртуализация длинных списков | Внедрить `react-window` для таблиц >100 строк (студенты, ФРДО) |
+| Оптимизация ре-рендеров OrgDashboard | Разделить контекст на `OrgDataContext` + `OrgUIContext` |
+| Lazy import тяжёлых компонентов | `ContractGenerator`, `JournalEditor`, `EducationDocumentsJournal` — dynamic import |
 
 ---
 
-## Фаза 5: Декомпозиция средних компонентов
+## Фаза 10: Обновление DevTools-метрик
 
-### ContractGenerator.tsx (789 строк)
-- `src/hooks/useContractGenerator.ts` -- логика генерации (~300 строк)
-- Компонент сократится до ~450 строк
-
-### JournalEditor.tsx (734 строки)
-- `src/hooks/useJournalEditor.ts` -- CRUD-логика, валидация (~300 строк)
-- Компонент сократится до ~400 строк
-
-### FRDOManager.tsx (725 строк)
-- `src/hooks/useFRDOManager.ts` -- загрузка данных, фильтрация, экспорт (~300 строк)
-- Компонент сократится до ~400 строк
+| Задача | Описание |
+|---|---|
+| Обновить `devToolsData.ts` | Актуальные LoC, количество файлов |
+| Добавить метрику «Тестовое покрытие» | Количество тестов и покрытых хуков |
+| Добавить pending-рекомендации | Виртуализация, разделение контекста, e2e-тесты |
+| Отметить выполненные оптимизации | Все фазы 1-5 как «applied» |
 
 ---
 
-## Фаза 6: Расширение DevTools
+## Фаза 11: Качество кода и DX
 
-Обновить devToolsData.ts:
-- Все новые оптимизации отмечены как "applied"
-- Добавить новые pending-рекомендации для будущих улучшений (тесты, e2e)
-- Обновить метрики: TOTAL_LINES, LARGEST_FILES, QUALITY_METRICS
-- Добавить метрику "Context Coverage" (% компонентов на Context)
-- Убрать forwardRef из CodeMapTab, HealthTab, ApiMonitorTab
+| Задача | Описание |
+|---|---|
+| Типизация — убрать `any` | Поиск всех `as any` и замена на точные типы |
+| Консистентный error handling | Единый паттерн `try/catch` + toast + логирование |
+| Константы вместо magic strings | Вынести названия табов, статусы, роли в `constants/` |
+| JSDoc для публичных хуков | Документация параметров и возвращаемых значений |
 
 ---
 
-## Сводная таблица всех изменений
+## Сводка приоритетов
 
-| # | Файл | Действие |
-|---|---|---|
-| 1 | `OrgSidebar.tsx` | Context вместо 12 props |
-| 2 | `OrgDashboardHeader.tsx` | Context вместо 8 props |
-| 3 | `OrganizationDashboard.tsx` | Убрать ~20 props |
-| 4 | `hooks/useCourseLearning.ts` | Новый -- логика из CourseLearning |
-| 5 | `hooks/useTestLesson.ts` | Новый -- тест-логика |
-| 6 | `course-learning/LessonContent.tsx` | Новый -- рендер контента |
-| 7 | `course-learning/TestView.tsx` | Новый -- тест UI |
-| 8 | `course-learning/LessonSidebar.tsx` | Новый -- сайдбар уроков |
-| 9 | `course-learning/CourseCompletionScreen.tsx` | Новый -- экран завершения |
-| 10 | `CourseLearning.tsx` | Рефакторинг: 2758 -> ~500 |
-| 11 | `hooks/useStudentDashboard.ts` | Новый -- логика дашборда студента |
-| 12 | `student/StudentCoursesList.tsx` | Новый -- список курсов |
-| 13 | `student/StudentChatPanel.tsx` | Новый -- чат |
-| 14 | `student/StudentSettingsPanel.tsx` | Новый -- настройки |
-| 15 | `StudentDashboard.tsx` | Рефакторинг: 1131 -> ~300 |
-| 16 | `hooks/useCourseBuilder.ts` | Новый -- логика билдера |
-| 17 | `course-builder/CourseBuilderHeader.tsx` | Новый -- шапка |
-| 18 | `course-builder/LessonTypeSelector.tsx` | Новый -- выбор типа |
-| 19 | `CourseBuilder.tsx` | Рефакторинг: 1196 -> ~400 |
-| 20 | `hooks/useContractGenerator.ts` | Новый -- логика контрактов |
-| 21 | `ContractGenerator.tsx` | Рефакторинг: 789 -> ~450 |
-| 22 | `hooks/useJournalEditor.ts` | Новый -- логика журналов |
-| 23 | `JournalEditor.tsx` | Рефакторинг: 734 -> ~400 |
-| 24 | `hooks/useFRDOManager.ts` | Новый -- логика ФРДО |
-| 25 | `FRDOManager.tsx` | Рефакторинг: 725 -> ~400 |
-| 26 | `devToolsData.ts` | Обновление метрик и рекомендаций |
-| 27 | `CodeMapTab.tsx` | Убрать forwardRef, добавить Context Coverage |
-| 28 | `HealthTab.tsx` | Убрать forwardRef |
-| 29 | `ApiMonitorTab.tsx` | Убрать forwardRef |
-
-**Общий итог:** ~15 новых файлов, ~14 изменённых. Суммарное сокращение крупных файлов: ~4500 строк перенесены в модульные хуки и подкомпоненты. Ни один файл не будет превышать 500 строк (кроме SortableLessonItem -- 780, уже вынесен).
-
+| Приоритет | Фаза | Сложность | Влияние |
+|---|---|---|---|
+| 🔴 Высокий | Фаза 7 (крупные компоненты) | Средняя | Читаемость, поддержка |
+| 🟡 Средний | Фаза 8 (тесты) | Низкая | Стабильность |
+| 🟡 Средний | Фаза 9 (производительность) | Средняя | UX при >500 студентов |
+| 🟢 Низкий | Фаза 10 (DevTools) | Низкая | DX |
+| 🟢 Низкий | Фаза 11 (качество) | Низкая | Долгосрочная поддержка |
