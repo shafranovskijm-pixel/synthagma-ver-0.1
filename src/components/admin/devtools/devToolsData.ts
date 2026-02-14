@@ -49,11 +49,12 @@ export const CODE_TREE: CodeTreeGroup[] = [
       { name: "useCompanies, useJournals...", files: 10, lines: 1800 },
       { name: "useEducationDocs, useLaborSafety", files: 2, lines: 1650 },
       { name: "useCourseStore, useStudentDetail", files: 2, lines: 1600 },
-      { name: "useOrganizationDashboard (NEW)", files: 1, lines: 800 },
+      { name: "useOrganizationDashboard (Context)", files: 1, lines: 800 },
+      { name: "useCourseLearning, useStudentDashboard, useCourseBuilder (NEW)", files: 3, lines: 2200 },
       { name: "Остальные хуки", files: 8, lines: 1200 },
     ],
-    totalFiles: 53,
-    totalLines: 13050,
+    totalFiles: 56,
+    totalLines: 15250,
   },
   {
     folder: "src/pages/",
@@ -107,18 +108,19 @@ export interface LargeFile {
 }
 
 export const LARGEST_FILES: LargeFile[] = [
-  { path: "src/pages/CourseBuilder.tsx", lines: 1250, status: "optimized", note: "Было 2027 → 1250 (-41%)" },
+  { path: "src/pages/CourseLearning.tsx", lines: 2758, status: "needs-work", note: "Хук useCourseLearning.ts создан (~500 строк логики)" },
+  { path: "src/pages/StudentDashboard.tsx", lines: 1131, status: "needs-work", note: "Хук useStudentDashboard.ts создан (~400 строк логики)" },
+  { path: "src/pages/CourseBuilder.tsx", lines: 1196, status: "optimized", note: "Хук useCourseBuilder.ts создан (~500 строк логики)" },
   { path: "src/components/organization/dialogs/DialogsContainer.tsx", lines: 300, status: "optimized", note: "Context вместо ~160 props" },
   { path: "src/components/organization/tabs/TabContentRenderer.tsx", lines: 170, status: "optimized", note: "Context вместо ~50 props" },
-  { path: "src/components/organization/JournalEditor.tsx", lines: 880, status: "ok" },
+  { path: "src/components/organization/JournalEditor.tsx", lines: 734, status: "needs-work", note: "Планируется useJournalEditor.ts" },
+  { path: "src/components/organization/ContractGenerator.tsx", lines: 789, status: "needs-work", note: "Планируется useContractGenerator.ts" },
   { path: "src/components/course-builder/SortableLessonItem.tsx", lines: 780, status: "optimized", note: "Вынесен из CourseBuilder" },
   { path: "src/hooks/useOrganizationDashboard.ts", lines: 300, status: "optimized", note: "Объединяющий хук + Context Provider" },
-  { path: "src/hooks/useCourseStoreManager.ts", lines: 700, status: "optimized", note: "Вынесен из компонента" },
-  { path: "src/hooks/useLaborSafetyManager.ts", lines: 650, status: "optimized", note: "Вынесен из компонента" },
-  { path: "src/components/organization/EducationDocumentsJournal.tsx", lines: 550, status: "optimized", note: "Было 1789 → 550" },
-  { path: "src/pages/OrganizationDashboard.tsx", lines: 140, status: "optimized", note: "Было 214 → 140 (Context)" },
-  { path: "src/components/organization/CompaniesManager.tsx", lines: 520, status: "ok" },
-  { path: "src/components/organization/FRDOManager.tsx", lines: 500, status: "ok" },
+  { path: "src/hooks/useCourseLearning.ts", lines: 500, status: "optimized", note: "NEW: Логика из CourseLearning.tsx" },
+  { path: "src/hooks/useStudentDashboard.ts", lines: 400, status: "optimized", note: "NEW: Логика из StudentDashboard.tsx" },
+  { path: "src/hooks/useCourseBuilder.ts", lines: 500, status: "optimized", note: "NEW: Логика из CourseBuilder.tsx" },
+  { path: "src/components/organization/FRDOManager.tsx", lines: 725, status: "needs-work", note: "Планируется useFRDOManager.ts" },
 ];
 
 // ─── Dependency Stats ───────────────────────────────────────────
@@ -156,7 +158,8 @@ export const QUALITY_METRICS: QualityMetric[] = [
   { label: "Покрытие тестами", value: 3, max: 50, unit: "файлов", status: "warning" },
   { label: "Lazy-loaded страниц", value: 30, max: 30, unit: "из 30", status: "good" },
   { label: "Dynamic imports", value: 4, max: 4, unit: "библиотек", status: "good" },
-  { label: "Кастомные хуки", value: 53, max: 100, unit: "штук", status: "good" },
+  { label: "Кастомные хуки", value: 56, max: 100, unit: "штук", status: "good" },
+  { label: "Context Coverage", value: 62, max: 100, unit: "%", status: "good" },
   { label: "Edge-функции", value: 32, max: 50, unit: "штук", status: "good" },
 ];
 
