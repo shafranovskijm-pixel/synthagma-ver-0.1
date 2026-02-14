@@ -108,7 +108,7 @@ export interface LargeFile {
 
 export const LARGEST_FILES: LargeFile[] = [
   { path: "src/pages/CourseBuilder.tsx", lines: 1250, status: "optimized", note: "Было 2027 → 1250 (-41%)" },
-  { path: "src/components/organization/DialogsContainer.tsx", lines: 950, status: "needs-work", note: "~160 props, нужен Context" },
+  { path: "src/components/organization/dialogs/DialogsContainer.tsx", lines: 300, status: "optimized", note: "Context вместо ~160 props" },
   { path: "src/components/organization/JournalEditor.tsx", lines: 880, status: "ok" },
   { path: "src/components/course-builder/SortableLessonItem.tsx", lines: 780, status: "optimized", note: "Вынесен из CourseBuilder" },
   { path: "src/hooks/useOrganizationDashboard.ts", lines: 750, status: "optimized", note: "Объединяющий хук" },

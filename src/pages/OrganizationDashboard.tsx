@@ -9,11 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Eye, X } from "lucide-react";
 import { OnboardingDialog } from "@/components/onboarding/OnboardingDialog";
 import { organizationOnboardingSteps } from "@/constants/onboardingSteps";
-import { useOrganizationDashboard } from "@/hooks/useOrganizationDashboard";
+import { OrgDashboardProvider, useOrgDashboard } from "@/contexts/OrgDashboardContext";
 
-export default function OrganizationDashboard() {
+function OrganizationDashboardContent() {
   const navigate = useNavigate();
-  const d = useOrganizationDashboard();
+  const d = useOrgDashboard();
 
   const exitAdminView = () => { localStorage.removeItem("adminViewAsOrg"); navigate("/admin"); };
 
@@ -191,174 +191,8 @@ export default function OrganizationDashboard() {
         )}
       </main>
 
-      {/* All Dialogs */}
-      <DialogsContainer
-        organizationId={d.organizationId}
-        courses={d.courses}
-        companies={d.companies}
-        categories={d.categories}
-        getCategoryById={d.getCategoryById}
-        students={d.students}
-        allProfiles={d.allProfiles}
-        showImportDialog={d.showImportDialog}
-        setShowImportDialog={d.setShowImportDialog}
-        showUnenrollConfirm={d.enrollmentActions.showUnenrollConfirm}
-        setShowUnenrollConfirm={d.enrollmentActions.setShowUnenrollConfirm}
-        selectedEnrollmentsCount={d.getSelectedEnrollmentsCount()}
-        isUnenrolling={d.enrollmentActions.isUnenrolling}
-        onBulkUnenroll={d.handleBulkUnenroll}
-        showAddStudentDialog={d.studentManagement.showAddStudentDialog}
-        setShowAddStudentDialog={d.studentManagement.setShowAddStudentDialog}
-        isCreatingStudent={d.studentManagement.isCreatingStudent}
-        onCreateStudent={async (name, email, courseId, companyId, noLogin) => {
-          d.studentManagement.setNewStudentName(name);
-          d.studentManagement.setNewStudentEmail(email);
-          d.studentManagement.setSelectedCourseId(courseId);
-          d.studentManagement.setSelectedCompanyId(companyId);
-          d.studentManagement.setNoLoginStudent(noLogin);
-          await d.studentManagement.createStudent();
-        }}
-        showEnrollDialog={d.enrollmentActions.showEnrollDialog}
-        setShowEnrollDialog={d.enrollmentActions.setShowEnrollDialog}
-        selectedStudentIdsSize={d.enrollmentActions.selectedStudentIds.size}
-        isEnrolling={d.enrollmentActions.isEnrolling}
-        onEnroll={async (courseId) => {
-          d.enrollmentActions.setEnrollCourseId(courseId);
-          await d.enrollmentActions.bulkEnroll(courseId, d.students, d.allProfiles, d.courses);
-        }}
-        showCategoryDialog={d.showCategoryDialog}
-        setShowCategoryDialog={d.setShowCategoryDialog}
-        isCreatingCategory={d.isCreatingCategory}
-        onCreateCategory={async (name, color) => {
-          d.categoryActions.setNewCategoryName(name);
-          d.categoryActions.setNewCategoryColor(color);
-          await d.categoryActions.createCategory();
-        }}
-        showCourseDetailsModal={d.courseDetailsModal.showCourseDetailsModal}
-        setShowCourseDetailsModal={d.courseDetailsModal.setShowCourseDetailsModal}
-        selectedCourseForDetails={d.courseDetailsModal.selectedCourseForDetails}
-        courseStudents={d.courseStudentsManager.courseStudents}
-        courseDetailsTab={d.courseDetailsModal.courseDetailsTab}
-        onTabChange={d.courseDetailsModal.setCourseDetailsTab}
-        onEnrollStudent={() => {
-          if (d.courseDetailsModal.selectedCourseForDetails) {
-            d.setStudentCourseFilter(d.courseDetailsModal.selectedCourseForDetails.id);
-            d.setStudentStatusFilter("not_enrolled");
-            d.tabNavigation.setActiveTab("students");
-            d.courseDetailsModal.setShowCourseDetailsModal(false);
-          }
-        }}
-        onCourseDeleted={d.refreshData}
-        onCourseUpdated={d.refreshData}
-        onRefreshCourseStudents={d.loadCourseStudentsForModal}
-        showCourseStudentsDialog={d.courseStudentsManager.showCourseStudentsDialog}
-        setShowCourseStudentsDialog={d.courseStudentsManager.setShowCourseStudentsDialog}
-        selectedCourse={d.courseStudentsManager.selectedCourse}
-        availableStudentsForCourse={d.courseStudentsManager.availableStudentsForCourse}
-        isLoadingCourseStudents={d.courseStudentsManager.isLoadingCourseStudents}
-        selectedStudentsToAdd={d.courseStudentsManager.selectedStudentsToAdd}
-        onToggleStudentSelection={d.courseStudentsManager.toggleStudentSelection}
-        onAddStudentsToCourse={d.courseStudentsManager.addStudentsToCourse}
-        isAddingStudentsToCourse={d.courseStudentsManager.isAddingStudentsToCourse}
-        onRemoveFromCourse={d.courseStudentsManager.removeStudentFromCourse}
-        onCourseStudentsRefresh={d.refreshData}
-        showInviteEmailDialog={d.emailInvitation.showInviteEmailDialog}
-        setShowInviteEmailDialog={d.emailInvitation.setShowInviteEmailDialog}
-        isSendingInvitation={d.emailInvitation.isSendingInvitation}
-        onSendInvitation={async (email) => { await d.emailInvitation.sendInvitationDirect(email, d.courseStudentsManager.selectedCourse); }}
-        showStudentDialog={d.studentDetailsDialog.showStudentDialog}
-        setShowStudentDialog={d.studentDetailsDialog.setShowStudentDialog}
-        selectedStudent={d.studentDetailsDialog.selectedStudent}
-        isLoadingStudentDetails={d.studentDetailsDialog.isLoadingStudentDetails}
-        studentCompanyId={d.studentDetailsDialog.studentCompanyId}
-        setStudentCompanyId={d.studentDetailsDialog.setStudentCompanyId}
-        isSavingStudentCompany={d.studentDetailsDialog.isSavingStudentCompany}
-        onAttachStudentToCompany={d.studentDetailsDialog.handleAttachStudentToCompany}
-        isCreatingCredentials={d.studentActions.isCreatingCredentials}
-        onCreateStudentCredentials={d.studentDetailsDialog.handleCreateStudentCredentials}
-        isSendingCredentials={d.studentActions.isSendingCredentials}
-        onSendCredentials={d.studentDetailsDialog.handleSendCredentials}
-        isSendingCredentialsEmail={d.studentActions.isSendingCredentialsEmail}
-        onSendCredentialsEmail={d.studentDetailsDialog.handleSendCredentialsEmail}
-        isDeletingStudent={d.studentActions.isDeletingStudent}
-        onDeleteStudent={d.studentDetailsDialog.handleDeleteStudentCompletely}
-        onCopyCredentials={d.studentDetailsDialog.handleCopyCredentials}
-        showAddCompanyDialog={d.companyActions.showAddCompanyDialog}
-        setShowAddCompanyDialog={d.companyActions.setShowAddCompanyDialog}
-        newCompanyName={d.companyActions.newCompanyName}
-        setNewCompanyName={d.companyActions.setNewCompanyName}
-        newCompanyEmail={d.companyActions.newCompanyEmail}
-        setNewCompanyEmail={d.companyActions.setNewCompanyEmail}
-        newCompanyInn={d.companyActions.newCompanyInn}
-        setNewCompanyInn={d.companyActions.setNewCompanyInn}
-        newCompanyContactName={d.companyActions.newCompanyContactName}
-        setNewCompanyContactName={d.companyActions.setNewCompanyContactName}
-        newCompanyPhone={d.companyActions.newCompanyPhone}
-        setNewCompanyPhone={d.companyActions.setNewCompanyPhone}
-        isCreatingCompany={d.companyActions.isCreatingCompany}
-        onCreateCompany={d.handleCompanyCreate}
-        showEditCompanyDialog={d.companyActions.showEditCompanyDialog}
-        setShowEditCompanyDialog={d.companyActions.setShowEditCompanyDialog}
-        editCompanyName={d.companyActions.editCompanyName}
-        setEditCompanyName={d.companyActions.setEditCompanyName}
-        editCompanyEmail={d.companyActions.editCompanyEmail}
-        setEditCompanyEmail={d.companyActions.setEditCompanyEmail}
-        editCompanyInn={d.companyActions.editCompanyInn}
-        setEditCompanyInn={d.companyActions.setEditCompanyInn}
-        editCompanyContactName={d.companyActions.editCompanyContactName}
-        setEditCompanyContactName={d.companyActions.setEditCompanyContactName}
-        editCompanyPhone={d.companyActions.editCompanyPhone}
-        setEditCompanyPhone={d.companyActions.setEditCompanyPhone}
-        isSavingCompany={d.companyActions.isSavingCompany}
-        onSaveCompany={d.handleCompanySave}
-        showOrgDetails={d.organizationsTab.showOrgDetails}
-        setShowOrgDetails={d.organizationsTab.setShowOrgDetails}
-        selectedOrg={d.organizationsTab.selectedOrg}
-        orgStudents={d.organizationsTab.orgStudents}
-        isLoadingOrgDetails={d.organizationsTab.isLoadingOrgDetails}
-        showStudentCoursesDialog={d.studentCoursesDialog.showStudentCoursesDialog}
-        setShowStudentCoursesDialog={d.studentCoursesDialog.setShowStudentCoursesDialog}
-        selectedStudentForCourses={d.studentCoursesDialog.selectedStudentForCourses}
-        isLoadingStudentCourses={d.studentCoursesDialog.isLoadingStudentCourses}
-        studentEnrollments={d.studentCoursesDialog.studentEnrollments}
-        availableCoursesForStudent={d.studentCoursesDialog.availableCoursesForStudent}
-        selectedCoursesToAdd={d.studentCoursesDialog.selectedCoursesToAdd}
-        studentCoursesSearchQuery={d.studentCoursesDialog.studentCoursesSearchQuery}
-        setStudentCoursesSearchQuery={d.studentCoursesDialog.setStudentCoursesSearchQuery}
-        onToggleCourseSelection={d.studentCoursesDialog.toggleCourseSelection}
-        isAddingCoursesToStudent={d.studentCoursesDialog.isAddingCoursesToStudent}
-        onAddCourses={d.studentCoursesDialog.addCourses}
-        onRemoveEnrollment={d.studentCoursesDialog.removeEnrollment}
-        onResetProgress={d.studentCoursesDialog.resetProgress}
-        showCreateLinkDialog={d.registrationLinks.showCreateLinkDialog}
-        setShowCreateLinkDialog={d.registrationLinks.setShowCreateLinkDialog}
-        newLinkCompanyName={d.registrationLinks.newLinkCompanyName}
-        setNewLinkCompanyName={d.registrationLinks.setNewLinkCompanyName}
-        newLinkInn={d.registrationLinks.newLinkInn}
-        setNewLinkInn={d.registrationLinks.setNewLinkInn}
-        isCreatingLink={d.registrationLinks.isCreatingLink}
-        onCreateLink={d.registrationLinks.createLink}
-        showCourseDocsDialog={d.courseDocsDialog.showCourseDocsDialog}
-        selectedCourseForDocs={d.courseDocsDialog.selectedCourseForDocs}
-        closeCourseDocs={d.courseDocsDialog.closeCourseDocs}
-        showStudentDocsDialog={d.studentDocsDialog.showStudentDocsDialog}
-        selectedStudentForDocs={d.studentDocsDialog.selectedStudentForDocs}
-        closeStudentDocs={d.studentDocsDialog.closeStudentDocs}
-        openStudentDocs={d.studentDocsDialog.openStudentDocs}
-        showBulkUploadDialog={d.showBulkUploadDialog}
-        setShowBulkUploadDialog={d.setShowBulkUploadDialog}
-        showStudentDetailCard={d.studentDetailCard.showStudentDetailCard}
-        setShowStudentDetailCard={d.studentDetailCard.setShowStudentDetailCard}
-        studentDetailCardData={d.studentDetailCard.studentDetailCardData}
-        studentDetailCardEnrollments={d.studentDetailCard.studentDetailCardEnrollments}
-        showBulkFRDOExport={d.enrollmentActions.showBulkFRDOExport}
-        setShowBulkFRDOExport={d.enrollmentActions.setShowBulkFRDOExport}
-        selectedStudentIds={d.enrollmentActions.selectedStudentIds}
-        showBulkDeleteConfirm={d.enrollmentActions.showBulkDeleteConfirm}
-        setShowBulkDeleteConfirm={d.enrollmentActions.setShowBulkDeleteConfirm}
-        isBulkDeleting={d.enrollmentActions.isBulkDeleting}
-        onBulkDelete={() => d.enrollmentActions.bulkDelete(d.students)}
-      />
+      {/* All Dialogs - now reads from context, no props needed */}
+      <DialogsContainer />
 
       {/* Onboarding Tour */}
       <OnboardingDialog
@@ -368,5 +202,13 @@ export default function OrganizationDashboard() {
         onNavigateToTab={(tab) => d.tabNavigation.setActiveTab(tab as any)}
       />
     </div>
+  );
+}
+
+export default function OrganizationDashboard() {
+  return (
+    <OrgDashboardProvider>
+      <OrganizationDashboardContent />
+    </OrgDashboardProvider>
   );
 }
