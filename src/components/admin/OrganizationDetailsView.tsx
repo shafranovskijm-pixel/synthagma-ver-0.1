@@ -42,6 +42,7 @@ import {
   ShieldOff,
   Puzzle,
   History,
+  Wallet,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -51,6 +52,7 @@ import { OrgCommentsTab } from "./OrgCommentsTab";
 import { OrgRemindersTab } from "./OrgRemindersTab";
 import { OrgFeaturesTab } from "./OrgFeaturesTab";
 import { OrgAuditLogsTab } from "./OrgAuditLogsTab";
+import { OrgBalanceManager } from "./OrgBalanceManager";
 
 interface Organization {
   id: string;
@@ -552,7 +554,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full max-w-5xl grid-cols-9">
+        <TabsList className="grid w-full max-w-5xl" style={{ gridTemplateColumns: 'repeat(10, 1fr)' }}>
           <TabsTrigger value="overview" className="flex items-center gap-1">
             <BarChart3 className="w-4 h-4" />
             <span className="hidden sm:inline">Обзор</span>
@@ -564,6 +566,10 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
           <TabsTrigger value="courses" className="flex items-center gap-1">
             <BookOpen className="w-4 h-4" />
             <span className="hidden sm:inline">Курсы</span>
+          </TabsTrigger>
+          <TabsTrigger value="balance" className="flex items-center gap-1">
+            <Wallet className="w-4 h-4" />
+            <span className="hidden sm:inline">Баланс</span>
           </TabsTrigger>
           <TabsTrigger value="documents" className="flex items-center gap-1">
             <FileText className="w-4 h-4" />
@@ -922,6 +928,11 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
               </Table>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Balance Tab */}
+        <TabsContent value="balance" className="space-y-4">
+          <OrgBalanceManager organizationId={organization.id} />
         </TabsContent>
 
         {/* Documents Tab */}
