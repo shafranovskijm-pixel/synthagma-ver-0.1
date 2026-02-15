@@ -1397,7 +1397,7 @@ function AudioBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updat
     <div className="py-2">
       {audioUrl ? (
         <div className="space-y-2">
-          <audio controls src={audioUrl} className="w-full rounded-lg" />
+          <audio controls preload="metadata" src={audioUrl} className="w-full rounded-lg" />
           <div className="flex gap-2">
             <Input value={audioUrl} onChange={(e) => onUpdate({ audioUrl: e.target.value })} className="text-xs flex-1" />
             <Button variant="ghost" size="sm" onClick={() => onUpdate({ audioUrl: "" })}>
@@ -2235,7 +2235,7 @@ function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSub
             </div>
             <span className="font-medium text-sm">Аудио</span>
           </div>
-          <audio controls className="w-full">
+          <audio controls preload="metadata" className="w-full">
             <source src={block.audioUrl} type="audio/mpeg" />
             Ваш браузер не поддерживает аудио.
           </audio>

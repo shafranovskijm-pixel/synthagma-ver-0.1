@@ -191,7 +191,7 @@ export function SortableLessonItem({
                 }} />
               </div>
               {lesson.content && lesson.content.startsWith('http') && (
-                <audio controls className="w-full mt-2"><source src={lesson.content} type="audio/mpeg" /><source src={lesson.content} type="audio/wav" /><source src={lesson.content} type="audio/ogg" /></audio>
+                <audio controls preload="metadata" className="w-full mt-2"><source src={lesson.content} type="audio/mpeg" /><source src={lesson.content} type="audio/wav" /><source src={lesson.content} type="audio/ogg" /></audio>
               )}
             </div>
           )}

@@ -185,7 +185,7 @@ const CourseLearning = () => {
                 </div>
                 <div className={cn("bg-card rounded-2xl border border-border", isMobile ? "p-4" : "p-6")}>
                   {currentLesson.content && currentLesson.content.startsWith('http') ? (
-                    <audio controls className="w-full"><source src={currentLesson.content} type="audio/mpeg" />Ваш браузер не поддерживает аудио.</audio>
+                    <audio controls preload="metadata" className="w-full"><source src={currentLesson.content} type="audio/mpeg" />Ваш браузер не поддерживает аудио.</audio>
                   ) : <div className="text-center text-muted-foreground py-8"><Headphones className={cn(isMobile ? "w-12 h-12" : "w-16 h-16", "mx-auto mb-4 opacity-50")} /><p>Аудио не загружено</p></div>}
                 </div>
               </div>
