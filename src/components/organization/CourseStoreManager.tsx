@@ -4,7 +4,7 @@ import {
   Store, ShoppingCart, GraduationCap, Loader2, CheckCircle,
   Eye, Edit, Trash2, Plus, Users, Building2, Search,
   DollarSign, Tag, Package, MessageSquarePlus, Megaphone, Send,
-  Clock, Wallet, ChevronDown, ArrowLeft,
+  Clock, Wallet, ChevronDown, ArrowLeft, Info, CreditCard, PlusCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -35,13 +35,38 @@ interface CourseStoreManagerProps {
   userId?: string;
   orgBalance?: number;
   deductBalance?: (amount: number, description: string, orderId?: string) => Promise<boolean>;
+  topUpBalance?: (amount: number, description: string) => Promise<boolean>;
+  refreshBalance?: () => Promise<void>;
 }
 
-export function CourseStoreManager({ organizationId, userRole = 'organization', userId, orgBalance, deductBalance }: CourseStoreManagerProps) {
+export function CourseStoreManager({ organizationId, userRole = 'organization', userId, orgBalance, deductBalance, topUpBalance, refreshBalance }: CourseStoreManagerProps) {
   const navigate = useNavigate();
   const h = useCourseStoreManager({ organizationId, userRole, userId, orgBalance, deductBalance });
   const [requestsOpen, setRequestsOpen] = useState(false);
   const [selectedCourseDetail, setSelectedCourseDetail] = useState<any>(null);
+  const [showTopUpDialog, setShowTopUpDialog] = useState(false);
+  const [topUpAmount, setTopUpAmount] = useState("");
+  const [topUpComment, setTopUpComment] = useState("");
+  const [isTopingUp, setIsTopingUp] = useState(false);
+
+  const handleTopUp = async () => {
+    const amount = parseFloat(topUpAmount);
+    if (!amount || amount <= 0) return;
+    setIsTopingUp(true);
+    try {
+      if (topUpBalance) {
+        const ok = await topUpBalance(amount, topUpComment || "Пополнение баланса");
+        if (ok) {
+          setShowTopUpDialog(false);
+          setTopUpAmount("");
+          setTopUpComment("");
+          refreshBalance?.();
+        }
+      }
+    } finally {
+      setIsTopingUp(false);
+    }
+  };
 
   if (h.isLoading) {
     return (
@@ -55,11 +80,27 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
     <div className="space-y-6">
       {/* Header */}
       <div className="bg-gradient-to-r from-primary/10 via-accent/10 to-primary/5 rounded-2xl p-6 border border-border">
-        <div className="flex items-center gap-3 mb-2">
-          <Store className="w-6 h-6 text-primary" />
-          <h2 className="font-display text-xl font-semibold">Магазин курсов</h2>
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <Store className="w-6 h-6 text-primary" />
+              <h2 className="font-display text-xl font-semibold">Магазин курсов</h2>
+            </div>
+            <p className="text-muted-foreground">Покупайте и продавайте учебные курсы другим организациям и студентам</p>
+          </div>
+          {userRole === 'organization' && (
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 bg-background/80 rounded-xl px-4 py-2 border border-border">
+                <Wallet className="w-4 h-4 text-primary" />
+                <span className="text-sm text-muted-foreground">Баланс:</span>
+                <span className="font-bold text-primary">{(orgBalance ?? 0).toLocaleString()} ₽</span>
+              </div>
+              <Button variant="outline" size="sm" className="rounded-xl gap-2" onClick={() => setShowTopUpDialog(true)}>
+                <PlusCircle className="w-4 h-4" />Пополнить
+              </Button>
+            </div>
+          )}
         </div>
-        <p className="text-muted-foreground">Покупайте и продавайте учебные курсы другим организациям и студентам</p>
       </div>
 
       <Tabs value={h.activeTab} onValueChange={(v) => h.setActiveTab(v as any)} className="space-y-6">
@@ -121,11 +162,14 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
                 </Card>
               </div>
 
-              <div className="flex gap-3 pt-2">
+              <div className="flex flex-col sm:flex-row gap-3 pt-2">
                 <Button variant="outline" className="flex-1 rounded-xl gap-2" onClick={() => { const id = selectedCourseDetail.course_id; setSelectedCourseDetail(null); navigate(`/course-preview/${id}?from=store`); }}>
                   <Eye className="w-4 h-4" />Просмотр
                 </Button>
-                <Button className="flex-1 btn-gradient rounded-xl gap-2" onClick={() => { const item = selectedCourseDetail; setSelectedCourseDetail(null); h.setSelectedCourseForOrder(item); h.setShowOrderDialog(true); }}>
+                <Button className="flex-1 rounded-xl gap-2 bg-green-600 hover:bg-green-700 text-white" onClick={() => { const item = selectedCourseDetail; setSelectedCourseDetail(null); h.setSelectedCourseForOrder(item); h.setPayFromBalance(true); h.setShowOrderDialog(true); }}>
+                  <CreditCard className="w-4 h-4" />Купить
+                </Button>
+                <Button variant="secondary" className="flex-1 rounded-xl gap-2" onClick={() => { const item = selectedCourseDetail; setSelectedCourseDetail(null); h.setSelectedCourseForOrder(item); h.setPayFromBalance(false); h.setShowOrderDialog(true); }}>
                   <ShoppingCart className="w-4 h-4" />Оставить заявку
                 </Button>
               </div>
@@ -311,6 +355,13 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
         <DialogContent className="rounded-2xl max-w-md">
           <DialogHeader><DialogTitle className="font-display">Оформление заявки</DialogTitle><DialogDescription>{h.selectedCourseForOrder?.course?.title}</DialogDescription></DialogHeader>
           <div className="space-y-4 py-4">
+            {/* Resale rights notice */}
+            {h.userRole === 'organization' && (
+              <div className="flex gap-3 p-4 rounded-xl border border-blue-500/20 bg-blue-500/5">
+                <Info className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
+                <p className="text-sm text-muted-foreground">После покупки курс становится вашей собственностью. Вы можете использовать его для обучения своих студентов, перепродавать или использовать по своему усмотрению.</p>
+              </div>
+            )}
             <div className="bg-secondary/50 rounded-xl p-4 space-y-3">
               <div className="flex justify-between items-center"><span className="text-muted-foreground">Продавец:</span><span className="font-medium">{h.selectedCourseForOrder?.organization?.name}</span></div>
               <div className="flex justify-between items-center"><span className="text-muted-foreground">Цена за студента:</span><span className="font-bold text-primary">{h.userRole === 'student' ? h.selectedCourseForOrder?.price_student.toLocaleString() : h.selectedCourseForOrder?.price_organization.toLocaleString()} ₽</span></div>
@@ -431,7 +482,30 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
         </DialogContent>
       </Dialog>
 
-
+      {/* Top Up Balance Dialog */}
+      <Dialog open={showTopUpDialog} onOpenChange={setShowTopUpDialog}>
+        <DialogContent className="rounded-2xl max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-display">Пополнить баланс</DialogTitle>
+            <DialogDescription>Укажите сумму для пополнения</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Сумма (₽)</Label>
+              <Input type="number" min={1} value={topUpAmount} onChange={(e) => setTopUpAmount(e.target.value)} placeholder="10000" className="rounded-xl" />
+            </div>
+            <div className="space-y-2">
+              <Label>Комментарий</Label>
+              <Input value={topUpComment} onChange={(e) => setTopUpComment(e.target.value)} placeholder="Пополнение баланса" className="rounded-xl" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button className="w-full btn-gradient rounded-xl" onClick={handleTopUp} disabled={isTopingUp || !topUpAmount || parseFloat(topUpAmount) <= 0}>
+              {isTopingUp ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Пополнение...</> : 'Пополнить'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
     </div>
   );
