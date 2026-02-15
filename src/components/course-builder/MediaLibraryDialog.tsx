@@ -18,6 +18,7 @@ interface MediaLibraryDialogProps {
   onClose: () => void;
   onSelect: (url: string) => void;
   filter?: "video" | "image" | "audio" | "all";
+  organizationId?: string;
 }
 
 interface StorageFile {
@@ -65,7 +66,7 @@ function getFileIcon(type: StorageFile["type"]) {
   }
 }
 
-export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all" }: MediaLibraryDialogProps) {
+export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all", organizationId }: MediaLibraryDialogProps) {
   const [files, setFiles] = useState<StorageFile[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
@@ -108,43 +109,71 @@ export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all" }: 
     setLoading(false);
   };
 
+  const getOrgCourseIds = async (): Promise<string[] | null> => {
+    if (!organizationId) return null; // no filter
+    const { data } = await supabase.from("courses").select("id").eq("organization_id", organizationId);
+    return data?.map(c => c.id) || [];
+  };
+
   const loadBucketFiles = async (bucket: string, baseUrl: string): Promise<StorageFile[]> => {
     const result: StorageFile[] = [];
     try {
-      const { data: folders } = await supabase.storage.from(bucket).list("", { limit: 100 });
-      if (!folders) return result;
+      const courseIds = await getOrgCourseIds();
 
-      for (const folder of folders) {
-        if (folder.id === null) {
-          // It's a folder, list its contents
-          const { data: innerFiles } = await supabase.storage.from(bucket).list(folder.name, { limit: 200 });
-          if (innerFiles) {
-            for (const f of innerFiles) {
-              if (f.id === null) continue; // skip sub-folders
-              const fileType = getFileType(f.name);
-              result.push({
-                name: f.name,
-                url: `${baseUrl}/storage/v1/object/public/${bucket}/${folder.name}/${f.name}`,
-                bucket,
-                folder: folder.name,
-                size: (f.metadata as any)?.size || 0,
-                created_at: (f as any).created_at || "",
-                type: fileType,
-              });
+      if (courseIds !== null) {
+        // Filter by org courses only
+        for (const courseId of courseIds) {
+          try {
+            const { data: innerFiles } = await supabase.storage.from(bucket).list(courseId, { limit: 500 });
+            if (innerFiles) {
+              for (const f of innerFiles) {
+                if (f.id === null) continue;
+                const fileType = getFileType(f.name);
+                result.push({
+                  name: f.name,
+                  url: `${baseUrl}/storage/v1/object/public/${bucket}/${courseId}/${f.name}`,
+                  bucket,
+                  folder: courseId,
+                  size: (f.metadata as any)?.size || 0,
+                  created_at: (f as any).created_at || "",
+                  type: fileType,
+                });
+              }
             }
+          } catch { /* folder doesn't exist */ }
+        }
+      } else {
+        // Fallback: list all folders
+        const { data: folders } = await supabase.storage.from(bucket).list("", { limit: 100 });
+        if (!folders) return result;
+        for (const folder of folders) {
+          if (folder.id === null) {
+            const { data: innerFiles } = await supabase.storage.from(bucket).list(folder.name, { limit: 200 });
+            if (innerFiles) {
+              for (const f of innerFiles) {
+                if (f.id === null) continue;
+                result.push({
+                  name: f.name,
+                  url: `${baseUrl}/storage/v1/object/public/${bucket}/${folder.name}/${f.name}`,
+                  bucket,
+                  folder: folder.name,
+                  size: (f.metadata as any)?.size || 0,
+                  created_at: (f as any).created_at || "",
+                  type: getFileType(f.name),
+                });
+              }
+            }
+          } else {
+            result.push({
+              name: folder.name,
+              url: `${baseUrl}/storage/v1/object/public/${bucket}/${folder.name}`,
+              bucket,
+              folder: "",
+              size: (folder.metadata as any)?.size || 0,
+              created_at: (folder as any).created_at || "",
+              type: getFileType(folder.name),
+            });
           }
-        } else {
-          // It's a file at root level
-          const fileType = getFileType(folder.name);
-          result.push({
-            name: folder.name,
-            url: `${baseUrl}/storage/v1/object/public/${bucket}/${folder.name}`,
-            bucket,
-            folder: "",
-            size: (folder.metadata as any)?.size || 0,
-            created_at: (folder as any).created_at || "",
-            type: fileType,
-          });
         }
       }
     } catch (err) {
@@ -252,7 +281,13 @@ export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all" }: 
                       : "hover:bg-muted/70"
                   )}
                 >
-                  <div className="shrink-0">{getFileIcon(file.type)}</div>
+                  <div className="shrink-0 w-10 h-10 rounded bg-muted flex items-center justify-center overflow-hidden">
+                    {file.type === "image" ? (
+                      <img src={file.url} alt={file.name} className="w-full h-full object-cover" loading="lazy" />
+                    ) : (
+                      getFileIcon(file.type)
+                    )}
+                  </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{file.name}</p>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
