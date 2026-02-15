@@ -1,77 +1,61 @@
 
 
-## Plan: Free Plan Restrictions + AI Generation Limit
+## Plan: Show Features on Free Plan but Block with Upgrade Message
 
-### 1. Hide "Закрывающие документы" for free plan
+### Overview
 
-**File:** `src/components/organization/SubscriptionTab.tsx`
-
-Wrap the billing documents `<Card>` section (lines 428-467) in a condition: only render when `currentPlan !== 'free'`. Free users don't need closing documents since they don't pay.
+Make course settings, reminders, student document checklist, and student dashboard features **visible** on the free plan, but show an upgrade prompt ("Доступно на другом тарифе") when users try to interact with them.
 
 ---
 
-### 2. Feature links in the comparison table (already done, fix display)
+### 1. CourseDetailsModal -- Settings & Reminders tabs (gated interaction)
 
-Looking at the screenshots, the links ARE already in the comparison table rows (with external link icons). The separate "Feature Highlights" cards ALSO have links. The user wants links to be ONLY in the table, not in the separate cards section below.
+**File:** `src/components/organization/dialogs/CourseDetailsModal.tsx`
 
-**Action:** Remove the `link` property rendering from `FEATURE_HIGHLIGHTS` cards -- remove the "Подробнее" link from the feature highlight cards, since links are already available in the comparison table above.
+- Import `useSubscriptionLimits` and pass `organizationId` to get the current plan
+- In the **Settings** tab content (line ~802): wrap the controls in a check. If plan is `'free'`, render the same layout but with all `Switch` components **disabled** and overlay/badge showing "Доступно на тарифе Старт и выше"
+- In the **Reminders** tab content (line ~1060): same approach -- show the UI but if plan is `'free'`, disable all inputs and show upgrade message
 
-**File:** `src/components/organization/SubscriptionTab.tsx` -- remove lines 324-328 (the Link element inside feature highlight cards).
-
----
-
-### 3. Hide Passport/SNILS/Education stats cards on free plan
-
-**File:** `src/components/organization/tabs/TabContentRenderer.tsx`
-
-Pass the current subscription plan to `DocumentsStatsCards` or conditionally render it. The simplest approach: only show `DocumentsStatsCards` when the plan is NOT `free`.
-
-Access `d.subscriptionLimits.plan` from `useOrgDashboard()` context and conditionally render:
-```tsx
-{activeTab === "students" && d.subscriptionLimits.plan !== 'free' && (
-  <DocumentsStatsCards stats={d.documentsStats} />
-)}
-```
+The tabs themselves remain visible and clickable -- only the interactive controls inside are disabled with a clear message.
 
 ---
 
-### 4. AI generation: 3 free attempts, then upgrade prompt
+### 2. StudentDetailCard / ProfileTab -- Document checklist items (passport, SNILS, education)
 
-Currently AI is fully blocked for free plans (`aiEnabled: false`). Change approach:
-- Allow AI generation for ALL plans but track usage count for free plan users
-- After 3 AI generation attempts on free plan, show a toast/dialog prompting to upgrade
+**File:** `src/components/organization/student-detail/ProfileTab.tsx`
 
-**Implementation:**
+- Accept an optional `orgPlan` prop (or fetch it inside the component)
+- For the document checklist items `passport`, `snils`, and `education_doc`: if `orgPlan === 'free'`, replace the "Загрузить" button with a disabled button + tooltip/text "Доступно на другом тарифе"
+- The cards remain visible so users see what features exist
+- Contract and Consent items are NOT gated (available on free)
 
-a) **Track AI usage in localStorage** per organization (simple, no DB needed):
-   - Key: `ai_gen_count_{orgId}`
-   - Increment on each successful AI generation call
+**File:** `src/components/organization/StudentDetailCard.tsx`
 
-b) **Create a helper hook** `src/hooks/useAiGenerationLimit.ts`:
-   - Reads the counter from localStorage
-   - Exposes `canGenerate: boolean`, `attemptsUsed: number`, `maxFreeAttempts: 3`
-   - Exposes `incrementUsage()` and `showUpgradePrompt()`
-   - For non-free plans, always returns `canGenerate: true`
+- Pass the organization's plan to `ProfileTab` via the hook or by fetching it
 
-c) **Integrate into `useCourseBuilder.ts`**:
-   - Before calling any AI generation function, check `canGenerate`
-   - If not allowed, show toast: "Вы использовали 3 бесплатные попытки ИИ-генерации. Перейдите на тариф Старт или выше для безлимитного доступа."
-   - After successful generation, call `incrementUsage()`
+---
 
-d) **Update `subscriptionPlans.ts`**: Set `aiEnabled: true` for free plan (since we now allow 3 attempts) -- actually no, better to keep the constant as-is and handle the logic separately in the hook so we don't break other checks. The hook will independently check plan and counter.
+### 3. Student Dashboard -- Features gated for students of free-plan orgs
+
+**File:** `src/hooks/useStudentDashboard.ts`
+
+- After fetching the organization, also fetch `subscription_plan` from the `organizations` table
+- Expose `orgPlan` in the hook's return value
+
+**File:** `src/pages/StudentDashboard.tsx`
+
+- For "Идентификация", "Мои документы" sidebar items: if `orgPlan === 'free'`, on click show a toast "Эта функция доступна на другом тарифе" instead of opening the panel
+- Keep the menu items visible but add a lock icon or visual indicator
 
 ---
 
 ### Technical Summary
 
-**Files to create:**
-- `src/hooks/useAiGenerationLimit.ts` -- new hook for AI generation counter
-
 **Files to modify:**
-- `src/components/organization/SubscriptionTab.tsx` -- hide billing docs for free, remove "Подробнее" links from highlight cards
-- `src/components/organization/tabs/TabContentRenderer.tsx` -- hide DocumentsStatsCards for free plan
-- `src/hooks/useCourseBuilder.ts` -- integrate AI generation limit check
-- `src/components/course-builder/BlockEditor.tsx` -- integrate AI generation limit check for block-level AI generation
+- `src/components/organization/dialogs/CourseDetailsModal.tsx` -- add plan check, disable settings/reminders on free
+- `src/components/organization/student-detail/ProfileTab.tsx` -- gate passport/SNILS/education upload on free plan
+- `src/components/organization/StudentDetailCard.tsx` -- pass plan prop
+- `src/hooks/useStudentDashboard.ts` -- fetch and expose `orgPlan`
+- `src/pages/StudentDashboard.tsx` -- gate student features on free plan
 
 **No database changes required.**
-
