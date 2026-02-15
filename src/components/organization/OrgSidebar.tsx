@@ -2,7 +2,7 @@ import { useCallback, useMemo } from "react";
 import { 
   BookOpen, Users, BarChart3, Settings, LogOut, 
   Link, FileText, FileSpreadsheet, ShoppingBag, 
-  Building2, ClipboardList, HardHat, HardDrive
+  Building2, ClipboardList, HardHat, HardDrive, CreditCard
 } from "lucide-react";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { HelpButton } from "@/components/onboarding/HelpButton";
@@ -24,6 +24,7 @@ export type TabType =
   | "documents-testimonials" 
   | "journals" 
   | "labor-safety"
+  | "subscription"
   | "services" 
   | "settings" 
   | "frdo";
@@ -153,6 +154,11 @@ export function OrgSidebar() {
               ФИС ФРДО
             </button>
           )}
+
+          <button onClick={() => handleTabClick("subscription")} className={tabButtonClass("subscription")} aria-label="Тариф">
+            <CreditCard className="w-5 h-5" aria-hidden="true" />
+            Тариф
+          </button>
           
           {isEnabled("settings") && (
             <button data-onboarding="settings" onClick={() => handleTabClick("settings")} className={tabButtonClass("settings")}>
