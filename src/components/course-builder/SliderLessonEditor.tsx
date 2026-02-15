@@ -86,22 +86,14 @@ function PptxPickerDialog({ open, onClose, onSelect, onSelectSliderContent, curr
 
   const loadSliderLessons = async () => {
     try {
-      // First get courses for current user's organization
-      const { data: orgCourses } = await supabase
-        .from('courses')
-        .select('id')
-        .eq('organization_id', (await supabase.rpc('current_organization_id')).data || '');
-      
-      const courseIds = (orgCourses || []).map(c => c.id);
-      if (courseIds.length === 0) { setSliderLessons([]); return; }
-
+      // RLS already filters courses by org/admin access, so just query all accessible slider lessons
       const { data, error } = await supabase
         .from('lessons')
         .select('id, title, content, created_at, course_id, courses(title)')
         .eq('type', 'slider')
-        .in('course_id', courseIds)
         .not('content', 'is', null)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(200);
       if (!error && data) {
         const entries: SliderLessonEntry[] = [];
         for (const l of data) {
