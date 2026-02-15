@@ -1,113 +1,101 @@
 
 
-## Plan: Subscription Management for Organizations + Admin Tariff Controls
+## Plan: Improve Subscription Tab + Admin Document Management
 
-### Overview
+### 1. Collapse notifications into accordion
 
-Add a "Tariff" tab in the organization dashboard showing the current plan with upgrade/downgrade options, and enhance the admin panel with expiration tracking and renewal reminders.
+Wrap `MissingCredentialsAlert` in `OrganizationDashboard.tsx` inside a `Collapsible` component, collapsed by default. The alert will show a compact summary line, expandable on click.
 
----
-
-### Part 1: Organization "Tariff" Tab (new)
-
-**New file: `src/components/organization/SubscriptionTab.tsx`**
-
-A full-page tab showing:
-
-1. **Current Plan Card** -- name, price, expiry date (`paid_until`), days remaining with color-coded urgency (green > 30 days, yellow 7-30, red < 7)
-2. **Usage Meters** -- progress bars for courses, students, storage (from `useSubscriptionLimits`)
-3. **Plan Comparison Grid** -- all 5 plans side by side (reuse `SUBSCRIPTION_PLANS` and `featureRows` pattern from `PricingPlans.tsx`), current plan highlighted, upgrade/downgrade buttons
-4. **Feature Highlights** -- for each higher plan, show 2-3 key unlocked features with icons:
-   - **Start**: Companies, course settings, more students
-   - **Standard**: Branding, video ID, document checklist
-   - **Professional**: Journals, documents, labor safety, 20GB
-   - **Maximum**: AI generation, FRDO, unlimited everything, API
-5. **Request Change Button** -- since payment isn't integrated yet, clicking "Upgrade" opens a dialog that sends a request (inserts into a new `subscription_requests` table) with the desired plan, and shows org a toast "Request sent, we will contact you"
-
-**Integration into dashboard:**
-
-- Add `"subscription"` to `TabType` union in `OrgSidebar.tsx`
-- Add `CreditCard` icon tab in sidebar (before Settings)
-- Add rendering in `TabContentRenderer.tsx`
-- Add to `useTabNavigation.ts` visible tabs
+**File:** `src/pages/OrganizationDashboard.tsx`
 
 ---
 
-### Part 2: Admin Tariff Management Enhancements
+### 2. Add missing features to tariff comparison table + feature links
 
-**Enhance: `src/components/admin/TariffsManager.tsx`**
+The current `featureRows` array in `SubscriptionTab.tsx` is missing several features available in the system. Add these rows and make each feature name a clickable link to its dedicated feature page.
 
-Add to the existing manager:
+**New rows to add:**
+| Feature | Link |
+|---------|------|
+| Компании | (no feature page) |
+| Журналы | (no feature page) |
+| Документооборот | `/feature/documents` |
+| Охрана труда | `/feature/labor-safety` |
+| ФИС ФРДО | `/feature/frdo` |
+| Магазин курсов | `/feature/course-store` |
+| Библиотека | (no feature page) |
+| Обучаемых / мес | (numeric limit from `maxTrainedPerMonth`) |
 
-1. **Expiration Alerts Panel** -- top section showing organizations with plans expiring in < 7 days (red), < 30 days (yellow), expired (with "Expired" badge)
-2. **Set Expiry Date** -- date picker column in the table to set/edit `paid_until` for each org
-3. **Batch Reminder** -- button to send email reminders to all orgs with expiring plans (calls a new edge function or just marks them)
-4. **Quick Stats Update** -- add "Paid" / "Expired" / "Expiring Soon" counters to the stats row
+Each feature name in the table becomes a link (using `react-router-dom` `Link`) to the corresponding `/feature/...` page where available, with an `ExternalLink` icon hint.
+
+**File:** `src/components/organization/SubscriptionTab.tsx`
+
+Also update `FEATURE_HIGHLIGHTS` to include links, so the "locked feature" cards link to learn-more pages.
 
 ---
 
-### Part 3: Database Changes
+### 3. Documents folder in Subscription Tab
 
-**New table: `subscription_requests`**
+Add a new section "Закрывающие документы" at the bottom of `SubscriptionTab.tsx`:
+- Shows a list of documents (invoices, receipts) uploaded by admin for this organization
+- Fetched from a new `org_billing_documents` table
+- Each document has: name, type (invoice/receipt), date, download link
+- Read-only for organization users
 
+**New database table:**
 ```sql
-CREATE TABLE subscription_requests (
+CREATE TABLE public.org_billing_documents (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  organization_id uuid NOT NULL REFERENCES organizations(id),
-  current_plan text NOT NULL,
-  requested_plan text NOT NULL,
-  status text NOT NULL DEFAULT 'pending', -- pending, approved, rejected
-  message text,
+  organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  doc_type text NOT NULL DEFAULT 'invoice', -- invoice, receipt, act, other
+  file_url text NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
-  processed_at timestamptz,
-  processed_by uuid
+  uploaded_by uuid
 );
 
--- RLS: org can insert/view own, admin can manage all
-ALTER TABLE subscription_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE org_billing_documents ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Org users can create requests" ON subscription_requests
-  FOR INSERT WITH CHECK (organization_id = current_organization_id());
+-- Org users can view their own documents
+CREATE POLICY "Org users can view own billing docs"
+  ON org_billing_documents FOR SELECT
+  USING (organization_id IN (
+    SELECT id FROM organizations WHERE id = organization_id
+    AND id IN (SELECT organization_id FROM profiles WHERE user_id = auth.uid())
+  ));
 
-CREATE POLICY "Org users can view own requests" ON subscription_requests
-  FOR SELECT USING (organization_id = current_organization_id());
-
-CREATE POLICY "Admins can manage all requests" ON subscription_requests
-  FOR ALL USING (has_role('admin', auth.uid()));
+-- Admins can manage all
+CREATE POLICY "Admins can manage billing docs"
+  ON org_billing_documents FOR ALL
+  USING (EXISTS (
+    SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'admin'
+  ));
 ```
 
 ---
 
-### Part 4: Upsell Strategy (built into the UI)
+### 4. Admin interface for uploading billing documents
 
-Key selling points embedded in the Subscription tab:
+Add a new section in `TariffsManager.tsx` -- "Документы для организаций":
+- Select an organization from a dropdown
+- Upload a file (invoice/receipt) to storage bucket `billing-documents`
+- Specify document type (Счёт / Чек / Акт)
+- Uploaded documents appear in a table with: org name, doc name, type, date, download/delete actions
+- This is a manual process for now (as requested), to be automated later
 
-| Feature | Pitch |
-|---------|-------|
-| Branding | "Your logo and colors on the student portal" |
-| Video ID | "Verify student identity automatically" |
-| Document Checklist | "Ensure 100% document compliance before enrollment" |
-| AI Generation | "Create course content in minutes with AI" |
-| FRDO | "Automated reporting to the federal registry" |
-| Journals | "Auto-generated attendance and grading journals" |
-| Labor Safety | "Full occupational safety training management" |
-| Unlimited | "No caps on courses or students -- scale freely" |
-
-These will appear as locked feature cards with a "sparkle" icon, showing what the org is missing and which plan unlocks it.
+**File:** `src/components/admin/TariffsManager.tsx`
 
 ---
 
-### Technical Details
+### Technical Summary
 
-**Files to create:**
-- `src/components/organization/SubscriptionTab.tsx` -- main subscription UI
+**Files to create:** none (all changes in existing files)
 
 **Files to modify:**
-- `src/components/organization/OrgSidebar.tsx` -- add "subscription" tab type and menu item
-- `src/hooks/useTabNavigation.ts` -- include "subscription" in visible tabs
-- `src/components/organization/tabs/TabContentRenderer.tsx` -- render SubscriptionTab
-- `src/components/admin/TariffsManager.tsx` -- add expiration tracking, date picker, alerts
+- `src/pages/OrganizationDashboard.tsx` -- wrap alert in Collapsible
+- `src/components/organization/SubscriptionTab.tsx` -- add feature rows with links, add billing documents section
+- `src/components/admin/TariffsManager.tsx` -- add billing document upload/management UI
 
 **Database:**
-- Create `subscription_requests` table with RLS
-
+- Create `org_billing_documents` table with RLS
+- Create storage bucket `billing-documents`
