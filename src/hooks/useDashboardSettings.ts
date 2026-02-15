@@ -59,7 +59,7 @@ export function useDashboardSettings(organizationId: string | null) {
     if (savedMenuSettings) {
       try {
         const parsed = JSON.parse(savedMenuSettings);
-        setMenuSettings(prev => ({ ...prev, ...parsed, showLibrary: parsed.showLibrary !== false }));
+        setMenuSettings(prev => ({ ...prev, ...parsed, showLibrary: parsed.showLibrary !== false, showServices: parsed.showServices !== false }));
       } catch (e) {
         console.error('Error loading menu settings:', e);
       }
