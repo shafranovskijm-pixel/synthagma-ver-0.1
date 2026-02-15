@@ -1,82 +1,68 @@
 
 
-## Полноценная медиатека с информацией о курсах и пользователях
+## Plan: Marketplace Enhancements - Resale Rights, Buy Button, Balance Top-Up, and Admin Crediting
 
-### Что будет сделано
+### Overview
 
-Диалог медиатеки будет переработан из компактного окна в полноценный развёрнутый интерфейс с двухколоночной компоновкой:
+Enhance the marketplace order flow so that:
+1. The order form explicitly states that the buyer can resell/use the course however they want (resale rights clause)
+2. A "Buy" button appears alongside "Leave Request" for instant purchase from balance
+3. Organizations can top up their balance directly from the marketplace
+4. Admin panel already has crediting functionality (OrgBalanceManager) -- we verify it works and enhance if needed
 
-**Левая часть** — список файлов с увеличенными превью (80x80) и расширенной информацией
-**Правая часть** — панель детальной информации о выбранном файле (большое превью, метаданные, привязка к курсу)
+---
 
-### Информация о привязке к курсу
+### 1. Add Resale Rights Notice to Order Dialog
 
-При загрузке файлов медиатека будет параллельно запрашивать:
-1. Список курсов (`courses.id`, `courses.title`) для маппинга folder -> course name
-2. Список уроков (`lessons.content`) для определения, используется ли конкретный URL в каком-либо уроке
+In the order dialog (`CourseStoreManager.tsx`, lines 310-338), add an info block stating:
 
-Для каждого файла будет показано:
-- **Курс** — название курса, к которому привязан файл (по folder = courseId)
-- **Используется** — да/нет, и в каком уроке (по совпадению URL в `lessons.content`)
-- **Владелец** — имя пользователя, загрузившего файл (из `profiles` по `owner`)
+> "After purchase, the course becomes your property. You can use it for training your students, resell it, or use it at your discretion."
 
-### Макет интерфейса
+This will be a styled info card inside the order form, visible to organization buyers.
 
-```text
-+----------------------------------------------------------+
-|  Медиатека                                          [x]  |
-|  [Поиск по имени файла...]        Всего: 12 файлов      |
-|----------------------------------------------------------|
-|  Список файлов           |  Детали выбранного файла      |
-|  +----+                  |  +------------------------+   |
-|  |prev| filename.mp4     |  |                        |   |
-|  +----+ 54 МБ · курс...  |  |   Большое превью       |   |
-|                          |  |   (видео/картинка)      |   |
-|  +----+                  |  +------------------------+   |
-|  |prev| video2.mp4       |  Имя: filename.mp4            |
-|  +----+ 430 МБ · курс... |  Размер: 54.3 МБ              |
-|                          |  Дата: 15.02.2026              |
-|  ...                     |  Бакет: course-videos          |
-|                          |  Курс: Охрана труда...         |
-|                          |  Урок: Видео-лекция...         |
-|                          |  Владелец: Администратор       |
-|----------------------------------------------------------|
-|                          [Отмена]  [Выбрать]             |
-+----------------------------------------------------------+
-```
+### 2. Add "Buy" Button (Instant Purchase from Balance)
 
-### Технические изменения
+Currently, the course detail page (lines 124-131) only has "View" and "Leave Request" buttons. Changes:
 
-**Файл: `src/components/course-builder/MediaLibraryDialog.tsx`**
+- **Course detail view**: Add a "Buy" button next to "Leave Request" that directly opens the order dialog with `payFromBalance` pre-enabled
+- **Catalog card view**: Add a small "Buy" action button on each card
+- The existing balance payment logic in `useCourseStoreManager.ts` already handles deduction -- we just need a more prominent entry point
 
-1. Расширить `StorageFile` интерфейс:
-   - `courseName?: string` — название курса
-   - `lessonTitle?: string` — название урока где используется
-   - `ownerName?: string` — имя владельца
-   - `isUsed?: boolean` — используется ли в уроках
+### 3. Add "Top Up Balance" Button in Marketplace
 
-2. В `loadFiles` добавить параллельные запросы:
-   - `courses` (id, title) — для маппинга courseId -> название
-   - `lessons` (content, title, course_id) WHERE type = 'video' — для определения использования
-   - `profiles` (user_id, full_name) — для имён владельцев (через RPC, данные owner уже есть)
+In the marketplace header area (`CourseStoreManager.tsx`, line 57-63):
 
-3. Обогатить каждый файл:
-   - По `folder` (courseId) найти название курса
-   - По URL найти совпадение в `lessons.content`
-   - По owner найти имя из profiles
+- Show current balance next to the store title
+- Add a "Top Up" button that opens a top-up dialog (reuse logic from `useOrgBalance` hook)
+- Import and use `useOrgBalance` directly in `CourseStoreManager` for the top-up functionality
 
-4. Увеличить диалог до `sm:max-w-4xl`
+### 4. Admin Balance Crediting
 
-5. Разделить на 2 колонки:
-   - Левая (60%): список файлов с превью 80x80
-   - Правая (40%): панель деталей выбранного файла с большим превью (до 300px), полная информация
+The admin panel already has `OrgBalanceManager` with a "Top Up" button under the Balance tab in `OrganizationDetailsView.tsx`. This is the crediting functionality. No changes needed unless we want to add additional features.
 
-6. Добавить счётчик файлов в заголовке
+---
 
-7. В панели деталей показать:
-   - Большой превью (video/img)
-   - Имя файла
-   - Размер и дата
-   - Курс (с Badge)
-   - Урок (если используется) или "Не используется"
-   - Владелец
+### Technical Details
+
+**Files to modify:**
+
+1. **`src/components/organization/CourseStoreManager.tsx`**
+   - Add balance display + top-up button in the header
+   - Add "Buy" button in course detail view and catalog cards
+   - Add resale rights notice in order dialog
+   - Add top-up dialog (inline, using `useOrgBalance` hook)
+
+2. **`src/hooks/useCourseStoreManager.ts`**
+   - Add a `handleBuyNow` method that pre-sets `payFromBalance = true` and opens order dialog
+
+3. **`src/components/organization/tabs/TabContentRenderer.tsx`**
+   - Pass `orgBalance.refresh` so balance updates after top-up
+
+**No database changes needed** -- all tables and columns already exist.
+
+**Key UI additions:**
+- Balance card in marketplace header: wallet icon + amount + "Top Up" button
+- "Buy" button (green/primary) next to "Leave Request" in course detail
+- Resale rights info block: a bordered card with info icon and text about full ownership rights
+- Top-up dialog: amount input + comment + submit (reuses `useOrgBalance.topUpBalance`)
+
