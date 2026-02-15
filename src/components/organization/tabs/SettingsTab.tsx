@@ -3,7 +3,7 @@ import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
 import { SUBSCRIPTION_PLANS } from "@/constants/subscriptionPlans";
 import { 
   Palette, Sun, Moon, FileText, Building2, LayoutGrid, 
-  Library, BarChart3, Link, ShoppingBag, Save, Settings,
+  Library, BarChart3, Link, ShoppingBag, Save, Settings, HardDrive,
   Trophy, MessageCircle, ChevronRight, Loader2, Upload,
   X, ExternalLink, Image, Eye, AlertCircle, LogIn, KeyRound
 } from "lucide-react";
@@ -178,11 +178,11 @@ export function SettingsTab() {
             <div className="flex items-center justify-between py-2 lg:py-3 border-b border-border">
               <div className="flex items-center gap-2 lg:gap-3">
                 <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-lg lg:rounded-xl bg-primary/10 flex items-center justify-center">
-                  <Library className="w-4 h-4 lg:w-5 lg:h-5 text-primary" />
+                  <HardDrive className="w-4 h-4 lg:w-5 lg:h-5 text-primary" />
                 </div>
                 <div>
-                  <p className="font-medium text-sm lg:text-base">Библиотека</p>
-                  <p className="text-xs lg:text-sm text-muted-foreground hidden sm:block">Раздел с материалами</p>
+                  <p className="font-medium text-sm lg:text-base">Хранилище</p>
+                  <p className="text-xs lg:text-sm text-muted-foreground hidden sm:block">Управление файлами</p>
                 </div>
               </div>
               <button
@@ -562,11 +562,11 @@ export function SettingsTab() {
             <div className="flex items-center justify-between py-3 border-b border-border">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <Library className="w-5 h-5 text-primary" />
+                  <HardDrive className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <p className="font-medium">Библиотека</p>
-                  <p className="text-sm text-muted-foreground">Раздел с дополнительными материалами</p>
+                  <p className="font-medium">Хранилище</p>
+                  <p className="text-sm text-muted-foreground">Управление файлами организации</p>
                 </div>
               </div>
               <button
