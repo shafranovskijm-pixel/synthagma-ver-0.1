@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import {
   BookOpen, MessageCircle, Trophy, Settings, LogOut, Video, FileCheck, FileText,
   Menu, Sun, Moon, Monitor, CheckCircle2, Clock, Eye, Store,
-  Library, AlertCircle, Sparkles, Send, Loader2, X
+  Library, AlertCircle, Sparkles, Send, Loader2, X, Lock
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -19,6 +19,7 @@ import { StudentDocumentsUpload } from "@/components/student/StudentDocumentsUpl
 import { AchievementsPanel } from "@/components/student/AchievementsPanel";
 import { useStudentDashboard } from "@/hooks/useStudentDashboard";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import { StudentCourseStore } from "@/components/student/StudentCourseStore";
 
 export default function StudentDashboard() {
@@ -31,8 +32,10 @@ export default function StudentDashboard() {
     showConsentForm, setShowConsentForm, showDocumentsUpload, setShowDocumentsUpload,
     showAchievements, setShowAchievements, mobileMenuOpen, setMobileMenuOpen,
     documentsProgress, isVideoIdentified, setIsVideoIdentified, showOnboarding, handleOnboardingClose,
-    handleLogout, pullToRefreshRef, pullDistance, isRefreshing, canRefresh
+    handleLogout, pullToRefreshRef, pullDistance, isRefreshing, canRefresh, orgPlan
   } = useStudentDashboard();
+
+  const isFreePlan = orgPlan === 'free';
 
   if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
 
@@ -49,9 +52,15 @@ export default function StudentDashboard() {
         {dashboardSettings.showAiChat && <button onClick={() => { setActiveTab("chat"); onNavigate?.(); }} className={cn("w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors", activeTab === "chat" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary")}><MessageCircle className="w-5 h-5" />ИИ-помощник<span className="ml-auto w-2 h-2 rounded-full bg-sigma-green animate-pulse" /></button>}
         {dashboardSettings.showLibrary && <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors"><Library className="w-5 h-5" />Библиотека</button>}
         {dashboardSettings.showAchievements && <button onClick={() => { setShowAchievements(true); onNavigate?.(); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors"><Trophy className="w-5 h-5" />Достижения</button>}
-        <button onClick={() => { setShowVideoIdentification(true); onNavigate?.(); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors"><Video className="w-5 h-5" />Идентификация{isVideoIdentified && <CheckCircle2 className="w-4 h-4 ml-auto text-green-500" />}</button>
+        <button onClick={() => { 
+          if (isFreePlan) { toast.info("Эта функция доступна на другом тарифе"); return; }
+          setShowVideoIdentification(true); onNavigate?.(); 
+        }} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors"><Video className="w-5 h-5" />Идентификация{isFreePlan ? <Lock className="w-4 h-4 ml-auto text-amber-500" /> : isVideoIdentified && <CheckCircle2 className="w-4 h-4 ml-auto text-green-500" />}</button>
         <button onClick={() => { setShowConsentForm(true); onNavigate?.(); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors"><FileCheck className="w-5 h-5" />Согласие на ПД</button>
-        <button onClick={() => { setShowDocumentsUpload(true); onNavigate?.(); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors"><FileText className="w-5 h-5" />Мои документы{documentsProgress.completed < documentsProgress.total ? <span className="ml-auto text-xs text-amber-600 font-medium">{documentsProgress.completed}/{documentsProgress.total}</span> : <CheckCircle2 className="w-4 h-4 ml-auto text-green-500" />}</button>
+        <button onClick={() => { 
+          if (isFreePlan) { toast.info("Эта функция доступна на другом тарифе"); return; }
+          setShowDocumentsUpload(true); onNavigate?.(); 
+        }} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors"><FileText className="w-5 h-5" />Мои документы{isFreePlan ? <Lock className="w-4 h-4 ml-auto text-amber-500" /> : documentsProgress.completed < documentsProgress.total ? <span className="ml-auto text-xs text-amber-600 font-medium">{documentsProgress.completed}/{documentsProgress.total}</span> : <CheckCircle2 className="w-4 h-4 ml-auto text-green-500" />}</button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild><button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors"><Settings className="w-5 h-5" />Настройки</button></DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">

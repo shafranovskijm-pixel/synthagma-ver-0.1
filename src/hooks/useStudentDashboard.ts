@@ -74,6 +74,7 @@ export function useStudentDashboard() {
   const [documentsProgress, setDocumentsProgress] = useState({ completed: 0, total: 3 });
   const [isVideoIdentified, setIsVideoIdentified] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [orgPlan, setOrgPlan] = useState<string>("free");
 
   // Onboarding
   useEffect(() => {
@@ -129,7 +130,7 @@ export function useStudentDashboard() {
     if (!user) return;
     setLoading(true);
     try {
-      const { data: profileData } = await supabase.from("profiles").select("full_name, organization_id, organizations(name, branding, student_dashboard_settings)").eq("user_id", user.id).maybeSingle();
+      const { data: profileData } = await supabase.from("profiles").select("full_name, organization_id, organizations(name, branding, student_dashboard_settings, subscription_plan)").eq("user_id", user.id).maybeSingle();
       let effectiveOrgId: string | null = profileData?.organization_id || null;
       let effectiveOrgName: string | null = null;
       let effectiveBranding: any = null;
@@ -140,16 +141,18 @@ export function useStudentDashboard() {
         effectiveOrgName = org?.name || null;
         effectiveBranding = org?.branding;
         effectiveDashboardSettings = org?.student_dashboard_settings;
+        if (org?.subscription_plan) setOrgPlan(org.subscription_plan);
         setProfile({ full_name: profileData.full_name, organization_name: effectiveOrgName, organization_id: profileData.organization_id });
       }
 
-      const { data: laborProfile } = await supabase.from("labor_safety_profiles").select("organization_id, full_name, organizations(name, branding, student_dashboard_settings)").eq("user_id", user.id).order("created_at", { ascending: false }).limit(1).maybeSingle();
+      const { data: laborProfile } = await supabase.from("labor_safety_profiles").select("organization_id, full_name, organizations(name, branding, student_dashboard_settings, subscription_plan)").eq("user_id", user.id).order("created_at", { ascending: false }).limit(1).maybeSingle();
       if (laborProfile?.organization_id) {
         effectiveOrgId = laborProfile.organization_id;
         const laborOrg = laborProfile.organizations as any;
         effectiveOrgName = laborOrg?.name || effectiveOrgName;
         effectiveBranding = laborOrg?.branding ?? effectiveBranding;
         effectiveDashboardSettings = laborOrg?.student_dashboard_settings ?? effectiveDashboardSettings;
+        if (laborOrg?.subscription_plan) setOrgPlan(laborOrg.subscription_plan);
         setProfile(prev => {
           const prevName = prev?.full_name?.trim() || "";
           const prevParts = prevName ? prevName.split(/\s+/).length : 0;
@@ -255,6 +258,6 @@ export function useStudentDashboard() {
     showAchievements, setShowAchievements, mobileMenuOpen, setMobileMenuOpen,
     documentsProgress, isVideoIdentified, setIsVideoIdentified, showOnboarding, handleOnboardingClose,
     handleLogout, pullToRefreshRef, pullDistance, isRefreshing, canRefresh,
-    signOut,
+    signOut, orgPlan,
   };
 }
