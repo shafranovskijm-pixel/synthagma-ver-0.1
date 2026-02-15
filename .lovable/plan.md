@@ -1,48 +1,66 @@
 
 
-## Фильтрация файлов по пользователю и превью видео
+## Исправление: медиатека не показывает видео
 
-### Что будет сделано
+### Причина проблемы
 
-**1. Показывать только файлы текущего пользователя**
+Текущий пользователь (`admin@demo.sigma`) имеет `organization_id = null` в таблице `profiles`. Из-за этого функция `getOrgCourseIds()` не может найти курсы организации и возвращает пустой массив. Внешнее хранилище (`course-videos`) не опрашивается, и видео не отображаются.
 
-Сейчас медиатека показывает все файлы из папок курсов организации. Нужно фильтровать по тому, кто загрузил файл.
+Кроме того, RPC `get_user_storage_files` запрашивает только бакет `course-files`, а видео загружаются в бакет `course-videos` на внешнем Supabase.
 
-Supabase Storage хранит информацию о владельце файла в таблице `storage.objects` (поле `owner`). Мы создадим SQL-функцию в public-схеме, которая вернёт список файлов из бакета, принадлежащих текущему пользователю (по `auth.uid()`). Это надёжнее, чем фильтрация на клиенте.
+### Решение
 
-**Подход:**
-- Создать RPC-функцию `get_user_storage_files(bucket_name text)` которая делает `SELECT` из `storage.objects WHERE owner = auth.uid()` и возвращает имя, размер, дату, путь
-- В `MediaLibraryDialog` заменить логику листинга папок на вызов этой функции
-- Файлы будут гарантированно принадлежать текущему пользователю
+**1. Изменить `getOrgCourseIds` — добавить fallback по создателю курса**
 
-**2. Превью видео (миниатюра первого кадра)**
+Если `organization_id` пустой, искать курсы, созданные текущим пользователем (`created_by = auth.uid()`). Это покроет случай администратора без привязки к организации.
 
-Для видеофайлов вместо красной иконки будет отображаться скриншот первого кадра:
-- Использовать HTML `<video>` элемент с `preload="metadata"` 
-- При загрузке метаданных перемотать на 1 секунду и захватить кадр через `<canvas>`
-- Показать результат как миниатюру
-- Компонент `VideoThumbnail` будет кэшировать результат в state
+**2. Также запрашивать `course-videos` через RPC на основном Supabase**
 
-### Технические детали
+Видео могли быть загружены и в основной бакет `course-videos` (если он существует). Нужно вызвать RPC и для этого бакета тоже.
 
-**Файлы:**
+### Технические изменения
 
-1. **Миграция БД** — создать функцию `get_user_storage_files`:
-   - Принимает `bucket_id text` и опциональный `file_type_filter text`
-   - Возвращает записи из `storage.objects` где `owner = auth.uid()` и `bucket_id` совпадает
-   - Возвращает: `name`, `bucket_id`, `metadata` (размер), `created_at`, полный путь
+**Файл: `src/components/course-builder/MediaLibraryDialog.tsx`**
 
-2. **`src/components/course-builder/MediaLibraryDialog.tsx`**:
-   - Заменить логику `loadBucketFiles` / `loadBucketFilesWithClient` на вызов RPC `get_user_storage_files`
-   - Убрать сложную логику обхода папок — функция вернёт плоский список файлов пользователя
-   - Добавить компонент `VideoThumbnail` для генерации превью видео из первого кадра
-   - Для видео: вместо иконки показывать `VideoThumbnail` (миниатюра 40x40)
-   - Для изображений: оставить текущее поведение (img с URL)
+Изменить функцию `getOrgCourseIds`:
 
-**Компонент VideoThumbnail:**
-- Создаёт скрытый `<video>` элемент
-- Ждёт загрузки метаданных, перематывает на 1сек
-- Рисует кадр на `<canvas>`, конвертирует в data URL
-- Показывает как `<img>` миниатюру
-- Если не получилось — fallback на иконку Video
+```typescript
+const getOrgCourseIds = async (): Promise<string[]> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
 
+  // 1. Попробовать через organization_id
+  if (organizationId) {
+    const { data } = await supabase.from("courses").select("id").eq("organization_id", organizationId);
+    if (data && data.length > 0) return data.map(c => c.id);
+  }
+
+  // 2. Fallback: через organization_id из профиля
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("organization_id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (profile?.organization_id) {
+    const { data } = await supabase.from("courses").select("id").eq("organization_id", profile.organization_id);
+    if (data && data.length > 0) return data.map(c => c.id);
+  }
+
+  // 3. Fallback: курсы, созданные текущим пользователем
+  const { data: userCourses } = await supabase.from("courses").select("id").eq("created_by", user.id);
+  return userCourses?.map(c => c.id) || [];
+};
+```
+
+Также в `loadFiles` — добавить вызов RPC для бакета `course-videos` (на случай если видео хранятся на основном Supabase):
+
+```typescript
+// Дополнительно: файлы пользователя из course-videos (если бакет существует на основном Supabase)
+const { data: videoFiles } = await supabase.rpc("get_user_storage_files", {
+  bucket_name: "course-videos",
+});
+// ... обработка аналогично course-files
+```
+
+Это гарантирует что видео будут найдены независимо от того, есть ли у пользователя привязка к организации.
