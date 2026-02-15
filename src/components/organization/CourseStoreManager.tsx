@@ -363,15 +363,8 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
               </div>
             )}
             <div className="bg-secondary/50 rounded-xl p-4 space-y-3">
-              <div className="flex justify-between items-center"><span className="text-muted-foreground">Продавец:</span><span className="font-medium">{h.selectedCourseForOrder?.organization?.name}</span></div>
+              <div className="flex justify-between items-center"><span className="text-muted-foreground">Продавец:</span><span className="font-medium">{h.selectedCourseForOrder?.organization?.name || "Платформа Синтагма"}</span></div>
             </div>
-            {h.userRole === 'organization' && (
-              <div className="space-y-2">
-                <Label>Количество студентов</Label>
-                <Input type="number" min={1} value={h.studentsCount} onChange={(e) => h.setStudentsCount(parseInt(e.target.value) || 1)} className="rounded-xl" />
-                <div className="text-sm text-muted-foreground">Итого: <span className="font-bold text-primary">{((h.selectedCourseForOrder?.price_organization || 0) * h.studentsCount).toLocaleString()} ₽</span></div>
-              </div>
-            )}
             {h.userRole === 'organization' && (orgBalance ?? 0) > 0 && (
               <div className="flex items-center justify-between p-3 bg-primary/5 rounded-xl border border-primary/20">
                 <div className="flex items-center gap-2">
