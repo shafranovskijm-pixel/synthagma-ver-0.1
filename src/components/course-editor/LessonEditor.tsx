@@ -17,13 +17,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { FileText, Video, HelpCircle, Plus, Trash2, Sparkles, Loader2, Settings, Upload, Cloud, FileSpreadsheet } from "lucide-react";
+import { FileText, Video, HelpCircle, Plus, Trash2, Sparkles, Loader2, Settings, Upload, Cloud, FileSpreadsheet, FolderOpen } from "lucide-react";
 import { BlockEditor, ContentBlock } from "@/components/course-builder/BlockEditor";
 import { TestImportDialog } from "@/components/course-builder/TestImportDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useExternalStorage } from "@/hooks/useExternalStorage";
 import { Badge } from "@/components/ui/badge";
+import { MediaLibraryDialog } from "@/components/course-builder/MediaLibraryDialog";
 // Video preview component for lesson editor
 function VideoPreview({ videoUrl }: { videoUrl: string }) {
   const isIframeEmbed = (content: string): boolean => {
@@ -172,6 +173,7 @@ export const LessonEditor = ({
   
   // Video upload
   const videoInputRef = useRef<HTMLInputElement>(null);
+  const [showMediaLibrary, setShowMediaLibrary] = useState(false);
   const { uploadFile, isUploading, isExternalConfigured } = useExternalStorage();
   // Parse content to blocks or use as video URL
   const parseContent = useCallback((content: string | null, lessonType: string) => {
@@ -454,6 +456,16 @@ export const LessonEditor = ({
                         type="button"
                         variant="outline"
                         size="sm"
+                        onClick={() => setShowMediaLibrary(true)}
+                        className="gap-2"
+                      >
+                        <FolderOpen className="w-4 h-4" />
+                        Из загруженных
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
                         onClick={() => videoInputRef.current?.click()}
                         disabled={isUploading}
                         className="gap-2"
@@ -488,6 +500,12 @@ export const LessonEditor = ({
                           // Reset input
                           e.target.value = '';
                         }}
+                      />
+                      <MediaLibraryDialog
+                        open={showMediaLibrary}
+                        onClose={() => setShowMediaLibrary(false)}
+                        onSelect={(url) => setVideoUrl(url)}
+                        filter="video"
                       />
                     </div>
                   </div>
