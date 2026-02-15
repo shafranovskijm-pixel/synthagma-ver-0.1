@@ -7,8 +7,9 @@ import {
   GripVertical, FileText, Video, Image, FileQuestion,
   Trash2, Eye, Sparkles, Upload, ChevronDown, ChevronUp,
   Loader2, Headphones, Volume2, Pause, Play, Square,
-  Presentation, FileSpreadsheet,
+  Presentation, FileSpreadsheet, FolderOpen,
 } from "lucide-react";
+import { MediaLibraryDialog } from "@/components/course-builder/MediaLibraryDialog";
 import { toast } from "sonner";
 import { BlockEditor, blocksToJson } from "@/components/course-builder/BlockEditor";
 import { TestQuestionEditor } from "@/components/course-builder/TestQuestionEditor";
@@ -43,6 +44,7 @@ export function SortableLessonItem({
   generatedQuestions, onQuestionsProcessed,
 }: SortableLessonProps) {
   const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const [showMediaLibrary, setShowMediaLibrary] = useState(false);
   const media = useLessonMedia(lesson.id, courseId, onUpdate);
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: lesson.id });
@@ -133,6 +135,16 @@ export function SortableLessonItem({
                       <Upload className="w-4 h-4" /><span className="text-sm font-medium">Выбрать файл</span>
                       <input ref={media.videoInputRef} type="file" accept="video/mp4,video/webm,video/quicktime,video/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) media.handleVideoUpload(file); }} />
                     </label>
+                    <Button variant="outline" size="sm" className="gap-2" onClick={() => setShowMediaLibrary(true)}>
+                      <FolderOpen className="w-4 h-4" />
+                      Из загруженных
+                    </Button>
+                    <MediaLibraryDialog
+                      open={showMediaLibrary}
+                      onClose={() => setShowMediaLibrary(false)}
+                      onSelect={(url) => onUpdate({ content: url })}
+                      filter="video"
+                    />
                   </>
                 )}
               </div>
