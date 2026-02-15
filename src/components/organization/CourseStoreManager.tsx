@@ -364,7 +364,6 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
             )}
             <div className="bg-secondary/50 rounded-xl p-4 space-y-3">
               <div className="flex justify-between items-center"><span className="text-muted-foreground">Продавец:</span><span className="font-medium">{h.selectedCourseForOrder?.organization?.name}</span></div>
-              <div className="flex justify-between items-center"><span className="text-muted-foreground">Цена за студента:</span><span className="font-bold text-primary">{h.userRole === 'student' ? h.selectedCourseForOrder?.price_student.toLocaleString() : h.selectedCourseForOrder?.price_organization.toLocaleString()} ₽</span></div>
             </div>
             {h.userRole === 'organization' && (
               <div className="space-y-2">
