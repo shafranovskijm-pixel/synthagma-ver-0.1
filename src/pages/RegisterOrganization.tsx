@@ -228,6 +228,7 @@ const RegisterOrganization = () => {
           
         if (profileError) {
           console.error("Profile update error:", profileError);
+          throw new Error("Ошибка привязки профиля к организации: " + profileError.message);
         }
 
         // 4. Use secure RPC function to upgrade role to 'organization'
@@ -238,6 +239,7 @@ const RegisterOrganization = () => {
         
         if (roleError) {
           console.error("Role upgrade error:", roleError);
+          throw new Error("Ошибка назначения роли организации: " + roleError.message);
         }
         
         // Wait a bit for role to be set, then refresh
