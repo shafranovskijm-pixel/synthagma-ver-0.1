@@ -1425,6 +1425,41 @@ export type Database = {
           },
         ]
       }
+      marketplace_course_comments: {
+        Row: {
+          author_name: string
+          content: string
+          created_at: string
+          id: string
+          marketplace_course_id: string
+          user_id: string | null
+        }
+        Insert: {
+          author_name?: string
+          content: string
+          created_at?: string
+          id?: string
+          marketplace_course_id: string
+          user_id?: string | null
+        }
+        Update: {
+          author_name?: string
+          content?: string
+          created_at?: string
+          id?: string
+          marketplace_course_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_course_comments_marketplace_course_id_fkey"
+            columns: ["marketplace_course_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       marketplace_courses: {
         Row: {
           course_id: string

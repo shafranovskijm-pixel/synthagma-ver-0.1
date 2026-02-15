@@ -20,6 +20,7 @@ import { Switch } from "@/components/ui/switch";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useCourseStoreManager } from "@/hooks/useCourseStoreManager";
+import { CourseComments } from "./CourseComments";
 
 const statusLabels: Record<string, { label: string; color: string }> = {
   pending: { label: "Ожидает", color: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20" },
@@ -169,6 +170,9 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
                   <ShoppingCart className="w-4 h-4" />Оставить заявку
                 </Button>
               </div>
+
+              {/* Comments */}
+              <CourseComments marketplaceCourseId={selectedCourseDetail.id} userId={userId} />
             </div>
           ) : (
             <>
