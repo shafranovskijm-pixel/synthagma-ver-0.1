@@ -609,8 +609,10 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
         return;
       }
       const { toast } = await import("sonner");
-      toast.info("Генерация аудио из текста...");
+      toast.info("Генерация аудио из текста... Длинные тексты могут занять до 2 минут.");
       try {
+        const ttsController = new AbortController();
+        const ttsTimeout = setTimeout(() => ttsController.abort(), 180000);
         const response = await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
           {
@@ -621,8 +623,10 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
               Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
             },
             body: JSON.stringify({ text: plainText }),
+            signal: ttsController.signal,
           }
         );
+        clearTimeout(ttsTimeout);
         if (!response.ok) {
           const errData = await response.json().catch(() => null);
           throw new Error(errData?.error || `Ошибка: ${response.status}`);

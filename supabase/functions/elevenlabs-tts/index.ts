@@ -21,7 +21,6 @@ function splitTextIntoChunks(text: string, maxLen = 4500): string[] {
       break;
     }
 
-    // Find the last sentence-ending punctuation within maxLen
     let splitAt = -1;
     for (let i = maxLen; i >= maxLen * 0.5; i--) {
       const ch = remaining[i];
@@ -31,7 +30,6 @@ function splitTextIntoChunks(text: string, maxLen = 4500): string[] {
       }
     }
 
-    // Fallback: split at last space
     if (splitAt === -1) {
       for (let i = maxLen; i >= maxLen * 0.5; i--) {
         if (remaining[i] === ' ') {
@@ -41,7 +39,6 @@ function splitTextIntoChunks(text: string, maxLen = 4500): string[] {
       }
     }
 
-    // Last resort: hard cut
     if (splitAt === -1) splitAt = maxLen;
 
     chunks.push(remaining.slice(0, splitAt).trim());
@@ -52,7 +49,7 @@ function splitTextIntoChunks(text: string, maxLen = 4500): string[] {
 }
 
 /**
- * Generate TTS audio for a single chunk, with optional stitching context.
+ * Generate TTS audio for a single chunk.
  */
 async function generateChunk(
   text: string,
@@ -73,7 +70,6 @@ async function generateChunk(
     },
   };
 
-  // Request stitching: provide context from adjacent chunks
   if (previousText) body.previous_text = previousText.slice(-300);
   if (nextText) body.next_text = nextText.slice(0, 300);
 
@@ -102,10 +98,6 @@ async function generateChunk(
   return response.arrayBuffer();
 }
 
-/**
- * Concatenate multiple MP3 buffers.
- * MP3 frames are independently decodable, so simple concatenation works.
- */
 function concatBuffers(buffers: ArrayBuffer[]): ArrayBuffer {
   const totalLen = buffers.reduce((sum, b) => sum + b.byteLength, 0);
   const result = new Uint8Array(totalLen);
@@ -144,25 +136,38 @@ serve(async (req) => {
     console.log(`TTS: ${text.length} chars → ${chunks.length} chunk(s)`);
 
     if (chunks.length === 1) {
-      // Single chunk — simple path, no stitching needed
       const audioBuffer = await generateChunk(chunks[0], voiceId, ELEVENLABS_API_KEY);
       return new Response(audioBuffer, {
         headers: { ...corsHeaders, "Content-Type": "audio/mpeg" },
       });
     }
 
-    // Multiple chunks — generate sequentially with stitching context
-    const audioBuffers: ArrayBuffer[] = [];
-    for (let i = 0; i < chunks.length; i++) {
-      const prev = i > 0 ? chunks[i - 1] : undefined;
-      const next = i < chunks.length - 1 ? chunks[i + 1] : undefined;
-      console.log(`TTS chunk ${i + 1}/${chunks.length}: ${chunks[i].length} chars`);
-      const buf = await generateChunk(chunks[i], voiceId, ELEVENLABS_API_KEY, prev, next);
-      audioBuffers.push(buf);
+    // Process chunks in parallel batches of 3 for speed while keeping stitching context
+    const BATCH_SIZE = 3;
+    const audioBuffers: (ArrayBuffer | null)[] = new Array(chunks.length).fill(null);
+
+    for (let batchStart = 0; batchStart < chunks.length; batchStart += BATCH_SIZE) {
+      const batchEnd = Math.min(batchStart + BATCH_SIZE, chunks.length);
+      const promises: Promise<void>[] = [];
+
+      for (let i = batchStart; i < batchEnd; i++) {
+        const prev = i > 0 ? chunks[i - 1] : undefined;
+        const next = i < chunks.length - 1 ? chunks[i + 1] : undefined;
+        console.log(`TTS chunk ${i + 1}/${chunks.length}: ${chunks[i].length} chars`);
+        
+        const idx = i;
+        promises.push(
+          generateChunk(chunks[idx], voiceId, ELEVENLABS_API_KEY, prev, next)
+            .then(buf => { audioBuffers[idx] = buf; })
+        );
+      }
+
+      await Promise.all(promises);
     }
 
-    const combined = concatBuffers(audioBuffers);
-    console.log(`TTS: combined ${audioBuffers.length} chunks → ${combined.byteLength} bytes`);
+    const validBuffers = audioBuffers.filter((b): b is ArrayBuffer => b !== null);
+    const combined = concatBuffers(validBuffers);
+    console.log(`TTS: combined ${validBuffers.length} chunks → ${combined.byteLength} bytes`);
 
     return new Response(combined, {
       headers: { ...corsHeaders, "Content-Type": "audio/mpeg" },
@@ -173,8 +178,7 @@ serve(async (req) => {
     if (error instanceof Error && error.message === "UNUSUAL_ACTIVITY") {
       return new Response(
         JSON.stringify({
-          error:
-            "Озвучка временно недоступна: ElevenLabs отключил Free Tier (detected_unusual_activity). Попробуйте без VPN/прокси или используйте платный тариф.",
+          error: "Озвучка временно недоступна: ElevenLabs отключил Free Tier. Попробуйте без VPN/прокси или используйте платный тариф.",
           provider_status: 401,
         }),
         { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
