@@ -269,10 +269,17 @@ const RegisterOrganization = () => {
         }
       }
 
-      toast({
-        title: "Успешно!",
-        description: "Организация зарегистрирована. Добро пожаловать!",
-      });
+      if (selectedPlan && selectedPlan !== 'free') {
+        toast({
+          title: "Спасибо за регистрацию!",
+          description: "Ваш тариф будет подключён после оплаты. Наш менеджер свяжется с вами. Спасибо!",
+        });
+      } else {
+        toast({
+          title: "Успешно!",
+          description: "Организация зарегистрирована. Добро пожаловать!",
+        });
+      }
       
       // Force reload to get fresh auth state
       window.location.href = "/organization";
