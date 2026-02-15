@@ -1,6 +1,6 @@
 import { 
-  BarChart3, Building2, Users, ShoppingBag, Crown, 
-  LogOut, Shield, Settings, FileText, Mail, MessageSquare, Terminal, Store
+  BarChart3, Building2, Users, Crown, 
+  LogOut, Shield, Settings, FileText, Terminal, Store
 } from "lucide-react";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 
@@ -8,11 +8,8 @@ export type AdminTabType =
   | "analytics" 
   | "organizations" 
   | "tariffs"
-  | "orders" 
   | "users" 
-  | "blog"
-  | "subscribers"
-  | "testimonials"
+  | "content"
   | "marketplace"
   | "devtools"
   | "settings";
@@ -81,34 +78,16 @@ export function AdminSidebar({
             Тарифы
           </button>
           
-          {/* Orders */}
-          <button onClick={() => handleTabClick("orders")} className={tabButtonClass("orders")}>
-            <ShoppingBag className="w-5 h-5" />
-            Заявки на курсы
-          </button>
-          
           {/* Users */}
           <button onClick={() => handleTabClick("users")} className={tabButtonClass("users")}>
             <Users className="w-5 h-5" />
             Пользователи
           </button>
           
-          {/* Blog */}
-          <button onClick={() => handleTabClick("blog")} className={tabButtonClass("blog")}>
+          {/* Content (Blog + Subscribers + Testimonials) */}
+          <button onClick={() => handleTabClick("content")} className={tabButtonClass("content")}>
             <FileText className="w-5 h-5" />
-            Блог
-          </button>
-          
-          {/* Subscribers */}
-          <button onClick={() => handleTabClick("subscribers")} className={tabButtonClass("subscribers")}>
-            <Mail className="w-5 h-5" />
-            Подписчики
-          </button>
-
-          {/* Testimonials */}
-          <button onClick={() => handleTabClick("testimonials")} className={tabButtonClass("testimonials")}>
-            <MessageSquare className="w-5 h-5" />
-            Отзывы
+            Контент
           </button>
 
           {/* Marketplace */}

@@ -7,13 +7,10 @@ import { AdminSidebar, type AdminTabType } from "@/components/admin/AdminSidebar
 import { OrganizationsManager } from "@/components/admin/OrganizationsManager";
 import { UsersManager } from "@/components/admin/UsersManager";
 import { AdminAnalytics } from "@/components/admin/AdminAnalytics";
-import { ServiceOrdersManager } from "@/components/admin/ServiceOrdersManager";
 import { AdminMarketplaceManager } from "@/components/admin/AdminMarketplaceManager";
 
 import { AdminSettings } from "@/components/admin/AdminSettings";
 import { BlogManager } from "@/components/admin/BlogManager";
-import { SubscribersManager } from "@/components/admin/SubscribersManager";
-import { TestimonialsManager } from "@/components/admin/TestimonialsManager";
 import { TariffsManager } from "@/components/admin/TariffsManager";
 import { DevToolsPanel } from "@/components/admin/DevToolsPanel";
 
@@ -34,12 +31,9 @@ const AdminDashboard = () => {
       case "analytics": return "Аналитика";
       case "organizations": return "Организации";
       case "tariffs": return "Тарифы";
-      case "orders": return "Заявки на курсы";
       case "marketplace": return "Маркетплейс";
       case "users": return "Пользователи";
-      case "blog": return "Блог";
-      case "subscribers": return "Подписчики";
-      case "testimonials": return "Отзывы";
+      case "content": return "Контент";
       case "devtools": return "Developer Tools";
       case "settings": return "Настройки";
       default: return "";
@@ -94,12 +88,9 @@ const AdminDashboard = () => {
           {activeTab === "analytics" && <AdminAnalytics />}
           {activeTab === "organizations" && <OrganizationsManager />}
           {activeTab === "tariffs" && <TariffsManager />}
-          {activeTab === "orders" && <ServiceOrdersManager />}
           {activeTab === "marketplace" && <AdminMarketplaceManager />}
           {activeTab === "users" && <UsersManager />}
-          {activeTab === "blog" && <BlogManager />}
-          {activeTab === "subscribers" && <SubscribersManager />}
-          {activeTab === "testimonials" && <TestimonialsManager />}
+          {activeTab === "content" && <BlogManager />}
           {activeTab === "devtools" && <DevToolsPanel />}
           {activeTab === "settings" && <AdminSettings />}
         </div>
