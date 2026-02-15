@@ -45,18 +45,14 @@ export function useSubscriptionLimits(organizationId: string | null): Subscripti
           .from("courses")
           .select("id", { count: "exact", head: true })
           .eq("organization_id", organizationId),
-        supabase
-          .from("profiles")
-          .select("id, user_roles!inner(role)", { count: "exact", head: true })
-          .eq("organization_id", organizationId)
-          .eq("user_roles.role", "student"),
+        supabase.rpc("count_org_students" as any, { org_id: organizationId }),
       ]);
 
       if (orgResult.data?.subscription_plan) {
         setPlan(orgResult.data.subscription_plan as SubscriptionPlan);
       }
       setCoursesCount(coursesResult.count || 0);
-      setStudentsCount(studentsResult.count || 0);
+      setStudentsCount(Number(studentsResult.data) || 0);
     } catch (error) {
       console.error("Error fetching subscription limits:", error);
     } finally {
