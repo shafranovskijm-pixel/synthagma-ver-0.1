@@ -3380,6 +3380,7 @@ export type Database = {
         Args: { p_achievement_code: string; p_user_id: string }
         Returns: undefined
       }
+      count_org_students: { Args: { org_id: string }; Returns: number }
       create_organization: {
         Args: {
           p_contact_name?: string
