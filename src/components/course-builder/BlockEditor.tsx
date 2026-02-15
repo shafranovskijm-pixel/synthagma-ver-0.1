@@ -48,6 +48,7 @@ import {
   RectangleHorizontal,
   Undo2,
   Redo2,
+  FolderOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -63,6 +64,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { MediaLibraryDialog } from "./MediaLibraryDialog";
 import {
   DndContext,
   closestCenter,
@@ -1179,6 +1181,8 @@ function ImageBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updat
 }
 
 function VideoBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void }) {
+  const [showLibrary, setShowLibrary] = useState(false);
+
   // Check if the content is an iframe embed code
   const isIframeEmbed = (content: string): boolean => {
     return content.trim().startsWith('<iframe') && content.includes('</iframe>');
@@ -1282,6 +1286,15 @@ function VideoBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updat
             <Video className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
             <p className="text-sm text-muted-foreground mb-2">Добавьте видео по ссылке или вставьте embed код</p>
             <p className="text-xs text-muted-foreground/70">YouTube, Vimeo, Rutube, VK, Дзен, OK.ru, Mail.ru или &lt;iframe&gt;</p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-2"
+              onClick={() => setShowLibrary(true)}
+            >
+              <FolderOpen className="w-4 h-4 mr-1" />
+              Выбрать из загруженных
+            </Button>
           </div>
           <Textarea 
             value={block.videoUrl || ""} 
@@ -1291,6 +1304,12 @@ function VideoBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updat
           />
         </div>
       )}
+      <MediaLibraryDialog
+        open={showLibrary}
+        onClose={() => setShowLibrary(false)}
+        onSelect={(url) => onUpdate({ videoUrl: url })}
+        filter="video"
+      />
     </div>
   );
 }
