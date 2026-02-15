@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Video, FileText, Image as ImageIcon, Search, FolderOpen } from "lucide-react";
+import { Loader2, Video, FileText, Image as ImageIcon, Search, FolderOpen, Music } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
@@ -59,9 +59,9 @@ function formatDate(dateStr: string): string {
 
 function getFileIcon(type: StorageFile["type"]) {
   switch (type) {
-    case "video": return <Video className="w-5 h-5 text-red-500" />;
-    case "image": return <ImageIcon className="w-5 h-5 text-green-500" />;
-    case "audio": return <Video className="w-5 h-5 text-teal-500" />;
+    case "video": return <Video className="w-5 h-5 text-destructive" />;
+    case "image": return <ImageIcon className="w-5 h-5 text-primary" />;
+    case "audio": return <Music className="w-5 h-5 text-accent-foreground" />;
     default: return <FileText className="w-5 h-5 text-muted-foreground" />;
   }
 }
@@ -114,7 +114,6 @@ function VideoThumbnail({ url }: { url: string }) {
       cleanup();
     };
 
-    // Timeout fallback
     const timer = setTimeout(() => {
       if (!thumb) {
         setFailed(true);
@@ -131,7 +130,7 @@ function VideoThumbnail({ url }: { url: string }) {
   }, [url]);
 
   if (failed || !thumb) {
-    return <Video className="w-5 h-5 text-red-500" />;
+    return <Video className="w-5 h-5 text-destructive" />;
   }
 
   return <img src={thumb} alt="Video preview" className="w-full h-full object-cover rounded" />;
@@ -151,41 +150,85 @@ export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all", or
     }
   }, [open]);
 
+  const getOrgCourseIds = async (): Promise<string[]> => {
+    if (!organizationId) {
+      // Fallback: get org from current user profile
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return [];
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("organization_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (!profile?.organization_id) return [];
+      const { data } = await supabase.from("courses").select("id").eq("organization_id", profile.organization_id);
+      return data?.map(c => c.id) || [];
+    }
+    const { data } = await supabase.from("courses").select("id").eq("organization_id", organizationId);
+    return data?.map(c => c.id) || [];
+  };
+
   const loadFiles = async () => {
     setLoading(true);
     const allFiles: StorageFile[] = [];
     const baseUrl = import.meta.env.VITE_SUPABASE_URL;
 
     try {
-      // Load files from both buckets using the RPC that filters by current user
-      for (const bucket of ["course-files", "course-videos"]) {
-        const { data, error } = await supabase.rpc("get_user_storage_files", {
-          bucket_name: bucket,
-        });
+      // 1. Load user's own files from internal storage via RPC
+      const { data: userFiles, error: rpcError } = await supabase.rpc("get_user_storage_files", {
+        bucket_name: "course-files",
+      });
 
-        if (error) {
-          console.error(`Error loading ${bucket}:`, error);
-          continue;
+      if (!rpcError && userFiles) {
+        for (const f of userFiles as any[]) {
+          const filePath = f.file_path || f.file_name;
+          const fileName = filePath.split("/").pop() || filePath;
+          const folder = filePath.includes("/") ? filePath.substring(0, filePath.lastIndexOf("/")) : "";
+
+          allFiles.push({
+            name: fileName,
+            url: `${baseUrl}/storage/v1/object/public/course-files/${filePath}`,
+            bucket: "course-files",
+            folder,
+            size: f.file_size || 0,
+            created_at: f.created_at || "",
+            type: getFileType(fileName),
+          });
         }
+      }
 
-        if (data) {
-          for (const f of data as any[]) {
-            const filePath = f.file_path || f.file_name;
-            const fileName = filePath.split("/").pop() || filePath;
-            const folder = filePath.includes("/") ? filePath.substring(0, filePath.lastIndexOf("/")) : "";
-            const fileType = getFileType(fileName);
+      // 2. Load from external storage (course-videos) - list by org course folders
+      try {
+        const { data: config } = await supabase.functions.invoke("get-external-storage-config");
+        if (config?.configured && config?.url && config?.key) {
+          const { createClient } = await import("@supabase/supabase-js");
+          const extClient = createClient(config.url, config.key);
+          const courseIds = await getOrgCourseIds();
 
-            allFiles.push({
-              name: fileName,
-              url: `${baseUrl}/storage/v1/object/public/${bucket}/${filePath}`,
-              bucket,
-              folder,
-              size: f.file_size || 0,
-              created_at: f.created_at || "",
-              type: fileType,
-            });
+          for (const courseId of courseIds) {
+            try {
+              const { data: items } = await extClient.storage
+                .from("course-videos")
+                .list(courseId, { limit: 500 });
+              if (items) {
+                for (const f of items) {
+                  if (f.id === null) continue;
+                  allFiles.push({
+                    name: f.name,
+                    url: `${config.url}/storage/v1/object/public/course-videos/${courseId}/${f.name}`,
+                    bucket: "course-videos",
+                    folder: courseId,
+                    size: (f.metadata as any)?.size || 0,
+                    created_at: (f as any).created_at || "",
+                    type: getFileType(f.name),
+                  });
+                }
+              }
+            } catch { /* folder doesn't exist */ }
           }
         }
+      } catch {
+        // External storage not configured
       }
     } catch (err) {
       console.error("Error loading media library:", err);
