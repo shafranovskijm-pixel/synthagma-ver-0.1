@@ -44,7 +44,7 @@ export function HealthTab() {
     });
 
     await Promise.all(promises);
-    const updatedCode = CODE_RECOMMENDATIONS.map(r => ({ ...r, status: "checked" as RecStatus }));
+    const updatedCode = CODE_RECOMMENDATIONS.map(r => ({ ...r, status: r.status === "applied" ? "applied" as RecStatus : "checked" as RecStatus }));
     setRecommendations([...dbRecs, ...updatedCode]);
     setLastChecked(new Date().toLocaleTimeString("ru-RU"));
     setChecking(false);
