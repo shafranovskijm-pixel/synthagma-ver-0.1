@@ -7,7 +7,7 @@ import { LinksTab } from "./LinksTab";
 import { StatsTab } from "./StatsTab";
 import { DocumentsTab } from "./DocumentsTab";
 import { CompaniesManager } from "@/components/organization/CompaniesManager";
-import { LibraryManager } from "@/components/organization/LibraryManager";
+import { StorageManager } from "@/components/organization/StorageManager";
 import { CourseStoreManager } from "@/components/organization/CourseStoreManager";
 import { FRDOManager } from "@/components/organization/FRDOManager";
 import { JournalsManager } from "@/components/organization/JournalsManager";
@@ -110,9 +110,9 @@ export function TabContentRenderer() {
         />
       )}
 
-      {/* Library Tab */}
+      {/* Storage Tab */}
       {activeTab === "library" && organizationId && (
-        <LibraryManager organizationId={organizationId} />
+        <StorageManager organizationId={organizationId} />
       )}
 
       {/* Documents Tab */}

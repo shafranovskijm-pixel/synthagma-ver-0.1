@@ -1,8 +1,8 @@
 import { useCallback, useMemo } from "react";
 import { 
   BookOpen, Users, BarChart3, Settings, LogOut, 
-  Link, Library, FileText, FileSpreadsheet, ShoppingBag, 
-  Building2, ClipboardList, HardHat
+  Link, FileText, FileSpreadsheet, ShoppingBag, 
+  Building2, ClipboardList, HardHat, HardDrive
 } from "lucide-react";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { HelpButton } from "@/components/onboarding/HelpButton";
@@ -107,8 +107,8 @@ export function OrgSidebar() {
           
           {menuSettings.showLibrary && isEnabled("library") && (
             <button onClick={() => handleTabClick("library")} className={tabButtonClass("library")}>
-              <Library className="w-5 h-5" />
-              Библиотека
+              <HardDrive className="w-5 h-5" />
+              Хранилище
             </button>
           )}
           
