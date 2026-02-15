@@ -46,7 +46,7 @@ export function useStudentManagement({
   const [isEnrollingExisting, setIsEnrollingExisting] = useState(false);
 
   // Create student
-  const createStudent = useCallback(async () => {
+  const createStudent = useCallback(async (overrides?: { name?: string; email?: string; courseId?: string; companyId?: string; noLogin?: boolean }) => {
     if (checkStudentLimit) {
       const result = checkStudentLimit();
       if (!result.allowed) {
@@ -54,28 +54,34 @@ export function useStudentManagement({
         return false;
       }
     }
-    if (!organizationId || !newStudentName.trim() || !newStudentEmail.trim()) {
+    const effectiveName = overrides?.name ?? newStudentName;
+    const effectiveEmail = overrides?.email ?? newStudentEmail;
+    const effectiveCourseId = overrides?.courseId ?? selectedCourseId;
+    const effectiveCompanyId = overrides?.companyId ?? selectedCompanyId;
+    const effectiveNoLogin = overrides?.noLogin ?? noLoginStudent;
+
+    if (!organizationId || !effectiveName.trim() || !effectiveEmail.trim()) {
       toast.error("Заполните ФИО и Email");
       return false;
     }
-    if (!isValidEmail(newStudentEmail)) {
+    if (!isValidEmail(effectiveEmail)) {
       toast.error("Введите корректный email адрес");
       return false;
     }
     
     setIsCreatingStudent(true);
     try {
-      const password = noLoginStudent ? null : generateStrongPassword();
+      const password = effectiveNoLogin ? null : generateStrongPassword();
       const { data, error } = await supabase.functions.invoke("register-student", {
         body: {
           token: null,
-          email: newStudentEmail || null,
+          email: effectiveEmail || null,
           password,
-          full_name: newStudentName,
+          full_name: effectiveName,
           organization_id: organizationId,
-          course_id: selectedCourseId || null,
-          company_id: selectedCompanyId || null,
-          no_login: noLoginStudent
+          course_id: effectiveCourseId || null,
+          company_id: effectiveCompanyId || null,
+          no_login: effectiveNoLogin
         }
       });
       
@@ -92,20 +98,20 @@ export function useStudentManagement({
       }
 
       // Add or update student in the list
-      const course = courses.find(c => c.id === selectedCourseId);
+      const course = courses.find(c => c.id === effectiveCourseId);
       const newStudent: Student = {
         id: data.user_id,
         user_id: data.user_id,
         enrollment_id: null,
-        name: newStudentName,
-        email: newStudentEmail || "",
+        name: effectiveName,
+        email: effectiveEmail || "",
         login: data.login || null,
         generated_password: data.password || null,
         course: course?.title || null,
-        course_id: selectedCourseId || null,
+        course_id: effectiveCourseId || null,
         progress: 0,
         lastActivity: new Date().toISOString(),
-        status: selectedCourseId ? "active" : null
+        status: effectiveCourseId ? "active" : null
       };
 
       // Check if student is already in the list
@@ -113,18 +119,15 @@ export function useStudentManagement({
                           allProfiles.some(s => s.user_id === data.user_id);
       
       if (data.is_no_login || !data.is_existing) {
-        // New student (with or without login) - add to lists
         setStudents(prev => [...prev, newStudent]);
         setAllProfiles(prev => [...prev, newStudent]);
         setStats(prev => ({
           ...prev,
           totalStudents: prev.totalStudents + 1
         }));
-      } else if (data.enrollment_created && selectedCourseId) {
-        // Existing student enrolled in new course - add enrollment entry
+      } else if (data.enrollment_created && effectiveCourseId) {
         setStudents(prev => [...prev, newStudent]);
       } else if (!existsInList) {
-        // Existing student not in list - add them so they're visible
         setAllProfiles(prev => [...prev, newStudent]);
         setStudents(prev => [...prev, newStudent]);
       }
