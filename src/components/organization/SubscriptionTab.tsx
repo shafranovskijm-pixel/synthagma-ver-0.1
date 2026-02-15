@@ -5,6 +5,7 @@ import { SUBSCRIPTION_PLANS, type SubscriptionPlan, type PlanInfo, formatStorage
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { toast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -299,34 +300,37 @@ export function SubscriptionTab() {
         </Card>
       </div>
 
-      {/* Feature Highlights - what you're missing */}
+      {/* Feature Highlights - accordion */}
       {currentPlanIndex < PLAN_ORDER.length - 1 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Sparkles className="w-5 h-5 text-amber-500" />
-              Возможности, доступные на старших тарифах
-            </CardTitle>
-            <CardDescription>Перейдите на более высокий тариф, чтобы разблокировать</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-              {FEATURE_HIGHLIGHTS.filter(f => PLAN_ORDER.indexOf(f.minPlan) > currentPlanIndex).map((feature, i) => (
-                <div key={i} className="p-4 rounded-xl border border-border bg-muted/30 space-y-2 relative overflow-hidden">
-                  <div className="absolute top-2 right-2">
-                    <Badge variant="outline" className={planAccents[feature.minPlan]}>
-                      {SUBSCRIPTION_PLANS[feature.minPlan].name}+
-                    </Badge>
+        <Accordion type="single" collapsible className="w-full">
+          <AccordionItem value="features" className="border rounded-lg">
+            <AccordionTrigger className="px-6 py-4 hover:no-underline">
+              <div className="flex items-center gap-2 text-base font-semibold">
+                <Sparkles className="w-5 h-5 text-amber-500" />
+                Возможности, доступные на старших тарифах
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="px-6 pb-4">
+              <p className="text-sm text-muted-foreground mb-4">Перейдите на более высокий тариф, чтобы разблокировать</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                {FEATURE_HIGHLIGHTS.filter(f => PLAN_ORDER.indexOf(f.minPlan) > currentPlanIndex).map((feature, i) => (
+                  <div key={i} className="p-4 rounded-xl border border-border bg-muted/30 space-y-2 relative overflow-hidden">
+                    <div className="absolute top-2 right-2">
+                      <Badge variant="outline" className={planAccents[feature.minPlan]}>
+                        {SUBSCRIPTION_PLANS[feature.minPlan].name}+
+                      </Badge>
+                    </div>
+                    <div className={`${planAccents[feature.minPlan]}`}>{feature.icon}</div>
+                    <h4 className="font-semibold text-sm">{feature.title}</h4>
+                    <p className="text-xs text-muted-foreground">{feature.description}</p>
                   </div>
-                  <div className={`${planAccents[feature.minPlan]}`}>{feature.icon}</div>
-                  <h4 className="font-semibold text-sm">{feature.title}</h4>
-                  <p className="text-xs text-muted-foreground">{feature.description}</p>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                ))}
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
       )}
+
 
       {/* Plan Comparison Grid */}
       <Card>
