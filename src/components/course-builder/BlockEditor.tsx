@@ -1182,6 +1182,35 @@ function ImageBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updat
 
 function VideoBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void }) {
   const [showLibrary, setShowLibrary] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const videoInputRef = useRef<HTMLInputElement>(null);
+
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("video/")) return;
+    setIsUploading(true);
+    try {
+      const ext = file.name.split('.').pop() || 'mp4';
+      const fileName = `video_${crypto.randomUUID()}.${ext}`;
+      const supabaseClient = (await import("@/integrations/supabase/client")).supabase;
+      const { data: configData } = await supabaseClient.functions.invoke('get-external-storage-config');
+      const useExternal = configData?.configured && configData?.url && configData?.key;
+      const bucket = useExternal ? 'course-videos' : 'course-files';
+
+      const { error } = await supabaseClient.storage.from(bucket).upload(fileName, file, { upsert: true });
+      if (error) throw error;
+
+      const baseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const publicUrl = `${baseUrl}/storage/v1/object/public/${bucket}/${fileName}`;
+      onUpdate({ videoUrl: publicUrl });
+    } catch (err) {
+      console.error("Video upload error:", err);
+    } finally {
+      setIsUploading(false);
+      if (videoInputRef.current) videoInputRef.current.value = '';
+    }
+  };
 
   // Check if the content is an iframe embed code
   const isIframeEmbed = (content: string): boolean => {
@@ -1286,15 +1315,32 @@ function VideoBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updat
             <Video className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
             <p className="text-sm text-muted-foreground mb-2">Добавьте видео по ссылке или вставьте embed код</p>
             <p className="text-xs text-muted-foreground/70">YouTube, Vimeo, Rutube, VK, Дзен, OK.ru, Mail.ru или &lt;iframe&gt;</p>
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-2"
-              onClick={() => setShowLibrary(true)}
-            >
-              <FolderOpen className="w-4 h-4 mr-1" />
-              Выбрать из загруженных
-            </Button>
+            <div className="flex items-center justify-center gap-2 mt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowLibrary(true)}
+              >
+                <FolderOpen className="w-4 h-4 mr-1" />
+                Выбрать из загруженных
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isUploading}
+                onClick={() => videoInputRef.current?.click()}
+              >
+                {isUploading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Upload className="w-4 h-4 mr-1" />}
+                {isUploading ? "Загрузка..." : "Загрузить видео"}
+              </Button>
+              <input
+                ref={videoInputRef}
+                type="file"
+                accept="video/*"
+                className="hidden"
+                onChange={handleVideoUpload}
+              />
+            </div>
           </div>
           <Textarea 
             value={block.videoUrl || ""} 
