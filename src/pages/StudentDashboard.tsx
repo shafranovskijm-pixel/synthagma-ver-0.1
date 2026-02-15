@@ -19,6 +19,7 @@ import { StudentDocumentsUpload } from "@/components/student/StudentDocumentsUpl
 import { AchievementsPanel } from "@/components/student/AchievementsPanel";
 import { useStudentDashboard } from "@/hooks/useStudentDashboard";
 import { cn } from "@/lib/utils";
+import { StudentCourseStore } from "@/components/student/StudentCourseStore";
 
 export default function StudentDashboard() {
   const {
@@ -153,14 +154,12 @@ export default function StudentDashboard() {
           </div>
         )}
 
-        {activeTab === "store" && (
+        {activeTab === "store" && user && (
           <div className="p-8">
-            <h2 className="font-display text-2xl font-bold mb-6">Магазин курсов</h2>
-            <div className="text-center py-12 bg-card rounded-2xl border border-border">
-              <Store className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Магазин в разработке</h3>
-              <p className="text-muted-foreground">Скоро здесь появятся доступные для покупки курсы.</p>
-            </div>
+            <StudentCourseStore 
+              userId={user.id} 
+              organizationId={profile?.organization_id || ""} 
+            />
           </div>
         )}
       </main>
