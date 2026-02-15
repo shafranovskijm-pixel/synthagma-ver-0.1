@@ -3343,6 +3343,17 @@ export type Database = {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      get_user_storage_files: {
+        Args: { bucket_name: string }
+        Returns: {
+          bucket_id: string
+          created_at: string
+          file_name: string
+          file_path: string
+          file_size: number
+          mime_type: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
