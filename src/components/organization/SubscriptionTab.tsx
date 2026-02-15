@@ -321,11 +321,6 @@ export function SubscriptionTab() {
                   <div className={`${planAccents[feature.minPlan]}`}>{feature.icon}</div>
                   <h4 className="font-semibold text-sm">{feature.title}</h4>
                   <p className="text-xs text-muted-foreground">{feature.description}</p>
-                  {feature.link && (
-                    <Link to={feature.link} className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-1">
-                      Подробнее <ExternalLink className="w-3 h-3" />
-                    </Link>
-                  )}
                 </div>
               ))}
             </div>
@@ -425,8 +420,8 @@ export function SubscriptionTab() {
         </CardContent>
       </Card>
 
-      {/* Billing Documents */}
-      <Card>
+      {/* Billing Documents - hidden for free plan */}
+      {currentPlan !== 'free' && <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <FolderOpen className="w-5 h-5 text-primary" />
@@ -464,7 +459,7 @@ export function SubscriptionTab() {
             </div>
           )}
         </CardContent>
-      </Card>
+      </Card>}
 
       {/* Upgrade Request Dialog */}
       <Dialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog}>
