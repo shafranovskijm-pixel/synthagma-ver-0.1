@@ -12,8 +12,9 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { 
   Plus, Sparkles, Pencil, Trash2, Eye, EyeOff, 
-  Star, StarOff, Loader2, FileText, Calendar, Mail, Users
+  Star, StarOff, Loader2, FileText, Calendar, Mail, Users, MessageSquare
 } from "lucide-react";
+import { TestimonialsManager } from "./TestimonialsManager";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -331,6 +332,10 @@ export function BlogManager() {
             <Users className="h-4 w-4" />
             Подписчики ({subscribers.length})
           </TabsTrigger>
+          <TabsTrigger value="testimonials" className="gap-2">
+            <MessageSquare className="h-4 w-4" />
+            Отзывы
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="posts" className="mt-6">
@@ -480,6 +485,10 @@ export function BlogManager() {
               </div>
             </Card>
           )}
+        </TabsContent>
+
+        <TabsContent value="testimonials" className="mt-6">
+          <TestimonialsManager />
         </TabsContent>
       </Tabs>
 
