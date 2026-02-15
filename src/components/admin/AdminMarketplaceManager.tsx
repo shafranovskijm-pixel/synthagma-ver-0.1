@@ -322,7 +322,23 @@ export function AdminMarketplaceManager() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Краткое описание</Label>
+                <div className="flex items-center justify-between">
+                  <Label>Краткое описание</Label>
+                  <Button variant="ghost" size="sm" onClick={async () => {
+                    if (!h.editingCourse?.course?.title) { toast.error("Нет названия курса"); return; }
+                    setIsGeneratingShortDesc(true);
+                    try {
+                      const { data, error } = await supabase.functions.invoke("generate-course-content", {
+                        body: { contentType: "short_description", courseTitle: h.editingCourse.course.title, courseDescription: h.editingCourse.course.description },
+                      });
+                      if (error) throw error;
+                      if (data?.content) h.setEditingCourse({ ...h.editingCourse!, description_short: data.content });
+                    } catch { toast.error("Ошибка генерации"); } finally { setIsGeneratingShortDesc(false); }
+                  }} disabled={isGeneratingShortDesc}>
+                    {isGeneratingShortDesc ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Sparkles className="w-3.5 h-3.5 mr-1" />}
+                    Сгенерировать с ИИ
+                  </Button>
+                </div>
                 <Textarea
                   value={h.editingCourse.description_short || ""}
                   onChange={(e) => h.setEditingCourse({ ...h.editingCourse!, description_short: e.target.value })}
