@@ -147,20 +147,16 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
                 </Card>
               )}
 
-              <div className="grid sm:grid-cols-2 gap-4">
-                <Card className="text-center">
-                  <CardContent className="pt-6">
-                    <div className="text-sm text-muted-foreground mb-1 flex items-center justify-center gap-1"><Users className="w-4 h-4" />Для студентов</div>
-                    <div className="text-2xl font-bold text-primary">{selectedCourseDetail.price_student.toLocaleString()} ₽</div>
-                  </CardContent>
-                </Card>
-                <Card className="text-center">
-                  <CardContent className="pt-6">
-                    <div className="text-sm text-muted-foreground mb-1 flex items-center justify-center gap-1"><Building2 className="w-4 h-4" />Для организаций</div>
-                    <div className="text-2xl font-bold text-primary">{selectedCourseDetail.price_organization.toLocaleString()} ₽</div>
-                  </CardContent>
-                </Card>
-              </div>
+              <Card className="text-center">
+                <CardContent className="pt-6">
+                  <div className="text-sm text-muted-foreground mb-1 flex items-center justify-center gap-1">
+                    {h.userRole === 'student' ? <><Users className="w-4 h-4" />Цена</> : <><Building2 className="w-4 h-4" />Цена для организаций</>}
+                  </div>
+                  <div className="text-2xl font-bold text-primary">
+                    {h.userRole === 'student' ? selectedCourseDetail.price_student.toLocaleString() : selectedCourseDetail.price_organization.toLocaleString()} ₽
+                  </div>
+                </CardContent>
+              </Card>
 
               <div className="flex flex-col sm:flex-row gap-3 pt-2">
                 <Button variant="outline" className="flex-1 rounded-xl gap-2" onClick={() => { const id = selectedCourseDetail.course_id; setSelectedCourseDetail(null); navigate(`/course-preview/${id}?from=store`); }}>
@@ -244,9 +240,13 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
                       <CardContent className="space-y-4">
                         {item.description_short && <p className="text-sm text-muted-foreground line-clamp-2">{item.description_short}</p>}
                         {item.course?.duration && <Badge variant="outline" className="text-xs">{item.course.duration}</Badge>}
-                        <div className="grid grid-cols-2 gap-3 pt-2">
-                          <div className="text-center p-3 bg-secondary/50 rounded-xl"><div className="text-xs text-muted-foreground mb-1 flex items-center justify-center gap-1"><Users className="w-3 h-3" />Для студентов</div><div className="font-bold text-primary">{item.price_student.toLocaleString()} ₽</div></div>
-                          <div className="text-center p-3 bg-secondary/50 rounded-xl"><div className="text-xs text-muted-foreground mb-1 flex items-center justify-center gap-1"><Building2 className="w-3 h-3" />Для организаций</div><div className="font-bold text-primary">{item.price_organization.toLocaleString()} ₽</div></div>
+                        <div className="pt-2">
+                          <div className="text-center p-3 bg-secondary/50 rounded-xl">
+                            <div className="text-xs text-muted-foreground mb-1 flex items-center justify-center gap-1">
+                              {h.userRole === 'student' ? <><Users className="w-3 h-3" />Цена</> : <><Building2 className="w-3 h-3" />Цена для организаций</>}
+                            </div>
+                            <div className="font-bold text-primary">{h.userRole === 'student' ? item.price_student.toLocaleString() : item.price_organization.toLocaleString()} ₽</div>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
