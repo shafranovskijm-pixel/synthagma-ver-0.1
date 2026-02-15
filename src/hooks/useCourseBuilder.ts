@@ -19,7 +19,7 @@ import { AIGenerateType } from "@/components/course-builder/AIGenerateDialog";
 export function useCourseBuilder() {
   const navigate = useNavigate();
   const { courseId } = useParams();
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
   const [courseTitle, setCourseTitle] = useState("");
   const [courseDescription, setCourseDescription] = useState("");
   const [lessons, setLessons] = useState<Lesson[]>([]);
@@ -42,8 +42,11 @@ export function useCourseBuilder() {
   }, [markAsChanged]);
 
   const getBackPath = () => {
-    const adminView = localStorage.getItem("adminViewAsOrg");
-    return adminView ? "/admin" : "/organization";
+    // Only redirect to /admin if the user is actually an admin viewing an org
+    if (userRole === 'admin' && localStorage.getItem("adminViewAsOrg")) {
+      return "/admin";
+    }
+    return "/organization";
   };
 
   const handleBackClick = () => {
