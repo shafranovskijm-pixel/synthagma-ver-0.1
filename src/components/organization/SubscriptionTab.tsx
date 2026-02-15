@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { SUBSCRIPTION_PLANS, type SubscriptionPlan, type PlanInfo, formatStorageSize, YEARLY_DISCOUNT } from "@/constants/subscriptionPlans";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
@@ -9,10 +10,13 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { getSignedStorageUrl } from "@/utils/storageHelpers";
 import {
   Crown, BookOpen, Users, HardDrive, Sparkles, Check, X,
   Palette, Video, FileCheck, Brain, FileSpreadsheet, ClipboardList,
-  HardHat, Infinity, ArrowRight, Calendar, AlertTriangle
+  HardHat, Infinity, ArrowRight, Calendar, AlertTriangle,
+  ExternalLink, Building2, ShoppingCart, FolderOpen, Download,
+  FileText, Receipt, File
 } from "lucide-react";
 import { differenceInDays, format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -48,30 +52,64 @@ interface FeatureHighlight {
   title: string;
   description: string;
   minPlan: SubscriptionPlan;
+  link?: string;
 }
 
 const FEATURE_HIGHLIGHTS: FeatureHighlight[] = [
-  { icon: <Palette className="w-5 h-5" />, title: "Брендирование", description: "Ваш логотип и цвета в портале ученика", minPlan: "standard" },
-  { icon: <Video className="w-5 h-5" />, title: "Видео-идентификация", description: "Автоматическая проверка личности ученика", minPlan: "standard" },
-  { icon: <FileCheck className="w-5 h-5" />, title: "Чек-лист документов", description: "100% контроль документов при зачислении", minPlan: "standard" },
+  { icon: <Palette className="w-5 h-5" />, title: "Брендирование", description: "Ваш логотип и цвета в портале ученика", minPlan: "standard", link: "/feature/branding" },
+  { icon: <Video className="w-5 h-5" />, title: "Видео-идентификация", description: "Автоматическая проверка личности ученика", minPlan: "standard", link: "/feature/video-id" },
+  { icon: <FileCheck className="w-5 h-5" />, title: "Чек-лист документов", description: "100% контроль документов при зачислении", minPlan: "standard", link: "/feature/document-checklist" },
   { icon: <ClipboardList className="w-5 h-5" />, title: "Журналы", description: "Автогенерация журналов посещаемости и оценок", minPlan: "professional" },
-  { icon: <HardHat className="w-5 h-5" />, title: "Охрана труда", description: "Полное управление обучением ОТ", minPlan: "professional" },
-  { icon: <FileSpreadsheet className="w-5 h-5" />, title: "ФИС ФРДО", description: "Автоматическая отчётность в федеральный реестр", minPlan: "maximum" },
-  { icon: <Brain className="w-5 h-5" />, title: "ИИ-генерация", description: "Создание контента курсов за минуты с ИИ", minPlan: "maximum" },
+  { icon: <FileSpreadsheet className="w-5 h-5" />, title: "Документооборот", description: "Полный цикл документов организации", minPlan: "professional", link: "/feature/documents" },
+  { icon: <HardHat className="w-5 h-5" />, title: "Охрана труда", description: "Полное управление обучением ОТ", minPlan: "professional", link: "/feature/labor-safety" },
+  { icon: <ShoppingCart className="w-5 h-5" />, title: "Магазин курсов", description: "Продавайте и покупайте курсы на маркетплейсе", minPlan: "professional", link: "/feature/course-store" },
+  { icon: <FileSpreadsheet className="w-5 h-5" />, title: "ФИС ФРДО", description: "Автоматическая отчётность в федеральный реестр", minPlan: "maximum", link: "/feature/frdo" },
+  { icon: <Brain className="w-5 h-5" />, title: "ИИ-генерация", description: "Создание контента курсов за минуты с ИИ", minPlan: "maximum", link: "/feature/ai-courses" },
   { icon: <Infinity className="w-5 h-5" />, title: "Без ограничений", description: "Безлимитные курсы и ученики — масштабируйтесь свободно", minPlan: "maximum" },
 ];
 
-const featureRows = [
-  { label: "Курсы", key: "maxCourses" as const, format: (v: number) => v === -1 ? "∞" : String(v) },
-  { label: "Ученики", key: "maxStudents" as const, format: (v: number) => v === -1 ? "∞" : String(v) },
-  { label: "Хранилище", key: "storageBytes" as const, format: formatStorageSize },
-  { label: "Настройки курсов", key: "courseSettings" as const, format: (v: boolean) => v },
-  { label: "Чек-лист документов", key: "documentChecklist" as const, format: (v: boolean) => v },
-  { label: "Видео-идентификация", key: "videoIdentification" as const, format: (v: boolean) => v },
-  { label: "Брендирование", key: "branding" as const, format: (v: boolean) => v },
-  { label: "ИИ-генерация", key: "aiEnabled" as const, format: (v: boolean) => v },
-  { label: "ИИ-озвучка", key: "aiAudioEnabled" as const, format: (v: boolean) => v },
+interface FeatureRow {
+  label: string;
+  key?: keyof PlanInfo['limits'];
+  link?: string;
+  format?: (v: any) => any;
+  getValue?: (plan: PlanInfo) => any;
+}
+
+const featureRows: FeatureRow[] = [
+  { label: "Курсы", key: "maxCourses", format: (v: number) => v === -1 ? "∞" : String(v) },
+  { label: "Ученики", key: "maxStudents", format: (v: number) => v === -1 ? "∞" : String(v) },
+  { label: "Обучаемых / мес", key: "maxTrainedPerMonth", format: (v: number) => v === -1 ? "∞" : String(v) },
+  { label: "Хранилище", key: "storageBytes", format: formatStorageSize },
+  { label: "Настройки курсов", key: "courseSettings", format: (v: boolean) => v, link: "/feature/course-settings" },
+  { label: "Чек-лист документов", key: "documentChecklist", format: (v: boolean) => v, link: "/feature/document-checklist" },
+  { label: "Видео-идентификация", key: "videoIdentification", format: (v: boolean) => v, link: "/feature/video-id" },
+  { label: "Брендирование", key: "branding", format: (v: boolean) => v, link: "/feature/branding" },
+  { label: "ИИ-генерация", key: "aiEnabled", format: (v: boolean) => v, link: "/feature/ai-courses" },
+  { label: "ИИ-озвучка", key: "aiAudioEnabled", format: (v: boolean) => v },
+  { label: "Компании", getValue: (plan) => plan.enabledCategories.includes('companies'), format: (v: boolean) => v },
+  { label: "Журналы", getValue: (plan) => plan.enabledCategories.includes('journals'), format: (v: boolean) => v },
+  { label: "Документооборот", getValue: (plan) => plan.enabledCategories.includes('documents'), format: (v: boolean) => v, link: "/feature/documents" },
+  { label: "Охрана труда", getValue: (plan) => plan.enabledCategories.includes('labor_safety'), format: (v: boolean) => v, link: "/feature/labor-safety" },
+  { label: "ФИС ФРДО", getValue: (plan) => plan.enabledCategories.includes('frdo'), format: (v: boolean) => v, link: "/feature/frdo" },
+  { label: "Магазин курсов", getValue: (plan) => plan.enabledCategories.includes('services'), format: (v: boolean) => v, link: "/feature/course-store" },
+  { label: "Хранилище файлов", getValue: (plan) => plan.enabledCategories.includes('library'), format: (v: boolean) => v },
 ];
+
+interface BillingDoc {
+  id: string;
+  name: string;
+  doc_type: string;
+  file_url: string;
+  created_at: string;
+}
+
+const docTypeLabels: Record<string, { label: string; icon: React.ReactNode }> = {
+  invoice: { label: "Счёт", icon: <FileText className="w-4 h-4 text-blue-500" /> },
+  receipt: { label: "Чек", icon: <Receipt className="w-4 h-4 text-emerald-500" /> },
+  act: { label: "Акт", icon: <File className="w-4 h-4 text-amber-500" /> },
+  other: { label: "Другое", icon: <File className="w-4 h-4 text-muted-foreground" /> },
+};
 
 export function SubscriptionTab() {
   const d = useOrgDashboard();
@@ -84,6 +122,7 @@ export function SubscriptionTab() {
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [pendingRequest, setPendingRequest] = useState<{ requested_plan: string; created_at: string } | null>(null);
+  const [billingDocs, setBillingDocs] = useState<BillingDoc[]>([]);
 
   const currentPlan = subscriptionLimits.plan;
   const currentPlanInfo = SUBSCRIPTION_PLANS[currentPlan];
@@ -93,13 +132,15 @@ export function SubscriptionTab() {
     if (!organizationId) return;
     
     const fetchOrgDetails = async () => {
-      const [orgRes, reqRes] = await Promise.all([
+      const [orgRes, reqRes, docsRes] = await Promise.all([
         supabase.from("organizations").select("paid_until").eq("id", organizationId).single(),
         supabase.from("subscription_requests" as any).select("requested_plan, created_at").eq("organization_id", organizationId).eq("status", "pending").order("created_at", { ascending: false }).limit(1),
+        supabase.from("org_billing_documents" as any).select("*").eq("organization_id", organizationId).order("created_at", { ascending: false }),
       ]);
       
       if (orgRes.data?.paid_until) setPaidUntil(orgRes.data.paid_until);
       if ((reqRes.data as any)?.[0]) setPendingRequest((reqRes.data as any)[0]);
+      if (docsRes.data) setBillingDocs(docsRes.data as any[]);
     };
     fetchOrgDetails();
   }, [organizationId]);
@@ -138,6 +179,15 @@ export function SubscriptionTab() {
       setSelectedPlan(null);
     }
     setSubmitting(false);
+  };
+
+  const handleDownloadDoc = async (doc: BillingDoc) => {
+    const url = await getSignedStorageUrl("billing-documents", doc.file_url);
+    if (url) {
+      window.open(url, "_blank");
+    } else {
+      toast({ title: "Ошибка", description: "Не удалось получить ссылку на файл", variant: "destructive" });
+    }
   };
 
   const coursesPercent = currentPlanInfo.limits.maxCourses === -1 ? 0 :
@@ -271,6 +321,11 @@ export function SubscriptionTab() {
                   <div className={`${planAccents[feature.minPlan]}`}>{feature.icon}</div>
                   <h4 className="font-semibold text-sm">{feature.title}</h4>
                   <p className="text-xs text-muted-foreground">{feature.description}</p>
+                  {feature.link && (
+                    <Link to={feature.link} className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-1">
+                      Подробнее <ExternalLink className="w-3 h-3" />
+                    </Link>
+                  )}
                 </div>
               ))}
             </div>
@@ -308,13 +363,22 @@ export function SubscriptionTab() {
               </thead>
               <tbody>
                 {featureRows.map((row) => (
-                  <tr key={row.key} className="border-t border-border">
-                    <td className="p-2 font-medium">{row.label}</td>
+                  <tr key={row.label} className="border-t border-border">
+                    <td className="p-2 font-medium">
+                      {row.link ? (
+                        <Link to={row.link} className="inline-flex items-center gap-1 hover:text-primary hover:underline transition-colors">
+                          {row.label}
+                          <ExternalLink className="w-3 h-3 text-muted-foreground" />
+                        </Link>
+                      ) : (
+                        row.label
+                      )}
+                    </td>
                     {PLAN_ORDER.map(planId => {
                       const plan = SUBSCRIPTION_PLANS[planId];
-                      const value = plan.limits[row.key];
+                      const value = row.getValue ? row.getValue(plan) : row.key ? plan.limits[row.key] : null;
                       const isCurrent = planId === currentPlan;
-                      const formatted = (row.format as Function)(value);
+                      const formatted = row.format ? (row.format as Function)(value) : value;
                       return (
                         <td key={planId} className={`p-2 text-center ${isCurrent ? "bg-primary/5" : ""}`}>
                           {typeof formatted === "boolean" ? (
@@ -334,7 +398,6 @@ export function SubscriptionTab() {
                     const isCurrent = planId === currentPlan;
                     const planIndex = PLAN_ORDER.indexOf(planId);
                     const isUpgrade = planIndex > currentPlanIndex;
-                    const isDowngrade = planIndex < currentPlanIndex;
                     return (
                       <td key={planId} className={`p-2 text-center ${isCurrent ? "bg-primary/5 rounded-b-lg" : ""}`}>
                         {isCurrent ? (
@@ -359,6 +422,47 @@ export function SubscriptionTab() {
               </tbody>
             </table>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Billing Documents */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <FolderOpen className="w-5 h-5 text-primary" />
+            Закрывающие документы
+          </CardTitle>
+          <CardDescription>Счета, чеки и акты от платформы</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {billingDocs.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <FileText className="w-10 h-10 mx-auto mb-2 opacity-30" />
+              <p className="text-sm">Документов пока нет</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {billingDocs.map(doc => {
+                const docType = docTypeLabels[doc.doc_type] || docTypeLabels.other;
+                return (
+                  <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/30 transition-colors">
+                    <div className="flex items-center gap-3">
+                      {docType.icon}
+                      <div>
+                        <div className="text-sm font-medium">{doc.name}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {docType.label} · {format(new Date(doc.created_at), "d MMM yyyy", { locale: ru })}
+                        </div>
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => handleDownloadDoc(doc)}>
+                      <Download className="w-4 h-4" />
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
 

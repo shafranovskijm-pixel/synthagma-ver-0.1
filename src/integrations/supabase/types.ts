@@ -1566,6 +1566,44 @@ export type Database = {
         }
         Relationships: []
       }
+      org_billing_documents: {
+        Row: {
+          created_at: string
+          doc_type: string
+          file_url: string
+          id: string
+          name: string
+          organization_id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          doc_type?: string
+          file_url: string
+          id?: string
+          name: string
+          organization_id: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          doc_type?: string
+          file_url?: string
+          id?: string
+          name?: string
+          organization_id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_billing_documents_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       org_documents: {
         Row: {
           created_at: string
