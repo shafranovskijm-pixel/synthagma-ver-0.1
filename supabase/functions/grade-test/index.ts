@@ -35,9 +35,16 @@
        );
      }
  
-     const { lesson_id, answers, shown_question_ids } = await req.json();
- 
-     if (!lesson_id || !answers || !shown_question_ids || !Array.isArray(shown_question_ids)) {
+      const body = await req.json();
+
+      // Health check ping
+      if (body.ping) {
+        return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const { lesson_id, answers, shown_question_ids } = body;
+
+      if (!lesson_id || !answers || !shown_question_ids || !Array.isArray(shown_question_ids)) {
        return new Response(
          JSON.stringify({ error: "Missing required fields: lesson_id, answers, shown_question_ids" }),
          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
