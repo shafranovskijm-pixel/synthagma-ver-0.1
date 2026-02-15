@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useAiGenerationLimit, setAiLimitContext } from "@/hooks/useAiGenerationLimit";
 import { toast } from "sonner";
 import { ContentBlock, htmlToBlocks, blocksToJson, jsonToBlocks } from "@/components/course-builder/BlockEditor";
 import {
@@ -33,6 +34,8 @@ export function useCourseBuilder() {
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [showAIGenerateDialog, setShowAIGenerateDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [subscriptionPlan, setSubscriptionPlan] = useState<string>('free');
+  const aiLimit = useAiGenerationLimit(organizationId, subscriptionPlan);
 
   const markAsChanged = useCallback(() => { setHasUnsavedChanges(true); }, []);
 
@@ -141,7 +144,17 @@ export function useCourseBuilder() {
     const fetchData = async () => {
       if (!user || isDataLoaded) return;
       const { data: profile } = await supabase.from("profiles").select("organization_id").eq("user_id", user.id).maybeSingle();
-      if (profile?.organization_id) setOrganizationId(profile.organization_id);
+      if (profile?.organization_id) {
+        setOrganizationId(profile.organization_id);
+        // Fetch subscription plan
+        const { data: org } = await supabase.from("organizations").select("subscription_plan").eq("id", profile.organization_id).single();
+        if (org?.subscription_plan) {
+          setSubscriptionPlan(org.subscription_plan);
+          setAiLimitContext(profile.organization_id, org.subscription_plan);
+        } else {
+          setAiLimitContext(profile.organization_id, 'free');
+        }
+      }
 
       if (courseId) {
         const { data: course } = await supabase.from("courses").select("*").eq("id", courseId).single();
@@ -193,8 +206,10 @@ export function useCourseBuilder() {
 
   const handleGenerateStructure = async () => {
     if (!courseTitle.trim()) { toast.error("Введите название курса"); return; }
+    if (!aiLimit.checkAndNotify()) return;
     setIsGenerating(true);
     try {
+      aiLimit.increment();
       const { data, error } = await supabase.functions.invoke("generate-course-structure", { body: { title: courseTitle, description: courseDescription } });
       if (error) throw new Error(error.message || "Ошибка генерации");
       if (!data.success) throw new Error(data.error || "Ошибка генерации структуры");
@@ -210,6 +225,7 @@ export function useCourseBuilder() {
   };
 
   const handleAIGenerate = async (type: AIGenerateType, prompt: string) => {
+    if (!aiLimit.checkAndNotify()) return;
     const lessonTypeMap: Record<AIGenerateType, LessonType> = { audio: "audio", slides: "slider", video: "video", image: "image", test: "test" };
     const typeNames: Record<AIGenerateType, string> = { audio: "аудиолекция", slides: "презентация", video: "видео", image: "изображение", test: "тест" };
     const newLesson: Lesson = {
@@ -289,6 +305,7 @@ export function useCourseBuilder() {
       } catch { newLesson.content = ""; toast.info("Добавьте ссылку на видео"); }
     }
 
+    aiLimit.increment();
     updateLessons([...lessons, newLesson]);
   };
 

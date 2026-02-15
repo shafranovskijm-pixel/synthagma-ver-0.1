@@ -35,7 +35,7 @@ export function TabContentRenderer() {
     <>
       {/* Stats cards */}
       {shouldShowStatsCards && <StatsCards stats={d.stats} />}
-      {activeTab === "students" && <DocumentsStatsCards stats={d.documentsStats} />}
+      {activeTab === "students" && d.subscriptionLimits?.plan !== 'free' && <DocumentsStatsCards stats={d.documentsStats} />}
 
       {/* Courses Tab */}
       {activeTab === "courses" && organizationId && (
