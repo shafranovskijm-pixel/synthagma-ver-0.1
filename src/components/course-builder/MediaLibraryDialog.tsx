@@ -48,6 +48,14 @@ function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} МБ`;
 }
 
+function formatDate(dateStr: string): string {
+  if (!dateStr) return "";
+  try {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  } catch { return ""; }
+}
+
 function getFileIcon(type: StorageFile["type"]) {
   switch (type) {
     case "video": return <Video className="w-5 h-5 text-red-500" />;
@@ -247,10 +255,11 @@ export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all" }: 
                   <div className="shrink-0">{getFileIcon(file.type)}</div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{file.name}</p>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
                       {file.folder && <span className="truncate max-w-[120px]">{file.folder}</span>}
                       {file.size > 0 && <span>{formatSize(file.size)}</span>}
                       <Badge variant="outline" className="text-[10px] px-1 py-0">{file.bucket}</Badge>
+                      {file.created_at && <span className="text-muted-foreground/70">{formatDate(file.created_at)}</span>}
                     </div>
                   </div>
                 </button>
