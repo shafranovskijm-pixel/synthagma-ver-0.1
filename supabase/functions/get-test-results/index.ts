@@ -35,9 +35,16 @@
        );
      }
  
-     const { lesson_id } = await req.json();
- 
-     if (!lesson_id) {
+      const body = await req.json();
+
+      // Health check ping
+      if (body.ping) {
+        return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const { lesson_id } = body;
+
+      if (!lesson_id) {
        return new Response(
          JSON.stringify({ error: "Missing required field: lesson_id" }),
          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
