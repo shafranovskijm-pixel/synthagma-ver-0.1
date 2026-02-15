@@ -8,6 +8,7 @@ import { ProfileTab } from "./student-detail/ProfileTab";
 import { IdentificationTab } from "./student-detail/IdentificationTab";
 import { CoursesTab } from "./student-detail/CoursesTab";
 import { DocumentsTab } from "./student-detail/DocumentsTab";
+import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
 
 interface StudentDetailCardProps {
   isOpen: boolean;
@@ -39,6 +40,7 @@ export function StudentDetailCard({
   isOpen, onOpenChange, student, organizationId, enrollments = [], onStudentUpdated,
 }: StudentDetailCardProps) {
   const h = useStudentDetailCardLogic({ isOpen, student, organizationId, enrollments, onStudentUpdated });
+  const { plan: orgPlan } = useSubscriptionLimits(organizationId);
 
   if (!student) return null;
 
@@ -72,7 +74,7 @@ export function StudentDetailCard({
               ) : (
                 <>
                   <TabsContent value="profile" className="m-0">
-                    <ProfileTab student={student} enrollmentsCount={enrollments.length} h={h} />
+                    <ProfileTab student={student} enrollmentsCount={enrollments.length} h={h} orgPlan={orgPlan} />
                   </TabsContent>
                   <TabsContent value="identification" className="m-0">
                     <IdentificationTab h={h} />

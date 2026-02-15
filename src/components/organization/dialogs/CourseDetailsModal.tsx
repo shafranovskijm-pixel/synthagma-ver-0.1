@@ -47,6 +47,7 @@ import {
   Bell
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
 import {
   FRDO_PROGRAM_TYPES,
   FRDO_DOCUMENT_TYPES,
@@ -131,6 +132,8 @@ export function CourseDetailsModal({
 }: CourseDetailsModalProps) {
   const navigate = useNavigate();
   const { isEnabled } = useOrgFeatures(organizationId);
+  const { plan: orgPlan } = useSubscriptionLimits(organizationId);
+  const isFreePlan = orgPlan === 'free';
   const isFrdoEnabled = isEnabled('frdo');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -803,6 +806,13 @@ export function CourseDetailsModal({
               <div className="space-y-6">
                 <h3 className="font-semibold">Настройки курса</h3>
                 
+                {isFreePlan && (
+                  <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex items-center gap-3">
+                    <Lock className="w-5 h-5 text-amber-500 flex-shrink-0" />
+                    <p className="text-sm text-amber-700 dark:text-amber-400">Доступно на тарифе Старт и выше. Перейдите на другой тариф для управления настройками курса.</p>
+                  </div>
+                )}
+                
                 <div className="bg-secondary/30 rounded-xl p-4 space-y-6">
                   {/* Skip video identification */}
                   <div className="flex items-center justify-between">
@@ -823,7 +833,7 @@ export function CourseDetailsModal({
                       id="skip-video-id"
                       checked={skipVideoId}
                       onCheckedChange={handleToggleSkipVideoId}
-                      disabled={isSavingSettings}
+                      disabled={isSavingSettings || isFreePlan}
                     />
                   </div>
 
@@ -846,7 +856,7 @@ export function CourseDetailsModal({
                       id="sequential-lessons"
                       checked={sequentialLessons}
                       onCheckedChange={handleToggleSequentialLessons}
-                      disabled={isSavingSettings}
+                      disabled={isSavingSettings || isFreePlan}
                     />
                   </div>
 
@@ -869,7 +879,7 @@ export function CourseDetailsModal({
                       id="allow-video-seek"
                       checked={allowVideoSeek}
                       onCheckedChange={handleToggleAllowVideoSeek}
-                      disabled={isSavingSettings}
+                      disabled={isSavingSettings || isFreePlan}
                     />
                   </div>
                 </div>
@@ -1089,6 +1099,13 @@ export function CourseDetailsModal({
             </TabsContent>
 
             <TabsContent value="reminders" className="mt-0 h-full">
+              {isFreePlan && (
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex items-center gap-3 mb-4">
+                  <Lock className="w-5 h-5 text-amber-500 flex-shrink-0" />
+                  <p className="text-sm text-amber-700 dark:text-amber-400">Доступно на тарифе Старт и выше. Перейдите на другой тариф для управления напоминаниями.</p>
+                </div>
+              )}
+              <div className={isFreePlan ? "opacity-50 pointer-events-none" : ""}>
               <CourseRemindersTab
                 courseId={course.id}
                 organizationId={organizationId || ""}
@@ -1155,6 +1172,7 @@ export function CourseDetailsModal({
                   }
                 }}
               />
+              </div>
             </TabsContent>
           </div>
         </Tabs>
