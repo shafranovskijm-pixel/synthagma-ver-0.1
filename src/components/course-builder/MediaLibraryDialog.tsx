@@ -66,74 +66,22 @@ function getFileIcon(type: StorageFile["type"]) {
   }
 }
 
-// Video thumbnail component - captures first frame
 function VideoThumbnail({ url }: { url: string }) {
-  const [thumb, setThumb] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
-  const attempted = useRef(false);
 
-  useEffect(() => {
-    if (attempted.current) return;
-    attempted.current = true;
-
-    const video = document.createElement("video");
-    video.crossOrigin = "anonymous";
-    video.preload = "metadata";
-    video.muted = true;
-
-    const cleanup = () => {
-      video.removeAttribute("src");
-      video.load();
-    };
-
-    video.onloadeddata = () => {
-      video.currentTime = 1;
-    };
-
-    video.onseeked = () => {
-      try {
-        const canvas = document.createElement("canvas");
-        canvas.width = 80;
-        canvas.height = 80;
-        const ctx = canvas.getContext("2d");
-        if (ctx) {
-          const scale = Math.max(80 / video.videoWidth, 80 / video.videoHeight);
-          const w = video.videoWidth * scale;
-          const h = video.videoHeight * scale;
-          ctx.drawImage(video, (80 - w) / 2, (80 - h) / 2, w, h);
-          setThumb(canvas.toDataURL("image/jpeg", 0.7));
-        }
-      } catch {
-        setFailed(true);
-      }
-      cleanup();
-    };
-
-    video.onerror = () => {
-      setFailed(true);
-      cleanup();
-    };
-
-    const timer = setTimeout(() => {
-      if (!thumb) {
-        setFailed(true);
-        cleanup();
-      }
-    }, 5000);
-
-    video.src = url;
-
-    return () => {
-      clearTimeout(timer);
-      cleanup();
-    };
-  }, [url]);
-
-  if (failed || !thumb) {
+  if (failed) {
     return <Video className="w-5 h-5 text-destructive" />;
   }
 
-  return <img src={thumb} alt="Video preview" className="w-full h-full object-cover rounded" />;
+  return (
+    <video
+      src={url}
+      muted
+      preload="metadata"
+      className="w-full h-full object-cover rounded"
+      onError={() => setFailed(true)}
+    />
+  );
 }
 
 export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all", organizationId }: MediaLibraryDialogProps) {
