@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -66,6 +66,77 @@ function getFileIcon(type: StorageFile["type"]) {
   }
 }
 
+// Video thumbnail component - captures first frame
+function VideoThumbnail({ url }: { url: string }) {
+  const [thumb, setThumb] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+  const attempted = useRef(false);
+
+  useEffect(() => {
+    if (attempted.current) return;
+    attempted.current = true;
+
+    const video = document.createElement("video");
+    video.crossOrigin = "anonymous";
+    video.preload = "metadata";
+    video.muted = true;
+
+    const cleanup = () => {
+      video.removeAttribute("src");
+      video.load();
+    };
+
+    video.onloadeddata = () => {
+      video.currentTime = 1;
+    };
+
+    video.onseeked = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = 80;
+        canvas.height = 80;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          const scale = Math.max(80 / video.videoWidth, 80 / video.videoHeight);
+          const w = video.videoWidth * scale;
+          const h = video.videoHeight * scale;
+          ctx.drawImage(video, (80 - w) / 2, (80 - h) / 2, w, h);
+          setThumb(canvas.toDataURL("image/jpeg", 0.7));
+        }
+      } catch {
+        setFailed(true);
+      }
+      cleanup();
+    };
+
+    video.onerror = () => {
+      setFailed(true);
+      cleanup();
+    };
+
+    // Timeout fallback
+    const timer = setTimeout(() => {
+      if (!thumb) {
+        setFailed(true);
+        cleanup();
+      }
+    }, 5000);
+
+    video.src = url;
+
+    return () => {
+      clearTimeout(timer);
+      cleanup();
+    };
+  }, [url]);
+
+  if (failed || !thumb) {
+    return <Video className="w-5 h-5 text-red-500" />;
+  }
+
+  return <img src={thumb} alt="Video preview" className="w-full h-full object-cover rounded" />;
+}
+
 export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all", organizationId }: MediaLibraryDialogProps) {
   const [files, setFiles] = useState<StorageFile[]>([]);
   const [loading, setLoading] = useState(false);
@@ -83,23 +154,38 @@ export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all", or
   const loadFiles = async () => {
     setLoading(true);
     const allFiles: StorageFile[] = [];
+    const baseUrl = import.meta.env.VITE_SUPABASE_URL;
 
     try {
-      // Load from course-files bucket
-      const internalFiles = await loadBucketFiles("course-files", import.meta.env.VITE_SUPABASE_URL);
-      allFiles.push(...internalFiles);
+      // Load files from both buckets using the RPC that filters by current user
+      for (const bucket of ["course-files", "course-videos"]) {
+        const { data, error } = await supabase.rpc("get_user_storage_files", {
+          bucket_name: bucket,
+        });
 
-      // Try loading from external storage (course-videos bucket)
-      try {
-        const { data: config } = await supabase.functions.invoke("get-external-storage-config");
-        if (config?.configured && config?.url && config?.key) {
-          const { createClient } = await import("@supabase/supabase-js");
-          const extClient = createClient(config.url, config.key);
-          const externalFiles = await loadBucketFilesWithClient(extClient, "course-videos", config.url);
-          allFiles.push(...externalFiles);
+        if (error) {
+          console.error(`Error loading ${bucket}:`, error);
+          continue;
         }
-      } catch {
-        // External storage not configured, skip
+
+        if (data) {
+          for (const f of data as any[]) {
+            const filePath = f.file_path || f.file_name;
+            const fileName = filePath.split("/").pop() || filePath;
+            const folder = filePath.includes("/") ? filePath.substring(0, filePath.lastIndexOf("/")) : "";
+            const fileType = getFileType(fileName);
+
+            allFiles.push({
+              name: fileName,
+              url: `${baseUrl}/storage/v1/object/public/${bucket}/${filePath}`,
+              bucket,
+              folder,
+              size: f.file_size || 0,
+              created_at: f.created_at || "",
+              type: fileType,
+            });
+          }
+        }
       }
     } catch (err) {
       console.error("Error loading media library:", err);
@@ -107,122 +193,6 @@ export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all", or
 
     setFiles(allFiles);
     setLoading(false);
-  };
-
-  const getOrgCourseIds = async (): Promise<string[] | null> => {
-    if (!organizationId) return null; // no filter
-    const { data } = await supabase.from("courses").select("id").eq("organization_id", organizationId);
-    return data?.map(c => c.id) || [];
-  };
-
-  const loadBucketFiles = async (bucket: string, baseUrl: string): Promise<StorageFile[]> => {
-    const result: StorageFile[] = [];
-    try {
-      const courseIds = await getOrgCourseIds();
-
-      if (courseIds !== null) {
-        // Filter by org courses only
-        for (const courseId of courseIds) {
-          try {
-            const { data: innerFiles } = await supabase.storage.from(bucket).list(courseId, { limit: 500 });
-            if (innerFiles) {
-              for (const f of innerFiles) {
-                if (f.id === null) continue;
-                const fileType = getFileType(f.name);
-                result.push({
-                  name: f.name,
-                  url: `${baseUrl}/storage/v1/object/public/${bucket}/${courseId}/${f.name}`,
-                  bucket,
-                  folder: courseId,
-                  size: (f.metadata as any)?.size || 0,
-                  created_at: (f as any).created_at || "",
-                  type: fileType,
-                });
-              }
-            }
-          } catch { /* folder doesn't exist */ }
-        }
-      } else {
-        // Fallback: list all folders
-        const { data: folders } = await supabase.storage.from(bucket).list("", { limit: 100 });
-        if (!folders) return result;
-        for (const folder of folders) {
-          if (folder.id === null) {
-            const { data: innerFiles } = await supabase.storage.from(bucket).list(folder.name, { limit: 200 });
-            if (innerFiles) {
-              for (const f of innerFiles) {
-                if (f.id === null) continue;
-                result.push({
-                  name: f.name,
-                  url: `${baseUrl}/storage/v1/object/public/${bucket}/${folder.name}/${f.name}`,
-                  bucket,
-                  folder: folder.name,
-                  size: (f.metadata as any)?.size || 0,
-                  created_at: (f as any).created_at || "",
-                  type: getFileType(f.name),
-                });
-              }
-            }
-          } else {
-            result.push({
-              name: folder.name,
-              url: `${baseUrl}/storage/v1/object/public/${bucket}/${folder.name}`,
-              bucket,
-              folder: "",
-              size: (folder.metadata as any)?.size || 0,
-              created_at: (folder as any).created_at || "",
-              type: getFileType(folder.name),
-            });
-          }
-        }
-      }
-    } catch (err) {
-      console.error(`Error listing ${bucket}:`, err);
-    }
-    return result;
-  };
-
-  const loadBucketFilesWithClient = async (client: any, bucket: string, baseUrl: string): Promise<StorageFile[]> => {
-    const result: StorageFile[] = [];
-    try {
-      const { data: folders } = await client.storage.from(bucket).list("", { limit: 100 });
-      if (!folders) return result;
-
-      for (const folder of folders) {
-        if (folder.id === null) {
-          const { data: innerFiles } = await client.storage.from(bucket).list(folder.name, { limit: 200 });
-          if (innerFiles) {
-            for (const f of innerFiles) {
-              if (f.id === null) continue;
-              const fileType = getFileType(f.name);
-              result.push({
-                name: f.name,
-                url: `${baseUrl}/storage/v1/object/public/${bucket}/${folder.name}/${f.name}`,
-                bucket,
-                folder: folder.name,
-                size: (f.metadata as any)?.size || 0,
-                created_at: (f as any).created_at || "",
-                type: fileType,
-              });
-            }
-          }
-        } else {
-          const fileType = getFileType(folder.name);
-          result.push({
-            name: folder.name,
-            url: `${baseUrl}/storage/v1/object/public/${bucket}/${folder.name}`,
-            bucket,
-            folder: "",
-            size: (folder.metadata as any)?.size || 0,
-            created_at: (folder as any).created_at || "",
-            type: fileType,
-          });
-        }
-      }
-    } catch (err) {
-      console.error(`Error listing external ${bucket}:`, err);
-    }
-    return result;
   };
 
   const filteredFiles = files
@@ -284,6 +254,8 @@ export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all", or
                   <div className="shrink-0 w-10 h-10 rounded bg-muted flex items-center justify-center overflow-hidden">
                     {file.type === "image" ? (
                       <img src={file.url} alt={file.name} className="w-full h-full object-cover" loading="lazy" />
+                    ) : file.type === "video" ? (
+                      <VideoThumbnail url={file.url} />
                     ) : (
                       getFileIcon(file.type)
                     )}
