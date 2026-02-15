@@ -1,64 +1,113 @@
 
 
-## Plan: Fix Student Marketplace + Fix User Registration Data
+## Plan: Subscription Management for Organizations + Admin Tariff Controls
 
-### Problem 1: Marketplace shows "В разработке" for students
-The student dashboard (`StudentDashboard.tsx`, lines 156-164) has a **hardcoded placeholder** instead of rendering the existing `StudentCourseStore` component. There are 3 active courses in the marketplace, but students never see them.
+### Overview
 
-### Problem 2: User free@free.com stuck as "student"
-The registration bug (fixed in the previous change by removing the duplicate `create_organization` overload) left this user without an organization. Need to manually fix their data.
+Add a "Tariff" tab in the organization dashboard showing the current plan with upgrade/downgrade options, and enhance the admin panel with expiration tracking and renewal reminders.
 
 ---
 
-### Fix 1: Replace placeholder with StudentCourseStore
+### Part 1: Organization "Tariff" Tab (new)
 
-**File: `src/pages/StudentDashboard.tsx`**
+**New file: `src/components/organization/SubscriptionTab.tsx`**
 
-Replace the hardcoded "Магазин в разработке" block (lines 156-164) with the `StudentCourseStore` component:
+A full-page tab showing:
 
-```tsx
-{activeTab === "store" && user && (
-  <div className="p-8">
-    <StudentCourseStore 
-      userId={user.id} 
-      organizationId={profile?.organization_id || ""} 
-    />
-  </div>
-)}
-```
+1. **Current Plan Card** -- name, price, expiry date (`paid_until`), days remaining with color-coded urgency (green > 30 days, yellow 7-30, red < 7)
+2. **Usage Meters** -- progress bars for courses, students, storage (from `useSubscriptionLimits`)
+3. **Plan Comparison Grid** -- all 5 plans side by side (reuse `SUBSCRIPTION_PLANS` and `featureRows` pattern from `PricingPlans.tsx`), current plan highlighted, upgrade/downgrade buttons
+4. **Feature Highlights** -- for each higher plan, show 2-3 key unlocked features with icons:
+   - **Start**: Companies, course settings, more students
+   - **Standard**: Branding, video ID, document checklist
+   - **Professional**: Journals, documents, labor safety, 20GB
+   - **Maximum**: AI generation, FRDO, unlimited everything, API
+5. **Request Change Button** -- since payment isn't integrated yet, clicking "Upgrade" opens a dialog that sends a request (inserts into a new `subscription_requests` table) with the desired plan, and shows org a toast "Request sent, we will contact you"
 
-Add the import for `StudentCourseStore` at the top of the file.
+**Integration into dashboard:**
 
-### Fix 2: Create organization for free@free.com via SQL migration
+- Add `"subscription"` to `TabType` union in `OrgSidebar.tsx`
+- Add `CreditCard` icon tab in sidebar (before Settings)
+- Add rendering in `TabContentRenderer.tsx`
+- Add to `useTabNavigation.ts` visible tabs
 
-Run a migration that:
-1. Creates an organization for the user (using the data they provided during registration -- we'll use a generic name since we don't have the original org name)
-2. Links the profile to the new organization
-3. Adds the `organization` role in `user_roles`
+---
 
-Since we don't know the organization name the user entered, we'll create a placeholder that can be edited. Alternatively, if this is just a test account, we can skip this step.
+### Part 2: Admin Tariff Management Enhancements
 
-**SQL migration:**
+**Enhance: `src/components/admin/TariffsManager.tsx`**
+
+Add to the existing manager:
+
+1. **Expiration Alerts Panel** -- top section showing organizations with plans expiring in < 7 days (red), < 30 days (yellow), expired (with "Expired" badge)
+2. **Set Expiry Date** -- date picker column in the table to set/edit `paid_until` for each org
+3. **Batch Reminder** -- button to send email reminders to all orgs with expiring plans (calls a new edge function or just marks them)
+4. **Quick Stats Update** -- add "Paid" / "Expired" / "Expiring Soon" counters to the stats row
+
+---
+
+### Part 3: Database Changes
+
+**New table: `subscription_requests`**
+
 ```sql
--- Create organization for orphaned user
-DO $$
-DECLARE
-  v_user_id uuid := 'c9929836-0cb0-422f-ab22-d5f42725afd4';
-  v_org_id uuid;
-BEGIN
-  INSERT INTO organizations (name, email)
-  VALUES ('Организация (free@free.com)', 'free@free.com')
-  RETURNING id INTO v_org_id;
+CREATE TABLE subscription_requests (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL REFERENCES organizations(id),
+  current_plan text NOT NULL,
+  requested_plan text NOT NULL,
+  status text NOT NULL DEFAULT 'pending', -- pending, approved, rejected
+  message text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  processed_at timestamptz,
+  processed_by uuid
+);
 
-  UPDATE profiles SET organization_id = v_org_id WHERE user_id = v_user_id;
+-- RLS: org can insert/view own, admin can manage all
+ALTER TABLE subscription_requests ENABLE ROW LEVEL SECURITY;
 
-  INSERT INTO user_roles (user_id, role)
-  VALUES (v_user_id, 'organization')
-  ON CONFLICT (user_id, role) DO NOTHING;
-END $$;
+CREATE POLICY "Org users can create requests" ON subscription_requests
+  FOR INSERT WITH CHECK (organization_id = current_organization_id());
+
+CREATE POLICY "Org users can view own requests" ON subscription_requests
+  FOR SELECT USING (organization_id = current_organization_id());
+
+CREATE POLICY "Admins can manage all requests" ON subscription_requests
+  FOR ALL USING (has_role('admin', auth.uid()));
 ```
 
-### Summary of changes
-- **1 file edited**: `src/pages/StudentDashboard.tsx` -- import and render `StudentCourseStore`
-- **1 SQL migration**: fix orphaned user data
+---
+
+### Part 4: Upsell Strategy (built into the UI)
+
+Key selling points embedded in the Subscription tab:
+
+| Feature | Pitch |
+|---------|-------|
+| Branding | "Your logo and colors on the student portal" |
+| Video ID | "Verify student identity automatically" |
+| Document Checklist | "Ensure 100% document compliance before enrollment" |
+| AI Generation | "Create course content in minutes with AI" |
+| FRDO | "Automated reporting to the federal registry" |
+| Journals | "Auto-generated attendance and grading journals" |
+| Labor Safety | "Full occupational safety training management" |
+| Unlimited | "No caps on courses or students -- scale freely" |
+
+These will appear as locked feature cards with a "sparkle" icon, showing what the org is missing and which plan unlocks it.
+
+---
+
+### Technical Details
+
+**Files to create:**
+- `src/components/organization/SubscriptionTab.tsx` -- main subscription UI
+
+**Files to modify:**
+- `src/components/organization/OrgSidebar.tsx` -- add "subscription" tab type and menu item
+- `src/hooks/useTabNavigation.ts` -- include "subscription" in visible tabs
+- `src/components/organization/tabs/TabContentRenderer.tsx` -- render SubscriptionTab
+- `src/components/admin/TariffsManager.tsx` -- add expiration tracking, date picker, alerts
+
+**Database:**
+- Create `subscription_requests` table with RLS
 
