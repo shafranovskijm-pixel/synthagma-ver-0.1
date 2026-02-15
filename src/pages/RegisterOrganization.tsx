@@ -30,6 +30,7 @@ const RegisterOrganization = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);
   const [isLoadingInn, setIsLoadingInn] = useState(false);
   const [innLoaded, setInnLoaded] = useState(false);
 
@@ -94,10 +95,11 @@ const RegisterOrganization = () => {
   };
 
   useEffect(() => {
-    if (user && !loading) {
+    // Don't redirect while registration is in progress (race condition fix)
+    if (user && !loading && !isRegistering) {
       navigate("/organization");
     }
-  }, [user, loading, navigate]);
+  }, [user, loading, navigate, isRegistering]);
 
   const handleCheckPromo = async () => {
     if (!promoCode.trim()) return;
@@ -173,6 +175,7 @@ const RegisterOrganization = () => {
     }
 
     setIsLoading(true);
+    setIsRegistering(true);
     
     try {
       // 1. Sign up user first (must be authenticated before creating org)
@@ -287,6 +290,7 @@ const RegisterOrganization = () => {
     }
     
     setIsLoading(false);
+    setIsRegistering(false);
   };
 
   if (loading) {
