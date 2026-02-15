@@ -1,101 +1,75 @@
 
 
-## Plan: Improve Subscription Tab + Admin Document Management
+## Plan: Comments on Marketplace Courses + Initial Comment
 
-### 1. Collapse notifications into accordion
+### Overview
 
-Wrap `MissingCredentialsAlert` in `OrganizationDashboard.tsx` inside a `Collapsible` component, collapsed by default. The alert will show a compact summary line, expandable on click.
-
-**File:** `src/pages/OrganizationDashboard.tsx`
+Add a comments section to each marketplace course detail page in the store. Any authenticated user (organization or student) can leave a comment. Also seed an initial platform comment on every course.
 
 ---
 
-### 2. Add missing features to tariff comparison table + feature links
+### Part 1: Database
 
-The current `featureRows` array in `SubscriptionTab.tsx` is missing several features available in the system. Add these rows and make each feature name a clickable link to its dedicated feature page.
+**New table: `marketplace_course_comments`**
 
-**New rows to add:**
-| Feature | Link |
-|---------|------|
-| Компании | (no feature page) |
-| Журналы | (no feature page) |
-| Документооборот | `/feature/documents` |
-| Охрана труда | `/feature/labor-safety` |
-| ФИС ФРДО | `/feature/frdo` |
-| Магазин курсов | `/feature/course-store` |
-| Библиотека | (no feature page) |
-| Обучаемых / мес | (numeric limit from `maxTrainedPerMonth`) |
-
-Each feature name in the table becomes a link (using `react-router-dom` `Link`) to the corresponding `/feature/...` page where available, with an `ExternalLink` icon hint.
-
-**File:** `src/components/organization/SubscriptionTab.tsx`
-
-Also update `FEATURE_HIGHLIGHTS` to include links, so the "locked feature" cards link to learn-more pages.
-
----
-
-### 3. Documents folder in Subscription Tab
-
-Add a new section "Закрывающие документы" at the bottom of `SubscriptionTab.tsx`:
-- Shows a list of documents (invoices, receipts) uploaded by admin for this organization
-- Fetched from a new `org_billing_documents` table
-- Each document has: name, type (invoice/receipt), date, download link
-- Read-only for organization users
-
-**New database table:**
 ```sql
-CREATE TABLE public.org_billing_documents (
+CREATE TABLE public.marketplace_course_comments (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  organization_id uuid NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
-  name text NOT NULL,
-  doc_type text NOT NULL DEFAULT 'invoice', -- invoice, receipt, act, other
-  file_url text NOT NULL,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  uploaded_by uuid
+  marketplace_course_id uuid NOT NULL REFERENCES public.marketplace_courses(id) ON DELETE CASCADE,
+  user_id uuid,
+  author_name text NOT NULL DEFAULT 'Платформа Синтагма',
+  content text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
 );
 
-ALTER TABLE org_billing_documents ENABLE ROW LEVEL SECURITY;
+ALTER TABLE marketplace_course_comments ENABLE ROW LEVEL SECURITY;
 
--- Org users can view their own documents
-CREATE POLICY "Org users can view own billing docs"
-  ON org_billing_documents FOR SELECT
-  USING (organization_id IN (
-    SELECT id FROM organizations WHERE id = organization_id
-    AND id IN (SELECT organization_id FROM profiles WHERE user_id = auth.uid())
-  ));
+-- Anyone authenticated can read comments
+CREATE POLICY "Authenticated users can view comments"
+  ON marketplace_course_comments FOR SELECT
+  USING (auth.uid() IS NOT NULL);
 
--- Admins can manage all
-CREATE POLICY "Admins can manage billing docs"
-  ON org_billing_documents FOR ALL
-  USING (EXISTS (
-    SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'admin'
-  ));
+-- Authenticated users can add comments
+CREATE POLICY "Authenticated users can add comments"
+  ON marketplace_course_comments FOR INSERT
+  WITH CHECK (auth.uid() IS NOT NULL);
+
+-- Admins can delete any comment
+CREATE POLICY "Admins can delete comments"
+  ON marketplace_course_comments FOR DELETE
+  USING (EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'admin'));
+```
+
+**Seed initial comment on all 3 existing marketplace courses:**
+
+```sql
+INSERT INTO marketplace_course_comments (marketplace_course_id, author_name, content)
+SELECT id, 'Платформа Синтагма', 'Могу доработать — пишите Ваши пожелания на каждый курс!'
+FROM marketplace_courses;
 ```
 
 ---
 
-### 4. Admin interface for uploading billing documents
+### Part 2: UI -- Comments Section in Course Detail
 
-Add a new section in `TariffsManager.tsx` -- "Документы для организаций":
-- Select an organization from a dropdown
-- Upload a file (invoice/receipt) to storage bucket `billing-documents`
-- Specify document type (Счёт / Чек / Акт)
-- Uploaded documents appear in a table with: org name, doc name, type, date, download/delete actions
-- This is a manual process for now (as requested), to be automated later
+**File:** `src/components/organization/CourseStoreManager.tsx`
 
-**File:** `src/components/admin/TariffsManager.tsx`
+Add below the action buttons in the `selectedCourseDetail` view:
+
+1. **Comments list** -- fetched from `marketplace_course_comments` for the selected course, showing author name, date, and text
+2. **"Add comment" form** -- a `Textarea` + `Button` for submitting a new comment. The author name is pulled from the user's profile or defaults to the organization name
+3. Comments ordered newest first
+
+Also add the same section to `src/components/student/StudentCourseStore.tsx` if it has a detail view.
 
 ---
 
 ### Technical Summary
 
-**Files to create:** none (all changes in existing files)
-
 **Files to modify:**
-- `src/pages/OrganizationDashboard.tsx` -- wrap alert in Collapsible
-- `src/components/organization/SubscriptionTab.tsx` -- add feature rows with links, add billing documents section
-- `src/components/admin/TariffsManager.tsx` -- add billing document upload/management UI
+- `src/components/organization/CourseStoreManager.tsx` -- add comments section in course detail view
+- `src/components/student/StudentCourseStore.tsx` -- add comments section if detail view exists
 
 **Database:**
-- Create `org_billing_documents` table with RLS
-- Create storage bucket `billing-documents`
+- Create `marketplace_course_comments` table with RLS
+- Seed platform comment on all existing marketplace courses
