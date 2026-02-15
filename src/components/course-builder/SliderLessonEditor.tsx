@@ -1,15 +1,118 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Presentation, Upload, Loader2, Trash2, Eye, ChevronDown, ImagePlus, Replace, X } from "lucide-react";
+import { Presentation, Upload, Loader2, Trash2, Eye, ChevronDown, ImagePlus, Replace, X, FolderOpen, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { parseSliderContent, type SliderSlide, type SliderContent } from "@/utils/courseBuilderHelpers";
 import type { Lesson } from "@/components/course-builder/LessonTypeConfig";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface SliderLessonEditorProps {
   lesson: Lesson;
   courseId: string | undefined;
   onUpdate: (updates: Partial<Lesson>) => void;
+}
+
+interface PptxFile {
+  name: string;
+  url: string;
+  size: number;
+  created_at: string;
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} Б`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} КБ`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} МБ`;
+}
+
+function PptxPickerDialog({ open, onClose, onSelect }: { open: boolean; onClose: () => void; onSelect: (url: string) => void }) {
+  const [files, setFiles] = useState<PptxFile[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    if (open) {
+      setSearch("");
+      loadPptxFiles();
+    }
+  }, [open]);
+
+  const loadPptxFiles = async () => {
+    setLoading(true);
+    const allFiles: PptxFile[] = [];
+    const baseUrl = import.meta.env.VITE_SUPABASE_URL;
+    try {
+      const { data, error } = await supabase.rpc("get_user_storage_files", { bucket_name: "presentations" });
+      if (!error && data) {
+        for (const f of data as any[]) {
+          const filePath = f.file_path || f.file_name;
+          const fileName = filePath.split("/").pop() || filePath;
+          if (!fileName.toLowerCase().endsWith('.pptx')) continue;
+          allFiles.push({
+            name: fileName,
+            url: `${baseUrl}/storage/v1/object/public/presentations/${filePath}`,
+            size: f.file_size || 0,
+            created_at: f.created_at || "",
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Error loading presentations:", err);
+    }
+    setFiles(allFiles);
+    setLoading(false);
+  };
+
+  const filtered = files.filter(f => !search || f.name.toLowerCase().includes(search.toLowerCase()));
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <FolderOpen className="w-5 h-5" />
+            Выбрать презентацию
+          </DialogTitle>
+        </DialogHeader>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Поиск..." className="pl-9" />
+        </div>
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            <span className="ml-2 text-sm text-muted-foreground">Загрузка...</span>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            <Presentation className="w-8 h-8 mx-auto mb-2 opacity-40" />
+            <p className="text-sm">{files.length === 0 ? "Нет загруженных презентаций" : "Ничего не найдено"}</p>
+          </div>
+        ) : (
+          <ScrollArea className="max-h-[300px]">
+            <div className="space-y-1">
+              {filtered.map((file, i) => (
+                <button key={i} onClick={() => onSelect(file.url)}
+                  className="w-full flex items-center gap-3 p-3 rounded-lg text-left hover:bg-muted/70 transition-colors">
+                  <Presentation className="w-5 h-5 text-amber-500 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{file.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {file.size > 0 && formatFileSize(file.size)}
+                      {file.created_at && ` · ${new Date(file.created_at).toLocaleDateString("ru-RU")}`}
+                    </p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </ScrollArea>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 export function SliderLessonEditor({ lesson, courseId, onUpdate }: SliderLessonEditorProps) {
@@ -18,6 +121,7 @@ export function SliderLessonEditor({ lesson, courseId, onUpdate }: SliderLessonE
   const [error, setError] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [uploadProgress, setUploadProgress] = useState<string>("");
+  const [showPicker, setShowPicker] = useState(false);
   const slideImageInputRef = useRef<HTMLInputElement>(null);
 
   const sliderContent = parseSliderContent(lesson.content);
@@ -150,20 +254,56 @@ export function SliderLessonEditor({ lesson, courseId, onUpdate }: SliderLessonE
     toast.success('Изображение удалено');
   };
 
+  const handleSelectFromStorage = async (fileUrl: string) => {
+    setShowPicker(false);
+    setIsLoading(true);
+    setUploadProgress('Загрузка презентации...');
+    try {
+      const response = await fetch(fileUrl);
+      const arrayBuffer = await response.arrayBuffer();
+      const JSZip = (await import('jszip')).default;
+      const zip = await JSZip.loadAsync(arrayBuffer);
+      const slideFiles = Object.keys(zip.files)
+        .filter(name => name.match(/ppt\/slides\/slide\d+\.xml$/));
+      const slidesArray: SliderSlide[] = slideFiles.map((_, i) => ({
+        id: crypto.randomUUID(),
+        title: `Слайд ${i + 1}`,
+        content: ''
+      }));
+      const newContent: SliderContent = { slides: slidesArray, pptxFileUrl: fileUrl };
+      onUpdate({ content: JSON.stringify(newContent), title: lesson.title || 'Презентация' });
+      setCurrentIndex(0);
+      toast.success(`Загружена презентация с ${slideFiles.length} слайдами`);
+    } catch (err) {
+      console.error('Error loading PPTX from storage:', err);
+      toast.error('Ошибка при загрузке презентации');
+    } finally {
+      setIsLoading(false);
+      setUploadProgress('');
+    }
+  };
+
   if (slides.length === 0) {
     return (
       <div className="space-y-3">
+        <PptxPickerDialog open={showPicker} onClose={() => setShowPicker(false)} onSelect={handleSelectFromStorage} />
         <div className="border-2 border-dashed border-border rounded-xl p-8 text-center">
           <Presentation className="w-8 h-8 mx-auto mb-2 text-amber-500" />
           <p className="text-sm text-muted-foreground mb-2">Загрузите презентацию PPTX</p>
           <p className="text-xs text-muted-foreground/70 mb-4">Слайды с изображениями будут отображаться как интерактивный слайдер</p>
           {error && <p className="text-sm text-destructive mb-4">{error}</p>}
           {isLoading && uploadProgress && <p className="text-xs text-amber-500 mb-4">{uploadProgress}</p>}
-          <label className="inline-flex items-center gap-2 px-4 py-2 border border-border rounded-lg cursor-pointer hover:border-amber-500 hover:bg-amber-500/5 transition-colors">
-            {isLoading ? <Loader2 className="w-4 h-4 animate-spin text-amber-500" /> : <Upload className="w-4 h-4 text-amber-500" />}
-            <span className="text-sm">{isLoading ? 'Обработка...' : 'Выбрать файл PPTX'}</span>
-            <input type="file" accept=".pptx" onChange={handleFileUpload} className="hidden" disabled={isLoading} />
-          </label>
+          <div className="flex items-center justify-center gap-2">
+            <label className="inline-flex items-center gap-2 px-4 py-2 border border-border rounded-lg cursor-pointer hover:border-amber-500 hover:bg-amber-500/5 transition-colors">
+              {isLoading ? <Loader2 className="w-4 h-4 animate-spin text-amber-500" /> : <Upload className="w-4 h-4 text-amber-500" />}
+              <span className="text-sm">{isLoading ? 'Обработка...' : 'Выбрать файл PPTX'}</span>
+              <input type="file" accept=".pptx" onChange={handleFileUpload} className="hidden" disabled={isLoading} />
+            </label>
+            <Button variant="outline" size="sm" onClick={() => setShowPicker(true)} disabled={isLoading}>
+              <FolderOpen className="w-4 h-4 mr-1" />
+              Выбрать из загруженных
+            </Button>
+          </div>
         </div>
       </div>
     );
