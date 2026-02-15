@@ -151,21 +151,35 @@ export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all", or
   }, [open]);
 
   const getOrgCourseIds = async (): Promise<string[]> => {
-    if (!organizationId) {
-      // Fallback: get org from current user profile
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return [];
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("organization_id")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      if (!profile?.organization_id) return [];
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    // 1. Try explicit organizationId prop
+    if (organizationId) {
+      const { data } = await supabase.from("courses").select("id").eq("organization_id", organizationId);
+      if (data && data.length > 0) return data.map(c => c.id);
+    }
+
+    // 2. Fallback: organization_id from profile
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("organization_id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (profile?.organization_id) {
       const { data } = await supabase.from("courses").select("id").eq("organization_id", profile.organization_id);
+      if (data && data.length > 0) return data.map(c => c.id);
+    }
+
+    // 3. Fallback for admin: get all courses
+    const { data: role } = await supabase.from("user_roles").select("role").eq("user_id", user.id).maybeSingle();
+    if (role?.role === "admin") {
+      const { data } = await supabase.from("courses").select("id").limit(200);
       return data?.map(c => c.id) || [];
     }
-    const { data } = await supabase.from("courses").select("id").eq("organization_id", organizationId);
-    return data?.map(c => c.id) || [];
+
+    return [];
   };
 
   const loadFiles = async () => {
@@ -174,26 +188,32 @@ export function MediaLibraryDialog({ open, onClose, onSelect, filter = "all", or
     const baseUrl = import.meta.env.VITE_SUPABASE_URL;
 
     try {
-      // 1. Load user's own files from internal storage via RPC
-      const { data: userFiles, error: rpcError } = await supabase.rpc("get_user_storage_files", {
-        bucket_name: "course-files",
-      });
+      // 1. Load user's own files from internal storage via RPC (both buckets)
+      const [courseFilesRes, courseVideosRes] = await Promise.all([
+        supabase.rpc("get_user_storage_files", { bucket_name: "course-files" }),
+        supabase.rpc("get_user_storage_files", { bucket_name: "course-videos" }),
+      ]);
 
-      if (!rpcError && userFiles) {
-        for (const f of userFiles as any[]) {
-          const filePath = f.file_path || f.file_name;
-          const fileName = filePath.split("/").pop() || filePath;
-          const folder = filePath.includes("/") ? filePath.substring(0, filePath.lastIndexOf("/")) : "";
+      for (const { data, error, bucket } of [
+        { ...courseFilesRes, bucket: "course-files" },
+        { ...courseVideosRes, bucket: "course-videos" },
+      ]) {
+        if (!error && data) {
+          for (const f of data as any[]) {
+            const filePath = f.file_path || f.file_name;
+            const fileName = filePath.split("/").pop() || filePath;
+            const folder = filePath.includes("/") ? filePath.substring(0, filePath.lastIndexOf("/")) : "";
 
-          allFiles.push({
-            name: fileName,
-            url: `${baseUrl}/storage/v1/object/public/course-files/${filePath}`,
-            bucket: "course-files",
-            folder,
-            size: f.file_size || 0,
-            created_at: f.created_at || "",
-            type: getFileType(fileName),
-          });
+            allFiles.push({
+              name: fileName,
+              url: `${baseUrl}/storage/v1/object/public/${bucket}/${filePath}`,
+              bucket,
+              folder,
+              size: f.file_size || 0,
+              created_at: f.created_at || "",
+              type: getFileType(fileName),
+            });
+          }
         }
       }
 
