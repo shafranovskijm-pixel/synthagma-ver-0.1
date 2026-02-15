@@ -1992,6 +1992,7 @@ export type Database = {
       }
       organization_usage: {
         Row: {
+          ai_generations_count: number
           ai_tokens_used: number
           created_at: string
           id: string
@@ -2001,6 +2002,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          ai_generations_count?: number
           ai_tokens_used?: number
           created_at?: string
           id?: string
@@ -2010,6 +2012,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          ai_generations_count?: number
           ai_tokens_used?: number
           created_at?: string
           id?: string

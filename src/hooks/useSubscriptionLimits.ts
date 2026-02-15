@@ -19,6 +19,7 @@ interface SubscriptionLimitsState {
   loading: boolean;
   planName: string;
   checkLimit: (type: 'course' | 'student') => { allowed: boolean; message: string };
+  refetch: () => Promise<void>;
 }
 
 export function useSubscriptionLimits(organizationId: string | null): SubscriptionLimitsState {
@@ -128,5 +129,6 @@ export function useSubscriptionLimits(organizationId: string | null): Subscripti
     loading,
     planName: planInfo.name,
     checkLimit,
+    refetch: fetchData,
   };
 }

@@ -206,10 +206,10 @@ export function useCourseBuilder() {
 
   const handleGenerateStructure = async () => {
     if (!courseTitle.trim()) { toast.error("Введите название курса"); return; }
-    if (!aiLimit.checkAndNotify()) return;
+    if (!(await aiLimit.checkAndNotify())) return;
     setIsGenerating(true);
     try {
-      aiLimit.increment();
+      await aiLimit.increment();
       const { data, error } = await supabase.functions.invoke("generate-course-structure", { body: { title: courseTitle, description: courseDescription } });
       if (error) throw new Error(error.message || "Ошибка генерации");
       if (!data.success) throw new Error(data.error || "Ошибка генерации структуры");
@@ -225,7 +225,7 @@ export function useCourseBuilder() {
   };
 
   const handleAIGenerate = async (type: AIGenerateType, prompt: string) => {
-    if (!aiLimit.checkAndNotify()) return;
+    if (!(await aiLimit.checkAndNotify())) return;
     const lessonTypeMap: Record<AIGenerateType, LessonType> = { audio: "audio", slides: "slider", video: "video", image: "image", test: "test" };
     const typeNames: Record<AIGenerateType, string> = { audio: "аудиолекция", slides: "презентация", video: "видео", image: "изображение", test: "тест" };
     const newLesson: Lesson = {
@@ -305,7 +305,7 @@ export function useCourseBuilder() {
       } catch { newLesson.content = ""; toast.info("Добавьте ссылку на видео"); }
     }
 
-    aiLimit.increment();
+    await aiLimit.increment();
     updateLessons([...lessons, newLesson]);
   };
 
