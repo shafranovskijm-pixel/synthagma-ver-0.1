@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Presentation, Upload, Loader2, Trash2, Eye, ChevronDown } from "lucide-react";
+import { Presentation, Upload, Loader2, Trash2, Eye, ChevronDown, ImagePlus, Replace, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { parseSliderContent, type SliderSlide, type SliderContent } from "@/utils/courseBuilderHelpers";
@@ -14,9 +14,11 @@ interface SliderLessonEditorProps {
 
 export function SliderLessonEditor({ lesson, courseId, onUpdate }: SliderLessonEditorProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [isUploadingSlideImage, setIsUploadingSlideImage] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [uploadProgress, setUploadProgress] = useState<string>("");
+  const slideImageInputRef = useRef<HTMLInputElement>(null);
 
   const sliderContent = parseSliderContent(lesson.content);
   const slides = sliderContent.slides;
@@ -110,6 +112,44 @@ export function SliderLessonEditor({ lesson, courseId, onUpdate }: SliderLessonE
     setCurrentIndex(0);
   };
 
+  const handleSlideImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Выберите файл изображения');
+      return;
+    }
+    setIsUploadingSlideImage(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const uploadPath = `${courseId || 'temp'}/slide_${currentIndex}_${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from('course-files')
+        .upload(uploadPath, file, { upsert: true });
+      if (uploadError) throw uploadError;
+      const { data: { publicUrl } } = supabase.storage
+        .from('course-files')
+        .getPublicUrl(uploadPath);
+      const updatedSlides = [...slides];
+      updatedSlides[currentIndex] = { ...updatedSlides[currentIndex], imageUrl: publicUrl };
+      onUpdate({ content: JSON.stringify({ slides: updatedSlides, pptxFileUrl }) });
+      toast.success('Изображение слайда обновлено');
+    } catch (err) {
+      console.error('Slide image upload error:', err);
+      toast.error('Ошибка загрузки изображения');
+    } finally {
+      setIsUploadingSlideImage(false);
+      if (slideImageInputRef.current) slideImageInputRef.current.value = '';
+    }
+  };
+
+  const removeSlideImage = () => {
+    const updatedSlides = [...slides];
+    updatedSlides[currentIndex] = { ...updatedSlides[currentIndex], imageUrl: undefined };
+    onUpdate({ content: JSON.stringify({ slides: updatedSlides, pptxFileUrl }) });
+    toast.success('Изображение удалено');
+  };
+
   if (slides.length === 0) {
     return (
       <div className="space-y-3">
@@ -178,11 +218,27 @@ export function SliderLessonEditor({ lesson, courseId, onUpdate }: SliderLessonE
           <div className="p-6 min-h-[250px]">
             {currentSlide && (
               <div className="space-y-4">
-                {currentSlide.imageUrl && (
-                  <div className="rounded-lg overflow-hidden border border-border bg-secondary/20">
+                {currentSlide.imageUrl ? (
+                  <div className="relative group rounded-lg overflow-hidden border border-border bg-secondary/20">
                     <img src={currentSlide.imageUrl} alt={currentSlide.title || 'Слайд'} className="w-full max-h-[400px] object-contain" />
+                    <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button variant="secondary" size="sm" className="h-8 gap-1.5 shadow-md" onClick={() => slideImageInputRef.current?.click()} disabled={isUploadingSlideImage}>
+                        {isUploadingSlideImage ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Replace className="w-3.5 h-3.5" />}
+                        Заменить
+                      </Button>
+                      <Button variant="destructive" size="sm" className="h-8 gap-1.5 shadow-md" onClick={removeSlideImage}>
+                        <X className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
                   </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center gap-2 p-8 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-amber-500/50 hover:bg-amber-500/5 transition-colors">
+                    {isUploadingSlideImage ? <Loader2 className="w-6 h-6 animate-spin text-amber-500" /> : <ImagePlus className="w-6 h-6 text-muted-foreground" />}
+                    <span className="text-sm text-muted-foreground">{isUploadingSlideImage ? 'Загрузка...' : 'Загрузить изображение для слайда'}</span>
+                    <input ref={slideImageInputRef} type="file" accept="image/*" onChange={handleSlideImageUpload} className="hidden" disabled={isUploadingSlideImage} />
+                  </label>
                 )}
+                <input ref={slideImageInputRef} type="file" accept="image/*" onChange={handleSlideImageUpload} className="hidden" disabled={isUploadingSlideImage} />
                 <h3 className="text-lg font-semibold">{currentSlide.title}</h3>
                 {currentSlide.content && (
                   <div className="text-sm text-muted-foreground whitespace-pre-wrap">{currentSlide.content}</div>
