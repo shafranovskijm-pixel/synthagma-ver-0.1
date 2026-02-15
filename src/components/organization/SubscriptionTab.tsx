@@ -1,0 +1,412 @@
+import { useState, useEffect, useMemo } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { SUBSCRIPTION_PLANS, type SubscriptionPlan, type PlanInfo, formatStorageSize, YEARLY_DISCOUNT } from "@/constants/subscriptionPlans";
+import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
+import { toast } from "@/hooks/use-toast";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Crown, BookOpen, Users, HardDrive, Sparkles, Check, X,
+  Palette, Video, FileCheck, Brain, FileSpreadsheet, ClipboardList,
+  HardHat, Infinity, ArrowRight, Calendar, AlertTriangle
+} from "lucide-react";
+import { differenceInDays, format } from "date-fns";
+import { ru } from "date-fns/locale";
+
+const PLAN_ORDER: SubscriptionPlan[] = ['free', 'start', 'standard', 'professional', 'maximum'];
+
+const planGradients: Record<SubscriptionPlan, string> = {
+  free: "from-muted to-muted/50",
+  start: "from-blue-500/10 to-blue-600/5",
+  standard: "from-emerald-500/10 to-emerald-600/5",
+  professional: "from-amber-500/10 to-amber-600/5",
+  maximum: "from-purple-500/10 to-purple-600/5",
+};
+
+const planAccents: Record<SubscriptionPlan, string> = {
+  free: "text-muted-foreground",
+  start: "text-blue-500",
+  standard: "text-emerald-500",
+  professional: "text-amber-500",
+  maximum: "text-purple-500",
+};
+
+const planBorders: Record<SubscriptionPlan, string> = {
+  free: "border-border",
+  start: "border-blue-500/30",
+  standard: "border-emerald-500/30",
+  professional: "border-amber-500/30",
+  maximum: "border-purple-500/30",
+};
+
+interface FeatureHighlight {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  minPlan: SubscriptionPlan;
+}
+
+const FEATURE_HIGHLIGHTS: FeatureHighlight[] = [
+  { icon: <Palette className="w-5 h-5" />, title: "Брендирование", description: "Ваш логотип и цвета в портале ученика", minPlan: "standard" },
+  { icon: <Video className="w-5 h-5" />, title: "Видео-идентификация", description: "Автоматическая проверка личности ученика", minPlan: "standard" },
+  { icon: <FileCheck className="w-5 h-5" />, title: "Чек-лист документов", description: "100% контроль документов при зачислении", minPlan: "standard" },
+  { icon: <ClipboardList className="w-5 h-5" />, title: "Журналы", description: "Автогенерация журналов посещаемости и оценок", minPlan: "professional" },
+  { icon: <HardHat className="w-5 h-5" />, title: "Охрана труда", description: "Полное управление обучением ОТ", minPlan: "professional" },
+  { icon: <FileSpreadsheet className="w-5 h-5" />, title: "ФИС ФРДО", description: "Автоматическая отчётность в федеральный реестр", minPlan: "maximum" },
+  { icon: <Brain className="w-5 h-5" />, title: "ИИ-генерация", description: "Создание контента курсов за минуты с ИИ", minPlan: "maximum" },
+  { icon: <Infinity className="w-5 h-5" />, title: "Без ограничений", description: "Безлимитные курсы и ученики — масштабируйтесь свободно", minPlan: "maximum" },
+];
+
+const featureRows = [
+  { label: "Курсы", key: "maxCourses" as const, format: (v: number) => v === -1 ? "∞" : String(v) },
+  { label: "Ученики", key: "maxStudents" as const, format: (v: number) => v === -1 ? "∞" : String(v) },
+  { label: "Хранилище", key: "storageBytes" as const, format: formatStorageSize },
+  { label: "Настройки курсов", key: "courseSettings" as const, format: (v: boolean) => v },
+  { label: "Чек-лист документов", key: "documentChecklist" as const, format: (v: boolean) => v },
+  { label: "Видео-идентификация", key: "videoIdentification" as const, format: (v: boolean) => v },
+  { label: "Брендирование", key: "branding" as const, format: (v: boolean) => v },
+  { label: "ИИ-генерация", key: "aiEnabled" as const, format: (v: boolean) => v },
+  { label: "ИИ-озвучка", key: "aiAudioEnabled" as const, format: (v: boolean) => v },
+];
+
+export function SubscriptionTab() {
+  const d = useOrgDashboard();
+  const organizationId = d.organizationId;
+  const subscriptionLimits = d.subscriptionLimits;
+  
+  const [paidUntil, setPaidUntil] = useState<string | null>(null);
+  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
+  const [message, setMessage] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [pendingRequest, setPendingRequest] = useState<{ requested_plan: string; created_at: string } | null>(null);
+
+  const currentPlan = subscriptionLimits.plan;
+  const currentPlanInfo = SUBSCRIPTION_PLANS[currentPlan];
+  const currentPlanIndex = PLAN_ORDER.indexOf(currentPlan);
+
+  useEffect(() => {
+    if (!organizationId) return;
+    
+    const fetchOrgDetails = async () => {
+      const [orgRes, reqRes] = await Promise.all([
+        supabase.from("organizations").select("paid_until").eq("id", organizationId).single(),
+        supabase.from("subscription_requests" as any).select("requested_plan, created_at").eq("organization_id", organizationId).eq("status", "pending").order("created_at", { ascending: false }).limit(1),
+      ]);
+      
+      if (orgRes.data?.paid_until) setPaidUntil(orgRes.data.paid_until);
+      if ((reqRes.data as any)?.[0]) setPendingRequest((reqRes.data as any)[0]);
+    };
+    fetchOrgDetails();
+  }, [organizationId]);
+
+  const daysRemaining = useMemo(() => {
+    if (!paidUntil) return null;
+    return differenceInDays(new Date(paidUntil), new Date());
+  }, [paidUntil]);
+
+  const urgencyColor = useMemo(() => {
+    if (daysRemaining === null) return "text-muted-foreground";
+    if (daysRemaining <= 0) return "text-destructive";
+    if (daysRemaining <= 7) return "text-destructive";
+    if (daysRemaining <= 30) return "text-amber-500";
+    return "text-emerald-500";
+  }, [daysRemaining]);
+
+  const handleRequestUpgrade = async () => {
+    if (!organizationId || !selectedPlan) return;
+    setSubmitting(true);
+    
+    const { error } = await supabase.from("subscription_requests" as any).insert({
+      organization_id: organizationId,
+      current_plan: currentPlan,
+      requested_plan: selectedPlan,
+      message: message || null,
+    } as any);
+
+    if (error) {
+      toast({ title: "Ошибка", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Заявка отправлена", description: "Мы свяжемся с вами для оформления перехода на новый тариф" });
+      setPendingRequest({ requested_plan: selectedPlan, created_at: new Date().toISOString() });
+      setShowUpgradeDialog(false);
+      setMessage("");
+      setSelectedPlan(null);
+    }
+    setSubmitting(false);
+  };
+
+  const coursesPercent = currentPlanInfo.limits.maxCourses === -1 ? 0 :
+    Math.round((subscriptionLimits.usage.coursesCount / currentPlanInfo.limits.maxCourses) * 100);
+  const studentsPercent = currentPlanInfo.limits.maxStudents === -1 ? 0 :
+    Math.round((subscriptionLimits.usage.studentsCount / currentPlanInfo.limits.maxStudents) * 100);
+
+  return (
+    <div className="space-y-6">
+      {/* Current Plan Card */}
+      <Card className={`border-2 ${planBorders[currentPlan]} bg-gradient-to-br ${planGradients[currentPlan]}`}>
+        <CardContent className="p-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <Crown className={`w-6 h-6 ${planAccents[currentPlan]}`} />
+                <h2 className="text-2xl font-bold">{currentPlanInfo.name}</h2>
+                <Badge variant="secondary" className="ml-2">{currentPlanInfo.description}</Badge>
+              </div>
+              <p className="text-muted-foreground">
+                {currentPlanInfo.price === 0 ? "Бесплатный тариф" : `${currentPlanInfo.price.toLocaleString()} ₽/мес`}
+              </p>
+            </div>
+            <div className="flex flex-col items-end gap-1">
+              {paidUntil && currentPlan !== 'free' ? (
+                <div className={`flex items-center gap-2 ${urgencyColor}`}>
+                  {daysRemaining !== null && daysRemaining <= 7 && <AlertTriangle className="w-4 h-4" />}
+                  <Calendar className="w-4 h-4" />
+                  <span className="text-sm font-medium">
+                    {daysRemaining !== null && daysRemaining <= 0 
+                      ? "Тариф истёк" 
+                      : `Оплачен до ${format(new Date(paidUntil), "d MMMM yyyy", { locale: ru })}`}
+                  </span>
+                  {daysRemaining !== null && daysRemaining > 0 && (
+                    <Badge variant="outline" className={urgencyColor}>
+                      {daysRemaining} {daysRemaining === 1 ? "день" : daysRemaining < 5 ? "дня" : "дней"}
+                    </Badge>
+                  )}
+                </div>
+              ) : currentPlan === 'free' ? (
+                <span className="text-sm text-muted-foreground">Бессрочно</span>
+              ) : (
+                <span className="text-sm text-muted-foreground">Дата не указана</span>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Pending Request */}
+      {pendingRequest && (
+        <Card className="border-amber-500/30 bg-amber-500/5">
+          <CardContent className="p-4 flex items-center gap-3">
+            <Sparkles className="w-5 h-5 text-amber-500" />
+            <div>
+              <span className="font-medium">Ожидает рассмотрения: </span>
+              <span>переход на тариф «{SUBSCRIPTION_PLANS[pendingRequest.requested_plan as SubscriptionPlan]?.name}»</span>
+              <span className="text-muted-foreground text-sm ml-2">
+                от {format(new Date(pendingRequest.created_at), "d MMM yyyy", { locale: ru })}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Usage Meters */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <BookOpen className="w-4 h-4 text-primary" />
+                Курсы
+              </div>
+              <span className="text-sm text-muted-foreground">
+                {subscriptionLimits.usage.coursesCount} / {currentPlanInfo.limits.maxCourses === -1 ? "∞" : currentPlanInfo.limits.maxCourses}
+              </span>
+            </div>
+            <Progress value={currentPlanInfo.limits.maxCourses === -1 ? 0 : coursesPercent} className="h-2" />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <Users className="w-4 h-4 text-primary" />
+                Ученики
+              </div>
+              <span className="text-sm text-muted-foreground">
+                {subscriptionLimits.usage.studentsCount} / {currentPlanInfo.limits.maxStudents === -1 ? "∞" : currentPlanInfo.limits.maxStudents}
+              </span>
+            </div>
+            <Progress value={currentPlanInfo.limits.maxStudents === -1 ? 0 : studentsPercent} className="h-2" />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <HardDrive className="w-4 h-4 text-primary" />
+                Хранилище
+              </div>
+              <span className="text-sm text-muted-foreground">
+                {formatStorageSize(currentPlanInfo.limits.storageBytes)}
+              </span>
+            </div>
+            <Progress value={0} className="h-2" />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Feature Highlights - what you're missing */}
+      {currentPlanIndex < PLAN_ORDER.length - 1 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Sparkles className="w-5 h-5 text-amber-500" />
+              Возможности, доступные на старших тарифах
+            </CardTitle>
+            <CardDescription>Перейдите на более высокий тариф, чтобы разблокировать</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+              {FEATURE_HIGHLIGHTS.filter(f => PLAN_ORDER.indexOf(f.minPlan) > currentPlanIndex).map((feature, i) => (
+                <div key={i} className="p-4 rounded-xl border border-border bg-muted/30 space-y-2 relative overflow-hidden">
+                  <div className="absolute top-2 right-2">
+                    <Badge variant="outline" className={planAccents[feature.minPlan]}>
+                      {SUBSCRIPTION_PLANS[feature.minPlan].name}+
+                    </Badge>
+                  </div>
+                  <div className={`${planAccents[feature.minPlan]}`}>{feature.icon}</div>
+                  <h4 className="font-semibold text-sm">{feature.title}</h4>
+                  <p className="text-xs text-muted-foreground">{feature.description}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Plan Comparison Grid */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Сравнение тарифов</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr>
+                  <th className="text-left p-2 font-medium text-muted-foreground">Функция</th>
+                  {PLAN_ORDER.map(planId => {
+                    const plan = SUBSCRIPTION_PLANS[planId];
+                    const isCurrent = planId === currentPlan;
+                    return (
+                      <th key={planId} className={`p-2 text-center min-w-[120px] ${isCurrent ? `bg-primary/5 rounded-t-lg border-t-2 ${planBorders[planId]}` : ""}`}>
+                        <div className="space-y-1">
+                          <div className={`font-bold ${isCurrent ? planAccents[planId] : ""}`}>{plan.name}</div>
+                          <div className="text-xs text-muted-foreground font-normal">
+                            {plan.price === 0 ? "0 ₽" : `${plan.price.toLocaleString()} ₽`}
+                          </div>
+                          {isCurrent && <Badge variant="secondary" className="text-[10px]">Текущий</Badge>}
+                        </div>
+                      </th>
+                    );
+                  })}
+                </tr>
+              </thead>
+              <tbody>
+                {featureRows.map((row) => (
+                  <tr key={row.key} className="border-t border-border">
+                    <td className="p-2 font-medium">{row.label}</td>
+                    {PLAN_ORDER.map(planId => {
+                      const plan = SUBSCRIPTION_PLANS[planId];
+                      const value = plan.limits[row.key];
+                      const isCurrent = planId === currentPlan;
+                      const formatted = (row.format as Function)(value);
+                      return (
+                        <td key={planId} className={`p-2 text-center ${isCurrent ? "bg-primary/5" : ""}`}>
+                          {typeof formatted === "boolean" ? (
+                            formatted ? <Check className="w-4 h-4 text-emerald-500 mx-auto" /> : <X className="w-4 h-4 text-muted-foreground/30 mx-auto" />
+                          ) : (
+                            <span className="font-medium">{formatted}</span>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+                {/* Action row */}
+                <tr className="border-t border-border">
+                  <td className="p-2"></td>
+                  {PLAN_ORDER.map(planId => {
+                    const isCurrent = planId === currentPlan;
+                    const planIndex = PLAN_ORDER.indexOf(planId);
+                    const isUpgrade = planIndex > currentPlanIndex;
+                    const isDowngrade = planIndex < currentPlanIndex;
+                    return (
+                      <td key={planId} className={`p-2 text-center ${isCurrent ? "bg-primary/5 rounded-b-lg" : ""}`}>
+                        {isCurrent ? (
+                          <span className="text-xs text-muted-foreground">Активен</span>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant={isUpgrade ? "default" : "outline"}
+                            className="text-xs"
+                            onClick={() => { setSelectedPlan(planId); setShowUpgradeDialog(true); }}
+                            disabled={!!pendingRequest}
+                          >
+                            {isUpgrade ? (
+                              <>Перейти <ArrowRight className="w-3 h-3 ml-1" /></>
+                            ) : "Понизить"}
+                          </Button>
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Upgrade Request Dialog */}
+      <Dialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {selectedPlan && PLAN_ORDER.indexOf(selectedPlan) > currentPlanIndex
+                ? "Повышение тарифа"
+                : "Понижение тарифа"}
+            </DialogTitle>
+            <DialogDescription>
+              {selectedPlan && (
+                <>Переход с «{currentPlanInfo.name}» на «{SUBSCRIPTION_PLANS[selectedPlan].name}»</>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {selectedPlan && (
+              <div className="p-4 rounded-lg bg-muted/50 space-y-2">
+                <div className="flex justify-between">
+                  <span>Новый тариф:</span>
+                  <span className="font-bold">{SUBSCRIPTION_PLANS[selectedPlan].name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Стоимость:</span>
+                  <span className="font-bold">
+                    {SUBSCRIPTION_PLANS[selectedPlan].price === 0 ? "Бесплатно" : `${SUBSCRIPTION_PLANS[selectedPlan].price.toLocaleString()} ₽/мес`}
+                  </span>
+                </div>
+              </div>
+            )}
+            <Textarea
+              placeholder="Комментарий к заявке (необязательно)"
+              value={message}
+              onChange={e => setMessage(e.target.value)}
+              rows={3}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowUpgradeDialog(false)}>Отмена</Button>
+            <Button onClick={handleRequestUpgrade} disabled={submitting}>
+              {submitting ? "Отправка..." : "Отправить заявку"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

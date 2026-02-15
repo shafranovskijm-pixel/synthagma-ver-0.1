@@ -12,6 +12,7 @@ import { CourseStoreManager } from "@/components/organization/CourseStoreManager
 import { FRDOManager } from "@/components/organization/FRDOManager";
 import { JournalsManager } from "@/components/organization/JournalsManager";
 import { LaborSafetyManager } from "@/components/organization/LaborSafetyManager";
+import { SubscriptionTab } from "@/components/organization/SubscriptionTab";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 
 export function TabContentRenderer() {
@@ -27,6 +28,7 @@ export function TabContentRenderer() {
     activeTab !== "library" && 
     activeTab !== "journals" && 
     activeTab !== "labor-safety" &&
+    activeTab !== "subscription" &&
     !activeTab.startsWith("documents");
 
   return (
@@ -149,6 +151,9 @@ export function TabContentRenderer() {
           refreshBalance={d.orgBalance?.refresh}
         />
       )}
+
+      {/* Subscription Tab */}
+      {activeTab === "subscription" && <SubscriptionTab />}
 
       {/* Settings Tab */}
       {activeTab === "settings" && <SettingsTab />}

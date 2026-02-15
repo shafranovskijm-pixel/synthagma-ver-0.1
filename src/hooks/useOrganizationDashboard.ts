@@ -87,7 +87,8 @@ export function useOrganizationDashboard() {
   };
 
   const { isEnabled } = useOrgFeatures(organizationId);
-  const { checkLimit } = useSubscriptionLimits(organizationId);
+  const subscriptionLimits = useSubscriptionLimits(organizationId);
+  const { checkLimit } = subscriptionLimits;
 
   // Registration links
   const registrationLinks = useRegistrationLinks(organizationId);
@@ -259,7 +260,7 @@ export function useOrganizationDashboard() {
     courses, setCourses, students, setStudents, allProfiles, setAllProfiles,
     companies, stats, setStats, documentsStats, studentDocsByUser, refreshData,
     // Features & limits
-    isEnabled, checkLimit,
+    isEnabled, checkLimit, subscriptionLimits,
     // UI state
     showImportDialog, setShowImportDialog,
     isMobileSidebarOpen, setIsMobileSidebarOpen,

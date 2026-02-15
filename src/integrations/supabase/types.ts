@@ -2731,6 +2731,50 @@ export type Database = {
         }
         Relationships: []
       }
+      subscription_requests: {
+        Row: {
+          created_at: string
+          current_plan: string
+          id: string
+          message: string | null
+          organization_id: string
+          processed_at: string | null
+          processed_by: string | null
+          requested_plan: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          current_plan: string
+          id?: string
+          message?: string | null
+          organization_id: string
+          processed_at?: string | null
+          processed_by?: string | null
+          requested_plan: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          current_plan?: string
+          id?: string
+          message?: string | null
+          organization_id?: string
+          processed_at?: string | null
+          processed_by?: string | null
+          requested_plan?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_requests_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       system_diagnostics: {
         Row: {
           check_name: string
