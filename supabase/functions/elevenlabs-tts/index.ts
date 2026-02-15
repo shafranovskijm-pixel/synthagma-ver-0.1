@@ -98,6 +98,23 @@ async function generateChunk(
   return response.arrayBuffer();
 }
 
+/**
+ * Strip ID3v2 tag from MP3 buffer (if present).
+ * ID3v2 starts with "ID3" and has a size in bytes 6-9.
+ */
+function stripId3v2(buf: ArrayBuffer): ArrayBuffer {
+  const view = new Uint8Array(buf);
+  // Check for "ID3" header
+  if (view.length < 10 || view[0] !== 0x49 || view[1] !== 0x44 || view[2] !== 0x33) {
+    return buf;
+  }
+  // ID3v2 size is stored as synchsafe integer in bytes 6-9
+  const size = (view[6] << 21) | (view[7] << 14) | (view[8] << 7) | view[9];
+  const headerSize = 10 + size;
+  if (headerSize >= view.length) return buf;
+  return buf.slice(headerSize);
+}
+
 function concatBuffers(buffers: ArrayBuffer[]): ArrayBuffer {
   const totalLen = buffers.reduce((sum, b) => sum + b.byteLength, 0);
   const result = new Uint8Array(totalLen);
@@ -166,7 +183,9 @@ serve(async (req) => {
     }
 
     const validBuffers = audioBuffers.filter((b): b is ArrayBuffer => b !== null);
-    const combined = concatBuffers(validBuffers);
+    // Strip ID3 headers from all chunks except the first to fix duration calculation
+    const cleanedBuffers = validBuffers.map((buf, i) => i === 0 ? buf : stripId3v2(buf));
+    const combined = concatBuffers(cleanedBuffers);
     console.log(`TTS: combined ${validBuffers.length} chunks → ${combined.byteLength} bytes`);
 
     return new Response(combined, {

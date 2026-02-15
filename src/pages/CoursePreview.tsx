@@ -753,7 +753,7 @@ const CoursePreview = () => {
                         <p className="text-sm text-muted-foreground">Аудиолекция</p>
                       </div>
                     </div>
-                    <audio controls preload="metadata" className="w-full">
+                    <audio controls preload="auto" className="w-full">
                       <source src={currentLesson.content} type="audio/mpeg" />
                       <source src={currentLesson.content} type="audio/wav" />
                       <source src={currentLesson.content} type="audio/ogg" />
