@@ -32,7 +32,7 @@ interface CoursesTabProps {
 
 export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCourseClick, onOpenCourseDetails, onCoursesDeleted }: CoursesTabProps) {
   const navigate = useNavigate();
-  const { checkLimit, hasCourseSettings } = useSubscriptionLimits(organizationId);
+  const { checkLimit, hasCourseSettings, refetch: refetchLimits } = useSubscriptionLimits(organizationId);
   
   const {
     courses,
@@ -162,6 +162,15 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
 
   const handleCreateCourse = async () => {
     if (!newCourseTitle.trim()) return;
+    
+    // Double-check limit at creation time (not just dialog open)
+    const result = checkLimit('course');
+    if (!result.allowed) {
+      toast.error(result.message);
+      setShowCreateCourseDialog(false);
+      return;
+    }
+    
     setIsCreatingCourse(true);
     
     let categoryId = newCourseCategoryId;
@@ -188,6 +197,7 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
       setInlineNewCategoryName("");
       setInlineNewCategoryColor("#6366f1");
       setShowCreateCourseDialog(false);
+      refetchLimits(); // Update course count
       navigate(`/course-builder/${course.id}`);
     }
     

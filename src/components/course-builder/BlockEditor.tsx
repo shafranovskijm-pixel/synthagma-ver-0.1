@@ -1037,7 +1037,7 @@ function ImageBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updat
 
   const handleAiGenerate = async () => {
     if (!aiPrompt.trim()) return;
-    if (!checkAiLimitGlobal()) return;
+    if (!(await checkAiLimitGlobal())) return;
     setIsGenerating(true);
     try {
       const { supabase } = await import("@/integrations/supabase/client");
@@ -1048,7 +1048,7 @@ function ImageBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updat
       if (data?.error) throw new Error(data.error);
       if (data?.url) {
         onUpdate({ imageSrc: data.url, imageAlt: aiPrompt.trim() });
-        incrementAiLimitGlobal();
+        await incrementAiLimitGlobal();
         setAiPrompt("");
         setShowAiInput(false);
       }
@@ -1762,7 +1762,7 @@ function ParagraphBlock({ block, onUpdate, courseTitle, lessonTitle, existingCon
   const [customPrompt, setCustomPrompt] = useState("");
 
   const handleGenerate = async (prompt?: string) => {
-    if (!checkAiLimitGlobal()) return;
+    if (!(await checkAiLimitGlobal())) return;
     setIsGenerating(true);
     try {
       const { supabase } = await import("@/integrations/supabase/client");
@@ -1770,7 +1770,7 @@ function ParagraphBlock({ block, onUpdate, courseTitle, lessonTitle, existingCon
         body: { contentType: "paragraph_text", lessonTitle: lessonTitle || "Общая тема", courseTitle: courseTitle || "Курс", existingContent, customPrompt: prompt || "" },
       });
       if (error) throw error;
-      if (data?.content) { onUpdate({ content: data.content }); incrementAiLimitGlobal(); }
+      if (data?.content) { onUpdate({ content: data.content }); await incrementAiLimitGlobal(); }
       setShowPrompt(false);
       setCustomPrompt("");
     } catch (e) {
@@ -1819,7 +1819,7 @@ function ParagraphBlock({ block, onUpdate, courseTitle, lessonTitle, existingCon
 function QuoteBlock({ block, onUpdate, courseTitle, lessonTitle, existingContent }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void; courseTitle?: string; lessonTitle?: string; existingContent?: string }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const handleGenerate = async () => {
-    if (!checkAiLimitGlobal()) return;
+    if (!(await checkAiLimitGlobal())) return;
     setIsGenerating(true);
     try {
       const { supabase } = await import("@/integrations/supabase/client");
@@ -1827,7 +1827,7 @@ function QuoteBlock({ block, onUpdate, courseTitle, lessonTitle, existingContent
         body: { contentType: "quote", lessonTitle: lessonTitle || "Общая тема", courseTitle: courseTitle || "Курс", existingContent },
       });
       if (error) throw error;
-      if (data?.content) { onUpdate({ content: data.content }); incrementAiLimitGlobal(); }
+      if (data?.content) { onUpdate({ content: data.content }); await incrementAiLimitGlobal(); }
     } catch (e) {
       console.error("Quote AI error:", e);
       const { toast } = await import("sonner");
@@ -1857,7 +1857,7 @@ function CalloutBlock({ block, onUpdate, courseTitle, lessonTitle, existingConte
   const Icon = style.icon;
 
   const handleGenerate = async () => {
-    if (!checkAiLimitGlobal()) return;
+    if (!(await checkAiLimitGlobal())) return;
     setIsGenerating(true);
     try {
       const { supabase } = await import("@/integrations/supabase/client");
@@ -1865,7 +1865,7 @@ function CalloutBlock({ block, onUpdate, courseTitle, lessonTitle, existingConte
         body: { contentType: "callout", calloutType: block.type, lessonTitle: lessonTitle || "Общая тема", courseTitle: courseTitle || "Курс", existingContent },
       });
       if (error) throw error;
-      if (data?.content) { onUpdate({ content: data.content }); incrementAiLimitGlobal(); }
+      if (data?.content) { onUpdate({ content: data.content }); await incrementAiLimitGlobal(); }
     } catch (e) {
       console.error("Callout AI error:", e);
       const { toast } = await import("sonner");
@@ -1887,7 +1887,7 @@ function CalloutBlock({ block, onUpdate, courseTitle, lessonTitle, existingConte
 function HighlightBlock({ block, onUpdate, courseTitle, lessonTitle, existingContent }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void; courseTitle?: string; lessonTitle?: string; existingContent?: string }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const handleGenerate = async () => {
-    if (!checkAiLimitGlobal()) return;
+    if (!(await checkAiLimitGlobal())) return;
     setIsGenerating(true);
     try {
       const { supabase } = await import("@/integrations/supabase/client");
@@ -1895,7 +1895,7 @@ function HighlightBlock({ block, onUpdate, courseTitle, lessonTitle, existingCon
         body: { contentType: "callout", calloutType: "highlight", lessonTitle: lessonTitle || "Общая тема", courseTitle: courseTitle || "Курс", existingContent },
       });
       if (error) throw error;
-      if (data?.content) { onUpdate({ content: data.content }); incrementAiLimitGlobal(); }
+      if (data?.content) { onUpdate({ content: data.content }); await incrementAiLimitGlobal(); }
     } catch (e) {
       console.error("Highlight AI error:", e);
       const { toast } = await import("sonner");
@@ -1921,7 +1921,7 @@ function AccordionBlock({ block, onUpdate, courseTitle, lessonTitle, existingCon
   const isOpen = block.accordionOpen ?? true;
 
   const handleGenerate = async () => {
-    if (!checkAiLimitGlobal()) return;
+    if (!(await checkAiLimitGlobal())) return;
     setIsGenerating(true);
     try {
       const { supabase } = await import("@/integrations/supabase/client");
@@ -1931,7 +1931,7 @@ function AccordionBlock({ block, onUpdate, courseTitle, lessonTitle, existingCon
       if (error) throw error;
       if (data?.accordion) {
         onUpdate({ accordionTitle: data.accordion.title || block.accordionTitle, content: data.accordion.content || "" });
-        incrementAiLimitGlobal();
+        await incrementAiLimitGlobal();
       }
     } catch (e) {
       console.error("Accordion AI error:", e);
@@ -1971,7 +1971,7 @@ function QuizBlock({ block, onUpdate, courseTitle, lessonTitle, existingContent 
   const removeOption = (index: number) => { if (options.length > 2) onUpdate({ quizOptions: options.filter((_, i) => i !== index) }); };
 
   const handleGenerateWithAI = async () => {
-    if (!checkAiLimitGlobal()) return;
+    if (!(await checkAiLimitGlobal())) return;
     setIsGenerating(true);
     try {
       const { supabase } = await import("@/integrations/supabase/client");
@@ -1986,7 +1986,7 @@ function QuizBlock({ block, onUpdate, courseTitle, lessonTitle, existingContent 
           quizOptions: (q.options || []).map((o: any) => ({ text: o.text, isCorrect: !!o.isCorrect })),
           quizExplanation: q.explanation || "",
         });
-        incrementAiLimitGlobal();
+        await incrementAiLimitGlobal();
       }
     } catch (e) {
       console.error("Quiz AI generation error:", e);
