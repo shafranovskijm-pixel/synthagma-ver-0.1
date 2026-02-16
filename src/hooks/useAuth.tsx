@@ -18,7 +18,12 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [userRole, setUserRole] = useState<'admin' | 'organization' | 'student' | 'sales_manager' | null>(null);
+  const [userRole, setUserRole] = useState<'admin' | 'organization' | 'student' | 'sales_manager' | null>(
+    () => {
+      const cached = localStorage.getItem('user_role');
+      return cached as 'admin' | 'organization' | 'student' | 'sales_manager' | null;
+    }
+  );
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -71,7 +76,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (data && !error) {
         console.log('Fetched user role:', data.role);
-        setUserRole(data.role as 'admin' | 'organization' | 'student' | 'sales_manager');
+        const role = data.role as 'admin' | 'organization' | 'student' | 'sales_manager';
+        setUserRole(role);
+        localStorage.setItem('user_role', role);
       } else if (error) {
         console.error('Error fetching user role:', error);
         // Default to student if no role found
@@ -133,6 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setSession(null);
     setUserRole(null);
+    localStorage.removeItem('user_role');
   };
 
   const refreshUserRole = async () => {

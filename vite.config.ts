@@ -50,7 +50,8 @@ export default defineConfig(({ mode }) => ({
       workbox: {
         maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, // 10 MB limit
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
-        navigateFallbackDenylist: [/^\/~oauth/, /^\/api/],
+      navigateFallback: '/index.html',
+      navigateFallbackDenylist: [/^\/~oauth/, /^\/api/],
         cleanupOutdatedCaches: true,
         skipWaiting: true,
         clientsClaim: true,

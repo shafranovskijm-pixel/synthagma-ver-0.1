@@ -281,8 +281,9 @@ const RegisterOrganization = () => {
         });
       }
       
-      // Force reload to get fresh auth state
-      window.location.href = "/organization";
+      // Navigate using React router instead of hard reload
+      await refreshUserRole();
+      navigate("/organization", { replace: true });
       
     } catch (error: any) {
       let errorMessage = error.message;

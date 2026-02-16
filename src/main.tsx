@@ -6,7 +6,13 @@ import "./index.css";
 const isNative = typeof (window as any).Capacitor !== 'undefined';
 if (!isNative) {
   import('virtual:pwa-register').then(({ registerSW }) => {
-    registerSW({ immediate: true });
+    const updateSW = registerSW({
+      immediate: true,
+    });
+    // Listen for SW updates and auto-reload
+    navigator.serviceWorker?.addEventListener('controllerchange', () => {
+      window.location.reload();
+    });
   }).catch(() => {});
 }
 

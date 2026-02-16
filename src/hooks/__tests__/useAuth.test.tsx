@@ -34,6 +34,7 @@ const wrapper = ({ children }: { children: ReactNode }) => (
 describe("useAuth", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
   });
 
   it("throws error when used outside AuthProvider", () => {
