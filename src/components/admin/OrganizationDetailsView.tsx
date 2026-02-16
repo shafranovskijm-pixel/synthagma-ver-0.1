@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +45,7 @@ import {
   History,
   Wallet,
   Eye,
+  ExternalLink,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -119,6 +121,7 @@ interface OrganizationDetailsViewProps {
 }
 
 export function OrganizationDetailsView({ organization, onBack }: OrganizationDetailsViewProps) {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("overview");
   const [loading, setLoading] = useState(true);
   const [students, setStudents] = useState<Student[]>([]);
@@ -455,12 +458,29 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
             <p className="text-muted-foreground">{organization.email}</p>
           </div>
         </div>
-        {shouldBlockAI && (
-          <Badge variant="destructive" className="ml-auto flex items-center gap-1">
-            <ShieldOff className="w-3 h-3" />
-            ИИ заблокирован
-          </Badge>
-        )}
+        <div className="ml-auto flex items-center gap-2">
+          {shouldBlockAI && (
+            <Badge variant="destructive" className="flex items-center gap-1">
+              <ShieldOff className="w-3 h-3" />
+              ИИ заблокирован
+            </Badge>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={() => {
+              localStorage.setItem("adminViewAsOrg", JSON.stringify({
+                id: organization.id,
+                name: organization.name,
+              }));
+              navigate("/organization");
+            }}
+          >
+            <ExternalLink className="w-4 h-4" />
+            Войти в организацию
+          </Button>
+        </div>
       </div>
 
       {/* Limit Warnings */}
