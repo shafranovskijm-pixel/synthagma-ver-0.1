@@ -2855,6 +2855,7 @@ export type Database = {
         Row: {
           admin_notes: string | null
           browser_info: string | null
+          contact_phone: string | null
           created_at: string
           description: string
           error_logs: string | null
@@ -2872,6 +2873,7 @@ export type Database = {
         Insert: {
           admin_notes?: string | null
           browser_info?: string | null
+          contact_phone?: string | null
           created_at?: string
           description: string
           error_logs?: string | null
@@ -2889,6 +2891,7 @@ export type Database = {
         Update: {
           admin_notes?: string | null
           browser_info?: string | null
+          contact_phone?: string | null
           created_at?: string
           description?: string
           error_logs?: string | null
