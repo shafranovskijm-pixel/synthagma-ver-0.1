@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { toast } from 'sonner';
 import { Upload, FileSpreadsheet, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -57,20 +58,33 @@ export function LeadsImportDialog({ open, onOpenChange }: Props) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    let jsonData: any[] = [];
+    try {
+      let jsonData: any[] = [];
 
-    if (file.name.endsWith('.json')) {
-      const text = await file.text();
-      const parsed = JSON.parse(text);
-      jsonData = Array.isArray(parsed) ? parsed : [];
-    } else {
-      const buffer = await file.arrayBuffer();
-      const wb = XLSX.read(buffer, { type: 'array' });
-      const sheet = wb.Sheets[wb.SheetNames[0]];
-      jsonData = XLSX.utils.sheet_to_json<any>(sheet, { defval: '' });
-    }
+      if (file.name.endsWith('.json')) {
+        const text = await file.text();
+        const parsed = JSON.parse(text);
+        if (Array.isArray(parsed)) {
+          jsonData = parsed;
+        } else if (parsed && typeof parsed === 'object' && parsed.data) {
+          // meta.json format — contains link to data, not actual records
+          toast.error('Это файл метаданных (meta.json). Загрузите файл с данными (data-*.json).');
+          return;
+        } else {
+          toast.error('JSON-файл не содержит массив записей. Загрузите файл data-*.json с массивом организаций.');
+          return;
+        }
+      } else {
+        const buffer = await file.arrayBuffer();
+        const wb = XLSX.read(buffer, { type: 'array' });
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        jsonData = XLSX.utils.sheet_to_json<any>(sheet, { defval: '' });
+      }
 
-    if (jsonData.length === 0) return;
+      if (jsonData.length === 0) {
+        toast.error('Файл не содержит записей.');
+        return;
+      }
 
     const cols = Object.keys(jsonData[0]);
     setHeaders(cols);
@@ -98,6 +112,9 @@ export function LeadsImportDialog({ open, onOpenChange }: Props) {
     }
     setMapping(autoMap);
     setStep('map');
+    } catch (err: any) {
+      toast.error('Ошибка чтения файла: ' + (err.message || 'неизвестная ошибка'));
+    }
   };
 
   const getMappedData = (): Partial<SalesLead>[] => {
