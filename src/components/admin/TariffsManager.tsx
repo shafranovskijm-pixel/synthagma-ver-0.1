@@ -177,7 +177,8 @@ export function TariffsManager() {
     }
     setUploading(true);
 
-    const filePath = `${uploadOrgId}/${Date.now()}_${uploadFile.name}`;
+    const safeName = uploadFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const filePath = `${uploadOrgId}/${Date.now()}_${safeName}`;
     const { error: uploadError } = await supabase.storage
       .from("billing-documents")
       .upload(filePath, uploadFile);
