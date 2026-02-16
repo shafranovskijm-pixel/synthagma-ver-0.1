@@ -1,19 +1,32 @@
 
-## Plan: Notification for Paid Plan Registration
 
-### What will change
+# Синхронизация учетных данных: labor_safety_profiles -> profiles
 
-When a user registers with any paid plan (start, standard, professional, maximum), the success message after registration will be replaced with a specific notification informing them that:
-- Their tariff will be activated after payment
-- A manager will contact them
+## Что будет сделано
 
-### Technical details
+Исправление проблемы, при которой логин и пароль, созданные в модуле "Охрана труда", не отображаются в основной панели и админке.
 
-**File: `src/pages/RegisterOrganization.tsx`**
+## Гарантии безопасности
 
-In the `handleSubmit` function (around line 272), modify the success toast logic:
+- Вход учеников работает через auth.users -- миграция его НЕ затрагивает
+- Обновляются только записи, где login = NULL в profiles
+- Существующие логины и пароли НЕ перезаписываются
+- Никакие данные не удаляются
 
-- If `selectedPlan !== 'free'`: show toast with title "Спасибо за регистрацию!" and description "Ваш тариф будет подключён после оплаты. Наш менеджер свяжется с вами. Спасибо!"
-- If `selectedPlan === 'free'`: keep the current message "Организация зарегистрирована. Добро пожаловать!"
+## Шаг 1. SQL-миграция
 
-This is a small, focused change -- only the toast message text is conditional based on the selected plan.
+Одноразовое обновление: скопировать login и generated_password из labor_safety_profiles в profiles для записей, где profiles.login IS NULL.
+
+Создать триггерную функцию `sync_labor_credentials_to_profiles()`, которая при INSERT/UPDATE в labor_safety_profiles автоматически заполняет пустые поля в profiles.
+
+Создать триггер `trg_sync_labor_credentials` на таблице labor_safety_profiles.
+
+## Шаг 2. Страховка в коде
+
+В файле `src/hooks/useLaborSafetyManager.ts` после upsert в labor_safety_profiles добавить явное обновление profiles (2 места: массовая и индивидуальная генерация). Это страховка на случай, если триггер не сработает из-за RLS.
+
+## Итог
+
+- Логин и пароль из "Охраны труда" будут видны везде: в админке, панели организации, виджете "Каких данных не хватает"
+- Новые учетные данные будут синхронизироваться автоматически
+- Существующий доступ учеников не нарушается
