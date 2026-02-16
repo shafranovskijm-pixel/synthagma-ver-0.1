@@ -9,6 +9,7 @@ import { Loader2, TrendingUp, Users, GraduationCap, BookOpen, Activity, CheckCir
 import { format, subDays, startOfDay, eachDayOfInterval, startOfWeek, startOfMonth, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
+import { OnlineUsersWidget } from "./OnlineUsersWidget";
 
 interface AnalyticsData {
   profiles: { created_at: string }[];
@@ -407,6 +408,9 @@ export function AdminAnalytics() {
           </Card>
         </div>
       )}
+
+      {/* Online Users Widget */}
+      <OnlineUsersWidget />
 
       {/* Summary Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
