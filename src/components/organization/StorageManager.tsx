@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -23,7 +23,8 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import {
   Search, Trash2, Loader2, Upload, Video, FileText,
-  Image as ImageIcon, Music, HardDrive, FolderOpen, RefreshCw, File
+  Image as ImageIcon, Music, HardDrive, FolderOpen, RefreshCw, File,
+  ChevronDown, ChevronRight, Presentation, Stamp, Receipt, Building2, BookOpen
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -38,21 +39,30 @@ interface StorageFile {
   folder: string;
   size: number;
   created_at: string;
-  type: "video" | "image" | "audio" | "document" | "other";
+  type: "video" | "image" | "audio" | "document" | "presentation" | "other";
 }
 
 const VIDEO_EXT = ["mp4", "webm", "ogg", "mov", "avi", "mkv"];
 const IMAGE_EXT = ["jpg", "jpeg", "png", "gif", "webp", "svg", "bmp"];
 const AUDIO_EXT = ["mp3", "wav", "ogg", "m4a", "aac", "flac"];
-const DOC_EXT = ["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "rtf", "txt", "csv"];
+const DOC_EXT = ["pdf", "doc", "docx", "xls", "xlsx", "rtf", "txt", "csv"];
+const PRES_EXT = ["ppt", "pptx", "odp", "key"];
+// Hidden artifact extensions from Word/PowerPoint imports
+const HIDDEN_EXT = ["wmf", "emf"];
 
 function getFileType(name: string): StorageFile["type"] {
   const ext = name.split(".").pop()?.toLowerCase() || "";
   if (VIDEO_EXT.includes(ext)) return "video";
   if (IMAGE_EXT.includes(ext)) return "image";
   if (AUDIO_EXT.includes(ext)) return "audio";
+  if (PRES_EXT.includes(ext)) return "presentation";
   if (DOC_EXT.includes(ext)) return "document";
   return "other";
+}
+
+function isHiddenArtifact(name: string): boolean {
+  const ext = name.split(".").pop()?.toLowerCase() || "";
+  return HIDDEN_EXT.includes(ext);
 }
 
 function formatSize(bytes: number): string {
@@ -75,19 +85,44 @@ function formatDate(dateStr: string): string {
 
 function getTypeIcon(type: StorageFile["type"]) {
   switch (type) {
-    case "video": return <Video className="w-5 h-5 text-red-500" />;
-    case "image": return <ImageIcon className="w-5 h-5 text-green-500" />;
-    case "audio": return <Music className="w-5 h-5 text-teal-500" />;
-    case "document": return <FileText className="w-5 h-5 text-blue-500" />;
+    case "video": return <Video className="w-5 h-5 text-destructive" />;
+    case "image": return <ImageIcon className="w-5 h-5 text-primary" />;
+    case "audio": return <Music className="w-5 h-5 text-accent-foreground" />;
+    case "presentation": return <Presentation className="w-5 h-5 text-primary" />;
+    case "document": return <FileText className="w-5 h-5 text-primary" />;
     default: return <File className="w-5 h-5 text-muted-foreground" />;
   }
 }
 
+const BUCKET_LABELS: Record<string, string> = {
+  "all": "Все разделы",
+  "presentations": "Презентации",
+  "course-files": "Файлы курсов",
+  "course-videos": "Видео курсов",
+  "org-documents": "Документы организации",
+  "company-documents": "Документы компаний",
+  "org-branding": "Брендинг",
+  "library-files": "Библиотека",
+  "billing-documents": "Платёжные документы",
+};
+
+const BUCKET_ICONS: Record<string, React.ReactNode> = {
+  "presentations": <Presentation className="w-4 h-4" />,
+  "course-files": <BookOpen className="w-4 h-4" />,
+  "course-videos": <Video className="w-4 h-4" />,
+  "org-documents": <FileText className="w-4 h-4" />,
+  "company-documents": <Building2 className="w-4 h-4" />,
+  "org-branding": <Stamp className="w-4 h-4" />,
+  "library-files": <HardDrive className="w-4 h-4" />,
+  "billing-documents": <Receipt className="w-4 h-4" />,
+};
+
 const TYPE_LABELS: Record<string, string> = {
-  all: "Все файлы",
+  all: "Все типы",
   video: "Видео",
   image: "Изображения",
   audio: "Аудио",
+  presentation: "Презентации",
   document: "Документы",
   other: "Прочее",
 };
@@ -97,6 +132,8 @@ export function StorageManager({ organizationId }: StorageManagerProps) {
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [bucketFilter, setBucketFilter] = useState("all");
+  const [collapsedBuckets, setCollapsedBuckets] = useState<Record<string, boolean>>({});
   const [deleteFile, setDeleteFile] = useState<StorageFile | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -122,9 +159,10 @@ export function StorageManager({ organizationId }: StorageManagerProps) {
           if (!items) return;
           for (const f of items) {
             if (f.id === null && depth < 2) {
-              // It's a subfolder — recurse
               await scanPath(client, bucket, `${prefix}/${f.name}`, urlBase, depth + 1);
             } else if (f.id !== null) {
+              // Skip hidden artifact files (WMF, EMF)
+              if (isHiddenArtifact(f.name)) continue;
               allFiles.push({
                 name: f.name,
                 url: `${urlBase}/storage/v1/object/public/${bucket}/${prefix}/${f.name}`,
@@ -139,32 +177,29 @@ export function StorageManager({ organizationId }: StorageManagerProps) {
         } catch { /* path doesn't exist */ }
       };
 
-      // 1. Course-based buckets (course-files)
+      // Get course IDs for this organization
       const { data: courses } = await supabase
         .from("courses")
         .select("id")
         .eq("organization_id", organizationId);
       const courseIds = courses?.map(c => c.id) || [];
 
-      for (const courseId of courseIds) {
-        await scanPath(supabase, "course-files", courseId, baseUrl);
-      }
+      // 1. Course-based buckets
+      const courseScans = courseIds.flatMap(courseId => [
+        scanPath(supabase, "course-files", courseId, baseUrl),
+        scanPath(supabase, "presentations", courseId, baseUrl),
+      ]);
 
-      // 2. Organization-level buckets (internal)
-      const orgBuckets: { bucket: string; paths: string[] }[] = [
-        { bucket: "presentations", paths: [organizationId] },
-        { bucket: "org-documents", paths: [organizationId] },
-        { bucket: "company-documents", paths: [organizationId] },
-        { bucket: "org-branding", paths: [organizationId] },
-        { bucket: "library-files", paths: [`library/${organizationId}`] },
-        { bucket: "billing-documents", paths: [organizationId] },
+      // 2. Organization-level buckets
+      const orgScans = [
+        scanPath(supabase, "org-documents", organizationId, baseUrl),
+        scanPath(supabase, "company-documents", organizationId, baseUrl),
+        scanPath(supabase, "org-branding", organizationId, baseUrl),
+        scanPath(supabase, "library-files", `library/${organizationId}`, baseUrl),
+        scanPath(supabase, "billing-documents", organizationId, baseUrl),
       ];
 
-      await Promise.all(
-        orgBuckets.flatMap(({ bucket, paths }) =>
-          paths.map(p => scanPath(supabase, bucket, p, baseUrl))
-        )
-      );
+      await Promise.all([...courseScans, ...orgScans]);
 
       // 3. External storage (course-videos)
       try {
@@ -172,13 +207,12 @@ export function StorageManager({ organizationId }: StorageManagerProps) {
         if (config?.configured && config?.url && config?.key) {
           const { createClient } = await import("@supabase/supabase-js");
           const extClient = createClient(config.url, config.key);
-          for (const courseId of courseIds) {
-            await scanPath(extClient, "course-videos", courseId, config.url);
-          }
+          await Promise.all(
+            courseIds.map(courseId => scanPath(extClient, "course-videos", courseId, config.url))
+          );
         }
       } catch { /* external not configured */ }
 
-      // Sort newest first
       allFiles.sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""));
       setFiles(allFiles);
     } catch (err) {
@@ -249,20 +283,58 @@ export function StorageManager({ organizationId }: StorageManagerProps) {
     e.target.value = "";
   };
 
-  const filtered = files
-    .filter(f => typeFilter === "all" || f.type === typeFilter)
-    .filter(f => !search || f.name.toLowerCase().includes(search.toLowerCase()));
+  const filtered = useMemo(() =>
+    files
+      .filter(f => bucketFilter === "all" || f.bucket === bucketFilter)
+      .filter(f => typeFilter === "all" || f.type === typeFilter)
+      .filter(f => !search || f.name.toLowerCase().includes(search.toLowerCase())),
+    [files, bucketFilter, typeFilter, search]
+  );
+
+  // Group files by bucket
+  const groupedByBucket = useMemo(() => {
+    const groups: Record<string, StorageFile[]> = {};
+    for (const f of filtered) {
+      if (!groups[f.bucket]) groups[f.bucket] = [];
+      groups[f.bucket].push(f);
+    }
+    // Sort buckets by predefined order
+    const order = Object.keys(BUCKET_LABELS).filter(k => k !== "all");
+    const sorted: [string, StorageFile[]][] = [];
+    for (const b of order) {
+      if (groups[b]) sorted.push([b, groups[b]]);
+    }
+    // Add any remaining
+    for (const [b, fs] of Object.entries(groups)) {
+      if (!sorted.find(([k]) => k === b)) sorted.push([b, fs]);
+    }
+    return sorted;
+  }, [filtered]);
+
+  const toggleBucket = (bucket: string) => {
+    setCollapsedBuckets(prev => ({ ...prev, [bucket]: !prev[bucket] }));
+  };
 
   const totalSize = files.reduce((sum, f) => sum + f.size, 0);
-  const typeCounts = files.reduce((acc, f) => {
-    acc[f.type] = (acc[f.type] || 0) + 1;
+  const bucketCounts = useMemo(() => {
+    const acc: Record<string, number> = {};
+    for (const f of files) {
+      acc[f.bucket] = (acc[f.bucket] || 0) + 1;
+    }
     return acc;
-  }, {} as Record<string, number>);
+  }, [files]);
+  const typeCounts = useMemo(() => {
+    const acc: Record<string, number> = {};
+    for (const f of files) {
+      acc[f.type] = (acc[f.type] || 0) + 1;
+    }
+    return acc;
+  }, [files]);
 
   return (
     <div className="space-y-6">
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
         <div className="bg-card rounded-xl border border-border p-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -274,7 +346,7 @@ export function StorageManager({ organizationId }: StorageManagerProps) {
             </div>
           </div>
         </div>
-        {(["video", "image", "audio", "document"] as const).map(type => (
+        {(["video", "image", "presentation", "audio", "document"] as const).map(type => (
           <div key={type} className="bg-card rounded-xl border border-border p-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
@@ -291,7 +363,7 @@ export function StorageManager({ organizationId }: StorageManagerProps) {
 
       {/* Controls */}
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <div className="relative">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -301,6 +373,22 @@ export function StorageManager({ organizationId }: StorageManagerProps) {
               className="pl-10 w-64 rounded-xl"
             />
           </div>
+          <Select value={bucketFilter} onValueChange={setBucketFilter}>
+            <SelectTrigger className="w-52 rounded-xl">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(BUCKET_LABELS).map(([v, label]) => (
+                <SelectItem key={v} value={v}>
+                  <span className="flex items-center gap-2">
+                    {v !== "all" && BUCKET_ICONS[v]}
+                    {label}
+                    {v !== "all" && bucketCounts[v] ? ` (${bucketCounts[v]})` : ""}
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Select value={typeFilter} onValueChange={setTypeFilter}>
             <SelectTrigger className="w-44 rounded-xl">
               <SelectValue />
@@ -327,7 +415,7 @@ export function StorageManager({ organizationId }: StorageManagerProps) {
         </div>
       </div>
 
-      {/* File list */}
+      {/* File list grouped by bucket */}
       {loading ? (
         <div className="flex items-center justify-center py-16">
           <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -342,56 +430,78 @@ export function StorageManager({ organizationId }: StorageManagerProps) {
           </p>
         </div>
       ) : (
-        <ScrollArea className="h-[calc(100vh-420px)] min-h-[300px]">
-          <div className="space-y-1">
-            {filtered.map((file, i) => (
-              <div
-                key={`${file.bucket}-${file.folder}-${file.name}-${i}`}
-                className="flex items-center gap-3 p-3 rounded-xl hover:bg-muted/50 transition-colors group"
-              >
-                {/* Thumbnail / Icon */}
-                <div className="shrink-0 w-12 h-12 rounded-lg bg-muted flex items-center justify-center overflow-hidden">
-                  {file.type === "image" ? (
-                    <img
-                      src={file.url}
-                      alt={file.name}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                    />
-                  ) : (
-                    getTypeIcon(file.type)
-                  )}
-                </div>
+        <ScrollArea className="h-[calc(100vh-460px)] min-h-[300px]">
+          <div className="space-y-2">
+            {groupedByBucket.map(([bucket, bucketFiles]) => (
+              <div key={bucket} className="border border-border rounded-xl overflow-hidden">
+                {/* Bucket header */}
+                <button
+                  onClick={() => toggleBucket(bucket)}
+                  className="w-full flex items-center gap-3 px-4 py-3 bg-muted/30 hover:bg-muted/50 transition-colors text-left"
+                >
+                  {collapsedBuckets[bucket]
+                    ? <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                    : <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
+                  }
+                  <span className="shrink-0">{BUCKET_ICONS[bucket] || <FolderOpen className="w-4 h-4" />}</span>
+                  <span className="font-medium text-sm">{BUCKET_LABELS[bucket] || bucket}</span>
+                  <Badge variant="secondary" className="ml-auto text-xs">{bucketFiles.length}</Badge>
+                </button>
 
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{file.name}</p>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
-                    <span>{formatSize(file.size)}</span>
-                    {file.created_at && <span>{formatDate(file.created_at)}</span>}
-                    <Badge variant="outline" className="text-[10px] px-1 py-0">{file.bucket}</Badge>
+                {/* Bucket files */}
+                {!collapsedBuckets[bucket] && (
+                  <div className="divide-y divide-border">
+                    {bucketFiles.map((file, i) => (
+                      <div
+                        key={`${file.bucket}-${file.folder}-${file.name}-${i}`}
+                        className="flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors group"
+                      >
+                        {/* Thumbnail / Icon */}
+                        <div className="shrink-0 w-10 h-10 rounded-lg bg-muted flex items-center justify-center overflow-hidden">
+                          {file.type === "image" ? (
+                            <img
+                              src={file.url}
+                              alt={file.name}
+                              className="w-full h-full object-cover"
+                              loading="lazy"
+                            />
+                          ) : (
+                            getTypeIcon(file.type)
+                          )}
+                        </div>
+
+                        {/* Info */}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{file.name}</p>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span>{formatSize(file.size)}</span>
+                            {file.created_at && <span>{formatDate(file.created_at)}</span>}
+                          </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="shrink-0 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => window.open(file.url, "_blank")}
+                          >
+                            <FolderOpen className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            onClick={() => setDeleteFile(file)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                </div>
-
-                {/* Actions */}
-                <div className="shrink-0 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => window.open(file.url, "_blank")}
-                  >
-                    <FolderOpen className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-destructive hover:text-destructive"
-                    onClick={() => setDeleteFile(file)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
+                )}
               </div>
             ))}
           </div>
