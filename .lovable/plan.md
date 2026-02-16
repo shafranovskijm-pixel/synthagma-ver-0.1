@@ -1,54 +1,62 @@
 
 
-# Исправление: Хранилище не показывает файлы организации
+# История заходов, онлайн-статус и чат с учеником
 
-## Проблема
+## Что будет сделано
 
-Компонент `StorageManager` сканирует только бакеты `course-files` и `course-videos`, причём только по папкам с ID курсов. Он не знает о других бакетах, где хранятся файлы организации:
+### 1. Онлайн-статус учеников
+- Зеленая/серая точка рядом с именем в списке учеников и в карточке студента
+- Текст "онлайн" или "был(а) X назад" на основе существующего поля `profiles.last_visit_at`
+- Порог онлайна: менее 5 минут с последнего визита
 
-- `presentations` (109 файлов) -- презентации курсов
-- `org-documents` (5) -- документы организации  
-- `company-documents` (3) -- документы компаний
-- `org-branding` (19) -- логотипы, штампы, подписи
-- `library-files` (1) -- библиотека материалов
-- `billing-documents` (2) -- платёжные документы
-- `student-documents` (8) -- документы студентов (приватный бакет)
+### 2. История входов на платформу
+- Новая таблица `student_login_history` для хранения каждого входа (дата, IP, браузер)
+- Запись входа при авторизации студента через `useAuth.tsx`
+- Новая вкладка "Активность" в карточке студента с хронологическим списком входов
 
-## Решение
+### 3. Чат организации с учеником
+- Новая таблица `org_student_messages` с Realtime для мгновенной доставки
+- Приватный бакет `chat-attachments` для скриншотов и файлов
+- Новая вкладка "Чат" в карточке студента с полноценным интерфейсом переписки
+- Возможность прикрепить скриншот/файл к сообщению
+- Отображение картинок inline, остальных файлов как ссылки для скачивания
 
-Расширить `StorageManager`, чтобы он сканировал все бакеты, связанные с организацией.
+## Изменения в интерфейсе
 
-### Шаг 1. Добавить сканирование дополнительных бакетов
+### Список учеников (StudentsTab.tsx)
+- Новая колонка "Онлайн" между "Ученик" и "Группа" -- зеленая/серая точка + текст последнего визита
+- Кнопка "Чат" (иконка MessageCircle) в колонке "Действия"
 
-В функцию `loadFiles` добавить загрузку файлов из:
+### Карточка студента (StudentDetailCard.tsx)
+- Онлайн-индикатор рядом с именем в заголовке
+- Новая вкладка "Активность" (Clock) -- таблица с историей входов
+- Новая вкладка "Чат" (MessageCircle) -- интерфейс переписки
 
-1. **`presentations`** -- файлы в папке `{organizationId}/` (презентации загружаются по org ID)
-2. **`org-documents`** -- файлы в папке `{organizationId}/`
-3. **`company-documents`** -- файлы в папке `{organizationId}/`
-4. **`org-branding`** -- файлы в папке `{organizationId}/`
-5. **`library-files`** -- файлы в папке `library/{organizationId}/`
-6. **`billing-documents`** -- файлы в папке `{organizationId}/`
+## Технические детали
 
-`student-documents` -- приватный бакет с PII, его показывать не нужно в общем хранилище.
+### Миграция базы данных
 
-### Шаг 2. Универсальная функция сканирования
+**Таблица `student_login_history`:**
+- `id` (uuid), `user_id` (uuid), `organization_id` (uuid), `logged_in_at` (timestamptz), `ip_address` (text), `user_agent` (text)
+- RLS: организация видит записи своих студентов, admin видит все
 
-Создать вспомогательную функцию, которая принимает бакет и список путей для сканирования, и возвращает массив `StorageFile[]`. Это уберёт дублирование кода.
+**Таблица `org_student_messages`:**
+- `id` (uuid), `organization_id` (uuid), `student_user_id` (uuid), `sender_user_id` (uuid), `content` (text), `attachment_url` (text), `attachment_type` (text), `is_read` (boolean), `created_at` (timestamptz)
+- RLS: организация видит сообщения своей org; студент видит свои
+- Realtime включен
 
-```text
-scanBucket("presentations", [organizationId])
-scanBucket("org-documents", [organizationId + "/contract", organizationId + "/invoice", ...])
-scanBucket("org-branding", [organizationId])
-scanBucket("library-files", ["library/" + organizationId])
-scanBucket("billing-documents", [organizationId])
-scanBucket("company-documents", [organizationId])
-```
+**Бакет `chat-attachments`:**
+- Приватный бакет с RLS для authenticated пользователей
 
-### Шаг 3. Рекурсивный обход подпапок
+### Новые файлы
+- `src/components/organization/student-detail/ActivityTab.tsx` -- вкладка истории входов
+- `src/components/organization/student-detail/ChatTab.tsx` -- вкладка чата с загрузкой файлов
 
-Некоторые бакеты используют подпапки (например `org-documents/{orgId}/contract/`). Добавить рекурсивный обход до 2 уровней вложенности, чтобы найти все файлы.
-
-### Файл для изменения
-
-- `src/components/organization/StorageManager.tsx` -- расширить функцию `loadFiles`
+### Изменяемые файлы
+- `src/hooks/useAuth.tsx` -- логирование входа в `student_login_history`
+- `src/hooks/useStudentDetailCard.ts` -- загрузка `last_visit_at`, истории входов, сообщений
+- `src/api/students.ts` -- добавить `last_visit_at` в выборку профилей
+- `src/types/student.ts` -- добавить поле `last_visit_at` в тип `Student`
+- `src/components/organization/StudentDetailCard.tsx` -- 2 новые вкладки + онлайн-индикатор в заголовке
+- `src/components/organization/tabs/StudentsTab.tsx` -- колонка "Онлайн" + кнопка "Чат"
 
