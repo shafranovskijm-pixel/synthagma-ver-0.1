@@ -89,6 +89,9 @@ export const StudentsTab = React.memo(function StudentsTab({
   const [newGroupColor, setNewGroupColor] = useState("#6366f1");
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [showSendConfirm, setShowSendConfirm] = useState(false);
+  const [showLoginsConfirm, setShowLoginsConfirm] = useState(false);
+  const [showRemindConfirm, setShowRemindConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const handleCreateGroup = async () => {
     if (!newGroupName.trim()) return;
@@ -293,7 +296,7 @@ export const StudentsTab = React.memo(function StudentsTab({
                 <span className="hidden sm:inline">Зачислить</span> ({selectedStudentIds.size})
               </Button>
               <Button 
-                onClick={() => onBulkCreateCredentials?.(getSelectedUserIds())} 
+                onClick={() => setShowLoginsConfirm(true)} 
                 variant="outline" 
                 className="rounded-xl gap-2 shrink-0 text-xs lg:text-sm" 
                 disabled={isCreatingBulkCredentials}
@@ -329,7 +332,7 @@ export const StudentsTab = React.memo(function StudentsTab({
                 <span className="hidden sm:inline">ФРДО</span> ({selectedStudentIds.size})
               </Button>
               <Button 
-                onClick={() => onShowBulkDeleteConfirm?.(getSelectedUserIds())} 
+                onClick={() => setShowDeleteConfirm(true)} 
                 variant="outline" 
                 className="rounded-xl gap-2 text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0 text-xs lg:text-sm"
               >
@@ -359,7 +362,7 @@ export const StudentsTab = React.memo(function StudentsTab({
           <Button 
             variant="outline" 
             className="rounded-xl gap-2 shrink-0 text-xs lg:text-sm" 
-            onClick={onBulkSendDocReminders}
+            onClick={() => setShowRemindConfirm(true)}
             disabled={isSendingBulkDocReminders}
           >
             {isSendingBulkDocReminders ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
@@ -840,6 +843,75 @@ export const StudentsTab = React.memo(function StudentsTab({
               setShowSendConfirm(false);
             }}>
               Да, отправить
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showLoginsConfirm} onOpenChange={setShowLoginsConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Генерация логинов и паролей</AlertDialogTitle>
+            <AlertDialogDescription>
+              Вы действительно хотите сгенерировать логины и пароли для{" "}
+              <strong>{selectedStudentIds.size}</strong>{" "}
+              {selectedStudentIds.size === 1 ? "ученика" : "учеников"}?
+              Существующие данные будут перезаписаны.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Нет</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              onBulkCreateCredentials?.(getSelectedUserIds());
+              setShowLoginsConfirm(false);
+            }}>
+              Да, сгенерировать
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showRemindConfirm} onOpenChange={setShowRemindConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Отправка напоминаний</AlertDialogTitle>
+            <AlertDialogDescription>
+              Вы действительно хотите отправить напоминание о загрузке документов всем ученикам?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Нет</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              onBulkSendDocReminders?.();
+              setShowRemindConfirm(false);
+            }}>
+              Да, отправить
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удаление учеников</AlertDialogTitle>
+            <AlertDialogDescription>
+              Вы действительно хотите удалить{" "}
+              <strong>{selectedStudentIds.size}</strong>{" "}
+              {selectedStudentIds.size === 1 ? "ученика" : "учеников"}?
+              Это действие нельзя отменить.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Нет</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                onShowBulkDeleteConfirm?.(getSelectedUserIds());
+                setShowDeleteConfirm(false);
+              }}
+            >
+              Да, удалить
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
