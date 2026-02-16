@@ -1,22 +1,23 @@
 
-
-# Переключение шрифта в названии курса
+# Вставка без форматирования в редакторе курсов
 
 ## Проблема
-Сейчас название курса в модальном окне отображается шрифтом Playfair Display (декоративный, с засечками), а остальные элементы интерфейса -- шрифтом Inter (без засечек). Это создает визуальное несоответствие.
+При копировании текста из внешних источников (браузер, Word и т.д.) в редактор урока вставляется текст с исходным форматированием -- фон, цвет, шрифт. Нужно, чтобы по умолчанию вставлялся чистый текст без стилей.
 
 ## Решение
-Заменить шрифт по умолчанию в названии курса на Inter (как в остальных элементах интерфейса). Это коснется:
+Добавить обработчик `onPaste` в компонент `RichTextEditor.tsx`, который перехватывает вставку и вставляет только plain text:
 
-1. **Модальное окно курса** (`CourseDetailsModal.tsx`, строка 530) -- убрать класс `font-display` из заголовка
-2. **Карточки курсов** (`CoursesTab.tsx`) -- убрать `font-display` из заголовков карточек, если используется
-3. **Магазин курсов** (`CourseStoreManager.tsx`) -- аналогично привести к единому стилю
+```
+e.preventDefault()
+const text = e.clipboardData.getData('text/plain')
+document.execCommand('insertText', false, text)
+```
 
 ## Технические детали
 
-### Изменяемые файлы
-- `src/components/organization/dialogs/CourseDetailsModal.tsx` -- строка 530: убрать `font-display` из `DialogTitle`
-- `src/components/organization/CourseStoreManager.tsx` -- строки 88, 124, 241, 277: убрать `font-display` из заголовков курсов
-
-Остальные места (списки, таблицы) уже используют Inter по умолчанию (`font-medium`, `font-semibold`).
-
+### Изменяемый файл
+- `src/components/course-builder/RichTextEditor.tsx` -- добавить `onPaste` на `div[contentEditable]` (строка ~137-150), который:
+  1. Вызывает `e.preventDefault()` для отмены стандартной вставки
+  2. Извлекает текст через `e.clipboardData.getData('text/plain')`
+  3. Вставляет его через `document.execCommand('insertText', false, text)` для сохранения позиции курсора
+  4. Вызывает `handleInput` для синхронизации состояния
