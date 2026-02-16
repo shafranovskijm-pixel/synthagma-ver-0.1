@@ -27,6 +27,7 @@ const CourseLearning = lazy(() => import("./pages/CourseLearning"));
 const CoursePreview = lazy(() => import("./pages/CoursePreview"));
 const JoinByLink = lazy(() => import("./pages/JoinByLink"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const SalesDashboard = lazy(() => import("./pages/SalesDashboard"));
 const Features = lazy(() => import("./pages/Features"));
 const CourseImport = lazy(() => import("./pages/CourseImport"));
 const About = lazy(() => import("./pages/About"));
@@ -134,6 +135,11 @@ const App = () => (
                     <Route path="/admin" element={
                       <ProtectedRoute requiredRole="admin">
                         <AdminDashboard />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/sales" element={
+                      <ProtectedRoute requiredRole="sales_manager">
+                        <SalesDashboard />
                       </ProtectedRoute>
                     } />
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

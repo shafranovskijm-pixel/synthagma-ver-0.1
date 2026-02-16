@@ -1,0 +1,193 @@
+import { useState, useEffect } from 'react';
+import { X, Plus, Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SUBSCRIPTION_PLANS, type SubscriptionPlan } from '@/constants/subscriptionPlans';
+import { useSalesManager, type ProposalServiceItem } from '@/hooks/useSalesManager';
+
+interface Props {
+  onClose: () => void;
+}
+
+interface ServiceLine {
+  custom_name: string;
+  custom_description: string;
+  price: number;
+  quantity: number;
+  service_id?: string;
+}
+
+export function ProposalEditor({ onClose }: Props) {
+  const { services, fetchServices, managers, fetchManagers, createProposal } = useSalesManager();
+  const [companyName, setCompanyName] = useState('');
+  const [companyInn, setCompanyInn] = useState('');
+  const [companyEmail, setCompanyEmail] = useState('');
+  const [companyPhone, setCompanyPhone] = useState('');
+  const [contactPerson, setContactPerson] = useState('');
+  const [tariffPlan, setTariffPlan] = useState<string>('');
+  const [managerId, setManagerId] = useState<string>('');
+  const [customNote, setCustomNote] = useState('');
+  const [validUntil, setValidUntil] = useState('');
+  const [serviceLines, setServiceLines] = useState<ServiceLine[]>([]);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => { fetchServices(); fetchManagers(); }, [fetchServices, fetchManagers]);
+
+  const handleTariffChange = (plan: string) => {
+    setTariffPlan(plan);
+    if (plan && SUBSCRIPTION_PLANS[plan as SubscriptionPlan]) {
+      const info = SUBSCRIPTION_PLANS[plan as SubscriptionPlan];
+      // Auto-add tariff as first line
+      const tariffLine: ServiceLine = {
+        custom_name: `Тариф "${info.name}"`,
+        custom_description: info.description,
+        price: info.price,
+        quantity: 12, // yearly
+      };
+      setServiceLines(prev => [tariffLine, ...prev.filter(l => !l.custom_name.startsWith('Тариф "'))]);
+    }
+  };
+
+  const addServiceFromCatalog = (serviceId: string) => {
+    const svc = services.find(s => s.id === serviceId);
+    if (!svc) return;
+    setServiceLines(prev => [...prev, { custom_name: svc.name, custom_description: svc.description || '', price: svc.price, quantity: 1, service_id: svc.id }]);
+  };
+
+  const addCustomLine = () => {
+    setServiceLines(prev => [...prev, { custom_name: '', custom_description: '', price: 0, quantity: 1 }]);
+  };
+
+  const updateLine = (index: number, field: keyof ServiceLine, value: any) => {
+    setServiceLines(prev => prev.map((l, i) => i === index ? { ...l, [field]: value } : l));
+  };
+
+  const removeLine = (index: number) => {
+    setServiceLines(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const totalAmount = serviceLines.reduce((sum, l) => sum + l.price * l.quantity, 0);
+
+  const handleSave = async () => {
+    if (!companyName) return;
+    setSaving(true);
+    await createProposal(
+      {
+        company_name: companyName,
+        company_inn: companyInn || undefined,
+        company_email: companyEmail || undefined,
+        company_phone: companyPhone || undefined,
+        contact_person: contactPerson || undefined,
+        tariff_plan: tariffPlan || undefined,
+        manager_id: managerId || undefined,
+        custom_note: customNote || undefined,
+        total_amount: totalAmount,
+        valid_until: validUntil || undefined,
+      } as any,
+      serviceLines.map(l => ({
+        custom_name: l.custom_name,
+        custom_description: l.custom_description,
+        price: l.price,
+        quantity: l.quantity,
+        service_id: l.service_id,
+      }))
+    );
+    setSaving(false);
+    onClose();
+  };
+
+  return (
+    <Card className="border-primary/30">
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <CardTitle className="text-lg">Новое коммерческое предложение</CardTitle>
+        <Button variant="ghost" size="icon" onClick={onClose}><X className="w-4 h-4" /></Button>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Company info */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div><Label>Компания *</Label><Input value={companyName} onChange={e => setCompanyName(e.target.value)} placeholder="ООО «Компания»" /></div>
+          <div><Label>ИНН</Label><Input value={companyInn} onChange={e => setCompanyInn(e.target.value)} placeholder="1234567890" /></div>
+          <div><Label>Email</Label><Input value={companyEmail} onChange={e => setCompanyEmail(e.target.value)} /></div>
+          <div><Label>Телефон</Label><Input value={companyPhone} onChange={e => setCompanyPhone(e.target.value)} /></div>
+          <div><Label>Контактное лицо</Label><Input value={contactPerson} onChange={e => setContactPerson(e.target.value)} /></div>
+          <div><Label>Действует до</Label><Input type="date" value={validUntil} onChange={e => setValidUntil(e.target.value)} /></div>
+        </div>
+
+        {/* Tariff + Manager */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <Label>Тариф</Label>
+            <Select value={tariffPlan} onValueChange={handleTariffChange}>
+              <SelectTrigger><SelectValue placeholder="Выберите тариф" /></SelectTrigger>
+              <SelectContent>
+                {Object.values(SUBSCRIPTION_PLANS).map(p => (
+                  <SelectItem key={p.id} value={p.id}>{p.name} — {p.price.toLocaleString('ru-RU')} ₽/мес</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Менеджер</Label>
+            <Select value={managerId} onValueChange={setManagerId}>
+              <SelectTrigger><SelectValue placeholder="Не назначен" /></SelectTrigger>
+              <SelectContent>
+                {managers.filter(m => m.is_active).map(m => (
+                  <SelectItem key={m.id} value={m.id}>{m.full_name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Service lines */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label className="text-base font-semibold">Услуги и позиции</Label>
+            <div className="flex gap-2">
+              {services.length > 0 && (
+                <Select onValueChange={addServiceFromCatalog}>
+                  <SelectTrigger className="w-[200px]"><SelectValue placeholder="Из каталога..." /></SelectTrigger>
+                  <SelectContent>
+                    {services.filter(s => s.is_active).map(s => (
+                      <SelectItem key={s.id} value={s.id}>{s.name} — {s.price.toLocaleString('ru-RU')} ₽</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              <Button variant="outline" size="sm" onClick={addCustomLine}><Plus className="w-3 h-3 mr-1" />Произвольная</Button>
+            </div>
+          </div>
+
+          {serviceLines.map((line, idx) => (
+            <div key={idx} className="flex items-start gap-2 p-3 bg-secondary/30 rounded-lg">
+              <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-2">
+                <div className="md:col-span-2">
+                  <Input value={line.custom_name} onChange={e => updateLine(idx, 'custom_name', e.target.value)} placeholder="Название" />
+                </div>
+                <Input type="number" value={line.price} onChange={e => updateLine(idx, 'price', Number(e.target.value))} placeholder="Цена" />
+                <Input type="number" value={line.quantity} onChange={e => updateLine(idx, 'quantity', Number(e.target.value))} placeholder="Кол-во" min={1} />
+              </div>
+              <span className="text-sm font-medium whitespace-nowrap pt-2">{(line.price * line.quantity).toLocaleString('ru-RU')} ₽</span>
+              <Button variant="ghost" size="icon" onClick={() => removeLine(idx)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+            </div>
+          ))}
+        </div>
+
+        {/* Note */}
+        <div><Label>Примечание</Label><Textarea value={customNote} onChange={e => setCustomNote(e.target.value)} placeholder="Персональное предложение..." /></div>
+
+        {/* Total + Save */}
+        <div className="flex items-center justify-between pt-4 border-t border-border">
+          <span className="text-xl font-bold">Итого: {totalAmount.toLocaleString('ru-RU')} ₽</span>
+          <Button onClick={handleSave} disabled={saving || !companyName}>
+            {saving ? 'Сохранение...' : 'Создать КП'}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}

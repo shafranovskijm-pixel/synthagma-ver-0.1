@@ -3,7 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRole?: 'admin' | 'organization' | 'student';
+  requiredRole?: 'admin' | 'organization' | 'student' | 'sales_manager';
 }
 
 export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
@@ -47,6 +47,8 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
       return <Navigate to="/organization" replace />;
     } else if (userRole === 'student') {
       return <Navigate to="/student" replace />;
+    } else if (userRole === 'sales_manager') {
+      return <Navigate to="/sales" replace />;
     } else {
       return <Navigate to="/" replace />;
     }
