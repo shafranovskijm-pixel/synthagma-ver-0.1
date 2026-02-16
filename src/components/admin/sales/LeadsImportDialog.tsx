@@ -57,10 +57,18 @@ export function LeadsImportDialog({ open, onOpenChange }: Props) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const buffer = await file.arrayBuffer();
-    const wb = XLSX.read(buffer, { type: 'array' });
-    const sheet = wb.Sheets[wb.SheetNames[0]];
-    const jsonData = XLSX.utils.sheet_to_json<any>(sheet, { defval: '' });
+    let jsonData: any[] = [];
+
+    if (file.name.endsWith('.json')) {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      jsonData = Array.isArray(parsed) ? parsed : [];
+    } else {
+      const buffer = await file.arrayBuffer();
+      const wb = XLSX.read(buffer, { type: 'array' });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      jsonData = XLSX.utils.sheet_to_json<any>(sheet, { defval: '' });
+    }
 
     if (jsonData.length === 0) return;
 
@@ -71,16 +79,16 @@ export function LeadsImportDialog({ open, onOpenChange }: Props) {
     // Auto-map common column names
     const autoMap = { ...mapping };
     const namePatterns: Record<keyof ColumnMapping, RegExp> = {
-      org_name: /наименование|название|организац|name/i,
-      inn: /инн|inn/i,
-      ogrn: /огрн|ogrn/i,
-      license_number: /лицензи.*номер|номер.*лицензи|license/i,
-      license_date: /лицензи.*дат|дат.*лицензи/i,
+      org_name: /наименование|название|организац|name_edu|name$/i,
+      inn: /^инн$|^inn$/i,
+      ogrn: /^огрн$|^ogrn$/i,
+      license_number: /лицензи.*номер|номер.*лицензи|license|reg_lic_number|рег/i,
+      license_date: /лицензи.*дат|дат.*лицензи|lic_data|order_date/i,
       region: /регион|субъект|region/i,
       city: /город|city/i,
-      address: /адрес|address/i,
+      address: /адрес.*нахожд|адрес.*место|^address$|^address_edu$/i,
       phone: /телефон|phone/i,
-      email: /почт|email|mail/i,
+      email: /почт|email|^mail$|mbox/i,
       website: /сайт|website|web/i,
     };
 
@@ -124,14 +132,13 @@ export function LeadsImportDialog({ open, onOpenChange }: Props) {
             <Alert>
               <AlertCircle className="w-4 h-4" />
               <AlertDescription>
-                Скачайте реестр лицензий с сайта <strong>obrnadzor.gov.ru</strong> в формате Excel/CSV и загрузите сюда.
-                Поддерживаемые форматы: .xlsx, .xls, .csv
+                Загрузите реестр лицензий в формате Excel/CSV или JSON (с data.gov.ru, obrnadzor.gov.ru и др.)
               </AlertDescription>
             </Alert>
             <div className="flex flex-col items-center gap-4 p-8 border-2 border-dashed border-border rounded-lg">
               <FileSpreadsheet className="w-12 h-12 text-muted-foreground" />
               <p className="text-muted-foreground">Перетащите файл или нажмите для выбора</p>
-              <Input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleFile} className="max-w-xs" />
+              <Input ref={fileRef} type="file" accept=".xlsx,.xls,.csv,.json" onChange={handleFile} className="max-w-xs" />
             </div>
           </div>
         )}
