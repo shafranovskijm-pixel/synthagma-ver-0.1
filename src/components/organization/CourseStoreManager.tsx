@@ -85,7 +85,7 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
           <div>
             <div className="flex items-center gap-3 mb-2">
               <Store className="w-6 h-6 text-primary" />
-              <h2 className="font-display text-xl font-semibold">Магазин курсов</h2>
+              <h2 className="text-xl font-semibold">Магазин курсов</h2>
             </div>
             <p className="text-muted-foreground">Покупайте и продавайте учебные курсы другим организациям и студентам</p>
           </div>
@@ -121,7 +121,7 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
               </Button>
 
               <div>
-                <h2 className="text-2xl font-display font-bold">{selectedCourseDetail.course?.title}</h2>
+                <h2 className="text-2xl font-bold">{selectedCourseDetail.course?.title}</h2>
                 <p className="text-muted-foreground flex items-center gap-1.5 mt-1">
                   <Building2 className="w-4 h-4" />{selectedCourseDetail.organization?.name}
                 </p>
@@ -238,7 +238,7 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
                   {h.filteredCatalog.map((item) => (
                     <Card key={item.id} className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer" onClick={() => setSelectedCourseDetail(item)}>
                       <CardHeader>
-                        <CardTitle className="font-display text-lg leading-tight">{item.course?.title}</CardTitle>
+                        <CardTitle className="text-lg leading-tight">{item.course?.title}</CardTitle>
                         <CardDescription className="mt-1 flex items-center gap-1"><Building2 className="w-3 h-3" />{item.organization?.name}</CardDescription>
                       </CardHeader>
                       <CardContent className="space-y-4">
@@ -274,7 +274,7 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
               {h.myCourses.map((item) => (
                 <Card key={item.id} className={`overflow-hidden ${!item.is_active ? 'opacity-60' : ''}`}>
                   <CardHeader>
-                    <div className="flex items-start justify-between"><CardTitle className="font-display text-lg leading-tight flex-1">{item.course?.title}</CardTitle><Badge variant={item.is_active ? "default" : "secondary"}>{item.is_active ? 'Активен' : 'Скрыт'}</Badge></div>
+                    <div className="flex items-start justify-between"><CardTitle className="text-lg leading-tight flex-1">{item.course?.title}</CardTitle><Badge variant={item.is_active ? "default" : "secondary"}>{item.is_active ? 'Активен' : 'Скрыт'}</Badge></div>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-2 gap-3">
@@ -341,7 +341,7 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
       {/* Add Course Dialog */}
       <Dialog open={h.showAddDialog} onOpenChange={h.setShowAddDialog}>
         <DialogContent className="rounded-2xl max-w-md">
-          <DialogHeader><DialogTitle className="font-display">Добавить курс в магазин</DialogTitle><DialogDescription>Выберите курс и установите цены</DialogDescription></DialogHeader>
+          <DialogHeader><DialogTitle>Добавить курс в магазин</DialogTitle><DialogDescription>Выберите курс и установите цены</DialogDescription></DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2"><Label>Курс</Label><Select value={h.selectedCourseToAdd} onValueChange={h.setSelectedCourseToAdd}><SelectTrigger className="rounded-xl"><SelectValue placeholder="Выберите курс" /></SelectTrigger><SelectContent>{h.availableCourses.map((c) => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}</SelectContent></Select></div>
             <div className="grid grid-cols-2 gap-4">
@@ -357,7 +357,7 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
       {/* Order Dialog */}
       <Dialog open={h.showOrderDialog} onOpenChange={h.setShowOrderDialog}>
         <DialogContent className="rounded-2xl max-w-md">
-          <DialogHeader><DialogTitle className="font-display">Оформление заявки</DialogTitle><DialogDescription>{h.selectedCourseForOrder?.course?.title}</DialogDescription></DialogHeader>
+          <DialogHeader><DialogTitle>Оформление заявки</DialogTitle><DialogDescription>{h.selectedCourseForOrder?.course?.title}</DialogDescription></DialogHeader>
           <div className="space-y-4 py-4">
             {/* Resale rights notice */}
             {h.userRole === 'organization' && (
@@ -390,7 +390,7 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
         <DialogContent className="rounded-2xl text-center max-w-sm">
           <div className="py-6">
             <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center mx-auto mb-4"><CheckCircle className="w-8 h-8 text-green-500" /></div>
-            <DialogTitle className="font-display text-xl mb-2">Заявка отправлена!</DialogTitle>
+            <DialogTitle className="text-xl mb-2">Заявка отправлена!</DialogTitle>
             <DialogDescription className="text-base">Продавец получит уведомление и свяжется с вами.</DialogDescription>
             <Button className="mt-6 btn-gradient rounded-xl" onClick={() => h.setShowSuccessDialog(false)}>Отлично</Button>
           </div>
@@ -400,7 +400,7 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
       {/* Edit Course Dialog */}
       <Dialog open={h.showEditDialog} onOpenChange={h.setShowEditDialog}>
         <DialogContent className="rounded-2xl max-w-md">
-          <DialogHeader><DialogTitle className="font-display">Редактировать курс</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Редактировать курс</DialogTitle></DialogHeader>
           {h.editingCourse && (
             <div className="space-y-4 py-4">
               <div className="grid grid-cols-2 gap-4">
@@ -417,7 +417,7 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
       {/* Order Details Dialog */}
       <Dialog open={h.showOrderDetailsDialog} onOpenChange={h.setShowOrderDetailsDialog}>
         <DialogContent className="rounded-2xl max-w-md">
-          <DialogHeader><DialogTitle className="font-display">Детали заявки</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Детали заявки</DialogTitle></DialogHeader>
           {h.selectedOrder && (
             <div className="space-y-4 py-4">
               <div className="space-y-3">
@@ -446,7 +446,7 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
       {/* Request Dialog */}
       <Dialog open={h.showRequestDialog} onOpenChange={h.setShowRequestDialog}>
         <DialogContent className="rounded-2xl max-w-md">
-          <DialogHeader><DialogTitle className="font-display">Новое объявление</DialogTitle><DialogDescription>Расскажите, какой курс ищете</DialogDescription></DialogHeader>
+          <DialogHeader><DialogTitle>Новое объявление</DialogTitle><DialogDescription>Расскажите, какой курс ищете</DialogDescription></DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2"><Label>Заголовок *</Label><Input value={h.requestTitle} onChange={(e) => h.setRequestTitle(e.target.value)} placeholder="Какой курс вы ищете?" className="rounded-xl" /></div>
             <div className="space-y-2"><Label>Описание</Label><Textarea value={h.requestDescription} onChange={(e) => h.setRequestDescription(e.target.value)} placeholder="Подробности..." className="rounded-xl" /></div>

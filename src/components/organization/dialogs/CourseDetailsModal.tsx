@@ -527,7 +527,7 @@ export function CourseDetailsModal({
         <div className="p-6 border-b border-border bg-gradient-to-br from-primary/10 to-accent/10">
           <div className="flex items-start justify-between">
             <div>
-              <DialogTitle className="font-display text-2xl mb-2">{course.title}</DialogTitle>
+              <DialogTitle className="text-2xl font-semibold mb-2">{course.title}</DialogTitle>
               <div className="flex items-center gap-4 text-sm text-muted-foreground">
                 <span className={`px-2 py-1 rounded-full text-xs ${
                   course.is_published 
