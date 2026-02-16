@@ -20,11 +20,19 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Search, Trash2, Loader2, Upload, Video, FileText,
   Image as ImageIcon, Music, HardDrive, FolderOpen, RefreshCw, File,
-  ChevronDown, ChevronRight, Presentation, Stamp, Receipt, Building2, BookOpen
+  ChevronDown, ChevronRight, Presentation, Stamp, Receipt, Building2, BookOpen,
+  UserCheck, ExternalLink, Download, Eye
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -40,6 +48,7 @@ interface StorageFile {
   size: number;
   created_at: string;
   type: "video" | "image" | "audio" | "document" | "presentation" | "other";
+  isPrivate?: boolean;
 }
 
 const VIDEO_EXT = ["mp4", "webm", "ogg", "mov", "avi", "mkv"];
@@ -47,11 +56,21 @@ const IMAGE_EXT = ["jpg", "jpeg", "png", "gif", "webp", "svg", "bmp"];
 const AUDIO_EXT = ["mp3", "wav", "ogg", "m4a", "aac", "flac"];
 const DOC_EXT = ["pdf", "doc", "docx", "xls", "xlsx", "rtf", "txt", "csv"];
 const PRES_EXT = ["ppt", "pptx", "odp", "key"];
-// Hidden artifact extensions from Word/PowerPoint imports
 const HIDDEN_EXT = ["wmf", "emf"];
 
+const PRIVATE_BUCKETS = ["student-documents"];
+
+const PREVIEWABLE_IMAGE_EXT = ["jpg", "jpeg", "png", "gif", "webp", "svg"];
+const PREVIEWABLE_VIDEO_EXT = ["mp4", "webm"];
+const PREVIEWABLE_AUDIO_EXT = ["mp3", "wav"];
+const PREVIEWABLE_PDF_EXT = ["pdf"];
+
+function getFileExt(name: string): string {
+  return name.split(".").pop()?.toLowerCase() || "";
+}
+
 function getFileType(name: string): StorageFile["type"] {
-  const ext = name.split(".").pop()?.toLowerCase() || "";
+  const ext = getFileExt(name);
   if (VIDEO_EXT.includes(ext)) return "video";
   if (IMAGE_EXT.includes(ext)) return "image";
   if (AUDIO_EXT.includes(ext)) return "audio";
@@ -61,8 +80,27 @@ function getFileType(name: string): StorageFile["type"] {
 }
 
 function isHiddenArtifact(name: string): boolean {
-  const ext = name.split(".").pop()?.toLowerCase() || "";
+  const ext = getFileExt(name);
   return HIDDEN_EXT.includes(ext);
+}
+
+function canPreview(name: string): boolean {
+  const ext = getFileExt(name);
+  return (
+    PREVIEWABLE_IMAGE_EXT.includes(ext) ||
+    PREVIEWABLE_VIDEO_EXT.includes(ext) ||
+    PREVIEWABLE_AUDIO_EXT.includes(ext) ||
+    PREVIEWABLE_PDF_EXT.includes(ext)
+  );
+}
+
+function getPreviewType(name: string): "image" | "video" | "audio" | "pdf" | "none" {
+  const ext = getFileExt(name);
+  if (PREVIEWABLE_IMAGE_EXT.includes(ext)) return "image";
+  if (PREVIEWABLE_VIDEO_EXT.includes(ext)) return "video";
+  if (PREVIEWABLE_AUDIO_EXT.includes(ext)) return "audio";
+  if (PREVIEWABLE_PDF_EXT.includes(ext)) return "pdf";
+  return "none";
 }
 
 function formatSize(bytes: number): string {
@@ -104,6 +142,7 @@ const BUCKET_LABELS: Record<string, string> = {
   "org-branding": "Брендинг",
   "library-files": "Библиотека",
   "billing-documents": "Платёжные документы",
+  "student-documents": "Документы слушателей",
 };
 
 const BUCKET_ICONS: Record<string, React.ReactNode> = {
@@ -115,6 +154,7 @@ const BUCKET_ICONS: Record<string, React.ReactNode> = {
   "org-branding": <Stamp className="w-4 h-4" />,
   "library-files": <HardDrive className="w-4 h-4" />,
   "billing-documents": <Receipt className="w-4 h-4" />,
+  "student-documents": <UserCheck className="w-4 h-4" />,
 };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -133,10 +173,32 @@ export function StorageManager({ organizationId }: StorageManagerProps) {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [bucketFilter, setBucketFilter] = useState("all");
-  const [collapsedBuckets, setCollapsedBuckets] = useState<Record<string, boolean>>({});
+  // All buckets collapsed by default — expanded ones are marked true
+  const [expandedBuckets, setExpandedBuckets] = useState<Record<string, boolean>>({});
   const [deleteFile, setDeleteFile] = useState<StorageFile | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [previewFile, setPreviewFile] = useState<StorageFile | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+
+  const getSignedUrl = useCallback(async (bucket: string, path: string): Promise<string | null> => {
+    const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, 3600);
+    if (error) {
+      console.error("Error creating signed URL:", error);
+      return null;
+    }
+    return data.signedUrl;
+  }, []);
+
+  const getFileUrl = useCallback(async (file: StorageFile): Promise<string> => {
+    if (file.isPrivate) {
+      const path = `${file.folder}/${file.name}`;
+      const signed = await getSignedUrl(file.bucket, path);
+      return signed || file.url;
+    }
+    return file.url;
+  }, [getSignedUrl]);
 
   const loadFiles = useCallback(async () => {
     setLoading(true);
@@ -144,13 +206,13 @@ export function StorageManager({ organizationId }: StorageManagerProps) {
       const allFiles: StorageFile[] = [];
       const baseUrl = import.meta.env.VITE_SUPABASE_URL;
 
-      // Helper: recursively scan a bucket path (up to 2 levels deep)
       const scanPath = async (
         client: any,
         bucket: string,
         prefix: string,
         urlBase: string,
-        depth = 0
+        depth = 0,
+        isPrivateBucket = false
       ) => {
         try {
           const { data: items } = await client.storage
@@ -159,53 +221,52 @@ export function StorageManager({ organizationId }: StorageManagerProps) {
           if (!items) return;
           for (const f of items) {
             if (f.id === null && depth < 2) {
-              await scanPath(client, bucket, `${prefix}/${f.name}`, urlBase, depth + 1);
+              await scanPath(client, bucket, `${prefix}/${f.name}`, urlBase, depth + 1, isPrivateBucket);
             } else if (f.id !== null) {
-              // Skip hidden artifact files (WMF, EMF) and zero-byte placeholders
               if (isHiddenArtifact(f.name)) continue;
               const fileSize = (f.metadata as any)?.size || 0;
               if (fileSize === 0) continue;
-              // Skip files without extensions (import artifacts)
               if (!f.name.includes('.')) continue;
               allFiles.push({
                 name: f.name,
-                url: `${urlBase}/storage/v1/object/public/${bucket}/${prefix}/${f.name}`,
+                url: isPrivateBucket
+                  ? "" // Will use signed URLs on demand
+                  : `${urlBase}/storage/v1/object/public/${bucket}/${prefix}/${f.name}`,
                 bucket,
                 folder: prefix,
                 size: fileSize,
                 created_at: (f as any).created_at || "",
                 type: getFileType(f.name),
+                isPrivate: isPrivateBucket,
               });
             }
           }
         } catch { /* path doesn't exist */ }
       };
 
-      // Get course IDs for this organization
       const { data: courses } = await supabase
         .from("courses")
         .select("id")
         .eq("organization_id", organizationId);
       const courseIds = courses?.map(c => c.id) || [];
 
-      // 1. Course-based buckets
       const courseScans = courseIds.flatMap(courseId => [
         scanPath(supabase, "course-files", courseId, baseUrl),
         scanPath(supabase, "presentations", courseId, baseUrl),
       ]);
 
-      // 2. Organization-level buckets
       const orgScans = [
         scanPath(supabase, "org-documents", organizationId, baseUrl),
         scanPath(supabase, "company-documents", organizationId, baseUrl),
         scanPath(supabase, "org-branding", organizationId, baseUrl),
         scanPath(supabase, "library-files", `library/${organizationId}`, baseUrl),
         scanPath(supabase, "billing-documents", organizationId, baseUrl),
+        scanPath(supabase, "student-documents", organizationId, baseUrl, 0, true),
       ];
 
       await Promise.all([...courseScans, ...orgScans]);
 
-      // 3. External storage (course-videos)
+      // External storage (course-videos)
       try {
         const { data: config } = await supabase.functions.invoke("get-external-storage-config");
         if (config?.configured && config?.url && config?.key) {
@@ -245,7 +306,7 @@ export function StorageManager({ organizationId }: StorageManagerProps) {
       } else {
         await supabase.storage.from(deleteFile.bucket).remove([path]);
       }
-      setFiles(prev => prev.filter(f => f.url !== deleteFile.url));
+      setFiles(prev => prev.filter(f => !(f.bucket === deleteFile.bucket && f.folder === deleteFile.folder && f.name === deleteFile.name)));
       toast.success("Файл удалён");
     } catch (err) {
       console.error("Delete error:", err);
@@ -287,6 +348,30 @@ export function StorageManager({ organizationId }: StorageManagerProps) {
     e.target.value = "";
   };
 
+  const openPreview = async (file: StorageFile) => {
+    setPreviewFile(file);
+    setPreviewLoading(true);
+    const url = await getFileUrl(file);
+    setPreviewUrl(url);
+    setPreviewLoading(false);
+  };
+
+  const openInNewTab = async (file: StorageFile) => {
+    const url = await getFileUrl(file);
+    window.open(url, "_blank");
+  };
+
+  const downloadFile = async (file: StorageFile) => {
+    const url = await getFileUrl(file);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = file.name;
+    a.target = "_blank";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
   const filtered = useMemo(() =>
     files
       .filter(f => bucketFilter === "all" || f.bucket === bucketFilter)
@@ -295,20 +380,17 @@ export function StorageManager({ organizationId }: StorageManagerProps) {
     [files, bucketFilter, typeFilter, search]
   );
 
-  // Group files by bucket
   const groupedByBucket = useMemo(() => {
     const groups: Record<string, StorageFile[]> = {};
     for (const f of filtered) {
       if (!groups[f.bucket]) groups[f.bucket] = [];
       groups[f.bucket].push(f);
     }
-    // Sort buckets by predefined order
     const order = Object.keys(BUCKET_LABELS).filter(k => k !== "all");
     const sorted: [string, StorageFile[]][] = [];
     for (const b of order) {
       if (groups[b]) sorted.push([b, groups[b]]);
     }
-    // Add any remaining
     for (const [b, fs] of Object.entries(groups)) {
       if (!sorted.find(([k]) => k === b)) sorted.push([b, fs]);
     }
@@ -316,7 +398,7 @@ export function StorageManager({ organizationId }: StorageManagerProps) {
   }, [filtered]);
 
   const toggleBucket = (bucket: string) => {
-    setCollapsedBuckets(prev => ({ ...prev, [bucket]: !prev[bucket] }));
+    setExpandedBuckets(prev => ({ ...prev, [bucket]: !prev[bucket] }));
   };
 
   const totalSize = files.reduce((sum, f) => sum + f.size, 0);
@@ -334,6 +416,8 @@ export function StorageManager({ organizationId }: StorageManagerProps) {
     }
     return acc;
   }, [files]);
+
+  const previewType = previewFile ? getPreviewType(previewFile.name) : "none";
 
   return (
     <div className="space-y-6">
@@ -443,17 +527,17 @@ export function StorageManager({ organizationId }: StorageManagerProps) {
                   onClick={() => toggleBucket(bucket)}
                   className="w-full flex items-center gap-3 px-4 py-3 bg-muted/30 hover:bg-muted/50 transition-colors text-left"
                 >
-                  {collapsedBuckets[bucket]
-                    ? <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
-                    : <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
+                  {expandedBuckets[bucket]
+                    ? <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
+                    : <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
                   }
                   <span className="shrink-0">{BUCKET_ICONS[bucket] || <FolderOpen className="w-4 h-4" />}</span>
                   <span className="font-medium text-sm">{BUCKET_LABELS[bucket] || bucket}</span>
                   <Badge variant="secondary" className="ml-auto text-xs">{bucketFiles.length}</Badge>
                 </button>
 
-                {/* Bucket files */}
-                {!collapsedBuckets[bucket] && (
+                {/* Bucket files — only shown when expanded */}
+                {expandedBuckets[bucket] && (
                   <div className="divide-y divide-border">
                     {bucketFiles.map((file, i) => (
                       <div
@@ -462,7 +546,7 @@ export function StorageManager({ organizationId }: StorageManagerProps) {
                       >
                         {/* Thumbnail / Icon */}
                         <div className="shrink-0 w-10 h-10 rounded-lg bg-muted flex items-center justify-center overflow-hidden">
-                          {file.type === "image" ? (
+                          {file.type === "image" && !file.isPrivate ? (
                             <img
                               src={file.url}
                               alt={file.name}
@@ -489,9 +573,19 @@ export function StorageManager({ organizationId }: StorageManagerProps) {
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8"
-                            onClick={() => window.open(file.url, "_blank")}
+                            title="Предпросмотр"
+                            onClick={() => openPreview(file)}
                           >
-                            <FolderOpen className="w-4 h-4" />
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            title="Открыть в новой вкладке"
+                            onClick={() => openInNewTab(file)}
+                          >
+                            <ExternalLink className="w-4 h-4" />
                           </Button>
                           <Button
                             variant="ghost"
@@ -511,6 +605,64 @@ export function StorageManager({ organizationId }: StorageManagerProps) {
           </div>
         </ScrollArea>
       )}
+
+      {/* File Preview Dialog */}
+      <Dialog open={!!previewFile} onOpenChange={(open) => { if (!open) { setPreviewFile(null); setPreviewUrl(null); } }}>
+        <DialogContent className={`${previewType === "pdf" || previewType === "image" ? "max-w-4xl" : "max-w-lg"}`}>
+          <DialogHeader>
+            <DialogTitle className="truncate pr-8">{previewFile?.name}</DialogTitle>
+            <DialogDescription>
+              {previewFile && `${formatSize(previewFile.size)} • ${BUCKET_LABELS[previewFile.bucket] || previewFile.bucket}`}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="min-h-[200px] flex items-center justify-center">
+            {previewLoading ? (
+              <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+            ) : previewUrl && previewType === "image" ? (
+              <img
+                src={previewUrl}
+                alt={previewFile?.name}
+                className="max-w-full max-h-[60vh] rounded-lg object-contain"
+              />
+            ) : previewUrl && previewType === "pdf" ? (
+              <iframe
+                src={previewUrl}
+                className="w-full h-[60vh] rounded-lg border border-border"
+                title={previewFile?.name}
+              />
+            ) : previewUrl && previewType === "video" ? (
+              <video
+                src={previewUrl}
+                controls
+                className="max-w-full max-h-[60vh] rounded-lg"
+              />
+            ) : previewUrl && previewType === "audio" ? (
+              <div className="w-full flex flex-col items-center gap-4 py-8">
+                <Music className="w-16 h-16 text-muted-foreground" />
+                <audio src={previewUrl} controls className="w-full max-w-md" />
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <File className="w-16 h-16 mx-auto mb-3 opacity-40" />
+                <p className="font-medium">Предпросмотр недоступен</p>
+                <p className="text-sm mt-1">Скачайте файл для просмотра</p>
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" className="gap-2 rounded-xl" onClick={() => previewFile && openInNewTab(previewFile)}>
+              <ExternalLink className="w-4 h-4" />
+              Открыть в новой вкладке
+            </Button>
+            <Button className="gap-2 rounded-xl" onClick={() => previewFile && downloadFile(previewFile)}>
+              <Download className="w-4 h-4" />
+              Скачать
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete confirmation */}
       <AlertDialog open={!!deleteFile} onOpenChange={() => setDeleteFile(null)}>
