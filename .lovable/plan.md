@@ -1,51 +1,36 @@
 
-# Fix: Direct navigation to /student shows content correctly
 
-## Problem
-When a student navigates directly to `/student` (e.g., from a bookmark or custom domain), the page may not load because of a race condition in the authentication logic:
+# Автоматический редирект с кастомного домена при ошибке маршрута
 
-1. `getSession()` resolves and finds an active session
-2. `setLoading(false)` is called **immediately**
-3. `fetchUserRole()` is called but has NOT finished yet
-4. `ProtectedRoute` renders with `user` set but `userRole` still `null`
-5. The component shows a perpetual loading spinner or redirects incorrectly
+## Проблема
+Студенты заходят на `синтагма.рф/student` и получают "Страница не найдена". Причина -- сервер кастомного домена не обрабатывает SPA-маршруты корректно (не отдает `index.html` для всех путей).
 
-## Root Cause
-In `src/hooks/useAuth.tsx`, line 48-51, `fetchUserRole` is called but not awaited before `setLoading(false)`:
+Фикс race condition в `useAuth.tsx` уже применен, но он помогает только когда React-приложение загрузилось. Если сервер домена отдает 404 до загрузки React -- студент видит ошибку.
+
+## Решение
+Добавить в `NotFound.tsx` проверку: если пользователь находится на кастомном домене (не `lovable.app`), автоматически перенаправить его на тот же путь на основном домене `synthagma-bloom.lovable.app`.
+
+Это сработает в случаях, когда React все-таки загружается, но маршрут не распознается.
+
+## Техническая реализация
+
+### Файл: `src/pages/NotFound.tsx`
+
+Добавить `useEffect` с проверкой домена:
 
 ```text
-if (session?.user) {
-  fetchUserRole(session.user.id);  // <-- async, NOT awaited
-}
-setLoading(false);  // <-- runs immediately, before role is fetched
+1. Проверить window.location.hostname
+2. Если НЕ содержит "lovable.app" -- это кастомный домен
+3. Перенаправить на https://synthagma-bloom.lovable.app + текущий путь
+4. Если на основном домене -- показать обычную страницу 404
 ```
 
-## Solution
-Await the role fetch before setting `loading` to `false` during initial load. This ensures `ProtectedRoute` has both `user` and `userRole` available before rendering decisions are made.
+Логика:
+- `синтагма.рф/student` --> редирект на `synthagma-bloom.lovable.app/student`
+- `синтагма.рф/login` --> редирект на `synthagma-bloom.lovable.app/login`
+- `synthagma-bloom.lovable.app/xyz` --> обычная страница 404
 
-### Change in `src/hooks/useAuth.tsx`
+Пока идет редирект, вместо "404" показать сообщение "Перенаправление..." чтобы студент понимал что происходит.
 
-Update the `getSession` block (lines 43-52) to await `fetchUserRole`:
-
-```typescript
-// THEN check for existing session
-const initializeAuth = async () => {
-  try {
-    const { data: { session } } = await supabase.auth.getSession();
-    setSession(session);
-    setUser(session?.user ?? null);
-
-    if (session?.user) {
-      await fetchUserRole(session.user.id);
-    }
-  } catch (error) {
-    console.error('Auth initialization error:', error);
-  } finally {
-    setLoading(false);
-  }
-};
-
-initializeAuth();
-```
-
-This is a single-file change. The `onAuthStateChange` listener remains unchanged (it correctly uses `setTimeout` to avoid deadlocks). Only the initial load path is modified to ensure the role is fully resolved before the app renders protected routes.
+## Итого
+Одно изменение в одном файле `src/pages/NotFound.tsx`. Совместно с уже примененным фиксом `useAuth.tsx` это покроет оба сценария ошибки.
