@@ -828,6 +828,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                       <TableHead>Курсы</TableHead>
                       <TableHead>Прогресс</TableHead>
                       <TableHead>Статус</TableHead>
+                      <TableHead>Действия</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -899,11 +900,25 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                             <Badge variant="outline" className="text-xs">Не записан</Badge>
                           )}
                         </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              localStorage.setItem('previewStudentDashboard', 'true');
+                              localStorage.setItem('previewStudentUserId', student.user_id);
+                              window.open('/student', '_blank');
+                            }}
+                            title="Войти в кабинет ученика"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     ))}
                     {filteredStudents.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                           {searchQuery ? "Ничего не найдено" : "Нет учеников в этой организации"}
                         </TableCell>
                       </TableRow>
