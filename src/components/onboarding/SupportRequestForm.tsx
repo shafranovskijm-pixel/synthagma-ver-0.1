@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
-import { Send, ImagePlus, X, Loader2 } from "lucide-react";
+import { Send, ImagePlus, X, Loader2, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +10,7 @@ import { useErrorLogger } from "@/hooks/useErrorLogger";
 
 export function SupportRequestForm() {
   const [description, setDescription] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
   const [screenshot, setScreenshot] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
@@ -102,6 +104,7 @@ export function SupportRequestForm() {
           user_role: userRole || null,
           organization_id: orgId || null,
           description: description.trim(),
+          contact_phone: contactPhone.trim() || null,
           screenshot_url: photoUrl,
           browser_info: navigator.userAgent.slice(0, 200),
           page_url: window.location.href,
@@ -117,7 +120,7 @@ export function SupportRequestForm() {
       const message = `🆘 <b>Обращение в поддержку</b>
 
 <b>Пользователь:</b> ${userName || "—"} (${userEmail})
-<b>Роль:</b> ${roleName}
+<b>Роль:</b> ${roleName}${contactPhone.trim() ? `\n<b>Телефон для связи:</b> ${contactPhone.trim()}` : ""}
 ${orgId ? `<b>Организация ID:</b> <code>${orgId}</code>` : ""}
 <b>Время:</b> ${now}
 
@@ -140,6 +143,7 @@ ${errorsText}${photoUrl ? `\n\n<b>Скриншот:</b> ${photoUrl}` : ""}`;
 
       toast({ title: "Обращение отправлено!", description: "Мы свяжемся с вами в ближайшее время" });
       setDescription("");
+      setContactPhone("");
       removeScreenshot();
     } catch (err) {
       console.error("Support request error:", err);
@@ -158,6 +162,18 @@ ${errorsText}${photoUrl ? `\n\n<b>Скриншот:</b> ${photoUrl}` : ""}`;
         className="min-h-[80px] text-sm"
         maxLength={1000}
       />
+
+
+      <div className="flex items-center gap-2">
+        <Phone className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+        <Input
+          placeholder="Телефон для связи (необязательно)"
+          value={contactPhone}
+          onChange={(e) => setContactPhone(e.target.value)}
+          className="h-8 text-sm"
+          maxLength={20}
+        />
+      </div>
 
       {previewUrl && (
         <div className="relative inline-block">
@@ -197,22 +213,14 @@ ${errorsText}${photoUrl ? `\n\n<b>Скриншот:</b> ${photoUrl}` : ""}`;
       <p className="text-[11px] text-muted-foreground">
         Автоматически прикладывается: URL, браузер, логи ошибок
       </p>
-      <div className="flex flex-col gap-1 mt-1">
-        <a
-          href="https://t.me/+SVTbxqnGmF1iMzIy"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-        >
-          💬 Чат тех. поддержки в Telegram
-        </a>
-        <a
-          href="tel:+79787774994"
-          className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-        >
-          📞 +7 (978) 777-49-94
-        </a>
-      </div>
+      <a
+        href="https://t.me/+SVTbxqnGmF1iMzIy"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+      >
+        💬 Чат тех. поддержки в Telegram
+      </a>
     </div>
   );
 }
