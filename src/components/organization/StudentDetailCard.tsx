@@ -1,4 +1,4 @@
-import { User, FileText, Video, BookOpen, Loader2 } from "lucide-react";
+import { User, FileText, Video, BookOpen, Loader2, Clock, MessageCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -8,7 +8,20 @@ import { ProfileTab } from "./student-detail/ProfileTab";
 import { IdentificationTab } from "./student-detail/IdentificationTab";
 import { CoursesTab } from "./student-detail/CoursesTab";
 import { DocumentsTab } from "./student-detail/DocumentsTab";
+import { ActivityTab } from "./student-detail/ActivityTab";
+import { ChatTab } from "./student-detail/ChatTab";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
+import { useAuth } from "@/hooks/useAuth";
+
+function formatTimeAgo(date: Date): string {
+  const diff = Date.now() - date.getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins} мин назад`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours} ч назад`;
+  const days = Math.floor(hours / 24);
+  return `${days} дн назад`;
+}
 
 interface StudentDetailCardProps {
   isOpen: boolean;
@@ -21,6 +34,7 @@ interface StudentDetailCardProps {
     login?: string | null;
     company_name?: string | null;
     generated_password?: string | null;
+    last_visit_at?: string | null;
   } | null;
   organizationId: string;
   onStudentUpdated?: () => void;
@@ -41,6 +55,9 @@ export function StudentDetailCard({
 }: StudentDetailCardProps) {
   const h = useStudentDetailCardLogic({ isOpen, student, organizationId, enrollments, onStudentUpdated });
   const { plan: orgPlan } = useSubscriptionLimits(organizationId);
+  const { user } = useAuth();
+
+  const isOnline = student?.last_visit_at && (Date.now() - new Date(student.last_visit_at).getTime()) < 5 * 60 * 1000;
 
   if (!student) return null;
 
@@ -49,11 +66,17 @@ export function StudentDetailCard({
       <DialogContent className="max-w-4xl max-h-[90vh] rounded-2xl p-0 overflow-hidden">
         <DialogHeader className="p-6 pb-0">
           <DialogTitle className="font-display flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center relative">
               <User className="w-6 h-6 text-primary" />
+              <span className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-background ${isOnline ? 'bg-green-500' : 'bg-muted-foreground/40'}`} />
             </div>
             <div>
-              <div className="text-xl">{student.name}</div>
+              <div className="text-xl flex items-center gap-2">
+                {student.name}
+                <span className={`text-xs font-normal px-2 py-0.5 rounded-full ${isOnline ? 'bg-green-500/10 text-green-600' : 'bg-muted text-muted-foreground'}`}>
+                  {isOnline ? 'онлайн' : student.last_visit_at ? `был(а) ${formatTimeAgo(new Date(student.last_visit_at))}` : 'не заходил(а)'}
+                </span>
+              </div>
               <div className="text-sm font-normal text-muted-foreground">{student.email}</div>
             </div>
           </DialogTitle>
@@ -65,6 +88,8 @@ export function StudentDetailCard({
             <TabsTrigger value="identification" className="rounded-lg data-[state=active]:bg-primary/10 gap-2"><Video className="w-4 h-4" />Идентификация</TabsTrigger>
             <TabsTrigger value="courses" className="rounded-lg data-[state=active]:bg-primary/10 gap-2"><BookOpen className="w-4 h-4" />Курсы</TabsTrigger>
             <TabsTrigger value="documents" className="rounded-lg data-[state=active]:bg-primary/10 gap-2"><FileText className="w-4 h-4" />Документы</TabsTrigger>
+            <TabsTrigger value="activity" className="rounded-lg data-[state=active]:bg-primary/10 gap-2"><Clock className="w-4 h-4" />Активность</TabsTrigger>
+            <TabsTrigger value="chat" className="rounded-lg data-[state=active]:bg-primary/10 gap-2"><MessageCircle className="w-4 h-4" />Чат</TabsTrigger>
           </TabsList>
 
           <ScrollArea className="h-[60vh]">
@@ -84,6 +109,12 @@ export function StudentDetailCard({
                   </TabsContent>
                   <TabsContent value="documents" className="m-0">
                     <DocumentsTab h={h} />
+                  </TabsContent>
+                  <TabsContent value="activity" className="m-0">
+                    <ActivityTab userId={student.user_id} organizationId={organizationId} />
+                  </TabsContent>
+                  <TabsContent value="chat" className="m-0">
+                    {user && <ChatTab studentUserId={student.user_id} organizationId={organizationId} currentUserId={user.id} studentName={student.name} />}
                   </TabsContent>
                 </>
               )}

@@ -26,7 +26,7 @@ export async function fetchStudents(
   const allProfilesData: any[] = await fetchAllRows<any>(({ from, to }) =>
     supabase
       .from("profiles")
-      .select("id, user_id, full_name, email, login, company_id")
+      .select("id, user_id, full_name, email, login, company_id, last_visit_at")
       .eq("organization_id", organizationId)
       .range(from, to)
       .then(r => ({ data: r.data as any[] | null, error: r.error }))
@@ -118,6 +118,7 @@ export async function fetchStudents(
       course_id: enrollments.length === 1 ? enrollments[0].course_id : null, // Only set if single enrollment
       progress: totalProgress,
       lastActivity: enrollments[0]?.started_at || null,
+      last_visit_at: profile.last_visit_at || null,
       status: aggregateStatus,
       enrollments: enrollments // Add all enrollments for detail view
     });

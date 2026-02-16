@@ -81,6 +81,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email,
       password,
     });
+    
+    // Log the login event
+    if (!error) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("organization_id")
+          .eq("user_id", session.user.id)
+          .maybeSingle();
+        
+        if (profile?.organization_id) {
+          supabase.from("student_login_history").insert({
+            user_id: session.user.id,
+            organization_id: profile.organization_id,
+            user_agent: navigator.userAgent,
+          }).then(() => {});
+        }
+      }
+    }
+    
     return { error };
   };
 

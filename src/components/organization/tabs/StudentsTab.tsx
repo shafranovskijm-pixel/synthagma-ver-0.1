@@ -8,7 +8,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { 
   Users, Search, BookOpen, Filter, FileCheck, FileSpreadsheet, 
   GraduationCap, Key, Mail, XCircle, X, Loader2, Copy, Trash2, 
-  CheckCircle2, ChevronRight, AlertCircle, FileText, FolderOpen, Plus, Pencil
+  CheckCircle2, ChevronRight, AlertCircle, FileText, FolderOpen, Plus, Pencil, MessageCircle
 } from "lucide-react";
 import { useStudents } from "@/hooks/useStudents";
 import { toast } from "sonner";
@@ -17,6 +17,16 @@ import { useWordDocumentGenerator } from "@/hooks/useWordDocumentGenerator";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+
+function formatTimeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins} мин`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours} ч`;
+  const days = Math.floor(hours / 24);
+  return `${days} дн`;
+}
 
 interface StudentsTabProps {
   organizationId: string;
@@ -608,7 +618,8 @@ export const StudentsTab = React.memo(function StudentsTab({
                       className="w-4 h-4 rounded border-border" 
                     />
                   </th>
-                  <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Ученик</th>
+                   <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Ученик</th>
+                  <th className="text-left px-3 py-4 text-sm font-medium text-muted-foreground w-24">Онлайн</th>
                   <th className="text-left px-3 py-4 text-sm font-medium text-muted-foreground">Группа</th>
                   <th className="text-left px-4 py-4 text-sm font-medium text-muted-foreground">Документы</th>
                   <th className="text-left px-3 py-4 text-sm font-medium text-muted-foreground">ФРДО</th>
@@ -668,6 +679,19 @@ export const StudentsTab = React.memo(function StudentsTab({
                             )}
                           </div>
                         </div>
+                      </td>
+                      <td className="px-3 py-4">
+                        {(() => {
+                          const isOnline = student.last_visit_at && (Date.now() - new Date(student.last_visit_at).getTime()) < 5 * 60 * 1000;
+                          return (
+                            <div className="flex items-center gap-1.5">
+                              <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${isOnline ? 'bg-green-500' : 'bg-muted-foreground/30'}`} />
+                              <span className="text-xs text-muted-foreground">
+                                {isOnline ? 'онлайн' : student.last_visit_at ? formatTimeAgo(student.last_visit_at) : '—'}
+                              </span>
+                            </div>
+                          );
+                        })()}
                       </td>
                       <td className="px-3 py-4" onClick={e => e.stopPropagation()}>
                         {(() => {
