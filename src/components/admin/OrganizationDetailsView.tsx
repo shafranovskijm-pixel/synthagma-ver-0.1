@@ -905,9 +905,12 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                             variant="ghost"
                             size="sm"
                             onClick={() => {
-                              localStorage.setItem('previewStudentDashboard', 'true');
-                              localStorage.setItem('previewStudentUserId', student.user_id);
-                              window.open('/student', '_blank');
+                              localStorage.setItem('adminViewAsStudent', JSON.stringify({
+                                userId: student.user_id,
+                                name: student.full_name || student.email,
+                                orgName: organization.name,
+                              }));
+                              navigate('/student');
                             }}
                             title="Войти в кабинет ученика"
                           >

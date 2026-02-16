@@ -35,7 +35,8 @@ export default function StudentDashboard() {
     showConsentForm, setShowConsentForm, showDocumentsUpload, setShowDocumentsUpload,
     showAchievements, setShowAchievements, mobileMenuOpen, setMobileMenuOpen,
     documentsProgress, isVideoIdentified, setIsVideoIdentified, showOnboarding, handleOnboardingClose,
-    handleLogout, pullToRefreshRef, pullDistance, isRefreshing, canRefresh, orgPlan
+    handleLogout, pullToRefreshRef, pullDistance, isRefreshing, canRefresh, orgPlan,
+    isAdminView, adminViewStudentName,
   } = useStudentDashboard();
 
   const isFreePlan = orgPlan === 'free';
@@ -83,7 +84,19 @@ export default function StudentDashboard() {
 
   return (
     <div className="min-h-screen bg-background flex">
-      {isPreviewMode && <div className="fixed top-0 inset-x-0 bg-primary text-primary-foreground py-2 px-4 text-center text-sm z-50 flex items-center justify-center gap-2"><Eye className="w-4 h-4" />Режим предпросмотра<Button size="sm" variant="secondary" className="ml-4 h-7" onClick={() => window.close()}>Закрыть</Button></div>}
+      {isAdminView && (
+        <div className="fixed top-0 left-0 right-0 z-50 bg-primary text-primary-foreground py-2 px-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Eye className="w-4 h-4" />
+            <span className="text-sm font-medium">Режим просмотра: {adminViewStudentName}</span>
+          </div>
+          <Button variant="secondary" size="sm" onClick={() => { localStorage.removeItem('adminViewAsStudent'); navigate('/admin'); }} className="gap-1">
+            <X className="w-3 h-3" />
+            Выйти
+          </Button>
+        </div>
+      )}
+      {isPreviewMode && !isAdminView && <div className="fixed top-0 inset-x-0 bg-primary text-primary-foreground py-2 px-4 text-center text-sm z-50 flex items-center justify-center gap-2"><Eye className="w-4 h-4" />Режим предпросмотра<Button size="sm" variant="secondary" className="ml-4 h-7" onClick={() => window.close()}>Закрыть</Button></div>}
       
       <div className="md:hidden fixed top-0 inset-x-0 bg-card border-b border-border z-40 px-4 py-3 flex items-center justify-between">
         <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}><SheetTrigger asChild><Button variant="ghost" size="icon"><Menu className="w-5 h-5" /></Button></SheetTrigger><SheetContent side="left" className="w-72 p-0 flex flex-col"><SidebarContent onNavigate={() => setMobileMenuOpen(false)} /></SheetContent></Sheet>
@@ -91,9 +104,9 @@ export default function StudentDashboard() {
         <div className="w-10" />
       </div>
 
-      <aside className={`hidden md:flex w-64 bg-card border-r border-border flex-col ${isPreviewMode ? 'mt-10' : ''}`}><SidebarContent /></aside>
+      <aside className={`hidden md:flex w-64 bg-card border-r border-border flex-col ${isPreviewMode || isAdminView ? 'mt-10' : ''}`}><SidebarContent /></aside>
 
-      <main ref={isMobile ? pullToRefreshRef : undefined} className={`flex-1 overflow-auto pt-14 md:pt-0 relative ${isPreviewMode ? 'md:mt-10' : ''}`}>
+      <main ref={isMobile ? pullToRefreshRef : undefined} className={`flex-1 overflow-auto pt-14 md:pt-0 relative ${isPreviewMode || isAdminView ? 'md:mt-10' : ''}`}>
         {isMobile && <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} canRefresh={canRefresh} threshold={80} />}
         
         {activeTab === "courses" && (
