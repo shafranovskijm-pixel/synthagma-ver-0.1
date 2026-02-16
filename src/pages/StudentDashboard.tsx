@@ -142,7 +142,7 @@ export default function StudentDashboard() {
                   {courses.map((course, i) => (
                     <motion.div key={course.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }} 
                       className="group bg-card rounded-2xl border border-border p-5 hover:shadow-lg transition-all cursor-pointer relative overflow-hidden"
-                      onClick={() => navigate(`/learning/${course.id}`)}>
+                      onClick={() => navigate(`/course/${course.id}/learn`)}>
                       <div className="flex justify-between items-start mb-4">
                         <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform"><BookOpen className="w-6 h-6 text-primary" /></div>
                         {course.status === "completed" && <div className="bg-green-500/10 text-green-600 px-2 py-1 rounded-lg text-xs font-medium flex items-center gap-1"><CheckCircle2 className="w-3 h-3" />Завершён</div>}
