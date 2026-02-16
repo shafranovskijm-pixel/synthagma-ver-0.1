@@ -66,6 +66,8 @@ export function useStudentDashboard() {
   const [totalTimeSpent, setTotalTimeSpent] = useState(0);
   const [totalCompletedLessons, setTotalCompletedLessons] = useState(0);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const [isAdminView, setIsAdminView] = useState(false);
+  const [adminViewStudentName, setAdminViewStudentName] = useState("");
   const [showVideoIdentification, setShowVideoIdentification] = useState(false);
   const [showConsentForm, setShowConsentForm] = useState(false);
   const [showDocumentsUpload, setShowDocumentsUpload] = useState(false);
@@ -94,6 +96,14 @@ export function useStudentDashboard() {
   useEffect(() => {
     const preview = localStorage.getItem('previewStudentDashboard');
     if (preview === 'true') { setIsPreviewMode(true); localStorage.removeItem('previewStudentDashboard'); }
+    const adminView = localStorage.getItem('adminViewAsStudent');
+    if (adminView) {
+      try {
+        const data = JSON.parse(adminView);
+        setIsAdminView(true);
+        setAdminViewStudentName(data.name || '');
+      } catch (e) { /* ignore */ }
+    }
   }, []);
 
   useEffect(() => {
@@ -258,6 +268,6 @@ export function useStudentDashboard() {
     showAchievements, setShowAchievements, mobileMenuOpen, setMobileMenuOpen,
     documentsProgress, isVideoIdentified, setIsVideoIdentified, showOnboarding, handleOnboardingClose,
     handleLogout, pullToRefreshRef, pullDistance, isRefreshing, canRefresh,
-    signOut, orgPlan,
+    signOut, orgPlan, isAdminView, adminViewStudentName,
   };
 }
