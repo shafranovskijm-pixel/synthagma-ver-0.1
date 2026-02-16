@@ -18,13 +18,9 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [userRole, setUserRole] = useState<'admin' | 'organization' | 'student' | 'sales_manager' | null>(
-    () => {
-      const cached = localStorage.getItem('user_role');
-      return cached as 'admin' | 'organization' | 'student' | 'sales_manager' | null;
-    }
-  );
+  const [userRole, setUserRole] = useState<'admin' | 'organization' | 'student' | 'sales_manager' | null>(null);
   const [loading, setLoading] = useState(true);
+  const [roleLoaded, setRoleLoaded] = useState(false);
 
   useEffect(() => {
     // Set up auth state listener FIRST
@@ -81,12 +77,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.setItem('user_role', role);
       } else if (error) {
         console.error('Error fetching user role:', error);
-        // Default to student if no role found
         setUserRole('student');
       }
     } catch (error) {
       console.error('Error fetching user role:', error);
       setUserRole('student');
+    } finally {
+      setRoleLoaded(true);
     }
   };
 
