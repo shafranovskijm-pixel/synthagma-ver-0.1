@@ -1,4 +1,5 @@
 import { lazy, Suspense } from "react";
+import { Navigate, useParams } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -50,6 +51,8 @@ const PersonalDataPolicy = lazy(() => import("./pages/PersonalDataPolicy"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
+
+const LearningRedirect = () => { const { courseId } = useParams(); return <Navigate to={`/course/${courseId}/learn`} replace />; };
 
 const isNative = typeof (window as any).Capacitor !== 'undefined';
 const Router = isNative ? HashRouter : BrowserRouter;
@@ -142,6 +145,7 @@ const App = () => (
                         <SalesDashboard />
                       </ProtectedRoute>
                     } />
+                    <Route path="/learning/:courseId" element={<LearningRedirect />} />
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                     <Route path="*" element={<NotFound />} />
                   </Routes>
