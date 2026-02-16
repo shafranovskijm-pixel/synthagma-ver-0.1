@@ -43,6 +43,7 @@ import {
   Puzzle,
   History,
   Wallet,
+  Eye,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -782,6 +783,18 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
             <Badge variant="outline" className="text-sm">
               Всего: {students.length}
             </Badge>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={() => {
+                localStorage.setItem('previewStudentDashboard', 'true');
+                window.open('/student', '_blank');
+              }}
+            >
+              <Eye className="w-4 h-4" />
+              Кабинет ученика
+            </Button>
           </div>
 
           <Card>
