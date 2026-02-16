@@ -197,14 +197,22 @@ ${errorsText}${photoUrl ? `\n\n<b>Скриншот:</b> ${photoUrl}` : ""}`;
       <p className="text-[11px] text-muted-foreground">
         Автоматически прикладывается: URL, браузер, логи ошибок
       </p>
-      <a
-        href="https://t.me/+SVTbxqnGmF1iMzIy"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-1"
-      >
-        💬 Чат тех. поддержки в Telegram
-      </a>
+      <div className="flex flex-col gap-1 mt-1">
+        <a
+          href="https://t.me/+SVTbxqnGmF1iMzIy"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+        >
+          💬 Чат тех. поддержки в Telegram
+        </a>
+        <a
+          href="tel:+79787774994"
+          className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+        >
+          📞 +7 (978) 777-49-94
+        </a>
+      </div>
     </div>
   );
 }
