@@ -1,23 +1,51 @@
 
-# Вставка без форматирования в редакторе курсов
+# Fix: Direct navigation to /student shows content correctly
 
-## Проблема
-При копировании текста из внешних источников (браузер, Word и т.д.) в редактор урока вставляется текст с исходным форматированием -- фон, цвет, шрифт. Нужно, чтобы по умолчанию вставлялся чистый текст без стилей.
+## Problem
+When a student navigates directly to `/student` (e.g., from a bookmark or custom domain), the page may not load because of a race condition in the authentication logic:
 
-## Решение
-Добавить обработчик `onPaste` в компонент `RichTextEditor.tsx`, который перехватывает вставку и вставляет только plain text:
+1. `getSession()` resolves and finds an active session
+2. `setLoading(false)` is called **immediately**
+3. `fetchUserRole()` is called but has NOT finished yet
+4. `ProtectedRoute` renders with `user` set but `userRole` still `null`
+5. The component shows a perpetual loading spinner or redirects incorrectly
 
+## Root Cause
+In `src/hooks/useAuth.tsx`, line 48-51, `fetchUserRole` is called but not awaited before `setLoading(false)`:
+
+```text
+if (session?.user) {
+  fetchUserRole(session.user.id);  // <-- async, NOT awaited
+}
+setLoading(false);  // <-- runs immediately, before role is fetched
 ```
-e.preventDefault()
-const text = e.clipboardData.getData('text/plain')
-document.execCommand('insertText', false, text)
+
+## Solution
+Await the role fetch before setting `loading` to `false` during initial load. This ensures `ProtectedRoute` has both `user` and `userRole` available before rendering decisions are made.
+
+### Change in `src/hooks/useAuth.tsx`
+
+Update the `getSession` block (lines 43-52) to await `fetchUserRole`:
+
+```typescript
+// THEN check for existing session
+const initializeAuth = async () => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    setSession(session);
+    setUser(session?.user ?? null);
+
+    if (session?.user) {
+      await fetchUserRole(session.user.id);
+    }
+  } catch (error) {
+    console.error('Auth initialization error:', error);
+  } finally {
+    setLoading(false);
+  }
+};
+
+initializeAuth();
 ```
 
-## Технические детали
-
-### Изменяемый файл
-- `src/components/course-builder/RichTextEditor.tsx` -- добавить `onPaste` на `div[contentEditable]` (строка ~137-150), который:
-  1. Вызывает `e.preventDefault()` для отмены стандартной вставки
-  2. Извлекает текст через `e.clipboardData.getData('text/plain')`
-  3. Вставляет его через `document.execCommand('insertText', false, text)` для сохранения позиции курсора
-  4. Вызывает `handleInput` для синхронизации состояния
+This is a single-file change. The `onAuthStateChange` listener remains unchanged (it correctly uses `setTimeout` to avoid deadlocks). Only the initial load path is modified to ensure the role is fully resolved before the app renders protected routes.
