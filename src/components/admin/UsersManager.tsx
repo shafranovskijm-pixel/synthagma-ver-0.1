@@ -37,7 +37,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, Search, Loader2, Users, Shield, Building2, GraduationCap, Copy, Eye, EyeOff, BookOpen, FileText, Clock, Mail, Phone, MapPin } from "lucide-react";
+import { Trash2, Search, Loader2, Users, Shield, Building2, GraduationCap, Copy, Eye, EyeOff, BookOpen, FileText, Clock, Mail, Phone, MapPin, KeyRound, Save, Plus, Pencil } from "lucide-react";
+import { Label } from "@/components/ui/label";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 
@@ -75,6 +76,10 @@ export function UsersManager() {
     profile: any;
     loading: boolean;
   }>({ enrollments: [], profile: null, loading: false });
+  const [credEdit, setCredEdit] = useState<{ login: string; password: string; editing: boolean; saving: boolean }>({
+    login: "", password: "", editing: false, saving: false,
+  });
+  const [credPasswordVisible, setCredPasswordVisible] = useState(false);
   const { toast } = useToast();
 
   const togglePasswordVisibility = (userId: string) => {
@@ -98,6 +103,8 @@ export function UsersManager() {
   const fetchUserDetail = async (user: UserWithRole) => {
     setSelectedUser(user);
     setUserDetail({ enrollments: [], profile: null, loading: true });
+    setCredEdit({ login: "", password: "", editing: false, saving: false });
+    setCredPasswordVisible(false);
     try {
       const [enrollRes, profileRes, identityRes] = await Promise.all([
         supabase
@@ -123,6 +130,35 @@ export function UsersManager() {
       });
     } catch {
       setUserDetail(prev => ({ ...prev, loading: false }));
+    }
+  };
+
+  const handleSaveCredentials = async () => {
+    if (!selectedUser) return;
+    setCredEdit(prev => ({ ...prev, saving: true }));
+    try {
+      const { error } = await supabase.functions.invoke("update-student-credentials", {
+        body: {
+          userId: selectedUser.user_id,
+          login: credEdit.login.trim(),
+          password: credEdit.password.trim(),
+        },
+      });
+      if (error) throw error;
+
+      // Update local state
+      setUsers(prev => prev.map(u =>
+        u.user_id === selectedUser.user_id
+          ? { ...u, login: credEdit.login.trim(), generated_password: credEdit.password.trim() }
+          : u
+      ));
+      setSelectedUser(prev => prev ? { ...prev, login: credEdit.login.trim(), generated_password: credEdit.password.trim() } : prev);
+      setCredEdit(prev => ({ ...prev, editing: false, saving: false }));
+      toast({ title: "Успешно", description: "Учётные данные обновлены" });
+    } catch (error: any) {
+      console.error("Error saving credentials:", error);
+      toast({ title: "Ошибка", description: error?.message || "Не удалось сохранить учётные данные", variant: "destructive" });
+      setCredEdit(prev => ({ ...prev, saving: false }));
     }
   };
 
@@ -566,12 +602,93 @@ export function UsersManager() {
                       </div>
                     )}
                   </div>
-                  {selectedUser?.login && (
-                    <div className="pt-2 border-t">
-                      <span className="text-muted-foreground">Логин: </span>
-                      <code className="bg-muted px-1.5 py-0.5 rounded text-xs">{selectedUser.login}</code>
+                  {/* Credentials management */}
+                  <div className="pt-2 border-t space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground flex items-center gap-1"><KeyRound className="w-3.5 h-3.5" /> Учётные данные</span>
+                      {!credEdit.editing ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => {
+                            setCredEdit({
+                              login: selectedUser?.login || "",
+                              password: selectedUser?.generated_password || "",
+                              editing: true,
+                              saving: false,
+                            });
+                            setCredPasswordVisible(false);
+                          }}
+                        >
+                          {selectedUser?.login ? <><Pencil className="w-3 h-3 mr-1" />Изменить</> : <><Plus className="w-3 h-3 mr-1" />Добавить</>}
+                        </Button>
+                      ) : (
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setCredEdit(prev => ({ ...prev, editing: false }))}>
+                            Отмена
+                          </Button>
+                          <Button size="sm" className="h-7 text-xs" disabled={credEdit.saving || !credEdit.login.trim() || !credEdit.password.trim()} onClick={handleSaveCredentials}>
+                            {credEdit.saving ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Save className="w-3 h-3 mr-1" />}
+                            Сохранить
+                          </Button>
+                        </div>
+                      )}
                     </div>
-                  )}
+
+                    {credEdit.editing ? (
+                      <div className="space-y-2">
+                        <div>
+                          <Label className="text-xs">Логин</Label>
+                          <Input
+                            value={credEdit.login}
+                            onChange={e => setCredEdit(prev => ({ ...prev, login: e.target.value }))}
+                            placeholder="Введите логин"
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Пароль</Label>
+                          <div className="relative">
+                            <Input
+                              type={credPasswordVisible ? "text" : "password"}
+                              value={credEdit.password}
+                              onChange={e => setCredEdit(prev => ({ ...prev, password: e.target.value }))}
+                              placeholder="Введите пароль"
+                              className="h-8 text-sm pr-8"
+                            />
+                            <Button variant="ghost" size="icon" className="absolute right-0 top-0 h-8 w-8" onClick={() => setCredPasswordVisible(!credPasswordVisible)}>
+                              {credPasswordVisible ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : selectedUser?.login ? (
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground">Логин:</span>
+                          <code className="bg-muted px-1.5 py-0.5 rounded text-xs">{selectedUser.login}</code>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground">Пароль:</span>
+                          <code className="bg-muted px-1.5 py-0.5 rounded text-xs">
+                            {credPasswordVisible ? (selectedUser.generated_password || "—") : "••••••••"}
+                          </code>
+                          <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => setCredPasswordVisible(!credPasswordVisible)}>
+                            {credPasswordVisible ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                          </Button>
+                          {selectedUser.generated_password && (
+                            <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => copyCredentials(selectedUser.login!, selectedUser.generated_password!)}>
+                              <Copy className="w-3 h-3" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">Учётные данные не заданы</p>
+                    )}
+                  </div>
+
                   {selectedUser?.organization_name && (
                     <div>
                       <span className="text-muted-foreground">Организация: </span>
