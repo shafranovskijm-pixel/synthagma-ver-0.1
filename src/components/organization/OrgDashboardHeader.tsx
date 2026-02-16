@@ -34,7 +34,7 @@ export function OrgDashboardHeader() {
               <h1 className="font-display text-xl lg:text-2xl font-bold">
                 {activeTab === "courses" && "Управление курсами"}
                 {activeTab === "students" && "Все ученики"}
-                {activeTab === "library" && "Библиотека материалов"}
+                {activeTab === "library" && "Хранилище"}
                 {activeTab === "stats" && "Статистика обучения"}
                 {activeTab === "links" && "Ссылки для регистрации"}
                 {activeTab === "documents" && "Документооборот"}
