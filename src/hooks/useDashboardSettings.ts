@@ -29,7 +29,7 @@ export function useDashboardSettings(organizationId: string | null) {
   });
 
   const [studentDashboardSettings, setStudentDashboardSettings] = useState<StudentDashboardSettings>({
-    showLibrary: true,
+    showLibrary: false,
     showAchievements: true,
     showAiChat: true
   });
@@ -80,7 +80,7 @@ export function useDashboardSettings(organizationId: string | null) {
         if (data?.student_dashboard_settings && typeof data.student_dashboard_settings === 'object') {
           const settings = data.student_dashboard_settings as Record<string, unknown>;
           setStudentDashboardSettings({
-            showLibrary: settings.showLibrary !== false,
+            showLibrary: settings.showLibrary === true,
             showAchievements: settings.showAchievements !== false,
             showAiChat: settings.showAiChat !== false
           });
