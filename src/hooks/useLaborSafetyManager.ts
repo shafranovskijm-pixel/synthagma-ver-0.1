@@ -357,7 +357,11 @@ export function useLaborSafetyManager({ organizationId }: UseLaborSafetyManagerP
         if (error || data?.error) { failCount++; continue; }
         if (data?.user_id) {
           const { error: linkError } = await supabase.from("labor_safety_profiles").upsert({ user_id: data.user_id, full_name: record.full_name, login: data.login, generated_password: data.generated_password, email: data.email, organization_id: organizationId, record_id: record.id }, { onConflict: 'record_id' });
-          if (linkError) failCount++; else successCount++;
+           if (linkError) { failCount++; } else {
+             // Sync credentials to main profiles table as fallback
+             await supabase.from("profiles").update({ login: data.login, generated_password: data.generated_password }).eq("user_id", data.user_id).is("login", null);
+             successCount++;
+           }
         } else failCount++;
       }
       if (successCount > 0) toast.success(`Создано доступов: ${successCount}`);
@@ -423,6 +427,10 @@ export function useLaborSafetyManager({ organizationId }: UseLaborSafetyManagerP
           if (registerError || !registerData?.user_id) { failCount++; continue; }
           userId = registerData.user_id;
           await supabase.from("labor_safety_profiles").upsert({ user_id: userId, full_name: record.full_name, login: registerData.login, generated_password: registerData.generated_password, email: registerData.email, organization_id: organizationId, record_id: record.id }, { onConflict: 'record_id' });
+           // Sync credentials to main profiles table as fallback
+           if (registerData.login) {
+             await supabase.from("profiles").update({ login: registerData.login, generated_password: registerData.generated_password }).eq("user_id", userId).is("login", null);
+           }
         }
         if (!userId) { failCount++; continue; }
         for (const courseId of selectedCourseIds) {
