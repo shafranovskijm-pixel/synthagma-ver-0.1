@@ -15,6 +15,7 @@ interface StudentCardData {
   login?: string | null;
   company_name?: string | null;
   generated_password?: string | null;
+  last_visit_at?: string | null;
 }
 
 interface StudentCardEnrollment {
@@ -42,6 +43,7 @@ export function useStudentDetailCard() {
       login: student.login,
       company_name: student.company_name,
       generated_password: student.generated_password,
+      last_visit_at: student.last_visit_at,
     });
 
     // Load enrollments for this student

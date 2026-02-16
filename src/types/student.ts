@@ -11,6 +11,7 @@ export interface Student {
   course_id: string | null;
   progress: number;
   lastActivity: string | null;
+  last_visit_at?: string | null;
   status: string | null;
   company_id?: string | null;
   company_name?: string | null;
