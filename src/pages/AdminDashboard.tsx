@@ -8,6 +8,7 @@ import { OrganizationsManager } from "@/components/admin/OrganizationsManager";
 import { UsersManager } from "@/components/admin/UsersManager";
 import { AdminAnalytics } from "@/components/admin/AdminAnalytics";
 import { AdminMarketplaceManager } from "@/components/admin/AdminMarketplaceManager";
+import { SupportRequestsManager } from "@/components/admin/SupportRequestsManager";
 
 import { AdminSettings } from "@/components/admin/AdminSettings";
 import { BlogManager } from "@/components/admin/BlogManager";
@@ -34,6 +35,7 @@ const AdminDashboard = () => {
       case "marketplace": return "Маркетплейс";
       case "users": return "Пользователи";
       case "content": return "Контент";
+      case "support": return "Поддержка";
       case "devtools": return "Developer Tools";
       case "settings": return "Настройки";
       default: return "";
@@ -91,6 +93,7 @@ const AdminDashboard = () => {
           {activeTab === "marketplace" && <AdminMarketplaceManager />}
           {activeTab === "users" && <UsersManager />}
           {activeTab === "content" && <BlogManager />}
+          {activeTab === "support" && <SupportRequestsManager />}
           {activeTab === "devtools" && <DevToolsPanel />}
           {activeTab === "settings" && <AdminSettings />}
         </div>

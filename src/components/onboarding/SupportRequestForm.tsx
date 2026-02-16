@@ -93,6 +93,22 @@ export function SupportRequestForm() {
         ? errors.map((e, i) => `${i + 1}. ${e.message}`).join("\n")
         : "Нет";
 
+      // Save to DB
+      if (user) {
+        await supabase.from("support_requests").insert({
+          user_id: user.id,
+          user_name: userName || null,
+          user_email: userEmail || null,
+          user_role: userRole || null,
+          organization_id: orgId || null,
+          description: description.trim(),
+          screenshot_url: photoUrl,
+          browser_info: navigator.userAgent.slice(0, 200),
+          page_url: window.location.href,
+          error_logs: errorsText !== "Нет" ? errorsText : null,
+        });
+      }
+
       // Build message
       const roleName = userRole === "organization" ? "Организация" : userRole === "admin" ? "Админ" : "Ученик";
       const now = new Date().toLocaleString("ru-RU", { timeZone: "Europe/Moscow" });

@@ -2851,6 +2851,60 @@ export type Database = {
           },
         ]
       }
+      support_requests: {
+        Row: {
+          admin_notes: string | null
+          browser_info: string | null
+          created_at: string
+          description: string
+          error_logs: string | null
+          id: string
+          organization_id: string | null
+          page_url: string | null
+          screenshot_url: string | null
+          status: string
+          updated_at: string
+          user_email: string | null
+          user_id: string
+          user_name: string | null
+          user_role: string | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          browser_info?: string | null
+          created_at?: string
+          description: string
+          error_logs?: string | null
+          id?: string
+          organization_id?: string | null
+          page_url?: string | null
+          screenshot_url?: string | null
+          status?: string
+          updated_at?: string
+          user_email?: string | null
+          user_id: string
+          user_name?: string | null
+          user_role?: string | null
+        }
+        Update: {
+          admin_notes?: string | null
+          browser_info?: string | null
+          created_at?: string
+          description?: string
+          error_logs?: string | null
+          id?: string
+          organization_id?: string | null
+          page_url?: string | null
+          screenshot_url?: string | null
+          status?: string
+          updated_at?: string
+          user_email?: string | null
+          user_id?: string
+          user_name?: string | null
+          user_role?: string | null
+        }
+        Relationships: []
+      }
       system_diagnostics: {
         Row: {
           check_name: string
