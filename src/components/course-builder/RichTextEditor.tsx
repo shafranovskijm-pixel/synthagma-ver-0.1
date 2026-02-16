@@ -57,6 +57,13 @@ export function RichTextEditor({ value, onChange, placeholder, className, minHei
     onChange(raw);
   }, [onChange]);
 
+  const handlePaste = useCallback((e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const text = e.clipboardData.getData('text/plain');
+    document.execCommand('insertText', false, text);
+    handleInput();
+  }, [handleInput]);
+
   const handleBlur = useCallback(() => {
     setTimeout(() => setShowToolbar(false), 200);
     // Sanitize on blur to avoid cursor issues during typing
@@ -139,6 +146,7 @@ export function RichTextEditor({ value, onChange, placeholder, className, minHei
         contentEditable
         suppressContentEditableWarning
         onInput={handleInput}
+        onPaste={handlePaste}
         onBlur={handleBlur}
         data-placeholder={placeholder}
         className={cn(
