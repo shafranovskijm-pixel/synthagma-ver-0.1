@@ -1,9 +1,10 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   BookOpen, MessageCircle, Trophy, Settings, LogOut, Video, FileCheck, FileText,
   Menu, Sun, Moon, Monitor, CheckCircle2, Clock, Eye, Store,
-  Library, AlertCircle, Sparkles, Send, Loader2, X, Lock
+  Library, AlertCircle, Sparkles, Send, Loader2, X, Lock, ArrowLeft, Building2, Bot
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -21,8 +22,10 @@ import { useStudentDashboard } from "@/hooks/useStudentDashboard";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { StudentCourseStore } from "@/components/student/StudentCourseStore";
+import { StudentOrgChat } from "@/components/student/StudentOrgChat";
 
 export default function StudentDashboard() {
+  const [chatMode, setChatMode] = useState<'select' | 'org' | 'ai'>('select');
   const {
     user, navigate, isMobile, theme, setTheme,
     activeTab, setActiveTab, messages, inputValue, setInputValue, isAiLoading, handleSendMessage,
@@ -49,7 +52,7 @@ export default function StudentDashboard() {
       </div>
       <nav className="flex-1 p-4 overflow-y-auto space-y-1">
         <button onClick={() => { setActiveTab("courses"); onNavigate?.(); }} className={cn("w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors", activeTab === "courses" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary")}><BookOpen className="w-5 h-5" />Мои курсы</button>
-        {dashboardSettings.showAiChat && <button onClick={() => { setActiveTab("chat"); onNavigate?.(); }} className={cn("w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors", activeTab === "chat" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary")}><MessageCircle className="w-5 h-5" />ИИ-помощник<span className="ml-auto w-2 h-2 rounded-full bg-sigma-green animate-pulse" /></button>}
+        {dashboardSettings.showAiChat && <button onClick={() => { setActiveTab("chat"); setChatMode("select"); onNavigate?.(); }} className={cn("w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors", activeTab === "chat" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary")}><MessageCircle className="w-5 h-5" />Чат<span className="ml-auto w-2 h-2 rounded-full bg-sigma-green animate-pulse" /></button>}
         {dashboardSettings.showLibrary && <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors"><Library className="w-5 h-5" />Библиотека</button>}
         {dashboardSettings.showAchievements && <button onClick={() => { setShowAchievements(true); onNavigate?.(); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors"><Trophy className="w-5 h-5" />Достижения</button>}
         <button onClick={() => { 
@@ -148,9 +151,42 @@ export default function StudentDashboard() {
           </>
         )}
 
-        {activeTab === "chat" && (
+        {activeTab === "chat" && chatMode === "select" && (
+          <div className="flex flex-col items-center justify-center h-full p-8">
+            <MessageCircle className="w-12 h-12 text-primary mb-6" />
+            <h2 className="font-display text-xl font-semibold mb-2">Выберите чат</h2>
+            <p className="text-muted-foreground mb-8 text-center">С кем вы хотите пообщаться?</p>
+            <div className="grid gap-4 w-full max-w-md">
+              <button onClick={() => setChatMode("org")} className="flex items-center gap-4 p-5 rounded-2xl border border-border bg-card hover:bg-secondary/50 transition-colors text-left">
+                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0"><Building2 className="w-6 h-6 text-primary" /></div>
+                <div><div className="font-semibold">Чат с учебным центром</div><div className="text-sm text-muted-foreground">Переписка с {profile?.organization_name || "организацией"}</div></div>
+              </button>
+              <button onClick={() => setChatMode("ai")} className="flex items-center gap-4 p-5 rounded-2xl border border-border bg-card hover:bg-secondary/50 transition-colors text-left">
+                <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center shrink-0"><Bot className="w-6 h-6 text-accent" /></div>
+                <div><div className="font-semibold">ИИ-помощник</div><div className="text-sm text-muted-foreground">Ответит на вопросы по обучению</div></div>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "chat" && chatMode === "org" && user && profile?.organization_id && (
           <div className="flex flex-col h-full">
-            <header className="bg-card border-b border-border p-4 flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-gradient-to-r from-primary to-accent flex items-center justify-center"><Sparkles className="w-5 h-5 text-white" /></div><div><h1 className="font-bold">ИИ-помощник</h1><p className="text-xs text-muted-foreground">Ответит на вопросы по обучению</p></div></header>
+            <header className="bg-card border-b border-border p-4 flex items-center gap-3">
+              <Button variant="ghost" size="icon" className="rounded-xl" onClick={() => setChatMode("select")}><ArrowLeft className="w-5 h-5" /></Button>
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center"><Building2 className="w-5 h-5 text-primary" /></div>
+              <div><h1 className="font-bold">{profile.organization_name || "Учебный центр"}</h1><p className="text-xs text-muted-foreground">Чат с организацией</p></div>
+            </header>
+            <StudentOrgChat studentUserId={user.id} organizationId={profile.organization_id} organizationName={profile.organization_name || "Учебный центр"} />
+          </div>
+        )}
+
+        {activeTab === "chat" && chatMode === "ai" && (
+          <div className="flex flex-col h-full">
+            <header className="bg-card border-b border-border p-4 flex items-center gap-3">
+              <Button variant="ghost" size="icon" className="rounded-xl" onClick={() => setChatMode("select")}><ArrowLeft className="w-5 h-5" /></Button>
+              <div className="w-10 h-10 rounded-full bg-gradient-to-r from-primary to-accent flex items-center justify-center"><Sparkles className="w-5 h-5 text-white" /></div>
+              <div><h1 className="font-bold">ИИ-помощник</h1><p className="text-xs text-muted-foreground">Ответит на вопросы по обучению</p></div>
+            </header>
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {messages.map((m, i) => (
                 <div key={i} className={cn("flex", m.role === 'user' ? "justify-end" : "justify-start")}>
