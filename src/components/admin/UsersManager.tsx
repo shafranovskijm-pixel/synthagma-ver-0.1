@@ -27,11 +27,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, Search, Loader2, Users, Shield, Building2, GraduationCap, Copy, Eye, EyeOff } from "lucide-react";
+import { Trash2, Search, Loader2, Users, Shield, Building2, GraduationCap, Copy, Eye, EyeOff, BookOpen, FileText, Clock, Mail, Phone, MapPin } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 
@@ -63,6 +69,12 @@ export function UsersManager() {
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [deleteUser, setDeleteUser] = useState<UserWithRole | null>(null);
   const [visiblePasswords, setVisiblePasswords] = useState<Set<string>>(new Set());
+  const [selectedUser, setSelectedUser] = useState<UserWithRole | null>(null);
+  const [userDetail, setUserDetail] = useState<{
+    enrollments: any[];
+    profile: any;
+    loading: boolean;
+  }>({ enrollments: [], profile: null, loading: false });
   const { toast } = useToast();
 
   const togglePasswordVisibility = (userId: string) => {
@@ -81,6 +93,37 @@ export function UsersManager() {
     const text = `Логин: ${login}\nПароль: ${password}`;
     navigator.clipboard.writeText(text);
     toast({ title: "Скопировано", description: "Логин и пароль скопированы в буфер обмена" });
+  };
+
+  const fetchUserDetail = async (user: UserWithRole) => {
+    setSelectedUser(user);
+    setUserDetail({ enrollments: [], profile: null, loading: true });
+    try {
+      const [enrollRes, profileRes, identityRes] = await Promise.all([
+        supabase
+          .from("enrollments")
+          .select("id, course_id, status, progress, started_at, completed_at, time_spent, courses(title)")
+          .eq("user_id", user.user_id),
+        supabase
+          .from("profiles")
+          .select("full_name, email, phone, login, snils, birth_date, address, organization_id, company_id, created_at")
+          .eq("user_id", user.user_id)
+          .maybeSingle(),
+        supabase
+          .from("student_identity_documents" as any)
+          .select("*")
+          .eq("user_id", user.user_id)
+          .maybeSingle(),
+      ]);
+      const profileData = profileRes.data as Record<string, any> | null;
+      setUserDetail({
+        enrollments: enrollRes.data || [],
+        profile: { ...(profileData || {}), identity: identityRes.data },
+        loading: false,
+      });
+    } catch {
+      setUserDetail(prev => ({ ...prev, loading: false }));
+    }
   };
 
   useEffect(() => {
@@ -343,7 +386,7 @@ export function UsersManager() {
                 </TableRow>
               ) : (
                 filteredUsers.map((user) => (
-                  <TableRow key={user.id}>
+                  <TableRow key={user.id} className="cursor-pointer hover:bg-secondary/50" onClick={() => fetchUserDetail(user)}>
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar>
@@ -456,7 +499,7 @@ export function UsersManager() {
                         variant="ghost"
                         size="icon"
                         className="text-destructive hover:text-destructive"
-                        onClick={() => setDeleteUser(user)}
+                        onClick={(e) => { e.stopPropagation(); setDeleteUser(user); }}
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
@@ -468,6 +511,119 @@ export function UsersManager() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* User Detail Dialog */}
+      <Dialog open={!!selectedUser} onOpenChange={() => setSelectedUser(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3">
+              <Avatar>
+                <AvatarFallback>{selectedUser?.full_name?.[0]?.toUpperCase() || "?"}</AvatarFallback>
+              </Avatar>
+              {selectedUser?.full_name || "Пользователь"}
+            </DialogTitle>
+          </DialogHeader>
+
+          {userDetail.loading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* Contact info */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Контактные данные</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="flex items-center gap-2">
+                      <Mail className="w-4 h-4 text-muted-foreground" />
+                      <span>{userDetail.profile?.email || selectedUser?.email || "—"}</span>
+                    </div>
+                    {userDetail.profile?.phone && (
+                      <div className="flex items-center gap-2">
+                        <Phone className="w-4 h-4 text-muted-foreground" />
+                        <span>{userDetail.profile.phone}</span>
+                      </div>
+                    )}
+                    {userDetail.profile?.address && (
+                      <div className="flex items-center gap-2 col-span-2">
+                        <MapPin className="w-4 h-4 text-muted-foreground" />
+                        <span>{userDetail.profile.address}</span>
+                      </div>
+                    )}
+                    {userDetail.profile?.snils && (
+                      <div>
+                        <span className="text-muted-foreground">СНИЛС: </span>
+                        <span>{userDetail.profile.snils}</span>
+                      </div>
+                    )}
+                    {userDetail.profile?.birth_date && (
+                      <div>
+                        <span className="text-muted-foreground">Дата рождения: </span>
+                        <span>{userDetail.profile.birth_date}</span>
+                      </div>
+                    )}
+                  </div>
+                  {selectedUser?.login && (
+                    <div className="pt-2 border-t">
+                      <span className="text-muted-foreground">Логин: </span>
+                      <code className="bg-muted px-1.5 py-0.5 rounded text-xs">{selectedUser.login}</code>
+                    </div>
+                  )}
+                  {selectedUser?.organization_name && (
+                    <div>
+                      <span className="text-muted-foreground">Организация: </span>
+                      <span>{selectedUser.organization_name}</span>
+                    </div>
+                  )}
+                  <div>
+                    <span className="text-muted-foreground">User ID: </span>
+                    <code className="bg-muted px-1.5 py-0.5 rounded text-xs">{selectedUser?.user_id}</code>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Enrollments */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <BookOpen className="w-4 h-4" />
+                    Курсы ({userDetail.enrollments.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {userDetail.enrollments.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Нет зачислений</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {userDetail.enrollments.map((e: any) => (
+                        <div key={e.id} className="flex items-center justify-between p-2 rounded-lg bg-secondary/30 text-sm">
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium truncate">{e.courses?.title || "—"}</div>
+                            <div className="text-xs text-muted-foreground flex items-center gap-2">
+                              <Clock className="w-3 h-3" />
+                              {format(new Date(e.started_at), "d MMM yyyy", { locale: ru })}
+                              {e.completed_at && ` → ${format(new Date(e.completed_at), "d MMM yyyy", { locale: ru })}`}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <Badge variant={e.status === "completed" ? "default" : "outline"} className="text-xs">
+                              {e.status === "completed" ? "Завершён" : e.status === "active" ? "Активен" : e.status}
+                            </Badge>
+                            <span className="text-xs font-mono">{e.progress}%</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!deleteUser} onOpenChange={() => setDeleteUser(null)}>
