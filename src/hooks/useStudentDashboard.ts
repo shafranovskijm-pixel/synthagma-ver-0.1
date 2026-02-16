@@ -169,7 +169,7 @@ export function useStudentDashboard() {
       }
       if (effectiveDashboardSettings && typeof effectiveDashboardSettings === 'object') {
         const s = effectiveDashboardSettings as Record<string, unknown>;
-        setDashboardSettings({ showLibrary: s.showLibrary !== false, showAchievements: s.showAchievements !== false, showAiChat: s.showAiChat !== false });
+        setDashboardSettings({ showLibrary: s.showLibrary === true, showAchievements: s.showAchievements !== false, showAiChat: s.showAiChat !== false });
       }
 
       const { data: enrollments } = await supabase.from("enrollments").select("id, progress, status, time_spent, course_id, courses(id, title, description, duration, skip_video_identification)").eq("user_id", user.id);
