@@ -161,14 +161,18 @@ export function StorageManager({ organizationId }: StorageManagerProps) {
             if (f.id === null && depth < 2) {
               await scanPath(client, bucket, `${prefix}/${f.name}`, urlBase, depth + 1);
             } else if (f.id !== null) {
-              // Skip hidden artifact files (WMF, EMF)
+              // Skip hidden artifact files (WMF, EMF) and zero-byte placeholders
               if (isHiddenArtifact(f.name)) continue;
+              const fileSize = (f.metadata as any)?.size || 0;
+              if (fileSize === 0) continue;
+              // Skip files without extensions (import artifacts)
+              if (!f.name.includes('.')) continue;
               allFiles.push({
                 name: f.name,
                 url: `${urlBase}/storage/v1/object/public/${bucket}/${prefix}/${f.name}`,
                 bucket,
                 folder: prefix,
-                size: (f.metadata as any)?.size || 0,
+                size: fileSize,
                 created_at: (f as any).created_at || "",
                 type: getFileType(f.name),
               });
