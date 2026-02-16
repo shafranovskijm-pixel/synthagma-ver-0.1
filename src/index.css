@@ -141,7 +141,6 @@
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Playfair Display', Georgia, serif;
     font-weight: 500;
     letter-spacing: -0.02em;
   }
@@ -258,17 +257,14 @@
 
   .prose h1 {
     @apply text-2xl font-medium mt-6 mb-4 text-foreground;
-    font-family: 'Playfair Display', Georgia, serif;
   }
 
   .prose h2 {
     @apply text-xl font-medium mt-5 mb-3 text-foreground;
-    font-family: 'Playfair Display', Georgia, serif;
   }
 
   .prose h3 {
     @apply text-lg font-medium mt-4 mb-2 text-foreground;
-    font-family: 'Playfair Display', Georgia, serif;
   }
 
   .prose p {
