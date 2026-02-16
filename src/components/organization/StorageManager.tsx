@@ -104,71 +104,76 @@ export function StorageManager({ organizationId }: StorageManagerProps) {
   const loadFiles = useCallback(async () => {
     setLoading(true);
     try {
-      // Get course IDs for this organization
-      const { data: courses } = await supabase
-        .from("courses")
-        .select("id")
-        .eq("organization_id", organizationId);
-
-      if (!courses || courses.length === 0) {
-        setFiles([]);
-        setLoading(false);
-        return;
-      }
-
-      const courseIds = courses.map(c => c.id);
       const allFiles: StorageFile[] = [];
       const baseUrl = import.meta.env.VITE_SUPABASE_URL;
 
-      // Load from course-files bucket (internal)
-      for (const courseId of courseIds) {
+      // Helper: recursively scan a bucket path (up to 2 levels deep)
+      const scanPath = async (
+        client: any,
+        bucket: string,
+        prefix: string,
+        urlBase: string,
+        depth = 0
+      ) => {
         try {
-          const { data: items } = await supabase.storage
-            .from("course-files")
-            .list(courseId, { limit: 500 });
-          if (items) {
-            for (const f of items) {
-              if (f.id === null) continue;
+          const { data: items } = await client.storage
+            .from(bucket)
+            .list(prefix, { limit: 500 });
+          if (!items) return;
+          for (const f of items) {
+            if (f.id === null && depth < 2) {
+              // It's a subfolder — recurse
+              await scanPath(client, bucket, `${prefix}/${f.name}`, urlBase, depth + 1);
+            } else if (f.id !== null) {
               allFiles.push({
                 name: f.name,
-                url: `${baseUrl}/storage/v1/object/public/course-files/${courseId}/${f.name}`,
-                bucket: "course-files",
-                folder: courseId,
+                url: `${urlBase}/storage/v1/object/public/${bucket}/${prefix}/${f.name}`,
+                bucket,
+                folder: prefix,
                 size: (f.metadata as any)?.size || 0,
                 created_at: (f as any).created_at || "",
                 type: getFileType(f.name),
               });
             }
           }
-        } catch { /* folder doesn't exist */ }
+        } catch { /* path doesn't exist */ }
+      };
+
+      // 1. Course-based buckets (course-files)
+      const { data: courses } = await supabase
+        .from("courses")
+        .select("id")
+        .eq("organization_id", organizationId);
+      const courseIds = courses?.map(c => c.id) || [];
+
+      for (const courseId of courseIds) {
+        await scanPath(supabase, "course-files", courseId, baseUrl);
       }
 
-      // Try external storage (course-videos)
+      // 2. Organization-level buckets (internal)
+      const orgBuckets: { bucket: string; paths: string[] }[] = [
+        { bucket: "presentations", paths: [organizationId] },
+        { bucket: "org-documents", paths: [organizationId] },
+        { bucket: "company-documents", paths: [organizationId] },
+        { bucket: "org-branding", paths: [organizationId] },
+        { bucket: "library-files", paths: [`library/${organizationId}`] },
+        { bucket: "billing-documents", paths: [organizationId] },
+      ];
+
+      await Promise.all(
+        orgBuckets.flatMap(({ bucket, paths }) =>
+          paths.map(p => scanPath(supabase, bucket, p, baseUrl))
+        )
+      );
+
+      // 3. External storage (course-videos)
       try {
         const { data: config } = await supabase.functions.invoke("get-external-storage-config");
         if (config?.configured && config?.url && config?.key) {
           const { createClient } = await import("@supabase/supabase-js");
           const extClient = createClient(config.url, config.key);
           for (const courseId of courseIds) {
-            try {
-              const { data: items } = await extClient.storage
-                .from("course-videos")
-                .list(courseId, { limit: 500 });
-              if (items) {
-                for (const f of items) {
-                  if (f.id === null) continue;
-                  allFiles.push({
-                    name: f.name,
-                    url: `${config.url}/storage/v1/object/public/course-videos/${courseId}/${f.name}`,
-                    bucket: "course-videos",
-                    folder: courseId,
-                    size: (f.metadata as any)?.size || 0,
-                    created_at: (f as any).created_at || "",
-                    type: getFileType(f.name),
-                  });
-                }
-              }
-            } catch { /* folder doesn't exist */ }
+            await scanPath(extClient, "course-videos", courseId, config.url);
           }
         }
       } catch { /* external not configured */ }
@@ -216,22 +221,9 @@ export function StorageManager({ organizationId }: StorageManagerProps) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Get first course ID as default folder
-    const { data: courses } = await supabase
-      .from("courses")
-      .select("id")
-      .eq("organization_id", organizationId)
-      .limit(1);
-
-    if (!courses || courses.length === 0) {
-      toast.error("Создайте хотя бы один курс для загрузки файлов");
-      return;
-    }
-
     setUploading(true);
-    const courseId = courses[0].id;
     const bucket = "course-files";
-    const path = `${courseId}/${file.name}`;
+    const path = `${organizationId}/${file.name}`;
     const baseUrl = import.meta.env.VITE_SUPABASE_URL;
 
     try {
@@ -242,7 +234,7 @@ export function StorageManager({ organizationId }: StorageManagerProps) {
         name: file.name,
         url: `${baseUrl}/storage/v1/object/public/${bucket}/${path}`,
         bucket,
-        folder: courseId,
+        folder: organizationId,
         size: file.size,
         created_at: new Date().toISOString(),
         type: getFileType(file.name),
