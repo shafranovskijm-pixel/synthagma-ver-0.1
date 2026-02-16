@@ -181,6 +181,14 @@ ${errorsText}${photoUrl ? `\n\n<b>Скриншот:</b> ${photoUrl}` : ""}`;
       <p className="text-[11px] text-muted-foreground">
         Автоматически прикладывается: URL, браузер, логи ошибок
       </p>
+      <a
+        href="https://t.me/+SVTbxqnGmF1iMzIy"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-1"
+      >
+        💬 Чат тех. поддержки в Telegram
+      </a>
     </div>
   );
 }
