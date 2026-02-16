@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { 
   Users, Search, BookOpen, Filter, FileCheck, FileSpreadsheet, 
   GraduationCap, Key, Mail, XCircle, X, Loader2, Copy, Trash2, 
@@ -87,6 +88,7 @@ export const StudentsTab = React.memo(function StudentsTab({
   const [newGroupName, setNewGroupName] = useState("");
   const [newGroupColor, setNewGroupColor] = useState("#6366f1");
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
+  const [showSendConfirm, setShowSendConfirm] = useState(false);
 
   const handleCreateGroup = async () => {
     if (!newGroupName.trim()) return;
@@ -300,7 +302,7 @@ export const StudentsTab = React.memo(function StudentsTab({
                 <span className="hidden sm:inline">Логины</span>
               </Button>
               <Button 
-                onClick={() => onBulkSendCredentials?.(getSelectedUserIds())} 
+                onClick={() => setShowSendConfirm(true)} 
                 variant="outline" 
                 className="rounded-xl gap-2 shrink-0 text-xs lg:text-sm" 
                 disabled={isSendingBulkCredentials}
@@ -820,6 +822,28 @@ export const StudentsTab = React.memo(function StudentsTab({
           </div>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={showSendConfirm} onOpenChange={setShowSendConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Отправка данных на почту</AlertDialogTitle>
+            <AlertDialogDescription>
+              Вы действительно хотите отправить данные для входа на почту{" "}
+              <strong>{selectedStudentIds.size}</strong>{" "}
+              {selectedStudentIds.size === 1 ? "ученику" : selectedStudentIds.size < 5 ? "ученикам" : "ученикам"}?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Нет</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              onBulkSendCredentials?.(getSelectedUserIds());
+              setShowSendConfirm(false);
+            }}>
+              Да, отправить
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 });
