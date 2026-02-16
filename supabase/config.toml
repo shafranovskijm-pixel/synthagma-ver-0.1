@@ -56,3 +56,6 @@ verify_jwt = false
 
 [functions.notify-course-completion]
 verify_jwt = false
+
+[functions.create-sales-manager]
+verify_jwt = false

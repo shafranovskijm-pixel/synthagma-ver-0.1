@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 interface AuthContextType {
   user: User | null;
   session: Session | null;
-  userRole: 'admin' | 'organization' | 'student' | null;
+  userRole: 'admin' | 'organization' | 'student' | 'sales_manager' | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
@@ -18,7 +18,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [userRole, setUserRole] = useState<'admin' | 'organization' | 'student' | null>(null);
+  const [userRole, setUserRole] = useState<'admin' | 'organization' | 'student' | 'sales_manager' | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -64,7 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (data && !error) {
         console.log('Fetched user role:', data.role);
-        setUserRole(data.role as 'admin' | 'organization' | 'student');
+        setUserRole(data.role as 'admin' | 'organization' | 'student' | 'sales_manager');
       } else if (error) {
         console.error('Error fetching user role:', error);
         // Default to student if no role found

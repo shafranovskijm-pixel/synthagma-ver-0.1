@@ -249,6 +249,116 @@ export type Database = {
           },
         ]
       }
+      commercial_proposal_services: {
+        Row: {
+          custom_description: string | null
+          custom_name: string
+          id: string
+          price: number
+          proposal_id: string
+          quantity: number
+          service_id: string | null
+          sort_order: number
+        }
+        Insert: {
+          custom_description?: string | null
+          custom_name: string
+          id?: string
+          price?: number
+          proposal_id: string
+          quantity?: number
+          service_id?: string | null
+          sort_order?: number
+        }
+        Update: {
+          custom_description?: string | null
+          custom_name?: string
+          id?: string
+          price?: number
+          proposal_id?: string
+          quantity?: number
+          service_id?: string | null
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commercial_proposal_services_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "commercial_proposals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commercial_proposal_services_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "sales_services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commercial_proposals: {
+        Row: {
+          company_email: string | null
+          company_inn: string | null
+          company_name: string
+          company_phone: string | null
+          contact_person: string | null
+          created_at: string
+          created_by: string
+          custom_note: string | null
+          id: string
+          manager_id: string | null
+          status: string
+          tariff_plan: string | null
+          total_amount: number
+          updated_at: string
+          valid_until: string | null
+        }
+        Insert: {
+          company_email?: string | null
+          company_inn?: string | null
+          company_name: string
+          company_phone?: string | null
+          contact_person?: string | null
+          created_at?: string
+          created_by: string
+          custom_note?: string | null
+          id?: string
+          manager_id?: string | null
+          status?: string
+          tariff_plan?: string | null
+          total_amount?: number
+          updated_at?: string
+          valid_until?: string | null
+        }
+        Update: {
+          company_email?: string | null
+          company_inn?: string | null
+          company_name?: string
+          company_phone?: string | null
+          contact_person?: string | null
+          created_at?: string
+          created_by?: string
+          custom_note?: string | null
+          id?: string
+          manager_id?: string | null
+          status?: string
+          tariff_plan?: string | null
+          total_amount?: number
+          updated_at?: string
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commercial_proposals_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "sales_managers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       companies: {
         Row: {
           address: string | null
@@ -2505,6 +2615,179 @@ export type Database = {
           },
         ]
       }
+      sales_lead_activities: {
+        Row: {
+          activity_type: string
+          created_at: string
+          description: string | null
+          id: string
+          lead_id: string
+          manager_id: string
+        }
+        Insert: {
+          activity_type: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          lead_id: string
+          manager_id: string
+        }
+        Update: {
+          activity_type?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          lead_id?: string
+          manager_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_lead_activities_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "sales_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_lead_activities_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "sales_managers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales_leads: {
+        Row: {
+          address: string | null
+          assigned_manager_id: string | null
+          city: string | null
+          created_at: string
+          email: string | null
+          id: string
+          inn: string | null
+          last_contact_at: string | null
+          license_date: string | null
+          license_number: string | null
+          notes: string | null
+          ogrn: string | null
+          org_name: string
+          phone: string | null
+          region: string | null
+          source: string
+          status: string
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          address?: string | null
+          assigned_manager_id?: string | null
+          city?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          inn?: string | null
+          last_contact_at?: string | null
+          license_date?: string | null
+          license_number?: string | null
+          notes?: string | null
+          ogrn?: string | null
+          org_name: string
+          phone?: string | null
+          region?: string | null
+          source?: string
+          status?: string
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          address?: string | null
+          assigned_manager_id?: string | null
+          city?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          inn?: string | null
+          last_contact_at?: string | null
+          license_date?: string | null
+          license_number?: string | null
+          notes?: string | null
+          ogrn?: string | null
+          org_name?: string
+          phone?: string | null
+          region?: string | null
+          source?: string
+          status?: string
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_leads_assigned_manager_id_fkey"
+            columns: ["assigned_manager_id"]
+            isOneToOne: false
+            referencedRelation: "sales_managers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales_managers: {
+        Row: {
+          created_at: string
+          full_name: string
+          id: string
+          is_active: boolean
+          phone: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          full_name: string
+          id?: string
+          is_active?: boolean
+          phone?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          full_name?: string
+          id?: string
+          is_active?: boolean
+          phone?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      sales_services: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          price: number
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          price?: number
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          price?: number
+          sort_order?: number
+        }
+        Relationships: []
+      }
       service_orders: {
         Row: {
           created_at: string
@@ -3572,7 +3855,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "organization" | "student"
+      app_role: "admin" | "organization" | "student" | "sales_manager"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -3700,7 +3983,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "organization", "student"],
+      app_role: ["admin", "organization", "student", "sales_manager"],
     },
   },
 } as const
