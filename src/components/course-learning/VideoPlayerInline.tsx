@@ -85,6 +85,20 @@ export const VideoPlayerInline = ({
   const hasRestoredPositionRef = useRef(false);
   const stalledTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [controlsVisible, setControlsVisible] = useState(true);
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showControls = () => {
+    setControlsVisible(true);
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    if (videoRef.current && !videoRef.current.paused) {
+      hideTimerRef.current = setTimeout(() => setControlsVisible(false), 3000);
+    }
+  };
+
+  useEffect(() => {
+    return () => { if (hideTimerRef.current) clearTimeout(hideTimerRef.current); };
+  }, []);
 
   useEffect(() => {
     const handleFullscreenChange = async () => {
@@ -246,15 +260,15 @@ export const VideoPlayerInline = ({
   }
 
   return (
-    <div ref={containerRef} className="relative bg-black rounded-2xl group">
+    <div ref={containerRef} className={cn("relative bg-black rounded-2xl", !controlsVisible && isPlaying && "cursor-none")} onMouseMove={showControls} onMouseLeave={() => { if (isPlaying) { setControlsVisible(false); if (hideTimerRef.current) { clearTimeout(hideTimerRef.current); hideTimerRef.current = null; } } }} onTouchStart={showControls}>
       <video
         key={allowSeek ? "seek-on" : "seek-off"}
         ref={videoRef} controls={false} className="w-full h-full rounded-2xl video-no-controls"
         src={resolvedContent} preload="metadata" onClick={togglePlay}
         onTimeUpdate={handleTimeUpdate} onLoadedMetadata={handleLoadedMetadata}
         onSeeking={handleSeeking} onRateChange={handleRateChange}
-        onPlay={() => { setIsPlaying(true); setVideoEnded(false); }}
-        onPause={() => setIsPlaying(false)}
+        onPlay={() => { setIsPlaying(true); setVideoEnded(false); showControls(); }}
+        onPause={() => { setIsPlaying(false); setControlsVisible(true); if (hideTimerRef.current) { clearTimeout(hideTimerRef.current); hideTimerRef.current = null; } }}
         onEnded={() => { setIsPlaying(false); setVideoEnded(true); }}
         onCanPlay={handleCanPlay} onWaiting={handleWaiting} onPlaying={handlePlaying}
         onStalled={handleStalled} onError={() => setVideoError(true)}
@@ -274,7 +288,7 @@ export const VideoPlayerInline = ({
         </div>
       )}
       {/* Controls */}
-      <div className={cn("absolute inset-x-0 bottom-0 p-3 transition-opacity duration-300", isPlaying && allowSeek ? "opacity-0 group-hover:opacity-100" : "opacity-100")}>
+      <div className={cn("absolute inset-x-0 bottom-0 p-3 transition-opacity duration-300", controlsVisible ? "opacity-100" : "opacity-0 pointer-events-none")}>
         {allowSeek && (
           <div className="h-1.5 w-full rounded-full bg-white/30 overflow-hidden mb-2 cursor-pointer"
             onClick={(e) => { const rect = e.currentTarget.getBoundingClientRect(); const pct = (e.clientX - rect.left) / rect.width; if (videoRef.current && duration > 0) videoRef.current.currentTime = pct * duration; }}>
