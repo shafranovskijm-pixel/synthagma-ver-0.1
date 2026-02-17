@@ -538,6 +538,51 @@ export type Database = {
           },
         ]
       }
+      course_access_log: {
+        Row: {
+          accessed_at: string | null
+          course_id: string
+          id: string
+          ip_address: string | null
+          organization_id: string | null
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          accessed_at?: string | null
+          course_id: string
+          id?: string
+          ip_address?: string | null
+          organization_id?: string | null
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          accessed_at?: string | null
+          course_id?: string
+          id?: string
+          ip_address?: string | null
+          organization_id?: string | null
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_access_log_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_access_log_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_categories: {
         Row: {
           color: string | null

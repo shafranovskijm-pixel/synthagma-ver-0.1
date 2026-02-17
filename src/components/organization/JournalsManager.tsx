@@ -39,6 +39,7 @@ import {
   BarChart3,
   Trash2,
   Settings,
+  Camera,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -50,6 +51,7 @@ import { AutoDocumentRegistrationJournal } from "./AutoDocumentRegistrationJourn
 import { CopiesDuplicatesJournal } from "./CopiesDuplicatesJournal";
 import { EducationDocumentsJournal } from "./EducationDocumentsJournal";
 import { JournalCreationWizard } from "./JournalCreationWizard";
+import { IdentificationJournal } from "./IdentificationJournal";
 
 interface JournalItem {
   id: string;
@@ -181,6 +183,7 @@ export function JournalsManager({ organizationId }: JournalsManagerProps) {
   const [showAutoDocumentRegistration, setShowAutoDocumentRegistration] = useState(false);
   const [showCopiesDuplicates, setShowCopiesDuplicates] = useState(false);
   const [showEducationDocuments, setShowEducationDocuments] = useState(false);
+  const [showIdentificationJournal, setShowIdentificationJournal] = useState(false);
   
   // Delete dialog state
   const [deletingJournal, setDeletingJournal] = useState<{
@@ -386,6 +389,16 @@ export function JournalsManager({ organizationId }: JournalsManagerProps) {
     );
   }
 
+  // Show identification journal
+  if (showIdentificationJournal) {
+    return (
+      <IdentificationJournal
+        organizationId={organizationId}
+        onClose={() => setShowIdentificationJournal(false)}
+      />
+    );
+  }
+
   // Show journal editor if active
   if (activeJournal) {
     return (
@@ -414,13 +427,23 @@ export function JournalsManager({ organizationId }: JournalsManagerProps) {
               </p>
             </div>
           </div>
-          <Button
-            onClick={() => setShowCreateWizard(true)}
-            className="rounded-xl"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Создать журнал
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowIdentificationJournal(true)}
+              className="rounded-xl"
+            >
+              <Camera className="w-4 h-4 mr-2" />
+              Видеоидентификация
+            </Button>
+            <Button
+              onClick={() => setShowCreateWizard(true)}
+              className="rounded-xl"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Создать журнал
+            </Button>
+          </div>
         </div>
       </div>
 
