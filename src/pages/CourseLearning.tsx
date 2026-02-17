@@ -85,7 +85,7 @@ const CourseLearning = () => {
         <Button variant="ghost" size="sm" onClick={() => navigate('/student')} className="mb-4 hover:bg-secondary">
           <ArrowLeft className="w-4 h-4 mr-2" />Назад
         </Button>
-        <h2 className="font-display font-bold text-lg line-clamp-2">{course.title}</h2>
+        <h2 className="font-bold text-lg line-clamp-2">{course.title}</h2>
         <div className="mt-4">
           <div className="flex justify-between text-sm text-muted-foreground mb-2"><span>Прогресс</span><span className="font-medium">{completedCount}/{lessons.length}</span></div>
           <Progress value={progressPercent} className="h-2" />
@@ -153,7 +153,7 @@ const CourseLearning = () => {
               <div className="space-y-4 md:space-y-6 animate-fade-in">
                 <div className="flex items-center gap-3 pb-3 md:pb-4 border-b border-border">
                   <div className={cn("rounded-xl bg-primary/10 flex items-center justify-center shrink-0", isMobile ? "w-8 h-8" : "w-10 h-10")}><FileText className={cn(isMobile ? "w-4 h-4" : "w-5 h-5", "text-primary")} /></div>
-                  <div className="min-w-0"><h1 className={cn("font-display font-bold line-clamp-2", isMobile ? "text-lg" : "text-2xl")}>{currentLesson.title}</h1><p className="text-xs md:text-sm text-muted-foreground">Урок {currentLessonIndex + 1}</p></div>
+                  <div className="min-w-0"><h1 className={cn("font-bold line-clamp-2", isMobile ? "text-lg" : "text-2xl")}>{currentLesson.title}</h1><p className="text-xs md:text-sm text-muted-foreground">Урок {currentLessonIndex + 1}</p></div>
                 </div>
                 {(() => { const blocks = currentLesson.content ? (() => { try { const p = JSON.parse(currentLesson.content); return Array.isArray(p) && p.every((x: any) => x.type && x.id) ? p : []; } catch { return []; } })() : []; return blocks.length > 0 ? <BlockRenderer blocks={blocks} /> : <div className="prose prose-lg max-w-none dark:prose-invert"><div className="whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: currentLesson.content?.replace(/\n/g, '<br/>') || '' }} /></div>; })()}
               </div>
@@ -163,7 +163,7 @@ const CourseLearning = () => {
               <div className="space-y-4 md:space-y-6 animate-fade-in">
                 <div className="flex items-center gap-3 pb-3 md:pb-4 border-b border-border">
                   <div className={cn("rounded-xl bg-red-500/10 flex items-center justify-center shrink-0", isMobile ? "w-8 h-8" : "w-10 h-10")}><Video className={cn(isMobile ? "w-4 h-4" : "w-5 h-5", "text-red-500")} /></div>
-                  <div className="min-w-0"><h1 className={cn("font-display font-bold line-clamp-2", isMobile ? "text-lg" : "text-2xl")}>{currentLesson.title}</h1><p className="text-xs md:text-sm text-muted-foreground">Видеоурок {currentLessonIndex + 1}</p></div>
+                  <div className="min-w-0"><h1 className={cn("font-bold line-clamp-2", isMobile ? "text-lg" : "text-2xl")}>{currentLesson.title}</h1><p className="text-xs md:text-sm text-muted-foreground">Видеоурок {currentLessonIndex + 1}</p></div>
                 </div>
                 <div className="aspect-video bg-muted rounded-2xl flex items-center justify-center overflow-hidden shadow-lg">
                   {isVideoProgressLoading ? <div className="flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-muted-foreground" /></div> : currentLesson.content ? (
@@ -181,7 +181,7 @@ const CourseLearning = () => {
               <div className="space-y-4 md:space-y-6 animate-fade-in">
                 <div className="flex items-center gap-3 pb-3 md:pb-4 border-b border-border">
                   <div className={cn("rounded-xl bg-green-500/10 flex items-center justify-center shrink-0", isMobile ? "w-8 h-8" : "w-10 h-10")}><Headphones className={cn(isMobile ? "w-4 h-4" : "w-5 h-5", "text-green-500")} /></div>
-                  <div className="min-w-0"><h1 className={cn("font-display font-bold line-clamp-2", isMobile ? "text-lg" : "text-2xl")}>{currentLesson.title}</h1><p className="text-xs md:text-sm text-muted-foreground">Аудиолекция {currentLessonIndex + 1}</p></div>
+                  <div className="min-w-0"><h1 className={cn("font-bold line-clamp-2", isMobile ? "text-lg" : "text-2xl")}>{currentLesson.title}</h1><p className="text-xs md:text-sm text-muted-foreground">Аудиолекция {currentLessonIndex + 1}</p></div>
                 </div>
                 <div className={cn("bg-card rounded-2xl border border-border", isMobile ? "p-4" : "p-6")}>
                   {currentLesson.content && currentLesson.content.startsWith('http') ? (
@@ -195,7 +195,7 @@ const CourseLearning = () => {
               <div className="space-y-4 md:space-y-6 animate-fade-in">
                 <div className="flex items-center gap-3 pb-3 md:pb-4 border-b border-border">
                   <div className={cn("rounded-xl bg-sigma-purple/10 flex items-center justify-center shrink-0", isMobile ? "w-8 h-8" : "w-10 h-10")}><ClipboardList className={cn(isMobile ? "w-4 h-4" : "w-5 h-5", "text-sigma-purple")} /></div>
-                  <div className="min-w-0"><h1 className={cn("font-display font-bold line-clamp-2", isMobile ? "text-lg" : "text-2xl")}>{currentLesson.title}</h1><p className="text-xs md:text-sm text-muted-foreground">Тестирование • {testQuestions.length} вопросов • Проходной балл: {testPassingScore}%</p></div>
+                  <div className="min-w-0"><h1 className={cn("font-bold line-clamp-2", isMobile ? "text-lg" : "text-2xl")}>{currentLesson.title}</h1><p className="text-xs md:text-sm text-muted-foreground">Тестирование • {testQuestions.length} вопросов • Проходной балл: {testPassingScore}%</p></div>
                 </div>
                 {testScore && (
                   <div className={cn("p-6 rounded-2xl border transition-all", ((testScore.score / testScore.max) * 100 >= testPassingScore) ? "bg-sigma-green/10 border-sigma-green/20" : "bg-destructive/10 border-destructive/20")}>
@@ -212,7 +212,7 @@ const CourseLearning = () => {
                     {(q as any).image_url && <img src={(q as any).image_url} alt="Вопрос" className="max-h-64 rounded-lg border border-border object-contain mb-4" />}
                     <div className="space-y-2">{(Array.isArray(q.options) ? q.options : []).map((opt: any, oi: number) => (
                       <div key={oi} onClick={() => setAnswers(p => ({ ...p, [q.id]: oi }))} className={cn("flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-all", answers[q.id] === oi ? "border-primary bg-primary/5 shadow-sm" : "border-border hover:bg-muted")}>
-                        <div className={cn("w-5 h-5 rounded-full border flex items-center justify-center", answers[q.id] === oi ? "border-primary bg-primary" : "border-muted-foreground")}><div className="w-2 h-2 rounded-full bg-white" /></div>
+                        <div className={cn("w-5 h-5 rounded-full border flex items-center justify-center", answers[q.id] === oi ? "border-primary bg-primary" : "border-muted-foreground")}>{answers[q.id] === oi && <div className="w-2 h-2 rounded-full bg-white" />}</div>
                         <span className="text-sm">{opt.text || opt}</span>
                       </div>
                     ))}</div>
