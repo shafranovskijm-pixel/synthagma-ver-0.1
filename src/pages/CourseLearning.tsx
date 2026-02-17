@@ -23,7 +23,9 @@ import { TTSSettingsDialog } from "@/components/student/TTSSettingsDialog";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { VideoPlayerInline } from "@/components/course-learning/VideoPlayerInline";
 import { SliderLessonViewer } from "@/components/course-learning/SliderLessonViewer";
-import { useCourseLearning } from "@/hooks/useCourseLearning";
+import { useCourseLearning, getOptionText } from "@/hooks/useCourseLearning";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useState as useReactState } from "react";
 
 const CourseLearning = () => {
   const { courseId } = useParams();
@@ -33,7 +35,7 @@ const CourseLearning = () => {
     user, navigate, isMobile, contentRef,
     course, lessons, currentLessonIndex, lessonProgress, loading,
     sidebarOpen, setSidebarOpen, isTransitioning,
-    testQuestions, testSubmitted, testScore, testPassingScore, allBankQuestions,
+    testQuestions, testSubmitted, testScore, testPassingScore, testExplanations, allBankQuestions,
     answers, setAnswers,
     isSpeaking, speakText, ttsSettingsOpen, setTtsSettingsOpen, ttsSettings, setTtsSettings, elevenLabsTTS,
     isChatOpen, setIsChatOpen, chatMessages, chatInput, setChatInput, isChatLoading, chatScrollRef, sendChatMessage,
@@ -49,6 +51,7 @@ const CourseLearning = () => {
   const handleSwipeLeft = () => { if (currentLessonIndex < lessons.length - 1) goToNextLesson(); };
   const handleSwipeRight = () => { if (currentLessonIndex > 0) goToPrevLesson(); };
   const isTestActive = currentLesson?.type === 'test' && !testSubmitted;
+  const [reviewOpen, setReviewOpen] = useReactState(false);
   
   const swipeRef = useSwipeGesture<HTMLDivElement>({
     onSwipeLeft: isMobile && !isTestActive ? handleSwipeLeft : undefined,
@@ -205,6 +208,62 @@ const CourseLearning = () => {
                     </div>
                     {!((testScore.score / testScore.max) * 100 >= testPassingScore) && <div className="mt-4 flex items-center gap-3"><Button onClick={retryTest}><Sparkles className="w-4 h-4 mr-2" />Попробовать снова</Button></div>}
                   </div>
+                )}
+                {testSubmitted && testScore && (
+                  <Collapsible open={reviewOpen} onOpenChange={setReviewOpen}>
+                    <CollapsibleTrigger asChild>
+                      <Button variant="outline" className="w-full rounded-xl">
+                        <ClipboardList className="w-4 h-4 mr-2" />
+                        {reviewOpen ? 'Скрыть разбор ответов' : 'Показать разбор ответов'}
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="space-y-4 mt-4">
+                      {testQuestions.map((q, i) => {
+                        const options = Array.isArray(q.options) ? q.options : [];
+                        const userAnswer = answers[q.id];
+                        const correctAnswer = q.correct_answer;
+                        const isCorrect = userAnswer === correctAnswer;
+                        return (
+                          <div key={q.id} className="bg-card rounded-2xl p-5 border border-border shadow-sm space-y-3">
+                            <h3 className="font-semibold flex items-center gap-2">
+                              <span className={cn("w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold", isCorrect ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400")}>{i + 1}</span>
+                              {q.question}
+                            </h3>
+                            {(q as any).image_url && <img src={(q as any).image_url} alt="Вопрос" className="max-h-48 rounded-lg border border-border object-contain" />}
+                            <div className="space-y-2">
+                              {options.map((opt: any, oi: number) => {
+                                const isCorrectOption = oi === correctAnswer;
+                                const isUserWrong = oi === userAnswer && oi !== correctAnswer;
+                                return (
+                                  <div key={oi} className={cn("flex items-center gap-3 p-3 rounded-xl border transition-all text-sm",
+                                    isCorrectOption ? "border-green-500 bg-green-50 dark:bg-green-900/20 dark:border-green-600" :
+                                    isUserWrong ? "border-red-500 bg-red-50 dark:bg-red-900/20 dark:border-red-600" :
+                                    "border-border"
+                                  )}>
+                                    <div className={cn("w-5 h-5 rounded-full border flex items-center justify-center shrink-0",
+                                      isCorrectOption ? "border-green-500 bg-green-500" :
+                                      isUserWrong ? "border-red-500 bg-red-500" :
+                                      "border-muted-foreground"
+                                    )}>
+                                      {(isCorrectOption || isUserWrong) && <div className="w-2 h-2 rounded-full bg-white" />}
+                                    </div>
+                                    <span>{getOptionText(opt)}</span>
+                                    {isCorrectOption && <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400 ml-auto shrink-0" />}
+                                    {isUserWrong && <X className="w-4 h-4 text-red-600 dark:text-red-400 ml-auto shrink-0" />}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            {testExplanations[q.id] && (
+                              <div className="mt-2 p-3 rounded-xl bg-muted/50 text-sm text-muted-foreground">
+                                <span className="font-medium text-foreground">Пояснение: </span>{testExplanations[q.id]}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </CollapsibleContent>
+                  </Collapsible>
                 )}
                 {!testSubmitted && testQuestions.map((q, i) => (
                   <div key={q.id} className="bg-card rounded-2xl p-6 border border-border shadow-sm">
