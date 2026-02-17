@@ -125,7 +125,8 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
         const { data: allProfilesData } = await supabase
           .from("profiles")
           .select("id, user_id, full_name, email, login")
-          .eq("organization_id", orgId);
+          .eq("organization_id", orgId)
+          .limit(10000);
 
         // Fetch decrypted passwords via secure RPC
         const { data: decryptedPasswords } = await supabase
@@ -143,7 +144,8 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
             .from("user_roles")
             .select("user_id, role")
             .in("user_id", profileUserIds)
-            .in("role", ["organization", "admin"]);
+            .in("role", ["organization", "admin"])
+            .limit(10000);
           orgAdminUserIds = new Set((rolesData || []).map((r: any) => r.user_id));
         }
 

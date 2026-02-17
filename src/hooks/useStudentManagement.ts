@@ -60,11 +60,15 @@ export function useStudentManagement({
     const effectiveCompanyId = overrides?.companyId ?? selectedCompanyId;
     const effectiveNoLogin = overrides?.noLogin ?? noLoginStudent;
 
-    if (!organizationId || !effectiveName.trim() || !effectiveEmail.trim()) {
-      toast.error("Заполните ФИО и Email");
+    if (!organizationId || !effectiveName.trim()) {
+      toast.error("Заполните ФИО");
       return false;
     }
-    if (!isValidEmail(effectiveEmail)) {
+    if (!effectiveNoLogin && !effectiveEmail.trim()) {
+      toast.error("Заполните Email");
+      return false;
+    }
+    if (effectiveEmail.trim() && !isValidEmail(effectiveEmail)) {
       toast.error("Введите корректный email адрес");
       return false;
     }

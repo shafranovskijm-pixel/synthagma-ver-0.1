@@ -7,13 +7,11 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // SECURITY: Verify authentication
     const authHeader = req.headers.get('authorization');
     if (!authHeader) {
       return new Response(
@@ -22,14 +20,12 @@ serve(async (req) => {
       );
     }
 
-    // Create authenticated client to verify the caller
     const supabaseAuth = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    // Verify user identity
     const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
     if (authError || !user) {
       return new Response(
@@ -38,7 +34,6 @@ serve(async (req) => {
       );
     }
 
-    // Verify user has organization or admin role
     const { data: roleData } = await supabaseAuth
       .from('user_roles')
       .select('role')
@@ -52,14 +47,12 @@ serve(async (req) => {
       );
     }
 
-    // Create admin client FIRST (bypasses RLS)
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    // Get caller's organization using admin client (bypasses RLS)
     const { data: callerProfile, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('organization_id')
@@ -68,9 +61,8 @@ serve(async (req) => {
 
     console.log(`Caller profile lookup for user ${user.id}:`, callerProfile, profileError);
 
-    // Verify profile exists
     if (!callerProfile) {
-      console.error(`Profile not found for user ${user.id}. This usually means the user session is stale.`);
+      console.error(`Profile not found for user ${user.id}.`);
       return new Response(
         JSON.stringify({ 
           error: "Ваша сессия устарела. Пожалуйста, выйдите и войдите снова.",
@@ -84,7 +76,6 @@ serve(async (req) => {
 
     console.log(`Registering student: ${full_name} (${email}) for org: ${organization_id}, no_login: ${no_login}`);
 
-    // SECURITY: Verify the caller has access to the target organization
     if (roleData.role !== 'admin' && callerProfile?.organization_id !== organization_id) {
       return new Response(
         JSON.stringify({ error: "You can only register students in your own organization" }),
@@ -99,7 +90,6 @@ serve(async (req) => {
       );
     }
 
-    // Validate email format if provided (only ASCII characters allowed)
     if (email) {
       const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
       if (!emailRegex.test(email)) {
@@ -116,25 +106,20 @@ serve(async (req) => {
     let generatedLogin = "";
     let generatedPassword = "";
 
-    // Generate unique login
     const generateLogin = async (): Promise<string> => {
       const randomNum = Math.floor(10000 + Math.random() * 90000);
       const login = `student_${randomNum}`;
-      
-      // Check if login already exists
       const { data: existing } = await supabaseAdmin
         .from("profiles")
         .select("id")
         .eq("login", login)
         .maybeSingle();
-      
       if (existing) {
-        return generateLogin(); // Recursively try again
+        return generateLogin();
       }
       return login;
     };
 
-    // Generate random password
     const generatePassword = (): string => {
       const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
       let pwd = '';
@@ -144,6 +129,89 @@ serve(async (req) => {
       return pwd;
     };
 
+    // Helper to parse name and create FRDO data
+    const createFrdoData = async (uid: string) => {
+      const nameParts = full_name.trim().split(/\s+/);
+      const lastName = nameParts[0] || "";
+      const firstName = nameParts[1] || "";
+      const middleName = nameParts[2] || "";
+      let detectedGender: string | null = null;
+      if (middleName) {
+        const mn = middleName.toLowerCase();
+        if (mn.endsWith("ич") || mn.endsWith("ыч")) detectedGender = "Муж";
+        else if (mn.endsWith("на")) detectedGender = "Жен";
+      }
+      await supabaseAdmin
+        .from("student_frdo_data")
+        .upsert({
+          user_id: uid,
+          organization_id,
+          last_name: lastName,
+          first_name: firstName,
+          middle_name: middleName,
+          gender: detectedGender,
+        }, { onConflict: "user_id,organization_id" });
+    };
+
+    // ========== NO_LOGIN PATH ==========
+    if (no_login) {
+      // For no_login students, skip email duplicate check entirely
+      // Email is just contact info, not a unique identifier
+      userId = crypto.randomUUID();
+
+      const { error: profileInsertError } = await supabaseAdmin
+        .from("profiles")
+        .insert({
+          user_id: userId,
+          full_name,
+          email: email?.toLowerCase() || null,
+          organization_id,
+          company_id: company_id || null
+        });
+
+      if (profileInsertError) {
+        console.error("Profile error (no_login):", profileInsertError);
+        return new Response(
+          JSON.stringify({ error: "Ошибка создания профиля: " + profileInsertError.message }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      await supabaseAdmin
+        .from("user_roles")
+        .insert({ user_id: userId, role: "student" });
+
+      await createFrdoData(userId);
+
+      console.log(`Created no_login student: ${full_name}, userId: ${userId}`);
+
+      // Enroll if needed
+      let enrollmentCreated = false;
+      if (course_id) {
+        const { error: enrollError } = await supabaseAdmin
+          .from("enrollments")
+          .insert({ user_id: userId, course_id, status: "active", progress: 0 });
+        if (enrollError) {
+          console.error("Enrollment error:", enrollError);
+        } else {
+          enrollmentCreated = true;
+        }
+      }
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          user_id: userId,
+          is_existing: false,
+          is_no_login: true,
+          enrollment_created: enrollmentCreated,
+          message: `Слушатель ${full_name} добавлен (без логина)`
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ========== REGULAR (WITH LOGIN) PATH ==========
     // Check if user already exists by email in profiles
     if (email) {
       const { data: existingProfile } = await supabaseAdmin
@@ -153,20 +221,15 @@ serve(async (req) => {
         .maybeSingle();
 
       if (existingProfile) {
-        // User already exists
         userId = existingProfile.user_id;
         isExisting = true;
         existingName = existingProfile.full_name || full_name;
         generatedLogin = existingProfile.login || "";
         
-        // Update org if different
         if (existingProfile.organization_id !== organization_id) {
           await supabaseAdmin
             .from("profiles")
-            .update({
-              organization_id,
-              company_id: company_id || null
-            })
+            .update({ organization_id, company_id: company_id || null })
             .eq("user_id", userId);
           console.log(`Updated user ${email} to org ${organization_id}`);
         }
@@ -174,83 +237,52 @@ serve(async (req) => {
     }
 
     if (!isExisting) {
-      // Create new student - ALWAYS use login-based auth email
       generatedLogin = await generateLogin();
       generatedPassword = password || generatePassword();
-      
-      // Auth email is always login@student.local for consistent login
       const authEmail = `${generatedLogin}@student.local`;
       
-      const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      const { data: authData, error: createAuthError } = await supabaseAdmin.auth.admin.createUser({
         email: authEmail,
         password: generatedPassword,
         email_confirm: true,
         user_metadata: { full_name }
       });
 
-      if (authError) {
-        console.error("Auth error:", authError);
+      if (createAuthError) {
+        console.error("Auth error:", createAuthError);
         return new Response(
-          JSON.stringify({ error: "Ошибка создания пользователя: " + authError.message }),
+          JSON.stringify({ error: "Ошибка создания пользователя: " + createAuthError.message }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
       userId = authData.user.id;
       
-      // Create profile with login credentials and optional real email for contact
-      const { error: profileError } = await supabaseAdmin
+      const { error: profileInsertError } = await supabaseAdmin
         .from("profiles")
         .upsert({
           user_id: userId,
           full_name,
-          email: email?.toLowerCase() || null, // Real email for contact only
+          email: email?.toLowerCase() || null,
           login: generatedLogin,
           generated_password: generatedPassword,
           organization_id,
           company_id: company_id || null
         }, { onConflict: "user_id" });
 
-      if (profileError) {
-        console.error("Profile error:", profileError);
+      if (profileInsertError) {
+        console.error("Profile error:", profileInsertError);
         return new Response(
-          JSON.stringify({ error: "Ошибка создания профиля: " + profileError.message }),
+          JSON.stringify({ error: "Ошибка создания профиля: " + profileInsertError.message }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
-      // Assign student role
       await supabaseAdmin
         .from("user_roles")
-        .insert({
-          user_id: userId,
-          role: "student"
-        });
+        .insert({ user_id: userId, role: "student" });
 
-      // Auto-create student_frdo_data with parsed name and gender detection
-      const nameParts = full_name.trim().split(/\s+/);
-      const lastName = nameParts[0] || "";
-      const firstName = nameParts[1] || "";
-      const middleName = nameParts[2] || "";
-      
-      // Detect gender from patronymic
-      let detectedGender: string | null = null;
-      if (middleName) {
-        const mn = middleName.toLowerCase();
-        if (mn.endsWith("ич") || mn.endsWith("ыч")) detectedGender = "Муж";
-        else if (mn.endsWith("на")) detectedGender = "Жен";
-      }
-
-      await supabaseAdmin
-        .from("student_frdo_data")
-        .upsert({
-          user_id: userId,
-          organization_id,
-          last_name: lastName,
-          first_name: firstName,
-          middle_name: middleName,
-          gender: detectedGender,
-        }, { onConflict: "user_id,organization_id" });
+      await createFrdoData(userId);
 
       console.log(`Created student: ${full_name}, login: ${generatedLogin}`);
     }
@@ -260,7 +292,6 @@ serve(async (req) => {
     let alreadyEnrolled = false;
     
     if (course_id) {
-      // Check if already enrolled
       const { data: existingEnrollment } = await supabaseAdmin
         .from("enrollments")
         .select("id")
@@ -269,18 +300,11 @@ serve(async (req) => {
         .maybeSingle();
 
       if (existingEnrollment) {
-        console.log(`User already enrolled in course: ${course_id}`);
         alreadyEnrolled = true;
       } else {
         const { error: enrollError } = await supabaseAdmin
           .from("enrollments")
-          .insert({
-            user_id: userId,
-            course_id,
-            status: "active",
-            progress: 0
-          });
-
+          .insert({ user_id: userId, course_id, status: "active", progress: 0 });
         if (enrollError) {
           console.error("Enrollment error:", enrollError);
         } else {
@@ -293,25 +317,18 @@ serve(async (req) => {
     if (!isExisting && generatedLogin) {
       message = `Ученик ${full_name} добавлен. Логин: ${generatedLogin}, Пароль: ${generatedPassword}`;
     } else if (isExisting) {
-      if (!course_id) {
-        message = `Ученик ${existingName} уже существует в системе`;
-      } else if (enrollmentCreated) {
-        message = `Ученик ${existingName} зачислен на курс`;
-      } else if (alreadyEnrolled) {
-        message = `Ученик ${existingName} уже зачислен на этот курс`;
-      } else {
-        message = `Ученик ${existingName} добавлен`;
-      }
+      if (!course_id) message = `Ученик ${existingName} уже существует в системе`;
+      else if (enrollmentCreated) message = `Ученик ${existingName} зачислен на курс`;
+      else if (alreadyEnrolled) message = `Ученик ${existingName} уже зачислен на этот курс`;
+      else message = `Ученик ${existingName} добавлен`;
     } else {
       message = `Ученик создан`;
     }
 
-    console.log(`Successfully processed student: ${full_name}`);
-
     return new Response(
       JSON.stringify({ 
         success: true, 
-        user_id: userId!, 
+        user_id: userId, 
         is_existing: isExisting,
         enrollment_created: enrollmentCreated,
         login: generatedLogin || undefined,
