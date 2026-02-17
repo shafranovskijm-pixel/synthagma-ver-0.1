@@ -343,7 +343,7 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
             ) : h.courses.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">Нет доступных курсов</p>
             ) : (
-              <ScrollArea className="max-h-[300px]">
+              <ScrollArea className="h-[300px]">
                 <div className="space-y-2">
                   {h.courses.map(course => (
                     <div key={course.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-secondary/30 cursor-pointer" onClick={() => {
