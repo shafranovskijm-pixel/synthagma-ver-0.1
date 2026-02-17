@@ -74,10 +74,10 @@
      }
  
      // Fetch correct answers server-side (RLS bypassed with service role)
-     const { data: questionsWithAnswers, error: fetchError } = await supabaseAdmin
-       .from('test_questions')
-       .select('id, correct_answer')
-       .in('id', shown_question_ids);
+      const { data: questionsWithAnswers, error: fetchError } = await supabaseAdmin
+        .from('test_questions')
+        .select('id, correct_answer, explanation')
+        .in('id', shown_question_ids);
  
      if (fetchError || !questionsWithAnswers) {
        console.error('Error fetching correct answers:', fetchError);
@@ -88,10 +88,12 @@
      }
  
      // Calculate score
-     const correctAnswersMap = new Map<string, number>();
-     questionsWithAnswers.forEach(q => {
-       correctAnswersMap.set(q.id, q.correct_answer);
-     });
+      const correctAnswersMap = new Map<string, number>();
+      const explanationsMap = new Map<string, string | null>();
+      questionsWithAnswers.forEach(q => {
+        correctAnswersMap.set(q.id, q.correct_answer);
+        explanationsMap.set(q.id, q.explanation ?? null);
+      });
  
      let score = 0;
      shown_question_ids.forEach((qId: string) => {
@@ -155,7 +157,8 @@
          scorePercent,
          passed,
          passingScore,
-         correctAnswers: Object.fromEntries(correctAnswersMap)
+          correctAnswers: Object.fromEntries(correctAnswersMap),
+          explanations: Object.fromEntries(explanationsMap)
        }),
        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
      );

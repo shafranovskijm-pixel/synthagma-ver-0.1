@@ -95,6 +95,7 @@ export function useCourseLearning() {
   const [testScore, setTestScore] = useState<{ score: number; max: number } | null>(null);
   const [testQuestionsCount, setTestQuestionsCount] = useState<number | null>(null);
   const [testPassingScore, setTestPassingScore] = useState<number>(60);
+  const [testExplanations, setTestExplanations] = useState<Record<string, string | null>>({});
 
   // TTS state
   const [ttsSettingsOpen, setTtsSettingsOpen] = useState(false);
@@ -315,7 +316,8 @@ export function useCourseLearning() {
       if (resultsError) { selectRandomQuestions(allQuestions, questionsToShow, []); setUsedQuestionIds([]); setAnswers({}); return; }
 
       if (resultsData?.hasAttempt) {
-        const { attempt, correctAnswers, usedQuestionIds: allUsedIds } = resultsData;
+        const { attempt, correctAnswers, explanations, usedQuestionIds: allUsedIds } = resultsData;
+        if (explanations) setTestExplanations(explanations);
         setTestSubmitted(true);
         setTestScore({ score: attempt.score, max: attempt.max_score });
         setAnswers(attempt.answers as Record<string, number> || {});
@@ -439,7 +441,8 @@ export function useCourseLearning() {
         body: { lesson_id: currentLesson.id, answers, shown_question_ids: shownIds }
       });
       if (gradeError || !gradeResult) { toast.error('Ошибка проверки теста'); return; }
-      const { score, maxScore, scorePercent, passed, correctAnswers } = gradeResult;
+      const { score, maxScore, scorePercent, passed, correctAnswers, explanations } = gradeResult;
+      if (explanations) setTestExplanations(explanations);
       setTestQuestions(testQuestions.map(q => ({ ...q, correct_answer: correctAnswers[q.id] ?? q.correct_answer })));
       setTestSubmitted(true);
       setTestScore({ score, max: maxScore });
@@ -493,7 +496,7 @@ export function useCourseLearning() {
 
     // Test
     testQuestions, allBankQuestions, answers, setAnswers, testSubmitted,
-    testScore, testPassingScore, submitTest, retryTest,
+    testScore, testPassingScore, testExplanations, submitTest, retryTest,
 
     // Video
     videoWatchProgress, setVideoWatchProgress, savedPosition,
