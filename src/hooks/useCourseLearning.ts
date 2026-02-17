@@ -271,7 +271,17 @@ export function useCourseLearning() {
         if (createError) throw createError;
         enrollment = newEnrollment;
       }
-      if (enrollment) setEnrollmentId(enrollment.id);
+      if (enrollment) {
+        setEnrollmentId(enrollment.id);
+        // Log course access
+        const orgId = await supabase.from('profiles').select('organization_id').eq('user_id', user!.id).maybeSingle();
+        supabase.from('course_access_log').insert({
+          user_id: user!.id,
+          course_id: courseId!,
+          organization_id: orgId?.data?.organization_id || null,
+          user_agent: navigator.userAgent,
+        }).then(() => {}); // fire and forget
+      }
 
       const courseLessonIds = lessonsData.map((l: any) => l.id);
       if (courseLessonIds.length > 0) {
