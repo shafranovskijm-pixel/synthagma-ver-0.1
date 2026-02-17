@@ -115,7 +115,7 @@ interface AddStudentDialogProps {
   onOpenChange: (open: boolean) => void;
   courses: Course[];
   companies: Company[];
-  onSubmit: (name: string, email: string, courseId: string, companyId: string, noLogin: boolean) => void;
+  onSubmit: (name: string, email: string, courseId: string, companyId: string) => void;
   isCreating: boolean;
 }
 
@@ -124,10 +124,9 @@ export function AddStudentDialog({ open, onOpenChange, courses, companies, onSub
   const [email, setEmail] = useState("");
   const [courseId, setCourseId] = useState("");
   const [companyId, setCompanyId] = useState("");
-  const [noLogin, setNoLogin] = useState(false);
 
   const handleSubmit = () => {
-    onSubmit(name, email, courseId, companyId, noLogin);
+    onSubmit(name, email, courseId, companyId);
   };
 
   return (
@@ -137,7 +136,6 @@ export function AddStudentDialog({ open, onOpenChange, courses, companies, onSub
         setEmail("");
         setCourseId("");
         setCompanyId("");
-        setNoLogin(false);
       }
       onOpenChange(v);
     }}>
@@ -159,7 +157,7 @@ export function AddStudentDialog({ open, onOpenChange, courses, companies, onSub
             />
           </div>
           <div className="space-y-2">
-            <Label>Email {!noLogin && "*"}</Label>
+            <Label>Email (необязательно)</Label>
             <Input 
               type="email" 
               placeholder="ivan@example.com" 
@@ -167,23 +165,9 @@ export function AddStudentDialog({ open, onOpenChange, courses, companies, onSub
               value={email} 
               onChange={e => setEmail(e.target.value)} 
             />
-            {!noLogin && (
-              <p className="text-xs text-muted-foreground">
-                Если ученик с таким email уже существует — он будет зачислен на курс
-              </p>
-            )}
-          </div>
-          <div className="flex items-center space-x-2">
-            <input 
-              type="checkbox" 
-              id="noLogin" 
-              checked={noLogin} 
-              onChange={e => setNoLogin(e.target.checked)} 
-              className="rounded" 
-            />
-            <Label htmlFor="noLogin" className="text-sm font-normal cursor-pointer">
-              Без входа в систему (можно использовать одну почту для нескольких учеников)
-            </Label>
+            <p className="text-xs text-muted-foreground">
+              Контактный email. Логин и пароль генерируются автоматически.
+            </p>
           </div>
           <div className="space-y-2">
             <Label>Компания (необязательно)</Label>
