@@ -38,7 +38,6 @@ export function useStudentManagement({
   const [newStudentEmail, setNewStudentEmail] = useState("");
   const [selectedCourseId, setSelectedCourseId] = useState<string>("");
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>("");
-  const [noLoginStudent, setNoLoginStudent] = useState(false);
   const [isCreatingStudent, setIsCreatingStudent] = useState(false);
 
   // Enroll existing student
@@ -46,7 +45,7 @@ export function useStudentManagement({
   const [isEnrollingExisting, setIsEnrollingExisting] = useState(false);
 
   // Create student
-  const createStudent = useCallback(async (overrides?: { name?: string; email?: string; courseId?: string; companyId?: string; noLogin?: boolean }) => {
+  const createStudent = useCallback(async (overrides?: { name?: string; email?: string; courseId?: string; companyId?: string }) => {
     if (checkStudentLimit) {
       const result = checkStudentLimit();
       if (!result.allowed) {
@@ -58,14 +57,9 @@ export function useStudentManagement({
     const effectiveEmail = overrides?.email ?? newStudentEmail;
     const effectiveCourseId = overrides?.courseId ?? selectedCourseId;
     const effectiveCompanyId = overrides?.companyId ?? selectedCompanyId;
-    const effectiveNoLogin = overrides?.noLogin ?? noLoginStudent;
 
     if (!organizationId || !effectiveName.trim()) {
       toast.error("Заполните ФИО");
-      return false;
-    }
-    if (!effectiveNoLogin && !effectiveEmail.trim()) {
-      toast.error("Заполните Email");
       return false;
     }
     if (effectiveEmail.trim() && !isValidEmail(effectiveEmail)) {
@@ -75,7 +69,7 @@ export function useStudentManagement({
     
     setIsCreatingStudent(true);
     try {
-      const password = effectiveNoLogin ? null : generateStrongPassword();
+      const password = generateStrongPassword();
       const { data, error } = await supabase.functions.invoke("register-student", {
         body: {
           token: null,
@@ -85,17 +79,13 @@ export function useStudentManagement({
           organization_id: organizationId,
           course_id: effectiveCourseId || null,
           company_id: effectiveCompanyId || null,
-          no_login: effectiveNoLogin
         }
       });
       
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      // Show appropriate message based on response
-      if (data.is_no_login) {
-        toast.success(data.message || "Ученик добавлен");
-      } else if (data.is_existing) {
+      if (data.is_existing) {
         toast.success(data.message || "Ученик зачислен на курс");
       } else {
         toast.success(`Ученик создан. Пароль: ${password} (сохраните его!)`);
@@ -122,7 +112,7 @@ export function useStudentManagement({
       const existsInList = students.some(s => s.user_id === data.user_id) || 
                           allProfiles.some(s => s.user_id === data.user_id);
       
-      if (data.is_no_login || !data.is_existing) {
+      if (!data.is_existing) {
         setStudents(prev => [...prev, newStudent]);
         setAllProfiles(prev => [...prev, newStudent]);
         setStats(prev => ({
@@ -142,7 +132,6 @@ export function useStudentManagement({
       setNewStudentEmail("");
       setSelectedCourseId("");
       setSelectedCompanyId("");
-      setNoLoginStudent(false);
       return true;
     } catch (error: any) {
       console.error("Error creating student:", error);
@@ -151,7 +140,7 @@ export function useStudentManagement({
     } finally {
       setIsCreatingStudent(false);
     }
-  }, [organizationId, newStudentName, newStudentEmail, noLoginStudent, selectedCourseId, selectedCompanyId, courses, students, allProfiles, setStudents, setAllProfiles, setStats, onRefresh, checkStudentLimit]);
+  }, [organizationId, newStudentName, newStudentEmail, selectedCourseId, selectedCompanyId, courses, students, allProfiles, setStudents, setAllProfiles, setStats, onRefresh, checkStudentLimit]);
 
   // Enroll existing student
   const enrollExistingStudent = useCallback(async () => {
@@ -386,8 +375,6 @@ export function useStudentManagement({
     setSelectedCourseId,
     selectedCompanyId,
     setSelectedCompanyId,
-    noLoginStudent,
-    setNoLoginStudent,
     isCreatingStudent,
     createStudent,
 

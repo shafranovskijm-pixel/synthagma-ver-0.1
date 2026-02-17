@@ -49,8 +49,8 @@ export function DialogsContainer() {
         onOpenChange={d.studentManagement.setShowAddStudentDialog}
         courses={d.courses}
         companies={d.companies}
-        onSubmit={async (name, email, courseId, companyId, noLogin) => {
-          await d.studentManagement.createStudent({ name, email, courseId, companyId, noLogin });
+        onSubmit={async (name, email, courseId, companyId) => {
+          await d.studentManagement.createStudent({ name, email, courseId, companyId });
         }}
         isCreating={d.studentManagement.isCreatingStudent}
       />
