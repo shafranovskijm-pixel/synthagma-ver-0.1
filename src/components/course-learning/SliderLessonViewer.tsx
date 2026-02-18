@@ -42,7 +42,7 @@ export const SliderLessonViewer = ({ content, title, lessonIndex, isMobile }: Sl
   const slides = sliderContent.slides;
   const pptxFileUrl = sliderContent.pptxFileUrl;
 
-  const getViewerUrl = (fileUrl: string) => `https://docs.google.com/gview?url=${encodeURIComponent(fileUrl)}&embedded=true`;
+  const getViewerUrl = (fileUrl: string) => `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl)}`;
 
   if (pptxFileUrl) {
     return (
