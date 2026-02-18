@@ -411,7 +411,7 @@ export function SliderLessonEditor({ lesson, courseId, onUpdate }: SliderLessonE
 
   const getViewerUrl = (fileUrl: string): string => {
     const encodedUrl = encodeURIComponent(fileUrl);
-    return `https://docs.google.com/gview?url=${encodedUrl}&embedded=true`;
+    return `https://view.officeapps.live.com/op/embed.aspx?src=${encodedUrl}`;
   };
 
   return (
