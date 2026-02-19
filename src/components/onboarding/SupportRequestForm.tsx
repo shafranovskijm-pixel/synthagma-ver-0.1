@@ -137,9 +137,12 @@ ${errorsText}${photoUrl ? `\n\n<b>Скриншот:</b> ${photoUrl}` : ""}`;
       if (chatId) body.chat_id = chatId;
       if (photoUrl) body.photo_url = photoUrl;
 
-      const { error } = await supabase.functions.invoke("send-telegram-notification", { body });
-
-      if (error) throw error;
+      // Non-blocking: don't fail the whole request if Telegram is down
+      try {
+        await supabase.functions.invoke("send-telegram-notification", { body });
+      } catch (telegramErr) {
+        console.warn("Telegram notification failed (non-blocking):", telegramErr);
+      }
 
       toast({ title: "Обращение отправлено!", description: "Мы свяжемся с вами в ближайшее время" });
       setDescription("");
