@@ -181,13 +181,13 @@ export function useCourseLearning() {
       if (!('speechSynthesis' in window)) { toast.error('Озвучивание не поддерживается'); return; }
       const utterance = new SpeechSynthesisUtterance(textToSpeak);
       utterance.lang = 'ru-RU'; utterance.rate = 1.0; utterance.pitch = 1.0;
-      const voices = window.speechSynthesis.getVoices();
+      const voices = window.speechSynthesis?.getVoices() || [];
       const russianVoice = voices.find(v => v.lang.startsWith('ru'));
       if (russianVoice) utterance.voice = russianVoice;
       utterance.onend = () => setIsBrowserSpeaking(false);
       utterance.onerror = () => { setIsBrowserSpeaking(false); toast.error('Ошибка озвучивания'); };
       speechSynthesisRef.current = utterance;
-      window.speechSynthesis.speak(utterance);
+      window.speechSynthesis?.speak(utterance);
       setIsBrowserSpeaking(true);
     }
   };
