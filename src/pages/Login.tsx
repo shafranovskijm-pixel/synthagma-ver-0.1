@@ -112,15 +112,34 @@ const Login = () => {
           : error.message,
         variant: "destructive",
       });
+      setIsLoading(false);
     } else {
       toast({
         title: "Успешно!",
         description: "Вы вошли в систему",
       });
-      // Navigation will be handled by useEffect when userRole loads
+      // Explicitly fetch role and navigate to avoid race condition
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          const { data: roleData } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', session.user.id)
+            .single();
+          
+          const role = roleData?.role;
+          if (role === 'admin') navigate("/admin", { replace: true });
+          else if (role === 'organization') navigate("/organization", { replace: true });
+          else if (role === 'company') navigate("/company", { replace: true });
+          else if (role === 'sales_manager') navigate("/sales", { replace: true });
+          else navigate("/student", { replace: true });
+        }
+      } catch {
+        // Fallback: useEffect will handle navigation when userRole loads
+      }
+      setIsLoading(false);
     }
-    
-    setIsLoading(false);
   };
 
   const handleForgotPassword = async () => {
