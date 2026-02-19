@@ -488,6 +488,79 @@ export type Database = {
           },
         ]
       }
+      company_requests: {
+        Row: {
+          company_id: string
+          course_id: string | null
+          course_name: string | null
+          created_at: string
+          description: string | null
+          desired_date: string | null
+          employees: Json | null
+          id: string
+          org_response: string | null
+          organization_id: string
+          request_type: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          course_id?: string | null
+          course_name?: string | null
+          created_at?: string
+          description?: string | null
+          desired_date?: string | null
+          employees?: Json | null
+          id?: string
+          org_response?: string | null
+          organization_id: string
+          request_type?: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          course_id?: string | null
+          course_name?: string | null
+          created_at?: string
+          description?: string | null
+          desired_date?: string | null
+          employees?: Json | null
+          id?: string
+          org_response?: string | null
+          organization_id?: string
+          request_type?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_requests_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_requests_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_requests_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       consent_documents: {
         Row: {
           address: string | null

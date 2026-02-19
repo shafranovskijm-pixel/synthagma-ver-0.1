@@ -6,6 +6,15 @@ import {
   DialogContent,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Building2,
   Edit,
@@ -31,6 +40,9 @@ import {
   KeyRound,
   Copy,
   Loader2 as Loader2Icon,
+  Send,
+  MessageSquare,
+  Inbox,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -244,6 +256,10 @@ export function CompanyDetailDialog({
               <FileText className="w-4 h-4 mr-2" />
               Документы
             </TabsTrigger>
+            <TabsTrigger value="requests" className="rounded-lg data-[state=active]:bg-primary/10">
+              <Send className="w-4 h-4 mr-2" />
+              Заявки
+            </TabsTrigger>
             <TabsTrigger value="access" className="rounded-lg data-[state=active]:bg-primary/10">
               <KeyRound className="w-4 h-4 mr-2" />
               Доступ
@@ -254,6 +270,11 @@ export function CompanyDetailDialog({
           </TabsList>
 
           <div className="flex-1 overflow-y-auto p-6">
+            {/* Requests Tab */}
+            <TabsContent value="requests" className="m-0">
+              <CompanyRequestsOrgView companyId={company.id} />
+            </TabsContent>
+
             {/* Access Tab */}
             <TabsContent value="access" className="m-0">
               <CompanyAccessTab company={company} />
@@ -736,6 +757,192 @@ function CompanyAccessTab({ company }: { company: Company }) {
               Создать аккаунт
             </>
           )}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+const REQUEST_TYPES: Record<string, string> = {
+  training: "Обучение",
+  documents: "Документы",
+  consultation: "Консультация",
+  other: "Другое",
+};
+
+const STATUS_OPTIONS = [
+  { value: "pending", label: "Ожидает" },
+  { value: "reviewed", label: "Рассмотрена" },
+  { value: "approved", label: "Одобрена" },
+  { value: "rejected", label: "Отклонена" },
+  { value: "completed", label: "Выполнена" },
+];
+
+const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+  pending: "secondary",
+  reviewed: "outline",
+  approved: "default",
+  rejected: "destructive",
+  completed: "outline",
+};
+
+function CompanyRequestsOrgView({ companyId }: { companyId: string }) {
+  const { toast } = useToast();
+  const [requests, setRequests] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadRequests();
+  }, [companyId]);
+
+  const loadRequests = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("company_requests")
+        .select("*")
+        .eq("company_id", companyId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      setRequests((data as any) || []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateRequest = async (id: string, status: string, response: string) => {
+    setUpdatingId(id);
+    try {
+      const { error } = await supabase
+        .from("company_requests")
+        .update({ status, org_response: response || null } as any)
+        .eq("id", id);
+      if (error) throw error;
+      toast({ title: "Заявка обновлена" });
+      loadRequests();
+    } catch (e: any) {
+      toast({ title: "Ошибка", description: e.message, variant: "destructive" });
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-12">
+        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (requests.length === 0) {
+    return (
+      <div className="text-center py-12 text-muted-foreground">
+        <Inbox className="w-12 h-12 mx-auto mb-3 opacity-50" />
+        <p>Заявок от компании пока нет</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {requests.map((req) => (
+        <RequestCard
+          key={req.id}
+          request={req}
+          isUpdating={updatingId === req.id}
+          onUpdate={updateRequest}
+        />
+      ))}
+    </div>
+  );
+}
+
+function RequestCard({
+  request,
+  isUpdating,
+  onUpdate,
+}: {
+  request: any;
+  isUpdating: boolean;
+  onUpdate: (id: string, status: string, response: string) => void;
+}) {
+  const [status, setStatus] = useState(request.status);
+  const [response, setResponse] = useState(request.org_response || "");
+  const employees = Array.isArray(request.employees) ? request.employees : [];
+
+  return (
+    <div className="border rounded-xl p-4 space-y-3">
+      <div className="flex items-start justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="rounded-lg">
+              {REQUEST_TYPES[request.request_type] || request.request_type}
+            </Badge>
+            <Badge variant={STATUS_VARIANT[request.status] || "secondary"} className="rounded-lg">
+              {STATUS_OPTIONS.find((s) => s.value === request.status)?.label || request.status}
+            </Badge>
+          </div>
+          <h4 className="font-semibold mt-2">{request.title}</h4>
+          {request.description && (
+            <p className="text-sm text-muted-foreground mt-1">{request.description}</p>
+          )}
+          {request.course_name && (
+            <p className="text-xs text-muted-foreground mt-1">Курс: {request.course_name}</p>
+          )}
+          {request.desired_date && (
+            <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+              <Calendar className="w-3 h-3" />
+              Желаемая дата: {format(new Date(request.desired_date), "d MMMM yyyy", { locale: ru })}
+            </p>
+          )}
+          {employees.length > 0 && (
+            <p className="text-xs text-muted-foreground mt-1">
+              Сотрудники: {employees.map((e: any) => e.full_name).join(", ")}
+            </p>
+          )}
+        </div>
+        <span className="text-xs text-muted-foreground">
+          {format(new Date(request.created_at), "d MMM yyyy", { locale: ru })}
+        </span>
+      </div>
+
+      <div className="flex items-end gap-3 pt-2 border-t border-border">
+        <div className="flex-1 space-y-1.5">
+          <label className="text-xs font-medium text-muted-foreground">Ответ организации</label>
+          <Textarea
+            className="rounded-xl resize-none text-sm"
+            rows={2}
+            placeholder="Ваш ответ на заявку..."
+            value={response}
+            onChange={(e) => setResponse(e.target.value)}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-muted-foreground">Статус</label>
+          <Select value={status} onValueChange={setStatus}>
+            <SelectTrigger className="rounded-xl w-[150px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUS_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <Button
+          size="sm"
+          className="rounded-xl gap-1.5"
+          disabled={isUpdating || (status === request.status && response === (request.org_response || ""))}
+          onClick={() => onUpdate(request.id, status, response)}
+        >
+          {isUpdating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <MessageSquare className="w-3.5 h-3.5" />}
+          Ответить
         </Button>
       </div>
     </div>
