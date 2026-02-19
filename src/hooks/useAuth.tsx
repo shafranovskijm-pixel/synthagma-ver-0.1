@@ -88,28 +88,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
+    console.log('[Auth] signIn attempt for:', email);
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
     
-    // Log the login event
-    if (!error) {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("organization_id")
-          .eq("user_id", session.user.id)
-          .maybeSingle();
-        
-        if (profile?.organization_id) {
-          supabase.from("student_login_history").insert({
-            user_id: session.user.id,
-            organization_id: profile.organization_id,
-            user_agent: navigator.userAgent,
-          }).then(() => {});
-        }
+    if (!error && data?.user) {
+      console.log('[Auth] signIn success, fetching role for:', data.user.id);
+      // Await role fetch BEFORE returning to prevent race condition
+      await fetchUserRole(data.user.id);
+      console.log('[Auth] role fetched, userRole is now set');
+      
+      // Log the login event (fire-and-forget)
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("organization_id")
+        .eq("user_id", data.user.id)
+        .maybeSingle();
+      
+      if (profile?.organization_id) {
+        supabase.from("student_login_history").insert({
+          user_id: data.user.id,
+          organization_id: profile.organization_id,
+          user_agent: navigator.userAgent,
+        }).then(() => {});
       }
     }
     
