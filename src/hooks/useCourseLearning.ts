@@ -177,7 +177,7 @@ export function useCourseLearning() {
     if (ttsSettings.useElevenLabs) {
       elevenLabsTTS.speak(textToSpeak);
     } else {
-      if (isBrowserSpeaking) { window.speechSynthesis.cancel(); setIsBrowserSpeaking(false); return; }
+      if (isBrowserSpeaking) { window.speechSynthesis?.cancel(); setIsBrowserSpeaking(false); return; }
       if (!('speechSynthesis' in window)) { toast.error('Озвучивание не поддерживается'); return; }
       const utterance = new SpeechSynthesisUtterance(textToSpeak);
       utterance.lang = 'ru-RU'; utterance.rate = 1.0; utterance.pitch = 1.0;
@@ -193,8 +193,8 @@ export function useCourseLearning() {
   };
 
   // Stop speaking when lesson changes
-  useEffect(() => { window.speechSynthesis.cancel(); setIsBrowserSpeaking(false); elevenLabsTTS.stop(); }, [currentLessonIndex]);
-  useEffect(() => { return () => { window.speechSynthesis.cancel(); elevenLabsTTS.stop(); }; }, []);
+  useEffect(() => { window.speechSynthesis?.cancel(); setIsBrowserSpeaking(false); elevenLabsTTS.stop(); }, [currentLessonIndex]);
+  useEffect(() => { return () => { window.speechSynthesis?.cancel(); elevenLabsTTS.stop(); }; }, []);
 
   // Scroll chat to bottom
   useEffect(() => {
