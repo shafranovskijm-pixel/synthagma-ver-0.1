@@ -56,6 +56,7 @@ import { OrgRemindersTab } from "./OrgRemindersTab";
 import { OrgFeaturesTab } from "./OrgFeaturesTab";
 import { OrgAuditLogsTab } from "./OrgAuditLogsTab";
 import { OrgBalanceManager } from "./OrgBalanceManager";
+import { getPlanInfo, type SubscriptionPlan } from "@/constants/subscriptionPlans";
 
 interface Organization {
   id: string;
@@ -71,6 +72,7 @@ interface Organization {
   ai_tokens_limit?: number;
   notify_on_limit_80?: boolean;
   notify_on_limit_exceeded?: boolean;
+  subscription_plan?: string;
 }
 
 interface Student {
@@ -138,7 +140,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
     phone: organization.phone || "",
     inn: organization.inn || "",
     contact_name: organization.contact_name || "",
-    storage_limit_bytes: organization.storage_limit_bytes || 1073741824,
+    storage_limit_bytes: organization.storage_limit_bytes || getPlanInfo((organization.subscription_plan as SubscriptionPlan) || 'free').limits.storageBytes,
     ai_tokens_limit: organization.ai_tokens_limit || 100000,
     notify_on_limit_80: organization.notify_on_limit_80 ?? true,
     notify_on_limit_exceeded: organization.notify_on_limit_exceeded ?? true,

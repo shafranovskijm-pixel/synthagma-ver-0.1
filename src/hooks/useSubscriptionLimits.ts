@@ -16,6 +16,7 @@ interface SubscriptionLimitsState {
   hasCourseSettings: boolean;
   hasDocumentChecklist: boolean;
   hasVideoIdentification: boolean;
+  storageLimit: number;
   loading: boolean;
   planName: string;
   checkLimit: (type: 'course' | 'student') => { allowed: boolean; message: string };
@@ -122,6 +123,7 @@ export function useSubscriptionLimits(organizationId: string | null): Subscripti
     hasCourseSettings: limits.courseSettings,
     hasDocumentChecklist: limits.documentChecklist,
     hasVideoIdentification: limits.videoIdentification,
+    storageLimit: limits.storageBytes,
     loading,
     planName: planInfo.name,
     checkLimit,
