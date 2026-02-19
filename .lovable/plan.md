@@ -1,65 +1,76 @@
 
 
-# Исправление: добавление сотрудника из кабинета компании
+# Заявки от компании в учебную организацию
 
-## Проблема
+## Что делаем
 
-Edge-функция `register-student` на строке 43 допускает только роли `organization` и `admin`. Роль `company` отклоняется с ошибкой 403. Из-за этого кнопка «Добавить сотрудника» в кабинете компании не работает.
+Добавляем новую вкладку "Заявки" в кабинет компании, где можно сформировать заявку на обучение сотрудников и отправить её в привязанную учебную организацию. Организация видит заявки в уведомлениях и может их обработать.
 
-## Решение
+---
 
-Обновить `supabase/functions/register-student/index.ts`:
+## 1. Новая таблица `company_requests`
 
-1. Добавить роль `company` в список разрешённых (строка 43)
-2. Для роли `company` -- получить `company_id` и `organization_id` из таблицы `companies` (по `user_id`)
-3. Автоматически подставлять `organization_id` и `company_id` из данных компании, чтобы компания не могла зарегистрировать сотрудника в чужой организации
-
-## Изменения в коде
-
-### `supabase/functions/register-student/index.ts`
-
-**Строка 43** -- расширить проверку роли:
-```typescript
-if (!roleData || !['organization', 'admin', 'company'].includes(roleData.role)) {
+```text
+id              UUID PK
+company_id      UUID FK -> companies(id)
+organization_id UUID FK -> organizations(id)
+request_type    TEXT (training, documents, consultation, other)
+title           TEXT NOT NULL
+description     TEXT
+employees       JSONB (массив {user_id, full_name})
+course_id       UUID FK -> courses(id) (опционально)
+course_name     TEXT (если курса нет в системе)
+desired_date    DATE
+status          TEXT (pending, reviewed, approved, rejected, completed)
+org_response    TEXT (ответ организации)
+created_at      TIMESTAMPTZ
+updated_at      TIMESTAMPTZ
 ```
 
-**После строки 60** -- для роли `company` получить привязку:
-```typescript
-let effectiveOrgId = organization_id;
-let effectiveCompanyId = company_id;
+RLS-политики:
+- Компания видит и создаёт свои заявки (через `current_company_id()`)
+- Организация видит заявки своих компаний (через `current_organization_id()`)
+- Организация может обновлять статус и ответ
+- Админы видят и обновляют всё
 
-if (roleData.role === 'company') {
-  const { data: companyData } = await supabaseAdmin
-    .from('companies')
-    .select('id, organization_id')
-    .eq('user_id', user.id)
-    .single();
+---
 
-  if (!companyData) {
-    return error 403 "Company not found for this user";
-  }
+## 2. Новый компонент `CompanyRequestsTab`
 
-  effectiveOrgId = companyData.organization_id;
-  effectiveCompanyId = companyData.id;
-}
-```
+Вкладка в кабинете компании с:
+- Списком заявок (таблица с колонками: тип, тема, дата, статус, ответ)
+- Кнопка "Новая заявка" открывает диалог
+- Форма заявки: тип, тема, описание, выбор сотрудников (мультивыбор), курс (из каталога или ввод вручную), желаемая дата
+- Статусы с цветовой индикацией: ожидает (жёлтый), рассмотрена (синий), одобрена (зелёный), отклонена (красный), выполнена (серый)
 
-**Строка 79** -- проверка org принадлежности для company:
-```typescript
-if (roleData.role === 'company') {
-  // уже подставили из companyData, дополнительная проверка не нужна
-} else if (roleData.role !== 'admin' && callerProfile?.organization_id !== effectiveOrgId) {
-  return error 403;
-}
-```
+---
 
-Далее по коду использовать `effectiveOrgId` и `effectiveCompanyId` вместо параметров из тела запроса.
+## 3. Уведомление организации
+
+При создании заявки -- вставка записи в `org_notifications` для организации с типом `company_request` и ссылкой на заявку. Организация увидит уведомление в реальном времени через существующий Realtime-канал.
+
+---
+
+## 4. Просмотр заявок в кабинете организации
+
+Добавить обработку заявок в существующий интерфейс организации -- в компоненте `CompanyDetailDialog` или отдельной вкладке, где менеджер может просмотреть заявку, написать ответ и сменить статус.
+
+---
+
+## 5. Интеграция в `CompanyDashboard`
+
+- Новая вкладка "Заявки" (иконка `Send`) в сайдбаре между "Планирование" и "Документы"
+- Обновить тип `TabId` и массив `tabs`
+- Счётчик непрочитанных ответов на кнопке вкладки
+
+---
 
 ## Затронутые файлы
 
 | Файл | Действие |
 |---|---|
-| `supabase/functions/register-student/index.ts` | Добавить роль `company` + автоопределение org_id/company_id |
-
-Никаких изменений в БД или фронтенде не требуется.
+| SQL-миграция | Таблица `company_requests` + RLS + realtime |
+| `src/components/company/CompanyRequestsTab.tsx` | Новый компонент -- список заявок + форма создания |
+| `src/pages/CompanyDashboard.tsx` | Новая вкладка "Заявки" |
+| `src/components/organization/dialogs/CompanyDetailDialog.tsx` | Вкладка просмотра заявок для организации |
 
