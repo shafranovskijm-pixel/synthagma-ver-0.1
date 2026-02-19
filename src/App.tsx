@@ -45,6 +45,7 @@ const FeatureCourseSettings = lazy(() => import("./pages/FeatureCourseSettings")
 const FeatureBranding = lazy(() => import("./pages/FeatureBranding"));
 const FeatureAICourses = lazy(() => import("./pages/FeatureAICourses"));
 const RoadmapPage = lazy(() => import("./pages/RoadmapPage"));
+const CompanyDashboard = lazy(() => import("./pages/CompanyDashboard"));
 const PublicOffer = lazy(() => import("./pages/PublicOffer"));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 const PersonalDataPolicy = lazy(() => import("./pages/PersonalDataPolicy"));
@@ -143,6 +144,11 @@ const App = () => (
                     <Route path="/sales" element={
                       <ProtectedRoute requiredRole="sales_manager">
                         <SalesDashboard />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/company" element={
+                      <ProtectedRoute requiredRole="company">
+                        <CompanyDashboard />
                       </ProtectedRoute>
                     } />
                     <Route path="/learning/:courseId" element={<LearningRedirect />} />

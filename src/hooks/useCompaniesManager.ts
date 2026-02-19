@@ -12,6 +12,8 @@ interface Company {
   director: string | null;
   email: string | null;
   created_at: string;
+  user_id?: string | null;
+  login_email?: string | null;
   studentsCount?: number;
   stamp_url?: string | null;
   signature_url?: string | null;

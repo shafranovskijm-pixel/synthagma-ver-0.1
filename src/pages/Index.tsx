@@ -20,6 +20,7 @@ const Index = () => {
     if (!loading && user && userRole) {
       if (userRole === 'admin') navigate('/admin', { replace: true });
       else if (userRole === 'organization') navigate('/organization', { replace: true });
+      else if (userRole === 'company') navigate('/company', { replace: true });
       else navigate('/student', { replace: true });
     }
   }, [user, userRole, loading, navigate]);
