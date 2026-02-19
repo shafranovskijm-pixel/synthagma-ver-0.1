@@ -906,6 +906,8 @@ export type Database = {
           retraining_period_months: number | null
           sequential_lessons: boolean
           skip_video_identification: boolean | null
+          source_course_id: string | null
+          source_order_id: string | null
           title: string
           training_form: string | null
           updated_at: string
@@ -935,6 +937,8 @@ export type Database = {
           retraining_period_months?: number | null
           sequential_lessons?: boolean
           skip_video_identification?: boolean | null
+          source_course_id?: string | null
+          source_order_id?: string | null
           title: string
           training_form?: string | null
           updated_at?: string
@@ -964,6 +968,8 @@ export type Database = {
           retraining_period_months?: number | null
           sequential_lessons?: boolean
           skip_video_identification?: boolean | null
+          source_course_id?: string | null
+          source_order_id?: string | null
           title?: string
           training_form?: string | null
           updated_at?: string
@@ -981,6 +987,20 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "courses_source_course_id_fkey"
+            columns: ["source_course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "courses_source_order_id_fkey"
+            columns: ["source_order_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_orders"
             referencedColumns: ["id"]
           },
         ]
