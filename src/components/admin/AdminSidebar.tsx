@@ -3,6 +3,7 @@ import {
   LogOut, Shield, Settings, FileText, Terminal, Store, HeadphonesIcon, Briefcase
 } from "lucide-react";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
+import { HelpButton } from "@/components/onboarding/HelpButton";
 
 export type AdminTabType = 
   | "analytics" 
@@ -132,6 +133,7 @@ export function AdminSidebar({
 
       {/* Footer */}
       <div className="p-4 border-t border-border flex-shrink-0 bg-card space-y-3">
+        <HelpButton tips={[]} variant="sidebar" />
         {userEmail && (
           <div className="px-4 py-2 text-xs text-muted-foreground truncate">
             {userEmail}
