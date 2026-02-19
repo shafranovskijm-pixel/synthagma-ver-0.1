@@ -1,54 +1,65 @@
 
 
-# Онбординг для кабинета компании
+# Исправление: добавление сотрудника из кабинета компании
 
-## Что делаем
+## Проблема
 
-Добавляем пошаговый онбординг-диалог при первом входе в кабинет компании. Используем уже существующий компонент `OnboardingDialog` и паттерн с `onboarding_completed` из `profiles`.
+Edge-функция `register-student` на строке 43 допускает только роли `organization` и `admin`. Роль `company` отклоняется с ошибкой 403. Из-за этого кнопка «Добавить сотрудника» в кабинете компании не работает.
 
----
+## Решение
 
-## 1. Шаги онбординга (в `src/constants/onboardingSteps.ts`)
+Обновить `supabase/functions/register-student/index.ts`:
 
-Добавляем массив `companyOnboardingSteps`:
+1. Добавить роль `company` в список разрешённых (строка 43)
+2. Для роли `company` -- получить `company_id` и `organization_id` из таблицы `companies` (по `user_id`)
+3. Автоматически подставлять `organization_id` и `company_id` из данных компании, чтобы компания не могла зарегистрировать сотрудника в чужой организации
 
-| Шаг | Иконка | Заголовок | Описание | Подсветка |
-|---|---|---|---|---|
-| welcome | Sparkles | Добро пожаловать! | Обзор кабинета компании | -- |
-| employees | Users | Сотрудники | Как добавлять и импортировать сотрудников | `[data-onboarding='employees']` |
-| planning | ClipboardList | Планирование | Как создавать планы обучения | `[data-onboarding='planning']` |
-| documents | FileText | Документы | Где смотреть договоры и счета | `[data-onboarding='documents']` |
-| reminders | Bell | Напоминания | Как работают напоминания о переобучении | `[data-onboarding='reminders']` |
+## Изменения в коде
 
----
+### `supabase/functions/register-student/index.ts`
 
-## 2. Навигационные кнопки в сайдбаре (`CompanyDashboard.tsx`)
-
-Добавить `data-onboarding` атрибуты к кнопкам бокового меню, чтобы `OnboardingHighlight` мог их подсветить:
-
-```tsx
-<button data-onboarding={tab.id} ...>
+**Строка 43** -- расширить проверку роли:
+```typescript
+if (!roleData || !['organization', 'admin', 'company'].includes(roleData.role)) {
 ```
 
----
+**После строки 60** -- для роли `company` получить привязку:
+```typescript
+let effectiveOrgId = organization_id;
+let effectiveCompanyId = company_id;
 
-## 3. Логика онбординга (`CompanyDashboard.tsx`)
+if (roleData.role === 'company') {
+  const { data: companyData } = await supabaseAdmin
+    .from('companies')
+    .select('id, organization_id')
+    .eq('user_id', user.id)
+    .single();
 
-По аналогии с `useOrganizationDashboard` и `useStudentDashboard`:
+  if (!companyData) {
+    return error 403 "Company not found for this user";
+  }
 
-- При загрузке проверить `profiles.onboarding_completed` для текущего пользователя
-- Если `false` -- показать `OnboardingDialog`
-- При закрытии -- записать `onboarding_completed = true` в `profiles`
-- При нажатии «Перейти к разделу» -- переключить на соответствующую вкладку
+  effectiveOrgId = companyData.organization_id;
+  effectiveCompanyId = companyData.id;
+}
+```
 
----
+**Строка 79** -- проверка org принадлежности для company:
+```typescript
+if (roleData.role === 'company') {
+  // уже подставили из companyData, дополнительная проверка не нужна
+} else if (roleData.role !== 'admin' && callerProfile?.organization_id !== effectiveOrgId) {
+  return error 403;
+}
+```
 
-## 4. Затронутые файлы
+Далее по коду использовать `effectiveOrgId` и `effectiveCompanyId` вместо параметров из тела запроса.
+
+## Затронутые файлы
 
 | Файл | Действие |
 |---|---|
-| `src/constants/onboardingSteps.ts` | Добавить `companyOnboardingSteps` |
-| `src/pages/CompanyDashboard.tsx` | Добавить `data-onboarding` атрибуты, состояние онбординга, `OnboardingDialog` |
+| `supabase/functions/register-student/index.ts` | Добавить роль `company` + автоопределение org_id/company_id |
 
-Никаких изменений в базе данных не требуется -- поле `onboarding_completed` в `profiles` уже существует.
+Никаких изменений в БД или фронтенде не требуется.
 
