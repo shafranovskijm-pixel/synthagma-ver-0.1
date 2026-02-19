@@ -275,13 +275,15 @@ export function useOrgFeatures(organizationId: string | null) {
         }
       }
 
-      // Apply subscription plan restrictions on top
+      // Subscription plan is the FINAL authority on categories
       const subscriptionPlan = (orgPlanResult.data?.subscription_plan || 'free') as SubscriptionPlan;
       const planInfo = getPlanInfo(subscriptionPlan);
       const allCategories = ['courses', 'students', 'companies', 'documents', 'journals', 'frdo', 'links', 'library', 'services', 'settings', 'student_cabinet', 'labor_safety'];
       
       for (const cat of allCategories) {
-        if (!planInfo.enabledCategories.includes(cat)) {
+        if (planInfo.enabledCategories.includes(cat)) {
+          (newFeatures as any)[cat] = true;
+        } else {
           (newFeatures as any)[cat] = false;
         }
       }
