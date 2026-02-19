@@ -106,6 +106,7 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
   const [isOrdering, setIsOrdering] = useState(false);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [payFromBalance, setPayFromBalance] = useState(false);
+  const [purchasedFromBalance, setPurchasedFromBalance] = useState(false);
   // Edit dialog
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editingCourse, setEditingCourse] = useState<MarketplaceCourse | null>(null);
@@ -308,6 +309,53 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
       if (payFromBalance && deductBalance && orderData) {
         const courseName = selectedCourseForOrder.course?.title || 'Курс';
         await deductBalance(price, `Покупка курса "${courseName}"`, orderData.id);
+
+        // Clone course to buyer's organization
+        try {
+          const originalCourseId = selectedCourseForOrder.course_id;
+          const { data: origCourse } = await supabase
+            .from('courses').select('*').eq('id', originalCourseId).single();
+          
+          if (origCourse) {
+            const { id: _id, created_at: _ca, updated_at: _ua, ...courseData } = origCourse;
+            const { data: newCourse } = await supabase.from('courses').insert({
+              ...courseData,
+              organization_id: organizationId,
+              source_order_id: orderData.id,
+              source_course_id: originalCourseId,
+            }).select('id').single();
+
+            if (newCourse) {
+              const { data: lessons } = await supabase
+                .from('lessons').select('*').eq('course_id', originalCourseId).order('order_index');
+              
+              if (lessons) {
+                for (const lesson of lessons) {
+                  const { id: _lid, created_at: _lca, updated_at: _lua, ...lessonData } = lesson;
+                  const { data: newLesson } = await supabase.from('lessons').insert({
+                    ...lessonData,
+                    course_id: newCourse.id,
+                  }).select('id').single();
+
+                  if (newLesson) {
+                    const { data: questions } = await supabase
+                      .from('test_questions').select('*').eq('lesson_id', lesson.id);
+                    if (questions?.length) {
+                      await supabase.from('test_questions').insert(
+                        questions.map(q => {
+                          const { id: _qid, ...qData } = q;
+                          return { ...qData, lesson_id: newLesson.id };
+                        })
+                      );
+                    }
+                  }
+                }
+              }
+            }
+          }
+        } catch (cloneError) {
+          console.error('Error cloning course:', cloneError);
+        }
       }
 
       try {
@@ -330,6 +378,7 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
         });
       } catch (notifyError) { console.error('Failed to send notification:', notifyError); }
 
+      setPurchasedFromBalance(payFromBalance);
       setShowOrderDialog(false); setShowSuccessDialog(true); setOrderNotes(""); setStudentsCount(1); setPayFromBalance(false); fetchOrders();
     } catch (error: any) {
       console.error('Error creating order:', error); toast.error('Ошибка при создании заявки');
@@ -391,7 +440,7 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
     showOrderDialog, setShowOrderDialog, selectedCourseForOrder, setSelectedCourseForOrder,
     orderNotes, setOrderNotes, studentsCount, setStudentsCount, isOrdering, handleOrder,
     showSuccessDialog, setShowSuccessDialog,
-    payFromBalance, setPayFromBalance, orgBalance,
+    payFromBalance, setPayFromBalance, orgBalance, purchasedFromBalance,
     // Edit dialog
     showEditDialog, setShowEditDialog, editingCourse, setEditingCourse, handleEditCourse,
     // Order details

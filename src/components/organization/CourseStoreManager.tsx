@@ -390,8 +390,8 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
         <DialogContent className="rounded-2xl text-center max-w-sm">
           <div className="py-6">
             <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center mx-auto mb-4"><CheckCircle className="w-8 h-8 text-green-500" /></div>
-            <DialogTitle className="text-xl mb-2">Заявка отправлена!</DialogTitle>
-            <DialogDescription className="text-base">Продавец получит уведомление и свяжется с вами.</DialogDescription>
+            <DialogTitle className="text-xl mb-2">{h.purchasedFromBalance ? 'Курс добавлен!' : 'Заявка отправлена!'}</DialogTitle>
+            <DialogDescription className="text-base">{h.purchasedFromBalance ? 'Курс теперь доступен в разделе «Курсы». Приятного использования!' : 'Продавец получит уведомление и свяжется с вами.'}</DialogDescription>
             <Button className="mt-6 btn-gradient rounded-xl" onClick={() => h.setShowSuccessDialog(false)}>Отлично</Button>
           </div>
         </DialogContent>
