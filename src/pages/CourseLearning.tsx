@@ -271,7 +271,7 @@ const CourseLearning = () => {
                     {(q as any).image_url && <img src={(q as any).image_url} alt="Вопрос" className="max-h-64 rounded-lg border border-border object-contain mb-4" />}
                     <div className="space-y-2">{(Array.isArray(q.options) ? q.options : []).map((opt: any, oi: number) => (
                       <div key={oi} onClick={() => setAnswers(p => ({ ...p, [q.id]: oi }))} className={cn("flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-all", answers[q.id] === oi ? "border-primary bg-primary/5 shadow-sm" : "border-border hover:bg-muted")}>
-                        <div className={cn("w-5 h-5 rounded-full border flex items-center justify-center", answers[q.id] === oi ? "border-primary bg-primary" : "border-muted-foreground")}>{answers[q.id] === oi && <div className="w-2 h-2 rounded-full bg-white" />}</div>
+                        <div className={cn("w-5 h-5 rounded-full border flex items-center justify-center shrink-0", answers[q.id] === oi ? "border-primary bg-primary" : "border-muted-foreground")}>{answers[q.id] === oi && <div className="w-2 h-2 rounded-full bg-white" />}</div>
                         <span className="text-sm">{opt.text || opt}</span>
                       </div>
                     ))}</div>
