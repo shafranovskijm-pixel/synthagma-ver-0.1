@@ -87,6 +87,8 @@ export const VideoPlayerInline = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [controlsVisible, setControlsVisible] = useState(true);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [loadingTimedOut, setLoadingTimedOut] = useState(false);
+  const loadingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const showControls = () => {
     setControlsVisible(true);
@@ -97,8 +99,22 @@ export const VideoPlayerInline = ({
   };
 
   useEffect(() => {
-    return () => { if (hideTimerRef.current) clearTimeout(hideTimerRef.current); };
+    return () => {
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+      if (loadingTimeoutRef.current) clearTimeout(loadingTimeoutRef.current);
+    };
   }, []);
+
+  // Loading timeout: show fallback after 15 seconds
+  useEffect(() => {
+    if (videoLoading && !loadingTimedOut) {
+      loadingTimeoutRef.current = setTimeout(() => setLoadingTimedOut(true), 15000);
+    } else if (!videoLoading) {
+      setLoadingTimedOut(false);
+      if (loadingTimeoutRef.current) { clearTimeout(loadingTimeoutRef.current); loadingTimeoutRef.current = null; }
+    }
+    return () => { if (loadingTimeoutRef.current) { clearTimeout(loadingTimeoutRef.current); loadingTimeoutRef.current = null; } };
+  }, [videoLoading, loadingTimedOut]);
 
   useEffect(() => {
     const handleFullscreenChange = async () => {
@@ -237,7 +253,7 @@ export const VideoPlayerInline = ({
   };
 
   const handleRateChange = () => { if (allowSeek || !videoRef.current) return; if (videoRef.current.playbackRate !== 1) videoRef.current.playbackRate = 1; };
-  const handleRetryVideo = () => { setVideoError(false); setVideoLoading(true); setVideoSlow(false); if (videoRef.current) videoRef.current.load(); };
+  const handleRetryVideo = () => { setVideoError(false); setVideoLoading(true); setVideoSlow(false); setLoadingTimedOut(false); if (videoRef.current) videoRef.current.load(); };
   const handleCanPlay = () => { setVideoLoading(false); setVideoSlow(false); if (stalledTimerRef.current) { clearTimeout(stalledTimerRef.current); stalledTimerRef.current = null; } };
   const handleWaiting = () => setVideoLoading(true);
   const handlePlaying = () => { setVideoLoading(false); setVideoSlow(false); if (stalledTimerRef.current) { clearTimeout(stalledTimerRef.current); stalledTimerRef.current = null; } };
@@ -277,8 +293,24 @@ export const VideoPlayerInline = ({
         disablePictureInPicture={!allowSeek} disableRemotePlayback={!allowSeek} playsInline
       />
       {videoLoading && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 rounded-2xl pointer-events-none">
-          <Loader2 className="w-10 h-10 animate-spin text-white mb-2" /><p className="text-white text-sm">Загрузка видео...</p>
+        <div className={cn("absolute inset-0 flex flex-col items-center justify-center bg-black/60 rounded-2xl", loadingTimedOut ? "" : "pointer-events-none")}>
+          <Loader2 className="w-10 h-10 animate-spin text-white mb-2" />
+          {loadingTimedOut ? (
+            <div className="text-center px-4">
+              <p className="text-white text-sm mb-1">Видео загружается слишком долго</p>
+              <p className="text-white/60 text-xs mb-3">Файл может быть недоступен или соединение медленное</p>
+              <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                <Button variant="outline" onClick={handleRetryVideo} className="inline-flex items-center gap-2 bg-white/10 border-white/20 text-white hover:bg-white/20">
+                  <RotateCcw className="w-4 h-4" />Попробовать снова
+                </Button>
+                <a href={resolvedContent} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">
+                  <Play className="w-4 h-4" />Открыть в новом окне
+                </a>
+              </div>
+            </div>
+          ) : (
+            <p className="text-white text-sm">Загрузка видео...</p>
+          )}
         </div>
       )}
       {videoSlow && !videoLoading && (
