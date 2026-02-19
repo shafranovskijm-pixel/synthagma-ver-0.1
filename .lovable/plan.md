@@ -1,78 +1,62 @@
 
-# Plan: Sync storage limits with subscription plan
 
-## Problem
-Currently, `storage_limit_bytes` in the `organizations` table is a static value (default 1 GB) that never updates when the subscription plan changes. All organizations show "100 MB" or "1 GB" storage regardless of their actual plan (e.g., "Maximum" plan should have 100 GB).
+## Проблема
 
-## Solution
+Клиент svetlana-voa@mail.ru успешно входит в систему (появляется уведомление "Успешно!"), но после этого застревает на экране загрузки и не попадает в личный кабинет организации.
 
-### 1. Database trigger to auto-sync storage limit on plan change
-Create a PostgreSQL trigger that fires whenever `subscription_plan` is updated on the `organizations` table. It will automatically set `storage_limit_bytes` to the correct value based on the plan:
+## Причина
 
-| Plan | Storage |
-|------|---------|
-| free | 100 MB |
-| start | 1 GB |
-| standard | 5 GB |
-| professional | 20 GB |
-| maximum | 100 GB |
+Гонка данных (race condition) между двумя параллельными процессами после входа:
 
-### 2. One-time migration to fix all existing organizations
-Run an UPDATE to correct all existing organizations' `storage_limit_bytes` based on their current `subscription_plan`.
+1. **Login.tsx**: после `signIn()` делает отдельный запрос роли и вызывает `navigate("/organization")`
+2. **useAuth**: `onAuthStateChange` вызывает `fetchUserRole` через `setTimeout(0)`
 
-### 3. Use plan-based limits in the frontend (fallback)
-Update `useSubscriptionLimits` to expose the `storageBytes` from the plan config, so UI components can use the plan-derived limit as the source of truth rather than relying solely on the DB column.
+Когда пользователь попадает на `/organization`, компонент `ProtectedRoute` проверяет `userRole` из контекста `useAuth`. Если `fetchUserRole` ещё не завершился, `userRole === null`, и `ProtectedRoute` показывает бесконечный спиннер в ожидании загрузки роли.
 
-Update `OrganizationDetailsView.tsx` (admin panel) to initialize `storage_limit_bytes` from the plan config when viewing an organization, ensuring the stats cards and progress bars show correct limits.
+Дополнительный фактор: у `ProtectedRoute` нет таймаута -- если `fetchUserRole` зависнет, пользователь навсегда останется на экране загрузки.
 
----
+## План исправления
 
-## Technical details
+### 1. Синхронизация роли перед навигацией (useAuth.tsx)
 
-### Database migration (SQL)
+Обновить `signIn` так, чтобы он сам дожидался загрузки роли перед возвратом результата. Вместо того чтобы полагаться на `onAuthStateChange` + `setTimeout`, `signIn` будет:
 
-```sql
--- 1. Trigger function to sync storage_limit_bytes on plan change
-CREATE OR REPLACE FUNCTION sync_storage_limit_on_plan_change()
-RETURNS TRIGGER AS $$
-BEGIN
-  IF NEW.subscription_plan IS DISTINCT FROM OLD.subscription_plan THEN
-    NEW.storage_limit_bytes := CASE NEW.subscription_plan
-      WHEN 'free' THEN 104857600
-      WHEN 'start' THEN 1073741824
-      WHEN 'standard' THEN 5368709120
-      WHEN 'professional' THEN 21474836480
-      WHEN 'maximum' THEN 107374182400
-      ELSE 104857600
-    END;
-  END IF;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+- Выполнять аутентификацию
+- Если успешно -- сразу вызывать `fetchUserRole` и дожидаться завершения
+- Возвращать объект с ошибкой и ролью
 
-CREATE TRIGGER trg_sync_storage_limit
-  BEFORE UPDATE ON public.organizations
-  FOR EACH ROW
-  EXECUTE FUNCTION sync_storage_limit_on_plan_change();
-
--- 2. Fix all existing organizations
-UPDATE public.organizations SET storage_limit_bytes = CASE subscription_plan
-  WHEN 'free' THEN 104857600
-  WHEN 'start' THEN 1073741824
-  WHEN 'standard' THEN 5368709120
-  WHEN 'professional' THEN 21474836480
-  WHEN 'maximum' THEN 107374182400
-  ELSE 104857600
-END;
-
--- 3. Update default for new orgs (free plan default)
-ALTER TABLE public.organizations ALTER COLUMN storage_limit_bytes SET DEFAULT 104857600;
+```text
+signIn(email, password):
+  1. supabase.auth.signInWithPassword()
+  2. если нет ошибки -> await fetchUserRole(user.id)
+  3. return { error, role }
 ```
 
-### Frontend changes
+### 2. Упрощение навигации в Login.tsx
 
-**`src/hooks/useSubscriptionLimits.ts`**: Add `storageLimit` to the returned state, derived from `planInfo.limits.storageBytes`.
+Убрать дублирующий запрос роли из `handleSubmit`. После `signIn` использовать роль, уже загруженную в контекст `useAuth`:
 
-**`src/components/admin/OrganizationDetailsView.tsx`**: When initializing settings, if the org's `storage_limit_bytes` doesn't match the plan config, use the plan's value. This ensures the admin panel always shows the correct limit for the plan. The admin can still override it manually in settings.
+```text
+handleSubmit:
+  1. await signIn(email, password)
+  2. если нет ошибки -- userRole уже установлен
+  3. навигация на основе userRole из контекста (через useEffect)
+```
 
-**`src/hooks/useLibraryManager.ts`**: No changes needed -- it already reads `storage_limit_bytes` from the DB, which will now be correct thanks to the trigger and migration.
+### 3. Таймаут в ProtectedRoute
+
+Добавить защитный таймаут (10 секунд) для состояния загрузки роли. Если роль не загрузилась за это время -- показать кнопку "Попробовать снова" вместо бесконечного спиннера.
+
+### 4. Добавление отладочного логирования
+
+Добавить `console.log` в ключевые точки процесса авторизации для быстрой диагностики подобных проблем в будущем.
+
+## Затрагиваемые файлы
+
+- `src/hooks/useAuth.tsx` -- синхронизация `signIn` с загрузкой роли
+- `src/pages/Login.tsx` -- удаление дублирующего запроса роли
+- `src/components/ProtectedRoute.tsx` -- добавление таймаута загрузки
+
+## Ожидаемый результат
+
+После входа пользователь моментально перенаправляется в свой кабинет без зависания на экране загрузки.
