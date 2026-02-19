@@ -40,9 +40,9 @@ serve(async (req) => {
       .eq('user_id', user.id)
       .single();
 
-    if (!roleData || (roleData.role !== 'organization' && roleData.role !== 'admin')) {
+    if (!roleData || !['organization', 'admin', 'company'].includes(roleData.role)) {
       return new Response(
-        JSON.stringify({ error: "Insufficient permissions. Organization or admin role required." }),
+        JSON.stringify({ error: "Insufficient permissions. Organization, company or admin role required." }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -76,14 +76,34 @@ serve(async (req) => {
 
     console.log(`Registering student: ${full_name} (${email}) for org: ${organization_id}`);
 
-    if (roleData.role !== 'admin' && callerProfile?.organization_id !== organization_id) {
+    // Determine effective org/company based on caller role
+    let effectiveOrgId = organization_id;
+    let effectiveCompanyId = company_id;
+
+    if (roleData.role === 'company') {
+      const { data: companyData } = await supabaseAdmin
+        .from('companies')
+        .select('id, organization_id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!companyData) {
+        return new Response(
+          JSON.stringify({ error: "Company not found for this user" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      effectiveOrgId = companyData.organization_id;
+      effectiveCompanyId = companyData.id;
+    } else if (roleData.role !== 'admin' && callerProfile?.organization_id !== effectiveOrgId) {
       return new Response(
         JSON.stringify({ error: "You can only register students in your own organization" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    if (!full_name || !organization_id) {
+    if (!full_name || !effectiveOrgId) {
       return new Response(
         JSON.stringify({ error: "Заполните все обязательные поля" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -129,7 +149,6 @@ serve(async (req) => {
       return pwd;
     };
 
-    // Helper to parse name and create FRDO data
     const createFrdoData = async (uid: string) => {
       const nameParts = full_name.trim().split(/\s+/);
       const lastName = nameParts[0] || "";
@@ -145,17 +164,13 @@ serve(async (req) => {
         .from("student_frdo_data")
         .upsert({
           user_id: uid,
-          organization_id,
+          organization_id: effectiveOrgId,
           last_name: lastName,
           first_name: firstName,
           middle_name: middleName,
           gender: detectedGender,
         }, { onConflict: "user_id,organization_id" });
     };
-
-    // Always create auth user with login and password
-    // Email is contact info only — not used for duplicate checking
-    // Login (student_XXXXX@student.local) is the unique identifier
 
     if (!isExisting) {
       generatedLogin = await generateLogin();
@@ -187,8 +202,8 @@ serve(async (req) => {
           email: email?.toLowerCase() || null,
           login: generatedLogin,
           generated_password: generatedPassword,
-          organization_id,
-          company_id: company_id || null
+          organization_id: effectiveOrgId,
+          company_id: effectiveCompanyId || null
         }, { onConflict: "user_id" });
 
       if (profileInsertError) {
@@ -208,7 +223,6 @@ serve(async (req) => {
       console.log(`Created student: ${full_name}, login: ${generatedLogin}`);
     }
 
-    // Enroll in course if specified
     let enrollmentCreated = false;
     let alreadyEnrolled = false;
     
