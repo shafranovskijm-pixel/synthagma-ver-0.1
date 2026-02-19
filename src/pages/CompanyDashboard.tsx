@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import {
   Building2, GraduationCap, UserPlus, LogOut,
-  LayoutDashboard, Users, ClipboardList, FileText, Bell,
+  LayoutDashboard, Users, ClipboardList, FileText, Bell, Send,
 } from "lucide-react";
 import { useCompanyDashboard } from "@/hooks/useCompanyDashboard";
 import { useAuth } from "@/hooks/useAuth";
@@ -16,13 +16,15 @@ import { CompanyEmployeesTab } from "@/components/company/CompanyEmployeesTab";
 import { TrainingPlansTab } from "@/components/company/TrainingPlansTab";
 import { CompanyDocumentsTab } from "@/components/company/CompanyDocumentsTab";
 import { CompanyRemindersTab } from "@/components/company/CompanyRemindersTab";
+import { CompanyRequestsTab } from "@/components/company/CompanyRequestsTab";
 
-type TabId = "home" | "employees" | "planning" | "documents" | "reminders";
+type TabId = "home" | "employees" | "planning" | "requests" | "documents" | "reminders";
 
 const tabs: { id: TabId; label: string; icon: React.ElementType }[] = [
   { id: "home", label: "Главная", icon: LayoutDashboard },
   { id: "employees", label: "Сотрудники", icon: Users },
   { id: "planning", label: "Планирование", icon: ClipboardList },
+  { id: "requests", label: "Заявки", icon: Send },
   { id: "documents", label: "Документы", icon: FileText },
   { id: "reminders", label: "Напоминания", icon: Bell },
 ];
@@ -150,6 +152,14 @@ const CompanyDashboard = () => {
 
         {activeTab === "planning" && company && (
           <TrainingPlansTab
+            companyId={company.id}
+            organizationId={company.organization_id}
+            employees={employees.map((e) => ({ user_id: e.user_id, full_name: e.full_name }))}
+          />
+        )}
+
+        {activeTab === "requests" && company && (
+          <CompanyRequestsTab
             companyId={company.id}
             organizationId={company.organization_id}
             employees={employees.map((e) => ({ user_id: e.user_id, full_name: e.full_name }))}
