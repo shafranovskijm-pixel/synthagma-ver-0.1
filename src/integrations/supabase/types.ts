@@ -365,45 +365,54 @@ export type Database = {
           created_at: string
           director: string | null
           email: string | null
+          generated_password: string | null
           id: string
           inn: string | null
           kpp: string | null
+          login_email: string | null
           name: string
           ogrn: string | null
           organization_id: string
           signature_url: string | null
           stamp_url: string | null
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           address?: string | null
           created_at?: string
           director?: string | null
           email?: string | null
+          generated_password?: string | null
           id?: string
           inn?: string | null
           kpp?: string | null
+          login_email?: string | null
           name: string
           ogrn?: string | null
           organization_id: string
           signature_url?: string | null
           stamp_url?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           address?: string | null
           created_at?: string
           director?: string | null
           email?: string | null
+          generated_password?: string | null
           id?: string
           inn?: string | null
           kpp?: string | null
+          login_email?: string | null
           name?: string
           ogrn?: string | null
           organization_id?: string
           signature_url?: string | null
           stamp_url?: string | null
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -3862,6 +3871,7 @@ export type Database = {
         }
         Returns: string
       }
+      current_company_id: { Args: never; Returns: string }
       current_organization_id: { Args: never; Returns: string }
       decrypt_password: { Args: { p_text: string }; Returns: string }
       encrypt_password: { Args: { p_text: string }; Returns: string }
@@ -3870,6 +3880,13 @@ export type Database = {
         Returns: {
           decrypted_password: string
           user_id: string
+        }[]
+      }
+      get_decrypted_company_credentials: {
+        Args: { p_company_id: string }
+        Returns: {
+          login_email: string
+          login_password: string
         }[]
       }
       get_decrypted_consent_passport: {
@@ -3982,7 +3999,12 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "organization" | "student" | "sales_manager"
+      app_role:
+        | "admin"
+        | "organization"
+        | "student"
+        | "sales_manager"
+        | "company"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -4110,7 +4132,13 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "organization", "student", "sales_manager"],
+      app_role: [
+        "admin",
+        "organization",
+        "student",
+        "sales_manager",
+        "company",
+      ],
     },
   },
 } as const

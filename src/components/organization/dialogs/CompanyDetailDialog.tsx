@@ -1,4 +1,5 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,6 +12,7 @@ import {
   Trash2,
   Loader2,
   Eye,
+  EyeOff,
   GraduationCap,
   UserPlus,
   Link2,
@@ -26,7 +28,11 @@ import {
   Clock,
   Banknote,
   Calendar,
+  KeyRound,
+  Copy,
+  Loader2 as Loader2Icon,
 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { DocumentDropZone } from "../DocumentDropZone";
@@ -238,12 +244,21 @@ export function CompanyDetailDialog({
               <FileText className="w-4 h-4 mr-2" />
               Документы
             </TabsTrigger>
+            <TabsTrigger value="access" className="rounded-lg data-[state=active]:bg-primary/10">
+              <KeyRound className="w-4 h-4 mr-2" />
+              Доступ
+            </TabsTrigger>
             <TabsTrigger value="actions" className="rounded-lg data-[state=active]:bg-primary/10">
               Действия
             </TabsTrigger>
           </TabsList>
 
           <div className="flex-1 overflow-y-auto p-6">
+            {/* Access Tab */}
+            <TabsContent value="access" className="m-0">
+              <CompanyAccessTab company={company} />
+            </TabsContent>
+
             {/* Actions Tab */}
             <TabsContent value="actions" className="m-0 space-y-4">
               <div className="grid grid-cols-2 gap-3">
@@ -558,6 +573,168 @@ function DocumentItem({
             <Loader2 className="w-3 h-3 animate-spin" />
           ) : (
             <X className="w-3 h-3" />
+          )}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function CompanyAccessTab({ company }: { company: Company }) {
+  const { toast } = useToast();
+  const [creating, setCreating] = useState(false);
+  const [email, setEmail] = useState(company.email || "");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [credentials, setCredentials] = useState<{ login_email: string; login_password: string } | null>(null);
+  const [loadingCreds, setLoadingCreds] = useState(false);
+
+  const hasAccount = !!(company as any).user_id;
+
+  const loadCredentials = useCallback(async () => {
+    if (!hasAccount) return;
+    setLoadingCreds(true);
+    try {
+      const { data } = await supabase.rpc('get_decrypted_company_credentials', {
+        p_company_id: company.id,
+      });
+      if (data && data.length > 0) {
+        setCredentials(data[0]);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingCreds(false);
+    }
+  }, [company.id, hasAccount]);
+
+  useEffect(() => {
+    loadCredentials();
+  }, [loadCredentials]);
+
+  const handleCreate = async () => {
+    if (!email || !password) {
+      toast({ title: "Заполните email и пароль", variant: "destructive" });
+      return;
+    }
+    setCreating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("create-company-user", {
+        body: { company_id: company.id, email, password },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast({ title: "Аккаунт создан", description: `Логин: ${email}` });
+      setCredentials({ login_email: email, login_password: password });
+    } catch (e: any) {
+      toast({ title: "Ошибка", description: e.message, variant: "destructive" });
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast({ title: `${label} скопирован` });
+  };
+
+  if (hasAccount || credentials) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+            <KeyRound className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <h3 className="font-semibold">Доступ в кабинет компании</h3>
+            <p className="text-xs text-muted-foreground">Учётные данные для входа</p>
+          </div>
+        </div>
+
+        {loadingCreds ? (
+          <div className="flex justify-center py-8">
+            <Loader2Icon className="w-6 h-6 animate-spin text-primary" />
+          </div>
+        ) : credentials ? (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-secondary/50 border">
+              <span className="text-sm text-muted-foreground w-16">Email:</span>
+              <span className="text-sm font-mono flex-1">{credentials.login_email}</span>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => copyToClipboard(credentials.login_email, "Email")}>
+                <Copy className="w-4 h-4" />
+              </Button>
+            </div>
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-secondary/50 border">
+              <span className="text-sm text-muted-foreground w-16">Пароль:</span>
+              <span className="text-sm font-mono flex-1">
+                {showPassword ? credentials.login_password : "••••••••"}
+              </span>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowPassword(!showPassword)}>
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => copyToClipboard(credentials.login_password, "Пароль")}>
+                <Copy className="w-4 h-4" />
+              </Button>
+            </div>
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-secondary/50 border">
+              <span className="text-sm text-muted-foreground w-16">Ссылка:</span>
+              <span className="text-sm font-mono flex-1 truncate">{window.location.origin}/login</span>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => copyToClipboard(`${window.location.origin}/login`, "Ссылка")}>
+                <Copy className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <p className="text-muted-foreground text-sm">Не удалось загрузить учётные данные</p>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+          <KeyRound className="w-5 h-5 text-primary" />
+        </div>
+        <div>
+          <h3 className="font-semibold">Создать аккаунт компании</h3>
+          <p className="text-xs text-muted-foreground">Компания сможет входить в свой кабинет</p>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium">Email для входа</label>
+          <input
+            type="email"
+            className="flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            placeholder="company@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium">Пароль</label>
+          <input
+            type="text"
+            className="flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring font-mono"
+            placeholder="Введите пароль"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </div>
+        <Button className="w-full gap-2" onClick={handleCreate} disabled={creating || !email || !password}>
+          {creating ? (
+            <>
+              <Loader2Icon className="w-4 h-4 animate-spin" />
+              Создание...
+            </>
+          ) : (
+            <>
+              <KeyRound className="w-4 h-4" />
+              Создать аккаунт
+            </>
           )}
         </Button>
       </div>
