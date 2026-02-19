@@ -1,73 +1,54 @@
 
-# Триггер автообновления статуса training_plans
+
+# Онбординг для кабинета компании
 
 ## Что делаем
 
-Создаём триггерную функцию на таблице `enrollments`, которая при изменении статуса зачисления автоматически обновляет соответствующий план обучения в `training_plans`:
+Добавляем пошаговый онбординг-диалог при первом входе в кабинет компании. Используем уже существующий компонент `OnboardingDialog` и паттерн с `onboarding_completed` из `profiles`.
 
-- При **зачислении** (INSERT в enrollments) -- статус плана меняется на `enrolled`
-- При **завершении курса** (UPDATE status -> 'completed') -- статус плана меняется на `completed`
+---
 
-## SQL-миграция
+## 1. Шаги онбординга (в `src/constants/onboardingSteps.ts`)
 
-Одна миграция с функцией и триггером:
+Добавляем массив `companyOnboardingSteps`:
 
-```sql
-CREATE OR REPLACE FUNCTION public.sync_training_plan_status()
-RETURNS trigger
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path TO 'public'
-AS $$
-BEGIN
-  -- На INSERT: помечаем план как "enrolled"
-  IF TG_OP = 'INSERT' THEN
-    UPDATE training_plans
-    SET status = 'enrolled'
-    WHERE user_id = NEW.user_id
-      AND course_id = NEW.course_id
-      AND status = 'planned';
-    RETURN NEW;
-  END IF;
+| Шаг | Иконка | Заголовок | Описание | Подсветка |
+|---|---|---|---|---|
+| welcome | Sparkles | Добро пожаловать! | Обзор кабинета компании | -- |
+| employees | Users | Сотрудники | Как добавлять и импортировать сотрудников | `[data-onboarding='employees']` |
+| planning | ClipboardList | Планирование | Как создавать планы обучения | `[data-onboarding='planning']` |
+| documents | FileText | Документы | Где смотреть договоры и счета | `[data-onboarding='documents']` |
+| reminders | Bell | Напоминания | Как работают напоминания о переобучении | `[data-onboarding='reminders']` |
 
-  -- На UPDATE: если курс завершён, помечаем план как "completed"
-  IF TG_OP = 'UPDATE' THEN
-    IF NEW.status = 'completed' AND (OLD.status IS NULL OR OLD.status != 'completed') THEN
-      UPDATE training_plans
-      SET status = 'completed'
-      WHERE user_id = NEW.user_id
-        AND course_id = NEW.course_id
-        AND status IN ('planned', 'enrolled');
-    END IF;
-    RETURN NEW;
-  END IF;
+---
 
-  RETURN NEW;
-END;
-$$;
+## 2. Навигационные кнопки в сайдбаре (`CompanyDashboard.tsx`)
 
-CREATE TRIGGER sync_training_plan_on_enroll
-AFTER INSERT ON public.enrollments
-FOR EACH ROW
-EXECUTE FUNCTION public.sync_training_plan_status();
+Добавить `data-onboarding` атрибуты к кнопкам бокового меню, чтобы `OnboardingHighlight` мог их подсветить:
 
-CREATE TRIGGER sync_training_plan_on_complete
-AFTER UPDATE OF status ON public.enrollments
-FOR EACH ROW
-EXECUTE FUNCTION public.sync_training_plan_status();
+```tsx
+<button data-onboarding={tab.id} ...>
 ```
 
-## Логика
+---
 
-- Сопоставление по `user_id` + `course_id` -- триггер находит план для того же сотрудника и того же курса
-- Обновляются только планы со статусом `planned` (при зачислении) или `planned`/`enrolled` (при завершении)
-- Если плана нет -- ничего не происходит, триггер работает безопасно
-- Используется `SECURITY DEFINER` для обхода RLS при обновлении
+## 3. Логика онбординга (`CompanyDashboard.tsx`)
 
-## Затронутые файлы
+По аналогии с `useOrganizationDashboard` и `useStudentDashboard`:
+
+- При загрузке проверить `profiles.onboarding_completed` для текущего пользователя
+- Если `false` -- показать `OnboardingDialog`
+- При закрытии -- записать `onboarding_completed = true` в `profiles`
+- При нажатии «Перейти к разделу» -- переключить на соответствующую вкладку
+
+---
+
+## 4. Затронутые файлы
 
 | Файл | Действие |
 |---|---|
-| Новая SQL-миграция | Функция `sync_training_plan_status` + 2 триггера на `enrollments` |
+| `src/constants/onboardingSteps.ts` | Добавить `companyOnboardingSteps` |
+| `src/pages/CompanyDashboard.tsx` | Добавить `data-onboarding` атрибуты, состояние онбординга, `OnboardingDialog` |
 
-Никаких изменений в коде фронтенда не требуется -- статусы обновляются на уровне БД.
+Никаких изменений в базе данных не требуется -- поле `onboarding_completed` в `profiles` уже существует.
+
