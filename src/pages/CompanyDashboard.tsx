@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -8,6 +8,9 @@ import {
 } from "lucide-react";
 import { useCompanyDashboard } from "@/hooks/useCompanyDashboard";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { OnboardingDialog } from "@/components/onboarding/OnboardingDialog";
+import { companyOnboardingSteps } from "@/constants/onboardingSteps";
 import { CompanyStatsCards } from "@/components/company/CompanyStatsCards";
 import { CompanyEmployeesTab } from "@/components/company/CompanyEmployeesTab";
 import { TrainingPlansTab } from "@/components/company/TrainingPlansTab";
@@ -27,8 +30,34 @@ const tabs: { id: TabId; label: string; icon: React.ElementType }[] = [
 const CompanyDashboard = () => {
   const { company, employees, stats, loading, addingEmployee, addEmployee, refresh } =
     useCompanyDashboard();
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   const [activeTab, setActiveTab] = useState<TabId>("home");
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    const checkOnboarding = async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("onboarding_completed")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (data && !data.onboarding_completed) {
+        setShowOnboarding(true);
+      }
+    };
+    checkOnboarding();
+  }, [user]);
+
+  const handleCloseOnboarding = async () => {
+    setShowOnboarding(false);
+    if (user) {
+      await supabase
+        .from("profiles")
+        .update({ onboarding_completed: true })
+        .eq("user_id", user.id);
+    }
+  };
 
   if (loading) {
     return (
@@ -60,6 +89,7 @@ const CompanyDashboard = () => {
           {tabs.map((tab) => (
             <button
               key={tab.id}
+              data-onboarding={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors ${
                 activeTab === tab.id
@@ -137,6 +167,12 @@ const CompanyDashboard = () => {
           />
         )}
       </main>
+      <OnboardingDialog
+        open={showOnboarding}
+        onClose={handleCloseOnboarding}
+        steps={companyOnboardingSteps}
+        onNavigateToTab={(tab) => { setActiveTab(tab as TabId); setShowOnboarding(false); handleCloseOnboarding(); }}
+      />
     </div>
   );
 };

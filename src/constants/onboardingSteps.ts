@@ -1,4 +1,4 @@
-import { BookOpen, Users, FileText, Settings, Sparkles, Play, Upload, Video, MessageCircle } from "lucide-react";
+import { BookOpen, Users, FileText, Settings, Sparkles, Play, Upload, Video, MessageCircle, ClipboardList, Bell } from "lucide-react";
 
 export interface OnboardingStep {
   id: string;
@@ -47,6 +47,47 @@ export const organizationOnboardingSteps: OnboardingStep[] = [
     description: "Настройте брендирование: логотип, обложку и цвета. Управляйте видимостью разделов меню, тарифом и интеграциями.",
     tab: "settings",
     highlightSelector: "[data-onboarding='settings']",
+  },
+];
+
+export const companyOnboardingSteps: OnboardingStep[] = [
+  {
+    id: "welcome",
+    icon: Sparkles,
+    title: "Добро пожаловать!",
+    description: "Это ваш кабинет компании. Здесь вы можете управлять обучением сотрудников, отслеживать прогресс и работать с документами. Давайте познакомимся с основными разделами.",
+  },
+  {
+    id: "employees",
+    icon: Users,
+    title: "Сотрудники",
+    description: "Добавляйте сотрудников вручную или импортируйте из Excel. Отслеживайте статус обучения каждого сотрудника и управляйте записью на курсы.",
+    tab: "employees",
+    highlightSelector: "[data-onboarding='employees']",
+  },
+  {
+    id: "planning",
+    icon: ClipboardList,
+    title: "Планирование",
+    description: "Создавайте планы обучения для сотрудников. Назначайте курсы и сроки — система автоматически отслеживает выполнение.",
+    tab: "planning",
+    highlightSelector: "[data-onboarding='planning']",
+  },
+  {
+    id: "documents",
+    icon: FileText,
+    title: "Документы",
+    description: "Здесь хранятся договоры, счета и акты. Вы можете просматривать и скачивать финансовые документы.",
+    tab: "documents",
+    highlightSelector: "[data-onboarding='documents']",
+  },
+  {
+    id: "reminders",
+    icon: Bell,
+    title: "Напоминания",
+    description: "Настройте автоматические напоминания о сроках переобучения сотрудников. Система уведомит вас заранее.",
+    tab: "reminders",
+    highlightSelector: "[data-onboarding='reminders']",
   },
 ];
 
