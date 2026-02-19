@@ -1,91 +1,78 @@
 
-# Plan: Improve post-purchase flow for marketplace courses
+# Plan: Sync storage limits with subscription plan
 
-## What changes
+## Problem
+Currently, `storage_limit_bytes` in the `organizations` table is a static value (default 1 GB) that never updates when the subscription plan changes. All organizations show "100 MB" or "1 GB" storage regardless of their actual plan (e.g., "Maximum" plan should have 100 GB).
 
-### 1. Update success dialog text
-Change the success popup in `CourseStoreManager.tsx` from "Заявка отправлена! Продавец получит уведомление и свяжется с вами." to a more appropriate message depending on whether the course was paid from balance (instant purchase) or submitted as a pending order:
-- **Paid from balance**: "Курс добавлен! Курс теперь доступен в разделе «Курсы». Приятного использования!"
-- **Pending order**: Keep the current message about the seller being notified
+## Solution
 
-### 2. Copy course to buyer's organization after balance payment
-When an organization pays from balance (instant purchase), the course and its lessons/test questions should be cloned into the buyer's organization so it appears in their "Курсы" tab.
+### 1. Database trigger to auto-sync storage limit on plan change
+Create a PostgreSQL trigger that fires whenever `subscription_plan` is updated on the `organizations` table. It will automatically set `storage_limit_bytes` to the correct value based on the plan:
 
-After the order is created and balance is deducted in `useCourseStoreManager.ts`, add logic to:
-1. Fetch the original course data
-2. Create a copy of the course with the buyer's `organization_id`
-3. Copy all lessons linked to that course
-4. Copy all test questions linked to those lessons (remapping `lesson_id` to new lesson IDs)
+| Plan | Storage |
+|------|---------|
+| free | 100 MB |
+| start | 1 GB |
+| standard | 5 GB |
+| professional | 20 GB |
+| maximum | 100 GB |
 
-### 3. Track the purchase origin
-Add an `source_order_id` column to the `courses` table (nullable UUID) to track which courses were purchased from the marketplace, preventing duplicate purchases.
+### 2. One-time migration to fix all existing organizations
+Run an UPDATE to correct all existing organizations' `storage_limit_bytes` based on their current `subscription_plan`.
+
+### 3. Use plan-based limits in the frontend (fallback)
+Update `useSubscriptionLimits` to expose the `storageBytes` from the plan config, so UI components can use the plan-derived limit as the source of truth rather than relying solely on the DB column.
+
+Update `OrganizationDetailsView.tsx` (admin panel) to initialize `storage_limit_bytes` from the plan config when viewing an organization, ensuring the stats cards and progress bars show correct limits.
 
 ---
 
 ## Technical details
 
-### Database migration
+### Database migration (SQL)
+
 ```sql
-ALTER TABLE public.courses ADD COLUMN source_order_id uuid REFERENCES public.marketplace_orders(id);
-ALTER TABLE public.courses ADD COLUMN source_course_id uuid REFERENCES public.courses(id);
+-- 1. Trigger function to sync storage_limit_bytes on plan change
+CREATE OR REPLACE FUNCTION sync_storage_limit_on_plan_change()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.subscription_plan IS DISTINCT FROM OLD.subscription_plan THEN
+    NEW.storage_limit_bytes := CASE NEW.subscription_plan
+      WHEN 'free' THEN 104857600
+      WHEN 'start' THEN 1073741824
+      WHEN 'standard' THEN 5368709120
+      WHEN 'professional' THEN 21474836480
+      WHEN 'maximum' THEN 107374182400
+      ELSE 104857600
+    END;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_sync_storage_limit
+  BEFORE UPDATE ON public.organizations
+  FOR EACH ROW
+  EXECUTE FUNCTION sync_storage_limit_on_plan_change();
+
+-- 2. Fix all existing organizations
+UPDATE public.organizations SET storage_limit_bytes = CASE subscription_plan
+  WHEN 'free' THEN 104857600
+  WHEN 'start' THEN 1073741824
+  WHEN 'standard' THEN 5368709120
+  WHEN 'professional' THEN 21474836480
+  WHEN 'maximum' THEN 107374182400
+  ELSE 104857600
+END;
+
+-- 3. Update default for new orgs (free plan default)
+ALTER TABLE public.organizations ALTER COLUMN storage_limit_bytes SET DEFAULT 104857600;
 ```
 
-### Changes to `src/hooks/useCourseStoreManager.ts`
+### Frontend changes
 
-After balance deduction succeeds (around line 311), add a course cloning function:
+**`src/hooks/useSubscriptionLimits.ts`**: Add `storageLimit` to the returned state, derived from `planInfo.limits.storageBytes`.
 
-```typescript
-// Clone course to buyer's organization
-if (payFromBalance && orderData) {
-  const originalCourseId = selectedCourseForOrder.course_id;
-  
-  // 1. Fetch original course
-  const { data: origCourse } = await supabase
-    .from('courses').select('*').eq('id', originalCourseId).single();
-  
-  // 2. Create copy for buyer org
-  const { data: newCourse } = await supabase.from('courses').insert({
-    ...origCourse,
-    id: undefined, // auto-generate
-    organization_id: organizationId,
-    source_order_id: orderData.id,
-    source_course_id: originalCourseId,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  }).select('id').single();
-  
-  // 3. Copy lessons
-  const { data: lessons } = await supabase
-    .from('lessons').select('*').eq('course_id', originalCourseId).order('order_index');
-  
-  if (lessons && newCourse) {
-    for (const lesson of lessons) {
-      const { data: newLesson } = await supabase.from('lessons').insert({
-        ...lesson,
-        id: undefined,
-        course_id: newCourse.id,
-      }).select('id').single();
-      
-      // 4. Copy test questions for this lesson
-      if (newLesson) {
-        const { data: questions } = await supabase
-          .from('test_questions').select('*').eq('lesson_id', lesson.id);
-        if (questions?.length) {
-          await supabase.from('test_questions').insert(
-            questions.map(q => ({ ...q, id: undefined, lesson_id: newLesson.id }))
-          );
-        }
-      }
-    }
-  }
-}
-```
+**`src/components/admin/OrganizationDetailsView.tsx`**: When initializing settings, if the org's `storage_limit_bytes` doesn't match the plan config, use the plan's value. This ensures the admin panel always shows the correct limit for the plan. The admin can still override it manually in settings.
 
-A new state variable `purchasedFromBalance` will be added to differentiate the success dialog message.
-
-### Changes to `src/components/organization/CourseStoreManager.tsx`
-
-Update the success dialog (lines 388-398) to show different content based on whether the purchase was instant (balance) or a pending order:
-
-- **Balance payment**: Title "Курс добавлен!", description "Курс теперь доступен в разделе «Курсы». Приятного использования!"
-- **Pending order**: Title "Заявка отправлена!", description "Продавец получит уведомление и свяжется с вами."
+**`src/hooks/useLibraryManager.ts`**: No changes needed -- it already reads `storage_limit_bytes` from the DB, which will now be correct thanks to the trigger and migration.
