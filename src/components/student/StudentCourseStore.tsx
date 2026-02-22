@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import {
   Store, Search, Clock, ShoppingCart, Loader2, CheckCircle2,
-  Building2, Send,
+  Building2, Send, FileText, Video, ClipboardList, Presentation,
+  Headphones, BookOpen, Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
@@ -17,6 +18,14 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -51,6 +60,13 @@ interface MarketplaceOrder {
   };
 }
 
+interface PreviewLesson {
+  id: string;
+  title: string;
+  type: string;
+  order_index: number;
+}
+
 interface StudentCourseStoreProps {
   userId: string;
   organizationId: string;
@@ -64,11 +80,24 @@ const statusConfig: Record<string, { label: string; variant: "default" | "second
   cancelled: { label: "Отменена", variant: "destructive" },
 };
 
+const lessonTypeIcon: Record<string, { icon: React.ElementType; label: string }> = {
+  text: { icon: FileText, label: "Лекция" },
+  video: { icon: Video, label: "Видео" },
+  test: { icon: ClipboardList, label: "Тест" },
+  slider: { icon: Presentation, label: "Презентация" },
+  audio: { icon: Headphones, label: "Аудио" },
+};
+
 export function StudentCourseStore({ userId, organizationId }: StudentCourseStoreProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [catalog, setCatalog] = useState<MarketplaceCourse[]>([]);
   const [orders, setOrders] = useState<MarketplaceOrder[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Preview
+  const [previewCourse, setPreviewCourse] = useState<MarketplaceCourse | null>(null);
+  const [previewLessons, setPreviewLessons] = useState<PreviewLesson[]>([]);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 
   // Order dialog
   const [selectedCourse, setSelectedCourse] = useState<MarketplaceCourse | null>(null);
@@ -126,6 +155,34 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
     setOrders(data || []);
   };
 
+  const openPreview = async (item: MarketplaceCourse) => {
+    setPreviewCourse(item);
+    setPreviewLessons([]);
+    if (!item.course?.id) return;
+
+    setIsLoadingPreview(true);
+    try {
+      const { data, error } = await supabase
+        .from("lessons")
+        .select("id, title, type, order_index")
+        .eq("course_id", item.course.id)
+        .order("order_index", { ascending: true });
+
+      if (!error && data) {
+        setPreviewLessons(data);
+      }
+    } finally {
+      setIsLoadingPreview(false);
+    }
+  };
+
+  const handleOrderFromPreview = () => {
+    if (previewCourse) {
+      setSelectedCourse(previewCourse);
+      setPreviewCourse(null);
+    }
+  };
+
   const handleOrder = async () => {
     if (!selectedCourse) return;
 
@@ -143,7 +200,6 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
 
       if (error) throw error;
 
-      // Notify seller
       try {
         const { data: profile } = await supabase
           .from("profiles")
@@ -233,7 +289,20 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredCatalog.map((item) => (
-            <Card key={item.id} className="flex flex-col hover:shadow-md transition-shadow">
+            <Card
+              key={item.id}
+              className="flex flex-col hover:shadow-md transition-shadow cursor-pointer group"
+              onClick={() => openPreview(item)}
+            >
+              {item.preview_image_url && (
+                <div className="h-36 overflow-hidden rounded-t-lg">
+                  <img
+                    src={item.preview_image_url}
+                    alt={item.course?.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                </div>
+              )}
               <CardHeader className="pb-2">
                 <h3 className="font-semibold text-base leading-tight line-clamp-2">
                   {item.course?.title}
@@ -256,18 +325,29 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
                   </div>
                 )}
               </CardContent>
-              <CardFooter className="pt-0 flex items-center justify-between border-t border-border pt-4">
+              <CardFooter className="flex items-center justify-between border-t border-border pt-4">
                 <span className="text-lg font-bold text-primary">
                   {formatPrice(item.price_student)}
                 </span>
-                <Button
-                  size="sm"
-                  className="rounded-xl gap-1.5"
-                  onClick={() => setSelectedCourse(item)}
-                >
-                  <ShoppingCart className="w-4 h-4" />
-                  Оставить заявку
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="rounded-xl gap-1.5"
+                    onClick={(e) => { e.stopPropagation(); openPreview(item); }}
+                  >
+                    <Eye className="w-4 h-4" />
+                    Подробнее
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="rounded-xl gap-1.5"
+                    onClick={(e) => { e.stopPropagation(); setSelectedCourse(item); }}
+                  >
+                    <ShoppingCart className="w-4 h-4" />
+                    Заявка
+                  </Button>
+                </div>
               </CardFooter>
             </Card>
           ))}
@@ -308,6 +388,129 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
           </div>
         </div>
       )}
+
+      {/* Preview Sheet */}
+      <Sheet open={!!previewCourse} onOpenChange={(open) => !open && setPreviewCourse(null)}>
+        <SheetContent side="right" className="w-full sm:max-w-lg p-0 flex flex-col">
+          <ScrollArea className="flex-1">
+            {previewCourse && (
+              <div>
+                {/* Banner */}
+                {previewCourse.preview_image_url ? (
+                  <div className="h-48 w-full overflow-hidden">
+                    <img
+                      src={previewCourse.preview_image_url}
+                      alt={previewCourse.course?.title}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div className="h-32 w-full bg-gradient-to-br from-primary/20 via-primary/10 to-transparent flex items-center justify-center">
+                    <BookOpen className="w-12 h-12 text-primary/40" />
+                  </div>
+                )}
+
+                <div className="p-6 space-y-5">
+                  <SheetHeader className="p-0 space-y-2">
+                    <SheetTitle className="text-xl leading-tight">
+                      {previewCourse.course?.title}
+                    </SheetTitle>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Building2 className="w-4 h-4 shrink-0" />
+                      <span>{previewCourse.organization?.name || "Организация"}</span>
+                    </div>
+                  </SheetHeader>
+
+                  {/* Duration */}
+                  {previewCourse.course?.duration && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Clock className="w-4 h-4 text-muted-foreground" />
+                      <span>{previewCourse.course.duration}</span>
+                    </div>
+                  )}
+
+                  {/* Price badge */}
+                  <div className="inline-flex items-center gap-2 bg-primary/10 text-primary font-bold rounded-xl px-4 py-2 text-lg">
+                    {formatPrice(previewCourse.price_student)}
+                  </div>
+
+                  {/* Description */}
+                  {(previewCourse.description_short || previewCourse.course?.description) && (
+                    <div>
+                      <h4 className="font-semibold text-sm mb-2">Описание</h4>
+                      <p className="text-sm text-muted-foreground whitespace-pre-line">
+                        {previewCourse.description_short || previewCourse.course?.description}
+                      </p>
+                    </div>
+                  )}
+
+                  <Separator />
+
+                  {/* Lessons */}
+                  <div>
+                    <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                      <BookOpen className="w-4 h-4" />
+                      Программа курса
+                      {previewLessons.length > 0 && (
+                        <Badge variant="secondary" className="ml-auto">
+                          {previewLessons.length} {previewLessons.length === 1 ? "урок" : previewLessons.length < 5 ? "урока" : "уроков"}
+                        </Badge>
+                      )}
+                    </h4>
+
+                    {isLoadingPreview ? (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                      </div>
+                    ) : previewLessons.length === 0 ? (
+                      <p className="text-sm text-muted-foreground py-4 text-center">
+                        Информация о программе пока недоступна
+                      </p>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {previewLessons.map((lesson, idx) => {
+                          const lt = lessonTypeIcon[lesson.type] || lessonTypeIcon.text;
+                          const Icon = lt.icon;
+                          return (
+                            <div
+                              key={lesson.id}
+                              className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted/50 transition-colors"
+                            >
+                              <span className="text-xs text-muted-foreground w-5 text-right shrink-0">
+                                {idx + 1}
+                              </span>
+                              <div className="w-7 h-7 rounded-md bg-muted flex items-center justify-center shrink-0">
+                                <Icon className="w-3.5 h-3.5 text-muted-foreground" />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-medium truncate">{lesson.title}</p>
+                                <p className="text-xs text-muted-foreground">{lt.label}</p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </ScrollArea>
+
+          {/* Sticky footer */}
+          {previewCourse && (
+            <div className="border-t p-4 flex items-center justify-between bg-background">
+              <span className="text-lg font-bold text-primary">
+                {formatPrice(previewCourse.price_student)}
+              </span>
+              <Button className="rounded-xl gap-2" onClick={handleOrderFromPreview}>
+                <ShoppingCart className="w-4 h-4" />
+                Оставить заявку
+              </Button>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
 
       {/* Order Dialog */}
       <Dialog open={!!selectedCourse} onOpenChange={(open) => !open && setSelectedCourse(null)}>
