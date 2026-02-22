@@ -70,7 +70,7 @@ export function ForStudents() {
               ))}
             </div>
 
-            <Link to="/register">
+            <Link to="/login">
               <Button size="lg" className="btn-gradient rounded-xl px-8 h-14 text-lg">
                 Начать обучение
               </Button>

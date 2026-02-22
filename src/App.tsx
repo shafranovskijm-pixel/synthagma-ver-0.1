@@ -18,7 +18,6 @@ const Index = lazy(() => import("./pages/Index"));
 const Login = lazy(() => import("./pages/Login"));
 const BrandedLogin = lazy(() => import("./pages/BrandedLogin"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
-const Register = lazy(() => import("./pages/Register"));
 const RegisterOrganization = lazy(() => import("./pages/RegisterOrganization"));
 const StudentDashboard = lazy(() => import("./pages/StudentDashboard"));
 const OrganizationDashboard = lazy(() => import("./pages/OrganizationDashboard"));
