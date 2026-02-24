@@ -462,18 +462,45 @@ const Blog = () => {
       )}
 
       {/* Newsletter */}
-      <section className="py-16 md:py-24">
-        <div className="container mx-auto px-4">
+      <section className="relative py-20 md:py-28 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-background via-accent/5 to-background" />
+        <div className="absolute inset-0 opacity-[0.012]" style={{
+          backgroundImage: `radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)`,
+          backgroundSize: '32px 32px'
+        }} />
+        <motion.div
+          className="absolute top-[15%] right-0 w-px h-32 bg-gradient-to-b from-transparent via-accent/20 to-transparent"
+          initial={{ scaleY: 0 }}
+          whileInView={{ scaleY: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 1.5 }}
+        />
+        <motion.div
+          className="absolute bottom-[20%] left-0 w-px h-24 bg-gradient-to-b from-transparent via-border to-transparent"
+          initial={{ scaleY: 0 }}
+          whileInView={{ scaleY: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 1.5, delay: 0.2 }}
+        />
+        <div className="container mx-auto px-6 relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             className="max-w-2xl mx-auto text-center"
           >
-            <h2 className="text-2xl md:text-3xl font-bold mb-4">
+            <span className="text-sm text-accent font-medium tracking-widest uppercase mb-4 block">
+              Рассылка
+            </span>
+            <h2 className="font-display text-3xl md:text-4xl font-medium mb-4 tracking-tight">
               Подпишитесь на рассылку
             </h2>
-            <p className="text-muted-foreground mb-8">
+            <div className="flex items-center justify-center gap-2 mb-6">
+              <div className="w-2 h-2 rounded-full bg-accent/40" />
+              <div className="w-12 h-px bg-accent" />
+              <div className="w-2 h-2 rounded-full bg-accent/40" />
+            </div>
+            <p className="text-muted-foreground mb-8 leading-relaxed">
               Получайте свежие статьи, кейсы и новости EdTech прямо на почту
             </p>
             <div className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
@@ -482,9 +509,9 @@ const Blog = () => {
                 placeholder="Ваш email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="flex-1 px-4 py-3 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                className="flex-1 px-5 py-3.5 rounded-xl border border-border/60 bg-card/60 backdrop-blur-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent/50 transition-all"
               />
-              <Button size="lg" onClick={handleSubscribe} disabled={isSubscribing}>
+              <Button size="lg" onClick={handleSubscribe} disabled={isSubscribing} className="btn-gradient rounded-xl px-6">
                 {isSubscribing ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
                 ) : (
@@ -498,8 +525,8 @@ const Blog = () => {
       </section>
 
       {/* Footer */}
-      <footer className="py-8 border-t border-border/40">
-        <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
+      <footer className="py-8 border-t border-border/30">
+        <div className="container mx-auto px-6 text-center text-sm text-muted-foreground">
           <p>© 2026 СИНТАГМА. Все права защищены.</p>
         </div>
       </footer>
