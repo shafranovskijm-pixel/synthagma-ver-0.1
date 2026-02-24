@@ -50,7 +50,7 @@ export async function compressVideo(
 
     const data = await ff.readFile(outputName);
     const uint8 = data instanceof Uint8Array ? data : new TextEncoder().encode(data as string);
-    const blob = new Blob([uint8.buffer], { type: "video/mp4" });
+    const blob = new Blob([new Uint8Array(uint8)], { type: "video/mp4" });
 
     // Cleanup
     await ff.deleteFile(inputName).catch(() => {});
