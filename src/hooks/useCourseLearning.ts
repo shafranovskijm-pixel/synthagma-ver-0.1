@@ -501,6 +501,7 @@ export function useCourseLearning() {
   const submitTest = async () => {
     if (!currentLesson || !user) return;
     if (testQuestions.length === 0) { toast.error('Нет вопросов для теста.'); return; }
+    await saveLessonTime();
     const shownIds = testQuestions.map(q => q.id);
     try {
       const { data: gradeResult, error: gradeError } = await supabase.functions.invoke('grade-test', {
