@@ -19,17 +19,19 @@ import { AIGenerateType } from "@/components/course-builder/AIGenerateDialog";
 
 export function useCourseBuilder() {
   const navigate = useNavigate();
-  const { courseId } = useParams();
+  const { courseId: paramCourseId } = useParams();
   const { user, userRole } = useAuth();
   const [courseTitle, setCourseTitle] = useState("");
   const [courseDescription, setCourseDescription] = useState("");
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isLoading, setIsLoading] = useState(!!courseId);
+  const [isLoading, setIsLoading] = useState(!!paramCourseId);
   const [isImporting, setIsImporting] = useState(false);
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [savedCourseIdState, setSavedCourseIdState] = useState<string | null>(null);
+  const courseId = savedCourseIdState || paramCourseId;
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [showAIGenerateDialog, setShowAIGenerateDialog] = useState(false);
@@ -358,6 +360,7 @@ export function useCourseBuilder() {
         const { data: newCourse, error } = await supabase.from("courses").insert({ title: courseTitle.trim(), description: courseDescription.trim() || null, organization_id: orgId, is_published: true }).select().single();
         if (error) throw error;
         savedCourseId = newCourse.id;
+        setSavedCourseIdState(newCourse.id);
         window.history.replaceState(null, '', `/course-builder/${savedCourseId}`);
       }
 
@@ -411,6 +414,7 @@ export function useCourseBuilder() {
         const { data: newCourse, error } = await supabase.from("courses").insert({ title: courseTitle.trim() || lesson.title || "Новый курс", description: courseDescription.trim() || null, organization_id: orgId }).select().single();
         if (error) throw error;
         savedCourseId = newCourse.id;
+        setSavedCourseIdState(newCourse.id);
         window.history.replaceState(null, '', `/course-builder/${savedCourseId}`);
       }
       const { data: existing } = await supabase.from("lessons").select("id").eq("id", lesson.id).maybeSingle();
