@@ -252,7 +252,7 @@ export const VideoPlayerInline = ({
     }
   };
 
-  const handleRateChange = () => { if (allowSeek || !videoRef.current) return; if (videoRef.current.playbackRate !== 1) videoRef.current.playbackRate = 1; };
+  const handleRateChange = () => { if (allowSeek || !videoRef.current) return; if (videoRef.current.playbackRate !== 1) { videoRef.current.playbackRate = 1; setPlaybackRate(1); } };
   const handleRetryVideo = () => { setVideoError(false); setVideoLoading(true); setVideoSlow(false); setLoadingTimedOut(false); if (videoRef.current) videoRef.current.load(); };
   const handleCanPlay = () => { setVideoLoading(false); setVideoSlow(false); if (stalledTimerRef.current) { clearTimeout(stalledTimerRef.current); stalledTimerRef.current = null; } };
   const handleWaiting = () => setVideoLoading(true);
