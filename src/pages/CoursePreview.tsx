@@ -827,6 +827,9 @@ const CoursePreview = () => {
                             </div>
                             <h4 className="font-medium text-lg">{question.question}</h4>
                           </div>
+                          {question.image_url && (
+                            <img src={question.image_url} alt="Изображение к вопросу" className="rounded-lg max-h-64 object-contain border border-border mt-2 mb-4 ml-12" />
+                          )}
                           
                             <div className="space-y-3 ml-12">
                             {options.map((option: unknown, oIndex: number) => {
