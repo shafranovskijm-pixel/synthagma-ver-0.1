@@ -70,6 +70,7 @@ export function useCourseLearning() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const contentRef = useRef<HTMLDivElement>(null);
+  const lessonStartTimeRef = useRef<number>(Date.now());
 
   const [course, setCourse] = useState<Course | null>(null);
   const [lessons, setLessons] = useState<Lesson[]>([]);
@@ -381,9 +382,64 @@ export function useCourseLearning() {
     return true;
   };
 
+  // Save lesson time tracking
+  const saveLessonTime = useCallback(async (lessonId?: string) => {
+    const lid = lessonId || currentLesson?.id;
+    if (!lid || !user || !enrollmentId) return;
+    const elapsed = Math.floor((Date.now() - lessonStartTimeRef.current) / 1000);
+    lessonStartTimeRef.current = Date.now();
+    if (elapsed <= 0 || elapsed > 7200) return; // skip if 0 or > 2 hours (tab left open)
+    try {
+      await supabase.rpc('increment_lesson_time', { p_lesson_id: lid, p_user_id: user.id, p_seconds: elapsed });
+      await supabase.rpc('recalc_enrollment_time', { p_enrollment_id: enrollmentId });
+    } catch (err) {
+      console.error('[saveLessonTime] error:', err);
+    }
+  }, [currentLesson?.id, user, enrollmentId]);
+
+  // Save time on lesson switch
+  const prevLessonIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (currentLesson?.id && prevLessonIdRef.current && prevLessonIdRef.current !== currentLesson.id) {
+      saveLessonTime(prevLessonIdRef.current);
+    }
+    prevLessonIdRef.current = currentLesson?.id || null;
+    lessonStartTimeRef.current = Date.now();
+  }, [currentLesson?.id]);
+
+  // Save time on page unload / visibility change
+  useEffect(() => {
+    if (!user || !enrollmentId) return;
+    const handleBeforeUnload = () => {
+      const lid = currentLesson?.id;
+      if (!lid) return;
+      const elapsed = Math.floor((Date.now() - lessonStartTimeRef.current) / 1000);
+      if (elapsed <= 0 || elapsed > 7200) return;
+      try {
+        const url = `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/rpc/increment_lesson_time`;
+        const payload = JSON.stringify({ p_lesson_id: lid, p_user_id: user.id, p_seconds: elapsed });
+        navigator.sendBeacon(
+          `${url}?apikey=${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          new Blob([payload], { type: 'application/json' })
+        );
+      } catch {}
+    };
+    const handleVisibility = () => {
+      if (document.visibilityState === 'hidden') saveLessonTime();
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [user, enrollmentId, currentLesson?.id, saveLessonTime]);
+
   const markLessonComplete = async () => {
     if (!currentLesson || !user) return;
     if (isLessonCompleted(currentLesson.id)) { goToNextLesson(); return; }
+
+    await saveLessonTime();
 
     const { error } = await supabase.from('lesson_progress').upsert({
       lesson_id: currentLesson.id, user_id: user.id, completed: true, completed_at: new Date().toISOString()
@@ -445,6 +501,7 @@ export function useCourseLearning() {
   const submitTest = async () => {
     if (!currentLesson || !user) return;
     if (testQuestions.length === 0) { toast.error('Нет вопросов для теста.'); return; }
+    await saveLessonTime();
     const shownIds = testQuestions.map(q => q.id);
     try {
       const { data: gradeResult, error: gradeError } = await supabase.functions.invoke('grade-test', {
