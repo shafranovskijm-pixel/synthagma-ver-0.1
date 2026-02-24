@@ -1,78 +1,79 @@
 
 
-## Автоматический cache-bust для PWA
+## Исправление белого экрана — корневая причина
 
-### Проблема
-Сейчас Service Worker может кэшировать устаревшие версии приложения, что приводит к белому экрану. Ручной cache-bust через комментарии в `index.html` ненадежен.
+### Диагностика
+
+Проверка опубликованного сайта `synthagma-bloom.lovable.app` подтвердила: белый экран, HTML пустой, `#root` без содержимого. Превью при этом работает нормально.
+
+### Корневая причина: бесконечный цикл перезагрузки
+
+В проекте сейчас работают **три конфликтующих механизма** обновления, которые вместе создают бесконечную перезагрузку:
+
+1. **VitePWA `registerType: "autoUpdate"`** -- автоматически обновляет Service Worker
+2. **Ручной `registerSW` в `main.tsx`** -- вызывает `onNeedRefresh`, который очищает ВСЕ кэши и перезагружает страницу
+3. **Recovery-скрипт в `index.html`** -- если приложение не отрисовалось за 8 секунд, очищает кэши и перезагружает
+
+Сценарий поломки:
+- Пользователь заходит на сайт
+- SW устанавливается, `onNeedRefresh` срабатывает, очищает precache (который SW только что заполнил) и перезагружает страницу
+- На новой загрузке SW снова видит "нужно обновить" (precache пуст) -- цикл
+- Recovery-скрипт через 8 секунд тоже перезагружает, если ничего не отрисовалось
+- Результат: бесконечная перезагрузка, пользователь видит белый экран
 
 ### Решение
 
-Настроить Vite и Workbox так, чтобы при каждой сборке автоматически генерировались уникальные хэши, а старый кэш гарантированно очищался.
+**1. `vite.config.ts`** -- поменять `registerType` на `"prompt"` чтобы получить полный контроль над обновлением SW, вместо конфликтующего `autoUpdate`:
 
-### Изменения
-
-**1. `vite.config.ts` -- улучшить конфигурацию Workbox:**
-- Добавить `sourcemap: true` для отладки проблем с SW
-- Добавить в `runtimeCaching` стратегию `NetworkFirst` для API-запросов к Supabase и для навигационных запросов (HTML), чтобы браузер всегда получал свежую версию при наличии сети
-- Добавить `revision: null` подход через `additionalManifestEntries` не нужен -- Vite уже добавляет хэши в имена файлов. Вместо этого ограничим `maxAgeSeconds` для HTML-кэша
-
-**2. `src/main.tsx` -- добавить принудительную проверку обновлений SW:**
-- Добавить периодическую проверку обновлений SW каждые 60 секунд через `registration.update()`
-- Добавить обработку `onRegistered` callback для доступа к объекту registration
-- Добавить очистку старых кэшей при обнаружении нового SW через `caches.keys()` и `caches.delete()`
-
-### Технические детали
-
-**`vite.config.ts`** -- добавить в `runtimeCaching`:
 ```js
-{
-  urlPattern: /\/index\.html$/,
-  handler: "NetworkFirst",
-  options: {
-    cacheName: "html-cache",
-    expiration: { maxAgeSeconds: 60 * 60 }, // 1 час
-  },
-},
-{
-  urlPattern: /^https:\/\/.*supabase.*\/.*/i,
-  handler: "NetworkFirst",
-  options: {
-    cacheName: "api-cache",
-    expiration: { maxEntries: 50, maxAgeSeconds: 300 },
-  },
-}
+registerType: "prompt",
 ```
 
-**`src/main.tsx`** -- обновить регистрацию SW:
+**2. `src/main.tsx`** -- полностью переписать логику регистрации SW:
+- Убрать агрессивную очистку кэшей в `onNeedRefresh` (именно это ломает precache)
+- Просто перезагрузить через `updateSW(true)` вместо ручной очистки
+- Добавить защиту от бесконечных циклов через `sessionStorage` счётчик
+- Оставить периодическую проверку обновлений
+
 ```js
-registerSW({
-  immediate: true,
-  onNeedRefresh() {
-    // Очистить все SW-кэши перед перезагрузкой
-    caches.keys().then(names => {
-      Promise.all(names.map(name => caches.delete(name)))
-        .then(() => window.location.reload());
-    });
-  },
-  onOfflineReady() {
-    console.log('App ready for offline use');
-  },
-  onRegistered(registration) {
-    // Проверять обновления каждые 60 секунд
-    if (registration) {
-      setInterval(() => {
-        registration.update();
-      }, 60 * 1000);
-    }
-  },
-});
+import('virtual:pwa-register').then(({ registerSW }) => {
+  const updateSW = registerSW({
+    immediate: true,
+    onNeedRefresh() {
+      // Защита от бесконечного цикла: максимум 2 перезагрузки за сессию
+      const key = '__sw_reload_count';
+      const count = parseInt(sessionStorage.getItem(key) || '0', 10);
+      if (count < 2) {
+        sessionStorage.setItem(key, String(count + 1));
+        updateSW(true); // VitePWA обновит SW корректно без удаления precache
+      }
+    },
+    onOfflineReady() {
+      console.log('App ready for offline use');
+    },
+    onRegistered(registration) {
+      if (registration) {
+        setInterval(() => registration.update(), 60 * 1000);
+      }
+    },
+  });
+}).catch(() => {});
 ```
 
-**`src/vite-env.d.ts`** -- добавить `onRegistered` в типы (если ещё нет).
+**3. `index.html`** -- добавить защиту от бесконечных перезагрузок в recovery-скрипт:
+- Использовать `sessionStorage` для отслеживания попыток
+- Максимум 1 попытка восстановления, после этого показать сообщение об ошибке вместо бесконечной перезагрузки
+
+```js
+var key = '__sw_recovery_attempted';
+if (sessionStorage.getItem(key)) return; // уже пробовали, не перезагружать
+sessionStorage.setItem(key, '1');
+// ... очистка кэшей и перезагрузка ...
+```
 
 ### Результат
-- SW будет автоматически проверять обновления каждую минуту
-- При обнаружении новой версии -- все кэши очищаются и страница перезагружается
-- HTML всегда загружается по сети (NetworkFirst), JS/CSS кэшируются с хэшами в именах файлов
-- Старые кэши автоматически удаляются (`cleanupOutdatedCaches: true` уже есть)
+- SW обновляется корректно через VitePWA без уничтожения precache
+- Максимум 2 перезагрузки за сессию, потом остановка (вместо бесконечного цикла)
+- Recovery-скрипт срабатывает только 1 раз
+- После публикации сайт загрузится нормально
 
