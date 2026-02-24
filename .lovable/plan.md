@@ -1,79 +1,91 @@
 
 
-## Исправление белого экрана — корневая причина
+## Исправление белого экрана -- настоящая корневая причина
 
 ### Диагностика
 
-Проверка опубликованного сайта `synthagma-bloom.lovable.app` подтвердила: белый экран, HTML пустой, `#root` без содержимого. Превью при этом работает нормально.
+Опубликованный сайт (`synthagma-bloom.lovable.app`) подтверждённо показывает белый экран. Превью работает нормально. APK не влияет на браузерный кэш сайта -- это совершенно разные контексты.
 
-### Корневая причина: бесконечный цикл перезагрузки
+### Корневая причина: `navigateFallback` блокирует обновление HTML
 
-В проекте сейчас работают **три конфликтующих механизма** обновления, которые вместе создают бесконечную перезагрузку:
+В конфигурации Workbox есть фатальный конфликт:
 
-1. **VitePWA `registerType: "autoUpdate"`** -- автоматически обновляет Service Worker
-2. **Ручной `registerSW` в `main.tsx`** -- вызывает `onNeedRefresh`, который очищает ВСЕ кэши и перезагружает страницу
-3. **Recovery-скрипт в `index.html`** -- если приложение не отрисовалось за 8 секунд, очищает кэши и перезагружает
+1. **`navigateFallback: '/index.html'`** -- говорит SW: "для всех навигационных запросов отдавай `index.html` из precache"
+2. **`runtimeCaching` с NetworkFirst для `index.html`** -- говорит SW: "загружай HTML по сети в первую очередь"
 
-Сценарий поломки:
-- Пользователь заходит на сайт
-- SW устанавливается, `onNeedRefresh` срабатывает, очищает precache (который SW только что заполнил) и перезагружает страницу
-- На новой загрузке SW снова видит "нужно обновить" (precache пуст) -- цикл
-- Recovery-скрипт через 8 секунд тоже перезагружает, если ничего не отрисовалось
-- Результат: бесконечная перезагрузка, пользователь видит белый экран
+Проблема: `navigateFallback` работает на уровне precache и **имеет приоритет** над `runtimeCaching`. Поэтому стратегия NetworkFirst для HTML **никогда не срабатывает** -- старый HTML всегда подаётся из precache.
+
+Дополнительный конфликт:
+- `skipWaiting: true` + `clientsClaim: true` заставляют SW активироваться немедленно (поведение autoUpdate)
+- `registerType: "prompt"` ожидает ручного подтверждения обновления
+- Эти настройки противоречат друг другу
 
 ### Решение
 
-**1. `vite.config.ts`** -- поменять `registerType` на `"prompt"` чтобы получить полный контроль над обновлением SW, вместо конфликтующего `autoUpdate`:
+**1. `vite.config.ts`** -- убрать конфликтующие настройки Workbox:
+
+- Удалить `navigateFallback` -- пусть навигационные запросы идут в сеть напрямую, а не из precache
+- Удалить `navigateFallbackDenylist` -- больше не нужен без `navigateFallback`  
+- Удалить `skipWaiting: true` и `clientsClaim: true` -- они конфликтуют с `registerType: "prompt"`
+- Оставить `runtimeCaching` с NetworkFirst для HTML и Supabase API
+- Добавить стратегию NetworkFirst для навигационных запросов (все страницы) в `runtimeCaching`
 
 ```js
-registerType: "prompt",
+workbox: {
+  maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
+  globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+  cleanupOutdatedCaches: true,
+  runtimeCaching: [
+    {
+      // Все навигационные запросы -- всегда сеть в первую очередь
+      urlPattern: ({request}) => request.mode === 'navigate',
+      handler: "NetworkFirst",
+      options: {
+        cacheName: "pages-cache",
+        expiration: { maxAgeSeconds: 60 * 60 },
+      },
+    },
+    {
+      urlPattern: /^https:\/\/.*supabase.*\/.*/i,
+      handler: "NetworkFirst",
+      options: {
+        cacheName: "api-cache",
+        expiration: { maxEntries: 50, maxAgeSeconds: 300 },
+      },
+    },
+    {
+      urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+      handler: "CacheFirst",
+      options: {
+        cacheName: "google-fonts-cache",
+        expiration: {
+          maxEntries: 10,
+          maxAgeSeconds: 60 * 60 * 24 * 365,
+        },
+      },
+    },
+  ],
+},
 ```
 
-**2. `src/main.tsx`** -- полностью переписать логику регистрации SW:
-- Убрать агрессивную очистку кэшей в `onNeedRefresh` (именно это ломает precache)
-- Просто перезагрузить через `updateSW(true)` вместо ручной очистки
-- Добавить защиту от бесконечных циклов через `sessionStorage` счётчик
-- Оставить периодическую проверку обновлений
+**2. `src/main.tsx`** -- без изменений, текущая логика корректна.
 
-```js
-import('virtual:pwa-register').then(({ registerSW }) => {
-  const updateSW = registerSW({
-    immediate: true,
-    onNeedRefresh() {
-      // Защита от бесконечного цикла: максимум 2 перезагрузки за сессию
-      const key = '__sw_reload_count';
-      const count = parseInt(sessionStorage.getItem(key) || '0', 10);
-      if (count < 2) {
-        sessionStorage.setItem(key, String(count + 1));
-        updateSW(true); // VitePWA обновит SW корректно без удаления precache
-      }
-    },
-    onOfflineReady() {
-      console.log('App ready for offline use');
-    },
-    onRegistered(registration) {
-      if (registration) {
-        setInterval(() => registration.update(), 60 * 1000);
-      }
-    },
-  });
-}).catch(() => {});
-```
+**3. `index.html`** -- без изменений, recovery-скрипт корректен и будет работать лучше без `navigateFallback`.
 
-**3. `index.html`** -- добавить защиту от бесконечных перезагрузок в recovery-скрипт:
-- Использовать `sessionStorage` для отслеживания попыток
-- Максимум 1 попытка восстановления, после этого показать сообщение об ошибке вместо бесконечной перезагрузки
+### Почему это сработает
 
-```js
-var key = '__sw_recovery_attempted';
-if (sessionStorage.getItem(key)) return; // уже пробовали, не перезагружать
-sessionStorage.setItem(key, '1');
-// ... очистка кэшей и перезагрузка ...
-```
+Без `navigateFallback` навигационные запросы не перехватываются precache, а попадают в `runtimeCaching` с NetworkFirst. Это значит:
+- При наличии сети -- всегда загружается свежий HTML с сервера
+- При отсутствии сети -- используется кэшированная версия
+- Recovery-скрипт наконец сможет работать, потому что после очистки кэшей и перезагрузки новый HTML будет загружен с сервера, а не из precache
 
-### Результат
-- SW обновляется корректно через VitePWA без уничтожения precache
-- Максимум 2 перезагрузки за сессию, потом остановка (вместо бесконечного цикла)
-- Recovery-скрипт срабатывает только 1 раз
-- После публикации сайт загрузится нормально
+### Почему APK не при чём
 
+Старый APK использует Capacitor WebView -- это полностью изолированный контекст. Он не влияет на кэши браузера Chrome, Safari или Firefox. Белый экран в браузере вызван исключительно конфигурацией Service Worker.
+
+### После публикации
+
+После нажатия Publish > Update:
+- Новый SW будет установлен у пользователей
+- При следующей загрузке навигационные запросы пойдут на сервер
+- Если у кого-то ещё остался старый SW, recovery-скрипт сработает через 8 секунд, очистит кэши и перезагрузит страницу
