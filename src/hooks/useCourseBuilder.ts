@@ -31,6 +31,7 @@ export function useCourseBuilder() {
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [savedCourseIdState, setSavedCourseIdState] = useState<string | null>(null);
+  const courseId = savedCourseIdState || paramCourseId;
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [showAIGenerateDialog, setShowAIGenerateDialog] = useState(false);
