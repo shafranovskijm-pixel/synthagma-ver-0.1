@@ -19,17 +19,18 @@ import { AIGenerateType } from "@/components/course-builder/AIGenerateDialog";
 
 export function useCourseBuilder() {
   const navigate = useNavigate();
-  const { courseId } = useParams();
+  const { courseId: paramCourseId } = useParams();
   const { user, userRole } = useAuth();
   const [courseTitle, setCourseTitle] = useState("");
   const [courseDescription, setCourseDescription] = useState("");
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isLoading, setIsLoading] = useState(!!courseId);
+  const [isLoading, setIsLoading] = useState(!!paramCourseId);
   const [isImporting, setIsImporting] = useState(false);
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [savedCourseIdState, setSavedCourseIdState] = useState<string | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [showAIGenerateDialog, setShowAIGenerateDialog] = useState(false);
