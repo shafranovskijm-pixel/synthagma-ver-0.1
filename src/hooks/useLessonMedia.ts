@@ -60,7 +60,26 @@ export function useLessonMedia(
 
     setVideoUploadProgress(0);
     try {
-      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'mp4';
+      const compressionThreshold = 500 * 1024 * 1024; // 500 MB
+      let fileToUpload = file;
+
+      if (file.size > compressionThreshold) {
+        try {
+          setCompressionProgress(0);
+          toast.info("Файл больше 500 МБ — запускаем сжатие...");
+          const { compressVideo } = await import("@/utils/videoCompressor");
+          fileToUpload = await compressVideo(file, (p) => setCompressionProgress(p));
+          setCompressionProgress(null);
+          if (fileToUpload.size < file.size) {
+            toast.success(`Видео сжато: ${(file.size / 1024 / 1024).toFixed(0)} МБ → ${(fileToUpload.size / 1024 / 1024).toFixed(0)} МБ`);
+          }
+        } catch {
+          setCompressionProgress(null);
+          fileToUpload = file;
+        }
+      }
+
+      const fileExt = fileToUpload.name.split('.').pop()?.toLowerCase() || 'mp4';
       const fileName = `video_${lessonId}_${Date.now()}.${fileExt}`;
       const filePath = `${courseId}/${fileName}`;
 
