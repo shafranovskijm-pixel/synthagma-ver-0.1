@@ -198,39 +198,111 @@ const Blog = () => {
         <meta property="og:url" content="https://synthagma-bloom.lovable.app/blog" />
         <meta property="og:image" content="https://synthagma-bloom.lovable.app/og-image.png" />
       </Helmet>
+
       {/* Header */}
       <header className="border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
-            <ArrowLeft className="h-4 w-4" />
-            <span>На главную</span>
+        <div className="container mx-auto px-6 py-6 flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-3 group">
+            <div className="w-10 h-10 rounded-lg bg-foreground flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
+              <span className="font-display font-bold text-xl text-background">Σ</span>
+            </div>
+            <span className="font-display font-medium text-xl tracking-tight">СИНТАГМА</span>
           </Link>
-          <Link to="/" className="text-xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-            СИНТАГМА
-          </Link>
-          <div className="w-24" />
+          <div className="flex items-center gap-4">
+            <Link to="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              На главную
+            </Link>
+            <Link to="/register-organization">
+              <Button className="btn-gradient rounded-lg px-5 text-sm">
+                Начать
+              </Button>
+            </Link>
+          </div>
         </div>
       </header>
 
       {/* Hero Section */}
-      <section className="py-16 md:py-24 bg-gradient-to-b from-primary/5 to-background">
-        <div className="container mx-auto px-4">
+      <section className="relative py-20 md:py-28 overflow-hidden">
+        {/* Background */}
+        <div className="absolute inset-0 bg-gradient-to-b from-accent/5 via-background to-background" />
+        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-accent/8 rounded-full blur-[100px] translate-x-1/4 -translate-y-1/4" />
+        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-primary/5 rounded-full blur-[80px] -translate-x-1/4 translate-y-1/4" />
+        
+        {/* Decorative elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute inset-0 opacity-[0.015]" style={{
+            backgroundImage: `radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)`,
+            backgroundSize: '40px 40px'
+          }} />
+          <motion.div
+            className="absolute top-20 right-[15%] w-px h-32 bg-gradient-to-b from-transparent via-accent/30 to-transparent"
+            initial={{ scaleY: 0 }}
+            animate={{ scaleY: 1 }}
+            transition={{ duration: 1.5, delay: 0.3 }}
+          />
+          <motion.div
+            className="absolute bottom-16 left-[10%] w-px h-24 bg-gradient-to-b from-transparent via-border to-transparent"
+            initial={{ scaleY: 0 }}
+            animate={{ scaleY: 1 }}
+            transition={{ duration: 1.5, delay: 0.5 }}
+          />
+          <motion.div
+            className="absolute top-16 left-8 w-12 h-12 border-l border-t border-accent/15 rounded-tl-2xl"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 1, delay: 0.7 }}
+          />
+          <motion.div
+            className="absolute bottom-16 right-8 w-12 h-12 border-r border-b border-accent/15 rounded-br-2xl"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 1, delay: 0.8 }}
+          />
+          <motion.div
+            className="absolute top-1/3 left-[20%] w-2 h-2 rounded-full bg-accent/30"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.8, delay: 1 }}
+          />
+          <motion.div
+            className="absolute top-1/2 right-[25%] w-3 h-3 rounded-full border border-accent/25"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.8, delay: 1.1 }}
+          />
+          <motion.div
+            className="absolute bottom-1/3 right-[35%] w-1.5 h-1.5 rounded-full bg-accent/35"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.8, delay: 1.2 }}
+          />
+        </div>
+
+        <div className="container mx-auto px-6 relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
             className="text-center max-w-3xl mx-auto"
           >
-            <Badge variant="secondary" className="mb-4">
+            <span className="text-sm text-accent font-medium tracking-widest uppercase mb-4 block">
               Блог
-            </Badge>
-            <h1 className="text-4xl md:text-5xl font-bold mb-6">
+            </span>
+            <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-medium mb-6 tracking-tight">
               Знания для{" "}
-              <span className="bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-                профессионалов
-              </span>
+              <span className="text-muted-foreground">профессионалов</span>
             </h1>
-            <p className="text-lg text-muted-foreground">
+            <motion.div
+              initial={{ scaleX: 0 }}
+              animate={{ scaleX: 1 }}
+              transition={{ duration: 1, delay: 0.3 }}
+              className="flex items-center justify-center gap-2 mb-6"
+            >
+              <div className="w-2 h-2 rounded-full bg-accent/40" />
+              <div className="w-16 h-px bg-accent" />
+              <div className="w-2 h-2 rounded-full bg-accent/40" />
+            </motion.div>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
               Статьи, гайды и новости о дистанционном обучении, автоматизации образовательных процессов и современных EdTech-технологиях
             </p>
           </motion.div>
