@@ -64,7 +64,15 @@ export function SortableLessonItem({
         </div>
         <span className="text-sm font-medium text-muted-foreground w-8">{index + 1}.</span>
         <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${lessonColors[lesson.type]}`}><Icon className="w-4 h-4" /></div>
-        <Input value={lesson.title} onChange={(e) => { e.stopPropagation(); onUpdate({ title: e.target.value }); }} onClick={(e) => e.stopPropagation()} className="flex-1 border-0 bg-transparent focus-visible:ring-0 px-0" />
+        <textarea
+          value={lesson.title}
+          onChange={(e) => { e.stopPropagation(); onUpdate({ title: e.target.value }); }}
+          onClick={(e) => e.stopPropagation()}
+          rows={1}
+          className="flex-1 border-0 bg-transparent focus-visible:outline-none focus-visible:ring-0 px-0 resize-none overflow-hidden min-h-[36px] text-sm font-medium py-2"
+          onInput={(e) => { const t = e.currentTarget; t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; }}
+          ref={(el) => { if (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; } }}
+        />
         <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onDelete(); }} className="text-destructive hover:text-destructive"><Trash2 className="w-4 h-4" /></Button>
         {lesson.expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
       </div>
