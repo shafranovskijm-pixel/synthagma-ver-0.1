@@ -92,18 +92,6 @@ export default defineConfig(({ mode }) => ({
   },
   build: {
     chunkSizeWarningLimit: 2000,
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          if (id.includes('node_modules')) {
-            if (id.includes('recharts') || id.includes('d3-')) return 'charts';
-            if (id.includes('@radix-ui')) return 'ui';
-            if (id.includes('@supabase')) return 'supabase';
-            if (id.includes('/react/') || id.includes('/react-dom/')) return 'vendor';
-          }
-        },
-      },
-    },
   },
   test: {
     globals: true,
