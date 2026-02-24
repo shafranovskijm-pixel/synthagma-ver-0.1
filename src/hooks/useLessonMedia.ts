@@ -49,12 +49,13 @@ export function useLessonMedia(
 
   // Video upload
   const [videoUploadProgress, setVideoUploadProgress] = useState<number | null>(null);
+  const [compressionProgress, setCompressionProgress] = useState<number | null>(null);
   const videoUploadXhrRef = useRef<XMLHttpRequest | null>(null);
   const videoInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleVideoUpload = useCallback(async (file: File) => {
-    const maxSize = 500 * 1024 * 1024;
-    if (file.size > maxSize) { toast.error("Файл слишком большой. Максимум 500 МБ"); return; }
+    const maxSize = 2 * 1024 * 1024 * 1024; // 2 GB
+    if (file.size > maxSize) { toast.error("Файл слишком большой. Максимум 2 ГБ"); return; }
     if (!courseId) { toast.error("Сначала сохраните курс"); return; }
 
     setVideoUploadProgress(0);
