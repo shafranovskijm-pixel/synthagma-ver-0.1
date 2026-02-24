@@ -251,7 +251,6 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
         </Card>
       ) : (
         <Card>
-          <ScrollArea className="max-h-[600px]">
             <Table>
               <TableHeader>
                 <TableRow>
