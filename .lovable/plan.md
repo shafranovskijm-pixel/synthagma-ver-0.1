@@ -1,67 +1,43 @@
 
-## Исправление: отслеживание времени обучения
 
-### Проблема
+## Сжатие видео и увеличение лимита до 2 ГБ
 
-Поле `time_spent` в таблице `enrollments` всегда равно `0`. Ни один компонент в системе не отслеживает и не записывает время, проведённое учеником на уроке. При завершении урока (`markLessonComplete`) обновляется только `progress`, но не `time_spent`.
+### Что будет сделано
 
-### Решение
-
-Добавить трекинг времени на уровне урока и суммирование на уровне курса.
+1. Лимит загрузки видео увеличивается с 500 МБ до 2 ГБ
+2. Файлы больше 500 МБ автоматически сжимаются в браузере перед загрузкой (FFmpeg.wasm)
+3. Файлы до 500 МБ загружаются напрямую без сжатия
+4. Текст подсказки обновляется: "до 2 ГБ"
 
 ### Технические детали
 
-**1. `src/hooks/useCourseLearning.ts`** -- добавить трекинг времени:
+**1. Новая зависимость: `@ffmpeg/ffmpeg` + `@ffmpeg/util`**
 
-- Добавить `useRef` для хранения момента открытия урока (`lessonStartTimeRef`)
-- При переключении урока (изменении `currentLessonIndex`) и при `markLessonComplete` -- вычислять разницу с `lessonStartTimeRef`, сбрасывать таймер
-- Записывать `time_spent` (в секундах) в `lesson_progress` при upsert через инкрементальное обновление
-- После обновления `lesson_progress.time_spent` -- пересчитывать суммарное `enrollments.time_spent` как сумму `time_spent` из всех `lesson_progress` для данного `enrollment`
+Библиотека FFmpeg.wasm для сжатия видео в браузере. Ядро (~25 МБ) загружается из CDN лениво, только при первом сжатии.
 
-Конкретные изменения:
-- Добавить `const lessonStartTimeRef = useRef<number>(Date.now())` 
-- При изменении `currentLessonIndex` -- вызывать функцию `saveLessonTime()`, которая:
-  1. Вычисляет `elapsed = Math.floor((Date.now() - lessonStartTimeRef.current) / 1000)`
-  2. Обновляет `lesson_progress` инкрементом через RPC или upsert
-  3. Обновляет `enrollments.time_spent` суммой из `lesson_progress`
-  4. Сбрасывает `lessonStartTimeRef.current = Date.now()`
-- В `markLessonComplete` -- вызвать `saveLessonTime()` перед обновлением прогресса
-- Добавить `useEffect` с `beforeunload` для сохранения при закрытии вкладки
+**2. Новый файл `src/utils/videoCompressor.ts`**
 
-**2. Миграция базы данных** -- создать RPC-функцию для атомарного инкремента:
+- Ленивая загрузка FFmpeg при первом вызове
+- Функция `compressVideo(file, onProgress)` -- перекодирует в H.264/AAC с параметрами:
+  - `-crf 28` (хорошее качество при значительном сжатии)
+  - `-preset fast` (баланс скорости и степени сжатия)
+  - `-movflags +faststart` (быстрый старт воспроизведения)
+- Если сжатие не удалось -- возвращает оригинальный файл (fallback)
 
-```sql
-CREATE OR REPLACE FUNCTION increment_lesson_time(
-  p_lesson_id uuid,
-  p_user_id uuid,
-  p_seconds int
-) RETURNS void AS $$
-BEGIN
-  INSERT INTO lesson_progress (lesson_id, user_id, time_spent, completed)
-  VALUES (p_lesson_id, p_user_id, p_seconds, false)
-  ON CONFLICT (lesson_id, user_id)
-  DO UPDATE SET time_spent = COALESCE(lesson_progress.time_spent, 0) + p_seconds;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-```
+**3. Изменения в `src/hooks/useLessonMedia.ts`**
 
-И функция для пересчёта суммарного времени в enrollment:
+- `maxSize` меняется с `500 * 1024 * 1024` на `2 * 1024 * 1024 * 1024` (2 ГБ)
+- Сообщение об ошибке: "Максимум 2 ГБ"
+- Новое состояние `compressionProgress` (null | number)
+- Порог сжатия: `500 * 1024 * 1024` (500 МБ)
+- Логика перед загрузкой:
+  - Если файл > 500 МБ -- показать "Сжатие видео..." и вызвать `compressVideo()`
+  - Далее загрузить сжатый файл обычным путём
+  - При ошибке сжатия -- загрузить оригинал
+- Возвращать `compressionProgress` для отображения в UI
 
-```sql
-CREATE OR REPLACE FUNCTION recalc_enrollment_time(
-  p_enrollment_id uuid
-) RETURNS void AS $$
-BEGIN
-  UPDATE enrollments e
-  SET time_spent = COALESCE((
-    SELECT SUM(lp.time_spent)
-    FROM lesson_progress lp
-    JOIN lessons l ON l.id = lp.lesson_id
-    WHERE l.course_id = e.course_id AND lp.user_id = e.user_id
-  ), 0)
-  WHERE e.id = p_enrollment_id;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-```
+**4. Изменения в `src/components/course-builder/SortableLessonItem.tsx`**
 
-Это обеспечит корректное отображение времени обучения в карточке ученика и во всех отчётах (ФРДО, классный журнал и т.д.).
+- Текст подсказки: "до 500 МБ" заменяется на "до 2 ГБ"
+- Добавить индикатор сжатия: если `compressionProgress !== null`, показывать "Сжатие видео... X%" вместо прогресса загрузки
+
