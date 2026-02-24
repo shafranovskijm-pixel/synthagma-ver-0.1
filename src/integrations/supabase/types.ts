@@ -4115,6 +4115,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_lesson_time: {
+        Args: { p_lesson_id: string; p_seconds: number; p_user_id: string }
+        Returns: undefined
+      }
       increment_promo_usage: { Args: { p_code: string }; Returns: undefined }
       lookup_profile_by_login: {
         Args: { p_login: string }
@@ -4151,6 +4155,10 @@ export type Database = {
           token: string
           used_count: number
         }[]
+      }
+      recalc_enrollment_time: {
+        Args: { p_enrollment_id: string }
+        Returns: undefined
       }
       track_user_visit: { Args: { p_user_id: string }; Returns: undefined }
       upgrade_to_organization_role: {
