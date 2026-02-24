@@ -63,9 +63,12 @@
     <!-- SW recovery: if app fails to render in 8s, unregister SW and reload -->
     <script>
       (function(){
+        var recoveryKey = '__sw_recovery_attempted';
         var t = setTimeout(function(){
           var root = document.getElementById('root');
           if (root && root.children.length === 0 && 'serviceWorker' in navigator) {
+            if (sessionStorage.getItem(recoveryKey)) return;
+            sessionStorage.setItem(recoveryKey, '1');
             navigator.serviceWorker.getRegistrations().then(function(regs){
               var p = regs.map(function(r){ return r.unregister(); });
               Promise.all(p).then(function(){
@@ -82,7 +85,6 @@
           }
         }, 8000);
         window.__swRecoveryTimer = t;
-        // Cancel if app renders successfully
         var observer = new MutationObserver(function(){
           var root = document.getElementById('root');
           if (root && root.children.length > 0) {
