@@ -6,22 +6,22 @@ import "./index.css";
 const isNative = typeof (window as any).Capacitor !== 'undefined';
 if (!isNative) {
   import('virtual:pwa-register').then(({ registerSW }) => {
-    registerSW({
+    const updateSW = registerSW({
       immediate: true,
       onNeedRefresh() {
-        caches.keys().then(names => {
-          Promise.all(names.map(name => caches.delete(name)))
-            .then(() => window.location.reload());
-        });
+        const key = '__sw_reload_count';
+        const count = parseInt(sessionStorage.getItem(key) || '0', 10);
+        if (count < 2) {
+          sessionStorage.setItem(key, String(count + 1));
+          updateSW(true);
+        }
       },
       onOfflineReady() {
         console.log('App ready for offline use');
       },
       onRegistered(registration) {
         if (registration) {
-          setInterval(() => {
-            registration.update();
-          }, 60 * 1000);
+          setInterval(() => registration.update(), 60 * 1000);
         }
       },
     });
