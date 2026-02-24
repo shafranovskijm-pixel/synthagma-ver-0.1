@@ -51,6 +51,7 @@ interface TestQuestion {
   options: unknown;
   correct_answer: number;
   order_index: number;
+  image_url?: string | null;
 }
 
 // Helper function to parse content
