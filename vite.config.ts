@@ -99,7 +99,7 @@ export default defineConfig(({ mode }) => ({
             if (id.includes('recharts') || id.includes('d3-')) return 'charts';
             if (id.includes('@radix-ui')) return 'ui';
             if (id.includes('@supabase')) return 'supabase';
-            if (id.includes('react-dom')) return 'vendor';
+            if (id.includes('/react/') || id.includes('/react-dom/')) return 'vendor';
           }
         },
       },
