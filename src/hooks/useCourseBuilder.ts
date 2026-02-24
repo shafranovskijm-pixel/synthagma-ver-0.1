@@ -360,7 +360,8 @@ export function useCourseBuilder() {
         const { data: newCourse, error } = await supabase.from("courses").insert({ title: courseTitle.trim(), description: courseDescription.trim() || null, organization_id: orgId, is_published: true }).select().single();
         if (error) throw error;
         savedCourseId = newCourse.id;
-        navigate(`/course-builder/${savedCourseId}`, { replace: true });
+        setSavedCourseIdState(newCourse.id);
+        window.history.replaceState(null, '', `/course-builder/${savedCourseId}`);
       }
 
       if (lessons.length > 0 && savedCourseId) {
