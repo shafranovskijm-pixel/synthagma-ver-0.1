@@ -6,12 +6,15 @@ import "./index.css";
 const isNative = typeof (window as any).Capacitor !== 'undefined';
 if (!isNative) {
   import('virtual:pwa-register').then(({ registerSW }) => {
-    const updateSW = registerSW({
+    registerSW({
       immediate: true,
-    });
-    // Listen for SW updates and auto-reload
-    navigator.serviceWorker?.addEventListener('controllerchange', () => {
-      window.location.reload();
+      onNeedRefresh() {
+        // New SW available — activate it immediately
+        window.location.reload();
+      },
+      onOfflineReady() {
+        console.log('App ready for offline use');
+      },
     });
   }).catch(() => {});
 }
