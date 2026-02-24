@@ -49,17 +49,37 @@ export function useLessonMedia(
 
   // Video upload
   const [videoUploadProgress, setVideoUploadProgress] = useState<number | null>(null);
+  const [compressionProgress, setCompressionProgress] = useState<number | null>(null);
   const videoUploadXhrRef = useRef<XMLHttpRequest | null>(null);
   const videoInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleVideoUpload = useCallback(async (file: File) => {
-    const maxSize = 500 * 1024 * 1024;
-    if (file.size > maxSize) { toast.error("Файл слишком большой. Максимум 500 МБ"); return; }
+    const maxSize = 2 * 1024 * 1024 * 1024; // 2 GB
+    if (file.size > maxSize) { toast.error("Файл слишком большой. Максимум 2 ГБ"); return; }
     if (!courseId) { toast.error("Сначала сохраните курс"); return; }
 
     setVideoUploadProgress(0);
     try {
-      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'mp4';
+      const compressionThreshold = 500 * 1024 * 1024; // 500 MB
+      let fileToUpload = file;
+
+      if (file.size > compressionThreshold) {
+        try {
+          setCompressionProgress(0);
+          toast.info("Файл больше 500 МБ — запускаем сжатие...");
+          const { compressVideo } = await import("@/utils/videoCompressor");
+          fileToUpload = await compressVideo(file, (p) => setCompressionProgress(p));
+          setCompressionProgress(null);
+          if (fileToUpload.size < file.size) {
+            toast.success(`Видео сжато: ${(file.size / 1024 / 1024).toFixed(0)} МБ → ${(fileToUpload.size / 1024 / 1024).toFixed(0)} МБ`);
+          }
+        } catch {
+          setCompressionProgress(null);
+          fileToUpload = file;
+        }
+      }
+
+      const fileExt = fileToUpload.name.split('.').pop()?.toLowerCase() || 'mp4';
       const fileName = `video_${lessonId}_${Date.now()}.${fileExt}`;
       const filePath = `${courseId}/${fileName}`;
 
@@ -155,7 +175,7 @@ export function useLessonMedia(
     // TTS
     isSpeaking, isSpeechPaused, handlePlayAudio, handleStopSpeech,
     // Video
-    videoUploadProgress, videoInputRef, handleVideoUpload, cancelVideoUpload,
+    videoUploadProgress, compressionProgress, videoInputRef, handleVideoUpload, cancelVideoUpload,
     // AI
     isGeneratingContent, handleGenerateContent,
   };

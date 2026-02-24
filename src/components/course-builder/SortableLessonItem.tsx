@@ -122,7 +122,18 @@ export function SortableLessonItem({
                 </div>
               )}
               <div className="border-2 border-dashed border-border rounded-xl p-6 text-center hover:border-sigma-purple/50 transition-colors">
-                {media.videoUploadProgress !== null ? (
+                {media.compressionProgress !== null ? (
+                  <div className="space-y-4">
+                    <Video className="w-10 h-10 mx-auto text-sigma-purple animate-pulse" />
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin text-sigma-purple" /><span className="text-sm font-medium">Сжатие видео...</span></div>
+                      <div className="w-full max-w-xs mx-auto">
+                        <div className="h-2 bg-secondary rounded-full overflow-hidden"><div className="h-full bg-sigma-orange transition-all duration-300 ease-out" style={{ width: `${media.compressionProgress}%` }} /></div>
+                        <p className="text-sm text-muted-foreground mt-1">{media.compressionProgress}%</p>
+                      </div>
+                    </div>
+                  </div>
+                ) : media.videoUploadProgress !== null ? (
                   <div className="space-y-4">
                     <Video className="w-10 h-10 mx-auto text-sigma-purple animate-pulse" />
                     <div className="space-y-2">
@@ -138,7 +149,7 @@ export function SortableLessonItem({
                   <>
                     <Video className="w-10 h-10 mx-auto mb-3 text-sigma-purple" />
                     <p className="text-sm font-medium mb-1">Загрузить видео на сервер</p>
-                    <p className="text-xs text-muted-foreground mb-4">MP4, WebM, MOV — до 500 МБ</p>
+                    <p className="text-xs text-muted-foreground mb-4">MP4, WebM, MOV — до 2 ГБ</p>
                     <label className="inline-flex items-center gap-2 px-4 py-2 bg-sigma-purple text-white rounded-lg cursor-pointer hover:bg-sigma-purple/90 transition-colors">
                       <Upload className="w-4 h-4" /><span className="text-sm font-medium">Выбрать файл</span>
                       <input ref={media.videoInputRef} type="file" accept="video/mp4,video/webm,video/quicktime,video/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) media.handleVideoUpload(file); }} />
