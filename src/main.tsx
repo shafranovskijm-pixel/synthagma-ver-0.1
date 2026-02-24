@@ -9,11 +9,20 @@ if (!isNative) {
     registerSW({
       immediate: true,
       onNeedRefresh() {
-        // New SW available — activate it immediately
-        window.location.reload();
+        caches.keys().then(names => {
+          Promise.all(names.map(name => caches.delete(name)))
+            .then(() => window.location.reload());
+        });
       },
       onOfflineReady() {
         console.log('App ready for offline use');
+      },
+      onRegistered(registration) {
+        if (registration) {
+          setInterval(() => {
+            registration.update();
+          }, 60 * 1000);
+        }
       },
     });
   }).catch(() => {});

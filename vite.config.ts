@@ -57,6 +57,22 @@ export default defineConfig(({ mode }) => ({
         clientsClaim: true,
         runtimeCaching: [
           {
+            urlPattern: /\/index\.html$/,
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "html-cache",
+              expiration: { maxAgeSeconds: 60 * 60 },
+            },
+          },
+          {
+            urlPattern: /^https:\/\/.*supabase.*\/.*/i,
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "api-cache",
+              expiration: { maxEntries: 50, maxAgeSeconds: 300 },
+            },
+          },
+          {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
             handler: "CacheFirst",
             options: {
