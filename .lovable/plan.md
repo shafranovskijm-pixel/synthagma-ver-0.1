@@ -1,91 +1,37 @@
 
 
-## Исправление белого экрана -- настоящая корневая причина
+## Два исправления в редакторе и предпросмотре курсов
 
-### Диагностика
+### 1. Перенос текста в названии урока (конструктор курсов)
 
-Опубликованный сайт (`synthagma-bloom.lovable.app`) подтверждённо показывает белый экран. Превью работает нормально. APK не влияет на браузерный кэш сайта -- это совершенно разные контексты.
+**Проблема:** В `SortableLessonItem.tsx` (строка 67) название урока отображается в однострочном `<Input>`, который обрезает длинный текст.
 
-### Корневая причина: `navigateFallback` блокирует обновление HTML
+**Решение:** Заменить `<Input>` на многострочный элемент, который будет переносить текст и показывать его полностью. Можно использовать `<Textarea>` с автоматической высотой или CSS `text-wrap` на Input. Оптимальный вариант -- `<Textarea>` с `rows={1}` и авто-ресайзом, чтобы текст переносился, но не занимал лишнее место.
 
-В конфигурации Workbox есть фатальный конфликт:
+**Файл:** `src/components/course-builder/SortableLessonItem.tsx`, строка 67
 
-1. **`navigateFallback: '/index.html'`** -- говорит SW: "для всех навигационных запросов отдавай `index.html` из precache"
-2. **`runtimeCaching` с NetworkFirst для `index.html`** -- говорит SW: "загружай HTML по сети в первую очередь"
+### 2. Отображение картинки вопроса в предпросмотре
 
-Проблема: `navigateFallback` работает на уровне precache и **имеет приоритет** над `runtimeCaching`. Поэтому стратегия NetworkFirst для HTML **никогда не срабатывает** -- старый HTML всегда подаётся из precache.
+**Проблема:** В `CoursePreview.tsx` (строки 818-828) при отрисовке тестовых вопросов нет рендеринга поля `image_url`. Картинка загружается и сохраняется в базе, но предпросмотр её игнорирует.
 
-Дополнительный конфликт:
-- `skipWaiting: true` + `clientsClaim: true` заставляют SW активироваться немедленно (поведение autoUpdate)
-- `registerType: "prompt"` ожидает ручного подтверждения обновления
-- Эти настройки противоречат друг другу
+**Решение:** Добавить отображение `image_url` после текста вопроса (строка 828), перед вариантами ответов. Поле `image_url` уже доступно в представлении `test_questions_for_students`.
 
-### Решение
+**Файл:** `src/pages/CoursePreview.tsx`, после строки 828
 
-**1. `vite.config.ts`** -- убрать конфликтующие настройки Workbox:
+### Технические детали
 
-- Удалить `navigateFallback` -- пусть навигационные запросы идут в сеть напрямую, а не из precache
-- Удалить `navigateFallbackDenylist` -- больше не нужен без `navigateFallback`  
-- Удалить `skipWaiting: true` и `clientsClaim: true` -- они конфликтуют с `registerType: "prompt"`
-- Оставить `runtimeCaching` с NetworkFirst для HTML и Supabase API
-- Добавить стратегию NetworkFirst для навигационных запросов (все страницы) в `runtimeCaching`
+**SortableLessonItem.tsx:**
+- Заменить `<Input>` на `<Textarea>` с классами `resize-none overflow-hidden min-h-[36px]` и `rows={1}`
+- Добавить обработчик `onInput` для автоматического подстраивания высоты по содержимому
+- Сохранить все существующие обработчики (`onChange`, `onClick`, `stopPropagation`)
 
-```js
-workbox: {
-  maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
-  globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
-  cleanupOutdatedCaches: true,
-  runtimeCaching: [
-    {
-      // Все навигационные запросы -- всегда сеть в первую очередь
-      urlPattern: ({request}) => request.mode === 'navigate',
-      handler: "NetworkFirst",
-      options: {
-        cacheName: "pages-cache",
-        expiration: { maxAgeSeconds: 60 * 60 },
-      },
-    },
-    {
-      urlPattern: /^https:\/\/.*supabase.*\/.*/i,
-      handler: "NetworkFirst",
-      options: {
-        cacheName: "api-cache",
-        expiration: { maxEntries: 50, maxAgeSeconds: 300 },
-      },
-    },
-    {
-      urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
-      handler: "CacheFirst",
-      options: {
-        cacheName: "google-fonts-cache",
-        expiration: {
-          maxEntries: 10,
-          maxAgeSeconds: 60 * 60 * 24 * 365,
-        },
-      },
-    },
-  ],
-},
-```
-
-**2. `src/main.tsx`** -- без изменений, текущая логика корректна.
-
-**3. `index.html`** -- без изменений, recovery-скрипт корректен и будет работать лучше без `navigateFallback`.
-
-### Почему это сработает
-
-Без `navigateFallback` навигационные запросы не перехватываются precache, а попадают в `runtimeCaching` с NetworkFirst. Это значит:
-- При наличии сети -- всегда загружается свежий HTML с сервера
-- При отсутствии сети -- используется кэшированная версия
-- Recovery-скрипт наконец сможет работать, потому что после очистки кэшей и перезагрузки новый HTML будет загружен с сервера, а не из precache
-
-### Почему APK не при чём
-
-Старый APK использует Capacitor WebView -- это полностью изолированный контекст. Он не влияет на кэши браузера Chrome, Safari или Firefox. Белый экран в браузере вызван исключительно конфигурацией Service Worker.
-
-### После публикации
-
-После нажатия Publish > Update:
-- Новый SW будет установлен у пользователей
-- При следующей загрузке навигационные запросы пойдут на сервер
-- Если у кого-то ещё остался старый SW, recovery-скрипт сработает через 8 секунд, очистит кэши и перезагрузит страницу
+**CoursePreview.tsx:**
+- Добавить типу `TestQuestion` поле `image_url?: string | null`
+- После `<h4>` с текстом вопроса (строка 827), добавить условный рендеринг:
+  ```tsx
+  {(question as any).image_url && (
+    <img src={(question as any).image_url} alt="Изображение к вопросу" 
+         className="rounded-lg max-h-64 object-contain border border-border mt-2" />
+  )}
+  ```
+- Обновить интерфейс `TestQuestion` на строке 49, добавив `image_url?: string | null`
