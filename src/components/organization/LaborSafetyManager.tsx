@@ -298,7 +298,6 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
                 ))}
               </TableBody>
             </Table>
-          </ScrollArea>
         </Card>
       )}
 
