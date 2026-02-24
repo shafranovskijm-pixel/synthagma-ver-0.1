@@ -124,9 +124,20 @@ export function useCourseLearning() {
   const videoLessonId = currentLesson?.type === 'video' ? currentLesson.id : undefined;
   const {
     savedPosition,
+    savedDuration,
     isLoading: isVideoProgressLoading,
     savePosition: saveVideoPosition,
   } = useVideoProgress(user?.id, videoLessonId);
+
+  // Initialize videoWatchProgress from saved position on load
+  useEffect(() => {
+    if (savedPosition > 0 && savedDuration > 0 && currentLesson?.type === 'video') {
+      const restoredProgress = (savedPosition / savedDuration) * 100;
+      if (restoredProgress > videoWatchProgress) {
+        setVideoWatchProgress(restoredProgress);
+      }
+    }
+  }, [savedPosition, savedDuration, currentLesson?.id]);
 
   // Parse content blocks
   const contentBlocks: ContentBlock[] = currentLesson?.content

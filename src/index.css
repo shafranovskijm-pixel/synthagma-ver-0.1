@@ -355,6 +355,15 @@
   .video-no-controls::-webkit-media-controls-enclosure {
     display: none !important;
   }
+  .video-no-controls::-webkit-media-controls-panel {
+    display: none !important;
+  }
+  .video-no-controls::-webkit-media-controls-start-playback-button {
+    display: none !important;
+  }
+  .video-no-controls::-moz-media-controls {
+    display: none !important;
+  }
 }
 
 @layer utilities {

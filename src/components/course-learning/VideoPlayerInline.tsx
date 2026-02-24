@@ -140,6 +140,18 @@ export const VideoPlayerInline = ({
     return () => document.removeEventListener('mousedown', handleClick);
   }, [showSpeedMenu]);
 
+  // Enforce playbackRate=1 via interval when seek is disabled
+  useEffect(() => {
+    if (allowSeek) return;
+    const interval = setInterval(() => {
+      if (videoRef.current && videoRef.current.playbackRate !== 1) {
+        videoRef.current.playbackRate = 1;
+        setPlaybackRate(1);
+      }
+    }, 500);
+    return () => clearInterval(interval);
+  }, [allowSeek]);
+
   if (!content) return null;
 
   // If it's a full iframe embed code
@@ -252,7 +264,7 @@ export const VideoPlayerInline = ({
     }
   };
 
-  const handleRateChange = () => { if (allowSeek || !videoRef.current) return; if (videoRef.current.playbackRate !== 1) videoRef.current.playbackRate = 1; };
+  const handleRateChange = () => { if (allowSeek || !videoRef.current) return; if (videoRef.current.playbackRate !== 1) { videoRef.current.playbackRate = 1; setPlaybackRate(1); } };
   const handleRetryVideo = () => { setVideoError(false); setVideoLoading(true); setVideoSlow(false); setLoadingTimedOut(false); if (videoRef.current) videoRef.current.load(); };
   const handleCanPlay = () => { setVideoLoading(false); setVideoSlow(false); if (stalledTimerRef.current) { clearTimeout(stalledTimerRef.current); stalledTimerRef.current = null; } };
   const handleWaiting = () => setVideoLoading(true);
