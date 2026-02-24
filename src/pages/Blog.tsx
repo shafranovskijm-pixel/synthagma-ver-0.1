@@ -310,8 +310,8 @@ const Blog = () => {
       </section>
 
       {/* Categories */}
-      <section className="py-8 border-b border-border/40">
-        <div className="container mx-auto px-4">
+      <section className="py-8 border-b border-border/30">
+        <div className="container mx-auto px-6">
           <div className="flex flex-wrap gap-2 justify-center">
             {categories.map((category, index) => (
               <motion.div
@@ -320,14 +320,16 @@ const Blog = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: index * 0.05 }}
               >
-                <Button
-                  variant={selectedCategory === category ? "default" : "outline"}
-                  size="sm"
-                  className="rounded-full"
+                <button
+                  className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
+                    selectedCategory === category
+                      ? 'bg-foreground text-background'
+                      : 'border border-border/60 text-muted-foreground hover:border-accent/50 hover:text-foreground'
+                  }`}
                   onClick={() => setSelectedCategory(category)}
                 >
                   {category}
-                </Button>
+                </button>
               </motion.div>
             ))}
           </div>
