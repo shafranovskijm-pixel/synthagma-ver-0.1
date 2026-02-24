@@ -70,6 +70,7 @@ export function useCourseLearning() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const contentRef = useRef<HTMLDivElement>(null);
+  const lessonStartTimeRef = useRef<number>(Date.now());
 
   const [course, setCourse] = useState<Course | null>(null);
   const [lessons, setLessons] = useState<Lesson[]>([]);
