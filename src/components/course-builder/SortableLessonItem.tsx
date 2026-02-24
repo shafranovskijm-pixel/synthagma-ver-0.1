@@ -122,7 +122,18 @@ export function SortableLessonItem({
                 </div>
               )}
               <div className="border-2 border-dashed border-border rounded-xl p-6 text-center hover:border-sigma-purple/50 transition-colors">
-                {media.videoUploadProgress !== null ? (
+                {media.compressionProgress !== null ? (
+                  <div className="space-y-4">
+                    <Video className="w-10 h-10 mx-auto text-sigma-purple animate-pulse" />
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin text-sigma-purple" /><span className="text-sm font-medium">Сжатие видео...</span></div>
+                      <div className="w-full max-w-xs mx-auto">
+                        <div className="h-2 bg-secondary rounded-full overflow-hidden"><div className="h-full bg-sigma-orange transition-all duration-300 ease-out" style={{ width: `${media.compressionProgress}%` }} /></div>
+                        <p className="text-sm text-muted-foreground mt-1">{media.compressionProgress}%</p>
+                      </div>
+                    </div>
+                  </div>
+                ) : media.videoUploadProgress !== null ? (
                   <div className="space-y-4">
                     <Video className="w-10 h-10 mx-auto text-sigma-purple animate-pulse" />
                     <div className="space-y-2">
