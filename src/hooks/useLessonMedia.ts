@@ -175,7 +175,7 @@ export function useLessonMedia(
     // TTS
     isSpeaking, isSpeechPaused, handlePlayAudio, handleStopSpeech,
     // Video
-    videoUploadProgress, videoInputRef, handleVideoUpload, cancelVideoUpload,
+    videoUploadProgress, compressionProgress, videoInputRef, handleVideoUpload, cancelVideoUpload,
     // AI
     isGeneratingContent, handleGenerateContent,
   };
