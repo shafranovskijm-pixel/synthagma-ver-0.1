@@ -50,17 +50,13 @@ export default defineConfig(({ mode }) => ({
       workbox: {
         maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, // 10 MB limit
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
-      navigateFallback: '/index.html',
-      navigateFallbackDenylist: [/^\/~oauth/, /^\/api/],
         cleanupOutdatedCaches: true,
-        skipWaiting: true,
-        clientsClaim: true,
         runtimeCaching: [
           {
-            urlPattern: /\/index\.html$/,
+            urlPattern: ({request}) => request.mode === 'navigate',
             handler: "NetworkFirst",
             options: {
-              cacheName: "html-cache",
+              cacheName: "pages-cache",
               expiration: { maxAgeSeconds: 60 * 60 },
             },
           },
