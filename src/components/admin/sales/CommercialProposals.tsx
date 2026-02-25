@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Eye, Trash2, Send, FileText, Link2, Printer } from 'lucide-react';
+import { Plus, Eye, Trash2, Send, FileText, Link2, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -23,6 +23,8 @@ export function CommercialProposals() {
   const { proposals, fetchProposals, updateProposalStatus, deleteProposal, getProposalServices, managers, fetchManagers } = useSalesManager();
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [editorOpen, setEditorOpen] = useState(false);
+  const [editingProposal, setEditingProposal] = useState<CommercialProposal | null>(null);
+  const [editingServices, setEditingServices] = useState<ProposalServiceItem[]>([]);
   const [previewProposal, setPreviewProposal] = useState<CommercialProposal | null>(null);
   const [previewServices, setPreviewServices] = useState<ProposalServiceItem[]>([]);
 
@@ -39,6 +41,20 @@ export function CommercialProposals() {
     const svcs = await getProposalServices(p.id);
     setPreviewServices(svcs);
     setPreviewProposal(p);
+  };
+
+  const openEdit = async (p: CommercialProposal) => {
+    const svcs = await getProposalServices(p.id);
+    setEditingProposal(p);
+    setEditingServices(svcs);
+    setEditorOpen(true);
+  };
+
+  const handleCloseEditor = () => {
+    setEditorOpen(false);
+    setEditingProposal(null);
+    setEditingServices([]);
+    fetchProposals();
   };
 
   const copyLink = (p: CommercialProposal) => {
@@ -61,14 +77,18 @@ export function CommercialProposals() {
               ))}
             </SelectContent>
           </Select>
-          <Button size="sm" onClick={() => setEditorOpen(true)}>
+          <Button size="sm" onClick={() => { setEditingProposal(null); setEditingServices([]); setEditorOpen(true); }}>
             <Plus className="w-4 h-4 mr-2" />Создать КП
           </Button>
         </div>
       </div>
 
       {editorOpen && (
-        <ProposalEditor onClose={() => { setEditorOpen(false); fetchProposals(); }} />
+        <ProposalEditor
+          onClose={handleCloseEditor}
+          editProposal={editingProposal}
+          editServices={editingServices}
+        />
       )}
 
       <div className="space-y-2">
@@ -94,9 +114,15 @@ export function CommercialProposals() {
                   </div>
                   <div className="flex flex-col items-end gap-2">
                     <span className="font-bold text-lg">{p.total_amount.toLocaleString('ru-RU')} ₽</span>
+                    {p.discount_percent > 0 && (
+                      <Badge variant="outline" className="text-destructive border-destructive/30">−{p.discount_percent}%</Badge>
+                    )}
                     <div className="flex gap-1">
                       <Button variant="outline" size="icon" title="Предпросмотр" onClick={() => openPreview(p)}>
                         <Eye className="w-4 h-4" />
+                      </Button>
+                      <Button variant="outline" size="icon" title="Редактировать" onClick={() => openEdit(p)}>
+                        <Pencil className="w-4 h-4" />
                       </Button>
                       <Button variant="outline" size="icon" title="Скопировать ссылку" onClick={() => copyLink(p)}>
                         <Link2 className="w-4 h-4" />
@@ -125,6 +151,7 @@ export function CommercialProposals() {
           onClose={() => setPreviewProposal(null)}
           proposal={previewProposal}
           services={previewServices}
+          discountPercent={previewProposal.discount_percent || 0}
         />
       )}
     </div>

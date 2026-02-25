@@ -307,6 +307,7 @@ export type Database = {
           created_at: string
           created_by: string
           custom_note: string | null
+          discount_percent: number | null
           id: string
           manager_id: string | null
           status: string
@@ -324,6 +325,7 @@ export type Database = {
           created_at?: string
           created_by: string
           custom_note?: string | null
+          discount_percent?: number | null
           id?: string
           manager_id?: string | null
           status?: string
@@ -341,6 +343,7 @@ export type Database = {
           created_at?: string
           created_by?: string
           custom_note?: string | null
+          discount_percent?: number | null
           id?: string
           manager_id?: string | null
           status?: string

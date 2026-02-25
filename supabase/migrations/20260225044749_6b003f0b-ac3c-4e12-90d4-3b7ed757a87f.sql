@@ -1,0 +1,1 @@
+ALTER TABLE public.commercial_proposals ADD COLUMN discount_percent numeric DEFAULT 0;

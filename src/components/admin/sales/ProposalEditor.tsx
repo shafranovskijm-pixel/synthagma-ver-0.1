@@ -15,6 +15,8 @@ import type { CommercialProposal } from '@/hooks/useSalesManager';
 
 interface Props {
   onClose: () => void;
+  editProposal?: CommercialProposal | null;
+  editServices?: ProposalServiceItem[];
 }
 
 interface ServiceLine {
@@ -25,33 +27,41 @@ interface ServiceLine {
   service_id?: string;
 }
 
-export function ProposalEditor({ onClose }: Props) {
-  const { services, fetchServices, managers, fetchManagers, createProposal } = useSalesManager();
-  const [companyName, setCompanyName] = useState('');
-  const [companyInn, setCompanyInn] = useState('');
-  const [companyEmail, setCompanyEmail] = useState('');
-  const [companyPhone, setCompanyPhone] = useState('');
-  const [contactPerson, setContactPerson] = useState('');
-  const [tariffPlan, setTariffPlan] = useState<string>('');
-  const [managerId, setManagerId] = useState<string>('');
-  const [customNote, setCustomNote] = useState('');
-  const [validUntil, setValidUntil] = useState('');
+export function ProposalEditor({ onClose, editProposal, editServices }: Props) {
+  const { services, fetchServices, managers, fetchManagers, createProposal, updateProposal } = useSalesManager();
+  const isEditing = !!editProposal;
+
+  const [companyName, setCompanyName] = useState(editProposal?.company_name || '');
+  const [companyInn, setCompanyInn] = useState(editProposal?.company_inn || '');
+  const [companyEmail, setCompanyEmail] = useState(editProposal?.company_email || '');
+  const [companyPhone, setCompanyPhone] = useState(editProposal?.company_phone || '');
+  const [contactPerson, setContactPerson] = useState(editProposal?.contact_person || '');
+  const [tariffPlan, setTariffPlan] = useState<string>(editProposal?.tariff_plan || '');
+  const [managerId, setManagerId] = useState<string>(editProposal?.manager_id || '');
+  const [customNote, setCustomNote] = useState(editProposal?.custom_note || '');
+  const [validUntil, setValidUntil] = useState(editProposal?.valid_until || '');
   const [senderName, setSenderName] = useState('СИНТАГМА');
   const [senderEmail, setSenderEmail] = useState('info@synthagma.ru');
   const [senderWebsite, setSenderWebsite] = useState('synthagma.ru');
-  const [serviceLines, setServiceLines] = useState<ServiceLine[]>([]);
+  const [serviceLines, setServiceLines] = useState<ServiceLine[]>(
+    editServices?.map(s => ({
+      custom_name: s.custom_name,
+      custom_description: s.custom_description || '',
+      price: s.price,
+      quantity: s.quantity,
+      service_id: s.service_id || undefined,
+    })) || []
+  );
   const [saving, setSaving] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
-  const [discountPercent, setDiscountPercent] = useState<number>(0);
+  const [discountPercent, setDiscountPercent] = useState<number>(editProposal?.discount_percent || 0);
 
   useEffect(() => { fetchServices(); fetchManagers(); }, [fetchServices, fetchManagers]);
 
   const applyTemplate = (template: ProposalTemplate) => {
     setSelectedTemplate(template.id);
-    if (template.tariffPlan) {
-      setTariffPlan(template.tariffPlan);
-    }
+    if (template.tariffPlan) setTariffPlan(template.tariffPlan);
     setServiceLines(template.serviceLines.map(l => ({ ...l })));
   };
 
@@ -91,37 +101,43 @@ export function ProposalEditor({ onClose }: Props) {
   const discountAmount = Math.round(subtotal * discountPercent / 100);
   const totalAmount = subtotal - discountAmount;
 
+  const buildServiceItems = () => serviceLines.map(l => ({
+    custom_name: l.custom_name,
+    custom_description: l.custom_description,
+    price: l.price,
+    quantity: l.quantity,
+    service_id: l.service_id,
+  }));
+
   const handleSave = async () => {
     if (!companyName) return;
     setSaving(true);
-    await createProposal(
-      {
-        company_name: companyName,
-        company_inn: companyInn || undefined,
-        company_email: companyEmail || undefined,
-        company_phone: companyPhone || undefined,
-        contact_person: contactPerson || undefined,
-        tariff_plan: tariffPlan || undefined,
-        manager_id: managerId || undefined,
-        custom_note: customNote || undefined,
-        total_amount: totalAmount,
-        valid_until: validUntil || undefined,
-      } as any,
-      serviceLines.map(l => ({
-        custom_name: l.custom_name,
-        custom_description: l.custom_description,
-        price: l.price,
-        quantity: l.quantity,
-        service_id: l.service_id,
-      }))
-    );
+
+    const proposalData = {
+      company_name: companyName,
+      company_inn: companyInn || undefined,
+      company_email: companyEmail || undefined,
+      company_phone: companyPhone || undefined,
+      contact_person: contactPerson || undefined,
+      tariff_plan: tariffPlan || undefined,
+      manager_id: managerId || undefined,
+      custom_note: customNote || undefined,
+      total_amount: totalAmount,
+      discount_percent: discountPercent,
+      valid_until: validUntil || undefined,
+    } as any;
+
+    if (isEditing) {
+      await updateProposal(editProposal.id, proposalData, buildServiceItems());
+    } else {
+      await createProposal(proposalData, buildServiceItems());
+    }
     setSaving(false);
     onClose();
   };
 
-  // Build a preview proposal object
   const previewProposal: CommercialProposal = {
-    id: 'preview',
+    id: editProposal?.id || 'preview',
     created_by: '',
     manager_id: managerId || null,
     company_name: companyName || 'Название компании',
@@ -132,9 +148,10 @@ export function ProposalEditor({ onClose }: Props) {
     tariff_plan: tariffPlan || null,
     custom_note: customNote || null,
     total_amount: totalAmount,
+    discount_percent: discountPercent,
     status: 'draft',
     valid_until: validUntil || null,
-    created_at: new Date().toISOString(),
+    created_at: editProposal?.created_at || new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
 
@@ -153,41 +170,43 @@ export function ProposalEditor({ onClose }: Props) {
     <>
       <Card className="border-primary/30">
         <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-lg">Новое коммерческое предложение</CardTitle>
+          <CardTitle className="text-lg">{isEditing ? 'Редактирование КП' : 'Новое коммерческое предложение'}</CardTitle>
           <Button variant="ghost" size="icon" onClick={onClose}><X className="w-4 h-4" /></Button>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Template selector */}
-          <div>
-            <Label className="text-base font-semibold mb-2 block">
-              <Sparkles className="w-4 h-4 inline mr-1" />Выберите шаблон
-            </Label>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-              {PROPOSAL_TEMPLATES.map(t => {
-                const isSelected = selectedTemplate === t.id;
-                const yearlyTotal = t.serviceLines.reduce((s, l) => s + l.price * l.quantity, 0);
-                return (
-                  <button
-                    key={t.id}
-                    onClick={() => applyTemplate(t)}
-                    className={`text-left p-3 rounded-lg border-2 transition-all hover:shadow-md ${
-                      isSelected
-                        ? 'border-primary bg-primary/5 shadow-sm'
-                        : 'border-border hover:border-primary/50'
-                    }`}
-                  >
-                    <div className="font-semibold text-sm">{t.name}</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">{t.description}</div>
-                    {yearlyTotal > 0 && (
-                      <Badge variant="secondary" className="mt-1.5 text-xs">
-                        {yearlyTotal.toLocaleString('ru-RU')} ₽
-                      </Badge>
-                    )}
-                  </button>
-                );
-              })}
+          {!isEditing && (
+            <div>
+              <Label className="text-base font-semibold mb-2 block">
+                <Sparkles className="w-4 h-4 inline mr-1" />Выберите шаблон
+              </Label>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                {PROPOSAL_TEMPLATES.map(t => {
+                  const isSelected = selectedTemplate === t.id;
+                  const yearlyTotal = t.serviceLines.reduce((s, l) => s + l.price * l.quantity, 0);
+                  return (
+                    <button
+                      key={t.id}
+                      onClick={() => applyTemplate(t)}
+                      className={`text-left p-3 rounded-lg border-2 transition-all hover:shadow-md ${
+                        isSelected
+                          ? 'border-primary bg-primary/5 shadow-sm'
+                          : 'border-border hover:border-primary/50'
+                      }`}
+                    >
+                      <div className="font-semibold text-sm">{t.name}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">{t.description}</div>
+                      {yearlyTotal > 0 && (
+                        <Badge variant="secondary" className="mt-1.5 text-xs">
+                          {yearlyTotal.toLocaleString('ru-RU')} ₽
+                        </Badge>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Company info */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -299,7 +318,7 @@ export function ProposalEditor({ onClose }: Props) {
                 <Eye className="w-4 h-4 mr-1" />Предпросмотр
               </Button>
               <Button onClick={handleSave} disabled={saving || !companyName}>
-                {saving ? 'Сохранение...' : 'Создать КП'}
+                {saving ? 'Сохранение...' : isEditing ? 'Сохранить' : 'Создать КП'}
               </Button>
             </div>
           </div>
