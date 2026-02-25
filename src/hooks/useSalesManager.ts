@@ -35,6 +35,9 @@ export interface CommercialProposal {
   custom_note: string | null;
   total_amount: number;
   discount_percent: number;
+  sender_name: string | null;
+  sender_email: string | null;
+  sender_website: string | null;
   status: string;
   valid_until: string | null;
   created_at: string;

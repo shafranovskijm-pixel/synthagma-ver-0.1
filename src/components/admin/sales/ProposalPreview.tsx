@@ -136,8 +136,8 @@ function ProposalContent({ proposal, services, discountPercent = 0, senderName, 
   const total = subtotal - discountAmount;
   
   const displayName = senderName || 'СИНТАГМА';
-  const displayEmail = senderEmail || 'info@synthagma.ru';
-  const displayWebsite = senderWebsite || 'synthagma.ru';
+  const displayEmail = senderEmail || 'support@sintagma.com.ru';
+  const displayWebsite = senderWebsite || 'https://sintagma.com.ru/';
 
   return (
     <div className="proposal-print-content bg-white text-black p-8 max-w-[800px] mx-auto" style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}>

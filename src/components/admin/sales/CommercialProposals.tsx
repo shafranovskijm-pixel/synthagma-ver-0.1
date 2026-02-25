@@ -152,6 +152,9 @@ export function CommercialProposals() {
           proposal={previewProposal}
           services={previewServices}
           discountPercent={previewProposal.discount_percent || 0}
+          senderName={previewProposal.sender_name || undefined}
+          senderEmail={previewProposal.sender_email || undefined}
+          senderWebsite={previewProposal.sender_website || undefined}
         />
       )}
     </div>
