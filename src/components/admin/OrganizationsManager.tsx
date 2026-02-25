@@ -410,16 +410,17 @@ export function OrganizationsManager() {
       });
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
       toast({ title: "Успешно", description: "Пароль изменён" });
       setResetPasswordOrg(null);
       setNewPassword("");
       fetchOrganizations();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error resetting password:", error);
       toast({
         title: "Ошибка",
-        description: "Не удалось сбросить пароль",
+        description: error?.message || "Не удалось сбросить пароль",
         variant: "destructive",
       });
     } finally {
