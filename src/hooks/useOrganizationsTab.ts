@@ -49,28 +49,32 @@ export function useOrganizationsTab({ activeTab }: UseOrganizationsTabProps) {
           .order("created_at", { ascending: false });
         
         if (error) throw error;
-        
-        const orgsWithStats = await Promise.all(
-          (orgs || []).map(async (org) => {
-            const { count: orgCoursesCount } = await supabase
-              .from("courses")
-              .select("*", { count: "exact", head: true })
-              .eq("organization_id", org.id);
-            
-            const { data: profiles } = await supabase
-              .from("profiles")
-              .select("id", { count: "exact", head: true })
-              .eq("organization_id", org.id);
-            
-            return {
-              ...org,
-              coursesCount: orgCoursesCount || 0,
-              studentsCount: profiles?.length || 0,
-            };
-          })
-        );
-        
-        setAllOrganizations(orgsWithStats);
+        if (!orgs || orgs.length === 0) {
+          setAllOrganizations([]);
+          return;
+        }
+
+        const orgIds = orgs.map(o => o.id);
+
+        const [profilesRes, coursesRes] = await Promise.all([
+          supabase.from("profiles").select("organization_id").in("organization_id", orgIds),
+          supabase.from("courses").select("organization_id").in("organization_id", orgIds),
+        ]);
+
+        const userCounts: Record<string, number> = {};
+        const courseCounts: Record<string, number> = {};
+        (profilesRes.data || []).forEach((p: any) => {
+          userCounts[p.organization_id] = (userCounts[p.organization_id] || 0) + 1;
+        });
+        (coursesRes.data || []).forEach((c: any) => {
+          courseCounts[c.organization_id] = (courseCounts[c.organization_id] || 0) + 1;
+        });
+
+        setAllOrganizations(orgs.map(org => ({
+          ...org,
+          coursesCount: courseCounts[org.id] || 0,
+          studentsCount: userCounts[org.id] || 0,
+        })));
       } catch (error) {
         console.error("Error fetching organizations:", error);
       } finally {

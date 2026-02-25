@@ -62,28 +62,30 @@ export async function fetchAllOrganizations(): Promise<Organization[]> {
     return [];
   }
   
-  // Get stats for each organization
-  const orgsWithStats = await Promise.all(
-    (orgs || []).map(async (org) => {
-      const { count: coursesCount } = await supabase
-        .from("courses")
-        .select("*", { count: "exact", head: true })
-        .eq("organization_id", org.id);
-      
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("organization_id", org.id);
-      
-      return {
-        ...org,
-        coursesCount: coursesCount || 0,
-        studentsCount: profiles?.length || 0
-      } as Organization;
-    })
-  );
-  
-  return orgsWithStats;
+  if (!orgs || orgs.length === 0) return [];
+
+  const orgIds = orgs.map(o => o.id);
+
+  // Two aggregated queries instead of N individual ones
+  const [profilesRes, coursesRes] = await Promise.all([
+    supabase.from("profiles").select("organization_id").in("organization_id", orgIds),
+    supabase.from("courses").select("organization_id").in("organization_id", orgIds),
+  ]);
+
+  const userCounts: Record<string, number> = {};
+  const courseCounts: Record<string, number> = {};
+  (profilesRes.data || []).forEach(p => {
+    userCounts[p.organization_id] = (userCounts[p.organization_id] || 0) + 1;
+  });
+  (coursesRes.data || []).forEach(c => {
+    courseCounts[c.organization_id] = (courseCounts[c.organization_id] || 0) + 1;
+  });
+
+  return orgs.map(org => ({
+    ...org,
+    coursesCount: courseCounts[org.id] || 0,
+    studentsCount: userCounts[org.id] || 0,
+  } as Organization));
 }
 
 export async function updateOrganization(

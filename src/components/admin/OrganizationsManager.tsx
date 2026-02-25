@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -65,6 +66,7 @@ export function OrganizationsManager() {
   const navigate = useNavigate();
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
+  const [detailsLoading, setDetailsLoading] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [deleteOrg, setDeleteOrg] = useState<Organization | null>(null);
@@ -118,6 +120,7 @@ export function OrganizationsManager() {
 
   const fetchOrganizations = async () => {
     try {
+      // Phase 1: Load org list immediately
       const { data, error } = await supabase
         .from("organizations")
         .select("*, is_paid, paid_until, tariff_type, monthly_price, subscription_plan, promo_code")
@@ -125,24 +128,58 @@ export function OrganizationsManager() {
 
       if (error) throw error;
 
-      // Get counts and credentials for each org
-      const orgsWithCounts = await Promise.all(
-        (data || []).map(async (org) => {
-          const [usersResult, coursesResult, credentialsResult] = await Promise.all([
-            supabase.from("profiles").select("id", { count: "exact" }).eq("organization_id", org.id),
-            supabase.from("courses").select("id", { count: "exact" }).eq("organization_id", org.id),
-            supabase.rpc("get_decrypted_org_credentials", { p_organization_id: org.id }).then(res => ({ data: res.data?.[0] || null, error: res.error })),
-          ]);
-          return {
-            ...org,
-            users_count: usersResult.count || 0,
-            courses_count: coursesResult.count || 0,
-            credentials: credentialsResult.data || null,
-          };
-        })
-      );
+      const orgs = (data || []).map(org => ({
+        ...org,
+        users_count: undefined as number | undefined,
+        courses_count: undefined as number | undefined,
+        credentials: undefined as Organization["credentials"] | undefined,
+      }));
 
-      setOrganizations(orgsWithCounts);
+      setOrganizations(orgs);
+      setLoading(false);
+
+      // Phase 2: Load aggregated counts + credentials in background
+      setDetailsLoading(true);
+      const orgIds = orgs.map(o => o.id);
+
+      const [profilesRes, coursesRes, ...credResults] = await Promise.all([
+        // One query for all profile counts
+        supabase.from("profiles").select("organization_id").in("organization_id", orgIds),
+        // One query for all course counts
+        supabase.from("courses").select("organization_id").in("organization_id", orgIds),
+        // Batch credentials for all orgs
+        ...orgIds.map(id =>
+          supabase.rpc("get_decrypted_org_credentials", { p_organization_id: id })
+            .then(res => ({ orgId: id, data: res.data?.[0] || null }))
+        ),
+      ]);
+
+      // Aggregate counts
+      const userCounts: Record<string, number> = {};
+      const courseCounts: Record<string, number> = {};
+      (profilesRes.data || []).forEach(p => {
+        userCounts[p.organization_id] = (userCounts[p.organization_id] || 0) + 1;
+      });
+      (coursesRes.data || []).forEach(c => {
+        courseCounts[c.organization_id] = (courseCounts[c.organization_id] || 0) + 1;
+      });
+
+      // Build credentials map
+      const credMap: Record<string, any> = {};
+      credResults.forEach((cr: any) => {
+        credMap[cr.orgId] = cr.data;
+      });
+
+      // Merge into state
+      setOrganizations(prev =>
+        prev.map(org => ({
+          ...org,
+          users_count: userCounts[org.id] || 0,
+          courses_count: courseCounts[org.id] || 0,
+          credentials: credMap[org.id] || null,
+        }))
+      );
+      setDetailsLoading(false);
     } catch (error) {
       console.error("Error fetching organizations:", error);
       toast({
@@ -150,8 +187,8 @@ export function OrganizationsManager() {
         description: "Не удалось загрузить организации",
         variant: "destructive",
       });
-    } finally {
       setLoading(false);
+      setDetailsLoading(false);
     }
   };
 
@@ -773,7 +810,12 @@ export function OrganizationsManager() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {org.credentials ? (
+                      {org.credentials === undefined && detailsLoading ? (
+                        <div className="space-y-1.5">
+                          <Skeleton className="h-4 w-32" />
+                          <Skeleton className="h-4 w-24" />
+                        </div>
+                      ) : org.credentials ? (
                         <div className="space-y-1">
                           <div className="flex items-center gap-1">
                             <Key className="w-3 h-3 text-muted-foreground" />
@@ -852,14 +894,23 @@ export function OrganizationsManager() {
                     </TableCell>
                     <TableCell className="text-center">
                       <div className="flex items-center justify-center gap-1.5">
-                        <Badge variant="secondary" className="gap-1 text-xs">
-                          <Users className="w-3 h-3" />
-                          {org.users_count}
-                        </Badge>
-                        <Badge variant="secondary" className="gap-1 text-xs">
-                          <BookOpen className="w-3 h-3" />
-                          {org.courses_count}
-                        </Badge>
+                        {org.users_count === undefined && detailsLoading ? (
+                          <>
+                            <Skeleton className="h-5 w-12 rounded-full" />
+                            <Skeleton className="h-5 w-12 rounded-full" />
+                          </>
+                        ) : (
+                          <>
+                            <Badge variant="secondary" className="gap-1 text-xs">
+                              <Users className="w-3 h-3" />
+                              {org.users_count ?? 0}
+                            </Badge>
+                            <Badge variant="secondary" className="gap-1 text-xs">
+                              <BookOpen className="w-3 h-3" />
+                              {org.courses_count ?? 0}
+                            </Badge>
+                          </>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
