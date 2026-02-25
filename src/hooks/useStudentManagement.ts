@@ -45,7 +45,7 @@ export function useStudentManagement({
   const [isEnrollingExisting, setIsEnrollingExisting] = useState(false);
 
   // Create student
-  const createStudent = useCallback(async (overrides?: { name?: string; email?: string; courseId?: string; companyId?: string }) => {
+  const createStudent = useCallback(async (overrides?: { name?: string; email?: string; courseIds?: string[]; companyId?: string; login?: string; password?: string }) => {
     if (checkStudentLimit) {
       const result = checkStudentLimit();
       if (!result.allowed) {
@@ -55,8 +55,10 @@ export function useStudentManagement({
     }
     const effectiveName = overrides?.name ?? newStudentName;
     const effectiveEmail = overrides?.email ?? newStudentEmail;
-    const effectiveCourseId = overrides?.courseId ?? selectedCourseId;
+    const effectiveCourseIds = overrides?.courseIds ?? (selectedCourseId ? [selectedCourseId] : []);
     const effectiveCompanyId = overrides?.companyId ?? selectedCompanyId;
+    const customLogin = overrides?.login || undefined;
+    const customPassword = overrides?.password || undefined;
 
     if (!organizationId || !effectiveName.trim()) {
       toast.error("Заполните ФИО");
@@ -69,7 +71,8 @@ export function useStudentManagement({
     
     setIsCreatingStudent(true);
     try {
-      const password = generateStrongPassword();
+      const firstCourseId = effectiveCourseIds[0] || null;
+      const password = customPassword || generateStrongPassword();
       const { data, error } = await supabase.functions.invoke("register-student", {
         body: {
           token: null,
@@ -77,38 +80,56 @@ export function useStudentManagement({
           password,
           full_name: effectiveName,
           organization_id: organizationId,
-          course_id: effectiveCourseId || null,
+          course_id: firstCourseId,
           company_id: effectiveCompanyId || null,
+          custom_login: customLogin || null,
+          custom_password: customPassword || null,
         }
       });
       
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
+      // Enroll in remaining courses
+      const remainingCourseIds = effectiveCourseIds.slice(1);
+      if (remainingCourseIds.length > 0 && data.user_id) {
+        for (const cId of remainingCourseIds) {
+          const { error: enrollErr } = await supabase.from("enrollments").insert({
+            user_id: data.user_id,
+            course_id: cId,
+            status: "active",
+            progress: 0,
+          });
+          if (enrollErr) console.error("Enrollment error for course", cId, enrollErr);
+        }
+      }
+
+      const displayPassword = data.password || password;
+      const displayLogin = data.login || customLogin;
+
       if (data.is_existing) {
         toast.success(data.message || "Ученик зачислен на курс");
       } else {
-        toast.success(`Ученик создан. Пароль: ${password} (сохраните его!)`);
+        toast.success(`Ученик создан. Логин: ${displayLogin}, Пароль: ${displayPassword}`);
       }
 
       // Add or update student in the list
-      const course = courses.find(c => c.id === effectiveCourseId);
+      const course = courses.find(c => c.id === firstCourseId);
       const newStudent: Student = {
         id: data.user_id,
         user_id: data.user_id,
         enrollment_id: null,
         name: effectiveName,
         email: effectiveEmail || "",
-        login: data.login || null,
-        generated_password: data.password || null,
+        login: data.login || customLogin || null,
+        generated_password: displayPassword || null,
         course: course?.title || null,
-        course_id: effectiveCourseId || null,
+        course_id: firstCourseId || null,
         progress: 0,
         lastActivity: new Date().toISOString(),
-        status: effectiveCourseId ? "active" : null
+        status: firstCourseId ? "active" : null
       };
 
-      // Check if student is already in the list
       const existsInList = students.some(s => s.user_id === data.user_id) || 
                           allProfiles.some(s => s.user_id === data.user_id);
       
@@ -119,7 +140,7 @@ export function useStudentManagement({
           ...prev,
           totalStudents: prev.totalStudents + 1
         }));
-      } else if (data.enrollment_created && effectiveCourseId) {
+      } else if (data.enrollment_created && firstCourseId) {
         setStudents(prev => [...prev, newStudent]);
       } else if (!existsInList) {
         setAllProfiles(prev => [...prev, newStudent]);
