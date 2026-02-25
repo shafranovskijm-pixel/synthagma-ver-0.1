@@ -61,7 +61,7 @@ const Router = isNative ? HashRouter : BrowserRouter;
 const App = () => (
   <ErrorBoundary>
     <HelmetProvider>
-      <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+      <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
         <QueryClientProvider client={queryClient}>
           <Router>
             <AuthProvider>

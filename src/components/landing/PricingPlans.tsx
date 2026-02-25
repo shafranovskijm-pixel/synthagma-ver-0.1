@@ -1,10 +1,26 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Check, X, Crown, Sparkles } from "lucide-react";
+import { Check, X, Crown, Sparkles, Info } from "lucide-react";
 import { Link } from "react-router-dom";
 import { SUBSCRIPTION_PLANS, YEARLY_DISCOUNT, formatStorageSize, type SubscriptionPlan } from "@/constants/subscriptionPlans";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 const planOrder: SubscriptionPlan[] = ['free', 'start', 'standard', 'professional', 'maximum'];
+
+const featureDescriptions: Record<string, { description: string; minPlan: string }> = {
+  "Настройки курсов": { description: "Запрет перемотки видео, последовательное прохождение уроков, ограничение по времени. Контролируйте процесс обучения.", minPlan: "Старт" },
+  "Магазин курсов": { description: "Витрина курсов для самостоятельной записи учеников. Настройте цены и описания.", minPlan: "Бесплатный" },
+  "Чек-лист документов": { description: "Автоматический сбор документов от учеников. Настройте список необходимых документов для каждого курса.", minPlan: "Стандарт" },
+  "Видеоидентификация": { description: "Верификация личности ученика через видеозвонок. Соответствие требованиям 273-ФЗ.", minPlan: "Стандарт" },
+  "Брендирование": { description: "Логотип, цвета и домен вашей организации. Ученики видят вашу платформу, а не нашу.", minPlan: "Стандарт" },
+  "Документы для ЛОО": { description: "Автоматическая генерация приказов, протоколов, журналов и договоров для лицензированных образовательных организаций.", minPlan: "Профессионал" },
+  "Охрана труда": { description: "Модуль для организации обучения по охране труда с журналами и протоколами.", minPlan: "Профессионал" },
+  "ФИС ФРДО": { description: "Выгрузка данных в Федеральный реестр документов об образовании. Автоматическое формирование XML.", minPlan: "Максимум" },
+  "Отчеты 1-ПК / 1-ПО": { description: "Формирование статистических отчетов для Минобрнауки.", minPlan: "Максимум" },
+  "API для CRM": { description: "Интеграция с внешними CRM-системами через REST API.", minPlan: "Максимум" },
+  "ИИ-генерация": { description: "Автоматическое создание курсов, уроков и тестов с помощью искусственного интеллекта.", minPlan: "Старт" },
+  "ИИ-озвучка": { description: "Озвучивание текстовых уроков реалистичным голосом с помощью ИИ.", minPlan: "Стандарт" },
+};
 
 const featureRows: { label: string; link?: string; getValue: (p: SubscriptionPlan) => string | boolean }[] = [
   { label: "Курсы", getValue: (p: SubscriptionPlan) => {
@@ -252,10 +268,29 @@ export function PricingPlans() {
                                 {val === 'Безлимит' ? '∞' : val}
                               </span>
                             )}
-                            {row.link ? (
-                              <Link to={row.link} className={`underline decoration-dotted underline-offset-2 hover:text-accent transition-colors ${isBool && !val ? 'text-muted-foreground/50' : 'text-foreground/80'}`}>
-                                {row.label}
-                              </Link>
+                            {featureDescriptions[row.label] ? (
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <button className={`inline-flex items-center gap-1 text-left decoration-dotted underline-offset-2 hover:underline hover:text-accent transition-colors ${isBool && !val ? 'text-muted-foreground/50' : 'text-foreground/80'}`}>
+                                    {row.label}
+                                    <Info className="w-3 h-3 text-muted-foreground shrink-0" />
+                                  </button>
+                                </PopoverTrigger>
+                                <PopoverContent side="top" className="w-72 text-sm">
+                                  <div className="space-y-2">
+                                    <p className="font-semibold">{row.label}</p>
+                                    <p className="text-muted-foreground text-xs leading-relaxed">{featureDescriptions[row.label].description}</p>
+                                    <span className="inline-block text-[10px] font-medium px-2 py-0.5 rounded-full bg-accent/10 text-accent">
+                                      от тарифа «{featureDescriptions[row.label].minPlan}»
+                                    </span>
+                                    {row.link && (
+                                      <Link to={row.link} className="block text-xs text-accent hover:underline mt-1">
+                                        Подробнее →
+                                      </Link>
+                                    )}
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
                             ) : (
                               <span className={isBool && !val ? 'text-muted-foreground/50' : 'text-foreground/80'}>
                                 {row.label}
