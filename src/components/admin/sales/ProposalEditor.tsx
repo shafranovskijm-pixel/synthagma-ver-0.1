@@ -40,9 +40,9 @@ export function ProposalEditor({ onClose, editProposal, editServices }: Props) {
   const [managerId, setManagerId] = useState<string>(editProposal?.manager_id || '');
   const [customNote, setCustomNote] = useState(editProposal?.custom_note || '');
   const [validUntil, setValidUntil] = useState(editProposal?.valid_until || '');
-  const [senderName, setSenderName] = useState('СИНТАГМА');
-  const [senderEmail, setSenderEmail] = useState('info@synthagma.ru');
-  const [senderWebsite, setSenderWebsite] = useState('synthagma.ru');
+  const [senderName, setSenderName] = useState(editProposal?.sender_name || 'СИНТАГМА');
+  const [senderEmail, setSenderEmail] = useState(editProposal?.sender_email || 'support@sintagma.com.ru');
+  const [senderWebsite, setSenderWebsite] = useState(editProposal?.sender_website || 'https://sintagma.com.ru/');
   const [serviceLines, setServiceLines] = useState<ServiceLine[]>(
     editServices?.map(s => ({
       custom_name: s.custom_name,
@@ -124,6 +124,9 @@ export function ProposalEditor({ onClose, editProposal, editServices }: Props) {
       custom_note: customNote || undefined,
       total_amount: totalAmount,
       discount_percent: discountPercent,
+      sender_name: senderName,
+      sender_email: senderEmail,
+      sender_website: senderWebsite,
       valid_until: validUntil || undefined,
     } as any;
 
@@ -149,6 +152,9 @@ export function ProposalEditor({ onClose, editProposal, editServices }: Props) {
     custom_note: customNote || null,
     total_amount: totalAmount,
     discount_percent: discountPercent,
+    sender_name: senderName,
+    sender_email: senderEmail,
+    sender_website: senderWebsite,
     status: 'draft',
     valid_until: validUntil || null,
     created_at: editProposal?.created_at || new Date().toISOString(),

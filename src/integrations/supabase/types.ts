@@ -310,6 +310,9 @@ export type Database = {
           discount_percent: number | null
           id: string
           manager_id: string | null
+          sender_email: string | null
+          sender_name: string | null
+          sender_website: string | null
           status: string
           tariff_plan: string | null
           total_amount: number
@@ -328,6 +331,9 @@ export type Database = {
           discount_percent?: number | null
           id?: string
           manager_id?: string | null
+          sender_email?: string | null
+          sender_name?: string | null
+          sender_website?: string | null
           status?: string
           tariff_plan?: string | null
           total_amount?: number
@@ -346,6 +352,9 @@ export type Database = {
           discount_percent?: number | null
           id?: string
           manager_id?: string | null
+          sender_email?: string | null
+          sender_name?: string | null
+          sender_website?: string | null
           status?: string
           tariff_plan?: string | null
           total_amount?: number

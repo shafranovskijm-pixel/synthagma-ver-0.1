@@ -76,7 +76,7 @@ export default function ProposalPublic() {
         </div>
         <div className="py-8 print:py-0">
           <div className="bg-white shadow-lg mx-auto print:shadow-none" style={{ maxWidth: 900 }}>
-            <ProposalContent proposal={proposal} services={services} discountPercent={proposal.discount_percent || 0} />
+            <ProposalContent proposal={proposal} services={services} discountPercent={proposal.discount_percent || 0} senderName={proposal.sender_name || undefined} senderEmail={proposal.sender_email || undefined} senderWebsite={proposal.sender_website || undefined} />
           </div>
         </div>
       </div>
