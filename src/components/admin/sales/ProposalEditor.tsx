@@ -36,6 +36,9 @@ export function ProposalEditor({ onClose }: Props) {
   const [managerId, setManagerId] = useState<string>('');
   const [customNote, setCustomNote] = useState('');
   const [validUntil, setValidUntil] = useState('');
+  const [senderName, setSenderName] = useState('СИНТАГМА');
+  const [senderEmail, setSenderEmail] = useState('info@synthagma.ru');
+  const [senderWebsite, setSenderWebsite] = useState('synthagma.ru');
   const [serviceLines, setServiceLines] = useState<ServiceLine[]>([]);
   const [saving, setSaving] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
@@ -256,6 +259,16 @@ export function ProposalEditor({ onClose }: Props) {
             ))}
           </div>
 
+          {/* Sender info */}
+          <div className="space-y-2">
+            <Label className="text-base font-semibold">Шапка КП (от кого)</Label>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div><Label>Название компании</Label><Input value={senderName} onChange={e => setSenderName(e.target.value)} placeholder="СИНТАГМА" /></div>
+              <div><Label>Email отправителя</Label><Input value={senderEmail} onChange={e => setSenderEmail(e.target.value)} placeholder="info@synthagma.ru" /></div>
+              <div><Label>Сайт</Label><Input value={senderWebsite} onChange={e => setSenderWebsite(e.target.value)} placeholder="synthagma.ru" /></div>
+            </div>
+          </div>
+
           {/* Note */}
           <div><Label>Примечание</Label><Textarea value={customNote} onChange={e => setCustomNote(e.target.value)} placeholder="Персональное предложение..." /></div>
 
@@ -298,6 +311,10 @@ export function ProposalEditor({ onClose }: Props) {
         onClose={() => setShowPreview(false)}
         proposal={previewProposal}
         services={previewServices}
+        discountPercent={discountPercent}
+        senderName={senderName}
+        senderEmail={senderEmail}
+        senderWebsite={senderWebsite}
       />
     </>
   );
