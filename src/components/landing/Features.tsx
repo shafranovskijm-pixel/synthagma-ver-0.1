@@ -387,14 +387,15 @@ export function Features() {
                 <Download className="w-5 h-5" />
                 <span className="text-sm font-medium">Установить приложение</span>
               </Link>
-              <a
-                href="/downloads/app-debug.apk"
-                download
+              <button
+                onClick={() => {
+                  import('sonner').then(({ toast }) => toast.info('В разработке, скоро будет доступно'));
+                }}
                 className="inline-flex items-center gap-2 px-5 py-3 rounded-lg border border-foreground/20 text-foreground hover:bg-foreground/10 transition-colors"
               >
                 <Download className="w-5 h-5" />
                 <span className="text-sm font-medium">Скачать APK</span>
-              </a>
+              </button>
             </div>
           </motion.div>
 
