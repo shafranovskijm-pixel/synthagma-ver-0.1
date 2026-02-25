@@ -49,6 +49,7 @@ const PublicOffer = lazy(() => import("./pages/PublicOffer"));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 const PersonalDataPolicy = lazy(() => import("./pages/PersonalDataPolicy"));
 const NotFound = lazy(() => import("./pages/NotFound"));
+const ProposalPublic = lazy(() => import("./pages/ProposalPublic"));
 
 const queryClient = new QueryClient();
 
@@ -151,6 +152,7 @@ const App = () => (
                       </ProtectedRoute>
                     } />
                     <Route path="/learning/:courseId" element={<LearningRedirect />} />
+                    <Route path="/proposal/:id" element={<ProposalPublic />} />
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                     <Route path="*" element={<NotFound />} />
                   </Routes>

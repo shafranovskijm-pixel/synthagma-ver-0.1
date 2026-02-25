@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
-import { Plus, Eye, Trash2, Send, FileText } from 'lucide-react';
+import { Plus, Eye, Trash2, Send, FileText, Link2, Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useSalesManager, type CommercialProposal } from '@/hooks/useSalesManager';
+import { useSalesManager, type CommercialProposal, type ProposalServiceItem } from '@/hooks/useSalesManager';
 import { ProposalEditor } from './ProposalEditor';
+import { ProposalPreview } from './ProposalPreview';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
+import { toast } from '@/hooks/use-toast';
 
 const STATUS_MAP: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
   draft: { label: 'Черновик', variant: 'secondary' },
@@ -18,9 +20,11 @@ const STATUS_MAP: Record<string, { label: string; variant: 'default' | 'secondar
 };
 
 export function CommercialProposals() {
-  const { proposals, fetchProposals, updateProposalStatus, deleteProposal, managers, fetchManagers } = useSalesManager();
+  const { proposals, fetchProposals, updateProposalStatus, deleteProposal, getProposalServices, managers, fetchManagers } = useSalesManager();
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [editorOpen, setEditorOpen] = useState(false);
+  const [previewProposal, setPreviewProposal] = useState<CommercialProposal | null>(null);
+  const [previewServices, setPreviewServices] = useState<ProposalServiceItem[]>([]);
 
   useEffect(() => { fetchProposals(); fetchManagers(); }, [fetchProposals, fetchManagers]);
 
@@ -29,6 +33,18 @@ export function CommercialProposals() {
   const getManagerName = (managerId: string | null) => {
     if (!managerId) return '—';
     return managers.find(m => m.id === managerId)?.full_name || '—';
+  };
+
+  const openPreview = async (p: CommercialProposal) => {
+    const svcs = await getProposalServices(p.id);
+    setPreviewServices(svcs);
+    setPreviewProposal(p);
+  };
+
+  const copyLink = (p: CommercialProposal) => {
+    const url = `${window.location.origin}/proposal/${p.id}`;
+    navigator.clipboard.writeText(url);
+    toast({ title: 'Ссылка скопирована', description: url });
   };
 
   return (
@@ -79,6 +95,12 @@ export function CommercialProposals() {
                   <div className="flex flex-col items-end gap-2">
                     <span className="font-bold text-lg">{p.total_amount.toLocaleString('ru-RU')} ₽</span>
                     <div className="flex gap-1">
+                      <Button variant="outline" size="icon" title="Предпросмотр" onClick={() => openPreview(p)}>
+                        <Eye className="w-4 h-4" />
+                      </Button>
+                      <Button variant="outline" size="icon" title="Скопировать ссылку" onClick={() => copyLink(p)}>
+                        <Link2 className="w-4 h-4" />
+                      </Button>
                       {p.status === 'draft' && (
                         <Button variant="outline" size="sm" onClick={() => updateProposalStatus(p.id, 'sent')}>
                           <Send className="w-3 h-3 mr-1" />Отправить
@@ -96,6 +118,15 @@ export function CommercialProposals() {
         })}
         {filtered.length === 0 && <p className="text-center text-muted-foreground py-8">Нет коммерческих предложений</p>}
       </div>
+
+      {previewProposal && (
+        <ProposalPreview
+          open={!!previewProposal}
+          onClose={() => setPreviewProposal(null)}
+          proposal={previewProposal}
+          services={previewServices}
+        />
+      )}
     </div>
   );
 }
