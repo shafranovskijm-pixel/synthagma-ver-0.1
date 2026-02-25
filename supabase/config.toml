@@ -62,3 +62,45 @@ verify_jwt = false
 
 [functions.create-company-user]
 verify_jwt = false
+
+[functions.reset-org-password]
+verify_jwt = false
+
+[functions.reset-student-password]
+verify_jwt = false
+
+[functions.update-org-credentials]
+verify_jwt = false
+
+[functions.update-student-credentials]
+verify_jwt = false
+
+[functions.send-email]
+verify_jwt = false
+
+[functions.send-password-reset]
+verify_jwt = false
+
+[functions.test-smtp]
+verify_jwt = false
+
+[functions.generate-org-credentials]
+verify_jwt = false
+
+[functions.generate-blog-post]
+verify_jwt = false
+
+[functions.generate-image]
+verify_jwt = false
+
+[functions.elevenlabs-tts]
+verify_jwt = false
+
+[functions.grade-test]
+verify_jwt = false
+
+[functions.get-test-results]
+verify_jwt = false
+
+[functions.process-reminders]
+verify_jwt = false
