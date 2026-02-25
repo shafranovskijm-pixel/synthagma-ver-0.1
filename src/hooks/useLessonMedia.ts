@@ -77,7 +77,7 @@ export function useLessonMedia(
     return { baseUrl, apiKey, authToken, bucketName, useExternal: !!useExternal };
   }, []);
 
-  const handleVideoUpload = useCallback(async (file: File) => {
+  const handleVideoUpload = useCallback(async (file: File, skipCompression = false) => {
     if (file.size > SIZE_2GB) { toast.error("Файл слишком большой. Максимум 2 ГБ"); return; }
     if (!courseId) { toast.error("Сначала сохраните курс"); return; }
 
@@ -85,8 +85,8 @@ export function useLessonMedia(
     try {
       let fileToUpload: File = file;
 
-      // Compress only files 500MB–1GB; skip for >1GB (browser memory limit)
-      if (file.size > SIZE_500MB && file.size <= SIZE_1GB) {
+      // Compress only files 500MB–1GB; skip for >1GB (browser memory limit) or if user opted out
+      if (!skipCompression && file.size > SIZE_500MB && file.size <= SIZE_1GB) {
         try {
           setCompressionProgress(0);
           toast.info("Файл больше 500 МБ — запускаем сжатие...");
@@ -102,6 +102,8 @@ export function useLessonMedia(
         }
       } else if (file.size > SIZE_1GB) {
         toast.info("Файл больше 1 ГБ — загрузка без сжатия, это может занять время...", { duration: 6000 });
+      } else if (skipCompression && file.size > SIZE_500MB) {
+        toast.info("Загрузка без сжатия...", { duration: 3000 });
       }
 
       const fileExt = fileToUpload.name.split('.').pop()?.toLowerCase() || 'mp4';
