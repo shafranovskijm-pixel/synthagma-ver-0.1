@@ -72,7 +72,7 @@ serve(async (req) => {
       );
     }
 
-    const { email, password, full_name, organization_id, course_id, company_id } = await req.json();
+    const { email, password, full_name, organization_id, course_id, company_id, custom_login, custom_password } = await req.json();
 
     console.log(`Registering student: ${full_name} (${email}) for org: ${organization_id}`);
 
@@ -173,8 +173,25 @@ serve(async (req) => {
     };
 
     if (!isExisting) {
-      generatedLogin = await generateLogin();
-      generatedPassword = password || generatePassword();
+      // Use custom login if provided, otherwise generate one
+      if (custom_login) {
+        // Check uniqueness of custom login
+        const { data: existingLogin } = await supabaseAdmin
+          .from("profiles")
+          .select("id")
+          .eq("login", custom_login)
+          .maybeSingle();
+        if (existingLogin) {
+          return new Response(
+            JSON.stringify({ error: `Логин "${custom_login}" уже занят. Выберите другой.` }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        generatedLogin = custom_login;
+      } else {
+        generatedLogin = await generateLogin();
+      }
+      generatedPassword = custom_password || password || generatePassword();
       const authEmail = `${generatedLogin}@student.local`;
       
       const { data: authData, error: createAuthError } = await supabaseAdmin.auth.admin.createUser({
