@@ -40,6 +40,7 @@ export function ProposalEditor({ onClose }: Props) {
   const [saving, setSaving] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
+  const [discountPercent, setDiscountPercent] = useState<number>(0);
 
   useEffect(() => { fetchServices(); fetchManagers(); }, [fetchServices, fetchManagers]);
 
@@ -83,7 +84,9 @@ export function ProposalEditor({ onClose }: Props) {
     setServiceLines(prev => prev.filter((_, i) => i !== index));
   };
 
-  const totalAmount = serviceLines.reduce((sum, l) => sum + l.price * l.quantity, 0);
+  const subtotal = serviceLines.reduce((sum, l) => sum + l.price * l.quantity, 0);
+  const discountAmount = Math.round(subtotal * discountPercent / 100);
+  const totalAmount = subtotal - discountAmount;
 
   const handleSave = async () => {
     if (!companyName) return;
@@ -256,9 +259,28 @@ export function ProposalEditor({ onClose }: Props) {
           {/* Note */}
           <div><Label>Примечание</Label><Textarea value={customNote} onChange={e => setCustomNote(e.target.value)} placeholder="Персональное предложение..." /></div>
 
-          {/* Total + Save */}
-          <div className="flex items-center justify-between pt-4 border-t border-border">
-            <span className="text-xl font-bold">Итого: {totalAmount.toLocaleString('ru-RU')} ₽</span>
+          {/* Discount + Total */}
+          <div className="flex flex-wrap items-center gap-4 pt-4 border-t border-border">
+            <div className="flex items-center gap-2">
+              <Label className="whitespace-nowrap">Скидка, %</Label>
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                value={discountPercent}
+                onChange={e => setDiscountPercent(Math.min(100, Math.max(0, Number(e.target.value))))}
+                className="w-20"
+              />
+            </div>
+            <div className="flex-1 text-right">
+              {discountPercent > 0 && (
+                <div className="text-sm text-muted-foreground">
+                  <span className="line-through">{subtotal.toLocaleString('ru-RU')} ₽</span>
+                  <span className="ml-2 text-destructive">−{discountAmount.toLocaleString('ru-RU')} ₽</span>
+                </div>
+              )}
+              <span className="text-xl font-bold">Итого: {totalAmount.toLocaleString('ru-RU')} ₽</span>
+            </div>
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setShowPreview(true)} disabled={serviceLines.length === 0}>
                 <Eye className="w-4 h-4 mr-1" />Предпросмотр
