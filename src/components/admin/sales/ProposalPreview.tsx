@@ -14,6 +14,10 @@ interface Props {
   proposal: CommercialProposal;
   services: ProposalServiceItem[];
   showActions?: boolean;
+  discountPercent?: number;
+  senderName?: string;
+  senderEmail?: string;
+  senderWebsite?: string;
 }
 
 function formatMoney(n: number) {
@@ -117,8 +121,23 @@ function TariffComparisonTable() {
   );
 }
 
-function ProposalContent({ proposal, services }: { proposal: CommercialProposal; services: ProposalServiceItem[] }) {
-  const total = services.reduce((s, l) => s + l.price * l.quantity, 0) || proposal.total_amount;
+interface ContentProps {
+  proposal: CommercialProposal;
+  services: ProposalServiceItem[];
+  discountPercent?: number;
+  senderName?: string;
+  senderEmail?: string;
+  senderWebsite?: string;
+}
+
+function ProposalContent({ proposal, services, discountPercent = 0, senderName, senderEmail, senderWebsite }: ContentProps) {
+  const subtotal = services.reduce((s, l) => s + l.price * l.quantity, 0) || proposal.total_amount;
+  const discountAmount = Math.round(subtotal * discountPercent / 100);
+  const total = subtotal - discountAmount;
+  
+  const displayName = senderName || 'СИНТАГМА';
+  const displayEmail = senderEmail || 'info@synthagma.ru';
+  const displayWebsite = senderWebsite || 'synthagma.ru';
 
   return (
     <div className="proposal-print-content bg-white text-black p-8 max-w-[800px] mx-auto" style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}>
@@ -129,13 +148,13 @@ function ProposalContent({ proposal, services }: { proposal: CommercialProposal;
             Σ
           </div>
           <div>
-            <div className="text-xl font-bold tracking-tight" style={{ fontFamily: "'Inter', sans-serif" }}>СИНТАГМА</div>
+            <div className="text-xl font-bold tracking-tight" style={{ fontFamily: "'Inter', sans-serif" }}>{displayName}</div>
             <div className="text-xs text-gray-500" style={{ fontFamily: "'Inter', sans-serif" }}>Платформа дистанционного обучения</div>
           </div>
         </div>
         <div className="text-right text-sm text-gray-600" style={{ fontFamily: "'Inter', sans-serif" }}>
-          <div>synthagma.ru</div>
-          <div>info@synthagma.ru</div>
+          <div>{displayWebsite}</div>
+          <div>{displayEmail}</div>
         </div>
       </div>
 
@@ -184,6 +203,18 @@ function ProposalContent({ proposal, services }: { proposal: CommercialProposal;
           ))}
         </tbody>
         <tfoot>
+          {discountPercent > 0 && (
+            <>
+              <tr className="bg-gray-100 font-medium">
+                <td colSpan={4} className="p-2 text-right">Подытог:</td>
+                <td className="p-2 text-right">{formatMoney(subtotal)} ₽</td>
+              </tr>
+              <tr className="bg-gray-100 font-medium" style={{ color: '#c0392b' }}>
+                <td colSpan={4} className="p-2 text-right">Скидка {discountPercent}%:</td>
+                <td className="p-2 text-right">−{formatMoney(discountAmount)} ₽</td>
+              </tr>
+            </>
+          )}
           <tr className="bg-black text-white font-bold">
             <td colSpan={4} className="p-2 text-right">ИТОГО:</td>
             <td className="p-2 text-right">{formatMoney(total)} ₽</td>
@@ -217,7 +248,7 @@ function ProposalContent({ proposal, services }: { proposal: CommercialProposal;
   );
 }
 
-export function ProposalPreview({ open, onClose, proposal, services, showActions = true }: Props) {
+export function ProposalPreview({ open, onClose, proposal, services, showActions = true, discountPercent = 0, senderName, senderEmail, senderWebsite }: Props) {
   const contentRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = () => {
@@ -273,7 +304,7 @@ export function ProposalPreview({ open, onClose, proposal, services, showActions
           </div>
         )}
         <div ref={contentRef} className="p-4">
-          <ProposalContent proposal={proposal} services={services} />
+          <ProposalContent proposal={proposal} services={services} discountPercent={discountPercent} senderName={senderName} senderEmail={senderEmail} senderWebsite={senderWebsite} />
         </div>
       </DialogContent>
     </Dialog>
