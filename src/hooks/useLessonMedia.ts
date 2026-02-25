@@ -3,6 +3,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ContentBlock } from "@/components/course-builder/BlockEditor";
 
+const SIZE_100MB = 100 * 1024 * 1024;
+const SIZE_500MB = 500 * 1024 * 1024;
+const SIZE_1GB = 1024 * 1024 * 1024;
+const SIZE_2GB = 2 * 1024 * 1024 * 1024;
+
 export function useLessonMedia(
   lessonId: string,
   courseId: string | undefined,
@@ -52,18 +57,36 @@ export function useLessonMedia(
   const [compressionProgress, setCompressionProgress] = useState<number | null>(null);
   const videoUploadXhrRef = useRef<XMLHttpRequest | null>(null);
   const videoInputRef = useRef<HTMLInputElement | null>(null);
+  const tusAbortRef = useRef<AbortController | null>(null);
+
+  const getStorageConfig = useCallback(async () => {
+    let externalConfig: { configured: boolean; url: string | null; key: string | null } | null = null;
+    try { const { data } = await supabase.functions.invoke('get-external-storage-config'); externalConfig = data; } catch {}
+
+    const useExternal = externalConfig?.configured && externalConfig?.url && externalConfig?.key;
+    const baseUrl = useExternal ? externalConfig!.url! : import.meta.env.VITE_SUPABASE_URL;
+    const apiKey = useExternal ? externalConfig!.key! : import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+    const bucketName = useExternal ? 'course-videos' : 'course-files';
+
+    let authToken = apiKey;
+    if (!useExternal) {
+      const { data: session } = await supabase.auth.getSession();
+      authToken = session?.session?.access_token || apiKey;
+    }
+
+    return { baseUrl, apiKey, authToken, bucketName, useExternal: !!useExternal };
+  }, []);
 
   const handleVideoUpload = useCallback(async (file: File) => {
-    const maxSize = 2 * 1024 * 1024 * 1024; // 2 GB
-    if (file.size > maxSize) { toast.error("Файл слишком большой. Максимум 2 ГБ"); return; }
+    if (file.size > SIZE_2GB) { toast.error("Файл слишком большой. Максимум 2 ГБ"); return; }
     if (!courseId) { toast.error("Сначала сохраните курс"); return; }
 
     setVideoUploadProgress(0);
     try {
-      const compressionThreshold = 500 * 1024 * 1024; // 500 MB
-      let fileToUpload = file;
+      let fileToUpload: File = file;
 
-      if (file.size > compressionThreshold) {
+      // Compress only files 500MB–1GB; skip for >1GB (browser memory limit)
+      if (file.size > SIZE_500MB && file.size <= SIZE_1GB) {
         try {
           setCompressionProgress(0);
           toast.info("Файл больше 500 МБ — запускаем сжатие...");
@@ -77,61 +100,112 @@ export function useLessonMedia(
           setCompressionProgress(null);
           fileToUpload = file;
         }
+      } else if (file.size > SIZE_1GB) {
+        toast.info("Файл больше 1 ГБ — загрузка без сжатия, это может занять время...", { duration: 6000 });
       }
 
       const fileExt = fileToUpload.name.split('.').pop()?.toLowerCase() || 'mp4';
       const fileName = `video_${lessonId}_${Date.now()}.${fileExt}`;
       const filePath = `${courseId}/${fileName}`;
 
-      let externalConfig: { configured: boolean; url: string | null; key: string | null } | null = null;
-      try { const { data } = await supabase.functions.invoke('get-external-storage-config'); externalConfig = data; } catch {}
+      const config = await getStorageConfig();
 
-      const useExternal = externalConfig?.configured && externalConfig?.url && externalConfig?.key;
-      const baseUrl = useExternal ? externalConfig!.url : import.meta.env.VITE_SUPABASE_URL;
-      const apiKey = useExternal ? externalConfig!.key : import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-      const bucketName = useExternal ? 'course-videos' : 'course-files';
-
-      let authToken = apiKey;
-      if (!useExternal) {
-        const { data: session } = await supabase.auth.getSession();
-        authToken = session?.session?.access_token || apiKey;
+      // Use TUS (chunked) for files > 100 MB, XHR for smaller
+      if (fileToUpload.size > SIZE_100MB) {
+        await uploadViaTus(fileToUpload, filePath, config);
+      } else {
+        await uploadViaXhr(fileToUpload, filePath, config);
       }
+    } catch (error: any) {
+      console.error("Video upload error:", error);
+      toast.error(`Ошибка загрузки: ${error.message}`);
+      setVideoUploadProgress(null);
+      videoUploadXhrRef.current = null;
+      tusAbortRef.current = null;
+      if (videoInputRef.current) videoInputRef.current.value = '';
+    }
+  }, [courseId, lessonId, onUpdate, getStorageConfig]);
 
-      const xhr = new XMLHttpRequest();
-      videoUploadXhrRef.current = xhr;
-      const uploadUrl = `${baseUrl}/storage/v1/object/${bucketName}/${filePath}`;
+  const uploadViaTus = useCallback(async (
+    fileToUpload: File | Blob,
+    filePath: string,
+    config: { baseUrl: string; apiKey: string; authToken: string; bucketName: string; useExternal: boolean }
+  ) => {
+    const { tusUpload } = await import("@/utils/tusUpload");
+    const abortController = new AbortController();
+    tusAbortRef.current = abortController;
 
+    const result = await tusUpload({
+      file: fileToUpload,
+      bucket: config.bucketName,
+      path: filePath,
+      baseUrl: config.baseUrl,
+      apiKey: config.apiKey,
+      authToken: config.authToken,
+      onProgress: (percent) => setVideoUploadProgress(percent),
+      onStall: () => {
+        toast.warning("Загрузка замедлилась. Проверьте интернет-соединение.", { duration: 5000 });
+      },
+      signal: abortController.signal,
+    });
+
+    tusAbortRef.current = null;
+    onUpdate({ content: result.url });
+    toast.success(config.useExternal ? "Видео загружено во внешнее хранилище!" : "Видео загружено!");
+    setVideoUploadProgress(null);
+    if (videoInputRef.current) videoInputRef.current.value = '';
+  }, [onUpdate]);
+
+  const uploadViaXhr = useCallback(async (
+    fileToUpload: File | Blob,
+    filePath: string,
+    config: { baseUrl: string; apiKey: string; authToken: string; bucketName: string; useExternal: boolean }
+  ) => {
+    const xhr = new XMLHttpRequest();
+    videoUploadXhrRef.current = xhr;
+    const uploadUrl = `${config.baseUrl}/storage/v1/object/${config.bucketName}/${filePath}`;
+
+    return new Promise<void>((resolve, reject) => {
       xhr.upload.addEventListener('progress', (event) => {
         if (event.lengthComputable) setVideoUploadProgress(Math.round((event.loaded / event.total) * 100));
       });
       xhr.addEventListener('load', () => {
         videoUploadXhrRef.current = null;
         if (xhr.status >= 200 && xhr.status < 300) {
-          const publicUrl = `${baseUrl}/storage/v1/object/public/${bucketName}/${filePath}`;
+          const publicUrl = `${config.baseUrl}/storage/v1/object/public/${config.bucketName}/${filePath}`;
           onUpdate({ content: publicUrl });
-          toast.success(useExternal ? "Видео загружено во внешнее хранилище!" : "Видео загружено!");
-        } else toast.error(`Ошибка загрузки: ${xhr.statusText || 'Неизвестная ошибка'}`);
+          toast.success(config.useExternal ? "Видео загружено во внешнее хранилище!" : "Видео загружено!");
+          resolve();
+        } else {
+          reject(new Error(`Ошибка загрузки: ${xhr.statusText || 'Неизвестная ошибка'}`));
+        }
         setVideoUploadProgress(null);
         if (videoInputRef.current) videoInputRef.current.value = '';
       });
-      xhr.addEventListener('error', () => { videoUploadXhrRef.current = null; toast.error("Ошибка соединения при загрузке"); setVideoUploadProgress(null); if (videoInputRef.current) videoInputRef.current.value = ''; });
-      xhr.addEventListener('abort', () => { videoUploadXhrRef.current = null; setVideoUploadProgress(null); if (videoInputRef.current) videoInputRef.current.value = ''; });
+      xhr.addEventListener('error', () => {
+        videoUploadXhrRef.current = null;
+        setVideoUploadProgress(null);
+        if (videoInputRef.current) videoInputRef.current.value = '';
+        reject(new Error("Ошибка соединения при загрузке"));
+      });
+      xhr.addEventListener('abort', () => {
+        videoUploadXhrRef.current = null;
+        setVideoUploadProgress(null);
+        if (videoInputRef.current) videoInputRef.current.value = '';
+        resolve();
+      });
 
       xhr.open('POST', uploadUrl, true);
-      xhr.setRequestHeader('Authorization', `Bearer ${authToken}`);
-      xhr.setRequestHeader('apikey', apiKey!);
+      xhr.setRequestHeader('Authorization', `Bearer ${config.authToken}`);
+      xhr.setRequestHeader('apikey', config.apiKey);
       xhr.setRequestHeader('x-upsert', 'true');
-      xhr.send(file);
-    } catch (error: any) {
-      console.error("Video upload error:", error);
-      toast.error(`Ошибка загрузки: ${error.message}`);
-      setVideoUploadProgress(null); videoUploadXhrRef.current = null;
-      if (videoInputRef.current) videoInputRef.current.value = '';
-    }
-  }, [courseId, lessonId, onUpdate]);
+      xhr.send(fileToUpload);
+    });
+  }, [onUpdate]);
 
   const cancelVideoUpload = useCallback(() => {
     if (videoUploadXhrRef.current) { videoUploadXhrRef.current.abort(); videoUploadXhrRef.current = null; }
+    if (tusAbortRef.current) { tusAbortRef.current.abort(); tusAbortRef.current = null; }
     setVideoUploadProgress(null);
     if (videoInputRef.current) videoInputRef.current.value = '';
     toast.info("Загрузка отменена");
