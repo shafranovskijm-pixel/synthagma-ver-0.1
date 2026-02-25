@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { X, Download, Link2, Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
@@ -6,6 +6,7 @@ import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import type { CommercialProposal, ProposalServiceItem } from '@/hooks/useSalesManager';
+import { SUBSCRIPTION_PLANS, YEARLY_DISCOUNT, formatStorageSize, type SubscriptionPlan } from '@/constants/subscriptionPlans';
 
 interface Props {
   open: boolean;
@@ -17,6 +18,103 @@ interface Props {
 
 function formatMoney(n: number) {
   return n.toLocaleString('ru-RU');
+}
+
+const planOrder: SubscriptionPlan[] = ['free', 'start', 'standard', 'professional', 'maximum'];
+
+const featureRows: { label: string; getValue: (p: SubscriptionPlan) => string | boolean }[] = [
+  { label: "Курсы", getValue: (p) => { const l = SUBSCRIPTION_PLANS[p].limits; return l.maxCourses === -1 ? "∞" : String(l.maxCourses); }},
+  { label: "Ученики", getValue: (p) => { const l = SUBSCRIPTION_PLANS[p].limits; return l.maxStudents === -1 ? "∞" : String(l.maxStudents); }},
+  { label: "Обученных/мес", getValue: (p) => { const l = SUBSCRIPTION_PLANS[p].limits; return l.maxTrainedPerMonth === -1 ? "∞" : String(l.maxTrainedPerMonth); }},
+  { label: "Хранилище", getValue: (p) => formatStorageSize(SUBSCRIPTION_PLANS[p].limits.storageBytes) },
+  { label: "Настройки курсов", getValue: (p) => SUBSCRIPTION_PLANS[p].limits.courseSettings },
+  { label: "Магазин курсов", getValue: () => true },
+  { label: "Чек-лист документов", getValue: (p) => SUBSCRIPTION_PLANS[p].limits.documentChecklist },
+  { label: "Видеоидентификация", getValue: (p) => SUBSCRIPTION_PLANS[p].limits.videoIdentification },
+  { label: "Брендирование", getValue: (p) => SUBSCRIPTION_PLANS[p].limits.branding },
+  { label: "Документы для ЛОО", getValue: (p) => p === 'professional' || p === 'maximum' },
+  { label: "Охрана труда", getValue: (p) => p === 'professional' || p === 'maximum' },
+  { label: "ФИС ФРДО", getValue: (p) => p === 'maximum' },
+  { label: "Отчеты 1-ПК / 1-ПО", getValue: (p) => p === 'maximum' },
+  { label: "API для CRM", getValue: (p) => p === 'maximum' },
+  { label: "ИИ-генерация", getValue: (p) => SUBSCRIPTION_PLANS[p].limits.aiEnabled },
+  { label: "ИИ-озвучка", getValue: (p) => SUBSCRIPTION_PLANS[p].limits.aiAudioEnabled },
+];
+
+function TariffComparisonTable() {
+  const [yearly, setYearly] = useState(false);
+
+  return (
+    <div className="mt-8 mb-6 break-inside-avoid" style={{ fontFamily: "'Inter', sans-serif" }}>
+      <h2 className="text-xl font-bold text-center mb-4">Тарифные планы</h2>
+      
+      {/* Toggle */}
+      <div className="flex items-center justify-center gap-3 mb-4 text-sm">
+        <span className={!yearly ? 'font-bold' : 'text-gray-500'}>Помесячно</span>
+        <button
+          onClick={() => setYearly(!yearly)}
+          className="relative w-12 h-6 rounded-full transition-colors"
+          style={{ backgroundColor: yearly ? '#d4a853' : '#ccc' }}
+        >
+          <span
+            className="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform"
+            style={{ left: yearly ? '26px' : '2px' }}
+          />
+        </button>
+        <span className={yearly ? 'font-bold' : 'text-gray-500'}>
+          За год <span className="text-xs" style={{ color: '#d4a853' }}>−{YEARLY_DISCOUNT * 100}%</span>
+        </span>
+      </div>
+
+      <table className="w-full border-collapse text-xs">
+        <thead>
+          <tr>
+            <th className="p-2 text-left border border-gray-200 bg-gray-50 w-[130px]"></th>
+            {planOrder.map(p => {
+              const plan = SUBSCRIPTION_PLANS[p];
+              const isHighlighted = p === 'standard';
+              const monthlyPrice = yearly ? Math.round(plan.price * (1 - YEARLY_DISCOUNT)) : plan.price;
+              return (
+                <th key={p} className="p-2 border border-gray-200 text-center" style={isHighlighted ? { backgroundColor: '#fdf6e3', borderColor: '#d4a853', borderWidth: 2 } : { backgroundColor: '#fafafa' }}>
+                  {isHighlighted && <div className="text-[10px] font-semibold mb-1" style={{ color: '#d4a853' }}>⭐ Рекомендуем</div>}
+                  <div className="font-bold text-sm">{plan.name}</div>
+                  <div className="text-[10px] text-gray-500">{plan.description}</div>
+                  <div className="font-bold text-base mt-1">
+                    {plan.price === 0 ? '0' : monthlyPrice.toLocaleString('ru-RU')} <span className="text-[10px] font-normal">₽/мес</span>
+                  </div>
+                  {yearly && plan.price > 0 && (
+                    <div className="text-[10px] text-gray-400 line-through">{plan.price.toLocaleString('ru-RU')} ₽/мес</div>
+                  )}
+                </th>
+              );
+            })}
+          </tr>
+        </thead>
+        <tbody>
+          {featureRows.map((row, idx) => (
+            <tr key={row.label} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+              <td className="p-1.5 border border-gray-200 font-medium">{row.label}</td>
+              {planOrder.map(p => {
+                const val = row.getValue(p);
+                const isHighlighted = p === 'standard';
+                const cellStyle = isHighlighted ? { borderLeft: '2px solid #d4a853', borderRight: '2px solid #d4a853' } : {};
+                return (
+                  <td key={p} className="p-1.5 border border-gray-200 text-center" style={cellStyle}>
+                    {typeof val === 'boolean' ? (
+                      val ? <span style={{ color: '#d4a853' }}>✓</span> : <span className="text-gray-300">✕</span>
+                    ) : (
+                      <span className="font-semibold" style={{ color: '#d4a853' }}>{val}</span>
+                    )}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="text-[10px] text-gray-500 text-center mt-2">✦ Все тарифы включают бесплатную техническую поддержку</p>
+    </div>
+  );
 }
 
 function ProposalContent({ proposal, services }: { proposal: CommercialProposal; services: ProposalServiceItem[] }) {
@@ -92,6 +190,9 @@ function ProposalContent({ proposal, services }: { proposal: CommercialProposal;
           </tr>
         </tfoot>
       </table>
+
+      {/* Tariff comparison */}
+      <TariffComparisonTable />
 
       {/* Note */}
       {proposal.custom_note && (
