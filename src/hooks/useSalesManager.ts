@@ -34,6 +34,7 @@ export interface CommercialProposal {
   tariff_plan: string | null;
   custom_note: string | null;
   total_amount: number;
+  discount_percent: number;
   status: string;
   valid_until: string | null;
   created_at: string;
@@ -161,6 +162,20 @@ export function useSalesManager() {
     return proposalData;
   };
 
+  const updateProposal = async (id: string, proposal: Partial<CommercialProposal>, serviceItems: Partial<ProposalServiceItem>[]) => {
+    const { error } = await supabase.from('commercial_proposals').update(proposal as any).eq('id', id);
+    if (error) { toast({ title: 'Ошибка', description: error.message, variant: 'destructive' }); return false; }
+    // Replace service items
+    await supabase.from('commercial_proposal_services').delete().eq('proposal_id', id);
+    if (serviceItems.length > 0) {
+      const items = serviceItems.map((s, i) => ({ ...s, proposal_id: id, sort_order: i }));
+      await supabase.from('commercial_proposal_services').insert(items as any);
+    }
+    toast({ title: 'КП обновлено' });
+    await fetchProposals();
+    return true;
+  };
+
   const updateProposalStatus = async (id: string, status: string) => {
     const { error } = await supabase.from('commercial_proposals').update({ status } as any).eq('id', id);
     if (error) { toast({ title: 'Ошибка', description: error.message, variant: 'destructive' }); return false; }
@@ -264,7 +279,7 @@ export function useSalesManager() {
     services, managers, proposals, leads, activities, loading,
     fetchServices, fetchManagers, fetchProposals, fetchLeads, fetchActivities,
     createService, updateService, deleteService,
-    createProposal, updateProposalStatus, deleteProposal, getProposalServices,
+    createProposal, updateProposal, updateProposalStatus, deleteProposal, getProposalServices,
     importLeads, assignLeads, updateLeadStatus, updateLeadNotes,
     addActivity, createManager, toggleManagerActive
   };
