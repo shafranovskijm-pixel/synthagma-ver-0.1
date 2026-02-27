@@ -25,7 +25,12 @@ import {
   Headphones,
   Image,
   Play,
-  Presentation
+  Presentation,
+  Download,
+  FileSpreadsheet,
+  File,
+  FileText as FileTextIcon,
+  Presentation as PresentationIcon
 } from "lucide-react";
 import { ContentBlock, jsonToBlocks, BlockRenderer } from "@/components/course-builder/BlockEditor";
 import { cn } from "@/lib/utils";
