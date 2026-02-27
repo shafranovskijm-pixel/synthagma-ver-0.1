@@ -8,9 +8,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Upload, FileSpreadsheet, Loader2, Download, CheckCircle2 } from "lucide-react";
+import { Upload, FileSpreadsheet, Loader2, Download, CheckCircle2, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { getXLSX } from "@/utils/xlsxHelper";
+import { parseTxtTestFile } from "@/utils/txtTestParser";
 
 interface ImportedQuestion {
   question: string;
