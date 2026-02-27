@@ -13,7 +13,7 @@ import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { getExternalStorageConfig, uploadToStorage } from "@/utils/courseBuilderHelpers";
 import { isHtmlContent, parseHtmlCourse } from "@/utils/htmlCourseParser";
 import {
-  type LessonType, type TestQuestionLocal, type Lesson, type GeneratedQuestion,
+  type LessonType, type TestQuestionLocal, type Lesson, type GeneratedQuestion, type LessonAttachmentLocal,
 } from "@/components/course-builder/LessonTypeConfig";
 import { AIGenerateType } from "@/components/course-builder/AIGenerateDialog";
 
