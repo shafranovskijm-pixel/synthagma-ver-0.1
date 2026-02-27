@@ -415,6 +415,9 @@ const CoursePreview = () => {
   // Test state
   const [testQuestions, setTestQuestions] = useState<TestQuestion[]>([]);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number>>({});
+  
+  // Attachments state
+  const [lessonAttachments, setLessonAttachments] = useState<Record<string, any[]>>({});
 
   const currentLesson = lessons[currentLessonIndex];
 
