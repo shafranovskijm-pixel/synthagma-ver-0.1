@@ -330,11 +330,22 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
 
     // Handle ИП: remove representation blocks BEFORE variable substitution
     if (orgIsIP) {
+      // Remove "в лице {{vars}} на основании Устава" pattern
       templateText = templateText.replace(/,?\s*в лице\s+\{\{org_director_position\}\}\s+\{\{org_director_name_genitive\}\}\s*,?\s*\{\{org_director_acting\}\}\s+на основании Устава\s*,?/gi, '');
       templateText = templateText.replace(/,?\s*в лице\s+[^,]*\{\{org_director_name_genitive\}\}[^,]*на основании Устава\s*,?/gi, '');
+      // Also handle already-hardcoded text (no template vars)
+      templateText = templateText.replace(/,?\s*в лице\s+[^,«»]*,?\s*действующ(?:его|ей)\s+на основании Устава\s*,?\s*(?=с одной стороны)/gi, '');
     }
     if (companyIsIP) {
       templateText = templateText.replace(/,?\s*в лице\s+\{\{company_director\}\}\s*,?\s*действующ(?:его|ей)\s+на основании Устава\s*,?/gi, '');
+      templateText = templateText.replace(/,?\s*в лице\s+[^,«»]*,?\s*действующ(?:его|ей)\s+на основании Устава\s*,?\s*(?=с другой стороны)/gi, '');
+    }
+    // For ИП, also fix "именуемое" -> "именуемый"
+    if (orgIsIP) {
+      templateText = templateText.replace(/именуемое в дальнейшем «Исполнитель»/gi, 'именуемый в дальнейшем «Исполнитель»');
+    }
+    if (companyIsIP) {
+      templateText = templateText.replace(/именуемое в дальнейшем «Заказчик»/gi, 'именуемый в дальнейшем «Заказчик»');
     }
 
     // Build the variable replacement map
@@ -391,10 +402,11 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
 
     // Fallback: remove any remaining "в лице ... Устава" for ИП after substitution
     if (orgIsIP) {
-      result = result.replace(/,?\s*в лице\s+[^,]*на основании Устава\s*,?/gi, '');
+      result = result.replace(/,?\s*в лице\s+[^,«»]*,?\s*действующ(?:его|ей)\s+на основании Устава\s*,?/gi, '');
+      result = result.replace(/,?\s*в лице\s+[^,«»]*на основании Устава\s*,?/gi, '');
     }
     if (companyIsIP) {
-      result = result.replace(/,?\s*в лице\s+[^,]*действующ(?:его|ей)\s+на основании Устава\s*,?/gi, '');
+      result = result.replace(/,?\s*в лице\s+[^,«»]*,?\s*действующ(?:его|ей)\s+на основании Устава\s*,?/gi, '');
     }
 
     // Convert plain text template to HTML
