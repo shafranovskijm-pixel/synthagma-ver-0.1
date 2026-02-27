@@ -28,6 +28,7 @@ import { OrgCredentialsSettings } from "@/components/organization/OrgCredentials
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 
 export function SettingsTab() {
+  const navigate = useNavigate();
   const d = useOrgDashboard();
   const organizationId = d.organizationId;
   const organizationName = d.organizationName;
