@@ -299,7 +299,22 @@ export function useEducationDocumentsJournal({
   const generateRegNumber = () => {
     const year = formData.issue_date.getFullYear();
     const sameYearCount = records.filter((r) => parseISO(r.issue_date).getFullYear() === year).length;
-    setFormData((prev) => ({ ...prev, reg_number: `ДОК-${year}/${(sameYearCount + 1).toString().padStart(4, "0")}` }));
+    const nextNumber = sameYearCount + 1;
+
+    // Try to use settings from branding
+    const settings = formData.document_type === "diploma" ? docSettings.diplomaSettings : docSettings.certificateSettings;
+    if (settings?.regNumberFormat) {
+      const regNum = settings.regNumberFormat
+        .replace("{{year}}", year.toString())
+        .replace("{{number}}", ((settings.startNumber || 0) + sameYearCount).toString().padStart(4, "0"));
+      setFormData((prev) => ({
+        ...prev,
+        reg_number: regNum,
+        document_series: prev.document_series || settings.series || "",
+      }));
+    } else {
+      setFormData((prev) => ({ ...prev, reg_number: `ДОК-${year}/${nextNumber.toString().padStart(4, "0")}` }));
+    }
   };
 
   const handleOpenAdd = () => { resetForm(); setShowAddDialog(true); };
