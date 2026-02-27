@@ -190,7 +190,7 @@ export function TestImportDialog({ onImport, children }: TestImportDialogProps) 
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileSpreadsheet className="w-5 h-5 text-green-500" />
-            Импорт теста из Excel
+            Импорт теста из Excel / TXT
           </DialogTitle>
           <DialogDescription>
             Загрузите файл Excel или TXT с вопросами. Правильные ответы отмечайте символом * (Excel) или +- (TXT).
