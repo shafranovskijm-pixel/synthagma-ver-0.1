@@ -47,6 +47,7 @@ interface TestQuestionEditorProps {
     question: string;
     options: string[];
     correctAnswer: number;
+    explanation?: string;
   }>;
   onQuestionsProcessed?: () => void;
   onQuestionsChange?: (questions: TestQuestion[]) => void;
