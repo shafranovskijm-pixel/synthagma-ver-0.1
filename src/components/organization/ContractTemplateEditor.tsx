@@ -7,12 +7,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -126,12 +120,9 @@ export function ContractTemplateEditor({
 
       const branding = data?.branding as Record<string, unknown> | null;
       
-      // Load template library
       if (branding?.contractTemplates && Array.isArray(branding.contractTemplates)) {
         const savedTemplates = branding.contractTemplates as ContractTemplate[];
-        // Merge: built-in always available, plus custom ones
         const customTemplates = savedTemplates.filter(t => !t.isBuiltIn);
-        // Update built-in templates text from saved if customized
         const mergedBuiltIn = BUILT_IN_TEMPLATES.map(bi => {
           const saved = savedTemplates.find(s => s.id === bi.id && s.isBuiltIn);
           return saved ? { ...bi, text: saved.text } : bi;
@@ -146,7 +137,6 @@ export function ContractTemplateEditor({
           setOriginalTemplate(activeTemplate.text);
         }
       } else if (branding?.contractTemplate) {
-        // Migration: old single template → library format
         const oldTemplate = branding.contractTemplate as string;
         setTemplate(oldTemplate);
         setOriginalTemplate(oldTemplate);
@@ -157,7 +147,6 @@ export function ContractTemplateEditor({
         setActiveTemplateId("legal");
       }
 
-      // Load history
       if (branding?.contractTemplateHistory && Array.isArray(branding.contractTemplateHistory)) {
         setHistory(branding.contractTemplateHistory as TemplateHistoryEntry[]);
       }
@@ -190,7 +179,6 @@ export function ContractTemplateEditor({
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      // Add current version to history before saving
       const activeT = templates.find(t => t.id === activeTemplateId);
       const newHistoryEntry: TemplateHistoryEntry = {
         text: originalTemplate,
@@ -199,13 +187,12 @@ export function ContractTemplateEditor({
       };
       const updatedHistory = [newHistoryEntry, ...history].slice(0, 10);
 
-      // Update template in library
       const updatedTemplates = templates.map(t =>
         t.id === activeTemplateId ? { ...t, text: template } : t
       );
 
       await saveBranding({
-        contractTemplate: template, // backward compat
+        contractTemplate: template,
         contractTemplates: updatedTemplates,
         activeContractTemplateId: activeTemplateId,
         contractTemplateHistory: updatedHistory,
@@ -368,16 +355,15 @@ export function ContractTemplateEditor({
         toast.success("Переменные добавлены в шаблон");
       } else { toast.error("Не удалось добавить переменные"); }
     } catch {
-      // Fallback: simple regex
       let processedText = template;
       const patterns = [
-        { regex: /ИНН:\s*\d{10,12}/gi, replacement: "ИНН: {{org_inn}}" },
-        { regex: /КПП:\s*\d{9}/gi, replacement: "КПП: {{org_kpp}}" },
-        { regex: /ОГРН:\s*\d{13,15}/gi, replacement: "ОГРН: {{org_ogrn}}" },
-        { regex: /БИК:\s*\d{9}/gi, replacement: "БИК: {{org_bank_bik}}" },
-        { regex: /Р\/с:?\s*\d{20}/gi, replacement: "Р/с: {{org_bank_account}}" },
-        { regex: /К\/с:?\s*\d{20}/gi, replacement: "К/с: {{org_bank_corr_account}}" },
-        { regex: /№\s*[\d\-\/]+\s+от/gi, replacement: "№ {{contract_number}} от" },
+        { regex: /ИНН:\\s*\\d{10,12}/gi, replacement: "ИНН: {{org_inn}}" },
+        { regex: /КПП:\\s*\\d{9}/gi, replacement: "КПП: {{org_kpp}}" },
+        { regex: /ОГРН:\\s*\\d{13,15}/gi, replacement: "ОГРН: {{org_ogrn}}" },
+        { regex: /БИК:\\s*\\d{9}/gi, replacement: "БИК: {{org_bank_bik}}" },
+        { regex: /Р\\/с:?\\s*\\d{20}/gi, replacement: "Р/с: {{org_bank_account}}" },
+        { regex: /К\\/с:?\\s*\\d{20}/gi, replacement: "К/с: {{org_bank_corr_account}}" },
+        { regex: /№\\s*[\\d\\-\\/]+\\s+от/gi, replacement: "№ {{contract_number}} от" },
       ];
       patterns.forEach(({ regex, replacement }) => { processedText = processedText.replace(regex, replacement); });
       setTemplate(processedText);
@@ -406,110 +392,91 @@ export function ContractTemplateEditor({
   }
 
   return (
-    <Accordion type="single" collapsible className="w-full">
-      <AccordionItem value="contract-editor" className="border-none">
-        <AccordionTrigger className="hover:no-underline py-0">
-          <div className="flex items-center gap-2">
-            <FileText className="w-5 h-5 text-primary" />
-            <span className="font-semibold">Конструктор шаблона договора</span>
-          </div>
-        </AccordionTrigger>
-        <AccordionContent className="pt-4">
-          <div className="space-y-4">
-            {/* Template Library Selector */}
-            <div className="flex flex-wrap items-center gap-2">
-              <Select value={activeTemplateId} onValueChange={handleSelectTemplate}>
-                <SelectTrigger className="w-[220px] rounded-xl">
-                  <SelectValue placeholder="Выберите шаблон" />
-                </SelectTrigger>
-                <SelectContent>
-                  {templates.map(t => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {t.name}{t.isBuiltIn ? "" : " ✦"}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button
-                variant="outline"
-                size="sm"
-                className="rounded-xl gap-1.5"
-                onClick={() => setShowSaveAsDialog(true)}
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Сохранить как...
-              </Button>
-              {!isBuiltInActive && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="rounded-xl gap-1.5 border-destructive text-destructive hover:bg-destructive/10"
-                  onClick={handleDeleteTemplate}
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  Удалить
-                </Button>
-              )}
-              <Button
-                variant="outline"
-                size="sm"
-                className="rounded-xl gap-1.5"
-                onClick={() => setShowHistory(true)}
-              >
-                <History className="w-3.5 h-3.5" />
-                История
-              </Button>
-            </div>
+    <div className="space-y-3">
+      {/* Header */}
+      <div className="flex items-center gap-2 mb-1">
+        <FileText className="w-5 h-5 text-primary" />
+        <span className="font-semibold text-base">Конструктор шаблона договора</span>
+      </div>
 
-            {/* Upload and Actions */}
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" size="sm" className="rounded-xl gap-2" onClick={() => fileInputRef.current?.click()} disabled={isProcessingFile}>
-                {isProcessingFile ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                Загрузить DOC/PDF
-              </Button>
-              <Button variant="outline" size="sm" className="rounded-xl gap-2" onClick={addVariablesToTemplate} disabled={isAddingVariables}>
-                {isAddingVariables ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                Добавить переменные
-              </Button>
-              <Button variant="outline" size="sm" className="rounded-xl gap-2" onClick={() => setShowPreview(true)}>
-                <Eye className="w-4 h-4" />
-                Предпросмотр
-              </Button>
-              {templateBeforeAI && (
-                <Button
-                  variant="outline" size="sm"
-                  className="rounded-xl gap-2 border-destructive text-destructive hover:bg-destructive/10"
-                  onClick={() => { setTemplate(templateBeforeAI); setTemplateBeforeAI(null); toast.info("Текст восстановлен"); }}
-                >
-                  <RotateCcw className="w-4 h-4" />
-                  Отменить разметку
-                </Button>
-              )}
-              <Button variant="outline" size="sm" className="rounded-xl gap-2" onClick={handleReset}>
-                <RotateCcw className="w-4 h-4" />
-                Сбросить
-              </Button>
-              <Button size="sm" className="rounded-xl gap-2" onClick={handleSave} disabled={isSaving || !hasChanges}>
-                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                Сохранить
-              </Button>
-            </div>
+      {/* Compact Toolbar */}
+      <div className="flex flex-wrap items-center gap-1.5 p-2 rounded-xl border bg-muted/30">
+        {/* Left group: template selector + library */}
+        <Select value={activeTemplateId} onValueChange={handleSelectTemplate}>
+          <SelectTrigger className="w-[180px] h-8 rounded-lg text-xs">
+            <SelectValue placeholder="Шаблон" />
+          </SelectTrigger>
+          <SelectContent>
+            {templates.map(t => (
+              <SelectItem key={t.id} value={t.id}>
+                {t.name}{t.isBuiltIn ? "" : " ✦"}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
-            <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx" className="hidden" onChange={handleFileUpload} />
+        <Button variant="ghost" size="sm" className="h-8 px-2 rounded-lg gap-1" onClick={() => setShowSaveAsDialog(true)} title="Сохранить как...">
+          <Plus className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline text-xs">Сохранить как</span>
+        </Button>
 
-            {/* Template Editor */}
-            <HighlightedTemplateEditor
-              value={template}
-              onChange={setTemplate}
-              placeholder="Введите текст шаблона договора или загрузите файл..."
-            />
+        {!isBuiltInActive && (
+          <Button variant="ghost" size="sm" className="h-8 px-2 rounded-lg text-destructive hover:text-destructive" onClick={handleDeleteTemplate} title="Удалить шаблон">
+            <Trash2 className="w-3.5 h-3.5" />
+          </Button>
+        )}
 
-            <p className="text-xs text-muted-foreground">
-              Выберите готовый шаблон или загрузите существующий договор. Нажмите «Добавить переменные» для автоматической разметки.
-            </p>
-          </div>
-        </AccordionContent>
-      </AccordionItem>
+        <Button variant="ghost" size="sm" className="h-8 px-2 rounded-lg gap-1" onClick={() => setShowHistory(true)} title="История версий">
+          <History className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline text-xs">История</span>
+        </Button>
+
+        {/* Separator */}
+        <div className="w-px h-5 bg-border mx-0.5 hidden sm:block" />
+
+        {/* Right group: actions */}
+        <Button variant="ghost" size="sm" className="h-8 px-2 rounded-lg gap-1" onClick={() => fileInputRef.current?.click()} disabled={isProcessingFile} title="Загрузить DOC/PDF">
+          {isProcessingFile ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+          <span className="hidden md:inline text-xs">Загрузить</span>
+        </Button>
+
+        <Button variant="ghost" size="sm" className="h-8 px-2 rounded-lg gap-1" onClick={addVariablesToTemplate} disabled={isAddingVariables} title="Добавить переменные (AI)">
+          {isAddingVariables ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+          <span className="hidden md:inline text-xs">AI</span>
+        </Button>
+
+        <Button variant="ghost" size="sm" className="h-8 px-2 rounded-lg gap-1" onClick={() => setShowPreview(true)} title="Предпросмотр">
+          <Eye className="w-3.5 h-3.5" />
+          <span className="hidden md:inline text-xs">Просмотр</span>
+        </Button>
+
+        {templateBeforeAI && (
+          <Button variant="ghost" size="sm" className="h-8 px-2 rounded-lg text-destructive hover:text-destructive gap-1" onClick={() => { setTemplate(templateBeforeAI); setTemplateBeforeAI(null); toast.info("Текст восстановлен"); }} title="Отменить разметку">
+            <RotateCcw className="w-3.5 h-3.5" />
+          </Button>
+        )}
+
+        <Button variant="ghost" size="sm" className="h-8 px-2 rounded-lg gap-1" onClick={handleReset} title="Сбросить к исходному">
+          <RotateCcw className="w-3.5 h-3.5" />
+          <span className="hidden md:inline text-xs">Сброс</span>
+        </Button>
+
+        <div className="flex-1" />
+
+        <Button size="sm" className="h-8 px-3 rounded-lg gap-1.5 text-xs" onClick={handleSave} disabled={isSaving || !hasChanges}>
+          {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+          Сохранить
+        </Button>
+      </div>
+
+      <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx" className="hidden" onChange={handleFileUpload} />
+
+      {/* Template Editor - full width, taller */}
+      <HighlightedTemplateEditor
+        value={template}
+        onChange={setTemplate}
+        placeholder="Введите текст шаблона договора или загрузите файл..."
+      />
 
       {/* Preview Dialog */}
       <Dialog open={showPreview} onOpenChange={setShowPreview}>
@@ -571,6 +538,6 @@ export function ContractTemplateEditor({
         history={history}
         onRestore={handleRestoreFromHistory}
       />
-    </Accordion>
+    </div>
   );
 }
