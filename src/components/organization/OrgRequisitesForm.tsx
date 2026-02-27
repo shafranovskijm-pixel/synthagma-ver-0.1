@@ -54,7 +54,7 @@ export function OrgRequisitesForm({ organizationId }: OrgRequisitesFormProps) {
     try {
       const { data, error } = await supabase
         .from("organizations")
-        .select("inn, kpp, ogrn, legal_address, actual_address, director_name, director_position, bank_name, bank_bik, bank_account, bank_corr_account")
+        .select("inn, kpp, ogrn, legal_address, actual_address, director_name, director_position, director_gender, bank_name, bank_bik, bank_account, bank_corr_account")
         .eq("id", organizationId)
         .single();
 
