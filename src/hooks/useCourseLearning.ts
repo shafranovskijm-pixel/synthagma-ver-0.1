@@ -77,6 +77,7 @@ export function useCourseLearning() {
   const [currentLessonIndex, setCurrentLessonIndex] = useState(0);
   const [lessonProgress, setLessonProgress] = useState<LessonProgress[]>([]);
   const [loading, setLoading] = useState(true);
+  const [lessonAttachments, setLessonAttachments] = useState<Record<string, { id: string; name: string; file_url: string; file_type: string | null; file_size: number | null; category: string }[]>>({});
   const [enrollmentId, setEnrollmentId] = useState<string | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -297,8 +298,18 @@ export function useCourseLearning() {
 
       const courseLessonIds = lessonsData.map((l: any) => l.id);
       if (courseLessonIds.length > 0) {
-        const { data: progressData } = await supabase.from('lesson_progress').select('lesson_id, completed').eq('user_id', user!.id).in('lesson_id', courseLessonIds);
-        setLessonProgress(progressData || []);
+        const [progressResult, attachmentsResult] = await Promise.all([
+          supabase.from('lesson_progress').select('lesson_id, completed').eq('user_id', user!.id).in('lesson_id', courseLessonIds),
+          supabase.from('lesson_attachments').select('*').in('lesson_id', courseLessonIds).order('order_index'),
+        ]);
+        setLessonProgress(progressResult.data || []);
+        // Group attachments by lesson_id
+        const attMap: Record<string, typeof lessonAttachments[string]> = {};
+        for (const a of (attachmentsResult.data || [])) {
+          if (!attMap[a.lesson_id]) attMap[a.lesson_id] = [];
+          attMap[a.lesson_id].push({ id: a.id, name: a.name, file_url: a.file_url, file_type: a.file_type, file_size: a.file_size ? Number(a.file_size) : null, category: a.category });
+        }
+        setLessonAttachments(attMap);
       } else {
         setLessonProgress([]);
       }
@@ -565,7 +576,7 @@ export function useCourseLearning() {
   return {
     // Core data
     course, lessons, currentLesson, currentLessonIndex, loading, enrollmentId,
-    lessonProgress, completedCount, progressPercent, isMobile, user, courseId,
+    lessonProgress, completedCount, progressPercent, isMobile, user, courseId, lessonAttachments,
 
     // Navigation
     navigate, goToNextLesson, goToPrevLesson, goToLesson, isTransitioning,

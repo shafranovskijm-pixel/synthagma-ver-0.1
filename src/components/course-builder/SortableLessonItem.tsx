@@ -23,6 +23,7 @@ import {
 } from "@/components/course-builder/LessonTypeConfig";
 import { VideoPreviewInline } from "@/components/course-builder/VideoPreviewInline";
 import { SliderLessonEditor } from "@/components/course-builder/SliderLessonEditor";
+import { LessonAttachments } from "@/components/course-builder/LessonAttachments";
 import { useLessonMedia } from "@/hooks/useLessonMedia";
 
 interface SortableLessonProps {
@@ -291,6 +292,14 @@ export function SortableLessonItem({
 
           {/* Slider */}
           {lesson.type === "slider" && <SliderLessonEditor lesson={lesson} courseId={courseId} onUpdate={onUpdate} />}
+
+          {/* Attachments for all lesson types */}
+          <LessonAttachments
+            lessonId={lesson.id}
+            courseId={courseId}
+            attachments={lesson.attachments || []}
+            onAttachmentsChange={(attachments) => onUpdate({ attachments })}
+          />
         </div>
       )}
     </div>

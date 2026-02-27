@@ -13,7 +13,7 @@ import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { getExternalStorageConfig, uploadToStorage } from "@/utils/courseBuilderHelpers";
 import { isHtmlContent, parseHtmlCourse } from "@/utils/htmlCourseParser";
 import {
-  type LessonType, type TestQuestionLocal, type Lesson, type GeneratedQuestion,
+  type LessonType, type TestQuestionLocal, type Lesson, type GeneratedQuestion, type LessonAttachmentLocal,
 } from "@/components/course-builder/LessonTypeConfig";
 import { AIGenerateType } from "@/components/course-builder/AIGenerateDialog";
 
@@ -182,6 +182,24 @@ export function useCourseBuilder() {
               }
             }
           }
+
+          // Load attachments for all lessons
+          const allLessonIds = lessonsData.map(l => l.id);
+          let attachmentsMap: Record<string, LessonAttachmentLocal[]> = {};
+          if (allLessonIds.length > 0) {
+            const { data: attachmentsData } = await supabase.from("lesson_attachments").select("*").in("lesson_id", allLessonIds).order("order_index");
+            if (attachmentsData) {
+              for (const a of attachmentsData) {
+                if (!attachmentsMap[a.lesson_id]) attachmentsMap[a.lesson_id] = [];
+                attachmentsMap[a.lesson_id].push({
+                  id: a.id, lesson_id: a.lesson_id, name: a.name, file_url: a.file_url,
+                  file_type: a.file_type, file_size: a.file_size ? Number(a.file_size) : null,
+                  category: a.category, order_index: a.order_index, isNew: false, isDeleted: false,
+                });
+              }
+            }
+          }
+
           setLessons(lessonsData.map(l => {
             const blocks = l.content ? jsonToBlocks(l.content) : [];
             return {
@@ -190,6 +208,7 @@ export function useCourseBuilder() {
               testPassingScore: (l as any).test_passing_score ?? 60,
               testQuestionsToShow: (l as any).test_questions_to_show ?? null,
               questions: l.type === 'test' ? (questionsMap[l.id] || []) : undefined,
+              attachments: attachmentsMap[l.id] || [],
             };
           }));
         }
@@ -389,6 +408,27 @@ export function useCourseBuilder() {
                 id: q.id, lesson_id: lesson.id, question: q.question.trim(), options: q.options.filter(o => o.text.trim()),
                 correct_answer: q.correct_answer, order_index: i, explanation: q.explanation || null, image_url: q.image_url || null
               }], { onConflict: "id" });
+            }
+          }
+        }
+
+        // Save attachments
+        for (const lesson of lessons) {
+          if (lesson.attachments && lesson.attachments.length > 0) {
+            const toDelete = lesson.attachments.filter(a => a.isDeleted && !a.isNew);
+            const toInsert = lesson.attachments.filter(a => a.isNew && !a.isDeleted);
+
+            for (const a of toDelete) {
+              await supabase.from("lesson_attachments").delete().eq("id", a.id);
+            }
+
+            if (toInsert.length > 0) {
+              const rows = toInsert.map((a, i) => ({
+                id: a.id, lesson_id: lesson.id, name: a.name, file_url: a.file_url,
+                file_type: a.file_type, file_size: a.file_size, category: a.category,
+                order_index: i,
+              }));
+              await supabase.from("lesson_attachments").upsert(rows, { onConflict: "id" });
             }
           }
         }
