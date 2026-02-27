@@ -485,6 +485,8 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
     companies, courses, isLoading, isGenerating, isSaving,
     showPreview, setShowPreview, previewHtml,
     selectedCompanyId, setSelectedCompanyId,
+    counterpartyType, setCounterpartyType,
+    individualData, setIndividualData,
     // Legacy single-program compat
     selectedCourseId, setSelectedCourseId, price, setPrice, studentsCount, setStudentsCount,
     // Multi-program
@@ -492,7 +494,7 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
     totalPrice, totalStudents, hasValidPrograms,
     contractNumber, setContractNumber, contractDate, setContractDate,
     additionalTerms, setAdditionalTerms,
-    selectedCompany, selectedCourse: courses.find(c => c.id === selectedCourseId),
+    selectedCompany, effectiveCounterparty, selectedCourse: courses.find(c => c.id === selectedCourseId),
     serviceStartDate, setServiceStartDate, serviceEndDate, setServiceEndDate,
     formatPrice, handleGenerate, handleDownloadDOC, handleSaveContract, handlePreview,
     onSave,
