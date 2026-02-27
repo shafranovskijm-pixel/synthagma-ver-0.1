@@ -148,17 +148,48 @@ export function LessonAttachments({ lessonId, courseId, attachments, onAttachmen
       {items.map(att => {
         const Icon = getFileIcon(att.file_type);
         const color = getFileColor(att.file_type);
+        const isEditing = editingId === att.id;
         return (
           <div key={att.id} className="flex items-center gap-3 p-3 rounded-xl border border-border bg-secondary/30 group">
             <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${color}`}>
               <Icon className="w-4 h-4" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{att.name}</p>
-              <p className="text-xs text-muted-foreground">
-                {att.file_type?.toUpperCase()} {att.file_size ? `• ${formatFileSize(att.file_size)}` : ""}
-              </p>
+              {isEditing ? (
+                <div className="flex items-center gap-1">
+                  <Input
+                    value={editingName}
+                    onChange={e => setEditingName(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') confirmRename(att);
+                      if (e.key === 'Escape') cancelRename();
+                    }}
+                    className="h-7 text-sm"
+                    autoFocus
+                  />
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-primary" onClick={() => confirmRename(att)}>
+                    <Check className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={cancelRename}>
+                    <X className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <p className="text-sm font-medium truncate cursor-pointer hover:text-primary transition-colors" onClick={() => startRename(att)} title="Нажмите, чтобы переименовать">
+                    {att.name}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {att.file_type?.toUpperCase()} {att.file_size ? `• ${formatFileSize(att.file_size)}` : ""}
+                  </p>
+                </>
+              )}
             </div>
+            {!isEditing && (
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" onClick={() => startRename(att)} title="Переименовать">
+                <Pencil className="w-3.5 h-3.5" />
+              </Button>
+            )}
             <a href={att.file_url} target="_blank" rel="noopener noreferrer" className="shrink-0">
               <Button variant="ghost" size="sm" className="h-8 w-8 p-0"><Download className="w-4 h-4" /></Button>
             </a>
