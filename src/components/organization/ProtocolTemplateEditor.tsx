@@ -105,11 +105,11 @@ export function ProtocolTemplateEditor({ organizationId }: ProtocolTemplateEdito
       const { error } = await supabase
         .from("organizations")
         .update({
-          branding: {
+          branding: JSON.parse(JSON.stringify({
             ...currentBranding,
             protocolTemplate: template,
             commissionMembers,
-          },
+          })),
         })
         .eq("id", organizationId);
       if (error) throw error;
