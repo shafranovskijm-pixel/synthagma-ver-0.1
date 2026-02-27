@@ -182,6 +182,24 @@ export function useCourseBuilder() {
               }
             }
           }
+
+          // Load attachments for all lessons
+          const allLessonIds = lessonsData.map(l => l.id);
+          let attachmentsMap: Record<string, LessonAttachmentLocal[]> = {};
+          if (allLessonIds.length > 0) {
+            const { data: attachmentsData } = await supabase.from("lesson_attachments").select("*").in("lesson_id", allLessonIds).order("order_index");
+            if (attachmentsData) {
+              for (const a of attachmentsData) {
+                if (!attachmentsMap[a.lesson_id]) attachmentsMap[a.lesson_id] = [];
+                attachmentsMap[a.lesson_id].push({
+                  id: a.id, lesson_id: a.lesson_id, name: a.name, file_url: a.file_url,
+                  file_type: a.file_type, file_size: a.file_size ? Number(a.file_size) : null,
+                  category: a.category, order_index: a.order_index, isNew: false, isDeleted: false,
+                });
+              }
+            }
+          }
+
           setLessons(lessonsData.map(l => {
             const blocks = l.content ? jsonToBlocks(l.content) : [];
             return {
@@ -190,6 +208,7 @@ export function useCourseBuilder() {
               testPassingScore: (l as any).test_passing_score ?? 60,
               testQuestionsToShow: (l as any).test_questions_to_show ?? null,
               questions: l.type === 'test' ? (questionsMap[l.id] || []) : undefined,
+              attachments: attachmentsMap[l.id] || [],
             };
           }));
         }
