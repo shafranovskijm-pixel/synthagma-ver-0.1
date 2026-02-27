@@ -11,6 +11,7 @@ interface HighlightedTemplateEditorProps {
   className?: string;
   showValidation?: boolean;
   showInsertPanel?: boolean;
+  fullPage?: boolean;
 }
 
 function escapeHtml(text: string): string {
@@ -42,6 +43,7 @@ export function HighlightedTemplateEditor({
   className,
   showValidation = true,
   showInsertPanel = true,
+  fullPage = false,
 }: HighlightedTemplateEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const highlightRef = useRef<HTMLDivElement>(null);
@@ -101,7 +103,8 @@ export function HighlightedTemplateEditor({
           <div
             ref={containerRef}
             className={cn(
-              "relative min-h-[70vh] rounded-xl border bg-background transition-all",
+              "relative rounded-xl border bg-background transition-all",
+              fullPage ? "min-h-[calc(100vh-200px)]" : "min-h-[70vh]",
               isFocused && "ring-2 ring-ring ring-offset-2 ring-offset-background",
               className
             )}

@@ -35,6 +35,7 @@ import { TemplateHistoryDialog, type TemplateHistoryEntry } from "./contract-tem
 interface ContractTemplateEditorProps {
   organizationId: string;
   organizationName: string;
+  fullPage?: boolean;
 }
 
 const PLACEHOLDERS = [
@@ -82,6 +83,7 @@ const PLACEHOLDERS = [
 export function ContractTemplateEditor({
   organizationId,
   organizationName,
+  fullPage = false,
 }: ContractTemplateEditorProps) {
   const [template, setTemplate] = useState(BUILT_IN_TEMPLATES[0].text);
   const [originalTemplate, setOriginalTemplate] = useState(BUILT_IN_TEMPLATES[0].text);
@@ -476,6 +478,7 @@ export function ContractTemplateEditor({
         value={template}
         onChange={setTemplate}
         placeholder="Введите текст шаблона договора или загрузите файл..."
+        fullPage={fullPage}
       />
 
       {/* Preview Dialog */}
