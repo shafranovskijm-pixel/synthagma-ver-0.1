@@ -143,6 +143,7 @@ export function ContractTemplateEditor({
   const [showPreview, setShowPreview] = useState(false);
   const [isProcessingFile, setIsProcessingFile] = useState(false);
   const [isAddingVariables, setIsAddingVariables] = useState(false);
+  const [templateBeforeAI, setTemplateBeforeAI] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
