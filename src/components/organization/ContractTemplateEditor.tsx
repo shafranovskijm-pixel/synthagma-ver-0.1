@@ -359,6 +359,7 @@ export function ContractTemplateEditor({
   };
 
   const addVariablesToTemplate = async () => {
+    setTemplateBeforeAI(template);
     setIsAddingVariables(true);
     try {
       // Call edge function to use AI for variable detection
