@@ -47,6 +47,7 @@ interface TestQuestionEditorProps {
     question: string;
     options: string[];
     correctAnswer: number;
+    explanation?: string;
   }>;
   onQuestionsProcessed?: () => void;
   onQuestionsChange?: (questions: TestQuestion[]) => void;
@@ -94,6 +95,7 @@ export const TestQuestionEditor = forwardRef<TestQuestionEditorRef, TestQuestion
         options: q.options.map(text => ({ text })),
         correct_answer: q.correctAnswer,
         order_index: questions.length + index,
+        explanation: q.explanation || undefined,
         isNew: true
       }));
       

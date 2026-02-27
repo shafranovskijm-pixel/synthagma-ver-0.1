@@ -17,6 +17,7 @@ interface ImportedQuestion {
   question: string;
   options: string[];
   correctAnswer: number;
+  explanation?: string;
 }
 
 interface TestImportDialogProps {

@@ -50,6 +50,7 @@ export interface GeneratedQuestion {
   question: string;
   options: string[];
   correctAnswer: number;
+  explanation?: string;
 }
 
 export const lessonIcons: Record<LessonType, any> = {
