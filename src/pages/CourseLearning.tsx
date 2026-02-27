@@ -10,7 +10,8 @@ import {
   ArrowLeft, CheckCircle2, Circle, FileText, Video, ClipboardList, 
   ChevronLeft, ChevronRight, Trophy, Sparkles, Clock, Loader2, 
   Volume2, Square, MessageCircle, X, Send, List, Presentation, 
-  Lock, RotateCcw, Settings2, Headphones
+  Lock, RotateCcw, Settings2, Headphones, Download, FileText as FileTextIcon,
+  FileSpreadsheet, Presentation as PresentationIcon, File
 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
