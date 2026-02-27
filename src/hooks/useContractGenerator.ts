@@ -395,10 +395,11 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
 
     // Fallback: remove any remaining "в лице ... Устава" for ИП after substitution
     if (orgIsIP) {
-      result = result.replace(/,?\s*в лице\s+[^,]*на основании Устава\s*,?/gi, '');
+      result = result.replace(/,?\s*в лице\s+[^,«»]*,?\s*действующ(?:его|ей)\s+на основании Устава\s*,?/gi, '');
+      result = result.replace(/,?\s*в лице\s+[^,«»]*на основании Устава\s*,?/gi, '');
     }
     if (companyIsIP) {
-      result = result.replace(/,?\s*в лице\s+[^,]*действующ(?:его|ей)\s+на основании Устава\s*,?/gi, '');
+      result = result.replace(/,?\s*в лице\s+[^,«»]*,?\s*действующ(?:его|ей)\s+на основании Устава\s*,?/gi, '');
     }
 
     // Convert plain text template to HTML
