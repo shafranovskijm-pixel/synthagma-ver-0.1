@@ -292,6 +292,14 @@ export function SortableLessonItem({
 
           {/* Slider */}
           {lesson.type === "slider" && <SliderLessonEditor lesson={lesson} courseId={courseId} onUpdate={onUpdate} />}
+
+          {/* Attachments for all lesson types */}
+          <LessonAttachments
+            lessonId={lesson.id}
+            courseId={courseId}
+            attachments={lesson.attachments || []}
+            onAttachmentsChange={(attachments) => onUpdate({ attachments })}
+          />
         </div>
       )}
     </div>
