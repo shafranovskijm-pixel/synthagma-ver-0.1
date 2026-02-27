@@ -503,6 +503,21 @@ export function ContractTemplateEditor({
                 <Eye className="w-4 h-4" />
                 Предпросмотр
               </Button>
+              {templateBeforeAI && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-xl gap-2 border-destructive text-destructive hover:bg-destructive/10"
+                  onClick={() => {
+                    setTemplate(templateBeforeAI);
+                    setTemplateBeforeAI(null);
+                    toast.info("Текст восстановлен до добавления переменных");
+                  }}
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  Отменить разметку
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"
