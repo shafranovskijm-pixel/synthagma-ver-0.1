@@ -12,6 +12,14 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
@@ -22,78 +30,18 @@ import {
   RotateCcw,
   Upload,
   Sparkles,
+  History,
+  Plus,
+  Trash2,
 } from "lucide-react";
 import { HighlightedTemplateEditor } from "./HighlightedTemplateEditor";
+import { BUILT_IN_TEMPLATES, type ContractTemplate } from "./contract-template/builtInTemplates";
+import { TemplateHistoryDialog, type TemplateHistoryEntry } from "./contract-template/TemplateHistoryDialog";
 
 interface ContractTemplateEditorProps {
   organizationId: string;
   organizationName: string;
 }
-
-const DEFAULT_CONTRACT_TEMPLATE = `ДОГОВОР НА ОКАЗАНИЕ ОБРАЗОВАТЕЛЬНЫХ УСЛУГ
-
-№ {{contract_number}} от {{contract_date}}
-
-{{org_name}}, именуемое в дальнейшем «Исполнитель», в лице {{org_director_position}} {{org_director_name_genitive}}, {{org_director_acting}} на основании Устава, с одной стороны, и
-
-{{company_name}}, именуемое в дальнейшем «Заказчик», в лице {{company_director}}, действующего на основании Устава, с другой стороны, заключили настоящий Договор о нижеследующем:
-
-1. ПРЕДМЕТ ДОГОВОРА
-
-1.1. Исполнитель обязуется оказать Заказчику образовательные услуги по программе «{{course_title}}»{{course_duration}}, а Заказчик обязуется оплатить эти услуги.
-
-1.2. Количество обучающихся: {{students_count}} чел.
-
-2. СТОИМОСТЬ УСЛУГ И ПОРЯДОК РАСЧЁТОВ
-
-2.1. Стоимость обучения одного слушателя составляет {{price}} рублей.
-
-2.2. Общая стоимость услуг по настоящему Договору составляет {{total_price}} рублей.
-
-2.3. Оплата производится путём перечисления денежных средств на расчётный счёт Исполнителя в течение 5 (пяти) банковских дней с момента подписания настоящего Договора.
-
-3. ПРАВА И ОБЯЗАННОСТИ СТОРОН
-
-3.1. Исполнитель обязуется:
-- обеспечить качественное проведение обучения;
-- предоставить необходимые учебные материалы;
-- выдать документы об обучении установленного образца.
-
-3.2. Заказчик обязуется:
-- своевременно оплатить услуги;
-- обеспечить явку обучающихся.
-
-4. СРОК ДЕЙСТВИЯ ДОГОВОРА
-
-4.1. Настоящий Договор вступает в силу с момента подписания и действует до полного исполнения сторонами своих обязательств.
-
-{{additional_terms}}
-
-5. РЕКВИЗИТЫ И ПОДПИСИ СТОРОН
-
-ИСПОЛНИТЕЛЬ:
-{{org_name}}
-ИНН: {{org_inn}}
-КПП: {{org_kpp}}
-ОГРН: {{org_ogrn}}
-Адрес: {{org_address}}
-Банк: {{org_bank_name}}
-БИК: {{org_bank_bik}}
-Р/с: {{org_bank_account}}
-К/с: {{org_bank_corr_account}}
-
-{{org_director_position}}
-_______________ / {{org_director_name}} /
-
-ЗАКАЗЧИК:
-{{company_name}}
-ИНН: {{company_inn}}
-КПП: {{company_kpp}}
-ОГРН: {{company_ogrn}}
-Адрес: {{company_address}}
-
-{{company_director}}
-_______________ / _________________ /`;
 
 const PLACEHOLDERS = [
   { key: "{{contract_number}}", label: "Номер договора", example: "2026-01-001", patterns: ["№", "номер договора", "договор №"] },
@@ -117,25 +65,23 @@ const PLACEHOLDERS = [
   { key: "{{company_kpp}}", label: "КПП компании", example: "770001002", patterns: [] },
   { key: "{{company_ogrn}}", label: "ОГРН компании", example: "1027700000001", patterns: [] },
   { key: "{{company_address}}", label: "Адрес компании", example: "г. Москва, ул. Заказная, д. 2", patterns: [] },
-  // Individual (физлицо)
-  { key: "{{individual_name}}", label: "ФИО физ. лица", example: "Сидоров Сидор Сидорович", patterns: ["слушатель", "обучающийся", "физ"] },
-  { key: "{{individual_passport}}", label: "Паспортные данные", example: "серия 1234 № 567890, выдан ...", patterns: ["паспорт", "серия", "выдан"] },
-  { key: "{{individual_address}}", label: "Адрес физ. лица", example: "г. Москва, ул. Примерная, д. 1, кв. 1", patterns: ["адрес проживания", "регистрации"] },
-  { key: "{{individual_phone}}", label: "Телефон физ. лица", example: "+7 (999) 123-45-67", patterns: ["телефон", "тел"] },
-  { key: "{{individual_email}}", label: "E-mail физ. лица", example: "example@mail.ru", patterns: ["email", "e-mail", "электронн"] },
-  // Course & payment
+  { key: "{{individual_name}}", label: "ФИО физ. лица", example: "Сидоров Сидор Сидорович", patterns: [] },
+  { key: "{{individual_passport}}", label: "Паспортные данные", example: "серия 1234 № 567890, выдан ...", patterns: [] },
+  { key: "{{individual_address}}", label: "Адрес физ. лица", example: "г. Москва, ул. Примерная, д. 1, кв. 1", patterns: [] },
+  { key: "{{individual_phone}}", label: "Телефон физ. лица", example: "+7 (999) 123-45-67", patterns: [] },
+  { key: "{{individual_email}}", label: "E-mail физ. лица", example: "example@mail.ru", patterns: [] },
   { key: "{{course_title}}", label: "Название курса", example: "Охрана труда", patterns: ["программе", "курс"] },
   { key: "{{course_duration}}", label: "Длительность курса", example: " продолжительностью 40 часов", patterns: ["продолжительность", "часов"] },
-  { key: "{{students_count}}", label: "Количество обучающихся", example: "10", patterns: ["количество", "обучающихся", "слушателей"] },
+  { key: "{{course_hours}}", label: "Кол-во часов курса", example: "40", patterns: ["часов", "объём"] },
+  { key: "{{students_count}}", label: "Количество обучающихся", example: "10", patterns: ["количество", "обучающихся"] },
   { key: "{{price}}", label: "Цена за 1 человека", example: "5 000,00", patterns: ["стоимость", "цена"] },
   { key: "{{total_price}}", label: "Общая сумма", example: "50 000,00", patterns: ["общая стоимость", "итого"] },
-  { key: "{{programs_table}}", label: "Таблица программ (авто)", example: "Таблица с программами, ценами и кол-вом", patterns: ["таблица", "программ"] },
-  { key: "{{programs_list}}", label: "Список программ (текст)", example: "1. Охрана труда — 40 ч. — 5 чел. — 3 000 руб.", patterns: [] },
   { key: "{{total_price_words}}", label: "Сумма прописью", example: "пятьдесят тысяч", patterns: ["прописью"] },
-  { key: "{{course_hours}}", label: "Кол-во часов курса", example: "40", patterns: ["часов", "объём"] },
-  { key: "{{service_start_date}}", label: "Дата начала обучения", example: "«15» января 2026 г.", patterns: ["начало", "с «"] },
-  { key: "{{service_end_date}}", label: "Дата окончания обучения", example: "«15» февраля 2026 г.", patterns: ["окончание", "по «"] },
-  { key: "{{contract_valid_until}}", label: "Срок действия (1 год)", example: "«12» января 2027 г.", patterns: ["срок действия", "действует до"] },
+  { key: "{{programs_table}}", label: "Таблица программ (авто)", example: "Таблица с программами", patterns: [] },
+  { key: "{{programs_list}}", label: "Список программ (текст)", example: "1. Охрана труда — 40 ч.", patterns: [] },
+  { key: "{{service_start_date}}", label: "Дата начала обучения", example: "«15» января 2026 г.", patterns: [] },
+  { key: "{{service_end_date}}", label: "Дата окончания обучения", example: "«15» февраля 2026 г.", patterns: [] },
+  { key: "{{contract_valid_until}}", label: "Срок действия (1 год)", example: "«12» января 2027 г.", patterns: [] },
   { key: "{{additional_terms}}", label: "Дополнительные условия", example: "", patterns: [] },
 ];
 
@@ -143,8 +89,8 @@ export function ContractTemplateEditor({
   organizationId,
   organizationName,
 }: ContractTemplateEditorProps) {
-  const [template, setTemplate] = useState(DEFAULT_CONTRACT_TEMPLATE);
-  const [originalTemplate, setOriginalTemplate] = useState(DEFAULT_CONTRACT_TEMPLATE);
+  const [template, setTemplate] = useState(BUILT_IN_TEMPLATES[0].text);
+  const [originalTemplate, setOriginalTemplate] = useState(BUILT_IN_TEMPLATES[0].text);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
@@ -152,6 +98,16 @@ export function ContractTemplateEditor({
   const [isAddingVariables, setIsAddingVariables] = useState(false);
   const [templateBeforeAI, setTemplateBeforeAI] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Template library state
+  const [templates, setTemplates] = useState<ContractTemplate[]>([...BUILT_IN_TEMPLATES]);
+  const [activeTemplateId, setActiveTemplateId] = useState("legal");
+  const [showSaveAsDialog, setShowSaveAsDialog] = useState(false);
+  const [newTemplateName, setNewTemplateName] = useState("");
+
+  // History state
+  const [history, setHistory] = useState<TemplateHistoryEntry[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
 
   useEffect(() => {
     loadTemplate();
@@ -169,9 +125,41 @@ export function ContractTemplateEditor({
       if (error) throw error;
 
       const branding = data?.branding as Record<string, unknown> | null;
-      if (branding?.contractTemplate) {
-        setTemplate(branding.contractTemplate as string);
-        setOriginalTemplate(branding.contractTemplate as string);
+      
+      // Load template library
+      if (branding?.contractTemplates && Array.isArray(branding.contractTemplates)) {
+        const savedTemplates = branding.contractTemplates as ContractTemplate[];
+        // Merge: built-in always available, plus custom ones
+        const customTemplates = savedTemplates.filter(t => !t.isBuiltIn);
+        // Update built-in templates text from saved if customized
+        const mergedBuiltIn = BUILT_IN_TEMPLATES.map(bi => {
+          const saved = savedTemplates.find(s => s.id === bi.id && s.isBuiltIn);
+          return saved ? { ...bi, text: saved.text } : bi;
+        });
+        setTemplates([...mergedBuiltIn, ...customTemplates]);
+        
+        const activeId = (branding.activeContractTemplateId as string) || "legal";
+        setActiveTemplateId(activeId);
+        const activeTemplate = [...mergedBuiltIn, ...customTemplates].find(t => t.id === activeId);
+        if (activeTemplate) {
+          setTemplate(activeTemplate.text);
+          setOriginalTemplate(activeTemplate.text);
+        }
+      } else if (branding?.contractTemplate) {
+        // Migration: old single template → library format
+        const oldTemplate = branding.contractTemplate as string;
+        setTemplate(oldTemplate);
+        setOriginalTemplate(oldTemplate);
+        const migrated = BUILT_IN_TEMPLATES.map(t => 
+          t.id === "legal" ? { ...t, text: oldTemplate } : t
+        );
+        setTemplates(migrated);
+        setActiveTemplateId("legal");
+      }
+
+      // Load history
+      if (branding?.contractTemplateHistory && Array.isArray(branding.contractTemplateHistory)) {
+        setHistory(branding.contractTemplateHistory as TemplateHistoryEntry[]);
       }
     } catch (error) {
       console.error("Error loading template:", error);
@@ -180,29 +168,51 @@ export function ContractTemplateEditor({
     }
   };
 
+  const saveBranding = async (updates: Record<string, unknown>) => {
+    const { data: orgData } = await supabase
+      .from("organizations")
+      .select("branding")
+      .eq("id", organizationId)
+      .single();
+
+    const currentBranding = (orgData?.branding as Record<string, unknown>) || {};
+
+    const { error } = await supabase
+      .from("organizations")
+      .update({
+        branding: { ...currentBranding, ...updates } as any,
+      })
+      .eq("id", organizationId);
+
+    if (error) throw error;
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const { data: orgData } = await supabase
-        .from("organizations")
-        .select("branding")
-        .eq("id", organizationId)
-        .single();
+      // Add current version to history before saving
+      const activeT = templates.find(t => t.id === activeTemplateId);
+      const newHistoryEntry: TemplateHistoryEntry = {
+        text: originalTemplate,
+        savedAt: new Date().toISOString(),
+        templateName: activeT?.name || "Без имени",
+      };
+      const updatedHistory = [newHistoryEntry, ...history].slice(0, 10);
 
-      const currentBranding = (orgData?.branding as Record<string, unknown>) || {};
+      // Update template in library
+      const updatedTemplates = templates.map(t =>
+        t.id === activeTemplateId ? { ...t, text: template } : t
+      );
 
-      const { error } = await supabase
-        .from("organizations")
-        .update({
-          branding: {
-            ...currentBranding,
-            contractTemplate: template,
-          },
-        })
-        .eq("id", organizationId);
+      await saveBranding({
+        contractTemplate: template, // backward compat
+        contractTemplates: updatedTemplates,
+        activeContractTemplateId: activeTemplateId,
+        contractTemplateHistory: updatedHistory,
+      });
 
-      if (error) throw error;
-
+      setTemplates(updatedTemplates);
+      setHistory(updatedHistory);
       setOriginalTemplate(template);
       toast.success("Шаблон договора сохранён");
     } catch (error) {
@@ -213,8 +223,75 @@ export function ContractTemplateEditor({
     }
   };
 
+  const handleSelectTemplate = (templateId: string) => {
+    const t = templates.find(t => t.id === templateId);
+    if (t) {
+      setActiveTemplateId(templateId);
+      setTemplate(t.text);
+      setOriginalTemplate(t.text);
+    }
+  };
+
+  const handleSaveAs = async () => {
+    if (!newTemplateName.trim()) return;
+    const id = `custom_${Date.now()}`;
+    const newTemplate: ContractTemplate = {
+      id,
+      name: newTemplateName.trim(),
+      text: template,
+      isBuiltIn: false,
+    };
+    const updatedTemplates = [...templates, newTemplate];
+    setTemplates(updatedTemplates);
+    setActiveTemplateId(id);
+    setOriginalTemplate(template);
+
+    try {
+      await saveBranding({
+        contractTemplates: updatedTemplates,
+        activeContractTemplateId: id,
+      });
+      toast.success(`Шаблон «${newTemplate.name}» сохранён`);
+    } catch {
+      toast.error("Ошибка сохранения");
+    }
+    setShowSaveAsDialog(false);
+    setNewTemplateName("");
+  };
+
+  const handleDeleteTemplate = async () => {
+    const active = templates.find(t => t.id === activeTemplateId);
+    if (!active || active.isBuiltIn) {
+      toast.error("Встроенные шаблоны нельзя удалить");
+      return;
+    }
+    const updatedTemplates = templates.filter(t => t.id !== activeTemplateId);
+    setTemplates(updatedTemplates);
+    handleSelectTemplate("legal");
+
+    try {
+      await saveBranding({
+        contractTemplates: updatedTemplates,
+        activeContractTemplateId: "legal",
+      });
+      toast.success(`Шаблон «${active.name}» удалён`);
+    } catch {
+      toast.error("Ошибка удаления");
+    }
+  };
+
   const handleReset = () => {
-    setTemplate(DEFAULT_CONTRACT_TEMPLATE);
+    const builtIn = BUILT_IN_TEMPLATES.find(t => t.id === activeTemplateId);
+    if (builtIn) {
+      setTemplate(builtIn.text);
+    } else {
+      setTemplate(BUILT_IN_TEMPLATES[0].text);
+    }
+  };
+
+  const handleRestoreFromHistory = (text: string) => {
+    setTemplate(text);
+    toast.info("Версия восстановлена. Нажмите «Сохранить» для применения.");
   };
 
   const extractTextFromPDF = async (file: File): Promise<string> => {
@@ -223,16 +300,12 @@ export function ContractTemplateEditor({
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     let text = "";
-    
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i);
       const textContent = await page.getTextContent();
-      const pageText = textContent.items
-        .map((item: any) => item.str)
-        .join(" ");
+      const pageText = textContent.items.map((item: any) => item.str).join(" ");
       text += pageText + "\n";
     }
-    
     return text;
   };
 
@@ -246,123 +319,36 @@ export function ContractTemplateEditor({
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     const fileName = file.name.toLowerCase();
     const isPDF = fileName.endsWith(".pdf");
     const isDOCX = fileName.endsWith(".docx") || fileName.endsWith(".doc");
-
-    if (!isPDF && !isDOCX) {
-      toast.error("Поддерживаются только PDF и DOC/DOCX файлы");
-      return;
-    }
-
+    if (!isPDF && !isDOCX) { toast.error("Поддерживаются только PDF и DOC/DOCX файлы"); return; }
     setIsProcessingFile(true);
     try {
-      let text = "";
-      
-      if (isPDF) {
-        text = await extractTextFromPDF(file);
-      } else if (isDOCX) {
-        text = await extractTextFromDOCX(file);
-      }
-
+      let text = isPDF ? await extractTextFromPDF(file) : await extractTextFromDOCX(file);
       if (text.trim()) {
         setTemplateBeforeAI(template);
-        // Automatically process with AI to add variables
         toast.info("Загружаем и обрабатываем документ...");
-        
         const { data, error } = await supabase.functions.invoke("process-contract-template", {
           body: { text: text.trim(), placeholders: PLACEHOLDERS },
         });
-
         if (error) throw error;
-
-      if (data?.processedText) {
-          // Validate that AI didn't delete too much text
-          const originalLen = text.trim().length;
-          const processedLen = data.processedText.length;
-          if (processedLen < originalLen * 0.6) {
+        if (data?.processedText) {
+          if (data.processedText.length < text.trim().length * 0.6) {
             toast.warning("AI мог сократить текст. Проверьте результат.");
           }
           setTemplate(data.processedText);
           toast.success("Документ загружен и переменные добавлены автоматически");
         } else {
-          // Fallback to just loading text if AI fails
           setTemplate(text.trim());
           toast.success("Текст загружен. Нажмите «Добавить переменные» для разметки.");
         }
-      } else {
-        toast.error("Не удалось извлечь текст из документа");
-      }
-    } catch (error) {
-      console.error("Error processing file:", error);
-      // Fallback: use regex patterns
-      const file2 = e.target.files?.[0];
-      if (file2) {
-        try {
-          let fallbackText = "";
-          if (fileName.endsWith(".pdf")) {
-            fallbackText = await extractTextFromPDF(file2);
-          } else {
-            fallbackText = await extractTextFromDOCX(file2);
-          }
-          
-          if (fallbackText.trim()) {
-            // Apply regex patterns as fallback
-            let processedText = fallbackText.trim();
-            const patterns = [
-              // Реквизиты
-              { regex: /ИНН:\s*(\d{10,12})/gi, replacement: "ИНН: {{org_inn}}" },
-              { regex: /КПП:\s*(\d{9})/gi, replacement: "КПП: {{org_kpp}}" },
-              { regex: /ОГРН:\s*(\d{13,15})/gi, replacement: "ОГРН: {{org_ogrn}}" },
-              { regex: /ОГРНИП:\s*(\d{15})/gi, replacement: "ОГРНИП: {{org_ogrn}}" },
-              { regex: /БИК:\s*(\d{9})/gi, replacement: "БИК: {{org_bank_bik}}" },
-              { regex: /Р\/с:?\s*(\d{20})/gi, replacement: "Р/с: {{org_bank_account}}" },
-              { regex: /Расч[её]тный счёт:?\s*(\d{20})/gi, replacement: "Расчётный счёт: {{org_bank_account}}" },
-              { regex: /К\/с:?\s*(\d{20})/gi, replacement: "К/с: {{org_bank_corr_account}}" },
-              { regex: /Корр[\.]*\s*сч[её]т:?\s*(\d{20})/gi, replacement: "Корр. счёт: {{org_bank_corr_account}}" },
-              // Номер и дата договора
-              { regex: /№\s*([\d\-\/]+)\s+от/gi, replacement: "№ {{contract_number}} от" },
-              { regex: /Договор\s*№\s*([\d\-\/]+)/gi, replacement: "Договор № {{contract_number}}" },
-              { regex: /от\s*«?(\d{1,2})»?\s*([а-яё]+)\s*(\d{4})\s*г?\.?/gi, replacement: "от {{contract_date}}" },
-              // Суммы
-              { regex: /(\d{1,3}(?:\s?\d{3})*(?:[,\.]\d{2})?)\s*(?:\(.*?\))?\s*руб/gi, replacement: "{{price}} руб" },
-              { regex: /стоимость(?:[^:]*?):\s*(\d{1,3}(?:\s?\d{3})*(?:[,\.]\d{2})?)/gi, replacement: "стоимость: {{price}}" },
-              { regex: /итого(?:[^:]*?):\s*(\d{1,3}(?:\s?\d{3})*(?:[,\.]\d{2})?)/gi, replacement: "итого: {{total_price}}" },
-              { regex: /общая сумма(?:[^:]*?):\s*(\d{1,3}(?:\s?\d{3})*(?:[,\.]\d{2})?)/gi, replacement: "общая сумма: {{total_price}}" },
-              // Количество
-              { regex: /Количество обучающихся:?\s*(\d+)/gi, replacement: "Количество обучающихся: {{students_count}}" },
-              { regex: /Количество слушателей:?\s*(\d+)/gi, replacement: "Количество слушателей: {{students_count}}" },
-              { regex: /\b(\d+)\s*(?:человек|чел\.)/gi, replacement: "{{students_count}} чел." },
-              // ФИО — only clear patterns
-              { regex: /в лице\s+Генерального директора\s+([А-ЯЁ][а-яё]+\s+[А-ЯЁ][а-яё]+\s+[А-ЯЁ][а-яё]+)/gi, replacement: "в лице {{org_director_position}} {{org_director_name}}" },
-              // Адреса — only with clear prefix
-              { regex: /(?:Юридический адрес|Фактический адрес):?\s*(\d{6}),?\s*([^.\n]+)/gi, replacement: "Адрес: {{org_address}}" },
-              // Банк — only "Банк:" with explicit org form
-              { regex: /Банк:\s*(ПАО|АО|ООО)\s+[«"']?([^»"'\n,]+)[»"']?/gi, replacement: "Банк: {{org_bank_name}}" },
-              // Курс/программа
-              { regex: /(?:программ[ае]|курс[ау]?)\s*[«"']([^»"']+)[»"']/gi, replacement: "программе «{{course_title}}»" },
-              { regex: /продолжительностью\s+(\d+)\s*(?:академических\s+)?час/gi, replacement: "продолжительностью {{course_duration}}" },
-            ];
-
-            patterns.forEach(({ regex, replacement }) => {
-              processedText = processedText.replace(regex, replacement);
-            });
-
-            setTemplate(processedText);
-            toast.success("Документ загружен с базовой разметкой переменных");
-          }
-        } catch (e2) {
-          toast.error("Ошибка обработки файла");
-        }
-      } else {
-        toast.error("Ошибка обработки файла");
-      }
+      } else { toast.error("Не удалось извлечь текст из документа"); }
+    } catch {
+      toast.error("Ошибка обработки файла");
     } finally {
       setIsProcessingFile(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -370,77 +356,33 @@ export function ContractTemplateEditor({
     setTemplateBeforeAI(template);
     setIsAddingVariables(true);
     try {
-      // Call edge function to use AI for variable detection
       const { data, error } = await supabase.functions.invoke("process-contract-template", {
         body: { text: template, placeholders: PLACEHOLDERS },
       });
-
       if (error) throw error;
-
       if (data?.processedText) {
-        // Validate that AI didn't delete too much text
-        const originalLen = template.length;
-        const processedLen = data.processedText.length;
-        if (processedLen < originalLen * 0.6) {
+        if (data.processedText.length < template.length * 0.6) {
           toast.warning("AI сократил текст. Проверьте результат или отмените изменение.");
         }
         setTemplate(data.processedText);
         toast.success("Переменные добавлены в шаблон");
-      } else {
-        toast.error("Не удалось добавить переменные");
-      }
-    } catch (error) {
-      console.error("Error adding variables:", error);
-      // Fallback: simple pattern matching
+      } else { toast.error("Не удалось добавить переменные"); }
+    } catch {
+      // Fallback: simple regex
       let processedText = template;
-      
-      // Replace common patterns with variables
       const patterns = [
-        // Реквизиты
         { regex: /ИНН:\s*\d{10,12}/gi, replacement: "ИНН: {{org_inn}}" },
         { regex: /КПП:\s*\d{9}/gi, replacement: "КПП: {{org_kpp}}" },
         { regex: /ОГРН:\s*\d{13,15}/gi, replacement: "ОГРН: {{org_ogrn}}" },
-        { regex: /ОГРНИП:\s*\d{15}/gi, replacement: "ОГРНИП: {{org_ogrn}}" },
         { regex: /БИК:\s*\d{9}/gi, replacement: "БИК: {{org_bank_bik}}" },
         { regex: /Р\/с:?\s*\d{20}/gi, replacement: "Р/с: {{org_bank_account}}" },
-        { regex: /Расч[её]тный счёт:?\s*\d{20}/gi, replacement: "Расчётный счёт: {{org_bank_account}}" },
         { regex: /К\/с:?\s*\d{20}/gi, replacement: "К/с: {{org_bank_corr_account}}" },
-        { regex: /Корр[\.]*\s*сч[её]т:?\s*\d{20}/gi, replacement: "Корр. счёт: {{org_bank_corr_account}}" },
-        // Номер и дата договора
         { regex: /№\s*[\d\-\/]+\s+от/gi, replacement: "№ {{contract_number}} от" },
-        { regex: /Договор\s*№\s*[\d\-\/]+/gi, replacement: "Договор № {{contract_number}}" },
-        { regex: /от\s*«?\d{1,2}»?\s*[а-яё]+\s*\d{4}\s*г?\.?/gi, replacement: "от {{contract_date}}" },
-        // Суммы
-        { regex: /(\d{1,3}(?:\s?\d{3})*(?:[,\.]\d{2})?)\s*(?:\(.*?\))?\s*руб/gi, replacement: "{{price}} руб" },
-        { regex: /стоимость(?:[^:]*?):\s*\d{1,3}(?:\s?\d{3})*(?:[,\.]\d{2})?/gi, replacement: "стоимость: {{price}}" },
-        { regex: /итого(?:[^:]*?):\s*\d{1,3}(?:\s?\d{3})*(?:[,\.]\d{2})?/gi, replacement: "итого: {{total_price}}" },
-        { regex: /общая сумма(?:[^:]*?):\s*\d{1,3}(?:\s?\d{3})*(?:[,\.]\d{2})?/gi, replacement: "общая сумма: {{total_price}}" },
-        // Количество
-        { regex: /Количество обучающихся:?\s*\d+/gi, replacement: "Количество обучающихся: {{students_count}}" },
-        { regex: /Количество слушателей:?\s*\d+/gi, replacement: "Количество слушателей: {{students_count}}" },
-        { regex: /\b(\d+)\s*(?:человек|чел\.)/gi, replacement: "{{students_count}} чел." },
-        // Организации — first match is Исполнитель (org), second is Заказчик (company)
-        // Don't auto-replace org names in fallback — too risky without context
-        // ФИО (Фамилия Имя Отчество) — only clear patterns
-        { regex: /в лице\s+Генерального директора\s+([А-ЯЁ][а-яё]+\s+[А-ЯЁ][а-яё]+\s+[А-ЯЁ][а-яё]+)/gi, replacement: "в лице {{org_director_position}} {{org_director_name}}" },
-        // Адреса — only with clear prefix
-        { regex: /(?:Юридический адрес|Фактический адрес):\s*\d{6},?\s*[^.\n]+/gi, replacement: "Адрес: {{org_address}}" },
-        // Банк — only "Банк:" with a value, not greedy
-        { regex: /Банк:\s*(ПАО|АО|ООО)\s+[«"']?[^»"'\n,]+[»"']?/gi, replacement: "Банк: {{org_bank_name}}" },
-        // Курс/программа
-        { regex: /(?:программ[ае]|курс[ау]?)\s*[«"'][^»"']+[»"']/gi, replacement: "программе «{{course_title}}»" },
-        { regex: /продолжительностью\s+\d+\s*(?:академических\s+)?час/gi, replacement: "продолжительностью {{course_duration}}" },
       ];
-
-      patterns.forEach(({ regex, replacement }) => {
-        processedText = processedText.replace(regex, replacement);
-      });
-
+      patterns.forEach(({ regex, replacement }) => { processedText = processedText.replace(regex, replacement); });
       setTemplate(processedText);
-      toast.success("Базовые переменные добавлены. Проверьте и дополните вручную.");
-    } finally {
-      setIsAddingVariables(false);
-    }
+      toast.success("Базовые переменные добавлены.");
+    } finally { setIsAddingVariables(false); }
   };
 
   const getPreviewText = () => {
@@ -452,6 +394,8 @@ export function ContractTemplateEditor({
   };
 
   const hasChanges = template !== originalTemplate;
+  const activeTemplate = templates.find(t => t.id === activeTemplateId);
+  const isBuiltInActive = activeTemplate?.isBuiltIn ?? true;
 
   if (isLoading) {
     return (
@@ -472,93 +416,88 @@ export function ContractTemplateEditor({
         </AccordionTrigger>
         <AccordionContent className="pt-4">
           <div className="space-y-4">
-            {/* Upload and Actions */}
-            <div className="flex flex-wrap gap-2">
+            {/* Template Library Selector */}
+            <div className="flex flex-wrap items-center gap-2">
+              <Select value={activeTemplateId} onValueChange={handleSelectTemplate}>
+                <SelectTrigger className="w-[220px] rounded-xl">
+                  <SelectValue placeholder="Выберите шаблон" />
+                </SelectTrigger>
+                <SelectContent>
+                  {templates.map(t => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name}{t.isBuiltIn ? "" : " ✦"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Button
                 variant="outline"
                 size="sm"
-                className="rounded-xl gap-2"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isProcessingFile}
+                className="rounded-xl gap-1.5"
+                onClick={() => setShowSaveAsDialog(true)}
               >
-                {isProcessingFile ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Upload className="w-4 h-4" />
-                )}
-                Загрузить DOC/PDF
+                <Plus className="w-3.5 h-3.5" />
+                Сохранить как...
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="rounded-xl gap-2"
-                onClick={addVariablesToTemplate}
-                disabled={isAddingVariables}
-              >
-                {isAddingVariables ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Sparkles className="w-4 h-4" />
-                )}
-                Добавить переменные
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="rounded-xl gap-2"
-                onClick={() => setShowPreview(true)}
-              >
-                <Eye className="w-4 h-4" />
-                Предпросмотр
-              </Button>
-              {templateBeforeAI && (
+              {!isBuiltInActive && (
                 <Button
                   variant="outline"
                   size="sm"
-                  className="rounded-xl gap-2 border-destructive text-destructive hover:bg-destructive/10"
-                  onClick={() => {
-                    setTemplate(templateBeforeAI);
-                    setTemplateBeforeAI(null);
-                    toast.info("Текст восстановлен до добавления переменных");
-                  }}
+                  className="rounded-xl gap-1.5 border-destructive text-destructive hover:bg-destructive/10"
+                  onClick={handleDeleteTemplate}
                 >
-                  <RotateCcw className="w-4 h-4" />
-                  Отменить разметку
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Удалить
                 </Button>
               )}
               <Button
                 variant="outline"
                 size="sm"
-                className="rounded-xl gap-2"
-                onClick={handleReset}
+                className="rounded-xl gap-1.5"
+                onClick={() => setShowHistory(true)}
               >
+                <History className="w-3.5 h-3.5" />
+                История
+              </Button>
+            </div>
+
+            {/* Upload and Actions */}
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" className="rounded-xl gap-2" onClick={() => fileInputRef.current?.click()} disabled={isProcessingFile}>
+                {isProcessingFile ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                Загрузить DOC/PDF
+              </Button>
+              <Button variant="outline" size="sm" className="rounded-xl gap-2" onClick={addVariablesToTemplate} disabled={isAddingVariables}>
+                {isAddingVariables ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                Добавить переменные
+              </Button>
+              <Button variant="outline" size="sm" className="rounded-xl gap-2" onClick={() => setShowPreview(true)}>
+                <Eye className="w-4 h-4" />
+                Предпросмотр
+              </Button>
+              {templateBeforeAI && (
+                <Button
+                  variant="outline" size="sm"
+                  className="rounded-xl gap-2 border-destructive text-destructive hover:bg-destructive/10"
+                  onClick={() => { setTemplate(templateBeforeAI); setTemplateBeforeAI(null); toast.info("Текст восстановлен"); }}
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  Отменить разметку
+                </Button>
+              )}
+              <Button variant="outline" size="sm" className="rounded-xl gap-2" onClick={handleReset}>
                 <RotateCcw className="w-4 h-4" />
                 Сбросить
               </Button>
-              <Button
-                size="sm"
-                className="rounded-xl gap-2"
-                onClick={handleSave}
-                disabled={isSaving || !hasChanges}
-              >
-                {isSaving ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Save className="w-4 h-4" />
-                )}
+              <Button size="sm" className="rounded-xl gap-2" onClick={handleSave} disabled={isSaving || !hasChanges}>
+                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                 Сохранить
               </Button>
             </div>
 
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".pdf,.doc,.docx"
-              className="hidden"
-              onChange={handleFileUpload}
-            />
+            <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx" className="hidden" onChange={handleFileUpload} />
 
-            {/* Template Editor with Syntax Highlighting */}
+            {/* Template Editor */}
             <HighlightedTemplateEditor
               value={template}
               onChange={setTemplate}
@@ -566,7 +505,7 @@ export function ContractTemplateEditor({
             />
 
             <p className="text-xs text-muted-foreground">
-              Загрузите существующий договор в формате DOC или PDF, затем нажмите «Добавить переменные» для автоматической разметки полей.
+              Выберите готовый шаблон или загрузите существующий договор. Нажмите «Добавить переменные» для автоматической разметки.
             </p>
           </div>
         </AccordionContent>
@@ -587,44 +526,51 @@ export function ContractTemplateEditor({
             </pre>
           </div>
           <div className="flex justify-end gap-2">
-            <Button
-              variant="outline"
-              className="rounded-xl"
-              onClick={() => setShowPreview(false)}
-            >
-              Закрыть
-            </Button>
-            <Button
-              className="rounded-xl gap-2"
-              onClick={() => {
-                const printWindow = window.open("", "_blank");
-                if (printWindow) {
-                  printWindow.document.write(`
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                      <title>Предпросмотр договора</title>
-                      <style>
-                        body { font-family: 'Times New Roman', serif; padding: 2cm; line-height: 1.6; }
-                        pre { white-space: pre-wrap; font-family: inherit; }
-                      </style>
-                    </head>
-                    <body>
-                      <pre>${getPreviewText()}</pre>
-                    </body>
-                    </html>
-                  `);
-                  printWindow.document.close();
-                  printWindow.print();
-                }
-              }}
-            >
+            <Button variant="outline" className="rounded-xl" onClick={() => setShowPreview(false)}>Закрыть</Button>
+            <Button className="rounded-xl gap-2" onClick={() => {
+              const printWindow = window.open("", "_blank");
+              if (printWindow) {
+                printWindow.document.write(`<!DOCTYPE html><html><head><title>Предпросмотр договора</title><style>body{font-family:'Times New Roman',serif;padding:2cm;line-height:1.6;}pre{white-space:pre-wrap;font-family:inherit;}</style></head><body><pre>${getPreviewText()}</pre></body></html>`);
+                printWindow.document.close();
+                printWindow.print();
+              }
+            }}>
               <FileText className="w-4 h-4" />
               Печать
             </Button>
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Save As Dialog */}
+      <Dialog open={showSaveAsDialog} onOpenChange={setShowSaveAsDialog}>
+        <DialogContent className="max-w-md rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Сохранить шаблон как...</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Input
+              placeholder="Название шаблона"
+              value={newTemplateName}
+              onChange={e => setNewTemplateName(e.target.value)}
+              className="rounded-xl"
+              onKeyDown={e => e.key === "Enter" && handleSaveAs()}
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" className="rounded-xl" onClick={() => setShowSaveAsDialog(false)}>Отмена</Button>
+              <Button className="rounded-xl" onClick={handleSaveAs} disabled={!newTemplateName.trim()}>Сохранить</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* History Dialog */}
+      <TemplateHistoryDialog
+        open={showHistory}
+        onOpenChange={setShowHistory}
+        history={history}
+        onRestore={handleRestoreFromHistory}
+      />
     </Accordion>
   );
 }
