@@ -50,6 +50,7 @@ const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 const PersonalDataPolicy = lazy(() => import("./pages/PersonalDataPolicy"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const ProposalPublic = lazy(() => import("./pages/ProposalPublic"));
+const ContractEditor = lazy(() => import("./pages/ContractEditor"));
 
 const queryClient = new QueryClient();
 
