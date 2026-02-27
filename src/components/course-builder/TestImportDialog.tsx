@@ -100,14 +100,21 @@ export function TestImportDialog({ onImport, children }: TestImportDialogProps) 
     if (!file) return;
 
     const ext = file.name.toLowerCase().split('.').pop();
-    if (!['xlsx', 'xls'].includes(ext || '')) {
-      toast.error("Поддерживаются только файлы Excel (.xlsx, .xls)");
+    if (!['xlsx', 'xls', 'txt'].includes(ext || '')) {
+      toast.error("Поддерживаются файлы Excel (.xlsx, .xls) и текстовые (.txt)");
       return;
     }
 
     setIsLoading(true);
     try {
-      const questions = await parseExcelFile(file);
+      let questions: ImportedQuestion[];
+      
+      if (ext === 'txt') {
+        const text = await file.text();
+        questions = parseTxtTestFile(text);
+      } else {
+        questions = await parseExcelFile(file);
+      }
       
       if (questions.length === 0) {
         toast.error("Не найдено вопросов в файле. Проверьте формат.");
@@ -117,7 +124,7 @@ export function TestImportDialog({ onImport, children }: TestImportDialogProps) 
       setPreviewData(questions);
       toast.success(`Найдено ${questions.length} вопросов`);
     } catch (error) {
-      console.error("Error parsing Excel:", error);
+      console.error("Error parsing file:", error);
       toast.error("Ошибка чтения файла");
     } finally {
       setIsLoading(false);
