@@ -74,7 +74,7 @@ export function VariableInsertPanel({ onInsert, sidebarMode }: VariableInsertPan
               <Variable className="w-3.5 h-3.5 text-muted-foreground" />
               <span className="text-xs font-semibold text-muted-foreground">Переменные</span>
             </div>
-            <ScrollArea className="h-[460px]">
+            <ScrollArea className="h-[calc(70vh-3rem)]">
               {content}
             </ScrollArea>
           </div>

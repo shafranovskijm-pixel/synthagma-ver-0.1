@@ -101,7 +101,7 @@ export function HighlightedTemplateEditor({
           <div
             ref={containerRef}
             className={cn(
-              "relative min-h-[500px] rounded-xl border bg-background transition-all",
+              "relative min-h-[70vh] rounded-xl border bg-background transition-all",
               isFocused && "ring-2 ring-ring ring-offset-2 ring-offset-background",
               className
             )}
