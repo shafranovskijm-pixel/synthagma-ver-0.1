@@ -324,8 +324,8 @@ const CourseLearning = () => {
                     const Icon = getIcon(att.file_type);
                     const color = getColor(att.file_type);
                     return (
-                      <a key={att.id} href={att.file_url} target="_blank" rel="noopener noreferrer"
-                        className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:bg-secondary/50 transition-colors group">
+                      <button key={att.id} onClick={() => setPreviewFile({ url: att.file_url, name: att.name, type: att.file_type })}
+                        className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:bg-secondary/50 transition-colors group text-left">
                         <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${color}`}>
                           <Icon className="w-5 h-5" />
                         </div>
@@ -335,8 +335,8 @@ const CourseLearning = () => {
                             {att.file_type?.toUpperCase()} {att.file_size ? `• ${formatSize(att.file_size)}` : ''}
                           </p>
                         </div>
-                        <Download className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
-                      </a>
+                        <Eye className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+                      </button>
                     );
                   })}
                 </div>
