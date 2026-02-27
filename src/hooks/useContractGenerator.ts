@@ -429,9 +429,11 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
     return `<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><title>Договор №${contractNumber}</title><style>@page{margin:2cm}*{box-sizing:border-box}body{font-family:'Times New Roman',serif;font-size:12pt;line-height:1.5;color:#000;margin:0;padding:20px;background:#fff}.header{text-align:center;margin-bottom:20px}.title{font-size:14pt;font-weight:bold;margin:20px 0;text-align:center}.parties{margin-bottom:20px;text-align:justify}.section{margin:15px 0}.section-title{font-weight:bold;margin-bottom:10px}.item{margin-left:20px;margin-bottom:5px;text-align:justify}table{width:100%;border-collapse:collapse;margin:10px 0}th,td{border:1px solid #000;padding:5px 8px;text-align:left}th{background:#f0f0f0}.requisites{font-size:10pt;margin-top:20px}.requisites td{border:none;vertical-align:top;padding:3px 10px}.signature-area{position:relative;min-height:100px;margin-top:10px}.signature-images{position:relative;height:80px;margin-bottom:10px}.signature-images img{position:absolute}.signature-line{border-top:1px solid #000;padding-top:5px;margin-top:60px}</style></head><body>${htmlBody}${signatureBlock}</body></html>`;
   };
 
+  const hasValidCounterparty = counterpartyType === 'individual' ? !!individualData.fullName : !!selectedCompanyId;
+
   const handleGenerate = async () => {
     const validPrograms = selectedPrograms.filter(p => p.courseId && p.price && parseFloat(p.price) > 0);
-    if (!selectedCompanyId) { toast.error("Выберите компанию"); return; }
+    if (!hasValidCounterparty) { toast.error(counterpartyType === 'individual' ? "Укажите ФИО" : "Выберите компанию"); return; }
     if (validPrograms.length === 0) { toast.error("Добавьте хотя бы одну программу с ценой"); return; }
     setIsGenerating(true);
     try {
@@ -445,26 +447,27 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
 
   const handleDownloadDOC = () => {
     const validPrograms = selectedPrograms.filter(p => p.courseId);
-    if (!selectedCompany || validPrograms.length === 0) { toast.error("Заполните все обязательные поля"); return; }
+    if (!effectiveCounterparty || validPrograms.length === 0) { toast.error("Заполните все обязательные поля"); return; }
     const html = generateContractHTML();
+    const counterpartyName = counterpartyType === 'individual' ? individualData.fullName : (selectedCompany?.name || 'компания');
     const docContent = `<!DOCTYPE html><html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset="utf-8"><meta name="ProgId" content="Word.Document"><title>Договор ${contractNumber}</title><style>@page{size:A4;margin:2cm}body{font-family:'Times New Roman',serif;font-size:14pt;line-height:1.5}</style></head><body>${html.replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>|<!DOCTYPE[^>]*>/gi, '')}</body></html>`;
     const blob = new Blob([docContent], { type: 'application/msword' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.href = url; link.download = `Договор_${contractNumber}_${selectedCompany?.name || 'компания'}.doc`;
+    link.href = url; link.download = `Договор_${contractNumber}_${counterpartyName}.doc`;
     document.body.appendChild(link); link.click(); document.body.removeChild(link); URL.revokeObjectURL(url);
     toast.success("Договор скачан в формате DOC");
   };
 
   const handleSaveContract = async () => {
     const validPrograms = selectedPrograms.filter(p => p.courseId && p.price);
-    if (!selectedCompany || validPrograms.length === 0) { toast.error("Заполните все обязательные поля"); return; }
+    if (!effectiveCounterparty || validPrograms.length === 0) { toast.error("Заполните все обязательные поля"); return; }
     if (!onSave) { toast.error("Сохранение недоступно"); return; }
     setIsSaving(true);
     try {
       const html = generateContractHTML();
-      // For backward compat, pass first program's courseId
-      await onSave(html, contractNumber, selectedCompany.name, validPrograms[0].courseId, totalPrice, totalStudents, contractDate);
+      const counterpartyName = counterpartyType === 'individual' ? individualData.fullName : (selectedCompany?.name || '');
+      await onSave(html, contractNumber, counterpartyName, validPrograms[0].courseId, totalPrice, totalStudents, contractDate);
       toast.success("Договор сохранён"); onClose();
     } catch (error) { console.error("Error:", error); toast.error("Ошибка сохранения"); }
     finally { setIsSaving(false); }
@@ -472,7 +475,7 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
 
   const handlePreview = () => {
     const validPrograms = selectedPrograms.filter(p => p.courseId && p.price);
-    if (!selectedCompany || validPrograms.length === 0) { toast.error("Заполните все обязательные поля"); return; }
+    if (!effectiveCounterparty || validPrograms.length === 0) { toast.error("Заполните все обязательные поля"); return; }
     setPreviewHtml(generateContractHTML()); setShowPreview(true);
   };
 
