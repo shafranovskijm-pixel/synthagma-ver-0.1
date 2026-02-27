@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Search, Save, Building2, CheckCircle2 } from "lucide-react";
+import { Loader2, Search, Save, Building2, CheckCircle2, MapPin, User, Landmark } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -188,8 +188,12 @@ export function OrgRequisitesForm({ organizationId }: OrgRequisitesFormProps) {
         )}
       </div>
 
-      {/* Requisites Form */}
-      <div className="grid gap-4">
+      {/* Основные реквизиты */}
+      <div className="bg-card border border-border rounded-xl p-4 space-y-4">
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <Building2 className="w-4 h-4 text-primary" />
+          Основные реквизиты
+        </div>
         <div className="grid md:grid-cols-3 gap-4">
           <div className="space-y-2">
             <Label>ИНН</Label>
@@ -219,27 +223,42 @@ export function OrgRequisitesForm({ organizationId }: OrgRequisitesFormProps) {
             />
           </div>
         </div>
+      </div>
 
-        <div className="space-y-2">
-          <Label>Юридический адрес</Label>
-          <Input
-            value={requisites.legal_address}
-            onChange={(e) => setRequisites(prev => ({ ...prev, legal_address: e.target.value }))}
-            className="rounded-xl"
-            placeholder="г. Москва, ул. Примерная, д. 1"
-          />
+      {/* Адреса */}
+      <div className="bg-card border border-border rounded-xl p-4 space-y-4">
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <MapPin className="w-4 h-4 text-primary" />
+          Адреса
         </div>
-
-        <div className="space-y-2">
-          <Label>Фактический адрес</Label>
-          <Input
-            value={requisites.actual_address}
-            onChange={(e) => setRequisites(prev => ({ ...prev, actual_address: e.target.value }))}
-            className="rounded-xl"
-            placeholder="г. Москва, ул. Примерная, д. 1"
-          />
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>Юридический адрес</Label>
+            <Input
+              value={requisites.legal_address}
+              onChange={(e) => setRequisites(prev => ({ ...prev, legal_address: e.target.value }))}
+              className="rounded-xl"
+              placeholder="г. Москва, ул. Примерная, д. 1"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Фактический адрес</Label>
+            <Input
+              value={requisites.actual_address}
+              onChange={(e) => setRequisites(prev => ({ ...prev, actual_address: e.target.value }))}
+              className="rounded-xl"
+              placeholder="г. Москва, ул. Примерная, д. 1"
+            />
+          </div>
         </div>
+      </div>
 
+      {/* Руководитель */}
+      <div className="bg-card border border-border rounded-xl p-4 space-y-4">
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <User className="w-4 h-4 text-primary" />
+          Руководитель
+        </div>
         <div className="grid md:grid-cols-3 gap-4">
           <div className="space-y-2">
             <Label>ФИО руководителя</Label>
@@ -275,50 +294,52 @@ export function OrgRequisitesForm({ organizationId }: OrgRequisitesFormProps) {
             </Select>
           </div>
         </div>
+      </div>
 
-        <div className="border-t border-border pt-4 mt-2">
-          <h5 className="font-medium mb-3 text-sm">Банковские реквизиты</h5>
-          <div className="grid gap-4">
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Наименование банка</Label>
-                <Input
-                  value={requisites.bank_name}
-                  onChange={(e) => setRequisites(prev => ({ ...prev, bank_name: e.target.value }))}
-                  className="rounded-xl"
-                  placeholder="ПАО Сбербанк"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>БИК</Label>
-                <Input
-                  value={requisites.bank_bik}
-                  onChange={(e) => setRequisites(prev => ({ ...prev, bank_bik: e.target.value.replace(/\D/g, '').slice(0, 9) }))}
-                  className="rounded-xl"
-                  placeholder="044525225"
-                />
-              </div>
-            </div>
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Расчётный счёт</Label>
-                <Input
-                  value={requisites.bank_account}
-                  onChange={(e) => setRequisites(prev => ({ ...prev, bank_account: e.target.value.replace(/\D/g, '').slice(0, 20) }))}
-                  className="rounded-xl"
-                  placeholder="40702810000000000000"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Корреспондентский счёт</Label>
-                <Input
-                  value={requisites.bank_corr_account}
-                  onChange={(e) => setRequisites(prev => ({ ...prev, bank_corr_account: e.target.value.replace(/\D/g, '').slice(0, 20) }))}
-                  className="rounded-xl"
-                  placeholder="30101810400000000225"
-                />
-              </div>
-            </div>
+      {/* Банковские реквизиты */}
+      <div className="bg-card border border-border rounded-xl p-4 space-y-4">
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <Landmark className="w-4 h-4 text-primary" />
+          Банковские реквизиты
+        </div>
+        <div className="grid md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>Наименование банка</Label>
+            <Input
+              value={requisites.bank_name}
+              onChange={(e) => setRequisites(prev => ({ ...prev, bank_name: e.target.value }))}
+              className="rounded-xl"
+              placeholder="ПАО Сбербанк"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>БИК</Label>
+            <Input
+              value={requisites.bank_bik}
+              onChange={(e) => setRequisites(prev => ({ ...prev, bank_bik: e.target.value.replace(/\D/g, '').slice(0, 9) }))}
+              className="rounded-xl"
+              placeholder="044525225"
+            />
+          </div>
+        </div>
+        <div className="grid md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>Расчётный счёт</Label>
+            <Input
+              value={requisites.bank_account}
+              onChange={(e) => setRequisites(prev => ({ ...prev, bank_account: e.target.value.replace(/\D/g, '').slice(0, 20) }))}
+              className="rounded-xl"
+              placeholder="40702810000000000000"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Корреспондентский счёт</Label>
+            <Input
+              value={requisites.bank_corr_account}
+              onChange={(e) => setRequisites(prev => ({ ...prev, bank_corr_account: e.target.value.replace(/\D/g, '').slice(0, 20) }))}
+              className="rounded-xl"
+              placeholder="30101810400000000225"
+            />
           </div>
         </div>
       </div>
