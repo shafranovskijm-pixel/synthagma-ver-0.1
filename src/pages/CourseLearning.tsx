@@ -11,7 +11,7 @@ import {
   ChevronLeft, ChevronRight, Trophy, Sparkles, Clock, Loader2, 
   Volume2, Square, MessageCircle, X, Send, List, Presentation, 
   Lock, RotateCcw, Settings2, Headphones, Download, FileText as FileTextIcon,
-  FileSpreadsheet, Presentation as PresentationIcon, File
+  FileSpreadsheet, Presentation as PresentationIcon, File, Eye
 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
