@@ -340,6 +340,13 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
       templateText = templateText.replace(/,?\s*в лице\s+\{\{company_director\}\}\s*,?\s*действующ(?:его|ей)\s+на основании Устава\s*,?/gi, '');
       templateText = templateText.replace(/,?\s*в лице\s+[^,«»]*,?\s*действующ(?:его|ей)\s+на основании Устава\s*,?\s*(?=с другой стороны)/gi, '');
     }
+    // For ИП, also fix "именуемое" -> "именуемый"
+    if (orgIsIP) {
+      templateText = templateText.replace(/именуемое в дальнейшем «Исполнитель»/gi, 'именуемый в дальнейшем «Исполнитель»');
+    }
+    if (companyIsIP) {
+      templateText = templateText.replace(/именуемое в дальнейшем «Заказчик»/gi, 'именуемый в дальнейшем «Заказчик»');
+    }
 
     // Build the variable replacement map
     const replacements: Record<string, string> = {
