@@ -73,6 +73,7 @@ export function OrgRequisitesForm({ organizationId }: OrgRequisitesFormProps) {
           bank_bik: data.bank_bik || "",
           bank_account: data.bank_account || "",
           bank_corr_account: data.bank_corr_account || "",
+          director_gender: (data as any).director_gender || "male",
         });
       }
     } catch (error) {
