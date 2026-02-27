@@ -43,6 +43,7 @@ export function OrgRequisitesForm({ organizationId }: OrgRequisitesFormProps) {
     bank_bik: "",
     bank_account: "",
     bank_corr_account: "",
+    director_gender: "male",
   });
 
   useEffect(() => {
