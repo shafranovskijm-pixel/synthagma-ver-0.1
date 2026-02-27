@@ -136,6 +136,7 @@ export function HighlightedTemplateEditor({
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}
               onScroll={syncScroll}
+              onContextMenu={handleContextMenu}
               className={cn(
                 "absolute inset-0 w-full h-full resize-none bg-transparent p-3 font-mono text-sm leading-relaxed",
                 "focus:outline-none",
@@ -144,6 +145,15 @@ export function HighlightedTemplateEditor({
               placeholder=""
               spellCheck={false}
             />
+          </div>
+
+          {/* Compact validation + stats bar */}
+          {showValidation && <TemplateValidation value={value} compact />}
+
+          {/* Statistics + hint */}
+          <div className="flex flex-wrap gap-3 text-xs text-muted-foreground px-1">
+            <span className="opacity-60">ПКМ — вставить переменную</span>
+            {Object.entries(VARIABLE_CATEGORIES).map(([key, category]) => {
           </div>
 
           {/* Compact validation + stats bar */}
