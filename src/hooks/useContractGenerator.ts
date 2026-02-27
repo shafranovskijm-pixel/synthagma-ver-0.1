@@ -261,7 +261,7 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
   const generateProgramsTableHTML = (): string => {
     const rows = resolvedPrograms
       .filter(p => p.course)
-      .map((p, i) => `<tr><td style="text-align:center">${i + 1}</td><td>${p.course!.title}</td><td style="text-align:center">${p.course!.duration || '-'}</td><td style="text-align:center">${p.count}</td><td style="text-align:right">${formatPrice(p.price)}</td><td style="text-align:right">${formatPrice(String(p.subtotal))}</td></tr>`);
+      .map((p, i) => `<tr><td style="text-align:center">${i + 1}</td><td>${p.course!.title}</td><td style="text-align:center">${p.course!.frdo_duration_hours || p.course!.duration || '-'}</td><td style="text-align:center">${p.count}</td><td style="text-align:right">${formatPrice(p.price)}</td><td style="text-align:right">${formatPrice(String(p.subtotal))}</td></tr>`);
     
     return `<table><thead><tr><th style="text-align:center">№</th><th>Наименование программы</th><th style="text-align:center">Объём, часов</th><th style="text-align:center">Кол-во чел.</th><th style="text-align:right">Цена за 1 чел., руб.</th><th style="text-align:right">Сумма, руб.</th></tr></thead><tbody>${rows.join('')}<tr><td colspan="5" style="text-align:right;font-weight:bold">Итого:</td><td style="text-align:right;font-weight:bold">${formatPrice(String(totalPrice))}</td></tr></tbody></table>`;
   };
