@@ -481,6 +481,9 @@ async function processFile(file: File): Promise<Array<{ title: string; html: str
     const text = await file.text();
     const cleanText = text.replace(/[^\\x20-\\x7E\\u0400-\\u04FF\n\r\t]/g, ' ').replace(/\s+/g, ' ');
     sourceHtml = txtToHtml(cleanText);
+  } else if (fileName.endsWith('.pdf')) {
+    const buffer = await file.arrayBuffer();
+    sourceHtml = await parsePdfBasic(buffer);
   } else {
     throw new Error(`Неподдерживаемый формат: ${file.name}`);
   }
