@@ -27,17 +27,18 @@ import { OrgCredentialsSettings } from "@/components/organization/OrgCredentials
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 
 export function SettingsTab() {
+  const d = useOrgDashboard();
   const [docTab, setDocTab] = useState("requisites");
   const [stampUrl, setStampUrl] = useState<string | null>(null);
   const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
 
   // Load stamp/signature from org data
   useState(() => {
-    if (!organizationId) return;
+    if (!d.organizationId) return;
     supabase
       .from('organizations')
       .select('stamp_url, signature_url')
-      .eq('id', organizationId)
+      .eq('id', d.organizationId)
       .single()
       .then(({ data }) => {
         if (data) {
