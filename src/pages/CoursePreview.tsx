@@ -34,6 +34,7 @@ import {
 } from "lucide-react";
 import { ContentBlock, jsonToBlocks, BlockRenderer } from "@/components/course-builder/BlockEditor";
 import { cn } from "@/lib/utils";
+import { FilePreviewDialog } from "@/components/course-learning/FilePreviewDialog";
 
 interface Lesson {
   id: string;
@@ -418,6 +419,9 @@ const CoursePreview = () => {
   
   // Attachments state
   const [lessonAttachments, setLessonAttachments] = useState<Record<string, any[]>>({});
+  
+  // File preview state
+  const [previewFile, setPreviewFile] = useState<{ url: string; name: string; type: string | null } | null>(null);
 
   const currentLesson = lessons[currentLessonIndex];
 
@@ -941,8 +945,8 @@ const CoursePreview = () => {
                     const Icon = getIcon(att.file_type);
                     const color = getColor(att.file_type);
                     return (
-                      <a key={att.id} href={att.file_url} target="_blank" rel="noopener noreferrer"
-                        className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:bg-secondary/50 transition-colors group">
+                      <button key={att.id} onClick={() => setPreviewFile({ url: att.file_url, name: att.name, type: att.file_type })}
+                        className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:bg-secondary/50 transition-colors group text-left">
                         <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${color}`}>
                           <Icon className="w-5 h-5" />
                         </div>
@@ -952,8 +956,8 @@ const CoursePreview = () => {
                             {att.file_type?.toUpperCase()} {att.file_size ? `• ${formatSize(att.file_size)}` : ''}
                           </p>
                         </div>
-                        <Download className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
-                      </a>
+                        <Eye className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+                      </button>
                     );
                   })}
                 </div>
@@ -1018,6 +1022,15 @@ const CoursePreview = () => {
           </div>
         </ScrollArea>
       </main>
+      {previewFile && (
+        <FilePreviewDialog
+          open={!!previewFile}
+          onOpenChange={(open) => !open && setPreviewFile(null)}
+          fileUrl={previewFile.url}
+          fileName={previewFile.name}
+          fileType={previewFile.type}
+        />
+      )}
     </div>
   );
 };
