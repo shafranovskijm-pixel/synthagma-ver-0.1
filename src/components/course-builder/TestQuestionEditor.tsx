@@ -95,6 +95,7 @@ export const TestQuestionEditor = forwardRef<TestQuestionEditorRef, TestQuestion
         options: q.options.map(text => ({ text })),
         correct_answer: q.correctAnswer,
         order_index: questions.length + index,
+        explanation: q.explanation || undefined,
         isNew: true
       }));
       
