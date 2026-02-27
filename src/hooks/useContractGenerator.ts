@@ -330,11 +330,15 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
 
     // Handle ИП: remove representation blocks BEFORE variable substitution
     if (orgIsIP) {
+      // Remove "в лице {{vars}} на основании Устава" pattern
       templateText = templateText.replace(/,?\s*в лице\s+\{\{org_director_position\}\}\s+\{\{org_director_name_genitive\}\}\s*,?\s*\{\{org_director_acting\}\}\s+на основании Устава\s*,?/gi, '');
       templateText = templateText.replace(/,?\s*в лице\s+[^,]*\{\{org_director_name_genitive\}\}[^,]*на основании Устава\s*,?/gi, '');
+      // Also handle already-hardcoded text (no template vars)
+      templateText = templateText.replace(/,?\s*в лице\s+[^,«»]*,?\s*действующ(?:его|ей)\s+на основании Устава\s*,?\s*(?=с одной стороны)/gi, '');
     }
     if (companyIsIP) {
       templateText = templateText.replace(/,?\s*в лице\s+\{\{company_director\}\}\s*,?\s*действующ(?:его|ей)\s+на основании Устава\s*,?/gi, '');
+      templateText = templateText.replace(/,?\s*в лице\s+[^,«»]*,?\s*действующ(?:его|ей)\s+на основании Устава\s*,?\s*(?=с другой стороны)/gi, '');
     }
 
     // Build the variable replacement map
