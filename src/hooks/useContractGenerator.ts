@@ -292,7 +292,8 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
 
   const generateContractHTML = (): string => {
     const validPrograms = resolvedPrograms.filter(p => p.course);
-    if (!selectedCompany || validPrograms.length === 0) return "";
+    const counterparty = effectiveCounterparty;
+    if (!counterparty || validPrograms.length === 0) return "";
     
     const dateFormatted = format(new Date(contractDate), "«d» MMMM yyyy г.", { locale: ru });
     const serviceStartFormatted = format(new Date(serviceStartDate), "«d» MMMM yyyy г.", { locale: ru });
