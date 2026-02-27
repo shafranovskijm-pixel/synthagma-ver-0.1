@@ -44,7 +44,7 @@ const CourseLearning = () => {
     isLessonAccessible, isLessonCompleted,
     goToNextLesson, goToPrevLesson, goToLesson, markLessonComplete, resetCourseProgress,
     submitTest, retryTest,
-    getLessonIcon, lessonButtonRefs
+    getLessonIcon, lessonButtonRefs, lessonAttachments,
   } = useCourseLearning();
 
   // Swipe gesture handlers
