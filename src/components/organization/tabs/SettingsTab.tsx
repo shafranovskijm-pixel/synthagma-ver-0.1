@@ -28,17 +28,20 @@ import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 
 export function SettingsTab() {
   const d = useOrgDashboard();
+  const organizationId = d.organizationId;
+  const organizationName = d.organizationName;
+  const userId = d.user?.id;
   const [docTab, setDocTab] = useState("requisites");
   const [stampUrl, setStampUrl] = useState<string | null>(null);
   const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
 
   // Load stamp/signature from org data
   useState(() => {
-    if (!d.organizationId) return;
+    if (!organizationId) return;
     supabase
       .from('organizations')
       .select('stamp_url, signature_url')
-      .eq('id', d.organizationId)
+      .eq('id', organizationId)
       .single()
       .then(({ data }) => {
         if (data) {
@@ -67,9 +70,6 @@ export function SettingsTab() {
     setSignatureUrl(null);
     await supabase.from('organizations').update({ signature_url: null }).eq('id', organizationId);
   };
-  const organizationId = d.organizationId;
-  const organizationName = d.organizationName;
-  const userId = d.user?.id;
   const {
     isDarkMode, setIsDarkMode,
     menuSettings, setMenuSettings,
