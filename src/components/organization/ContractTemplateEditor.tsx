@@ -124,6 +124,11 @@ const PLACEHOLDERS = [
   { key: "{{total_price}}", label: "Общая сумма", example: "50 000,00", patterns: ["общая стоимость", "итого"] },
   { key: "{{programs_table}}", label: "Таблица программ (авто)", example: "Таблица с программами, ценами и кол-вом", patterns: ["таблица", "программ"] },
   { key: "{{programs_list}}", label: "Список программ (текст)", example: "1. Охрана труда — 40 ч. — 5 чел. — 3 000 руб.", patterns: [] },
+  { key: "{{total_price_words}}", label: "Сумма прописью", example: "пятьдесят тысяч", patterns: ["прописью"] },
+  { key: "{{course_hours}}", label: "Кол-во часов курса", example: "40", patterns: ["часов", "объём"] },
+  { key: "{{service_start_date}}", label: "Дата начала обучения", example: "«15» января 2026 г.", patterns: ["начало", "с «"] },
+  { key: "{{service_end_date}}", label: "Дата окончания обучения", example: "«15» февраля 2026 г.", patterns: ["окончание", "по «"] },
+  { key: "{{contract_valid_until}}", label: "Срок действия (1 год)", example: "«12» января 2027 г.", patterns: ["срок действия", "действует до"] },
   { key: "{{additional_terms}}", label: "Дополнительные условия", example: "", patterns: [] },
 ];
 

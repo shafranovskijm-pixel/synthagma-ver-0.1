@@ -8,7 +8,7 @@ interface Company {
   id: string; name: string; inn: string | null; kpp: string | null; ogrn: string | null; address: string | null; director: string | null;
 }
 interface Course {
-  id: string; title: string; duration: string | null;
+  id: string; title: string; duration: string | null; frdo_duration_hours: number | null;
 }
 interface OrgRequisites {
   name: string; inn: string; kpp: string; ogrn: string; legal_address: string; actual_address: string;
@@ -106,6 +106,10 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
   const [contractNumber, setContractNumber] = useState("");
   const [contractDate, setContractDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [additionalTerms, setAdditionalTerms] = useState("");
+  const [serviceStartDate, setServiceStartDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [serviceEndDate, setServiceEndDate] = useState(() => {
+    const d = new Date(); d.setMonth(d.getMonth() + 1); return format(d, "yyyy-MM-dd");
+  });
 
   // Backward-compat aliases for first program
   const selectedCourseId = selectedPrograms[0]?.courseId || "";
@@ -138,7 +142,7 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
       try {
         const [companiesRes, coursesRes, orgRes] = await Promise.all([
           supabase.from("companies").select("id, name, inn, kpp, ogrn, address, director").eq("organization_id", organizationId).order("name"),
-          supabase.from("courses").select("id, title, duration").eq("organization_id", organizationId).eq("is_published", true).order("title"),
+          supabase.from("courses").select("id, title, duration, frdo_duration_hours").eq("organization_id", organizationId).eq("is_published", true).order("title"),
           supabase.from("organizations").select("branding").eq("id", organizationId).single(),
         ]);
         if (companiesRes.error) throw companiesRes.error;
@@ -257,7 +261,7 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
   const generateProgramsTableHTML = (): string => {
     const rows = resolvedPrograms
       .filter(p => p.course)
-      .map((p, i) => `<tr><td style="text-align:center">${i + 1}</td><td>${p.course!.title}</td><td style="text-align:center">${p.course!.duration || '-'}</td><td style="text-align:center">${p.count}</td><td style="text-align:right">${formatPrice(p.price)}</td><td style="text-align:right">${formatPrice(String(p.subtotal))}</td></tr>`);
+      .map((p, i) => `<tr><td style="text-align:center">${i + 1}</td><td>${p.course!.title}</td><td style="text-align:center">${p.course!.frdo_duration_hours || p.course!.duration || '-'}</td><td style="text-align:center">${p.count}</td><td style="text-align:right">${formatPrice(p.price)}</td><td style="text-align:right">${formatPrice(String(p.subtotal))}</td></tr>`);
     
     return `<table><thead><tr><th style="text-align:center">№</th><th>Наименование программы</th><th style="text-align:center">Объём, часов</th><th style="text-align:center">Кол-во чел.</th><th style="text-align:right">Цена за 1 чел., руб.</th><th style="text-align:right">Сумма, руб.</th></tr></thead><tbody>${rows.join('')}<tr><td colspan="5" style="text-align:right;font-weight:bold">Итого:</td><td style="text-align:right;font-weight:bold">${formatPrice(String(totalPrice))}</td></tr></tbody></table>`;
   };
@@ -265,7 +269,7 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
   const generateProgramsListText = (): string => {
     return resolvedPrograms
       .filter(p => p.course)
-      .map((p, i) => `${i + 1}. ${p.course!.title}${p.course!.duration ? ` — ${p.course!.duration}` : ''} — ${p.count} чел. — ${formatPrice(p.price)} руб./чел. — ${formatPrice(String(p.subtotal))} руб.`)
+      .map((p, i) => `${i + 1}. ${p.course!.title}${p.course!.frdo_duration_hours ? ` — ${p.course!.frdo_duration_hours} ч.` : (p.course!.duration ? ` — ${p.course!.duration}` : '')} — ${p.count} чел. — ${formatPrice(p.price)} руб./чел. — ${formatPrice(String(p.subtotal))} руб.`)
       .join('\n');
   };
 
@@ -274,6 +278,11 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
     if (!selectedCompany || validPrograms.length === 0) return "";
     
     const dateFormatted = format(new Date(contractDate), "«d» MMMM yyyy г.", { locale: ru });
+    const serviceStartFormatted = format(new Date(serviceStartDate), "«d» MMMM yyyy г.", { locale: ru });
+    const serviceEndFormatted = format(new Date(serviceEndDate), "«d» MMMM yyyy г.", { locale: ru });
+    const contractValidUntilDate = new Date(contractDate);
+    contractValidUntilDate.setFullYear(contractValidUntilDate.getFullYear() + 1);
+    const contractValidUntil = format(contractValidUntilDate, "«d» MMMM yyyy г.", { locale: ru });
 
     const orgIsIP = isIP(orgRequisites.name);
     const orgGender = detectGender(orgRequisites.director_name);
@@ -287,11 +296,30 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
     const firstCourse = validPrograms[0].course!;
     const firstPrice = validPrograms[0].priceNum;
     const firstCount = validPrograms[0].count;
+    const firstCourseHours = firstCourse.frdo_duration_hours ? String(firstCourse.frdo_duration_hours) : (firstCourse.duration || '');
+
+    // Use saved template if available, otherwise fallback to hardcoded default
+    let templateText = savedTemplate || DEFAULT_TEMPLATE;
+
+    // Handle ИП: remove representation blocks BEFORE variable substitution
+    if (orgIsIP) {
+      // Remove "в лице {{org_director_position}} {{org_director_name_genitive}}, {{org_director_acting}} на основании Устава" 
+      templateText = templateText.replace(/,?\s*в лице\s+\{\{org_director_position\}\}\s+\{\{org_director_name_genitive\}\}\s*,?\s*\{\{org_director_acting\}\}\s+на основании Устава\s*,?/gi, '');
+      // Also try more generic pattern for manually edited templates
+      templateText = templateText.replace(/,?\s*в лице\s+[^,]*\{\{org_director_name_genitive\}\}[^,]*на основании Устава\s*,?/gi, '');
+    }
+    if (companyIsIP) {
+      // Remove company representation block "в лице {{company_director}}, действующего на основании Устава"
+      templateText = templateText.replace(/,?\s*в лице\s+\{\{company_director\}\}\s*,?\s*действующ(?:его|ей)\s+на основании Устава\s*,?/gi, '');
+    }
 
     // Build the variable replacement map
     const replacements: Record<string, string> = {
       '{{contract_number}}': contractNumber,
       '{{contract_date}}': dateFormatted,
+      '{{service_start_date}}': serviceStartFormatted,
+      '{{service_end_date}}': serviceEndFormatted,
+      '{{contract_valid_until}}': contractValidUntil,
       '{{org_name}}': orgRequisites.name,
       '{{org_director_position}}': orgRequisites.director_position || 'Генерального директора',
       '{{org_director_name}}': orgRequisites.director_name,
@@ -313,6 +341,7 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
       '{{company_address}}': selectedCompany.address || '_______________',
       '{{course_title}}': firstCourse.title,
       '{{course_duration}}': firstCourse.duration ? ` продолжительностью ${firstCourse.duration}` : '',
+      '{{course_hours}}': firstCourseHours,
       '{{students_count}}': String(isMultiple ? totalStudents : firstCount),
       '{{price}}': formatPrice(String(firstPrice)),
       '{{total_price}}': formatPrice(String(totalPrice)),
@@ -322,35 +351,18 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
       '{{additional_terms}}': additionalTerms || '',
     };
 
-    // Use saved template if available, otherwise fallback to hardcoded default
-    const templateText = savedTemplate || DEFAULT_TEMPLATE;
-
     // Perform variable substitution
     let result = templateText;
     for (const [key, value] of Object.entries(replacements)) {
       result = result.split(key).join(value);
     }
 
-    // Handle ИП: remove representation blocks for ИП
+    // Fallback: remove any remaining "в лице ... Устава" for ИП after substitution
     if (orgIsIP) {
-      // Remove org representation line (", в лице ... Устава,")
-      result = result.replace(/,?\s*в лице\s+{{org_director_position}}[^,]*Устава\s*,?/gi, '');
-      // Also remove already-substituted version
-      result = result.replace(/,?\s*в лице\s+[^,]*на основании Устава\s*,?/gi, (match) => {
-        // Only remove if it's in the Исполнитель section (first occurrence)
-        return '';
-      });
+      result = result.replace(/,?\s*в лице\s+[^,]*на основании Устава\s*,?/gi, '');
     }
     if (companyIsIP) {
-      // For company ИП, remove the second "в лице ... Устава" block
-      const companyRepRegex = /,?\s*в лице\s+[^,]*действующ(?:его|ей)\s+на основании Устава\s*,?/gi;
-      let matchIndex = 0;
-      result = result.replace(companyRepRegex, (match) => {
-        matchIndex++;
-        // Remove only the second occurrence (company side) if org is not ИП, 
-        // or the first remaining one if org was already removed
-        return orgIsIP ? '' : (matchIndex >= 2 ? '' : match);
-      });
+      result = result.replace(/,?\s*в лице\s+[^,]*действующ(?:его|ей)\s+на основании Устава\s*,?/gi, '');
     }
 
     // Convert plain text template to HTML
@@ -445,6 +457,7 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
     contractNumber, setContractNumber, contractDate, setContractDate,
     additionalTerms, setAdditionalTerms,
     selectedCompany, selectedCourse: courses.find(c => c.id === selectedCourseId),
+    serviceStartDate, setServiceStartDate, serviceEndDate, setServiceEndDate,
     formatPrice, handleGenerate, handleDownloadDOC, handleSaveContract, handlePreview,
     onSave,
   };

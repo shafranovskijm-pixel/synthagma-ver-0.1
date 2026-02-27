@@ -102,6 +102,7 @@ const CourseEditor = () => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [duration, setDuration] = useState("");
+  const [durationHours, setDurationHours] = useState<number | null>(null);
   const [sequentialLessons, setSequentialLessons] = useState(false);
   const [allowVideoSeek, setAllowVideoSeek] = useState(true);
 
@@ -146,6 +147,7 @@ const CourseEditor = () => {
       setTitle(courseResult.data.title);
       setDescription(courseResult.data.description || "");
       setDuration(courseResult.data.duration || "");
+      setDurationHours(courseResult.data.frdo_duration_hours ?? null);
       setSequentialLessons(courseResult.data.sequential_lessons ?? false);
       setAllowVideoSeek(courseResult.data.allow_video_seek ?? true);
     }
@@ -167,6 +169,7 @@ const CourseEditor = () => {
         title,
         description: description || null,
         duration: duration || null,
+        frdo_duration_hours: durationHours,
         sequential_lessons: sequentialLessons,
         allow_video_seek: allowVideoSeek,
       })
@@ -530,6 +533,16 @@ const CourseEditor = () => {
                 value={duration}
                 onChange={(e) => setDuration(e.target.value)}
                 placeholder="Например: 2 недели"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Академические часы</Label>
+              <Input
+                type="number"
+                min="0"
+                value={durationHours ?? ""}
+                onChange={(e) => setDurationHours(e.target.value ? parseInt(e.target.value) : null)}
+                placeholder="Например: 40"
               />
             </div>
             <div className="space-y-2">
