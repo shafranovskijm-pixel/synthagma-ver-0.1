@@ -112,6 +112,8 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
   const [showPreview, setShowPreview] = useState(false);
   const [previewHtml, setPreviewHtml] = useState("");
   const [selectedCompanyId, setSelectedCompanyId] = useState("");
+  const [counterpartyType, setCounterpartyType] = useState<CounterpartyType>('company');
+  const [individualData, setIndividualData] = useState<IndividualData>({ fullName: '', passport: '', address: '', phone: '', email: '' });
   const [selectedPrograms, setSelectedPrograms] = useState<SelectedProgram[]>([{ courseId: "", price: "", studentsCount: "1" }]);
   const [contractNumber, setContractNumber] = useState("");
   const [contractDate, setContractDate] = useState(format(new Date(), "yyyy-MM-dd"));
