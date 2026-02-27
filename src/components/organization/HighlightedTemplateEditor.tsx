@@ -79,7 +79,6 @@ export function HighlightedTemplateEditor({
     const pos = cursorPosRef.current;
     const newValue = value.slice(0, pos) + variable + value.slice(pos);
     onChange(newValue);
-    // Set cursor after inserted variable
     const newPos = pos + variable.length;
     cursorPosRef.current = newPos;
     requestAnimationFrame(() => {
@@ -93,91 +92,79 @@ export function HighlightedTemplateEditor({
   const highlightedHtml = highlightVariables(value);
 
   return (
-    <div className="space-y-3">
-      {/* Legend */}
-      <div className="flex flex-wrap gap-2 text-xs">
-        <span className="text-muted-foreground font-medium">Категории:</span>
-        {Object.entries(VARIABLE_CATEGORIES).map(([key, category]) => (
-          <span
-            key={key}
+    <div className="space-y-2">
+      {/* Main layout: editor + sidebar on desktop */}
+      <div className="flex flex-col lg:flex-row gap-3">
+        {/* Editor area */}
+        <div className="flex-1 min-w-0 space-y-2">
+          {/* Editor container */}
+          <div
+            ref={containerRef}
             className={cn(
-              "inline-flex items-center px-2 py-0.5 rounded-md font-medium border",
-              category.color,
-              category.borderColor
+              "relative min-h-[500px] rounded-xl border bg-background transition-all",
+              isFocused && "ring-2 ring-ring ring-offset-2 ring-offset-background",
+              className
             )}
           >
-            {category.label}
-          </span>
-        ))}
-        <span className="inline-flex items-center px-2 py-0.5 rounded-md font-medium bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 border border-gray-400">
-          Другие
-        </span>
-      </div>
+            {/* Highlighted layer */}
+            <div
+              ref={highlightRef}
+              className="absolute inset-0 overflow-auto pointer-events-none p-3 font-mono text-sm leading-relaxed whitespace-pre-wrap break-words"
+              style={{ wordBreak: "break-word" }}
+              dangerouslySetInnerHTML={{ __html: highlightedHtml || `<span class="text-muted-foreground">${placeholder || ""}</span>` }}
+            />
+            
+            {/* Textarea layer */}
+            <textarea
+              ref={textareaRef}
+              value={value}
+              onChange={handleChange}
+              onSelect={handleSelect}
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => setIsFocused(false)}
+              onScroll={syncScroll}
+              className={cn(
+                "absolute inset-0 w-full h-full resize-none bg-transparent p-3 font-mono text-sm leading-relaxed",
+                "focus:outline-none",
+                "text-transparent caret-foreground selection:bg-primary/20"
+              )}
+              placeholder=""
+              spellCheck={false}
+            />
+          </div>
 
-      {/* Variable Insert Panel */}
-      {showInsertPanel && (
-        <VariableInsertPanel onInsert={insertVariable} />
-      )}
+          {/* Compact validation + stats bar */}
+          {showValidation && <TemplateValidation value={value} compact />}
 
-      {/* Editor container */}
-      <div
-        ref={containerRef}
-        className={cn(
-          "relative min-h-[400px] rounded-xl border bg-background transition-all",
-          isFocused && "ring-2 ring-ring ring-offset-2 ring-offset-background",
-          className
+          {/* Statistics inline */}
+          <div className="flex flex-wrap gap-3 text-xs text-muted-foreground px-1">
+            {Object.entries(VARIABLE_CATEGORIES).map(([key, category]) => {
+              const count = category.keys.reduce((acc, { key: varKey }) => {
+                const regex = new RegExp(`\\{\\{${varKey}\\}\\}`, "g");
+                return acc + (value.match(regex)?.length || 0);
+              }, 0);
+              if (count === 0) return null;
+              return (
+                <span key={key} className="flex items-center gap-1">
+                  <span
+                    className={cn(
+                      "w-2 h-2 rounded-full",
+                      category.color.split(" ")[0]
+                    )}
+                  />
+                  {category.label}: {count}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Sidebar: variables panel (always visible on desktop, collapsible on mobile) */}
+        {showInsertPanel && (
+          <div className="lg:w-[280px] flex-shrink-0">
+            <VariableInsertPanel onInsert={insertVariable} sidebarMode />
+          </div>
         )}
-      >
-        {/* Highlighted layer */}
-        <div
-          ref={highlightRef}
-          className="absolute inset-0 overflow-auto pointer-events-none p-3 font-mono text-sm leading-relaxed whitespace-pre-wrap break-words"
-          style={{ wordBreak: "break-word" }}
-          dangerouslySetInnerHTML={{ __html: highlightedHtml || `<span class="text-muted-foreground">${placeholder || ""}</span>` }}
-        />
-        
-        {/* Textarea layer */}
-        <textarea
-          ref={textareaRef}
-          value={value}
-          onChange={handleChange}
-          onSelect={handleSelect}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
-          onScroll={syncScroll}
-          className={cn(
-            "absolute inset-0 w-full h-full resize-none bg-transparent p-3 font-mono text-sm leading-relaxed",
-            "focus:outline-none",
-            "text-transparent caret-foreground selection:bg-primary/20"
-          )}
-          placeholder=""
-          spellCheck={false}
-        />
-      </div>
-
-      {/* Validation */}
-      {showValidation && <TemplateValidation value={value} />}
-
-      {/* Statistics */}
-      <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
-        {Object.entries(VARIABLE_CATEGORIES).map(([key, category]) => {
-          const count = category.keys.reduce((acc, { key: varKey }) => {
-            const regex = new RegExp(`\\{\\{${varKey}\\}\\}`, "g");
-            return acc + (value.match(regex)?.length || 0);
-          }, 0);
-          if (count === 0) return null;
-          return (
-            <span key={key} className="flex items-center gap-1">
-              <span
-                className={cn(
-                  "w-2.5 h-2.5 rounded-full",
-                  category.color.split(" ")[0]
-                )}
-              />
-              {category.label}: {count}
-            </span>
-          );
-        })}
       </div>
     </div>
   );
