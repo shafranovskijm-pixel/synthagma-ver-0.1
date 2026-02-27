@@ -260,6 +260,7 @@ export function ContractTemplateEditor({
       }
 
       if (text.trim()) {
+        setTemplateBeforeAI(template);
         // Automatically process with AI to add variables
         toast.info("Загружаем и обрабатываем документ...");
         
