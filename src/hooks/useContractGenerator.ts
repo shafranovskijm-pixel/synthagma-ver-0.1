@@ -278,6 +278,11 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
     if (!selectedCompany || validPrograms.length === 0) return "";
     
     const dateFormatted = format(new Date(contractDate), "«d» MMMM yyyy г.", { locale: ru });
+    const serviceStartFormatted = format(new Date(serviceStartDate), "«d» MMMM yyyy г.", { locale: ru });
+    const serviceEndFormatted = format(new Date(serviceEndDate), "«d» MMMM yyyy г.", { locale: ru });
+    const contractValidUntilDate = new Date(contractDate);
+    contractValidUntilDate.setFullYear(contractValidUntilDate.getFullYear() + 1);
+    const contractValidUntil = format(contractValidUntilDate, "«d» MMMM yyyy г.", { locale: ru });
 
     const orgIsIP = isIP(orgRequisites.name);
     const orgGender = detectGender(orgRequisites.director_name);
@@ -291,11 +296,30 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
     const firstCourse = validPrograms[0].course!;
     const firstPrice = validPrograms[0].priceNum;
     const firstCount = validPrograms[0].count;
+    const firstCourseHours = firstCourse.frdo_duration_hours ? String(firstCourse.frdo_duration_hours) : (firstCourse.duration || '');
+
+    // Use saved template if available, otherwise fallback to hardcoded default
+    let templateText = savedTemplate || DEFAULT_TEMPLATE;
+
+    // Handle ИП: remove representation blocks BEFORE variable substitution
+    if (orgIsIP) {
+      // Remove "в лице {{org_director_position}} {{org_director_name_genitive}}, {{org_director_acting}} на основании Устава" 
+      templateText = templateText.replace(/,?\s*в лице\s+\{\{org_director_position\}\}\s+\{\{org_director_name_genitive\}\}\s*,?\s*\{\{org_director_acting\}\}\s+на основании Устава\s*,?/gi, '');
+      // Also try more generic pattern for manually edited templates
+      templateText = templateText.replace(/,?\s*в лице\s+[^,]*\{\{org_director_name_genitive\}\}[^,]*на основании Устава\s*,?/gi, '');
+    }
+    if (companyIsIP) {
+      // Remove company representation block "в лице {{company_director}}, действующего на основании Устава"
+      templateText = templateText.replace(/,?\s*в лице\s+\{\{company_director\}\}\s*,?\s*действующ(?:его|ей)\s+на основании Устава\s*,?/gi, '');
+    }
 
     // Build the variable replacement map
     const replacements: Record<string, string> = {
       '{{contract_number}}': contractNumber,
       '{{contract_date}}': dateFormatted,
+      '{{service_start_date}}': serviceStartFormatted,
+      '{{service_end_date}}': serviceEndFormatted,
+      '{{contract_valid_until}}': contractValidUntil,
       '{{org_name}}': orgRequisites.name,
       '{{org_director_position}}': orgRequisites.director_position || 'Генерального директора',
       '{{org_director_name}}': orgRequisites.director_name,
@@ -317,6 +341,7 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
       '{{company_address}}': selectedCompany.address || '_______________',
       '{{course_title}}': firstCourse.title,
       '{{course_duration}}': firstCourse.duration ? ` продолжительностью ${firstCourse.duration}` : '',
+      '{{course_hours}}': firstCourseHours,
       '{{students_count}}': String(isMultiple ? totalStudents : firstCount),
       '{{price}}': formatPrice(String(firstPrice)),
       '{{total_price}}': formatPrice(String(totalPrice)),
@@ -326,35 +351,18 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
       '{{additional_terms}}': additionalTerms || '',
     };
 
-    // Use saved template if available, otherwise fallback to hardcoded default
-    const templateText = savedTemplate || DEFAULT_TEMPLATE;
-
     // Perform variable substitution
     let result = templateText;
     for (const [key, value] of Object.entries(replacements)) {
       result = result.split(key).join(value);
     }
 
-    // Handle ИП: remove representation blocks for ИП
+    // Fallback: remove any remaining "в лице ... Устава" for ИП after substitution
     if (orgIsIP) {
-      // Remove org representation line (", в лице ... Устава,")
-      result = result.replace(/,?\s*в лице\s+{{org_director_position}}[^,]*Устава\s*,?/gi, '');
-      // Also remove already-substituted version
-      result = result.replace(/,?\s*в лице\s+[^,]*на основании Устава\s*,?/gi, (match) => {
-        // Only remove if it's in the Исполнитель section (first occurrence)
-        return '';
-      });
+      result = result.replace(/,?\s*в лице\s+[^,]*на основании Устава\s*,?/gi, '');
     }
     if (companyIsIP) {
-      // For company ИП, remove the second "в лице ... Устава" block
-      const companyRepRegex = /,?\s*в лице\s+[^,]*действующ(?:его|ей)\s+на основании Устава\s*,?/gi;
-      let matchIndex = 0;
-      result = result.replace(companyRepRegex, (match) => {
-        matchIndex++;
-        // Remove only the second occurrence (company side) if org is not ИП, 
-        // or the first remaining one if org was already removed
-        return orgIsIP ? '' : (matchIndex >= 2 ? '' : match);
-      });
+      result = result.replace(/,?\s*в лице\s+[^,]*действующ(?:его|ей)\s+на основании Устава\s*,?/gi, '');
     }
 
     // Convert plain text template to HTML
