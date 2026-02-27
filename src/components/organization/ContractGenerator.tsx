@@ -31,7 +31,7 @@ export function ContractGenerator(props: ContractGeneratorProps) {
     contractNumber, setContractNumber, contractDate, setContractDate,
     serviceStartDate, setServiceStartDate, serviceEndDate, setServiceEndDate,
     additionalTerms, setAdditionalTerms,
-    selectedCompany, courses, formatPrice, handleGenerate, handleDownloadDOC, handleSaveContract, handlePreview,
+    selectedCompany, formatPrice, handleGenerate, handleDownloadDOC, handleSaveContract, handlePreview,
   } = useContractGenerator(props);
 
   if (showPreview) {
