@@ -2404,6 +2404,7 @@ export type Database = {
           branding: Json | null
           contact_name: string | null
           created_at: string
+          director_gender: string | null
           director_name: string | null
           director_position: string | null
           email: string
@@ -2446,6 +2447,7 @@ export type Database = {
           branding?: Json | null
           contact_name?: string | null
           created_at?: string
+          director_gender?: string | null
           director_name?: string | null
           director_position?: string | null
           email: string
@@ -2488,6 +2490,7 @@ export type Database = {
           branding?: Json | null
           contact_name?: string | null
           created_at?: string
+          director_gender?: string | null
           director_name?: string | null
           director_position?: string | null
           email?: string
