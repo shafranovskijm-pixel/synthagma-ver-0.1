@@ -35,6 +35,7 @@ import { TemplateHistoryDialog, type TemplateHistoryEntry } from "./contract-tem
 interface ContractTemplateEditorProps {
   organizationId: string;
   organizationName: string;
+  fullPage?: boolean;
 }
 
 const PLACEHOLDERS = [

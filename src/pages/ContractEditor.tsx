@@ -1,5 +1,4 @@
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
 import { useOrganization } from "@/hooks/useOrganization";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Loader2 } from "lucide-react";
@@ -8,10 +7,9 @@ import { SigmaLogo } from "@/components/ui/SigmaLogo";
 
 export default function ContractEditor() {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const { organization, loading } = useOrganization(user?.id);
+  const { organization, organizationName, isLoading } = useOrganization();
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -52,7 +50,7 @@ export default function ContractEditor() {
       <main className="flex-1 p-4 lg:p-6">
         <ContractTemplateEditor
           organizationId={organization.id}
-          organizationName={organization.name}
+          organizationName={organizationName}
           fullPage
         />
       </main>
