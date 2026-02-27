@@ -93,6 +93,14 @@ export function HighlightedTemplateEditor({
     });
   }, [value, onChange]);
 
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    if (textareaRef.current) {
+      cursorPosRef.current = textareaRef.current.selectionStart;
+    }
+    setContextMenu({ x: e.clientX, y: e.clientY });
+  }, []);
+
   const highlightedHtml = highlightVariables(value);
 
   return (
