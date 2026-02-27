@@ -197,6 +197,13 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
     return `<table><thead><tr><th style="text-align:center">№</th><th>Наименование программы</th><th style="text-align:center">Объём, часов</th><th style="text-align:center">Кол-во чел.</th><th style="text-align:right">Цена за 1 чел., руб.</th><th style="text-align:right">Сумма, руб.</th></tr></thead><tbody>${rows.join('')}<tr><td colspan="5" style="text-align:right;font-weight:bold">Итого:</td><td style="text-align:right;font-weight:bold">${formatPrice(String(totalPrice))}</td></tr></tbody></table>`;
   };
 
+  const generateProgramsListText = (): string => {
+    return resolvedPrograms
+      .filter(p => p.course)
+      .map((p, i) => `${i + 1}. ${p.course!.title}${p.course!.duration ? ` — ${p.course!.duration}` : ''} — ${p.count} чел. — ${formatPrice(p.price)} руб./чел. — ${formatPrice(String(p.subtotal))} руб.`)
+      .join('\n');
+  };
+
   const generateContractHTML = (): string => {
     const validPrograms = resolvedPrograms.filter(p => p.course);
     if (!selectedCompany || validPrograms.length === 0) return "";
@@ -207,27 +214,109 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
     const orgGender = detectGender(orgRequisites.director_name);
     const orgDirectorNameGenitive = declineFullNameToGenitive(orgRequisites.director_name);
     const orgActing = orgGender === 'female' ? 'действующей' : 'действующего';
-    const orgRepresentationBlock = orgIsIP ? '' : `, в лице ${orgRequisites.director_position} ${orgDirectorNameGenitive}, ${orgActing} на основании Устава,`;
 
     const companyIsIP = isIP(selectedCompany.name);
     const companyDirector = selectedCompany.director || 'Генерального директора';
-    const companyRepresentationBlock = companyIsIP ? '' : `, в лице ${companyDirector}, действующего на основании Устава,`;
 
     const isMultiple = validPrograms.length > 1;
     const firstCourse = validPrograms[0].course!;
     const firstPrice = validPrograms[0].priceNum;
     const firstCount = validPrograms[0].count;
 
-    // Subject section: single program = text, multiple = table
-    const subjectSection = isMultiple
-      ? `<div class="item">1.1. Исполнитель обязуется оказать Заказчику образовательные услуги по следующим программам, а Заказчик обязуется оплатить эти услуги:</div><div class="item">${generateProgramsTableHTML()}</div>`
-      : `<div class="item">1.1. Исполнитель обязуется оказать Заказчику образовательные услуги по программе «${firstCourse.title}»${firstCourse.duration ? ` продолжительностью ${firstCourse.duration}` : ''}, а Заказчик обязуется оплатить эти услуги.</div><div class="item">1.2. Количество обучающихся: ${firstCount} чел.</div>`;
+    // Build the variable replacement map
+    const replacements: Record<string, string> = {
+      '{{contract_number}}': contractNumber,
+      '{{contract_date}}': dateFormatted,
+      '{{org_name}}': orgRequisites.name,
+      '{{org_director_position}}': orgRequisites.director_position || 'Генерального директора',
+      '{{org_director_name}}': orgRequisites.director_name,
+      '{{org_director_name_genitive}}': orgDirectorNameGenitive,
+      '{{org_director_acting}}': orgActing,
+      '{{org_inn}}': orgRequisites.inn,
+      '{{org_kpp}}': orgRequisites.kpp,
+      '{{org_ogrn}}': orgRequisites.ogrn,
+      '{{org_address}}': orgRequisites.legal_address || orgRequisites.actual_address,
+      '{{org_bank_name}}': orgRequisites.bank_name,
+      '{{org_bank_bik}}': orgRequisites.bank_bik,
+      '{{org_bank_account}}': orgRequisites.bank_account,
+      '{{org_bank_corr_account}}': orgRequisites.bank_corr_account,
+      '{{company_name}}': selectedCompany.name,
+      '{{company_director}}': companyDirector,
+      '{{company_inn}}': selectedCompany.inn || '_______________',
+      '{{company_kpp}}': selectedCompany.kpp || '_______________',
+      '{{company_ogrn}}': selectedCompany.ogrn || '_______________',
+      '{{company_address}}': selectedCompany.address || '_______________',
+      '{{course_title}}': firstCourse.title,
+      '{{course_duration}}': firstCourse.duration ? ` продолжительностью ${firstCourse.duration}` : '',
+      '{{students_count}}': String(isMultiple ? totalStudents : firstCount),
+      '{{price}}': formatPrice(String(firstPrice)),
+      '{{total_price}}': formatPrice(String(totalPrice)),
+      '{{total_price_words}}': numberToWords(totalPrice),
+      '{{programs_table}}': generateProgramsTableHTML(),
+      '{{programs_list}}': generateProgramsListText(),
+      '{{additional_terms}}': additionalTerms || '',
+    };
 
-    const costSection = isMultiple
-      ? `<div class="item">2.1. Стоимость услуг определяется в соответствии с таблицей п. 1.1.</div><div class="item">2.2. Общая стоимость услуг по настоящему Договору составляет ${formatPrice(String(totalPrice))} (${numberToWords(totalPrice)}) рублей.</div>`
-      : `<div class="item">2.1. Стоимость обучения одного слушателя составляет ${formatPrice(String(firstPrice))} (${numberToWords(firstPrice)}) рублей.</div><div class="item">2.2. Общая стоимость услуг по настоящему Договору составляет ${formatPrice(String(totalPrice))} (${numberToWords(totalPrice)}) рублей.</div>`;
+    // Use saved template if available, otherwise fallback to hardcoded default
+    const templateText = savedTemplate || DEFAULT_TEMPLATE;
 
-    return `<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><title>Договор №${contractNumber}</title><style>@page{margin:2cm}*{box-sizing:border-box}body{font-family:'Times New Roman',serif;font-size:12pt;line-height:1.5;color:#000;margin:0;padding:20px;background:#fff}.header{text-align:center;margin-bottom:20px}.title{font-size:14pt;font-weight:bold;margin:20px 0;text-align:center}.parties{margin-bottom:20px;text-align:justify}.section{margin:15px 0}.section-title{font-weight:bold;margin-bottom:10px}.item{margin-left:20px;margin-bottom:5px;text-align:justify}table{width:100%;border-collapse:collapse;margin:10px 0}th,td{border:1px solid #000;padding:5px 8px;text-align:left}th{background:#f0f0f0}.requisites{font-size:10pt;margin-top:20px}.requisites td{border:none;vertical-align:top;padding:3px 10px}.signature-area{position:relative;min-height:100px;margin-top:10px}.signature-images{position:relative;height:80px;margin-bottom:10px}.signature-images img{position:absolute}.signature-line{border-top:1px solid #000;padding-top:5px;margin-top:60px}</style></head><body><div class="header"><div class="title">ДОГОВОР НА ОКАЗАНИЕ ОБРАЗОВАТЕЛЬНЫХ УСЛУГ</div><div>№ ${contractNumber} от ${dateFormatted}</div></div><div class="parties"><p><strong>${orgRequisites.name}</strong>, именуемое в дальнейшем «Исполнитель»${orgRepresentationBlock} с одной стороны, и</p><p><strong>${selectedCompany.name}</strong>, именуемое в дальнейшем «Заказчик»${companyRepresentationBlock} с другой стороны, заключили настоящий Договор о нижеследующем:</p></div><div class="section"><div class="section-title">1. ПРЕДМЕТ ДОГОВОРА</div>${subjectSection}</div><div class="section"><div class="section-title">2. СТОИМОСТЬ УСЛУГ И ПОРЯДОК РАСЧЁТОВ</div>${costSection}<div class="item">2.3. Оплата производится путём перечисления денежных средств на расчётный счёт Исполнителя в течение 5 (пяти) банковских дней с момента подписания настоящего Договора.</div></div><div class="section"><div class="section-title">3. ПРАВА И ОБЯЗАННОСТИ СТОРОН</div><div class="item">3.1. Исполнитель обязуется:</div><div class="item" style="margin-left:40px">- обеспечить качественное проведение обучения;</div><div class="item" style="margin-left:40px">- предоставить необходимые учебные материалы;</div><div class="item" style="margin-left:40px">- выдать документы об обучении установленного образца.</div><div class="item">3.2. Заказчик обязуется:</div><div class="item" style="margin-left:40px">- своевременно оплатить услуги;</div><div class="item" style="margin-left:40px">- обеспечить явку обучающихся.</div></div><div class="section"><div class="section-title">4. СРОК ДЕЙСТВИЯ ДОГОВОРА</div><div class="item">4.1. Настоящий Договор вступает в силу с момента подписания и действует до полного исполнения сторонами своих обязательств.</div></div>${additionalTerms ? `<div class="section"><div class="section-title">5. ДОПОЛНИТЕЛЬНЫЕ УСЛОВИЯ</div><div class="item">${additionalTerms}</div></div>` : ''}<div class="section"><div class="section-title">${additionalTerms ? '6' : '5'}. РЕКВИЗИТЫ И ПОДПИСИ СТОРОН</div><table class="requisites"><tr><td style="width:50%"><strong>ИСПОЛНИТЕЛЬ:</strong><br><br>${orgRequisites.name}<br>ИНН: ${orgRequisites.inn}<br>${!orgIsIP ? `КПП: ${orgRequisites.kpp}<br>` : ''}ОГРН: ${orgRequisites.ogrn}<br>Адрес: ${orgRequisites.legal_address}<br>Банк: ${orgRequisites.bank_name}<br>БИК: ${orgRequisites.bank_bik}<br>Р/с: ${orgRequisites.bank_account}<br>К/с: ${orgRequisites.bank_corr_account}<br><br>${orgRequisites.director_position}<br><div class="signature-area"><div class="signature-images">${orgRequisites.signature_url ? `<img src="${orgRequisites.signature_url}" alt="Подпись" style="max-height:60px;max-width:150px;left:0;top:0">` : ''}${orgRequisites.stamp_url ? `<img src="${orgRequisites.stamp_url}" alt="Печать" style="max-height:90px;max-width:90px;left:70px;top:-15px;opacity:.9">` : ''}</div><div class="signature-line">_______________ / ${orgRequisites.director_name} /</div></div></td><td style="width:50%"><strong>ЗАКАЗЧИК:</strong><br><br>${selectedCompany.name}<br>ИНН: ${selectedCompany.inn || '_______________'}<br>${!companyIsIP ? `КПП: ${selectedCompany.kpp || '_______________'}<br>` : ''}ОГРН: ${selectedCompany.ogrn || '_______________'}<br>Адрес: ${selectedCompany.address || '_______________'}<br><br><br><br><br><br>${selectedCompany.director || 'Генеральный директор'}<br><div class="signature-area"><div class="signature-line" style="margin-top:80px">_______________ / _________________ /</div></div></td></tr></table></div></body></html>`;
+    // Perform variable substitution
+    let result = templateText;
+    for (const [key, value] of Object.entries(replacements)) {
+      result = result.split(key).join(value);
+    }
+
+    // Handle ИП: remove representation blocks for ИП
+    if (orgIsIP) {
+      // Remove org representation line (", в лице ... Устава,")
+      result = result.replace(/,?\s*в лице\s+{{org_director_position}}[^,]*Устава\s*,?/gi, '');
+      // Also remove already-substituted version
+      result = result.replace(/,?\s*в лице\s+[^,]*на основании Устава\s*,?/gi, (match) => {
+        // Only remove if it's in the Исполнитель section (first occurrence)
+        return '';
+      });
+    }
+    if (companyIsIP) {
+      // For company ИП, remove the second "в лице ... Устава" block
+      const companyRepRegex = /,?\s*в лице\s+[^,]*действующ(?:его|ей)\s+на основании Устава\s*,?/gi;
+      let matchIndex = 0;
+      result = result.replace(companyRepRegex, (match) => {
+        matchIndex++;
+        // Remove only the second occurrence (company side) if org is not ИП, 
+        // or the first remaining one if org was already removed
+        return orgIsIP ? '' : (matchIndex >= 2 ? '' : match);
+      });
+    }
+
+    // Convert plain text template to HTML
+    const htmlBody = result
+      .split('\n\n')
+      .map(paragraph => {
+        const trimmed = paragraph.trim();
+        if (!trimmed) return '';
+        // Check if it's a section title (all caps or starts with a number + period + caps)
+        if (/^\d+\.\s*[А-ЯЁ\s]+$/.test(trimmed)) {
+          return `<div class="section"><div class="section-title">${trimmed}</div></div>`;
+        }
+        // Check if paragraph contains the programs table HTML
+        if (trimmed.includes('<table')) {
+          return `<div class="item">${trimmed}</div>`;
+        }
+        // Wrap each line as an item
+        const lines = trimmed.split('\n').map(line => {
+          const l = line.trim();
+          if (!l) return '';
+          if (l.startsWith('-')) return `<div class="item" style="margin-left:40px">${l}</div>`;
+          return `<div class="item">${l}</div>`;
+        }).join('');
+        return lines;
+      })
+      .join('');
+
+    // Add signature block with stamps
+    const signatureBlock = `<div class="section"><table class="requisites"><tr><td style="width:50%"><strong>ИСПОЛНИТЕЛЬ:</strong><br><br><div class="signature-area"><div class="signature-images">${orgRequisites.signature_url ? `<img src="${orgRequisites.signature_url}" alt="Подпись" style="max-height:60px;max-width:150px;left:0;top:0">` : ''}${orgRequisites.stamp_url ? `<img src="${orgRequisites.stamp_url}" alt="Печать" style="max-height:90px;max-width:90px;left:70px;top:-15px;opacity:.9">` : ''}</div><div class="signature-line">_______________ / ${orgRequisites.director_name} /</div></div></td><td style="width:50%"><strong>ЗАКАЗЧИК:</strong><br><br><div class="signature-area"><div class="signature-line" style="margin-top:80px">_______________ / _________________ /</div></div></td></tr></table></div>`;
+
+    return `<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><title>Договор №${contractNumber}</title><style>@page{margin:2cm}*{box-sizing:border-box}body{font-family:'Times New Roman',serif;font-size:12pt;line-height:1.5;color:#000;margin:0;padding:20px;background:#fff}.header{text-align:center;margin-bottom:20px}.title{font-size:14pt;font-weight:bold;margin:20px 0;text-align:center}.parties{margin-bottom:20px;text-align:justify}.section{margin:15px 0}.section-title{font-weight:bold;margin-bottom:10px}.item{margin-left:20px;margin-bottom:5px;text-align:justify}table{width:100%;border-collapse:collapse;margin:10px 0}th,td{border:1px solid #000;padding:5px 8px;text-align:left}th{background:#f0f0f0}.requisites{font-size:10pt;margin-top:20px}.requisites td{border:none;vertical-align:top;padding:3px 10px}.signature-area{position:relative;min-height:100px;margin-top:10px}.signature-images{position:relative;height:80px;margin-bottom:10px}.signature-images img{position:absolute}.signature-line{border-top:1px solid #000;padding-top:5px;margin-top:60px}</style></head><body>${htmlBody}${signatureBlock}</body></html>`;
   };
 
   const handleGenerate = async () => {
