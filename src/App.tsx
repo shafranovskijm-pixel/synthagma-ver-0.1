@@ -154,6 +154,11 @@ const App = () => (
                     } />
                     <Route path="/learning/:courseId" element={<LearningRedirect />} />
                     <Route path="/proposal/:id" element={<ProposalPublic />} />
+                    <Route path="/contract-editor" element={
+                      <ProtectedRoute requiredRole="organization">
+                        <ContractEditor />
+                      </ProtectedRoute>
+                    } />
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                     <Route path="*" element={<NotFound />} />
                   </Routes>
