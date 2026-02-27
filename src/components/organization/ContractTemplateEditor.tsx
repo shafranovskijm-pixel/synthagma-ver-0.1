@@ -368,6 +368,12 @@ export function ContractTemplateEditor({
       if (error) throw error;
 
       if (data?.processedText) {
+        // Validate that AI didn't delete too much text
+        const originalLen = template.length;
+        const processedLen = data.processedText.length;
+        if (processedLen < originalLen * 0.6) {
+          toast.warning("AI сократил текст. Проверьте результат или отмените изменение.");
+        }
         setTemplate(data.processedText);
         toast.success("Переменные добавлены в шаблон");
       } else {
