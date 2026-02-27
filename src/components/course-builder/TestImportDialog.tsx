@@ -8,9 +8,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Upload, FileSpreadsheet, Loader2, Download, CheckCircle2 } from "lucide-react";
+import { Upload, FileSpreadsheet, Loader2, Download, CheckCircle2, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { getXLSX } from "@/utils/xlsxHelper";
+import { parseTxtTestFile } from "@/utils/txtTestParser";
 
 interface ImportedQuestion {
   question: string;
@@ -99,14 +100,21 @@ export function TestImportDialog({ onImport, children }: TestImportDialogProps) 
     if (!file) return;
 
     const ext = file.name.toLowerCase().split('.').pop();
-    if (!['xlsx', 'xls'].includes(ext || '')) {
-      toast.error("Поддерживаются только файлы Excel (.xlsx, .xls)");
+    if (!['xlsx', 'xls', 'txt'].includes(ext || '')) {
+      toast.error("Поддерживаются файлы Excel (.xlsx, .xls) и текстовые (.txt)");
       return;
     }
 
     setIsLoading(true);
     try {
-      const questions = await parseExcelFile(file);
+      let questions: ImportedQuestion[];
+      
+      if (ext === 'txt') {
+        const text = await file.text();
+        questions = parseTxtTestFile(text);
+      } else {
+        questions = await parseExcelFile(file);
+      }
       
       if (questions.length === 0) {
         toast.error("Не найдено вопросов в файле. Проверьте формат.");
@@ -116,7 +124,7 @@ export function TestImportDialog({ onImport, children }: TestImportDialogProps) 
       setPreviewData(questions);
       toast.success(`Найдено ${questions.length} вопросов`);
     } catch (error) {
-      console.error("Error parsing Excel:", error);
+      console.error("Error parsing file:", error);
       toast.error("Ошибка чтения файла");
     } finally {
       setIsLoading(false);
@@ -182,20 +190,27 @@ export function TestImportDialog({ onImport, children }: TestImportDialogProps) 
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileSpreadsheet className="w-5 h-5 text-green-500" />
-            Импорт теста из Excel
+            Импорт теста из Excel / TXT
           </DialogTitle>
           <DialogDescription>
-            Загрузите файл Excel с вопросами. Правильные ответы отмечайте символом * в начале.
+            Загрузите файл Excel или TXT с вопросами. Правильные ответы отмечайте символом * (Excel) или +- (TXT).
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 overflow-auto space-y-4">
           <div className="bg-muted/50 rounded-lg p-4 text-sm space-y-2">
-            <p className="font-medium">Формат файла:</p>
+            <p className="font-medium">Формат Excel:</p>
             <ul className="list-disc list-inside text-muted-foreground space-y-1">
               <li>Первый столбец — текст вопроса</li>
               <li>Столбцы 2-5 — варианты ответов</li>
               <li>Правильный ответ начинается с <code className="bg-primary/10 px-1 rounded">*</code></li>
+            </ul>
+            <p className="font-medium mt-3">Формат TXT:</p>
+            <ul className="list-disc list-inside text-muted-foreground space-y-1">
+              <li><code className="bg-primary/10 px-1 rounded">?</code> — вопрос</li>
+              <li><code className="bg-primary/10 px-1 rounded">+-</code> — правильный ответ</li>
+              <li><code className="bg-primary/10 px-1 rounded">-</code> — неправильный ответ</li>
+              <li><code className="bg-primary/10 px-1 rounded">\</code> — пояснение (необязательно)</li>
             </ul>
             <Button
               variant="link"
@@ -204,7 +219,7 @@ export function TestImportDialog({ onImport, children }: TestImportDialogProps) 
               onClick={handleDownloadTemplate}
             >
               <Download className="w-3 h-3" />
-              Скачать шаблон
+              Скачать шаблон Excel
             </Button>
           </div>
 
@@ -229,7 +244,7 @@ export function TestImportDialog({ onImport, children }: TestImportDialogProps) 
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".xlsx,.xls"
+                  accept=".xlsx,.xls,.txt"
                   onChange={handleFileSelect}
                   className="hidden"
                   disabled={isLoading}
