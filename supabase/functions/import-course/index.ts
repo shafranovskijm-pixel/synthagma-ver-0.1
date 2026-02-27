@@ -18,7 +18,7 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
 
 // Supported file extensions for content extraction
-const SUPPORTED_EXTENSIONS = ['.pptx', '.ppt', '.docx', '.doc', '.txt', '.html', '.htm', '.md'];
+const SUPPORTED_EXTENSIONS = ['.pptx', '.ppt', '.docx', '.doc', '.txt', '.html', '.htm', '.md', '.pdf'];
 
 // Convert plain text to HTML paragraphs
 function txtToHtml(text: string): string {
