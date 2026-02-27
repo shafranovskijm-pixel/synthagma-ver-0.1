@@ -180,7 +180,7 @@ export function ContractTemplateEditor({
     const { error } = await supabase
       .from("organizations")
       .update({
-        branding: { ...currentBranding, ...updates },
+        branding: { ...currentBranding, ...updates } as any,
       })
       .eq("id", organizationId);
 
