@@ -27,7 +27,45 @@ import { OrgCredentialsSettings } from "@/components/organization/OrgCredentials
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 
 export function SettingsTab() {
-  const d = useOrgDashboard();
+  const [docTab, setDocTab] = useState("requisites");
+  const [stampUrl, setStampUrl] = useState<string | null>(null);
+  const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
+
+  // Load stamp/signature from org data
+  useState(() => {
+    if (!organizationId) return;
+    supabase
+      .from('organizations')
+      .select('stamp_url, signature_url')
+      .eq('id', organizationId)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          setStampUrl(data.stamp_url);
+          setSignatureUrl(data.signature_url);
+        }
+      });
+  });
+
+  const handleStampUpload = async (url: string) => {
+    setStampUrl(url);
+    await supabase.from('organizations').update({ stamp_url: url }).eq('id', organizationId);
+  };
+
+  const handleSignatureUpload = async (url: string) => {
+    setSignatureUrl(url);
+    await supabase.from('organizations').update({ signature_url: url }).eq('id', organizationId);
+  };
+
+  const handleStampRemove = async () => {
+    setStampUrl(null);
+    await supabase.from('organizations').update({ stamp_url: null }).eq('id', organizationId);
+  };
+
+  const handleSignatureRemove = async () => {
+    setSignatureUrl(null);
+    await supabase.from('organizations').update({ signature_url: null }).eq('id', organizationId);
+  };
   const organizationId = d.organizationId;
   const organizationName = d.organizationName;
   const userId = d.user?.id;
