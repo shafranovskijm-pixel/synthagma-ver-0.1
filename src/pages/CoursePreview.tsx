@@ -34,6 +34,7 @@ import {
 } from "lucide-react";
 import { ContentBlock, jsonToBlocks, BlockRenderer } from "@/components/course-builder/BlockEditor";
 import { cn } from "@/lib/utils";
+import { FilePreviewDialog } from "@/components/course-learning/FilePreviewDialog";
 
 interface Lesson {
   id: string;
