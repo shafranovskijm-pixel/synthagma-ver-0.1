@@ -410,8 +410,28 @@ export function useCourseBuilder() {
               }], { onConflict: "id" });
             }
           }
+
+          // Save attachments
+          for (const lesson of lessons) {
+            if (lesson.attachments && lesson.attachments.length > 0) {
+              const toDelete = lesson.attachments.filter(a => a.isDeleted && !a.isNew);
+              const toInsert = lesson.attachments.filter(a => a.isNew && !a.isDeleted);
+
+              for (const a of toDelete) {
+                await supabase.from("lesson_attachments").delete().eq("id", a.id);
+              }
+
+              if (toInsert.length > 0) {
+                const rows = toInsert.map((a, i) => ({
+                  id: a.id, lesson_id: lesson.id, name: a.name, file_url: a.file_url,
+                  file_type: a.file_type, file_size: a.file_size, category: a.category,
+                  order_index: i,
+                }));
+                await supabase.from("lesson_attachments").upsert(rows, { onConflict: "id" });
+              }
+            }
+          }
         }
-      }
       toast.success(courseId ? "Курс обновлён" : "Курс создан");
       setHasUnsavedChanges(false);
     } catch (error: any) {
