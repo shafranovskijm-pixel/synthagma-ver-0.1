@@ -244,7 +244,7 @@ export function TestImportDialog({ onImport, children }: TestImportDialogProps) 
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".xlsx,.xls"
+                  accept=".xlsx,.xls,.txt"
                   onChange={handleFileSelect}
                   className="hidden"
                   disabled={isLoading}
