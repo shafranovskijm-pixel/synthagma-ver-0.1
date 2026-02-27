@@ -65,6 +65,8 @@ function sanitizeFileName(name: string): string {
 export function LessonAttachments({ lessonId, courseId, attachments, onAttachmentsChange }: LessonAttachmentsProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadCategory, setUploadCategory] = useState<string>("material");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState("");
   const lectureInputRef = useRef<HTMLInputElement>(null);
   const materialInputRef = useRef<HTMLInputElement>(null);
 
