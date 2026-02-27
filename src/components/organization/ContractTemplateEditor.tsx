@@ -478,6 +478,7 @@ export function ContractTemplateEditor({
         value={template}
         onChange={setTemplate}
         placeholder="Введите текст шаблона договора или загрузите файл..."
+        fullPage={fullPage}
       />
 
       {/* Preview Dialog */}
