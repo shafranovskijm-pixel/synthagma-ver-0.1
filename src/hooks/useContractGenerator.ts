@@ -457,6 +457,7 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
     contractNumber, setContractNumber, contractDate, setContractDate,
     additionalTerms, setAdditionalTerms,
     selectedCompany, selectedCourse: courses.find(c => c.id === selectedCourseId),
+    serviceStartDate, setServiceStartDate, serviceEndDate, setServiceEndDate,
     formatPrice, handleGenerate, handleDownloadDOC, handleSaveContract, handlePreview,
     onSave,
   };

@@ -536,6 +536,16 @@ const CourseEditor = () => {
               />
             </div>
             <div className="space-y-2">
+              <Label>Академические часы</Label>
+              <Input
+                type="number"
+                min="0"
+                value={durationHours ?? ""}
+                onChange={(e) => setDurationHours(e.target.value ? parseInt(e.target.value) : null)}
+                placeholder="Например: 40"
+              />
+            </div>
+            <div className="space-y-2">
               <Label>Статус</Label>
               <div
                 className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium ${

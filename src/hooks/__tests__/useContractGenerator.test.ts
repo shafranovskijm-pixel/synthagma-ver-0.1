@@ -124,10 +124,12 @@ describe("useContractGenerator", () => {
     expect(result.current.selectedCompany).toEqual(preselectedCompany);
   });
 
-  it("contractDate defaults to today", () => {
+  it("contractDate defaults to today and service dates exist", () => {
     const { result } = renderHook(() => useContractGenerator(defaultProps));
     const today = new Date().toISOString().slice(0, 10);
     expect(result.current.contractDate).toBe(today);
+    expect(result.current.serviceStartDate).toBe(today);
+    expect(result.current.serviceEndDate).toBeTruthy();
   });
 
   it("can toggle preview", () => {

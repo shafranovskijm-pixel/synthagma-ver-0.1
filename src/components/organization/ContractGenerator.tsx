@@ -91,6 +91,12 @@ export function ContractGenerator(props: ContractGeneratorProps) {
                     <SelectTrigger className="rounded-xl"><SelectValue placeholder="Выберите курс" /></SelectTrigger>
                     <SelectContent>{courses.map(c => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}</SelectContent>
                   </Select>
+                  {(() => {
+                    const course = courses.find(c => c.id === program.courseId);
+                    return course?.frdo_duration_hours ? (
+                      <div className="text-xs text-muted-foreground">Объём: {course.frdo_duration_hours} ак. часов</div>
+                    ) : null;
+                  })()}
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <Label className="text-xs">Кол-во чел.</Label>
