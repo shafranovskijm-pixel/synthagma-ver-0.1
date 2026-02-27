@@ -154,14 +154,6 @@ export function HighlightedTemplateEditor({
           <div className="flex flex-wrap gap-3 text-xs text-muted-foreground px-1">
             <span className="opacity-60">ПКМ — вставить переменную</span>
             {Object.entries(VARIABLE_CATEGORIES).map(([key, category]) => {
-          </div>
-
-          {/* Compact validation + stats bar */}
-          {showValidation && <TemplateValidation value={value} compact />}
-
-          {/* Statistics inline */}
-          <div className="flex flex-wrap gap-3 text-xs text-muted-foreground px-1">
-            {Object.entries(VARIABLE_CATEGORIES).map(([key, category]) => {
               const count = category.keys.reduce((acc, { key: varKey }) => {
                 const regex = new RegExp(`\\{\\{${varKey}\\}\\}`, "g");
                 return acc + (value.match(regex)?.length || 0);
