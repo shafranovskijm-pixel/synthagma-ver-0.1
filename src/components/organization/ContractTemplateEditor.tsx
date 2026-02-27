@@ -117,6 +117,13 @@ const PLACEHOLDERS = [
   { key: "{{company_kpp}}", label: "КПП компании", example: "770001002", patterns: [] },
   { key: "{{company_ogrn}}", label: "ОГРН компании", example: "1027700000001", patterns: [] },
   { key: "{{company_address}}", label: "Адрес компании", example: "г. Москва, ул. Заказная, д. 2", patterns: [] },
+  // Individual (физлицо)
+  { key: "{{individual_name}}", label: "ФИО физ. лица", example: "Сидоров Сидор Сидорович", patterns: ["слушатель", "обучающийся", "физ"] },
+  { key: "{{individual_passport}}", label: "Паспортные данные", example: "серия 1234 № 567890, выдан ...", patterns: ["паспорт", "серия", "выдан"] },
+  { key: "{{individual_address}}", label: "Адрес физ. лица", example: "г. Москва, ул. Примерная, д. 1, кв. 1", patterns: ["адрес проживания", "регистрации"] },
+  { key: "{{individual_phone}}", label: "Телефон физ. лица", example: "+7 (999) 123-45-67", patterns: ["телефон", "тел"] },
+  { key: "{{individual_email}}", label: "E-mail физ. лица", example: "example@mail.ru", patterns: ["email", "e-mail", "электронн"] },
+  // Course & payment
   { key: "{{course_title}}", label: "Название курса", example: "Охрана труда", patterns: ["программе", "курс"] },
   { key: "{{course_duration}}", label: "Длительность курса", example: " продолжительностью 40 часов", patterns: ["продолжительность", "часов"] },
   { key: "{{students_count}}", label: "Количество обучающихся", example: "10", patterns: ["количество", "обучающихся", "слушателей"] },

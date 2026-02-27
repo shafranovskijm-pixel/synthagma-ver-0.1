@@ -51,13 +51,19 @@ const VARIABLE_CATEGORIES = {
     color: "bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300",
     borderColor: "border-purple-400",
     label: "Курс",
-    keys: ["course_title", "course_duration"],
+    keys: ["course_title", "course_duration", "course_hours"],
+  },
+  individual: {
+    color: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900/50 dark:text-cyan-300",
+    borderColor: "border-cyan-400",
+    label: "Физ. лицо",
+    keys: ["individual_name", "individual_passport", "individual_address", "individual_phone", "individual_email"],
   },
   payment: {
     color: "bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-300",
     borderColor: "border-rose-400",
     label: "Оплата",
-    keys: ["students_count", "price", "total_price"],
+    keys: ["students_count", "price", "total_price", "total_price_words", "programs_table", "programs_list"],
   },
 };
 
