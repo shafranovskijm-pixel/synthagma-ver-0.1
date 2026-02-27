@@ -1,7 +1,8 @@
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { FileUp, Trash2, FileText, FileSpreadsheet, Presentation, File, Loader2, Download } from "lucide-react";
+import { FileUp, Trash2, FileText, FileSpreadsheet, Presentation, File, Loader2, Download, Pencil, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import { uploadToStorage } from "@/utils/courseBuilderHelpers";
 import { supabase } from "@/integrations/supabase/client";
@@ -64,6 +65,8 @@ function sanitizeFileName(name: string): string {
 export function LessonAttachments({ lessonId, courseId, attachments, onAttachmentsChange }: LessonAttachmentsProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadCategory, setUploadCategory] = useState<string>("material");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState("");
   const lectureInputRef = useRef<HTMLInputElement>(null);
   const materialInputRef = useRef<HTMLInputElement>(null);
 
@@ -116,22 +119,77 @@ export function LessonAttachments({ lessonId, courseId, attachments, onAttachmen
     );
   };
 
+  const startRename = (att: LessonAttachment) => {
+    setEditingId(att.id);
+    // Strip extension for editing
+    const ext = att.name.includes('.') ? '.' + att.name.split('.').pop() : '';
+    setEditingName(att.name.replace(ext, ''));
+  };
+
+  const confirmRename = (att: LessonAttachment) => {
+    if (!editingName.trim()) {
+      setEditingId(null);
+      return;
+    }
+    const ext = att.name.includes('.') ? '.' + att.name.split('.').pop() : '';
+    const newName = editingName.trim() + ext;
+    onAttachmentsChange(
+      attachments.map(a => a.id === att.id ? { ...a, name: newName } : a)
+    );
+    setEditingId(null);
+  };
+
+  const cancelRename = () => {
+    setEditingId(null);
+  };
+
   const renderFileList = (items: LessonAttachment[]) => (
     <div className="space-y-2">
       {items.map(att => {
         const Icon = getFileIcon(att.file_type);
         const color = getFileColor(att.file_type);
+        const isEditing = editingId === att.id;
         return (
           <div key={att.id} className="flex items-center gap-3 p-3 rounded-xl border border-border bg-secondary/30 group">
             <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${color}`}>
               <Icon className="w-4 h-4" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{att.name}</p>
-              <p className="text-xs text-muted-foreground">
-                {att.file_type?.toUpperCase()} {att.file_size ? `• ${formatFileSize(att.file_size)}` : ""}
-              </p>
+              {isEditing ? (
+                <div className="flex items-center gap-1">
+                  <Input
+                    value={editingName}
+                    onChange={e => setEditingName(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') confirmRename(att);
+                      if (e.key === 'Escape') cancelRename();
+                    }}
+                    className="h-7 text-sm"
+                    autoFocus
+                  />
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-primary" onClick={() => confirmRename(att)}>
+                    <Check className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={cancelRename}>
+                    <X className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <p className="text-sm font-medium truncate cursor-pointer hover:text-primary transition-colors" onClick={() => startRename(att)} title="Нажмите, чтобы переименовать">
+                    {att.name}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {att.file_type?.toUpperCase()} {att.file_size ? `• ${formatFileSize(att.file_size)}` : ""}
+                  </p>
+                </>
+              )}
             </div>
+            {!isEditing && (
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" onClick={() => startRename(att)} title="Переименовать">
+                <Pencil className="w-3.5 h-3.5" />
+              </Button>
+            )}
             <a href={att.file_url} target="_blank" rel="noopener noreferrer" className="shrink-0">
               <Button variant="ghost" size="sm" className="h-8 w-8 p-0"><Download className="w-4 h-4" /></Button>
             </a>
