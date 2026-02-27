@@ -268,7 +268,13 @@ export function ContractTemplateEditor({
 
         if (error) throw error;
 
-        if (data?.processedText) {
+      if (data?.processedText) {
+          // Validate that AI didn't delete too much text
+          const originalLen = text.trim().length;
+          const processedLen = data.processedText.length;
+          if (processedLen < originalLen * 0.6) {
+            toast.warning("AI мог сократить текст. Проверьте результат.");
+          }
           setTemplate(data.processedText);
           toast.success("Документ загружен и переменные добавлены автоматически");
         } else {

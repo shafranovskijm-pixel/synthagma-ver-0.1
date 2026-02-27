@@ -84,8 +84,6 @@ function escapeHtml(text: string): string {
 }
 
 function highlightVariables(text: string): string {
-  const variableRegex = /\{\{([a-zA-Z_]+)\}\}/g;
-  
   return escapeHtml(text).replace(
     /\{\{([a-zA-Z_]+)\}\}/g,
     (match, variableName) => {
