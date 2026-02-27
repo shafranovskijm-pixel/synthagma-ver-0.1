@@ -64,19 +64,27 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
     if (preselectedCompany && isOpen) setSelectedCompanyId(preselectedCompany.id);
   }, [preselectedCompany, isOpen]);
 
+  const [savedTemplate, setSavedTemplate] = useState<string | null>(null);
+
   useEffect(() => {
     const loadData = async () => {
       if (!organizationId || !isOpen) return;
       setIsLoading(true);
       try {
-        const [companiesRes, coursesRes] = await Promise.all([
+        const [companiesRes, coursesRes, orgRes] = await Promise.all([
           supabase.from("companies").select("id, name, inn, kpp, ogrn, address, director").eq("organization_id", organizationId).order("name"),
           supabase.from("courses").select("id, title, duration").eq("organization_id", organizationId).eq("is_published", true).order("title"),
+          supabase.from("organizations").select("branding").eq("id", organizationId).single(),
         ]);
         if (companiesRes.error) throw companiesRes.error;
         if (coursesRes.error) throw coursesRes.error;
         setCompanies(companiesRes.data || []);
         setCourses(coursesRes.data || []);
+        // Load saved contract template
+        const branding = orgRes.data?.branding as Record<string, unknown> | null;
+        if (branding?.contractTemplate) {
+          setSavedTemplate(branding.contractTemplate as string);
+        }
         const today = new Date();
         setContractNumber(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`);
       } catch (error) { console.error("Error loading data:", error); toast.error("Ошибка загрузки данных"); }
