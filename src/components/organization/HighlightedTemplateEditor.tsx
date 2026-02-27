@@ -43,6 +43,7 @@ export function HighlightedTemplateEditor({
   className,
   showValidation = true,
   showInsertPanel = true,
+  fullPage = false,
 }: HighlightedTemplateEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const highlightRef = useRef<HTMLDivElement>(null);
