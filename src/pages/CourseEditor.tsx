@@ -102,6 +102,7 @@ const CourseEditor = () => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [duration, setDuration] = useState("");
+  const [durationHours, setDurationHours] = useState<number | null>(null);
   const [sequentialLessons, setSequentialLessons] = useState(false);
   const [allowVideoSeek, setAllowVideoSeek] = useState(true);
 
