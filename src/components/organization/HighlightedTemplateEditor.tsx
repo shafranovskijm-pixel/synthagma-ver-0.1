@@ -181,6 +181,19 @@ export function HighlightedTemplateEditor({
           </div>
         )}
       </div>
+
+      {/* Context menu */}
+      {contextMenu && (
+        <VariableContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onInsert={(variable) => {
+            insertVariable(variable);
+            setContextMenu(null);
+          }}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
     </div>
   );
 }
