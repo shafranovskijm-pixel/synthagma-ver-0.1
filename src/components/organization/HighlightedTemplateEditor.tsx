@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { VARIABLE_CATEGORIES, getVariableCategoryByKey } from "./contract-template/variableCategories";
 import { VariableInsertPanel } from "./contract-template/VariableInsertPanel";
 import { TemplateValidation } from "./contract-template/TemplateValidation";
+import { VariableContextMenu } from "./contract-template/VariableContextMenu";
 
 interface HighlightedTemplateEditorProps {
   value: string;
