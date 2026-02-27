@@ -51,6 +51,7 @@ export function HighlightedTemplateEditor({
   const containerRef = useRef<HTMLDivElement>(null);
   const [isFocused, setIsFocused] = useState(false);
   const cursorPosRef = useRef<number>(0);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
   const syncScroll = useCallback(() => {
     if (textareaRef.current && highlightRef.current) {
