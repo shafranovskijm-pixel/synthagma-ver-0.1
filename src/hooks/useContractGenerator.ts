@@ -269,7 +269,7 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
   const generateProgramsListText = (): string => {
     return resolvedPrograms
       .filter(p => p.course)
-      .map((p, i) => `${i + 1}. ${p.course!.title}${p.course!.duration ? ` — ${p.course!.duration}` : ''} — ${p.count} чел. — ${formatPrice(p.price)} руб./чел. — ${formatPrice(String(p.subtotal))} руб.`)
+      .map((p, i) => `${i + 1}. ${p.course!.title}${p.course!.frdo_duration_hours ? ` — ${p.course!.frdo_duration_hours} ч.` : (p.course!.duration ? ` — ${p.course!.duration}` : '')} — ${p.count} чел. — ${formatPrice(p.price)} руб./чел. — ${formatPrice(String(p.subtotal))} руб.`)
       .join('\n');
   };
 
