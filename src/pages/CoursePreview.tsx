@@ -25,7 +25,12 @@ import {
   Headphones,
   Image,
   Play,
-  Presentation
+  Presentation,
+  Download,
+  FileSpreadsheet,
+  File,
+  FileText as FileTextIcon,
+  Presentation as PresentationIcon
 } from "lucide-react";
 import { ContentBlock, jsonToBlocks, BlockRenderer } from "@/components/course-builder/BlockEditor";
 import { cn } from "@/lib/utils";
@@ -410,6 +415,9 @@ const CoursePreview = () => {
   // Test state
   const [testQuestions, setTestQuestions] = useState<TestQuestion[]>([]);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number>>({});
+  
+  // Attachments state
+  const [lessonAttachments, setLessonAttachments] = useState<Record<string, any[]>>({});
 
   const currentLesson = lessons[currentLessonIndex];
 
@@ -456,6 +464,24 @@ const CoursePreview = () => {
 
       if (lessonsError) throw lessonsError;
       setLessons(lessonsData || []);
+
+      // Fetch attachments
+      if (lessonsData && lessonsData.length > 0) {
+        const lessonIds = lessonsData.map(l => l.id);
+        const { data: attData } = await supabase
+          .from('lesson_attachments')
+          .select('*')
+          .in('lesson_id', lessonIds)
+          .order('order_index');
+        if (attData) {
+          const map: Record<string, any[]> = {};
+          for (const a of attData) {
+            if (!map[a.lesson_id]) map[a.lesson_id] = [];
+            map[a.lesson_id].push(a);
+          }
+          setLessonAttachments(map);
+        }
+      }
     } catch (error) {
       console.error('Error fetching course:', error);
       toast.error('Ошибка загрузки курса');
@@ -875,6 +901,81 @@ const CoursePreview = () => {
                 )}
               </div>
             )}
+
+            {/* Lesson Attachments */}
+            {currentLesson && lessonAttachments[currentLesson.id] && lessonAttachments[currentLesson.id].length > 0 && (() => {
+              const atts = lessonAttachments[currentLesson.id];
+              const lectures = atts.filter((a: any) => a.category === 'lecture');
+              const materials = atts.filter((a: any) => a.category === 'material');
+
+              const getIcon = (ft: string | null) => {
+                if (!ft) return File;
+                const t = ft.toLowerCase();
+                if (t === 'pdf') return FileTextIcon;
+                if (['doc', 'docx', 'txt', 'rtf'].includes(t)) return FileTextIcon;
+                if (['xls', 'xlsx'].includes(t)) return FileSpreadsheet;
+                if (['ppt', 'pptx'].includes(t)) return PresentationIcon;
+                return File;
+              };
+
+              const getColor = (ft: string | null) => {
+                if (!ft) return 'text-muted-foreground bg-muted';
+                const t = ft.toLowerCase();
+                if (t === 'pdf') return 'text-red-500 bg-red-500/10';
+                if (['doc', 'docx'].includes(t)) return 'text-blue-500 bg-blue-500/10';
+                if (['xls', 'xlsx'].includes(t)) return 'text-green-500 bg-green-500/10';
+                if (['ppt', 'pptx'].includes(t)) return 'text-orange-500 bg-orange-500/10';
+                return 'text-muted-foreground bg-muted';
+              };
+
+              const formatSize = (bytes: number | null) => {
+                if (!bytes) return '';
+                if (bytes < 1024) return `${bytes} Б`;
+                if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} КБ`;
+                return `${(bytes / (1024 * 1024)).toFixed(1)} МБ`;
+              };
+
+              const renderFiles = (files: typeof atts) => (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {files.map((att: any) => {
+                    const Icon = getIcon(att.file_type);
+                    const color = getColor(att.file_type);
+                    return (
+                      <a key={att.id} href={att.file_url} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card hover:bg-secondary/50 transition-colors group">
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${color}`}>
+                          <Icon className="w-5 h-5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{att.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {att.file_type?.toUpperCase()} {att.file_size ? `• ${formatSize(att.file_size)}` : ''}
+                          </p>
+                        </div>
+                        <Download className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+                      </a>
+                    );
+                  })}
+                </div>
+              );
+
+              return (
+                <div className="mt-8 space-y-6 animate-fade-in">
+                  {lectures.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">📄 Лекции</h3>
+                      {renderFiles(lectures)}
+                    </div>
+                  )}
+                  {materials.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">📎 Методические материалы</h3>
+                      {renderFiles(materials)}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Navigation buttons */}
             <div className="flex items-center justify-between mt-12 pt-6 border-t border-border">
