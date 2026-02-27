@@ -61,6 +61,10 @@ export function ContractGenerator(props: ContractGeneratorProps) {
               <div className="space-y-2"><Label>Номер договора</Label><Input value={contractNumber} onChange={e => setContractNumber(e.target.value)} className="rounded-xl" /></div>
               <div className="space-y-2"><Label>Дата</Label><Input type="date" value={contractDate} onChange={e => setContractDate(e.target.value)} className="rounded-xl" /></div>
             </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2"><Label>Дата начала обучения</Label><Input type="date" value={serviceStartDate} onChange={e => setServiceStartDate(e.target.value)} className="rounded-xl" /></div>
+              <div className="space-y-2"><Label>Дата окончания обучения</Label><Input type="date" value={serviceEndDate} onChange={e => setServiceEndDate(e.target.value)} className="rounded-xl" /></div>
+            </div>
             {props.preselectedCompany ? (
               <div className="space-y-2"><Label className="flex gap-2"><Building2 className="w-4 h-4" />Заказчик</Label><div className="bg-secondary/50 rounded-xl p-3"><p className="font-medium">{props.preselectedCompany.name}</p>{props.preselectedCompany.inn && <p className="text-sm text-muted-foreground">ИНН: {props.preselectedCompany.inn}</p>}</div></div>
             ) : (
