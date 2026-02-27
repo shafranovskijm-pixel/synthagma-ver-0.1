@@ -169,6 +169,7 @@ const CourseEditor = () => {
         title,
         description: description || null,
         duration: duration || null,
+        frdo_duration_hours: durationHours,
         sequential_lessons: sequentialLessons,
         allow_video_seek: allowVideoSeek,
       })
