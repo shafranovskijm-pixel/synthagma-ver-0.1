@@ -576,7 +576,7 @@ export function useCourseLearning() {
   return {
     // Core data
     course, lessons, currentLesson, currentLessonIndex, loading, enrollmentId,
-    lessonProgress, completedCount, progressPercent, isMobile, user, courseId,
+    lessonProgress, completedCount, progressPercent, isMobile, user, courseId, lessonAttachments,
 
     // Navigation
     navigate, goToNextLesson, goToPrevLesson, goToLesson, isTransitioning,
