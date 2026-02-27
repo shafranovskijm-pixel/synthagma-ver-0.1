@@ -23,6 +23,7 @@ import {
 } from "@/components/course-builder/LessonTypeConfig";
 import { VideoPreviewInline } from "@/components/course-builder/VideoPreviewInline";
 import { SliderLessonEditor } from "@/components/course-builder/SliderLessonEditor";
+import { LessonAttachments } from "@/components/course-builder/LessonAttachments";
 import { useLessonMedia } from "@/hooks/useLessonMedia";
 
 interface SortableLessonProps {
