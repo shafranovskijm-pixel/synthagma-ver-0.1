@@ -34,7 +34,7 @@ const DEFAULT_CONTRACT_TEMPLATE = `ДОГОВОР НА ОКАЗАНИЕ ОБРА
 
 № {{contract_number}} от {{contract_date}}
 
-{{org_name}}, именуемое в дальнейшем «Исполнитель», в лице {{org_director_position}} {{org_director_name}}, действующего на основании Устава, с одной стороны, и
+{{org_name}}, именуемое в дальнейшем «Исполнитель», в лице {{org_director_position}} {{org_director_name_genitive}}, {{org_director_acting}} на основании Устава, с одной стороны, и
 
 {{company_name}}, именуемое в дальнейшем «Заказчик», в лице {{company_director}}, действующего на основании Устава, с другой стороны, заключили настоящий Договор о нижеследующем:
 
