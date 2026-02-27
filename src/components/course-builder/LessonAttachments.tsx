@@ -119,6 +119,30 @@ export function LessonAttachments({ lessonId, courseId, attachments, onAttachmen
     );
   };
 
+  const startRename = (att: LessonAttachment) => {
+    setEditingId(att.id);
+    // Strip extension for editing
+    const ext = att.name.includes('.') ? '.' + att.name.split('.').pop() : '';
+    setEditingName(att.name.replace(ext, ''));
+  };
+
+  const confirmRename = (att: LessonAttachment) => {
+    if (!editingName.trim()) {
+      setEditingId(null);
+      return;
+    }
+    const ext = att.name.includes('.') ? '.' + att.name.split('.').pop() : '';
+    const newName = editingName.trim() + ext;
+    onAttachmentsChange(
+      attachments.map(a => a.id === att.id ? { ...a, name: newName } : a)
+    );
+    setEditingId(null);
+  };
+
+  const cancelRename = () => {
+    setEditingId(null);
+  };
+
   const renderFileList = (items: LessonAttachment[]) => (
     <div className="space-y-2">
       {items.map(att => {
