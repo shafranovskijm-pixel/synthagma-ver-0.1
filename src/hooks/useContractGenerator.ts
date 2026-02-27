@@ -87,6 +87,16 @@ export interface SelectedProgram {
   studentsCount: string;
 }
 
+export type CounterpartyType = 'company' | 'individual';
+
+export interface IndividualData {
+  fullName: string;
+  passport: string;
+  address: string;
+  phone: string;
+  email: string;
+}
+
 interface UseContractGeneratorProps {
   organizationId: string; isOpen: boolean; orgRequisites: OrgRequisites; preselectedCompany?: Company | null;
   onSave?: (html: string, contractNumber: string, companyName: string, courseId: string, amount: number, studentsCount: number, contractDate: string) => Promise<void>;
@@ -102,6 +112,8 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
   const [showPreview, setShowPreview] = useState(false);
   const [previewHtml, setPreviewHtml] = useState("");
   const [selectedCompanyId, setSelectedCompanyId] = useState("");
+  const [counterpartyType, setCounterpartyType] = useState<CounterpartyType>('company');
+  const [individualData, setIndividualData] = useState<IndividualData>({ fullName: '', passport: '', address: '', phone: '', email: '' });
   const [selectedPrograms, setSelectedPrograms] = useState<SelectedProgram[]>([{ courseId: "", price: "", studentsCount: "1" }]);
   const [contractNumber, setContractNumber] = useState("");
   const [contractDate, setContractDate] = useState(format(new Date(), "yyyy-MM-dd"));
@@ -163,6 +175,11 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
   }, [organizationId, isOpen]);
 
   const selectedCompany = preselectedCompany || companies.find(c => c.id === selectedCompanyId);
+  
+  // For individuals, create a virtual "company" object
+  const effectiveCounterparty = counterpartyType === 'individual' 
+    ? (individualData.fullName ? { id: 'individual', name: individualData.fullName, inn: null, kpp: null, ogrn: null, address: individualData.address || null, director: null } as Company : null)
+    : selectedCompany;
 
   const formatPrice = (value: string) => {
     const num = parseFloat(value);
@@ -275,7 +292,8 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
 
   const generateContractHTML = (): string => {
     const validPrograms = resolvedPrograms.filter(p => p.course);
-    if (!selectedCompany || validPrograms.length === 0) return "";
+    const counterparty = effectiveCounterparty;
+    if (!counterparty || validPrograms.length === 0) return "";
     
     const dateFormatted = format(new Date(contractDate), "«d» MMMM yyyy г.", { locale: ru });
     const serviceStartFormatted = format(new Date(serviceStartDate), "«d» MMMM yyyy г.", { locale: ru });
@@ -289,8 +307,9 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
     const orgDirectorNameGenitive = declineFullNameToGenitive(orgRequisites.director_name);
     const orgActing = orgGender === 'female' ? 'действующей' : 'действующего';
 
-    const companyIsIP = isIP(selectedCompany.name);
-    const companyDirector = selectedCompany.director || 'Генерального директора';
+    const isIndividual = counterpartyType === 'individual';
+    const companyIsIP = !isIndividual && isIP(counterparty.name);
+    const companyDirector = !isIndividual ? (counterparty.director || 'Генерального директора') : '';
 
     const isMultiple = validPrograms.length > 1;
     const firstCourse = validPrograms[0].course!;
@@ -301,15 +320,20 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
     // Use saved template if available, otherwise fallback to hardcoded default
     let templateText = savedTemplate || DEFAULT_TEMPLATE;
 
+    // For individuals, replace the company block with individual block if template uses company vars
+    if (isIndividual) {
+      // Remove company representation block
+      templateText = templateText.replace(/,?\s*в лице\s+\{\{company_director\}\}\s*,?\s*действующ(?:его|ей)\s+на основании Устава\s*,?/gi, '');
+      // Replace "именуемое" with "именуемый" for individual
+      templateText = templateText.replace(/именуемое в дальнейшем «Заказчик»/gi, 'именуемый(-ая) в дальнейшем «Заказчик»');
+    }
+
     // Handle ИП: remove representation blocks BEFORE variable substitution
     if (orgIsIP) {
-      // Remove "в лице {{org_director_position}} {{org_director_name_genitive}}, {{org_director_acting}} на основании Устава" 
       templateText = templateText.replace(/,?\s*в лице\s+\{\{org_director_position\}\}\s+\{\{org_director_name_genitive\}\}\s*,?\s*\{\{org_director_acting\}\}\s+на основании Устава\s*,?/gi, '');
-      // Also try more generic pattern for manually edited templates
       templateText = templateText.replace(/,?\s*в лице\s+[^,]*\{\{org_director_name_genitive\}\}[^,]*на основании Устава\s*,?/gi, '');
     }
     if (companyIsIP) {
-      // Remove company representation block "в лице {{company_director}}, действующего на основании Устава"
       templateText = templateText.replace(/,?\s*в лице\s+\{\{company_director\}\}\s*,?\s*действующ(?:его|ей)\s+на основании Устава\s*,?/gi, '');
     }
 
@@ -333,12 +357,20 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
       '{{org_bank_bik}}': orgRequisites.bank_bik,
       '{{org_bank_account}}': orgRequisites.bank_account,
       '{{org_bank_corr_account}}': orgRequisites.bank_corr_account,
-      '{{company_name}}': selectedCompany.name,
-      '{{company_director}}': companyDirector,
-      '{{company_inn}}': selectedCompany.inn || '_______________',
-      '{{company_kpp}}': selectedCompany.kpp || '_______________',
-      '{{company_ogrn}}': selectedCompany.ogrn || '_______________',
-      '{{company_address}}': selectedCompany.address || '_______________',
+      // Company / individual fields — map company vars to individual data when needed
+      '{{company_name}}': isIndividual ? individualData.fullName : counterparty.name,
+      '{{company_director}}': isIndividual ? '' : companyDirector,
+      '{{company_inn}}': isIndividual ? '—' : (counterparty.inn || '_______________'),
+      '{{company_kpp}}': isIndividual ? '—' : (counterparty.kpp || '_______________'),
+      '{{company_ogrn}}': isIndividual ? '—' : (counterparty.ogrn || '_______________'),
+      '{{company_address}}': isIndividual ? (individualData.address || '_______________') : (counterparty.address || '_______________'),
+      // Individual-specific variables
+      '{{individual_name}}': individualData.fullName,
+      '{{individual_passport}}': individualData.passport,
+      '{{individual_address}}': individualData.address,
+      '{{individual_phone}}': individualData.phone,
+      '{{individual_email}}': individualData.email,
+      // Course & payment
       '{{course_title}}': firstCourse.title,
       '{{course_duration}}': firstCourse.duration ? ` продолжительностью ${firstCourse.duration}` : '',
       '{{course_hours}}': firstCourseHours,
@@ -391,14 +423,17 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
       .join('');
 
     // Add signature block with stamps
-    const signatureBlock = `<div class="section"><table class="requisites"><tr><td style="width:50%"><strong>ИСПОЛНИТЕЛЬ:</strong><br><br><div class="signature-area"><div class="signature-images">${orgRequisites.signature_url ? `<img src="${orgRequisites.signature_url}" alt="Подпись" style="max-height:60px;max-width:150px;left:0;top:0">` : ''}${orgRequisites.stamp_url ? `<img src="${orgRequisites.stamp_url}" alt="Печать" style="max-height:90px;max-width:90px;left:70px;top:-15px;opacity:.9">` : ''}</div><div class="signature-line">_______________ / ${orgRequisites.director_name} /</div></div></td><td style="width:50%"><strong>ЗАКАЗЧИК:</strong><br><br><div class="signature-area"><div class="signature-line" style="margin-top:80px">_______________ / _________________ /</div></div></td></tr></table></div>`;
+    const counterpartySignName = isIndividual ? individualData.fullName : '_________________ ';
+    const signatureBlock = `<div class="section"><table class="requisites"><tr><td style="width:50%"><strong>ИСПОЛНИТЕЛЬ:</strong><br><br><div class="signature-area"><div class="signature-images">${orgRequisites.signature_url ? `<img src="${orgRequisites.signature_url}" alt="Подпись" style="max-height:60px;max-width:150px;left:0;top:0">` : ''}${orgRequisites.stamp_url ? `<img src="${orgRequisites.stamp_url}" alt="Печать" style="max-height:90px;max-width:90px;left:70px;top:-15px;opacity:.9">` : ''}</div><div class="signature-line">_______________ / ${orgRequisites.director_name} /</div></div></td><td style="width:50%"><strong>ЗАКАЗЧИК${isIndividual ? ' (СЛУШАТЕЛЬ)' : ''}:</strong><br><br><div class="signature-area"><div class="signature-line" style="margin-top:80px">_______________ / ${counterpartySignName} /</div></div></td></tr></table></div>`;
 
     return `<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><title>Договор №${contractNumber}</title><style>@page{margin:2cm}*{box-sizing:border-box}body{font-family:'Times New Roman',serif;font-size:12pt;line-height:1.5;color:#000;margin:0;padding:20px;background:#fff}.header{text-align:center;margin-bottom:20px}.title{font-size:14pt;font-weight:bold;margin:20px 0;text-align:center}.parties{margin-bottom:20px;text-align:justify}.section{margin:15px 0}.section-title{font-weight:bold;margin-bottom:10px}.item{margin-left:20px;margin-bottom:5px;text-align:justify}table{width:100%;border-collapse:collapse;margin:10px 0}th,td{border:1px solid #000;padding:5px 8px;text-align:left}th{background:#f0f0f0}.requisites{font-size:10pt;margin-top:20px}.requisites td{border:none;vertical-align:top;padding:3px 10px}.signature-area{position:relative;min-height:100px;margin-top:10px}.signature-images{position:relative;height:80px;margin-bottom:10px}.signature-images img{position:absolute}.signature-line{border-top:1px solid #000;padding-top:5px;margin-top:60px}</style></head><body>${htmlBody}${signatureBlock}</body></html>`;
   };
 
+  const hasValidCounterparty = counterpartyType === 'individual' ? !!individualData.fullName : !!selectedCompanyId;
+
   const handleGenerate = async () => {
     const validPrograms = selectedPrograms.filter(p => p.courseId && p.price && parseFloat(p.price) > 0);
-    if (!selectedCompanyId) { toast.error("Выберите компанию"); return; }
+    if (!hasValidCounterparty) { toast.error(counterpartyType === 'individual' ? "Укажите ФИО" : "Выберите компанию"); return; }
     if (validPrograms.length === 0) { toast.error("Добавьте хотя бы одну программу с ценой"); return; }
     setIsGenerating(true);
     try {
@@ -412,26 +447,27 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
 
   const handleDownloadDOC = () => {
     const validPrograms = selectedPrograms.filter(p => p.courseId);
-    if (!selectedCompany || validPrograms.length === 0) { toast.error("Заполните все обязательные поля"); return; }
+    if (!effectiveCounterparty || validPrograms.length === 0) { toast.error("Заполните все обязательные поля"); return; }
     const html = generateContractHTML();
+    const counterpartyName = counterpartyType === 'individual' ? individualData.fullName : (selectedCompany?.name || 'компания');
     const docContent = `<!DOCTYPE html><html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset="utf-8"><meta name="ProgId" content="Word.Document"><title>Договор ${contractNumber}</title><style>@page{size:A4;margin:2cm}body{font-family:'Times New Roman',serif;font-size:14pt;line-height:1.5}</style></head><body>${html.replace(/<html[^>]*>|<\/html>|<head>[\s\S]*?<\/head>|<body[^>]*>|<\/body>|<!DOCTYPE[^>]*>/gi, '')}</body></html>`;
     const blob = new Blob([docContent], { type: 'application/msword' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.href = url; link.download = `Договор_${contractNumber}_${selectedCompany?.name || 'компания'}.doc`;
+    link.href = url; link.download = `Договор_${contractNumber}_${counterpartyName}.doc`;
     document.body.appendChild(link); link.click(); document.body.removeChild(link); URL.revokeObjectURL(url);
     toast.success("Договор скачан в формате DOC");
   };
 
   const handleSaveContract = async () => {
     const validPrograms = selectedPrograms.filter(p => p.courseId && p.price);
-    if (!selectedCompany || validPrograms.length === 0) { toast.error("Заполните все обязательные поля"); return; }
+    if (!effectiveCounterparty || validPrograms.length === 0) { toast.error("Заполните все обязательные поля"); return; }
     if (!onSave) { toast.error("Сохранение недоступно"); return; }
     setIsSaving(true);
     try {
       const html = generateContractHTML();
-      // For backward compat, pass first program's courseId
-      await onSave(html, contractNumber, selectedCompany.name, validPrograms[0].courseId, totalPrice, totalStudents, contractDate);
+      const counterpartyName = counterpartyType === 'individual' ? individualData.fullName : (selectedCompany?.name || '');
+      await onSave(html, contractNumber, counterpartyName, validPrograms[0].courseId, totalPrice, totalStudents, contractDate);
       toast.success("Договор сохранён"); onClose();
     } catch (error) { console.error("Error:", error); toast.error("Ошибка сохранения"); }
     finally { setIsSaving(false); }
@@ -439,7 +475,7 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
 
   const handlePreview = () => {
     const validPrograms = selectedPrograms.filter(p => p.courseId && p.price);
-    if (!selectedCompany || validPrograms.length === 0) { toast.error("Заполните все обязательные поля"); return; }
+    if (!effectiveCounterparty || validPrograms.length === 0) { toast.error("Заполните все обязательные поля"); return; }
     setPreviewHtml(generateContractHTML()); setShowPreview(true);
   };
 
@@ -449,6 +485,8 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
     companies, courses, isLoading, isGenerating, isSaving,
     showPreview, setShowPreview, previewHtml,
     selectedCompanyId, setSelectedCompanyId,
+    counterpartyType, setCounterpartyType,
+    individualData, setIndividualData,
     // Legacy single-program compat
     selectedCourseId, setSelectedCourseId, price, setPrice, studentsCount, setStudentsCount,
     // Multi-program
@@ -456,7 +494,7 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
     totalPrice, totalStudents, hasValidPrograms,
     contractNumber, setContractNumber, contractDate, setContractDate,
     additionalTerms, setAdditionalTerms,
-    selectedCompany, selectedCourse: courses.find(c => c.id === selectedCourseId),
+    selectedCompany, effectiveCounterparty, selectedCourse: courses.find(c => c.id === selectedCourseId),
     serviceStartDate, setServiceStartDate, serviceEndDate, setServiceEndDate,
     formatPrice, handleGenerate, handleDownloadDOC, handleSaveContract, handlePreview,
     onSave,

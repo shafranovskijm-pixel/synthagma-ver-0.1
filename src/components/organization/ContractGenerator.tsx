@@ -4,8 +4,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Building2, Calendar, Printer, Save, Eye, ArrowLeft, Download, Plus, Trash2 } from "lucide-react";
-import { useContractGenerator } from "@/hooks/useContractGenerator";
+import { Loader2, Building2, Calendar, Printer, Save, Eye, ArrowLeft, Download, Plus, Trash2, User } from "lucide-react";
+import { useContractGenerator, type CounterpartyType } from "@/hooks/useContractGenerator";
 
 interface Company {
   id: string; name: string; inn: string | null; kpp: string | null; ogrn: string | null; address: string | null; director: string | null;
@@ -26,12 +26,14 @@ export function ContractGenerator(props: ContractGeneratorProps) {
     companies, courses, isLoading, isGenerating, isSaving,
     showPreview, setShowPreview, previewHtml,
     selectedCompanyId, setSelectedCompanyId,
+    counterpartyType, setCounterpartyType,
+    individualData, setIndividualData,
     selectedPrograms, addProgram, removeProgram, updateProgram,
     totalPrice, hasValidPrograms,
     contractNumber, setContractNumber, contractDate, setContractDate,
     serviceStartDate, setServiceStartDate, serviceEndDate, setServiceEndDate,
     additionalTerms, setAdditionalTerms,
-    selectedCompany, formatPrice, handleGenerate, handleDownloadDOC, handleSaveContract, handlePreview,
+    selectedCompany, effectiveCounterparty, formatPrice, handleGenerate, handleDownloadDOC, handleSaveContract, handlePreview,
   } = useContractGenerator(props);
 
   if (showPreview) {
@@ -65,12 +67,92 @@ export function ContractGenerator(props: ContractGeneratorProps) {
               <div className="space-y-2"><Label>Дата начала обучения</Label><Input type="date" value={serviceStartDate} onChange={e => setServiceStartDate(e.target.value)} className="rounded-xl" /></div>
               <div className="space-y-2"><Label>Дата окончания обучения</Label><Input type="date" value={serviceEndDate} onChange={e => setServiceEndDate(e.target.value)} className="rounded-xl" /></div>
             </div>
+
+            {/* Counterparty type selector */}
+            {!props.preselectedCompany && (
+              <div className="space-y-2">
+                <Label>Тип заказчика</Label>
+                <div className="flex gap-2">
+                  <Button
+                    variant={counterpartyType === 'company' ? 'default' : 'outline'}
+                    size="sm"
+                    className="flex-1 rounded-xl gap-2"
+                    onClick={() => setCounterpartyType('company')}
+                  >
+                    <Building2 className="w-4 h-4" />
+                    Юр. лицо / ИП
+                  </Button>
+                  <Button
+                    variant={counterpartyType === 'individual' ? 'default' : 'outline'}
+                    size="sm"
+                    className="flex-1 rounded-xl gap-2"
+                    onClick={() => setCounterpartyType('individual')}
+                  >
+                    <User className="w-4 h-4" />
+                    Физ. лицо
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Company selector */}
             {props.preselectedCompany ? (
               <div className="space-y-2"><Label className="flex gap-2"><Building2 className="w-4 h-4" />Заказчик</Label><div className="bg-secondary/50 rounded-xl p-3"><p className="font-medium">{props.preselectedCompany.name}</p>{props.preselectedCompany.inn && <p className="text-sm text-muted-foreground">ИНН: {props.preselectedCompany.inn}</p>}</div></div>
-            ) : (
+            ) : counterpartyType === 'company' ? (
               <div className="space-y-2">
-                <Label className="flex gap-2"><Building2 className="w-4 h-4" />Заказчик *</Label>
+                <Label className="flex gap-2"><Building2 className="w-4 h-4" />Заказчик (компания) *</Label>
                 <Select value={selectedCompanyId} onValueChange={setSelectedCompanyId}><SelectTrigger className="rounded-xl"><SelectValue placeholder="Выберите компанию" /></SelectTrigger><SelectContent>{companies.map(c => <SelectItem key={c.id} value={c.id}>{c.name} {c.inn && `(ИНН: ${c.inn})`}</SelectItem>)}</SelectContent></Select>
+              </div>
+            ) : (
+              <div className="space-y-3 border border-border rounded-xl p-4">
+                <Label className="flex gap-2 text-sm font-medium"><User className="w-4 h-4" />Данные физического лица</Label>
+                <div className="space-y-2">
+                  <Label className="text-xs">ФИО *</Label>
+                  <Input
+                    value={individualData.fullName}
+                    onChange={e => setIndividualData(prev => ({ ...prev, fullName: e.target.value }))}
+                    placeholder="Иванов Иван Иванович"
+                    className="rounded-xl"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs">Паспортные данные</Label>
+                  <Input
+                    value={individualData.passport}
+                    onChange={e => setIndividualData(prev => ({ ...prev, passport: e.target.value }))}
+                    placeholder="серия 1234 № 567890, выдан ..."
+                    className="rounded-xl"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs">Адрес проживания</Label>
+                  <Input
+                    value={individualData.address}
+                    onChange={e => setIndividualData(prev => ({ ...prev, address: e.target.value }))}
+                    placeholder="г. Москва, ул. Примерная, д. 1, кв. 1"
+                    className="rounded-xl"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label className="text-xs">Телефон</Label>
+                    <Input
+                      value={individualData.phone}
+                      onChange={e => setIndividualData(prev => ({ ...prev, phone: e.target.value }))}
+                      placeholder="+7 (999) 123-45-67"
+                      className="rounded-xl"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">E-mail</Label>
+                    <Input
+                      value={individualData.email}
+                      onChange={e => setIndividualData(prev => ({ ...prev, email: e.target.value }))}
+                      placeholder="example@mail.ru"
+                      className="rounded-xl"
+                    />
+                  </div>
+                </div>
               </div>
             )}
 
@@ -129,8 +211,8 @@ export function ContractGenerator(props: ContractGeneratorProps) {
             <div className="space-y-2"><Label>Доп. условия</Label><Textarea value={additionalTerms} onChange={e => setAdditionalTerms(e.target.value)} className="rounded-xl min-h-[80px]" placeholder="Условия..." /></div>
             <div className="bg-secondary/30 rounded-xl p-4"><p className="text-sm font-medium mb-2">Исполнитель:</p><p className="text-sm text-muted-foreground">{props.orgRequisites.name} • ИНН: {props.orgRequisites.inn}</p>{!props.orgRequisites.inn && <p className="text-xs text-destructive mt-2">⚠️ Заполните реквизиты организации</p>}</div>
             <div className="flex gap-3 pt-4 border-t border-border">
-              <Button variant="outline" className="flex-1" onClick={handlePreview} disabled={!selectedCompany || !hasValidPrograms}><Eye className="w-4 h-4 mr-2" />Предпросмотр</Button>
-              {props.onSave && <Button variant="outline" className="flex-1" onClick={handleSaveContract} disabled={isSaving || !selectedCompany || !hasValidPrograms}>{isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}Сохранить</Button>}
+              <Button variant="outline" className="flex-1" onClick={handlePreview} disabled={!effectiveCounterparty || !hasValidPrograms}><Eye className="w-4 h-4 mr-2" />Предпросмотр</Button>
+              {props.onSave && <Button variant="outline" className="flex-1" onClick={handleSaveContract} disabled={isSaving || !effectiveCounterparty || !hasValidPrograms}>{isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}Сохранить</Button>}
             </div>
           </div>
         )}
