@@ -221,10 +221,21 @@ export function SettingsTab() {
             </TabsContent>
 
             <TabsContent value="contract" className="mt-4">
-              <p className="text-xs text-muted-foreground mb-3">
-                Настройте шаблон договора на оказание образовательных услуг
-              </p>
-              {organizationId && <ContractTemplateEditor organizationId={organizationId} organizationName={organizationName} />}
+              <div className="flex flex-col items-center justify-center py-8 gap-4 text-center">
+                <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
+                  <FileText className="w-7 h-7 text-primary" />
+                </div>
+                <div>
+                  <h4 className="font-semibold text-sm mb-1">Конструктор шаблона договора</h4>
+                  <p className="text-xs text-muted-foreground max-w-sm">
+                    Полноэкранный редактор с подсветкой переменных, панелью вставки и предпросмотром
+                  </p>
+                </div>
+                <Button className="rounded-xl gap-2" onClick={() => navigate("/contract-editor")}>
+                  <ExternalLink className="w-4 h-4" />
+                  Открыть конструктор
+                </Button>
+              </div>
             </TabsContent>
 
             <TabsContent value="protocol" className="mt-4">
