@@ -83,6 +83,7 @@ const PLACEHOLDERS = [
 export function ContractTemplateEditor({
   organizationId,
   organizationName,
+  fullPage = false,
 }: ContractTemplateEditorProps) {
   const [template, setTemplate] = useState(BUILT_IN_TEMPLATES[0].text);
   const [originalTemplate, setOriginalTemplate] = useState(BUILT_IN_TEMPLATES[0].text);
