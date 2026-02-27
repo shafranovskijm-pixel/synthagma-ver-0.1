@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Search, Save, Building2, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -42,6 +43,7 @@ export function OrgRequisitesForm({ organizationId }: OrgRequisitesFormProps) {
     bank_bik: "",
     bank_account: "",
     bank_corr_account: "",
+    director_gender: "male",
   });
 
   useEffect(() => {
@@ -52,7 +54,7 @@ export function OrgRequisitesForm({ organizationId }: OrgRequisitesFormProps) {
     try {
       const { data, error } = await supabase
         .from("organizations")
-        .select("inn, kpp, ogrn, legal_address, actual_address, director_name, director_position, bank_name, bank_bik, bank_account, bank_corr_account")
+        .select("inn, kpp, ogrn, legal_address, actual_address, director_name, director_position, director_gender, bank_name, bank_bik, bank_account, bank_corr_account")
         .eq("id", organizationId)
         .single();
 
@@ -71,6 +73,7 @@ export function OrgRequisitesForm({ organizationId }: OrgRequisitesFormProps) {
           bank_bik: data.bank_bik || "",
           bank_account: data.bank_account || "",
           bank_corr_account: data.bank_corr_account || "",
+          director_gender: (data as any).director_gender || "male",
         });
       }
     } catch (error) {
@@ -237,7 +240,7 @@ export function OrgRequisitesForm({ organizationId }: OrgRequisitesFormProps) {
           />
         </div>
 
-        <div className="grid md:grid-cols-2 gap-4">
+        <div className="grid md:grid-cols-3 gap-4">
           <div className="space-y-2">
             <Label>ФИО руководителя</Label>
             <Input
@@ -255,6 +258,21 @@ export function OrgRequisitesForm({ organizationId }: OrgRequisitesFormProps) {
               className="rounded-xl"
               placeholder="Генеральный директор"
             />
+          </div>
+          <div className="space-y-2">
+            <Label>Пол руководителя</Label>
+            <Select
+              value={requisites.director_gender}
+              onValueChange={(value) => setRequisites(prev => ({ ...prev, director_gender: value }))}
+            >
+              <SelectTrigger className="rounded-xl">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="male">Мужской</SelectItem>
+                <SelectItem value="female">Женский</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 

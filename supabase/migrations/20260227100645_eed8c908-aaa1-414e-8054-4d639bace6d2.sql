@@ -1,0 +1,1 @@
+ALTER TABLE public.organizations ADD COLUMN director_gender text DEFAULT 'male';
