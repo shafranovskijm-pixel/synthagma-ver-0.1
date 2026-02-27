@@ -210,25 +210,28 @@ export function useCompaniesManager(organizationId: string) {
 
       if (error) throw error;
 
-      if (data?.suggestions?.length > 0) {
-        const suggestion = data.suggestions[0];
+      if (data?.success && data?.company) {
+        const c = data.company;
         const companyInfo: DadataCompanyInfo = {
-          name: suggestion.value,
-          fullName: suggestion.data.name?.full_with_opf || suggestion.value,
-          shortName: suggestion.data.name?.short_with_opf || suggestion.value,
-          inn: suggestion.data.inn,
-          kpp: suggestion.data.kpp || null,
-          ogrn: suggestion.data.ogrn || null,
-          address: suggestion.data.address?.unrestricted_value || null,
-          management: suggestion.data.management?.name || null,
-          status: suggestion.data.state?.status || null,
-          type: suggestion.data.type || null,
-          opf: suggestion.data.opf?.short || null,
+          name: c.name,
+          fullName: c.fullName || c.name,
+          shortName: c.shortName || c.name,
+          inn: c.inn,
+          kpp: c.kpp || null,
+          ogrn: c.ogrn || null,
+          address: c.address || null,
+          management: c.management || null,
+          status: c.status || null,
+          type: c.type || null,
+          opf: c.opf || null,
         };
         setDadataCompanyInfo(companyInfo);
         setNewCompanyName(companyInfo.shortName);
       } else {
         setDadataCompanyInfo(null);
+        if (!data?.success) {
+          toast.info("Компания не найдена по ИНН");
+        }
       }
     } catch (error) {
       console.error("Error searching dadata:", error);
