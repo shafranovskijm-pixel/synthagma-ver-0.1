@@ -307,8 +307,9 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
     const orgDirectorNameGenitive = declineFullNameToGenitive(orgRequisites.director_name);
     const orgActing = orgGender === 'female' ? 'действующей' : 'действующего';
 
-    const companyIsIP = isIP(selectedCompany.name);
-    const companyDirector = selectedCompany.director || 'Генерального директора';
+    const isIndividual = counterpartyType === 'individual';
+    const companyIsIP = !isIndividual && isIP(counterparty.name);
+    const companyDirector = !isIndividual ? (counterparty.director || 'Генерального директора') : '';
 
     const isMultiple = validPrograms.length > 1;
     const firstCourse = validPrograms[0].course!;
@@ -319,15 +320,20 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
     // Use saved template if available, otherwise fallback to hardcoded default
     let templateText = savedTemplate || DEFAULT_TEMPLATE;
 
+    // For individuals, replace the company block with individual block if template uses company vars
+    if (isIndividual) {
+      // Remove company representation block
+      templateText = templateText.replace(/,?\s*в лице\s+\{\{company_director\}\}\s*,?\s*действующ(?:его|ей)\s+на основании Устава\s*,?/gi, '');
+      // Replace "именуемое" with "именуемый" for individual
+      templateText = templateText.replace(/именуемое в дальнейшем «Заказчик»/gi, 'именуемый(-ая) в дальнейшем «Заказчик»');
+    }
+
     // Handle ИП: remove representation blocks BEFORE variable substitution
     if (orgIsIP) {
-      // Remove "в лице {{org_director_position}} {{org_director_name_genitive}}, {{org_director_acting}} на основании Устава" 
       templateText = templateText.replace(/,?\s*в лице\s+\{\{org_director_position\}\}\s+\{\{org_director_name_genitive\}\}\s*,?\s*\{\{org_director_acting\}\}\s+на основании Устава\s*,?/gi, '');
-      // Also try more generic pattern for manually edited templates
       templateText = templateText.replace(/,?\s*в лице\s+[^,]*\{\{org_director_name_genitive\}\}[^,]*на основании Устава\s*,?/gi, '');
     }
     if (companyIsIP) {
-      // Remove company representation block "в лице {{company_director}}, действующего на основании Устава"
       templateText = templateText.replace(/,?\s*в лице\s+\{\{company_director\}\}\s*,?\s*действующ(?:его|ей)\s+на основании Устава\s*,?/gi, '');
     }
 
@@ -351,12 +357,20 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
       '{{org_bank_bik}}': orgRequisites.bank_bik,
       '{{org_bank_account}}': orgRequisites.bank_account,
       '{{org_bank_corr_account}}': orgRequisites.bank_corr_account,
-      '{{company_name}}': selectedCompany.name,
-      '{{company_director}}': companyDirector,
-      '{{company_inn}}': selectedCompany.inn || '_______________',
-      '{{company_kpp}}': selectedCompany.kpp || '_______________',
-      '{{company_ogrn}}': selectedCompany.ogrn || '_______________',
-      '{{company_address}}': selectedCompany.address || '_______________',
+      // Company / individual fields — map company vars to individual data when needed
+      '{{company_name}}': isIndividual ? individualData.fullName : counterparty.name,
+      '{{company_director}}': isIndividual ? '' : companyDirector,
+      '{{company_inn}}': isIndividual ? '—' : (counterparty.inn || '_______________'),
+      '{{company_kpp}}': isIndividual ? '—' : (counterparty.kpp || '_______________'),
+      '{{company_ogrn}}': isIndividual ? '—' : (counterparty.ogrn || '_______________'),
+      '{{company_address}}': isIndividual ? (individualData.address || '_______________') : (counterparty.address || '_______________'),
+      // Individual-specific variables
+      '{{individual_name}}': individualData.fullName,
+      '{{individual_passport}}': individualData.passport,
+      '{{individual_address}}': individualData.address,
+      '{{individual_phone}}': individualData.phone,
+      '{{individual_email}}': individualData.email,
+      // Course & payment
       '{{course_title}}': firstCourse.title,
       '{{course_duration}}': firstCourse.duration ? ` продолжительностью ${firstCourse.duration}` : '',
       '{{course_hours}}': firstCourseHours,
