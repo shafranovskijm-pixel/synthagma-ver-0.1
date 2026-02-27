@@ -582,7 +582,7 @@ async function processZipArchive(file: File): Promise<Array<{ title: string; htm
       const ext = '.' + fileName.split('.').pop()?.toLowerCase();
       let content: ArrayBuffer | string;
       
-      if (ext === '.docx') {
+      if (ext === '.docx' || ext === '.pdf') {
         content = await entry.file.async('arraybuffer');
       } else {
         content = await entry.file.async('string');
