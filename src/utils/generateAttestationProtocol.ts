@@ -2,6 +2,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 
+interface CommissionMember {
+  name: string;
+  position: string;
+  role: "chairman" | "member" | "secretary";
+}
+
 interface ProtocolParams {
   organizationId: string;
   organizationName: string;
@@ -28,6 +34,19 @@ export async function generateAttestationProtocol({
   testMaxScore,
 }: ProtocolParams): Promise<string | null> {
   try {
+    // Load branding settings for protocol template, commission, stamp/signature
+    const { data: orgData } = await supabase
+      .from("organizations")
+      .select("branding, stamp_url, signature_url")
+      .eq("id", organizationId)
+      .single();
+
+    const branding = orgData?.branding as Record<string, unknown> | null;
+    const stampUrl = orgData?.stamp_url as string | null;
+    const signatureUrl = orgData?.signature_url as string | null;
+    const commissionMembers = (branding?.commissionMembers as CommissionMember[]) || [];
+    const protocolTemplate = branding?.protocolTemplate as string | null;
+
     const protocolNumber = `ПАК-${Date.now().toString().slice(-6)}`;
     const formattedDate = format(completedAt, "dd MMMM yyyy", { locale: ru });
     
@@ -38,6 +57,25 @@ export async function generateAttestationProtocol({
     const decision = testScore !== undefined && testMaxScore !== undefined
       ? (testScore / testMaxScore >= 0.6 ? "Аттестован(а)" : "Не аттестован(а)")
       : "Аттестован(а)";
+
+    // Build commission HTML
+    const chairman = commissionMembers.find(m => m.role === "chairman");
+    const members = commissionMembers.filter(m => m.role !== "chairman");
+    
+    const commissionHtml = commissionMembers.length > 0
+      ? `<p>Председатель комиссии: ${chairman?.name || directorName || "_________________"} (${chairman?.position || directorPosition || "Руководитель"})</p>
+         ${members.map(m => `<p>${m.role === "secretary" ? "Секретарь" : "Член комиссии"}: ${m.name} (${m.position})</p>`).join("\n")}`
+      : `<p>Председатель комиссии: ${directorName || "_________________"} (${directorPosition || "Руководитель"})</p>
+         <p>Члены комиссии: _________________</p>`;
+
+    // Build stamp/signature HTML
+    const stampSignatureHtml = (stampUrl || signatureUrl) ? `
+      <div style="display: flex; gap: 40px; margin-top: 20px; align-items: flex-end;">
+        ${signatureUrl ? `<img src="${signatureUrl}" alt="Подпись" style="max-height: 60px; max-width: 150px; object-fit: contain;" />` : ''}
+        ${stampUrl ? `<img src="${stampUrl}" alt="Печать" style="max-height: 80px; max-width: 80px; object-fit: contain;" />` : ''}
+      </div>` : '';
+
+    const chairmanName = chairman?.name || directorName || "_________________";
 
     const protocolHtml = `
 <!DOCTYPE html>
@@ -55,8 +93,7 @@ export async function generateAttestationProtocol({
     .table th, .table td { border: 1px solid #000; padding: 10px; text-align: left; }
     .table th { background-color: #f5f5f5; }
     .signature { margin-top: 50px; }
-    .signature-row { display: flex; justify-content: space-between; margin-top: 30px; }
-    .signature-item { text-align: center; }
+    @media print { body { padding: 0; } }
   </style>
 </head>
 <body>
@@ -75,8 +112,7 @@ export async function generateAttestationProtocol({
     ${courseDuration ? `<p><strong>Объём программы:</strong> ${courseDuration}</p>` : ''}
     
     <p style="margin-top: 20px;"><strong>Состав комиссии:</strong></p>
-    <p>Председатель комиссии: ${directorName || "_________________"} (${directorPosition || "Руководитель"})</p>
-    <p>Члены комиссии: _________________</p>
+    ${commissionHtml}
     
     <p style="margin-top: 20px;"><strong>Повестка дня:</strong></p>
     <p>Итоговая аттестация слушателя по результатам освоения дополнительной профессиональной программы.</p>
@@ -106,8 +142,12 @@ export async function generateAttestationProtocol({
   </div>
   
   <div class="signature">
-    <p style="margin-top: 40px;">Председатель комиссии: _________________ / ${directorName || "_________________"} /</p>
-    <p style="margin-top: 20px;">Члены комиссии: _________________ / _________________ /</p>
+    <p style="margin-top: 40px;">Председатель комиссии: _________________ / ${chairmanName} /</p>
+    ${members.length > 0
+      ? members.map(m => `<p style="margin-top: 20px;">${m.role === "secretary" ? "Секретарь" : "Член комиссии"}: _________________ / ${m.name} /</p>`).join("\n")
+      : `<p style="margin-top: 20px;">Члены комиссии: _________________ / _________________ /</p>`
+    }
+    ${stampSignatureHtml}
   </div>
 </body>
 </html>

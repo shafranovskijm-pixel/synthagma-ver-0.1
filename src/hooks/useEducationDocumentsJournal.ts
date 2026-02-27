@@ -105,6 +105,12 @@ export function useEducationDocumentsJournal({
   const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
   const [studentSearchQuery, setStudentSearchQuery] = useState("");
 
+  // Document settings from branding
+  const [docSettings, setDocSettings] = useState<{
+    certificateSettings?: { series: string; startNumber: number; city: string; regNumberFormat: string };
+    diplomaSettings?: { series: string; startNumber: number; city: string; regNumberFormat: string };
+  }>({});
+
   const [formData, setFormData] = useState({
     reg_number: "",
     full_name: "",
@@ -127,18 +133,33 @@ export function useEducationDocumentsJournal({
     enrollment_id: "",
   });
 
-  // Load records
+  // Load records and document settings
   useEffect(() => {
-    const loadRecords = async () => {
+    const loadData = async () => {
       setLoading(true);
       try {
-        const { data, error } = await supabase
-          .from("education_document_records")
-          .select("*")
-          .eq("organization_id", organizationId)
-          .order("created_at", { ascending: false });
-        if (error) throw error;
-        setRecords((data || []).map(mapDbRecord));
+        const [recordsRes, orgRes] = await Promise.all([
+          supabase
+            .from("education_document_records")
+            .select("*")
+            .eq("organization_id", organizationId)
+            .order("created_at", { ascending: false }),
+          supabase
+            .from("organizations")
+            .select("branding")
+            .eq("id", organizationId)
+            .single(),
+        ]);
+        if (recordsRes.error) throw recordsRes.error;
+        setRecords((recordsRes.data || []).map(mapDbRecord));
+
+        const branding = orgRes.data?.branding as Record<string, unknown> | null;
+        if (branding) {
+          setDocSettings({
+            certificateSettings: branding.certificateSettings as any,
+            diplomaSettings: branding.diplomaSettings as any,
+          });
+        }
       } catch (error) {
         console.error("Error loading records:", error);
         toast.error("Ошибка загрузки записей журнала");
@@ -146,7 +167,7 @@ export function useEducationDocumentsJournal({
         setLoading(false);
       }
     };
-    loadRecords();
+    loadData();
   }, [organizationId]);
 
   const loadCompletedStudents = async () => {
@@ -278,7 +299,22 @@ export function useEducationDocumentsJournal({
   const generateRegNumber = () => {
     const year = formData.issue_date.getFullYear();
     const sameYearCount = records.filter((r) => parseISO(r.issue_date).getFullYear() === year).length;
-    setFormData((prev) => ({ ...prev, reg_number: `ДОК-${year}/${(sameYearCount + 1).toString().padStart(4, "0")}` }));
+    const nextNumber = sameYearCount + 1;
+
+    // Try to use settings from branding
+    const settings = formData.document_type === "diploma" ? docSettings.diplomaSettings : docSettings.certificateSettings;
+    if (settings?.regNumberFormat) {
+      const regNum = settings.regNumberFormat
+        .replace("{{year}}", year.toString())
+        .replace("{{number}}", ((settings.startNumber || 0) + sameYearCount).toString().padStart(4, "0"));
+      setFormData((prev) => ({
+        ...prev,
+        reg_number: regNum,
+        document_series: prev.document_series || settings.series || "",
+      }));
+    } else {
+      setFormData((prev) => ({ ...prev, reg_number: `ДОК-${year}/${nextNumber.toString().padStart(4, "0")}` }));
+    }
   };
 
   const handleOpenAdd = () => { resetForm(); setShowAddDialog(true); };
