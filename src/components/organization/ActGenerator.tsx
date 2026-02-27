@@ -277,6 +277,40 @@ export function ActGenerator({
     return result.trim();
   };
 
+  const detectGender = (fullName: string): 'male' | 'female' => {
+    const parts = fullName.trim().split(/\s+/);
+    const patronymic = parts.length >= 3 ? parts[2] : parts.length >= 2 ? parts[1] : '';
+    const lower = patronymic.toLowerCase();
+    if (lower.endsWith('вна') || lower.endsWith('чна') || lower.endsWith('ична') || lower.endsWith('инична')) return 'female';
+    return 'male';
+  };
+
+  const declineWordToGenitive = (word: string): string => {
+    if (!word || word.length < 2) return word;
+    if (/^[А-ЯЁA-Z]\./.test(word)) return word;
+    const lower = word.toLowerCase();
+    if (lower.endsWith('ович')) return word.slice(0, -2) + 'ича';
+    if (lower.endsWith('евич')) return word.slice(0, -2) + 'ича';
+    if (lower.endsWith('ич') && lower.length > 4) return word + 'а';
+    if (lower.endsWith('овна') || lower.endsWith('евна') || lower.endsWith('ична') || lower.endsWith('инична')) return word.slice(0, -1) + 'ы';
+    if (lower.endsWith('ая') && lower.length > 3) return word.slice(0, -2) + 'ой';
+    if ((lower.endsWith('ова') || lower.endsWith('ева') || lower.endsWith('ёва')) && lower.length > 4) return word.slice(0, -1) + 'ой';
+    if (lower.endsWith('ина') && lower.length > 4) return word.slice(0, -1) + 'ой';
+    if (lower.endsWith('ов') || lower.endsWith('ев') || lower.endsWith('ёв')) return word + 'а';
+    if (lower.endsWith('ин') && lower.length > 3) return word + 'а';
+    if (lower.endsWith('ий') && lower.length > 3) return word.slice(0, -2) + 'ого';
+    if (lower.endsWith('а') && !lower.endsWith('ша') && !lower.endsWith('ща')) return word.slice(0, -1) + 'ы';
+    if (lower.endsWith('ша') || lower.endsWith('ща') || lower.endsWith('ча') || lower.endsWith('жа')) return word.slice(0, -1) + 'и';
+    if (lower.endsWith('я')) return word.slice(0, -1) + 'и';
+    const lastChar = lower.slice(-1);
+    if (/[бвгджзклмнпрстфхцчшщ]/.test(lastChar)) return word + 'а';
+    return word;
+  };
+
+  const declineFullName = (name: string) => name.trim().split(/\s+/).map(p => declineWordToGenitive(p)).join(' ');
+
+  const isIP = (name: string) => name.trim().toUpperCase().startsWith('ИП');
+
   const generateActHTML = (): string => {
     if (!selectedCompany || !selectedCourse) return "";
 
@@ -284,6 +318,11 @@ export function ActGenerator({
     const totalPrice = priceNum * parseInt(studentsCount);
     const dateFormatted = format(new Date(actDate), "d MMMM yyyy г.", { locale: ru });
     const contractDateFormatted = contractDate ? format(new Date(contractDate), "d MMMM yyyy г.", { locale: ru }) : "";
+
+    const orgIsIP = isIP(orgRequisites.name);
+    const orgGender = detectGender(orgRequisites.director_name);
+    const orgDirectorGenitive = declineFullName(orgRequisites.director_name);
+    const orgActing = orgGender === 'female' ? 'именуемая' : 'именуемый';
 
     return `
 <!DOCTYPE html>
@@ -328,7 +367,7 @@ export function ActGenerator({
     <div class="party">
       <div class="party-title">Исполнитель:</div>
       <div>${orgRequisites.name}</div>
-      <div>ИНН: ${orgRequisites.inn}, КПП: ${orgRequisites.kpp}</div>
+      <div>ИНН: ${orgRequisites.inn}${!orgIsIP ? `, КПП: ${orgRequisites.kpp}` : ''}</div>
     </div>
     <div class="party">
       <div class="party-title">Заказчик:</div>
@@ -338,7 +377,7 @@ export function ActGenerator({
   </div>
 
   <div class="content">
-    <p>Мы, нижеподписавшиеся, ${orgRequisites.director_position} ${orgRequisites.name} ${orgRequisites.director_name}, именуемый в дальнейшем «Исполнитель», с одной стороны, и ${selectedCompany.director || 'представитель'} ${selectedCompany.name}, именуемый в дальнейшем «Заказчик», с другой стороны, составили настоящий Акт о нижеследующем:</p>
+    <p>Мы, нижеподписавшиеся, ${orgRequisites.director_position} ${orgRequisites.name} ${orgDirectorGenitive}, ${orgActing} в дальнейшем «Исполнитель», с одной стороны, и ${selectedCompany.director || 'представитель'} ${selectedCompany.name}, именуемый в дальнейшем «Заказчик», с другой стороны, составили настоящий Акт о нижеследующем:</p>
   </div>
 
   <table class="items-table">
