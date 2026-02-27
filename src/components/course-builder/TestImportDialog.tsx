@@ -193,7 +193,7 @@ export function TestImportDialog({ onImport, children }: TestImportDialogProps) 
             Импорт теста из Excel
           </DialogTitle>
           <DialogDescription>
-            Загрузите файл Excel с вопросами. Правильные ответы отмечайте символом * в начале.
+            Загрузите файл Excel или TXT с вопросами. Правильные ответы отмечайте символом * (Excel) или +- (TXT).
           </DialogDescription>
         </DialogHeader>
 
