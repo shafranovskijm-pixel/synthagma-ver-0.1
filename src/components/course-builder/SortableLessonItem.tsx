@@ -269,7 +269,7 @@ export function SortableLessonItem({
               </div>
               <div className="flex justify-end gap-2">
                 <TestImportDialog onImport={(imported) => {
-                  const newQuestions = imported.map((q) => ({ question: q.question, options: q.options, correctAnswer: q.correctAnswer }));
+                  const newQuestions = imported.map((q) => ({ question: q.question, options: q.options, correctAnswer: q.correctAnswer, ...(q.explanation ? { explanation: q.explanation } : {}) }));
                   onUpdate({ content: JSON.stringify({ generatedQuestions: newQuestions }) });
                   toast.success(`Импортировано ${imported.length} вопросов`);
                 }}>
