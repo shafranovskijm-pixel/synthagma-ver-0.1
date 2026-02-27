@@ -28,6 +28,10 @@ function getOfficeViewerUrl(fileUrl: string): string {
   return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl)}`;
 }
 
+function getGoogleDocsViewerUrl(fileUrl: string): string {
+  return `https://docs.google.com/gview?url=${encodeURIComponent(fileUrl)}&embedded=true`;
+}
+
 export function FilePreviewDialog({ open, onOpenChange, fileUrl, fileName, fileType }: FilePreviewDialogProps) {
   const [isLoading, setIsLoading] = useState(true);
 
@@ -35,8 +39,10 @@ export function FilePreviewDialog({ open, onOpenChange, fileUrl, fileName, fileT
   const isOffice = canPreviewViaOffice(fileType);
   const canPreview = isPdf || isOffice;
 
+  // PDF: use Google Docs viewer to avoid X-Frame-Options blocks
+  // Office: use Microsoft Office Online viewer
   const previewUrl = isPdf
-    ? fileUrl
+    ? getGoogleDocsViewerUrl(fileUrl)
     : isOffice
       ? getOfficeViewerUrl(fileUrl)
       : "";
