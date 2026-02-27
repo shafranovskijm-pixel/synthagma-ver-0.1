@@ -209,7 +209,6 @@ export function ProtocolTemplateEditor({ organizationId }: ProtocolTemplateEdito
         <HighlightedTemplateEditor
           value={template}
           onChange={setTemplate}
-          rows={20}
         />
       </div>
 
