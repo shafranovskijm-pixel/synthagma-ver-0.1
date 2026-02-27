@@ -343,7 +343,6 @@ export function OrgRequisitesForm({ organizationId }: OrgRequisitesFormProps) {
           </div>
         </div>
       </div>
-      </div>
 
       <Button 
         className="btn-gradient rounded-xl gap-2" 
