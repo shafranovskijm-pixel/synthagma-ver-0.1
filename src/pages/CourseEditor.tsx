@@ -147,6 +147,7 @@ const CourseEditor = () => {
       setTitle(courseResult.data.title);
       setDescription(courseResult.data.description || "");
       setDuration(courseResult.data.duration || "");
+      setDurationHours(courseResult.data.frdo_duration_hours ?? null);
       setSequentialLessons(courseResult.data.sequential_lessons ?? false);
       setAllowVideoSeek(courseResult.data.allow_video_seek ?? true);
     }
