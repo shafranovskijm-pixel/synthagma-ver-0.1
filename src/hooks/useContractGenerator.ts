@@ -142,7 +142,7 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
       try {
         const [companiesRes, coursesRes, orgRes] = await Promise.all([
           supabase.from("companies").select("id, name, inn, kpp, ogrn, address, director").eq("organization_id", organizationId).order("name"),
-          supabase.from("courses").select("id, title, duration").eq("organization_id", organizationId).eq("is_published", true).order("title"),
+          supabase.from("courses").select("id, title, duration, frdo_duration_hours").eq("organization_id", organizationId).eq("is_published", true).order("title"),
           supabase.from("organizations").select("branding").eq("id", organizationId).single(),
         ]);
         if (companiesRes.error) throw companiesRes.error;
