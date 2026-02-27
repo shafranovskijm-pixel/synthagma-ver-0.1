@@ -122,6 +122,8 @@ const PLACEHOLDERS = [
   { key: "{{students_count}}", label: "Количество обучающихся", example: "10", patterns: ["количество", "обучающихся", "слушателей"] },
   { key: "{{price}}", label: "Цена за 1 человека", example: "5 000,00", patterns: ["стоимость", "цена"] },
   { key: "{{total_price}}", label: "Общая сумма", example: "50 000,00", patterns: ["общая стоимость", "итого"] },
+  { key: "{{programs_table}}", label: "Таблица программ (авто)", example: "Таблица с программами, ценами и кол-вом", patterns: ["таблица", "программ"] },
+  { key: "{{programs_list}}", label: "Список программ (текст)", example: "1. Охрана труда — 40 ч. — 5 чел. — 3 000 руб.", patterns: [] },
   { key: "{{additional_terms}}", label: "Дополнительные условия", example: "", patterns: [] },
 ];
 
