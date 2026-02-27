@@ -72,6 +72,75 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
     return new Intl.NumberFormat("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num);
   };
 
+  // Detect gender by patronymic
+  const detectGender = (fullName: string): 'male' | 'female' => {
+    const parts = fullName.trim().split(/\s+/);
+    const patronymic = parts.length >= 3 ? parts[2] : parts.length >= 2 ? parts[1] : '';
+    const lower = patronymic.toLowerCase();
+    if (lower.endsWith('вна') || lower.endsWith('чна') || lower.endsWith('ична') || lower.endsWith('инична')) {
+      return 'female';
+    }
+    return 'male';
+  };
+
+  // Decline a single Russian name word to genitive case
+  const declineWordToGenitive = (word: string): string => {
+    if (!word || word.length < 2) return word;
+    // Keep initials as-is (e.g. "И.И.")
+    if (/^[А-ЯЁA-Z]\./.test(word)) return word;
+    
+    const lower = word.toLowerCase();
+    const original = word;
+    
+    // Patronymics
+    if (lower.endsWith('ович')) return original.slice(0, -2) + 'ича';
+    if (lower.endsWith('евич')) return original.slice(0, -2) + 'ича';
+    if (lower.endsWith('ич') && lower.length > 4) return original + 'а';
+    if (lower.endsWith('овна')) return original.slice(0, -1) + 'ы';
+    if (lower.endsWith('евна')) return original.slice(0, -1) + 'ы';
+    if (lower.endsWith('ична')) return original.slice(0, -1) + 'ы';
+    if (lower.endsWith('инична')) return original.slice(0, -1) + 'ы';
+    
+    // Female surnames ending in -ая, -яя
+    if (lower.endsWith('ая') && lower.length > 3) return original.slice(0, -2) + 'ой';
+    if (lower.endsWith('яя') && lower.length > 3) return original.slice(0, -2) + 'ей';
+    
+    // Female surnames ending in -ва, -на, -ка (Иванова -> Ивановой)
+    if ((lower.endsWith('ова') || lower.endsWith('ева') || lower.endsWith('ёва')) && lower.length > 4) {
+      return original.slice(0, -1) + 'ой';
+    }
+    if (lower.endsWith('ина') && lower.length > 4) return original.slice(0, -1) + 'ой';
+    
+    // Male surnames ending in consonant + add "а"
+    if (lower.endsWith('ов') || lower.endsWith('ев') || lower.endsWith('ёв')) return original + 'а';
+    if (lower.endsWith('ин') && lower.length > 3) return original + 'а';
+    if (lower.endsWith('ий') && lower.length > 3) return original.slice(0, -2) + 'ого';
+    if (lower.endsWith('ый') && lower.length > 3) return original.slice(0, -2) + 'ого';
+    if (lower.endsWith('ой') && lower.length > 3) return original.slice(0, -2) + 'ого';
+    
+    // Female first names
+    if (lower.endsWith('а') && !lower.endsWith('ша') && !lower.endsWith('ща')) return original.slice(0, -1) + 'ы';
+    if (lower.endsWith('ша') || lower.endsWith('ща') || lower.endsWith('ча') || lower.endsWith('жа')) return original.slice(0, -1) + 'и';
+    if (lower.endsWith('я')) return original.slice(0, -1) + 'и';
+    if (lower.endsWith('ь') && lower.length > 3) return original.slice(0, -1) + 'и';
+    
+    // Male first names ending in consonant
+    const lastChar = lower.slice(-1);
+    if (/[бвгджзклмнпрстфхцчшщ]/.test(lastChar)) return original + 'а';
+    
+    return original;
+  };
+
+  // Decline full name (Фамилия Имя Отчество) to genitive
+  const declineFullNameToGenitive = (fullName: string): string => {
+    const parts = fullName.trim().split(/\s+/);
+    return parts.map(p => declineWordToGenitive(p)).join(' ');
+  };
+
+  const isIP = (name: string): boolean => {
+    return name.trim().toUpperCase().startsWith('ИП');
+  };
+
   const numberToWords = (num: number): string => {
     const ones = ['', 'один', 'два', 'три', 'четыре', 'пять', 'шесть', 'семь', 'восемь', 'девять'];
     const teens = ['десять', 'одиннадцать', 'двенадцать', 'тринадцать', 'четырнадцать', 'пятнадцать', 'шестнадцать', 'семнадцать', 'восемнадцать', 'девятнадцать'];
