@@ -581,7 +581,7 @@ export const LessonEditor = ({
                         className="gap-2"
                       >
                         <FileSpreadsheet className="w-4 h-4" />
-                        Импорт из Excel
+                        Импорт из Excel / TXT
                       </Button>
                     </TestImportDialog>
                     <Button

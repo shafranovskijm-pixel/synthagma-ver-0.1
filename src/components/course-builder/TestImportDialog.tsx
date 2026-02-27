@@ -182,7 +182,7 @@ export function TestImportDialog({ onImport, children }: TestImportDialogProps) 
         {children || (
           <Button variant="outline" size="sm" className="gap-2">
             <Upload className="w-4 h-4" />
-            Импорт из Excel
+            Импорт из Excel / TXT
           </Button>
         )}
       </DialogTrigger>

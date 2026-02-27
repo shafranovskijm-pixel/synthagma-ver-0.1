@@ -273,7 +273,7 @@ export function SortableLessonItem({
                   onUpdate({ content: JSON.stringify({ generatedQuestions: newQuestions }) });
                   toast.success(`Импортировано ${imported.length} вопросов`);
                 }}>
-                  <Button variant="outline" size="sm" className="rounded-lg text-xs gap-1"><FileSpreadsheet className="w-3 h-3" />Импорт из Excel</Button>
+                  <Button variant="outline" size="sm" className="rounded-lg text-xs gap-1"><FileSpreadsheet className="w-3 h-3" />Импорт из Excel / TXT</Button>
                 </TestImportDialog>
                 <Button variant="outline" size="sm" className="rounded-lg text-xs gap-1 border-primary text-primary hover:bg-primary/10" onClick={onGenerate} disabled={media.isGeneratingContent}>
                   {media.isGeneratingContent ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
