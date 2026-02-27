@@ -77,6 +77,7 @@ export function useCourseLearning() {
   const [currentLessonIndex, setCurrentLessonIndex] = useState(0);
   const [lessonProgress, setLessonProgress] = useState<LessonProgress[]>([]);
   const [loading, setLoading] = useState(true);
+  const [lessonAttachments, setLessonAttachments] = useState<Record<string, { id: string; name: string; file_url: string; file_type: string | null; file_size: number | null; category: string }[]>>({});
   const [enrollmentId, setEnrollmentId] = useState<string | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
