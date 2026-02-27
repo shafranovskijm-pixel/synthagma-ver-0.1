@@ -11,6 +11,7 @@ interface HighlightedTemplateEditorProps {
   className?: string;
   showValidation?: boolean;
   showInsertPanel?: boolean;
+  fullPage?: boolean;
 }
 
 function escapeHtml(text: string): string {
