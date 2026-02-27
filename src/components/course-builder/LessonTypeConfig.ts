@@ -17,6 +17,20 @@ export interface TestQuestionLocal {
   isDeleted?: boolean;
 }
 
+export interface LessonAttachmentLocal {
+  id: string;
+  lesson_id: string;
+  name: string;
+  file_url: string;
+  file_type: string | null;
+  file_size: number | null;
+  category: string;
+  order_index: number;
+  created_at?: string;
+  isNew?: boolean;
+  isDeleted?: boolean;
+}
+
 export interface Lesson {
   id: string;
   type: LessonType;
@@ -29,6 +43,7 @@ export interface Lesson {
   testPassingScore?: number;
   testQuestionsToShow?: number | null;
   questions?: TestQuestionLocal[];
+  attachments?: LessonAttachmentLocal[];
 }
 
 export interface GeneratedQuestion {
