@@ -27,6 +27,7 @@ import { SliderLessonViewer } from "@/components/course-learning/SliderLessonVie
 import { useCourseLearning, getOptionText } from "@/hooks/useCourseLearning";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useState as useReactState } from "react";
+import { FilePreviewDialog } from "@/components/course-learning/FilePreviewDialog";
 
 const CourseLearning = () => {
   const { courseId } = useParams();
