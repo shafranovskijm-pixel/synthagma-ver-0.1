@@ -333,6 +333,107 @@ function escapeHtml(text: string): string {
     .replace(/'/g, '&#039;');
 }
 
+// Basic PDF text extractor - extracts text from PDF content streams
+async function parsePdfBasic(buffer: ArrayBuffer): Promise<string> {
+  try {
+    const bytes = new Uint8Array(buffer);
+    const raw = new TextDecoder('latin1').decode(bytes);
+    
+    const textChunks: string[] = [];
+    
+    // Method 1: Extract text between BT...ET blocks (text objects)
+    const btEtRegex = /BT\s([\s\S]*?)ET/g;
+    let btMatch;
+    while ((btMatch = btEtRegex.exec(raw)) !== null) {
+      const block = btMatch[1];
+      
+      // Extract Tj operator strings (simple text show)
+      const tjRegex = /\(([^)]*)\)\s*Tj/g;
+      let tjMatch;
+      while ((tjMatch = tjRegex.exec(block)) !== null) {
+        const decoded = decodePdfString(tjMatch[1]);
+        if (decoded.trim()) textChunks.push(decoded);
+      }
+      
+      // Extract TJ operator arrays (text with positioning)
+      const tjArrayRegex = /\[((?:[^[\]]*|\([^)]*\))*)\]\s*TJ/gi;
+      let tjArrMatch;
+      while ((tjArrMatch = tjArrayRegex.exec(block)) !== null) {
+        const arrContent = tjArrMatch[1];
+        const strParts: string[] = [];
+        const partRegex = /\(([^)]*)\)/g;
+        let partMatch;
+        while ((partMatch = partRegex.exec(arrContent)) !== null) {
+          strParts.push(decodePdfString(partMatch[1]));
+        }
+        const line = strParts.join('');
+        if (line.trim()) textChunks.push(line);
+      }
+    }
+    
+    // Method 2: Try to find stream content and extract readable text
+    if (textChunks.length === 0) {
+      // Try extracting any readable Cyrillic/Latin text sequences from the binary
+      const utf8Text = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+      const readableRegex = /[\u0400-\u04FF\w\s.,;:!?()"-]{20,}/g;
+      let readMatch;
+      while ((readMatch = readableRegex.exec(utf8Text)) !== null) {
+        textChunks.push(readMatch[0].trim());
+      }
+    }
+    
+    if (textChunks.length === 0) {
+      return '<p>Не удалось извлечь текст из PDF. Попробуйте сохранить файл в формате DOCX.</p>';
+    }
+    
+    // Group chunks into paragraphs
+    const paragraphs: string[] = [];
+    let currentParagraph = '';
+    
+    for (const chunk of textChunks) {
+      const trimmed = chunk.trim();
+      if (!trimmed) continue;
+      
+      // Start new paragraph on significant gaps or short lines (likely headings)
+      if (currentParagraph && (trimmed.length < 60 && currentParagraph.length > 100)) {
+        paragraphs.push(currentParagraph);
+        currentParagraph = trimmed;
+      } else {
+        currentParagraph += (currentParagraph ? ' ' : '') + trimmed;
+      }
+    }
+    if (currentParagraph) paragraphs.push(currentParagraph);
+    
+    // Build HTML
+    const html = paragraphs.map(p => {
+      const escaped = escapeHtml(p);
+      // Short lines might be headings
+      if (p.length < 80 && !p.endsWith('.') && !p.endsWith(',')) {
+        return `<h3>${escaped}</h3>`;
+      }
+      return `<p>${escaped}</p>`;
+    }).join('\n');
+    
+    console.log(`PDF: extracted ${paragraphs.length} paragraphs from ${textChunks.length} text chunks`);
+    return html;
+  } catch (e) {
+    console.error('PDF parse error:', e);
+    return '<p>Ошибка при извлечении текста из PDF. Попробуйте сохранить файл в формате DOCX.</p>';
+  }
+}
+
+// Decode PDF string escapes
+function decodePdfString(s: string): string {
+  return s
+    .replace(/\\n/g, '\n')
+    .replace(/\\r/g, '\r')
+    .replace(/\\t/g, '\t')
+    .replace(/\\\(/g, '(')
+    .replace(/\\\)/g, ')')
+    .replace(/\\\\/g, '\\')
+    .replace(/\\(\d{3})/g, (_m: string, oct: string) => String.fromCharCode(parseInt(oct, 8)));
+}
+
 // Process single file and return its content
 async function processFile(file: File): Promise<Array<{ title: string; html: string; fileName: string; folderPath?: string }>> {
   const fileName = file.name.toLowerCase();
