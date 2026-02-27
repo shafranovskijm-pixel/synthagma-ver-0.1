@@ -11,6 +11,8 @@ export interface PlanLimits {
   documentChecklist: boolean;
   videoIdentification: boolean;
   branding: boolean;
+  frdoEnabled: boolean;
+  reportsEnabled: boolean;
 }
 
 export interface PlanInfo {
@@ -31,7 +33,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, PlanInfo> = {
     price: 0,
     description: 'Для знакомства с платформой',
     limits: {
-      maxCourses: 1,
+      maxCourses: 3,
       maxStudents: 10,
       maxTrainedPerMonth: 10,
       storageBytes: 104857600, // 100 MB
@@ -41,8 +43,10 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, PlanInfo> = {
       documentChecklist: false,
       videoIdentification: false,
       branding: false,
+      frdoEnabled: false,
+      reportsEnabled: false,
     },
-    enabledCategories: ['courses', 'students', 'services', 'settings', 'student_cabinet'],
+    enabledCategories: ['courses', 'students', 'companies', 'documents', 'journals', 'frdo', 'links', 'library', 'services', 'settings', 'student_cabinet', 'labor_safety'],
   },
   start: {
     id: 'start',
@@ -50,7 +54,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, PlanInfo> = {
     price: 3490,
     description: 'Для начинающих организаций',
     limits: {
-      maxCourses: 3,
+      maxCourses: 10,
       maxStudents: 50,
       maxTrainedPerMonth: 30,
       storageBytes: 1073741824, // 1 GB
@@ -60,6 +64,8 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, PlanInfo> = {
       documentChecklist: false,
       videoIdentification: false,
       branding: false,
+      frdoEnabled: false,
+      reportsEnabled: false,
     },
     enabledCategories: ['courses', 'students', 'companies', 'links', 'services', 'settings', 'student_cabinet'],
   },
@@ -69,7 +75,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, PlanInfo> = {
     price: 6990,
     description: 'Для активных организаций',
     limits: {
-      maxCourses: 10,
+      maxCourses: 30,
       maxStudents: 200,
       maxTrainedPerMonth: 100,
       storageBytes: 5368709120, // 5 GB
@@ -79,6 +85,8 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, PlanInfo> = {
       documentChecklist: true,
       videoIdentification: true,
       branding: true,
+      frdoEnabled: false,
+      reportsEnabled: false,
     },
     enabledCategories: ['courses', 'students', 'companies', 'links', 'services', 'settings', 'student_cabinet'],
   },
@@ -88,18 +96,20 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, PlanInfo> = {
     price: 16990,
     description: 'Для крупных организаций',
     limits: {
-      maxCourses: 30,
+      maxCourses: 50,
       maxStudents: 1000,
       maxTrainedPerMonth: 500,
-      storageBytes: 21474836480, // 20 GB
+      storageBytes: 53687091200, // 50 GB
       aiEnabled: false,
       aiAudioEnabled: false,
       courseSettings: true,
       documentChecklist: true,
       videoIdentification: true,
       branding: true,
+      frdoEnabled: true,
+      reportsEnabled: true,
     },
-    enabledCategories: ['courses', 'students', 'companies', 'documents', 'journals', 'links', 'library', 'services', 'settings', 'student_cabinet', 'labor_safety'],
+    enabledCategories: ['courses', 'students', 'companies', 'documents', 'journals', 'frdo', 'links', 'library', 'services', 'settings', 'student_cabinet', 'labor_safety'],
   },
   maximum: {
     id: 'maximum',
@@ -117,6 +127,8 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, PlanInfo> = {
       documentChecklist: true,
       videoIdentification: true,
       branding: true,
+      frdoEnabled: true,
+      reportsEnabled: true,
     },
     enabledCategories: ['courses', 'students', 'companies', 'documents', 'journals', 'frdo', 'links', 'library', 'services', 'settings', 'student_cabinet', 'labor_safety'],
   },
@@ -129,4 +141,18 @@ export function getPlanInfo(plan: SubscriptionPlan): PlanInfo {
 export function formatStorageSize(bytes: number): string {
   if (bytes >= 1073741824) return `${Math.round(bytes / 1073741824)} ГБ`;
   return `${Math.round(bytes / 1048576)} МБ`;
+}
+
+/**
+ * Find the minimum plan that enables a given category.
+ */
+export function getMinPlanForCategory(category: string): PlanInfo | null {
+  const order: SubscriptionPlan[] = ['free', 'start', 'standard', 'professional', 'maximum'];
+  for (const planId of order) {
+    const plan = SUBSCRIPTION_PLANS[planId];
+    if (plan.enabledCategories.includes(category)) {
+      return plan;
+    }
+  }
+  return null;
 }
