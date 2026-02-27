@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { VARIABLE_CATEGORIES, getVariableCategoryByKey } from "./contract-template/variableCategories";
 import { VariableInsertPanel } from "./contract-template/VariableInsertPanel";
 import { TemplateValidation } from "./contract-template/TemplateValidation";
+import { VariableContextMenu } from "./contract-template/VariableContextMenu";
 
 interface HighlightedTemplateEditorProps {
   value: string;
@@ -50,6 +51,7 @@ export function HighlightedTemplateEditor({
   const containerRef = useRef<HTMLDivElement>(null);
   const [isFocused, setIsFocused] = useState(false);
   const cursorPosRef = useRef<number>(0);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
   const syncScroll = useCallback(() => {
     if (textareaRef.current && highlightRef.current) {
@@ -91,6 +93,14 @@ export function HighlightedTemplateEditor({
     });
   }, [value, onChange]);
 
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    if (textareaRef.current) {
+      cursorPosRef.current = textareaRef.current.selectionStart;
+    }
+    setContextMenu({ x: e.clientX, y: e.clientY });
+  }, []);
+
   const highlightedHtml = highlightVariables(value);
 
   return (
@@ -126,6 +136,7 @@ export function HighlightedTemplateEditor({
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}
               onScroll={syncScroll}
+              onContextMenu={handleContextMenu}
               className={cn(
                 "absolute inset-0 w-full h-full resize-none bg-transparent p-3 font-mono text-sm leading-relaxed",
                 "focus:outline-none",
@@ -139,8 +150,9 @@ export function HighlightedTemplateEditor({
           {/* Compact validation + stats bar */}
           {showValidation && <TemplateValidation value={value} compact />}
 
-          {/* Statistics inline */}
+          {/* Statistics + hint */}
           <div className="flex flex-wrap gap-3 text-xs text-muted-foreground px-1">
+            <span className="opacity-60">ПКМ — вставить переменную</span>
             {Object.entries(VARIABLE_CATEGORIES).map(([key, category]) => {
               const count = category.keys.reduce((acc, { key: varKey }) => {
                 const regex = new RegExp(`\\{\\{${varKey}\\}\\}`, "g");
@@ -169,6 +181,19 @@ export function HighlightedTemplateEditor({
           </div>
         )}
       </div>
+
+      {/* Context menu */}
+      {contextMenu && (
+        <VariableContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onInsert={(variable) => {
+            insertVariable(variable);
+            setContextMenu(null);
+          }}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
     </div>
   );
 }
