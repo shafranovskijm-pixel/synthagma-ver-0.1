@@ -78,11 +78,11 @@ export function CertificateTemplateEditor({ organizationId }: CertificateTemplat
       const { error } = await supabase
         .from("organizations")
         .update({
-          branding: {
+          branding: JSON.parse(JSON.stringify({
             ...currentBranding,
             certificateSettings,
             diplomaSettings,
-          },
+          })),
         })
         .eq("id", organizationId);
       if (error) throw error;

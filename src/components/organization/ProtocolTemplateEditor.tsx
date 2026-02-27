@@ -209,7 +209,6 @@ export function ProtocolTemplateEditor({ organizationId }: ProtocolTemplateEdito
         <HighlightedTemplateEditor
           value={template}
           onChange={setTemplate}
-          placeholders={PROTOCOL_PLACEHOLDERS}
           rows={20}
         />
       </div>
