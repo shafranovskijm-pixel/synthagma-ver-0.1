@@ -175,6 +175,11 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
   }, [organizationId, isOpen]);
 
   const selectedCompany = preselectedCompany || companies.find(c => c.id === selectedCompanyId);
+  
+  // For individuals, create a virtual "company" object
+  const effectiveCounterparty = counterpartyType === 'individual' 
+    ? (individualData.fullName ? { id: 'individual', name: individualData.fullName, inn: null, kpp: null, ogrn: null, address: individualData.address || null, director: null } as Company : null)
+    : selectedCompany;
 
   const formatPrice = (value: string) => {
     const num = parseFloat(value);
