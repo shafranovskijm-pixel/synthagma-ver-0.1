@@ -106,6 +106,10 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
   const [contractNumber, setContractNumber] = useState("");
   const [contractDate, setContractDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [additionalTerms, setAdditionalTerms] = useState("");
+  const [serviceStartDate, setServiceStartDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [serviceEndDate, setServiceEndDate] = useState(() => {
+    const d = new Date(); d.setMonth(d.getMonth() + 1); return format(d, "yyyy-MM-dd");
+  });
 
   // Backward-compat aliases for first program
   const selectedCourseId = selectedPrograms[0]?.courseId || "";
