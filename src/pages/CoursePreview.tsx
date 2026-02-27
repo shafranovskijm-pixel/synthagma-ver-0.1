@@ -464,6 +464,24 @@ const CoursePreview = () => {
 
       if (lessonsError) throw lessonsError;
       setLessons(lessonsData || []);
+
+      // Fetch attachments
+      if (lessonsData && lessonsData.length > 0) {
+        const lessonIds = lessonsData.map(l => l.id);
+        const { data: attData } = await supabase
+          .from('lesson_attachments')
+          .select('*')
+          .in('lesson_id', lessonIds)
+          .order('order_index');
+        if (attData) {
+          const map: Record<string, any[]> = {};
+          for (const a of attData) {
+            if (!map[a.lesson_id]) map[a.lesson_id] = [];
+            map[a.lesson_id].push(a);
+          }
+          setLessonAttachments(map);
+        }
+      }
     } catch (error) {
       console.error('Error fetching course:', error);
       toast.error('Ошибка загрузки курса');
