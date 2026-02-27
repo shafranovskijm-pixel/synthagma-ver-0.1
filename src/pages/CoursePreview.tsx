@@ -419,6 +419,9 @@ const CoursePreview = () => {
   
   // Attachments state
   const [lessonAttachments, setLessonAttachments] = useState<Record<string, any[]>>({});
+  
+  // File preview state
+  const [previewFile, setPreviewFile] = useState<{ url: string; name: string; type: string | null } | null>(null);
 
   const currentLesson = lessons[currentLessonIndex];
 
