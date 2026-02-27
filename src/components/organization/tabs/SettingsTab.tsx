@@ -167,40 +167,109 @@ export function SettingsTab() {
         </div>
       </details>
 
-      {/* Document Autofill Settings */}
-      {!isFreePlan && <details className="bg-card rounded-xl lg:rounded-2xl border border-border group">
+      {/* Document Center */}
+      {!isFreePlan && <details className="bg-card rounded-xl lg:rounded-2xl border border-border group" open>
         <summary className="p-4 lg:p-6 cursor-pointer list-none flex items-center justify-between">
           <h3 className="font-display font-semibold text-base lg:text-lg flex items-center gap-2">
             <FileText className="w-4 h-4 lg:w-5 lg:h-5" />
-            Автозаполнение документов
+            Центр документов
           </h3>
           <ChevronRight className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90" />
         </summary>
-        <div className="px-4 lg:px-6 pb-4 lg:pb-6 space-y-4 lg:space-y-6">
-          <div>
-            <h4 className="font-medium mb-2 flex items-center gap-2 text-sm lg:text-base">
-              <Building2 className="w-4 h-4" />
-              Реквизиты организации
-            </h4>
-            <p className="text-xs lg:text-sm text-muted-foreground mb-3 lg:mb-4">
-              Введите ИНН для автозаполнения данных
-            </p>
-            {organizationId && <OrgRequisitesForm organizationId={organizationId} />}
-          </div>
-          <div className="border-t border-border pt-4 lg:pt-6">
-            <h4 className="font-medium mb-2 text-sm lg:text-base">Конструктор договора</h4>
-            <p className="text-xs lg:text-sm text-muted-foreground mb-3 lg:mb-4">
-              Настройте шаблон договора
-            </p>
-            {organizationId && <ContractTemplateEditor organizationId={organizationId} organizationName={organizationName} />}
-          </div>
-          <div className="border-t border-border pt-4 lg:pt-6">
-            <h4 className="font-medium mb-2 text-sm lg:text-base">Согласие на обработку ПД</h4>
-            <p className="text-xs lg:text-sm text-muted-foreground mb-3 lg:mb-4">
-              Генератор согласия на обработку персональных данных
-            </p>
-            {organizationId && <ConsentGenerator organizationId={organizationId} organizationName={organizationName} />}
-          </div>
+        <div className="px-4 lg:px-6 pb-4 lg:pb-6">
+          <Tabs value={docTab} onValueChange={setDocTab}>
+            <TabsList className="flex flex-wrap h-auto gap-1 bg-muted/50 p-1 rounded-xl">
+              <TabsTrigger value="requisites" className="rounded-lg text-xs gap-1.5 px-2.5 py-1.5">
+                <Building2 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Реквизиты</span>
+              </TabsTrigger>
+              <TabsTrigger value="contract" className="rounded-lg text-xs gap-1.5 px-2.5 py-1.5">
+                <FileText className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Договор</span>
+              </TabsTrigger>
+              <TabsTrigger value="protocol" className="rounded-lg text-xs gap-1.5 px-2.5 py-1.5">
+                <ScrollText className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Протокол АК</span>
+              </TabsTrigger>
+              <TabsTrigger value="documents" className="rounded-lg text-xs gap-1.5 px-2.5 py-1.5">
+                <Award className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Удост./Диплом</span>
+              </TabsTrigger>
+              <TabsTrigger value="consent" className="rounded-lg text-xs gap-1.5 px-2.5 py-1.5">
+                <UserCheck className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Согласие ПД</span>
+              </TabsTrigger>
+              <TabsTrigger value="stamp" className="rounded-lg text-xs gap-1.5 px-2.5 py-1.5">
+                <Stamp className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Печать</span>
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="requisites" className="mt-4 space-y-4">
+              <div>
+                <h4 className="font-medium mb-2 flex items-center gap-2 text-sm">
+                  <Building2 className="w-4 h-4" />
+                  Реквизиты организации
+                </h4>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Введите ИНН для автозаполнения данных. Реквизиты используются во всех генерируемых документах.
+                </p>
+                {organizationId && <OrgRequisitesForm organizationId={organizationId} />}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="contract" className="mt-4">
+              <p className="text-xs text-muted-foreground mb-3">
+                Настройте шаблон договора на оказание образовательных услуг
+              </p>
+              {organizationId && <ContractTemplateEditor organizationId={organizationId} organizationName={organizationName} />}
+            </TabsContent>
+
+            <TabsContent value="protocol" className="mt-4">
+              <p className="text-xs text-muted-foreground mb-3">
+                Настройте шаблон протокола аттестационной комиссии и состав комиссии
+              </p>
+              {organizationId && <ProtocolTemplateEditor organizationId={organizationId} />}
+            </TabsContent>
+
+            <TabsContent value="documents" className="mt-4">
+              <p className="text-xs text-muted-foreground mb-3">
+                Настройте серии, нумерацию и формат регистрационных номеров документов об образовании
+              </p>
+              {organizationId && <CertificateTemplateEditor organizationId={organizationId} />}
+            </TabsContent>
+
+            <TabsContent value="consent" className="mt-4">
+              <p className="text-xs text-muted-foreground mb-3">
+                Генератор согласия на обработку персональных данных
+              </p>
+              {organizationId && <ConsentGenerator organizationId={organizationId} organizationName={organizationName} />}
+            </TabsContent>
+
+            <TabsContent value="stamp" className="mt-4">
+              <p className="text-xs text-muted-foreground mb-3">
+                Загруженные печать и подпись используются во всех генерируемых документах (протоколы, договоры, приказы)
+              </p>
+              {organizationId && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <StampSignatureUploader
+                    type="stamp"
+                    currentUrl={stampUrl}
+                    onUpload={handleStampUpload}
+                    onRemove={handleStampRemove}
+                    organizationId={organizationId}
+                  />
+                  <StampSignatureUploader
+                    type="signature"
+                    currentUrl={signatureUrl}
+                    onUpload={handleSignatureUpload}
+                    onRemove={handleSignatureRemove}
+                    organizationId={organizationId}
+                  />
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
         </div>
       </details>}
 
