@@ -522,6 +522,9 @@ async function processZipEntry(
       const text = typeof content === 'string' ? content : new TextDecoder().decode(content);
       const cleanText = text.replace(/[^\x20-\x7E\u0400-\u04FF\n\r\t]/g, ' ').replace(/\s+/g, ' ');
       sourceHtml = txtToHtml(cleanText);
+    } else if (lowerName.endsWith('.pdf')) {
+      const buffer = content instanceof ArrayBuffer ? content : new TextEncoder().encode(content as string).buffer;
+      sourceHtml = await parsePdfBasic(buffer);
     }
   } catch (e) {
     console.error(`Error parsing ${fileName}:`, e);
