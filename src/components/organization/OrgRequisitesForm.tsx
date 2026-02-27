@@ -240,7 +240,7 @@ export function OrgRequisitesForm({ organizationId }: OrgRequisitesFormProps) {
           />
         </div>
 
-        <div className="grid md:grid-cols-2 gap-4">
+        <div className="grid md:grid-cols-3 gap-4">
           <div className="space-y-2">
             <Label>ФИО руководителя</Label>
             <Input
@@ -258,6 +258,21 @@ export function OrgRequisitesForm({ organizationId }: OrgRequisitesFormProps) {
               className="rounded-xl"
               placeholder="Генеральный директор"
             />
+          </div>
+          <div className="space-y-2">
+            <Label>Пол руководителя</Label>
+            <Select
+              value={requisites.director_gender}
+              onValueChange={(value) => setRequisites(prev => ({ ...prev, director_gender: value }))}
+            >
+              <SelectTrigger className="rounded-xl">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="male">Мужской</SelectItem>
+                <SelectItem value="female">Женский</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
