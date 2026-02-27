@@ -49,6 +49,8 @@ const CourseLearning = () => {
     getLessonIcon, lessonButtonRefs, lessonAttachments,
   } = useCourseLearning();
 
+  const [previewFile, setPreviewFile] = useReactState<{ url: string; name: string; type: string | null } | null>(null);
+
   // Swipe gesture handlers
   const handleSwipeLeft = () => { if (currentLessonIndex < lessons.length - 1) goToNextLesson(); };
   const handleSwipeRight = () => { if (currentLessonIndex > 0) goToPrevLesson(); };
