@@ -87,6 +87,16 @@ export interface SelectedProgram {
   studentsCount: string;
 }
 
+export type CounterpartyType = 'company' | 'individual';
+
+export interface IndividualData {
+  fullName: string;
+  passport: string;
+  address: string;
+  phone: string;
+  email: string;
+}
+
 interface UseContractGeneratorProps {
   organizationId: string; isOpen: boolean; orgRequisites: OrgRequisites; preselectedCompany?: Company | null;
   onSave?: (html: string, contractNumber: string, companyName: string, courseId: string, amount: number, studentsCount: number, contractDate: string) => Promise<void>;
