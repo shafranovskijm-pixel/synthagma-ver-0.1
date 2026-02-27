@@ -8,7 +8,7 @@ interface Company {
   id: string; name: string; inn: string | null; kpp: string | null; ogrn: string | null; address: string | null; director: string | null;
 }
 interface Course {
-  id: string; title: string; duration: string | null;
+  id: string; title: string; duration: string | null; frdo_duration_hours: number | null;
 }
 interface OrgRequisites {
   name: string; inn: string; kpp: string; ogrn: string; legal_address: string; actual_address: string;
