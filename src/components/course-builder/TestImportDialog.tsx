@@ -199,11 +199,18 @@ export function TestImportDialog({ onImport, children }: TestImportDialogProps) 
 
         <div className="flex-1 overflow-auto space-y-4">
           <div className="bg-muted/50 rounded-lg p-4 text-sm space-y-2">
-            <p className="font-medium">Формат файла:</p>
+            <p className="font-medium">Формат Excel:</p>
             <ul className="list-disc list-inside text-muted-foreground space-y-1">
               <li>Первый столбец — текст вопроса</li>
               <li>Столбцы 2-5 — варианты ответов</li>
               <li>Правильный ответ начинается с <code className="bg-primary/10 px-1 rounded">*</code></li>
+            </ul>
+            <p className="font-medium mt-3">Формат TXT:</p>
+            <ul className="list-disc list-inside text-muted-foreground space-y-1">
+              <li><code className="bg-primary/10 px-1 rounded">?</code> — вопрос</li>
+              <li><code className="bg-primary/10 px-1 rounded">+-</code> — правильный ответ</li>
+              <li><code className="bg-primary/10 px-1 rounded">-</code> — неправильный ответ</li>
+              <li><code className="bg-primary/10 px-1 rounded">\</code> — пояснение (необязательно)</li>
             </ul>
             <Button
               variant="link"
@@ -212,7 +219,7 @@ export function TestImportDialog({ onImport, children }: TestImportDialogProps) 
               onClick={handleDownloadTemplate}
             >
               <Download className="w-3 h-3" />
-              Скачать шаблон
+              Скачать шаблон Excel
             </Button>
           </div>
 
