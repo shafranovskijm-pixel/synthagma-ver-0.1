@@ -155,15 +155,6 @@ export function OrgSidebar() {
               </button>
             )}
             
-            <button onClick={() => handleTabClick("chats")} className={tabButtonClass("chats")} aria-label="Чаты" aria-current={activeTab === "chats" ? "page" : undefined}>
-              <MessageCircle className="w-5 h-5" aria-hidden="true" />
-              Чаты
-              {d.unreadChatsCount > 0 && (
-                <span className="ml-auto bg-destructive text-destructive-foreground text-xs font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1.5">
-                  {d.unreadChatsCount > 99 ? "99+" : d.unreadChatsCount}
-                </span>
-              )}
-            </button>
             
             {menuSettings.showLibrary && (
               <button onClick={() => handleTabClick("library")} className={tabButtonClass("library", isLocked("library"))}>
