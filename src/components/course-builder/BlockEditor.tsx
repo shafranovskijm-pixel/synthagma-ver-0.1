@@ -393,6 +393,7 @@ const blockCategories = {
       { type: "video" as BlockType, icon: Video, label: "Видео", color: "text-red-500" },
       { type: "audio" as BlockType, icon: Headphones, label: "Аудио", color: "text-teal-500" },
       { type: "slider" as BlockType, icon: Presentation, label: "Слайдер", color: "text-orange-500" },
+      { type: "document" as BlockType, icon: BookOpen, label: "Документ", color: "text-indigo-500" },
     ],
   },
   other: {
