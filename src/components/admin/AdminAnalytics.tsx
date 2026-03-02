@@ -55,6 +55,7 @@ interface AnalyticsData {
     monthly_price: number;
   }[];
   featureUsage: { feature_id: string; usage_count: number; organization_id: string }[];
+  aiUsage: { organization_id: string; ai_generations_count: number; ai_tokens_used: number; month_start: string }[];
   loginHistory: LoginHistoryRecord[];
   courseAccessLog: CourseAccessRecord[];
   profilesInfo: ProfileInfo[];
@@ -111,13 +112,14 @@ export function AdminAnalytics() {
 
   const fetchAnalytics = async () => {
     try {
-      const [profilesRes, enrollmentsRes, progressRes, coursesRes, orgsRes, featureUsageRes, loginHistoryRes, courseAccessRes, profilesInfoRes, coursesInfoRes] = await Promise.all([
+      const [profilesRes, enrollmentsRes, progressRes, coursesRes, orgsRes, featureUsageRes, aiUsageRes, loginHistoryRes, courseAccessRes, profilesInfoRes, coursesInfoRes] = await Promise.all([
         supabase.from("profiles").select("created_at"),
         supabase.from("enrollments").select("started_at, completed_at, status"),
         supabase.from("lesson_progress").select("completed_at, completed"),
         supabase.from("courses").select("created_at, is_published"),
         supabase.from("organizations").select("id, name, created_at, is_paid, paid_until, tariff_type, monthly_price"),
         supabase.from("organization_feature_usage").select("feature_id, usage_count, organization_id"),
+        supabase.from("organization_usage").select("organization_id, ai_generations_count, ai_tokens_used, month_start"),
         supabase.from("student_login_history").select("user_id, logged_in_at, ip_address, user_agent"),
         supabase.from("course_access_log").select("user_id, course_id, accessed_at, ip_address, user_agent"),
         supabase.from("profiles").select("user_id, full_name, email"),
@@ -131,6 +133,7 @@ export function AdminAnalytics() {
         courses: coursesRes.data || [],
         organizations: orgsRes.data || [],
         featureUsage: featureUsageRes.data || [],
+        aiUsage: (aiUsageRes.data || []) as { organization_id: string; ai_generations_count: number; ai_tokens_used: number; month_start: string }[],
         loginHistory: (loginHistoryRes.data || []) as LoginHistoryRecord[],
         courseAccessLog: (courseAccessRes.data || []) as CourseAccessRecord[],
         profilesInfo: (profilesInfoRes.data || []) as ProfileInfo[],
@@ -494,6 +497,31 @@ export function AdminAnalytics() {
       newOrgs,
     };
   }, [data, periodDays]);
+
+  // AI usage by organization
+  const aiUsageByOrg = useMemo(() => {
+    if (!data || !data.aiUsage.length) return [];
+
+    const orgMap = new Map<string, { generations: number; tokens: number }>();
+    data.aiUsage.forEach(u => {
+      const existing = orgMap.get(u.organization_id) || { generations: 0, tokens: 0 };
+      existing.generations += u.ai_generations_count || 0;
+      existing.tokens += u.ai_tokens_used || 0;
+      orgMap.set(u.organization_id, existing);
+    });
+
+    const orgsNameMap = new Map(data.organizations.map(o => [o.id, o.name]));
+
+    return Array.from(orgMap.entries())
+      .map(([orgId, stats]) => ({
+        orgId,
+        name: orgsNameMap.get(orgId) || orgId.slice(0, 8),
+        generations: stats.generations,
+        tokens: stats.tokens,
+      }))
+      .filter(o => o.generations > 0)
+      .sort((a, b) => b.generations - a.generations);
+  }, [data]);
 
   // Enrollment status distribution
   const enrollmentStatusData = useMemo(() => {
@@ -1264,6 +1292,61 @@ export function AdminAnalytics() {
               </CardContent>
             </Card>
           </div>
+
+          {/* AI Usage Widget */}
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Activity className="w-5 h-5 text-primary" />
+                ИИ-генерации по организациям
+              </CardTitle>
+              <CardDescription>
+                Рейтинг организаций по количеству ИИ-запросов (все время)
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {aiUsageByOrg.length > 0 ? (
+                <div className="space-y-6">
+                  <ChartContainer config={{ generations: { label: "Генерации", color: CHART_COLORS[3] } }} className="h-[300px] w-full">
+                    <BarChart data={aiUsageByOrg.slice(0, 10)} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                      <XAxis type="number" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} allowDecimals={false} />
+                      <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} width={150} />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Bar dataKey="generations" name="Генерации" fill={CHART_COLORS[3]} radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ChartContainer>
+
+                  <ScrollArea className="h-[300px]">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-8">#</TableHead>
+                          <TableHead>Организация</TableHead>
+                          <TableHead className="text-right">Генерации</TableHead>
+                          <TableHead className="text-right">Токены</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {aiUsageByOrg.map((org, index) => (
+                          <TableRow key={org.orgId}>
+                            <TableCell className="font-medium text-muted-foreground">{index + 1}</TableCell>
+                            <TableCell className="font-medium">{org.name}</TableCell>
+                            <TableCell className="text-right">{org.generations.toLocaleString()}</TableCell>
+                            <TableCell className="text-right">{org.tokens.toLocaleString()}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </ScrollArea>
+                </div>
+              ) : (
+                <div className="h-[200px] flex items-center justify-center text-muted-foreground">
+                  Нет данных об ИИ-генерациях
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>
