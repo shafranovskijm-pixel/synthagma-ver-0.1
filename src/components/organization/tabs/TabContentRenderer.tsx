@@ -56,6 +56,9 @@ export function TabContentRenderer() {
         <CompaniesManager organizationId={organizationId} />
       )}
 
+      {/* Chats Tab */}
+      {activeTab === "chats" && <OrgChatsTab />}
+
       {/* Students Tab */}
       {activeTab === "students" && organizationId && (
         <StudentsTab
