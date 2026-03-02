@@ -24,6 +24,7 @@ import { useTabNavigation } from "@/hooks/useTabNavigation";
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useOrgBalance } from "@/hooks/useOrgBalance";
+import { useOrgUnreadChats } from "@/hooks/useOrgUnreadChats";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -154,6 +155,9 @@ export function useOrganizationDashboard() {
 
   // Balance
   const orgBalance = useOrgBalance(organizationId);
+
+  // Org chats
+  const orgChats = useOrgUnreadChats(organizationId, user?.id || null);
 
   // Load course students when course details modal opens
   const loadCourseStudentsForModal = useCallback(async () => {
@@ -305,5 +309,8 @@ export function useOrganizationDashboard() {
     // Balance
     balance: orgBalance.balance,
     orgBalance,
+    // Chats
+    orgChats,
+    unreadChatsCount: orgChats.totalUnread,
   };
 }

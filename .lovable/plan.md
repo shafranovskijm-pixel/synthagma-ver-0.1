@@ -1,67 +1,54 @@
 
 
-# Plan: Add "Chats" Section to Organization Sidebar
+# Оптимизация загрузки списка организаций в админ-панели
 
-## Overview
-Add a centralized "Chats" tab in the organization sidebar that shows all student conversations with unread message indicators, allowing the organization to quickly find and respond to messages without navigating through individual student profiles.
+## Проблема
+При загрузке вкладки "Организации" выполняется `Promise.all` с 3 запросами **для каждой организации** (профили, курсы, расшифровка учётных данных). При 7+ организациях это 21+ параллельных запросов к базе. RPC-вызов `get_decrypted_org_credentials` вероятно самый тяжёлый, так как дешифрует данные.
 
-## Changes
+## Решение
 
-### 1. Add "chats" tab type
-- **File**: `src/components/organization/OrgSidebar.tsx`
-- Add `"chats"` to the `TabType` union
-- Add a sidebar button with `MessageCircle` icon and an unread count badge
+### 1. Сначала показать таблицу, потом подгружать детали
+- Загрузить список организаций и **сразу показать таблицу** (без спиннера на весь экран)
+- Подсчёты пользователей/курсов и учётные данные загружать **после** отрисовки, обновляя строки по мере готовности
 
-### 2. Create unread messages hook
-- **New file**: `src/hooks/useOrgUnreadChats.ts`
-- Query `org_student_messages` where `is_read = false` and `sender_user_id != currentUserId` (i.e., messages FROM students)
-- Group by `student_user_id` to get per-student unread counts and total unread count
-- Subscribe to realtime updates on `org_student_messages` for live badge updates
+### 2. Заменить N запросов на агрегированные
+- Вместо N отдельных `select count` для profiles и courses, сделать **два агрегированных запроса**:
+  - Один запрос profiles с group by organization_id
+  - Один запрос courses с group by organization_id
+- Credentials загружать **лениво** (по клику или при раскрытии строки), либо одним батч-запросом
 
-### 3. Create OrgChatsTab component
-- **New file**: `src/components/organization/OrgChatsTab.tsx`
-- Show a list of all students who have sent/received messages, sorted by last message time
-- Each item shows: student name (from profiles), last message preview, timestamp, unread badge
-- Clicking a conversation opens the existing `ChatTab` component inline
-- Search/filter by student name
+### 3. Добавить таймаут/fallback
+- Если загрузка дополнительных данных длится > 10 секунд, показать таблицу с прочерками
 
-### 4. Register tab in TabContentRenderer
-- **File**: `src/components/organization/tabs/TabContentRenderer.tsx`
-- Add rendering for `activeTab === "chats"`
+## Технические изменения
 
-### 5. Register tab in useTabNavigation
-- **File**: `src/hooks/useTabNavigation.ts`
-- Add `"chats"` to `getVisibleTabs()` (always visible, placed after "students")
+### Файл: `src/components/admin/OrganizationsManager.tsx`
 
-## Technical Details
+**Текущий код (строки 119-156):** Один `fetchOrganizations` грузит всё и ставит `loading=false` только в конце.
 
-### Unread Count Query
-```sql
-SELECT student_user_id, COUNT(*) as unread_count
-FROM org_student_messages
-WHERE organization_id = :orgId
-  AND sender_user_id = student_user_id  -- sent by student, not by org
-  AND is_read = false
-GROUP BY student_user_id
+**Новый подход:**
+```text
+1. fetchOrganizations():
+   - Загрузить organizations -> setOrganizations -> setLoading(false)  [мгновенно]
+   
+2. fetchOrgDetails() (вызывается после):
+   - Один запрос: profiles grouped by org_id
+   - Один запрос: courses grouped by org_id  
+   - Один запрос: credentials для всех org_id (или batch RPC)
+   - Merge результаты в organizations state
 ```
 
-### Conversation List Query
-```sql
--- Get distinct conversations with last message
-SELECT DISTINCT ON (student_user_id)
-  student_user_id, content, created_at, is_read, sender_user_id
-FROM org_student_messages
-WHERE organization_id = :orgId
-ORDER BY student_user_id, created_at DESC
-```
+**Итого:** вместо 21+ запросов будет 1 + 3 = 4 запроса. Таблица появится мгновенно, а счётчики подгрузятся через 1-2 секунды.
 
-Student names will be fetched by joining with profiles table.
+### Шаги реализации
 
-### Realtime
-Subscribe to `org_student_messages` INSERT events to update the unread badge in real-time without page refresh.
+1. Разделить `fetchOrganizations` на две фазы:
+   - Фаза 1: загрузка списка организаций (1 запрос) -> снять loading
+   - Фаза 2: загрузка агрегированных counts + credentials (3 запроса) -> обновить state
 
-### UI Layout
-- Left panel: conversation list with search, unread badges, last message preview
-- Right panel: selected conversation using existing `ChatTab` component
-- On mobile: full-screen list, tap to open conversation, back button to return
+2. Для counts использовать запросы с группировкой вместо отдельных count на каждую организацию
+
+3. Для credentials либо батч-RPC, либо ленивая загрузка (по клику "показать пароль")
+
+4. Показать skeleton/placeholder в ячейках counts пока фаза 2 не завершена
 
