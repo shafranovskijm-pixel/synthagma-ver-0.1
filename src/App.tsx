@@ -12,6 +12,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LazyLoadFallback } from "@/components/LazyLoadFallback";
 import { ScrollToTop } from "./components/ScrollToTop";
+import { OfflineIndicator } from "./components/OfflineIndicator";
 
 // Lazy-loaded pages for code splitting
 const Index = lazy(() => import("./pages/Index"));
@@ -52,7 +53,17 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const ProposalPublic = lazy(() => import("./pages/ProposalPublic"));
 const ContractEditor = lazy(() => import("./pages/ContractEditor"));
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000,
+      gcTime: 30 * 60 * 1000,
+      retry: 3,
+      retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 30000),
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 const LearningRedirect = () => { const { courseId } = useParams(); return <Navigate to={`/course/${courseId}/learn`} replace />; };
 
@@ -67,6 +78,7 @@ const App = () => (
           <Router>
             <AuthProvider>
               <ScrollToTop />
+                <OfflineIndicator />
               <TooltipProvider>
                 <Toaster />
                 <Sonner />
