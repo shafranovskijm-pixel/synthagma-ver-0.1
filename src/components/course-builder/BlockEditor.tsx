@@ -139,6 +139,8 @@ export interface ContentBlock {
   imageAlt?: string;
   videoUrl?: string;
   audioUrl?: string;
+  documentUrl?: string;
+  documentName?: string;
   sliderSlides?: SliderSlide[];
   sliderCurrentIndex?: number;
   textAlign?: 'left' | 'center' | 'right';
