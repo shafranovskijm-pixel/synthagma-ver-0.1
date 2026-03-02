@@ -161,9 +161,18 @@ export function useContractGenerator({ organizationId, isOpen, orgRequisites, pr
         if (coursesRes.error) throw coursesRes.error;
         setCompanies(companiesRes.data || []);
         setCourses(coursesRes.data || []);
-        // Load saved contract template
+        // Load saved contract template — prefer active template from constructor
         const branding = orgRes.data?.branding as Record<string, unknown> | null;
-        if (branding?.contractTemplate) {
+        if (branding?.contractTemplates && Array.isArray(branding.contractTemplates)) {
+          const templates = branding.contractTemplates as Array<{ id: string; text: string; isBuiltIn?: boolean }>;
+          const activeId = (branding.activeContractTemplateId as string) || "legal";
+          const active = templates.find(t => t.id === activeId);
+          if (active?.text) {
+            setSavedTemplate(active.text);
+          } else if (branding?.contractTemplate) {
+            setSavedTemplate(branding.contractTemplate as string);
+          }
+        } else if (branding?.contractTemplate) {
           setSavedTemplate(branding.contractTemplate as string);
         }
         const today = new Date();
