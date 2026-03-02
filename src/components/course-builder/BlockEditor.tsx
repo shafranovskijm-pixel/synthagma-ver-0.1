@@ -111,7 +111,8 @@ export type BlockType =
   | "video"
   | "audio"
   | "slider"
-  | "divider";
+  | "divider"
+  | "document";
 
 export interface QuizOption {
   text: string;
@@ -138,6 +139,8 @@ export interface ContentBlock {
   imageAlt?: string;
   videoUrl?: string;
   audioUrl?: string;
+  documentUrl?: string;
+  documentName?: string;
   sliderSlides?: SliderSlide[];
   sliderCurrentIndex?: number;
   textAlign?: 'left' | 'center' | 'right';
@@ -183,6 +186,7 @@ const blockTypeConfig: Record<BlockType, { icon: any; label: string; color: stri
   audio: { icon: Headphones, label: "Аудио", color: "text-teal-500" },
   slider: { icon: Presentation, label: "Слайдер презентации", color: "text-orange-500" },
   divider: { icon: Minus, label: "Разделитель", color: "text-muted-foreground" },
+  document: { icon: BookOpen, label: "Документ", color: "text-indigo-500" },
 };
 
 const createBlock = (type: BlockType): ContentBlock => ({
@@ -202,6 +206,7 @@ const createBlock = (type: BlockType): ContentBlock => ({
   ...(type === "video" && { videoUrl: "" }),
   ...(type === "audio" && { audioUrl: "" }),
   ...(type === "slider" && { sliderSlides: [], sliderCurrentIndex: 0 }),
+  ...(type === "document" && { documentUrl: "", documentName: "" }),
 });
 
 export function BlockEditor({ blocks, onChange, readOnly = false, courseTitle, lessonTitle }: BlockEditorProps) {
@@ -388,6 +393,7 @@ const blockCategories = {
       { type: "video" as BlockType, icon: Video, label: "Видео", color: "text-red-500" },
       { type: "audio" as BlockType, icon: Headphones, label: "Аудио", color: "text-teal-500" },
       { type: "slider" as BlockType, icon: Presentation, label: "Слайдер", color: "text-orange-500" },
+      { type: "document" as BlockType, icon: BookOpen, label: "Документ", color: "text-indigo-500" },
     ],
   },
   other: {
@@ -966,6 +972,9 @@ function BlockContent({ block, onUpdate, courseTitle, lessonTitle, existingConte
     case "slider":
       return <SliderBlock block={block} onUpdate={onUpdate} />;
 
+    case "document":
+      return <DocumentBlock block={block} onUpdate={onUpdate} />;
+
     case "divider":
       return <div className="py-4"><hr className="border-border" /></div>;
 
@@ -1428,6 +1437,107 @@ function AudioBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updat
     </div>
   );
 }
+
+function DocumentBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void }) {
+  const [isUploading, setIsUploading] = useState(false);
+  const documentUrl = block.documentUrl || "";
+  const documentName = block.documentName || "";
+
+  const handleFileUpload = async (file: File) => {
+    const allowedTypes = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    ];
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (!allowedTypes.includes(file.type) && !['pdf', 'doc', 'docx'].includes(ext || '')) {
+      const { toast } = await import("sonner");
+      toast.error("Поддерживаются только PDF и Word файлы");
+      return;
+    }
+    if (file.size > 50 * 1024 * 1024) {
+      const { toast } = await import("sonner");
+      toast.error("Максимальный размер файла — 50 МБ");
+      return;
+    }
+    setIsUploading(true);
+    try {
+      const fileName = `doc_${crypto.randomUUID()}.${ext || 'pdf'}`;
+      const supabaseClient = (await import("@/integrations/supabase/client")).supabase;
+      const bucket = 'course-files';
+      const { error } = await supabaseClient.storage.from(bucket).upload(fileName, file, { upsert: true });
+      if (error) throw error;
+      const baseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const publicUrl = `${baseUrl}/storage/v1/object/public/${bucket}/${fileName}`;
+      onUpdate({ documentUrl: publicUrl, documentName: file.name });
+    } catch (e) {
+      console.error("Document upload error:", e);
+      const { toast } = await import("sonner");
+      toast.error("Ошибка загрузки документа");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const docExt = documentName.split('.').pop()?.toLowerCase();
+  const isPdf = docExt === 'pdf';
+
+  return (
+    <div className="py-2">
+      {documentUrl ? (
+        <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/5 overflow-hidden">
+          <div className="flex items-center gap-3 p-3 border-b border-indigo-500/20">
+            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center">
+              <BookOpen className="w-4 h-4 text-indigo-500" />
+            </div>
+            <span className="font-medium text-sm truncate flex-1">{documentName || 'Документ'}</span>
+            <div className="flex gap-1">
+              <a href={documentUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-500 hover:underline px-2 py-1">Скачать</a>
+              <Button variant="ghost" size="sm" className="h-7 text-destructive" onClick={() => onUpdate({ documentUrl: "", documentName: "" })}>
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+          <div className="aspect-[4/3]">
+            <iframe
+              src={isPdf
+                ? `https://docs.google.com/gview?url=${encodeURIComponent(documentUrl)}&embedded=true`
+                : `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(documentUrl)}`
+              }
+              className="w-full h-full border-0"
+            />
+          </div>
+        </div>
+      ) : (
+        <div className="bg-muted rounded-xl p-6 space-y-4">
+          <div className="text-center">
+            <BookOpen className="w-8 h-8 mx-auto mb-2 text-indigo-500" />
+            <p className="text-sm text-muted-foreground mb-2">Загрузите документ PDF или Word</p>
+            <p className="text-xs text-muted-foreground/70">Поддерживаются форматы: .pdf, .doc, .docx (до 50 МБ)</p>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Button variant="outline" size="sm" className="mx-auto" onClick={() => document.getElementById(`doc-upload-${block.id}`)?.click()} disabled={isUploading}>
+              {isUploading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
+              {isUploading ? "Загрузка..." : "Загрузить файл"}
+            </Button>
+            <input id={`doc-upload-${block.id}`} type="file" accept=".pdf,.doc,.docx" className="hidden" onChange={(e) => { if (e.target.files?.[0]) handleFileUpload(e.target.files[0]); }} />
+            <div className="text-center text-xs text-muted-foreground">или вставьте ссылку</div>
+            <div className="flex gap-2">
+              <Input value={documentUrl} onChange={(e) => onUpdate({ documentUrl: e.target.value })} placeholder="https://example.com/document.pdf" className="text-sm flex-1" />
+              {!documentName && documentUrl && (
+                <Button size="sm" variant="outline" onClick={() => {
+                  const name = documentUrl.split('/').pop() || 'document';
+                  onUpdate({ documentName: name });
+                }}>OK</Button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SliderBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updates: Partial<ContentBlock>) => void }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -2140,6 +2250,27 @@ function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSub
       );
     case "divider":
       return <hr className="border-border my-2" />;
+    case "document":
+      if (!block.documentUrl) return null;
+      const docExt = block.documentName?.split('.').pop()?.toLowerCase();
+      const isPdf = docExt === 'pdf';
+      const previewUrl = isPdf
+        ? `https://docs.google.com/gview?url=${encodeURIComponent(block.documentUrl)}&embedded=true`
+        : `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(block.documentUrl)}`;
+      return (
+        <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/5 overflow-hidden not-prose">
+          <div className="flex items-center gap-3 p-3 border-b border-indigo-500/20">
+            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center">
+              <BookOpen className="w-4 h-4 text-indigo-500" />
+            </div>
+            <span className="font-medium text-sm truncate flex-1">{block.documentName || 'Документ'}</span>
+            <a href={block.documentUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-500 hover:underline">Скачать</a>
+          </div>
+          <div className="aspect-[4/3]">
+            <iframe src={previewUrl} className="w-full h-full border-0" />
+          </div>
+        </div>
+      );
     case "quiz":
       const options = block.quizOptions || [];
       const correctIndex = options.findIndex(o => o.isCorrect);
@@ -2327,5 +2458,5 @@ export function htmlToBlocks(html: string): ContentBlock[] {
 
   doc.body.childNodes.forEach(processNode);
 
-  return blocks.filter(b => b.content || b.imageSrc || b.type === "quiz" || b.type === "accordion" || b.type === "image");
+  return blocks.filter(b => b.content || b.imageSrc || b.documentUrl || b.type === "quiz" || b.type === "accordion" || b.type === "image" || b.type === "document");
 }
