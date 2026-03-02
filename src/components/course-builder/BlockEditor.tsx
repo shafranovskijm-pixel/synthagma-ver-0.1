@@ -206,6 +206,7 @@ const createBlock = (type: BlockType): ContentBlock => ({
   ...(type === "video" && { videoUrl: "" }),
   ...(type === "audio" && { audioUrl: "" }),
   ...(type === "slider" && { sliderSlides: [], sliderCurrentIndex: 0 }),
+  ...(type === "document" && { documentUrl: "", documentName: "" }),
 });
 
 export function BlockEditor({ blocks, onChange, readOnly = false, courseTitle, lessonTitle }: BlockEditorProps) {
