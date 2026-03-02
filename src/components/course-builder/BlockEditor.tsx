@@ -972,6 +972,9 @@ function BlockContent({ block, onUpdate, courseTitle, lessonTitle, existingConte
     case "slider":
       return <SliderBlock block={block} onUpdate={onUpdate} />;
 
+    case "document":
+      return <DocumentBlock block={block} onUpdate={onUpdate} />;
+
     case "divider":
       return <div className="py-4"><hr className="border-border" /></div>;
 
