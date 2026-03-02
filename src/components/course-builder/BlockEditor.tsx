@@ -2149,6 +2149,27 @@ function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSub
       );
     case "divider":
       return <hr className="border-border my-2" />;
+    case "document":
+      if (!block.documentUrl) return null;
+      const docExt = block.documentName?.split('.').pop()?.toLowerCase();
+      const isPdf = docExt === 'pdf';
+      const previewUrl = isPdf
+        ? `https://docs.google.com/gview?url=${encodeURIComponent(block.documentUrl)}&embedded=true`
+        : `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(block.documentUrl)}`;
+      return (
+        <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/5 overflow-hidden not-prose">
+          <div className="flex items-center gap-3 p-3 border-b border-indigo-500/20">
+            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center">
+              <BookOpen className="w-4 h-4 text-indigo-500" />
+            </div>
+            <span className="font-medium text-sm truncate flex-1">{block.documentName || 'Документ'}</span>
+            <a href={block.documentUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-500 hover:underline">Скачать</a>
+          </div>
+          <div className="aspect-[4/3]">
+            <iframe src={previewUrl} className="w-full h-full border-0" />
+          </div>
+        </div>
+      );
     case "quiz":
       const options = block.quizOptions || [];
       const correctIndex = options.findIndex(o => o.isCorrect);
