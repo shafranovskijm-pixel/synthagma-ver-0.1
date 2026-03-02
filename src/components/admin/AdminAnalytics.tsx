@@ -1292,6 +1292,61 @@ export function AdminAnalytics() {
               </CardContent>
             </Card>
           </div>
+
+          {/* AI Usage Widget */}
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Activity className="w-5 h-5 text-primary" />
+                ИИ-генерации по организациям
+              </CardTitle>
+              <CardDescription>
+                Рейтинг организаций по количеству ИИ-запросов (все время)
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {aiUsageByOrg.length > 0 ? (
+                <div className="space-y-6">
+                  <ChartContainer config={{ generations: { label: "Генерации", color: CHART_COLORS[3] } }} className="h-[300px] w-full">
+                    <BarChart data={aiUsageByOrg.slice(0, 10)} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                      <XAxis type="number" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} allowDecimals={false} />
+                      <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} width={150} />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Bar dataKey="generations" name="Генерации" fill={CHART_COLORS[3]} radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ChartContainer>
+
+                  <ScrollArea className="h-[300px]">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-8">#</TableHead>
+                          <TableHead>Организация</TableHead>
+                          <TableHead className="text-right">Генерации</TableHead>
+                          <TableHead className="text-right">Токены</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {aiUsageByOrg.map((org, index) => (
+                          <TableRow key={org.orgId}>
+                            <TableCell className="font-medium text-muted-foreground">{index + 1}</TableCell>
+                            <TableCell className="font-medium">{org.name}</TableCell>
+                            <TableCell className="text-right">{org.generations.toLocaleString()}</TableCell>
+                            <TableCell className="text-right">{org.tokens.toLocaleString()}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </ScrollArea>
+                </div>
+              ) : (
+                <div className="h-[200px] flex items-center justify-center text-muted-foreground">
+                  Нет данных об ИИ-генерациях
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>
