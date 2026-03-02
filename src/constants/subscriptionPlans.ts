@@ -54,10 +54,10 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, PlanInfo> = {
     price: 3490,
     description: 'Для начинающих организаций',
     limits: {
-      maxCourses: 10,
-      maxStudents: 50,
-      maxTrainedPerMonth: 30,
-      storageBytes: 1073741824, // 1 GB
+      maxCourses: 15,
+      maxStudents: 100,
+      maxTrainedPerMonth: 60,
+      storageBytes: 3221225472, // 3 GB
       aiEnabled: false,
       aiAudioEnabled: false,
       courseSettings: true,
