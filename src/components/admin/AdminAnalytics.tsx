@@ -526,6 +526,35 @@ export function AdminAnalytics() {
       .sort((a, b) => b.generations - a.generations);
   }, [data]);
 
+  // AI usage per user
+  const aiUserStats = useMemo(() => {
+    if (!data || !data.aiUserLog.length) return [];
+
+    const userMap = new Map<string, { orgId: string; count: number }>();
+    data.aiUserLog.forEach(log => {
+      const key = `${log.user_id}_${log.organization_id}`;
+      const existing = userMap.get(key) || { orgId: log.organization_id, count: 0 };
+      existing.count++;
+      userMap.set(key, existing);
+    });
+
+    const orgsNameMap = new Map(data.organizations.map(o => [o.id, o.name]));
+
+    return Array.from(userMap.entries())
+      .map(([key, stats]) => {
+        const userId = key.split("_")[0];
+        const profile = profilesMap.get(userId);
+        return {
+          key,
+          userId,
+          userName: profile?.full_name || profile?.email || userId.slice(0, 8),
+          orgName: orgsNameMap.get(stats.orgId) || stats.orgId.slice(0, 8),
+          count: stats.count,
+        };
+      })
+      .sort((a, b) => b.count - a.count);
+  }, [data, profilesMap]);
+
   // Enrollment status distribution
   const enrollmentStatusData = useMemo(() => {
     if (!data) return [];
