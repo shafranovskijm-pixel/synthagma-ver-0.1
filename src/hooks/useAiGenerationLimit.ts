@@ -63,7 +63,22 @@ export async function checkAiGenerationLimit(organizationId: string | null, plan
   }
 }
 
-export async function incrementAiUsage(organizationId: string | null, plan: string) {
+export async function incrementAiUsage(organizationId: string | null, plan: string, functionName?: string) {
+  // Log per-user usage for all plans
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user && organizationId) {
+      await supabase.from("ai_usage_log").insert({
+        user_id: user.id,
+        organization_id: organizationId,
+        function_name: functionName || "ai_generation",
+        tokens_used: 0,
+      });
+    }
+  } catch (err) {
+    console.error("Error logging AI usage:", err);
+  }
+
   if (plan !== "free" || !organizationId) return;
 
   try {

@@ -56,6 +56,7 @@ interface AnalyticsData {
   }[];
   featureUsage: { feature_id: string; usage_count: number; organization_id: string }[];
   aiUsage: { organization_id: string; ai_generations_count: number; ai_tokens_used: number; month_start: string }[];
+  aiUserLog: { user_id: string; organization_id: string; function_name: string; created_at: string }[];
   loginHistory: LoginHistoryRecord[];
   courseAccessLog: CourseAccessRecord[];
   profilesInfo: ProfileInfo[];
@@ -112,7 +113,7 @@ export function AdminAnalytics() {
 
   const fetchAnalytics = async () => {
     try {
-      const [profilesRes, enrollmentsRes, progressRes, coursesRes, orgsRes, featureUsageRes, aiUsageRes, loginHistoryRes, courseAccessRes, profilesInfoRes, coursesInfoRes] = await Promise.all([
+      const [profilesRes, enrollmentsRes, progressRes, coursesRes, orgsRes, featureUsageRes, aiUsageRes, aiUserLogRes, loginHistoryRes, courseAccessRes, profilesInfoRes, coursesInfoRes] = await Promise.all([
         supabase.from("profiles").select("created_at"),
         supabase.from("enrollments").select("started_at, completed_at, status"),
         supabase.from("lesson_progress").select("completed_at, completed"),
@@ -120,6 +121,7 @@ export function AdminAnalytics() {
         supabase.from("organizations").select("id, name, created_at, is_paid, paid_until, tariff_type, monthly_price"),
         supabase.from("organization_feature_usage").select("feature_id, usage_count, organization_id"),
         supabase.from("organization_usage").select("organization_id, ai_generations_count, ai_tokens_used, month_start"),
+        supabase.from("ai_usage_log").select("user_id, organization_id, function_name, created_at").order("created_at", { ascending: false }).limit(1000),
         supabase.from("student_login_history").select("user_id, logged_in_at, ip_address, user_agent"),
         supabase.from("course_access_log").select("user_id, course_id, accessed_at, ip_address, user_agent"),
         supabase.from("profiles").select("user_id, full_name, email"),
@@ -133,7 +135,8 @@ export function AdminAnalytics() {
         courses: coursesRes.data || [],
         organizations: orgsRes.data || [],
         featureUsage: featureUsageRes.data || [],
-        aiUsage: (aiUsageRes.data || []) as { organization_id: string; ai_generations_count: number; ai_tokens_used: number; month_start: string }[],
+        aiUsage: (aiUsageRes.data || []) as any,
+        aiUserLog: (aiUserLogRes.data || []) as any,
         loginHistory: (loginHistoryRes.data || []) as LoginHistoryRecord[],
         courseAccessLog: (courseAccessRes.data || []) as CourseAccessRecord[],
         profilesInfo: (profilesInfoRes.data || []) as ProfileInfo[],
@@ -522,6 +525,35 @@ export function AdminAnalytics() {
       .filter(o => o.generations > 0)
       .sort((a, b) => b.generations - a.generations);
   }, [data]);
+
+  // AI usage per user
+  const aiUserStats = useMemo(() => {
+    if (!data || !data.aiUserLog.length) return [];
+
+    const userMap = new Map<string, { orgId: string; count: number }>();
+    data.aiUserLog.forEach(log => {
+      const key = `${log.user_id}_${log.organization_id}`;
+      const existing = userMap.get(key) || { orgId: log.organization_id, count: 0 };
+      existing.count++;
+      userMap.set(key, existing);
+    });
+
+    const orgsNameMap = new Map(data.organizations.map(o => [o.id, o.name]));
+
+    return Array.from(userMap.entries())
+      .map(([key, stats]) => {
+        const userId = key.split("_")[0];
+        const profile = profilesMap.get(userId);
+        return {
+          key,
+          userId,
+          userName: profile?.full_name || profile?.email || userId.slice(0, 8),
+          orgName: orgsNameMap.get(stats.orgId) || stats.orgId.slice(0, 8),
+          count: stats.count,
+        };
+      })
+      .sort((a, b) => b.count - a.count);
+  }, [data, profilesMap]);
 
   // Enrollment status distribution
   const enrollmentStatusData = useMemo(() => {
@@ -1343,6 +1375,49 @@ export function AdminAnalytics() {
               ) : (
                 <div className="h-[200px] flex items-center justify-center text-muted-foreground">
                   Нет данных об ИИ-генерациях
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* AI Usage Per User Widget */}
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="w-5 h-5 text-primary" />
+                ИИ-запросы по пользователям
+              </CardTitle>
+              <CardDescription>
+                Какие пользователи используют ИИ-генерации и в каких организациях
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {aiUserStats.length > 0 ? (
+                <ScrollArea className="h-[400px]">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-8">#</TableHead>
+                        <TableHead>Пользователь</TableHead>
+                        <TableHead>Организация</TableHead>
+                        <TableHead className="text-right">Запросов</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {aiUserStats.map((user, index) => (
+                        <TableRow key={user.key}>
+                          <TableCell className="font-medium text-muted-foreground">{index + 1}</TableCell>
+                          <TableCell className="font-medium">{user.userName}</TableCell>
+                          <TableCell className="text-muted-foreground">{user.orgName}</TableCell>
+                          <TableCell className="text-right font-medium">{user.count}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </ScrollArea>
+              ) : (
+                <div className="h-[200px] flex items-center justify-center text-muted-foreground">
+                  Нет данных — логирование запросов начнётся с новых генераций
                 </div>
               )}
             </CardContent>
