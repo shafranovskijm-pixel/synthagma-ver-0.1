@@ -1379,6 +1379,49 @@ export function AdminAnalytics() {
               )}
             </CardContent>
           </Card>
+
+          {/* AI Usage Per User Widget */}
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="w-5 h-5 text-primary" />
+                ИИ-запросы по пользователям
+              </CardTitle>
+              <CardDescription>
+                Какие пользователи используют ИИ-генерации и в каких организациях
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {aiUserStats.length > 0 ? (
+                <ScrollArea className="h-[400px]">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-8">#</TableHead>
+                        <TableHead>Пользователь</TableHead>
+                        <TableHead>Организация</TableHead>
+                        <TableHead className="text-right">Запросов</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {aiUserStats.map((user, index) => (
+                        <TableRow key={user.key}>
+                          <TableCell className="font-medium text-muted-foreground">{index + 1}</TableCell>
+                          <TableCell className="font-medium">{user.userName}</TableCell>
+                          <TableCell className="text-muted-foreground">{user.orgName}</TableCell>
+                          <TableCell className="text-right font-medium">{user.count}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </ScrollArea>
+              ) : (
+                <div className="h-[200px] flex items-center justify-center text-muted-foreground">
+                  Нет данных — логирование запросов начнётся с новых генераций
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>
