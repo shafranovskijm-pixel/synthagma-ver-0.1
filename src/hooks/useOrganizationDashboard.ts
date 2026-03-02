@@ -156,6 +156,9 @@ export function useOrganizationDashboard() {
   // Balance
   const orgBalance = useOrgBalance(organizationId);
 
+  // Org chats
+  const orgChats = useOrgUnreadChats(organizationId, user?.id || null);
+
   // Load course students when course details modal opens
   const loadCourseStudentsForModal = useCallback(async () => {
     if (!courseDetailsModal.selectedCourseForDetails) return;
