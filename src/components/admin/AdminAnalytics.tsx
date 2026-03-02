@@ -498,6 +498,31 @@ export function AdminAnalytics() {
     };
   }, [data, periodDays]);
 
+  // AI usage by organization
+  const aiUsageByOrg = useMemo(() => {
+    if (!data || !data.aiUsage.length) return [];
+
+    const orgMap = new Map<string, { generations: number; tokens: number }>();
+    data.aiUsage.forEach(u => {
+      const existing = orgMap.get(u.organization_id) || { generations: 0, tokens: 0 };
+      existing.generations += u.ai_generations_count || 0;
+      existing.tokens += u.ai_tokens_used || 0;
+      orgMap.set(u.organization_id, existing);
+    });
+
+    const orgsNameMap = new Map(data.organizations.map(o => [o.id, o.name]));
+
+    return Array.from(orgMap.entries())
+      .map(([orgId, stats]) => ({
+        orgId,
+        name: orgsNameMap.get(orgId) || orgId.slice(0, 8),
+        generations: stats.generations,
+        tokens: stats.tokens,
+      }))
+      .filter(o => o.generations > 0)
+      .sort((a, b) => b.generations - a.generations);
+  }, [data]);
+
   // Enrollment status distribution
   const enrollmentStatusData = useMemo(() => {
     if (!data) return [];
