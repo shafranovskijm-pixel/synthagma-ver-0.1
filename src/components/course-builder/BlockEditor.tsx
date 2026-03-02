@@ -2458,5 +2458,5 @@ export function htmlToBlocks(html: string): ContentBlock[] {
 
   doc.body.childNodes.forEach(processNode);
 
-  return blocks.filter(b => b.content || b.imageSrc || b.type === "quiz" || b.type === "accordion" || b.type === "image");
+  return blocks.filter(b => b.content || b.imageSrc || b.documentUrl || b.type === "quiz" || b.type === "accordion" || b.type === "image" || b.type === "document");
 }
