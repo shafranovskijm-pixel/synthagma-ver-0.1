@@ -56,6 +56,7 @@ interface AnalyticsData {
   }[];
   featureUsage: { feature_id: string; usage_count: number; organization_id: string }[];
   aiUsage: { organization_id: string; ai_generations_count: number; ai_tokens_used: number; month_start: string }[];
+  aiUserLog: { user_id: string; organization_id: string; function_name: string; created_at: string }[];
   loginHistory: LoginHistoryRecord[];
   courseAccessLog: CourseAccessRecord[];
   profilesInfo: ProfileInfo[];
