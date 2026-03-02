@@ -309,5 +309,8 @@ export function useOrganizationDashboard() {
     // Balance
     balance: orgBalance.balance,
     orgBalance,
+    // Chats
+    orgChats,
+    unreadChatsCount: orgChats.totalUnread,
   };
 }
