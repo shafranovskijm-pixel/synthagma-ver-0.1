@@ -55,6 +55,7 @@ interface AnalyticsData {
     monthly_price: number;
   }[];
   featureUsage: { feature_id: string; usage_count: number; organization_id: string }[];
+  aiUsage: { organization_id: string; ai_generations_count: number; ai_tokens_used: number; month_start: string }[];
   loginHistory: LoginHistoryRecord[];
   courseAccessLog: CourseAccessRecord[];
   profilesInfo: ProfileInfo[];
