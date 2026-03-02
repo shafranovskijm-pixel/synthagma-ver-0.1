@@ -43,7 +43,6 @@ export function useTabNavigation({
     if (isEnabled("courses")) baseTabs.push("courses");
     if (isEnabled("companies")) baseTabs.push("organizations");
     if (isEnabled("students")) baseTabs.push("students");
-    baseTabs.push("chats");
     if (menuSettings.showLibrary && isEnabled("library")) baseTabs.push("library");
     if (menuSettings.showStats) baseTabs.push("stats");
     if (menuSettings.showLinks && isEnabled("links")) baseTabs.push("links");
@@ -52,6 +51,7 @@ export function useTabNavigation({
     if (isEnabled("labor_safety")) baseTabs.push("labor-safety");
     if (isFrdoEnabled && isEnabled("frdo")) baseTabs.push("frdo");
     baseTabs.push("subscription");
+    baseTabs.push("chats");
     if (menuSettings.showServices && isEnabled("services")) baseTabs.push("services");
     if (isEnabled("settings")) baseTabs.push("settings");
     

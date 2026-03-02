@@ -155,15 +155,6 @@ export function OrgSidebar() {
               </button>
             )}
             
-            <button onClick={() => handleTabClick("chats")} className={tabButtonClass("chats")} aria-label="Чаты" aria-current={activeTab === "chats" ? "page" : undefined}>
-              <MessageCircle className="w-5 h-5" aria-hidden="true" />
-              Чаты
-              {d.unreadChatsCount > 0 && (
-                <span className="ml-auto bg-destructive text-destructive-foreground text-xs font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1.5">
-                  {d.unreadChatsCount > 99 ? "99+" : d.unreadChatsCount}
-                </span>
-              )}
-            </button>
             
             {menuSettings.showLibrary && (
               <button onClick={() => handleTabClick("library")} className={tabButtonClass("library", isLocked("library"))}>
@@ -235,6 +226,22 @@ export function OrgSidebar() {
 
         {/* Footer */}
         <div className="p-4 border-t border-border flex-shrink-0 bg-card space-y-1">
+          <button 
+            onClick={() => handleTabClick("chats")} 
+            className={`w-full flex items-center gap-3 px-4 py-2 rounded-xl text-sm transition-colors ${
+              activeTab === "chats" ? "bg-primary/10 text-primary" : "text-muted-foreground/70 hover:bg-secondary/50 hover:text-muted-foreground"
+            }`}
+            aria-label="Чаты"
+            aria-current={activeTab === "chats" ? "page" : undefined}
+          >
+            <MessageCircle className="w-4 h-4" />
+            Чаты
+            {d.unreadChatsCount > 0 && (
+              <span className="ml-auto bg-destructive text-destructive-foreground text-xs font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1.5">
+                {d.unreadChatsCount > 99 ? "99+" : d.unreadChatsCount}
+              </span>
+            )}
+          </button>
           {menuSettings.showServices && (
             <button 
               onClick={() => handleTabClick("services")} 

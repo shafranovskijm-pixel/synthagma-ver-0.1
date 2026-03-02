@@ -1,13 +1,54 @@
 
-# Move "Chats" to Bottom of Sidebar
 
-Move the "Чаты" button from its current position (after "Ученики") to the footer section, just before "Магазин курсов".
+# Оптимизация загрузки списка организаций в админ-панели
 
-## Changes
+## Проблема
+При загрузке вкладки "Организации" выполняется `Promise.all` с 3 запросами **для каждой организации** (профили, курсы, расшифровка учётных данных). При 7+ организациях это 21+ параллельных запросов к базе. RPC-вызов `get_decrypted_org_credentials` вероятно самый тяжёлый, так как дешифрует данные.
 
-### 1. `src/components/organization/OrgSidebar.tsx`
-- **Remove** the "Чаты" button from the main nav section (lines 158-166)
-- **Add** it to the footer section (line 237), right before the "Магазин курсов" button, with the same smaller styling as footer items
+## Решение
 
-### 2. `src/hooks/useTabNavigation.ts`
-- Move `"chats"` in the `getVisibleTabs()` array from after "students" to just before "services" to match the new sidebar order
+### 1. Сначала показать таблицу, потом подгружать детали
+- Загрузить список организаций и **сразу показать таблицу** (без спиннера на весь экран)
+- Подсчёты пользователей/курсов и учётные данные загружать **после** отрисовки, обновляя строки по мере готовности
+
+### 2. Заменить N запросов на агрегированные
+- Вместо N отдельных `select count` для profiles и courses, сделать **два агрегированных запроса**:
+  - Один запрос profiles с group by organization_id
+  - Один запрос courses с group by organization_id
+- Credentials загружать **лениво** (по клику или при раскрытии строки), либо одним батч-запросом
+
+### 3. Добавить таймаут/fallback
+- Если загрузка дополнительных данных длится > 10 секунд, показать таблицу с прочерками
+
+## Технические изменения
+
+### Файл: `src/components/admin/OrganizationsManager.tsx`
+
+**Текущий код (строки 119-156):** Один `fetchOrganizations` грузит всё и ставит `loading=false` только в конце.
+
+**Новый подход:**
+```text
+1. fetchOrganizations():
+   - Загрузить organizations -> setOrganizations -> setLoading(false)  [мгновенно]
+   
+2. fetchOrgDetails() (вызывается после):
+   - Один запрос: profiles grouped by org_id
+   - Один запрос: courses grouped by org_id  
+   - Один запрос: credentials для всех org_id (или batch RPC)
+   - Merge результаты в organizations state
+```
+
+**Итого:** вместо 21+ запросов будет 1 + 3 = 4 запроса. Таблица появится мгновенно, а счётчики подгрузятся через 1-2 секунды.
+
+### Шаги реализации
+
+1. Разделить `fetchOrganizations` на две фазы:
+   - Фаза 1: загрузка списка организаций (1 запрос) -> снять loading
+   - Фаза 2: загрузка агрегированных counts + credentials (3 запроса) -> обновить state
+
+2. Для counts использовать запросы с группировкой вместо отдельных count на каждую организацию
+
+3. Для credentials либо батч-RPC, либо ленивая загрузка (по клику "показать пароль")
+
+4. Показать skeleton/placeholder в ячейках counts пока фаза 2 не завершена
+
