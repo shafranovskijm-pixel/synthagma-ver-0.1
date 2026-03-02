@@ -23,6 +23,7 @@ export type TabType =
   | "courses" 
   | "organizations" 
   | "students" 
+  | "chats"
   | "library" 
   | "stats" 
   | "links" 
