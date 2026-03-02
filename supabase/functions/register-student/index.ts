@@ -53,15 +53,16 @@ serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    const { data: callerProfile, error: profileError } = await supabaseAdmin
+    const { data: callerProfile } = await supabaseAdmin
       .from('profiles')
       .select('organization_id')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
-    console.log(`Caller profile lookup for user ${user.id}:`, callerProfile, profileError);
+    console.log(`Caller profile lookup for user ${user.id}:`, callerProfile);
 
-    if (!callerProfile) {
+    // Admins can work without a profile; other roles require one
+    if (!callerProfile && roleData.role !== 'admin') {
       console.error(`Profile not found for user ${user.id}.`);
       return new Response(
         JSON.stringify({ 
