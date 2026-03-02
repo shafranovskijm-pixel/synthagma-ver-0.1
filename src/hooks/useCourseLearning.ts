@@ -302,6 +302,10 @@ export function useCourseLearning() {
           supabase.from('lesson_progress').select('lesson_id, completed').eq('user_id', user!.id).in('lesson_id', courseLessonIds),
           supabase.from('lesson_attachments').select('*').in('lesson_id', courseLessonIds).order('order_index'),
         ]);
+        if (attachmentsResult.error) {
+          console.error('Error fetching lesson attachments:', attachmentsResult.error);
+        }
+        console.log('Lesson attachments loaded:', attachmentsResult.data?.length || 0, 'items for', courseLessonIds.length, 'lessons');
         setLessonProgress(progressResult.data || []);
         // Group attachments by lesson_id
         const attMap: Record<string, typeof lessonAttachments[string]> = {};
