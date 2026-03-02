@@ -12,6 +12,7 @@ import { CourseStoreManager } from "@/components/organization/CourseStoreManager
 import { FRDOManager } from "@/components/organization/FRDOManager";
 import { JournalsManager } from "@/components/organization/JournalsManager";
 import { LaborSafetyManager } from "@/components/organization/LaborSafetyManager";
+import { OrgChatsTab } from "@/components/organization/OrgChatsTab";
 import { SubscriptionTab } from "@/components/organization/SubscriptionTab";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 
