@@ -24,6 +24,7 @@ import { useTabNavigation } from "@/hooks/useTabNavigation";
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useOrgBalance } from "@/hooks/useOrgBalance";
+import { useOrgUnreadChats } from "@/hooks/useOrgUnreadChats";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
