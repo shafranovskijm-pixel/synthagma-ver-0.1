@@ -186,6 +186,7 @@ const blockTypeConfig: Record<BlockType, { icon: any; label: string; color: stri
   audio: { icon: Headphones, label: "Аудио", color: "text-teal-500" },
   slider: { icon: Presentation, label: "Слайдер презентации", color: "text-orange-500" },
   divider: { icon: Minus, label: "Разделитель", color: "text-muted-foreground" },
+  document: { icon: BookOpen, label: "Документ", color: "text-indigo-500" },
 };
 
 const createBlock = (type: BlockType): ContentBlock => ({
