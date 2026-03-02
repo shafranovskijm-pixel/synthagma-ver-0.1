@@ -78,6 +78,7 @@ const App = () => (
           <Router>
             <AuthProvider>
               <ScrollToTop />
+                <OfflineIndicator />
               <TooltipProvider>
                 <Toaster />
                 <Sonner />
