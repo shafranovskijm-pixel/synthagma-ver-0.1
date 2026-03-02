@@ -111,7 +111,8 @@ export type BlockType =
   | "video"
   | "audio"
   | "slider"
-  | "divider";
+  | "divider"
+  | "document";
 
 export interface QuizOption {
   text: string;
