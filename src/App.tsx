@@ -12,6 +12,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LazyLoadFallback } from "@/components/LazyLoadFallback";
 import { ScrollToTop } from "./components/ScrollToTop";
+import { OfflineIndicator } from "./components/OfflineIndicator";
 
 // Lazy-loaded pages for code splitting
 const Index = lazy(() => import("./pages/Index"));
