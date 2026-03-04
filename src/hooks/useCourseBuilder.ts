@@ -174,8 +174,16 @@ export function useCourseBuilder() {
             if (questionsData) {
               for (const q of questionsData) {
                 if (!questionsMap[q.lesson_id]) questionsMap[q.lesson_id] = [];
+                // Normalize options: may be {text}[], string[], or JSON string
+                let rawOpts = q.options as unknown;
+                if (typeof rawOpts === 'string') {
+                  try { rawOpts = JSON.parse(rawOpts); } catch { rawOpts = []; }
+                }
+                const normalizedOptions = Array.isArray(rawOpts)
+                  ? (rawOpts as any[]).map(o => typeof o === 'string' ? { text: o } : o)
+                  : [];
                 questionsMap[q.lesson_id].push({
-                  id: q.id, question: q.question, options: (q.options as unknown as { text: string }[]) || [],
+                  id: q.id, question: q.question, options: normalizedOptions,
                   correct_answer: q.correct_answer, order_index: q.order_index,
                   explanation: (q as any).explanation || '', image_url: q.image_url || null, isNew: false, isDeleted: false,
                 });
