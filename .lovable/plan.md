@@ -1,45 +1,33 @@
 
 
-## Plan: Grouped catalog like the Excel file structure
+## Finding: Section not present in the uploaded file
 
-### Current state
-Flat list with category shown as text under each row. Select dropdown to filter by one category.
+After parsing the entire uploaded Excel file (17,557 lines), I confirmed that it does **not** contain the section "Правила технической эксплуатации тепловых энергоустановок".
 
-### Target
-Group courses visually by category (regulatory document), like sections in the Excel file. Each category = collapsible section header, courses listed under it as compact rows.
+The file contains the following sections (all already imported):
 
-### Changes
+1. Правила устройства электроустановок (8 курсов)
+2. Правила по охране труда при эксплуатации электроустановок (8)
+3. Правила работы с персоналом в организациях электроэнергетики РФ (8)
+4. Правила противопожарного режима в РФ (4)
+5. Мероприятия по оказанию первой помощи (8)
+6. Правила технической эксплуатации электрических станций и сетей РФ (8)
+7. Правила переключений в электроустановках (3)
+8. Правила технической эксплуатации электроустановок потребителей (8)
+9. Охрана труда при работах на высоте — 1, 2, 3 группы (3)
+10. Правила технологического функционирования электроэнергетических систем (есть в файле, но не импортирован)
 
-**`AdminMarketplaceManager.tsx`** — Replace flat table with grouped accordion-style list:
+**Раздел "Правила технической эксплуатации тепловых энергоустановок" отсутствует в этом файле.** Его нужно предоставить отдельно.
 
-1. Remove the category `Select` dropdown (no longer needed — all categories visible at once)
-2. Group `filteredCourses` by `extractCategory()` 
-3. Render each group as a collapsible section:
-   - Header: category name (bold) + course count badge
-   - Body: compact table of courses showing short title (voltage + group), prices, status toggle, actions
-4. Keep search bar — filters across all groups, hides empty groups
-5. Keep grid/list toggle
+Однако я заметил, что в файле есть раздел **"Правила технологического функционирования электроэнергетических систем"** (Page 3, ~65 вопросов), который пока **не импортирован** в маркетплейс. Хотите импортировать его?
 
-**`useAdminMarketplace.ts`** — Add a `groupedCourses` computed value:
-```
-Map<string, MarketplaceCourseWithDetails[]>
-```
-grouped by `extractCategory()`, maintaining sort order.
+### Plan: Import missing section from the file
 
-### Visual structure
-```text
-┌─────────────────────────────────────────────────┐
-│ [Search...]                        [List] [Grid] │
-├─────────────────────────────────────────────────┤
-│ ▼ Правила устройства электроустановок (8)       │
-│   до 1000 В — Группа II      3500₽  5000₽  ⚙  │
-│   до 1000 В — Группа III     3500₽  5000₽  ⚙  │
-│   ...                                           │
-│ ▼ Правила по охране труда при эксплуатации... (8)│
-│   до 1000 В — Группа II      3500₽  5000₽  ⚙  │
-│   ...                                           │
-└─────────────────────────────────────────────────┘
-```
+If approved, I will:
 
-Uses Radix `Collapsible` or `Accordion` for expand/collapse. All groups open by default.
+1. **Add the section to the bulk import parser** or create the courses directly via the existing `BulkCourseImporter` logic
+2. **Create courses** for "Правила технологического функционирования электроэнергетических систем" with the standard voltage/group combinations based on the "+" markers in the file
+3. **Add them to the marketplace** with the same pricing as existing courses
+
+This would bring the total to ~66 courses covering all sections present in the Excel file.
 
