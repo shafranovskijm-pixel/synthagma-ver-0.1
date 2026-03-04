@@ -1,39 +1,67 @@
 
 
-# Fix: Parser drops answer options
+# Экспорт вопросов в TXT и импорт ответов обратно
 
-## Root cause
+## Идея
 
-In `isSectionHeader()` (line 104-114), the check counts columns with "+", "-" or empty as "empty". Since **every row** in the Excel file (including answer options) has "+" in columns 1-6, any option text longer than 10 characters matches `isSectionHeader() === true`.
+Добавить две функции в конструкторе курса (рядом с кнопкой «Импорт из Excel / TXT»):
 
-On line 160, during `collecting_options` state, when `isSectionHeader(row) && currentOptions.length >= 2`, the row is skipped with `continue`. This means after collecting the first 2 options, all subsequent options with long text are dropped.
+1. **Скачать вопросы как TXT** — выгружает все вопросы курса в формате, удобном для ChatGPT/Grok
+2. **Загрузить ответы из TXT** — принимает файл с ответами и обновляет `correct_answer` в существующих вопросах
 
-## Fix in `src/utils/excelTestBulkParser.ts`
+## Формат экспорта (для AI)
 
-**Remove the `isSectionHeader` guard from the `collecting_options` state entirely.** The question marker ("Вопрос N") and `flushQuestion`/`flushSection` already handle transitions correctly — there's no need to check for section headers while collecting options.
+```text
+Курс: Электробезопасность II группа до 1000 В
 
-Lines 159-165, change from:
-```typescript
-if (state === "collecting_options") {
-  if (isSectionHeader(row) && currentOptions.length >= 2) {
-    continue;
-  }
-  currentOptions.push(cellText);
-  continue;
-}
+Вопрос 1: Какое напряжение считается опасным?
+A) 12 В
+B) 36 В
+C) 42 В
+D) 220 В
+
+Вопрос 2: Что такое заземление?
+A) Соединение с нейтралью
+B) Преднамеренное соединение с землёй
+C) Изоляция проводов
+...
+
+Инструкция: Укажи правильные ответы в формате:
+1-C
+2-B
+3-A
+...
 ```
 
-To:
-```typescript
-if (state === "collecting_options") {
-  currentOptions.push(cellText);
-  continue;
-}
+Пользователь копирует текст в ChatGPT/Grok, получает список ответов, сохраняет в TXT.
+
+## Формат импорта ответов
+
+Простой формат, одна строка = один ответ:
 ```
+1-C
+2-B
+3-A
+```
+Или через пробел/двоеточие: `1: C`, `1 C`, `1-3` (номер варианта).
 
-This single change ensures all 3-5 answer options per question are collected properly.
+Парсер будет гибким — поддержит буквы (A/B/C/D) и цифры (1/2/3/4).
 
-## Expected result
+## Технические изменения
 
-Questions that currently have 2 options will have their full 4-5 options after re-import.
+### 1. Новая утилита `src/utils/testAnswersExport.ts`
+- `exportQuestionsForAI(questions, courseTitle)` — генерирует TXT-строку
+- `parseAnswersFile(text, questionsCount)` — парсит ответы из TXT
+
+### 2. Новый компонент `src/components/course-builder/TestAnswersDialog.tsx`
+- Две вкладки: «Скачать вопросы» и «Загрузить ответы»
+- Скачивание: кнопка → скачивает .txt файл
+- Загрузка: textarea или file input → парсит → показывает превью → применяет
+
+### 3. Интеграция в `SortableLessonItem.tsx`
+- Добавить кнопку «Ответы AI» рядом с «Импорт из Excel / TXT»
+- Передать текущие вопросы из TestQuestionEditor в диалог
+
+### 4. Обновление `BulkCourseImporter.tsx`
+- После массового создания курсов — кнопка «Скачать все вопросы» для всех созданных курсов одним файлом (разделённым по курсам)
 
