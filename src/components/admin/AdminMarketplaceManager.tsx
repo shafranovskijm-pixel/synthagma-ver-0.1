@@ -176,10 +176,8 @@ export function AdminMarketplaceManager() {
                     <TableRow key={item.id} className={!item.is_active ? "opacity-60" : ""}>
                       <TableCell>
                         <div>
-                          <span className="font-medium">{h.extractShortTitle(item.course?.title)}</span>
-                          {h.selectedCategory === "all" && (
-                            <span className="block text-xs text-muted-foreground">{h.extractCategory(item.course?.title)}</span>
-                          )}
+                          <span className="font-semibold">{h.extractShortTitle(item.course?.title)}</span>
+                          <span className="block text-xs text-muted-foreground/60">{h.extractCategory(item.course?.title)}</span>
                         </div>
                       </TableCell>
                       <TableCell className="font-semibold text-sm">{item.price_student.toLocaleString()} ₽</TableCell>
