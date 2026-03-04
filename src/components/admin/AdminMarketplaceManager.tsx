@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   Store, Plus, Search, Edit, Trash2, Eye, Loader2,
   Package, ShoppingCart, Building2, Users, Tag, Sparkles, BookOpen, Upload,
-  List, LayoutGrid, ChevronDown,
+  List, LayoutGrid, ChevronDown, FolderPlus, FolderInput,
 } from "lucide-react";
 import { BulkCourseImporter } from "./BulkCourseImporter";
 import { supabase } from "@/integrations/supabase/client";
@@ -120,6 +120,9 @@ export function AdminMarketplaceManager() {
                 <LayoutGrid className="w-4 h-4" />
               </Button>
             </div>
+            <Button variant="outline" size="sm" className="rounded-xl" onClick={() => h.setShowCategoryDialog(true)}>
+              <FolderPlus className="w-4 h-4 mr-1.5" />Категория
+            </Button>
             <Badge variant="secondary">{h.filteredCourses.length} курсов</Badge>
           </div>
 
@@ -157,7 +160,10 @@ export function AdminMarketplaceManager() {
                                 <Switch checked={item.is_active} onCheckedChange={() => h.handleToggleActive(item)} />
                               </TableCell>
                               <TableCell className="w-[110px]">
-                                <div className="flex items-center gap-1">
+                              <div className="flex items-center gap-1">
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" title="Переместить в категорию" onClick={() => { h.setMovingCourse(item); h.setTargetCategory(h.extractCategory(item.course?.title)); h.setShowMoveCategoryDialog(true); }}>
+                                    <FolderInput className="w-3.5 h-3.5" />
+                                  </Button>
                                   <Button variant="ghost" size="icon" className="h-8 w-8" title="Редактировать уроки" onClick={() => navigate(`/course-builder/${item.course_id}`)}>
                                     <BookOpen className="w-3.5 h-3.5" />
                                   </Button>
@@ -215,6 +221,9 @@ export function AdminMarketplaceManager() {
                         <span className="text-xs text-muted-foreground">{item.is_active ? "Виден" : "Скрыт"}</span>
                       </div>
                       <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" title="Переместить в категорию" onClick={() => { h.setMovingCourse(item); h.setTargetCategory(h.extractCategory(item.course?.title)); h.setShowMoveCategoryDialog(true); }}>
+                          <FolderInput className="w-3.5 h-3.5" />
+                        </Button>
                         <Button variant="ghost" size="icon" className="h-8 w-8" title="Редактировать уроки" onClick={() => navigate(`/course-builder/${item.course_id}`)}>
                           <BookOpen className="w-3.5 h-3.5" />
                         </Button>
@@ -470,6 +479,81 @@ export function AdminMarketplaceManager() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+      {/* Create Category Dialog */}
+      <Dialog open={h.showCategoryDialog} onOpenChange={h.setShowCategoryDialog}>
+        <DialogContent className="rounded-2xl max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Создать категорию</DialogTitle>
+            <DialogDescription>Введите название новой категории для группировки курсов</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Название категории</Label>
+              <Input
+                value={h.newCategoryName}
+                onChange={(e) => h.setNewCategoryName(e.target.value)}
+                placeholder="Например: Охрана труда"
+                className="rounded-xl"
+                autoFocus
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              className="w-full btn-gradient rounded-xl"
+              disabled={!h.newCategoryName.trim()}
+              onClick={() => h.handleCreateCategory(h.newCategoryName)}
+            >
+              <FolderPlus className="w-4 h-4 mr-2" />Создать
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Move to Category Dialog */}
+      <Dialog open={h.showMoveCategoryDialog} onOpenChange={h.setShowMoveCategoryDialog}>
+        <DialogContent className="rounded-2xl max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Переместить в категорию</DialogTitle>
+            <DialogDescription className="truncate">
+              {h.movingCourse?.course?.title}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Категория</Label>
+              <Select value={h.targetCategory} onValueChange={h.setTargetCategory}>
+                <SelectTrigger className="rounded-xl"><SelectValue placeholder="Выберите категорию" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Без категории</SelectItem>
+                  {h.categories.filter(c => c !== "Без категории").map(cat => (
+                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Или введите новую</Label>
+              <Input
+                placeholder="Новая категория..."
+                className="rounded-xl"
+                onChange={(e) => {
+                  if (e.target.value.trim()) h.setTargetCategory(e.target.value.trim());
+                }}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              className="w-full btn-gradient rounded-xl"
+              disabled={!h.targetCategory}
+              onClick={() => h.movingCourse && h.handleMoveToCategory(h.movingCourse, h.targetCategory)}
+            >
+              <FolderInput className="w-4 h-4 mr-2" />Переместить
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

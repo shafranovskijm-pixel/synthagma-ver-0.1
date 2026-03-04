@@ -62,6 +62,13 @@ export function useAdminMarketplace() {
   const [showOrderDialog, setShowOrderDialog] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<MarketplaceOrder | null>(null);
 
+  // Category management
+  const [showCategoryDialog, setShowCategoryDialog] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [showMoveCategoryDialog, setShowMoveCategoryDialog] = useState(false);
+  const [movingCourse, setMovingCourse] = useState<MarketplaceCourseWithDetails | null>(null);
+  const [targetCategory, setTargetCategory] = useState("");
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -263,6 +270,35 @@ export function useAdminMarketplace() {
 
   const categories = Array.from(new Set(courses.map(c => extractCategory(c.course?.title)))).sort();
 
+  const handleCreateCategory = (name: string) => {
+    if (!name.trim()) return;
+    setNewCategoryName("");
+    setShowCategoryDialog(false);
+    toast.success(`Категория "${name.trim()}" создана`);
+    // Category is virtual — it appears when a course is moved into it
+  };
+
+  const handleMoveToCategory = async (course: MarketplaceCourseWithDetails, newCategory: string) => {
+    if (!course.course?.id) return;
+    const shortTitle = extractShortTitle(course.course.title);
+    const newTitle = newCategory === "__none__"
+      ? shortTitle
+      : `${newCategory} — ${shortTitle}`;
+    try {
+      const { error } = await supabase
+        .from("courses")
+        .update({ title: newTitle })
+        .eq("id", course.course.id);
+      if (error) throw error;
+      toast.success("Курс перемещён");
+      setShowMoveCategoryDialog(false);
+      setMovingCourse(null);
+      fetchCourses();
+    } catch {
+      toast.error("Ошибка перемещения");
+    }
+  };
+
   const filteredCourses = courses.filter(c => {
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
@@ -302,5 +338,11 @@ export function useAdminMarketplace() {
     showOrderDialog, setShowOrderDialog, selectedOrder, setSelectedOrder,
     handleUpdateOrderStatus,
     fetchData,
+    // Categories
+    showCategoryDialog, setShowCategoryDialog, newCategoryName, setNewCategoryName,
+    handleCreateCategory,
+    showMoveCategoryDialog, setShowMoveCategoryDialog,
+    movingCourse, setMovingCourse, targetCategory, setTargetCategory,
+    handleMoveToCategory,
   };
 }
