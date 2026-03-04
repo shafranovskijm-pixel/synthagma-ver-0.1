@@ -174,7 +174,7 @@ export function useAdminMarketplace() {
   const handleDeleteCourse = async (courseId: string) => {
     try {
       // Delete related records first (foreign key constraints)
-      await supabase.from("marketplace_comments").delete().eq("marketplace_course_id", courseId);
+      await supabase.from("marketplace_course_comments").delete().eq("marketplace_course_id", courseId);
       await supabase.from("marketplace_orders").delete().eq("marketplace_course_id", courseId);
       const { error } = await supabase.from("marketplace_courses").delete().eq("id", courseId);
       if (error) throw error;
