@@ -7,7 +7,7 @@ import {
   GripVertical, FileText, Video, Image, FileQuestion,
   Trash2, Eye, Sparkles, Upload, ChevronDown, ChevronUp,
   Loader2, Headphones, Volume2, Pause, Play, Square,
-  Presentation, FileSpreadsheet, FolderOpen,
+  Presentation, FileSpreadsheet, FolderOpen, Bot,
 } from "lucide-react";
 import { MediaLibraryDialog } from "@/components/course-builder/MediaLibraryDialog";
 import { toast } from "sonner";
@@ -24,7 +24,9 @@ import {
 import { VideoPreviewInline } from "@/components/course-builder/VideoPreviewInline";
 import { SliderLessonEditor } from "@/components/course-builder/SliderLessonEditor";
 import { LessonAttachments } from "@/components/course-builder/LessonAttachments";
+import { TestAnswersDialog } from "@/components/course-builder/TestAnswersDialog";
 import { useLessonMedia } from "@/hooks/useLessonMedia";
+import type { ParsedAnswer } from "@/utils/testAnswersExport";
 
 interface SortableLessonProps {
   lesson: Lesson;
@@ -267,7 +269,7 @@ export function SortableLessonItem({
                   </div>
                 </div>
               </div>
-              <div className="flex justify-end gap-2">
+              <div className="flex justify-end gap-2 flex-wrap">
                 <TestImportDialog onImport={(imported) => {
                   const newQuestions = imported.map((q) => ({ question: q.question, options: q.options, correctAnswer: q.correctAnswer, ...(q.explanation ? { explanation: q.explanation } : {}) }));
                   onUpdate({ content: JSON.stringify({ generatedQuestions: newQuestions }) });
@@ -275,6 +277,23 @@ export function SortableLessonItem({
                 }}>
                   <Button variant="outline" size="sm" className="rounded-lg text-xs gap-1"><FileSpreadsheet className="w-3 h-3" />Импорт из Excel / TXT</Button>
                 </TestImportDialog>
+                <TestAnswersDialog
+                  questions={(lesson.questions as any[] || []).map((q: any) => ({ question: q.question, options: q.options }))}
+                  courseTitle={courseTitle}
+                  onApplyAnswers={(answers: ParsedAnswer[]) => {
+                    const updated = [...(lesson.questions as any[] || [])];
+                    answers.forEach(a => {
+                      if (updated[a.questionNumber - 1]) {
+                        updated[a.questionNumber - 1] = { ...updated[a.questionNumber - 1], correctAnswer: a.answerIndex };
+                      }
+                    });
+                    onUpdate({ questions: updated as TestQuestionLocal[] });
+                  }}
+                >
+                  <Button variant="outline" size="sm" className="rounded-lg text-xs gap-1 border-accent text-accent-foreground hover:bg-accent/10">
+                    <Bot className="w-3 h-3" />Ответы через AI
+                  </Button>
+                </TestAnswersDialog>
                 <Button variant="outline" size="sm" className="rounded-lg text-xs gap-1 border-primary text-primary hover:bg-primary/10" onClick={onGenerate} disabled={media.isGeneratingContent}>
                   {media.isGeneratingContent ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
                   {media.isGeneratingContent ? "Генерация..." : "Сгенерировать вопросы с AI"}
