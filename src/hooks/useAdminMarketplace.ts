@@ -42,6 +42,8 @@ export function useAdminMarketplace() {
   const [courses, setCourses] = useState<MarketplaceCourseWithDetails[]>([]);
   const [orders, setOrders] = useState<MarketplaceOrder[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
 
   // Create course form
   const [newTitle, setNewTitle] = useState("");
@@ -246,14 +248,34 @@ export function useAdminMarketplace() {
     }
   };
 
-  const filteredCourses = courses.filter(c =>
-    c.course?.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    c.organization?.name?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Extract categories from course titles (prefix before " — ")
+  const extractCategory = (title: string | undefined): string => {
+    if (!title) return "Без категории";
+    const dashIndex = title.indexOf(" — ");
+    return dashIndex > 0 ? title.substring(0, dashIndex) : "Без категории";
+  };
+
+  const extractShortTitle = (title: string | undefined): string => {
+    if (!title) return "";
+    const dashIndex = title.indexOf(" — ");
+    return dashIndex > 0 ? title.substring(dashIndex + 3) : title;
+  };
+
+  const categories = Array.from(new Set(courses.map(c => extractCategory(c.course?.title)))).sort();
+
+  const filteredCourses = courses.filter(c => {
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      if (!c.course?.title.toLowerCase().includes(q) && !c.organization?.name?.toLowerCase().includes(q)) return false;
+    }
+    if (selectedCategory !== "all" && extractCategory(c.course?.title) !== selectedCategory) return false;
+    return true;
+  });
 
   return {
     activeTab, setActiveTab, isLoading, searchQuery, setSearchQuery,
-    courses, filteredCourses, orders,
+    selectedCategory, setSelectedCategory, viewMode, setViewMode,
+    courses, filteredCourses, orders, categories, extractCategory, extractShortTitle,
     // Create
     newTitle, setNewTitle, newDescription, setNewDescription,
     newDuration, setNewDuration, newPriceStudent, setNewPriceStudent,

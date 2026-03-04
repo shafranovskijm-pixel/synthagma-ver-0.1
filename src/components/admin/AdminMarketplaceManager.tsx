@@ -3,10 +3,12 @@ import { useNavigate } from "react-router-dom";
 import {
   Store, Plus, Search, Edit, Trash2, Eye, Loader2,
   Package, ShoppingCart, Building2, Users, Tag, Sparkles, BookOpen, Upload,
+  List, LayoutGrid,
 } from "lucide-react";
 import { BulkCourseImporter } from "./BulkCourseImporter";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -97,7 +99,37 @@ export function AdminMarketplaceManager() {
         </TabsList>
 
         {/* Catalog */}
-        <TabsContent value="catalog" className="space-y-6">
+        <TabsContent value="catalog" className="space-y-4">
+          {/* Category filter */}
+          <ScrollArea className="w-full whitespace-nowrap">
+            <div className="flex items-center gap-2 pb-2">
+              <Button
+                variant={h.selectedCategory === "all" ? "default" : "outline"}
+                size="sm"
+                className="rounded-full shrink-0"
+                onClick={() => h.setSelectedCategory("all")}
+              >
+                Все ({h.courses.length})
+              </Button>
+              {h.categories.map((cat) => {
+                const count = h.courses.filter(c => h.extractCategory(c.course?.title) === cat).length;
+                return (
+                  <Button
+                    key={cat}
+                    variant={h.selectedCategory === cat ? "default" : "outline"}
+                    size="sm"
+                    className="rounded-full shrink-0"
+                    onClick={() => h.setSelectedCategory(cat)}
+                  >
+                    {cat.length > 40 ? cat.substring(0, 40) + "…" : cat} ({count})
+                  </Button>
+                );
+              })}
+            </div>
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
+
+          {/* Search + view toggle */}
           <div className="flex items-center gap-4">
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -108,7 +140,15 @@ export function AdminMarketplaceManager() {
                 className="pl-10 rounded-xl"
               />
             </div>
-            <Badge variant="secondary">{h.courses.length} курсов</Badge>
+            <div className="flex items-center gap-1 border rounded-lg p-0.5">
+              <Button variant={h.viewMode === "list" ? "default" : "ghost"} size="icon" className="h-8 w-8" onClick={() => h.setViewMode("list")}>
+                <List className="w-4 h-4" />
+              </Button>
+              <Button variant={h.viewMode === "grid" ? "default" : "ghost"} size="icon" className="h-8 w-8" onClick={() => h.setViewMode("grid")}>
+                <LayoutGrid className="w-4 h-4" />
+              </Button>
+            </div>
+            <Badge variant="secondary">{h.filteredCourses.length} курсов</Badge>
           </div>
 
           {h.filteredCourses.length === 0 ? (
@@ -118,7 +158,55 @@ export function AdminMarketplaceManager() {
                 <p className="text-muted-foreground">Курсы не найдены</p>
               </CardContent>
             </Card>
+          ) : h.viewMode === "list" ? (
+            /* List view */
+            <Card>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Название</TableHead>
+                    <TableHead className="w-[100px]">Студенты</TableHead>
+                    <TableHead className="w-[100px]">Организации</TableHead>
+                    <TableHead className="w-[80px]">Статус</TableHead>
+                    <TableHead className="w-[120px]"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {h.filteredCourses.map((item) => (
+                    <TableRow key={item.id} className={!item.is_active ? "opacity-60" : ""}>
+                      <TableCell>
+                        <div>
+                          <span className="font-medium">{h.extractShortTitle(item.course?.title)}</span>
+                          {h.selectedCategory === "all" && (
+                            <span className="block text-xs text-muted-foreground">{h.extractCategory(item.course?.title)}</span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-semibold text-sm">{item.price_student.toLocaleString()} ₽</TableCell>
+                      <TableCell className="font-semibold text-sm">{item.price_organization.toLocaleString()} ₽</TableCell>
+                      <TableCell>
+                        <Switch checked={item.is_active} onCheckedChange={() => h.handleToggleActive(item)} />
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" title="Редактировать уроки" onClick={() => navigate(`/course-builder/${item.course_id}`)}>
+                            <BookOpen className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" title="Редактировать курс" onClick={() => { h.setEditingCourse(item); h.setShowEditDialog(true); }}>
+                            <Edit className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => h.handleDeleteCourse(item.id)}>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Card>
           ) : (
+            /* Grid view */
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {h.filteredCourses.map((item) => (
                 <Card key={item.id} className={`overflow-hidden ${!item.is_active ? "opacity-60" : ""}`}>
