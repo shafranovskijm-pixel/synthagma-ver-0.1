@@ -2,8 +2,9 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Store, Plus, Search, Edit, Trash2, Eye, Loader2,
-  Package, ShoppingCart, Building2, Users, Tag, Sparkles, BookOpen,
+  Package, ShoppingCart, Building2, Users, Tag, Sparkles, BookOpen, Upload,
 } from "lucide-react";
+import { BulkCourseImporter } from "./BulkCourseImporter";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -80,12 +81,15 @@ export function AdminMarketplaceManager() {
   return (
     <div className="space-y-6">
       <Tabs value={h.activeTab} onValueChange={(v) => h.setActiveTab(v as any)} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 max-w-lg">
+        <TabsList className="grid w-full grid-cols-4 max-w-xl">
           <TabsTrigger value="catalog" className="flex items-center gap-2">
             <Package className="w-4 h-4" />Каталог
           </TabsTrigger>
           <TabsTrigger value="create" className="flex items-center gap-2">
             <Plus className="w-4 h-4" />Создать курс
+          </TabsTrigger>
+          <TabsTrigger value="import" className="flex items-center gap-2">
+            <Upload className="w-4 h-4" />Импорт
           </TabsTrigger>
           <TabsTrigger value="orders" className="flex items-center gap-2">
             <ShoppingCart className="w-4 h-4" />Заявки
@@ -228,6 +232,11 @@ export function AdminMarketplaceManager() {
               </Button>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Import */}
+        <TabsContent value="import" className="space-y-6">
+          <BulkCourseImporter />
         </TabsContent>
 
         {/* Orders */}
