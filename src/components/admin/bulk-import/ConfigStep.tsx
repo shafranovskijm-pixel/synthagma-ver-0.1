@@ -53,6 +53,22 @@ export function ConfigStep({ sections, onGenerate, onReset }: Props) {
     const result: CourseCombo[] = [];
 
     sections.forEach((section, sIdx) => {
+      // Sections without tags → single course with all questions
+      if (section.noTags) {
+        result.push({
+          sectionIdx: sIdx,
+          sectionTitle: section.title,
+          voltage: "v1000" as VoltageKey,
+          voltageLabel: "Все",
+          group: "gII" as GroupKey,
+          groupLabel: "Все",
+          questionCount: section.questions.length,
+          customTitle: section.customTitle || section.title,
+          selected: true,
+        });
+        return;
+      }
+
       if (!perCombo) {
         // One course per section, include all questions that match ANY selected filter
         const matchingQs = section.questions.filter(q => {
@@ -260,11 +276,14 @@ export function ConfigStep({ sections, onGenerate, onReset }: Props) {
             const isOpen = expandedSection === idx;
             return (
               <Collapsible key={idx} open={isOpen} onOpenChange={() => setExpandedSection(isOpen ? null : idx)}>
-                <CollapsibleTrigger className="flex items-center gap-2 w-full text-left py-2 px-3 rounded-lg hover:bg-muted/50 transition-colors">
-                  {isOpen ? <ChevronDown className="w-4 h-4 shrink-0" /> : <ChevronRight className="w-4 h-4 shrink-0" />}
-                  <span className="text-sm font-medium truncate flex-1">{section.title}</span>
-                  <Badge variant="secondary" className="text-xs">{section.questions.length} вопросов</Badge>
-                </CollapsibleTrigger>
+                 <CollapsibleTrigger className="flex items-center gap-2 w-full text-left py-2 px-3 rounded-lg hover:bg-muted/50 transition-colors">
+                   {isOpen ? <ChevronDown className="w-4 h-4 shrink-0" /> : <ChevronRight className="w-4 h-4 shrink-0" />}
+                   <span className="text-sm font-medium truncate flex-1">{section.title}</span>
+                   {section.noTags && (
+                     <Badge variant="outline" className="text-xs shrink-0">без тегов</Badge>
+                   )}
+                   <Badge variant="secondary" className="text-xs">{section.questions.length} вопросов</Badge>
+                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <div className="ml-6 mb-2 max-h-64 overflow-auto">
                     <Table>

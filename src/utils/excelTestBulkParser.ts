@@ -20,10 +20,16 @@ export interface ParsedSection {
   questions: ParsedQuestion[];
   selected: boolean;
   customTitle: string;
+  /** True if no voltage/group tags were found – all questions belong to a single course */
+  noTags?: boolean;
 }
 
 const emptyTags = (): QuestionTags => ({
   v1000: false, vAbove1000: false, gII: false, gIII: false, gIV: false, gV: false,
+});
+
+const allTags = (): QuestionTags => ({
+  v1000: true, vAbove1000: true, gII: true, gIII: true, gIV: true, gV: true,
 });
 
 /**
@@ -43,23 +49,14 @@ function readTags(row: any[]): QuestionTags {
   };
 }
 
+function hasSomeTags(tags: QuestionTags): boolean {
+  return tags.v1000 || tags.vAbove1000 || tags.gII || tags.gIII || tags.gIV || tags.gV;
+}
+
 /**
- * Parses a bulk Excel file with test questions grouped by normative document sections.
- * Structure: Section header → "Вопрос N" → question text → answer options (3-5)
- * Columns 1-6 contain "+" markers for voltage/group filtering.
+ * Parse a single sheet's data into sections.
  */
-export async function parseExcelBulkTests(file: File): Promise<ParsedSection[]> {
-  const XLSX = await getXLSX();
-  const arrayBuffer = await file.arrayBuffer();
-  const workbook = XLSX.read(arrayBuffer, { type: "array" });
-  const sheetName = workbook.SheetNames[0];
-  const worksheet = workbook.Sheets[sheetName];
-
-  const data: any[][] = XLSX.utils.sheet_to_json(worksheet, {
-    header: 1,
-    defval: "",
-  });
-
+function parseSheetData(data: any[][]): ParsedSection[] {
   const sections: ParsedSection[] = [];
   let currentSectionTitle = "";
   let currentQuestions: ParsedQuestion[] = [];
@@ -91,26 +88,24 @@ export async function parseExcelBulkTests(file: File): Promise<ParsedSection[]> 
   const flushSection = () => {
     flushQuestion();
     if (currentSectionTitle && currentQuestions.length > 0) {
+      // Check if any question has tags
+      const anyTagged = currentQuestions.some(q => hasSomeTags(q.tags));
+      const noTags = !anyTagged;
+
+      // If no tags found, mark all questions with allTags so they match any filter
+      const finalQuestions = noTags
+        ? currentQuestions.map(q => ({ ...q, tags: allTags() }))
+        : currentQuestions;
+
       sections.push({
         title: currentSectionTitle,
-        questions: [...currentQuestions],
+        questions: [...finalQuestions],
         selected: true,
         customTitle: currentSectionTitle,
+        noTags,
       });
     }
     currentQuestions = [];
-  };
-
-  const isSectionHeader = (row: any[]): boolean => {
-    const text = String(row[0] || "").trim();
-    if (!text || text.length < 10) return false;
-    if (isQuestionMarker(text)) return false;
-    let emptyCount = 0;
-    for (let j = 1; j <= 6 && j < row.length; j++) {
-      const val = String(row[j] || "").trim();
-      if (!val || val === "+" || val === "-") emptyCount++;
-    }
-    return emptyCount >= Math.min(6, row.length - 1) - 1;
   };
 
   for (let i = 0; i < data.length; i++) {
@@ -122,12 +117,11 @@ export async function parseExcelBulkTests(file: File): Promise<ParsedSection[]> 
 
     if (isQuestionMarker(cellText)) {
       const num = getQuestionNumber(cellText);
-
-      // Read tags from columns 1-6 on the "Вопрос N" row
       const tags = readTags(row);
 
       if (num === 1) {
         flushSection();
+        // Look back for section title
         for (let back = i - 1; back >= Math.max(0, i - 5); back--) {
           const prevRow = data[back];
           if (!prevRow || !prevRow[0]) continue;
@@ -168,4 +162,42 @@ export async function parseExcelBulkTests(file: File): Promise<ParsedSection[]> 
 
   flushSection();
   return sections;
+}
+
+/**
+ * Parses a bulk Excel file with test questions grouped by normative document sections.
+ * Reads ALL sheets in the workbook.
+ * Structure: Section header → "Вопрос N" → question text → answer options (3-5)
+ * Columns 1-6 contain "+" markers for voltage/group filtering.
+ * Sheets without tags create sections marked with noTags=true.
+ */
+export async function parseExcelBulkTests(file: File): Promise<ParsedSection[]> {
+  const XLSX = await getXLSX();
+  const arrayBuffer = await file.arrayBuffer();
+  const workbook = XLSX.read(arrayBuffer, { type: "array" });
+
+  const allSections: ParsedSection[] = [];
+
+  for (const sheetName of workbook.SheetNames) {
+    const worksheet = workbook.Sheets[sheetName];
+    const data: any[][] = XLSX.utils.sheet_to_json(worksheet, {
+      header: 1,
+      defval: "",
+    });
+
+    const sheetSections = parseSheetData(data);
+    
+    // Deduplicate: skip sections with same title if already present
+    for (const section of sheetSections) {
+      const isDuplicate = allSections.some(
+        existing => existing.title === section.title && 
+          Math.abs(existing.questions.length - section.questions.length) < 3
+      );
+      if (!isDuplicate) {
+        allSections.push(section);
+      }
+    }
+  }
+
+  return allSections;
 }
