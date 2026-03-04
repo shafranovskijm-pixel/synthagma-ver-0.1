@@ -8,7 +8,7 @@ import {
 import { BulkCourseImporter } from "./BulkCourseImporter";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -101,33 +101,22 @@ export function AdminMarketplaceManager() {
         {/* Catalog */}
         <TabsContent value="catalog" className="space-y-4">
           {/* Category filter */}
-          <ScrollArea className="w-full whitespace-nowrap">
-            <div className="flex items-center gap-2 pb-2">
-              <Button
-                variant={h.selectedCategory === "all" ? "default" : "outline"}
-                size="sm"
-                className="rounded-full shrink-0"
-                onClick={() => h.setSelectedCategory("all")}
-              >
-                Все ({h.courses.length})
-              </Button>
+          <Select value={h.selectedCategory} onValueChange={h.setSelectedCategory}>
+            <SelectTrigger className="w-full max-w-md rounded-xl">
+              <SelectValue placeholder="Все категории" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все категории ({h.courses.length})</SelectItem>
               {h.categories.map((cat) => {
                 const count = h.courses.filter(c => h.extractCategory(c.course?.title) === cat).length;
                 return (
-                  <Button
-                    key={cat}
-                    variant={h.selectedCategory === cat ? "default" : "outline"}
-                    size="sm"
-                    className="rounded-full shrink-0"
-                    onClick={() => h.setSelectedCategory(cat)}
-                  >
-                    {cat.length > 40 ? cat.substring(0, 40) + "…" : cat} ({count})
-                  </Button>
+                  <SelectItem key={cat} value={cat}>
+                    {cat} ({count})
+                  </SelectItem>
                 );
               })}
-            </div>
-            <ScrollBar orientation="horizontal" />
-          </ScrollArea>
+            </SelectContent>
+          </Select>
 
           {/* Search + view toggle */}
           <div className="flex items-center gap-4">
@@ -176,8 +165,8 @@ export function AdminMarketplaceManager() {
                     <TableRow key={item.id} className={!item.is_active ? "opacity-60" : ""}>
                       <TableCell>
                         <div>
-                          <span className="font-semibold">{h.extractShortTitle(item.course?.title)}</span>
-                          <span className="block text-xs text-muted-foreground/60">{h.extractCategory(item.course?.title)}</span>
+                          <span className="font-semibold">{h.extractCategory(item.course?.title)}</span>
+                          <span className="block text-xs text-muted-foreground/60">{h.extractShortTitle(item.course?.title)}</span>
                         </div>
                       </TableCell>
                       <TableCell className="font-semibold text-sm">{item.price_student.toLocaleString()} ₽</TableCell>
