@@ -280,6 +280,7 @@ export function SortableLessonItem({
                 <TestAnswersDialog
                   questions={(lesson.questions as any[] || []).map((q: any) => ({ question: q.question, options: q.options }))}
                   courseTitle={courseTitle}
+                  lessonTitle={lesson.title}
                   onApplyAnswers={(answers: ParsedAnswer[]) => {
                     const updated = [...(lesson.questions as any[] || [])];
                     answers.forEach(a => {

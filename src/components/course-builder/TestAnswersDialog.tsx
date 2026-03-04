@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { Download, Upload, Bot, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Download, Upload, Bot, CheckCircle2, AlertTriangle, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import {
   exportQuestionsForAI,
   parseAnswersFile,
@@ -17,14 +18,18 @@ import {
 interface TestAnswersDialogProps {
   questions: QuestionForExport[];
   courseTitle: string;
+  lessonTitle?: string;
   onApplyAnswers: (answers: ParsedAnswer[]) => void;
   children: React.ReactNode;
 }
 
-export function TestAnswersDialog({ questions, courseTitle, onApplyAnswers, children }: TestAnswersDialogProps) {
+export function TestAnswersDialog({ questions, courseTitle, lessonTitle, onApplyAnswers, children }: TestAnswersDialogProps) {
   const [open, setOpen] = useState(false);
   const [answersText, setAnswersText] = useState("");
   const [preview, setPreview] = useState<{ answers: ParsedAnswer[]; errors: string[] } | null>(null);
+  const [isAutoGenerating, setIsAutoGenerating] = useState(false);
+  const [autoResult, setAutoResult] = useState<(ParsedAnswer & { explanation?: string })[] | null>(null);
+  const [autoError, setAutoError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleExport = () => {
@@ -68,6 +73,64 @@ export function TestAnswersDialog({ questions, courseTitle, onApplyAnswers, chil
     setPreview(null);
   };
 
+  const handleAutoGenerate = async () => {
+    if (questions.length === 0) {
+      toast.error("Нет вопросов для анализа");
+      return;
+    }
+    setIsAutoGenerating(true);
+    setAutoResult(null);
+    setAutoError(null);
+
+    try {
+      const questionsForAI = questions.map(q => ({
+        question: q.question,
+        options: q.options,
+      }));
+
+      const { data, error } = await supabase.functions.invoke("gigachat", {
+        body: {
+          action: "generate_answers",
+          courseTitle,
+          lessonTitle: lessonTitle || courseTitle,
+          questions: questionsForAI,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data.parseError) {
+        setAutoError("ИИ вернул ответ в неожиданном формате. Попробуйте ещё раз.");
+        console.warn("GigaChat raw response:", data.raw);
+        return;
+      }
+
+      const answers: (ParsedAnswer & { explanation?: string })[] = (data.answers || []).map((a: any) => ({
+        questionNumber: a.questionIndex + 1,
+        answerIndex: a.correctAnswer,
+        answerLetter: String.fromCharCode(65 + (a.correctAnswer || 0)),
+        explanation: a.explanation,
+      }));
+
+      setAutoResult(answers);
+    } catch (err: any) {
+      console.error("GigaChat error:", err);
+      const msg = err?.message || "Ошибка при обращении к GigaChat";
+      setAutoError(msg);
+      toast.error(msg);
+    } finally {
+      setIsAutoGenerating(false);
+    }
+  };
+
+  const handleApplyAutoAnswers = () => {
+    if (!autoResult || autoResult.length === 0) return;
+    onApplyAnswers(autoResult);
+    toast.success(`Применено ${autoResult.length} ответов от GigaChat`);
+    setOpen(false);
+    setAutoResult(null);
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
@@ -75,11 +138,91 @@ export function TestAnswersDialog({ questions, courseTitle, onApplyAnswers, chil
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><Bot className="w-5 h-5" />Ответы через AI</DialogTitle>
         </DialogHeader>
-        <Tabs defaultValue="export">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="export" className="gap-1"><Download className="w-3 h-3" />Скачать вопросы</TabsTrigger>
-            <TabsTrigger value="import" className="gap-1"><Upload className="w-3 h-3" />Загрузить ответы</TabsTrigger>
+        <Tabs defaultValue="auto">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="auto" className="gap-1"><Sparkles className="w-3 h-3" />GigaChat</TabsTrigger>
+            <TabsTrigger value="export" className="gap-1"><Download className="w-3 h-3" />Скачать</TabsTrigger>
+            <TabsTrigger value="import" className="gap-1"><Upload className="w-3 h-3" />Загрузить</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="auto" className="space-y-3 mt-3">
+            <p className="text-sm text-muted-foreground">
+              GigaChat автоматически определит правильные ответы для {questions.length} вопросов
+              на основе знаний нормативных документов Ростехнадзора.
+            </p>
+
+            {!autoResult && !autoError && (
+              <Button
+                onClick={handleAutoGenerate}
+                className="w-full gap-2"
+                disabled={isAutoGenerating || questions.length === 0}
+              >
+                {isAutoGenerating ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" />Анализ вопросов...</>
+                ) : (
+                  <><Sparkles className="w-4 h-4" />Определить ответы ({questions.length} вопросов)</>
+                )}
+              </Button>
+            )}
+
+            {autoError && (
+              <div className="space-y-2">
+                <div className="flex items-start gap-2 text-sm text-destructive">
+                  <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+                  <div>{autoError}</div>
+                </div>
+                <Button variant="outline" onClick={handleAutoGenerate} className="w-full gap-2" disabled={isAutoGenerating}>
+                  Попробовать снова
+                </Button>
+              </div>
+            )}
+
+            {autoResult && autoResult.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-sm">
+                  <CheckCircle2 className="w-4 h-4 text-green-500" />
+                  <span>Определено ответов: <strong>{autoResult.length}</strong> из {questions.length}</span>
+                </div>
+
+                <div className="bg-secondary/30 rounded-lg p-3 text-xs max-h-48 overflow-y-auto space-y-1.5">
+                  {autoResult.map((a) => {
+                    const q = questions[a.questionNumber - 1];
+                    const answerLetter = String.fromCharCode(65 + (a.answerIndex || 0));
+                    return (
+                      <div key={a.questionNumber} className="flex gap-2">
+                        <span className="text-muted-foreground shrink-0">#{a.questionNumber}</span>
+                        <span className="font-medium text-green-600 dark:text-green-400 shrink-0">{answerLetter}</span>
+                        <span className="text-muted-foreground truncate">
+                          {q?.question?.substring(0, 50)}...
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {autoResult.some(a => a.explanation) && (
+                  <details className="text-xs">
+                    <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+                      Показать пояснения
+                    </summary>
+                    <div className="mt-2 space-y-2 bg-secondary/20 rounded-lg p-3 max-h-40 overflow-y-auto">
+                      {autoResult.filter(a => a.explanation).map(a => (
+                        <div key={a.questionNumber}>
+                          <span className="font-medium">#{a.questionNumber}:</span>{" "}
+                          <span className="text-muted-foreground">{a.explanation}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                )}
+
+                <Button onClick={handleApplyAutoAnswers} className="w-full gap-2">
+                  <CheckCircle2 className="w-4 h-4" />
+                  Применить {autoResult.length} ответов
+                </Button>
+              </div>
+            )}
+          </TabsContent>
 
           <TabsContent value="export" className="space-y-3 mt-3">
             <p className="text-sm text-muted-foreground">
