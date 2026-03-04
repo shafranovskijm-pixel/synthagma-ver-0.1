@@ -65,9 +65,11 @@ export function useAdminMarketplace() {
   // Category management
   const [showCategoryDialog, setShowCategoryDialog] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
+  const [customCategories, setCustomCategories] = useState<string[]>([]);
   const [showMoveCategoryDialog, setShowMoveCategoryDialog] = useState(false);
   const [movingCourse, setMovingCourse] = useState<MarketplaceCourseWithDetails | null>(null);
   const [targetCategory, setTargetCategory] = useState("");
+  const [newMoveCategoryInput, setNewMoveCategoryInput] = useState("");
 
   useEffect(() => {
     fetchData();
@@ -268,14 +270,23 @@ export function useAdminMarketplace() {
     return dashIndex > 0 ? title.substring(dashIndex + 3) : title;
   };
 
-  const categories = Array.from(new Set(courses.map(c => extractCategory(c.course?.title)))).sort();
+  // Merge DB-derived categories with custom-created ones
+  const categories = Array.from(new Set([
+    ...courses.map(c => extractCategory(c.course?.title)),
+    ...customCategories,
+  ])).sort();
 
   const handleCreateCategory = (name: string) => {
-    if (!name.trim()) return;
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    if (categories.includes(trimmed)) {
+      toast.error("Такая категория уже существует");
+      return;
+    }
+    setCustomCategories(prev => [...prev, trimmed]);
     setNewCategoryName("");
     setShowCategoryDialog(false);
-    toast.success(`Категория "${name.trim()}" создана`);
-    // Category is virtual — it appears when a course is moved into it
+    toast.success(`Категория "${trimmed}" создана`);
   };
 
   const handleMoveToCategory = async (course: MarketplaceCourseWithDetails, newCategory: string) => {
@@ -293,6 +304,7 @@ export function useAdminMarketplace() {
       toast.success("Курс перемещён");
       setShowMoveCategoryDialog(false);
       setMovingCourse(null);
+      setNewMoveCategoryInput("");
       fetchCourses();
     } catch {
       toast.error("Ошибка перемещения");
@@ -343,6 +355,7 @@ export function useAdminMarketplace() {
     handleCreateCategory,
     showMoveCategoryDialog, setShowMoveCategoryDialog,
     movingCourse, setMovingCourse, targetCategory, setTargetCategory,
+    newMoveCategoryInput, setNewMoveCategoryInput,
     handleMoveToCategory,
   };
 }
