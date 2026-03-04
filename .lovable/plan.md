@@ -1,83 +1,92 @@
 
 
-# Массовое создание курсов из Excel для маркетплейса
+# Plan: Voltage/Group filtering + visual processing UI for bulk import
 
-## Что имеем
+## What the file contains
 
-Файл Excel (~17,500 строк) содержит сотни вопросов по электробезопасности, охране труда и другим нормативным документам. Структура:
-- Разделы разделены заголовками нормативных документов (ПУЭ, ПОТЭУ, ПТЭ и т.д.)
-- Каждый раздел: "Вопрос N" → текст вопроса → 3-5 вариантов ответа
-- **Правильные ответы НЕ отмечены** — нужно загружать отдельно
+The Excel has 7 columns per row:
+- **Col 0**: Text (section header / "Вопрос N" / question / option)
+- **Col 1**: до 1000 В ("+"/empty)
+- **Col 2**: до и выше 1000 В ("+"/empty)
+- **Col 3**: Group II ("+"/empty)
+- **Col 4**: Group III ("+"/empty)
+- **Col 5**: Group IV ("+"/empty)
+- **Col 6**: Group V ("+"/empty)
 
-## Предлагаемый алгоритм
+A "+" on the "Вопрос N" row means this question belongs to that voltage/group combination. Empty = exclude.
 
-### Шаг 1: Новая вкладка "Массовый импорт" в AdminMarketplaceManager
+## How courses will be created
 
-Добавить четвертую вкладку **"Импорт курсов"** рядом с Каталог/Создать/Заявки. На ней:
+Instead of one course per section, each section gets split into multiple courses based on **voltage × group** combinations. For example, section "ПУЭ" with questions tagged for (до 1000 В, Group II) and (до и выше 1000 В, Group III-V) would generate separate courses:
+- "ПУЭ — до 1000 В — Группа II"
+- "ПУЭ — до 1000 В — Группа III"
+- etc.
 
-1. **Загрузка основного Excel-файла** — парсинг и отображение найденных разделов (будущих курсов)
-2. **Предпросмотр** — таблица с найденными курсами: название раздела, кол-во вопросов
-3. **Возможность переименовать** каждый курс перед созданием
-4. **Цены по умолчанию** — два поля (для студентов/организаций), применяются ко всем курсам
-5. **Кнопка "Создать все курсы"** — массовое создание
+The user will choose which voltage + group combinations to generate in the UI.
 
-### Шаг 2: Загрузка правильных ответов (отдельно, потом)
+## Changes
 
-После создания курсов, в каждом курсе в конструкторе можно будет:
-- Загрузить файл с правильными ответами (Excel или TXT)
-- Формат: номер вопроса → номер правильного ответа (или текст ответа)
-- Система сопоставит ответы с уже загруженными вопросами
+### 1. Update parser (`src/utils/excelTestBulkParser.ts`)
 
-Для этого добавлю в конструктор курсов кнопку **"Загрузить ответы"** рядом с импортом тестов.
+- Add `tags` field to `ParsedQuestion`: `{ voltage1000: boolean, voltageAbove1000: boolean, groupII: boolean, groupIII: boolean, groupIV: boolean, groupV: boolean }`
+- Read columns 1-6 on "Вопрос N" rows to capture the "+" markers
+- Expose these tags so the UI can filter questions per voltage/group
 
-### Шаг 3: Парсинг Excel на клиенте
+### 2. Redesign UI (`src/components/admin/BulkCourseImporter.tsx`)
 
-Парсинг будет на клиенте (библиотека `xlsx` уже установлена):
-- Определение разделов по строкам-заголовкам нормативных документов
-- Распознавание паттерна "Вопрос N" → текст вопроса → варианты ответа
-- Группировка вопросов по разделам → каждый раздел = один курс с одним уроком-тестом
+**Step 1 — Upload & Parse** (with processing animation):
+- Animated progress showing file parsing stages
+- Stats: total sections found, total questions, tag distribution
 
-## Технические детали
+**Step 2 — Configure Generation**:
+- Voltage selector: checkboxes for "до 1000 В" and "до и выше 1000 В"
+- Group selector: checkboxes for II, III, IV, V
+- "Generate courses for each combination" toggle vs "One course per section with all questions"
+- Preview table showing which courses will be created, how many questions each will have
+- Section list with expand/collapse to see questions and their tags
 
-### Новые/измененные файлы
+**Step 3 — Create** (with visual progress):
+- Animated progress bar with current course name
+- Counter: "Created 5 of 24 courses"
 
-1. **`src/utils/excelTestBulkParser.ts`** (новый) — парсер Excel для извлечения разделов и вопросов. Определяет границы разделов по заголовкам типа "Правила устройства электроустановок", "Правила по охране труда..." и т.д. Каждый раздел превращается в объект `{title, questions[{question, options[]}]}`.
+### 3. Course naming convention
 
-2. **`src/components/admin/BulkCourseImporter.tsx`** (новый) — UI компонент вкладки импорта:
-   - Drag-and-drop загрузка Excel
-   - Таблица найденных разделов с чекбоксами
-   - Редактируемые названия курсов
-   - Поля цен по умолчанию
-   - Прогресс-бар массового создания
+Auto-generated title pattern: `"{Section} — {Voltage} — Группа {N}"`
 
-3. **`src/components/admin/AdminMarketplaceManager.tsx`** — добавить вкладку "Импорт" и подключить BulkCourseImporter.
+Example: "Правила устройства электроустановок — до 1000 В — Группа III"
 
-4. **`src/hooks/useAdminMarketplace.ts`** — добавить функцию `handleBulkCreateCourses(courses[])` для последовательного создания курсов с уроками-тестами и записями в маркетплейс.
+User can edit titles before creation.
 
-5. **`src/components/course-builder/TestImportDialog.tsx`** — расширить для поддержки "загрузки ответов" (сопоставление номеров вопросов с правильными ответами в существующем тесте).
+## Technical details
 
-### Логика массового создания (для каждого раздела)
+### Parser changes
 
+```text
+ParsedQuestion {
+  question: string
+  options: string[]
+  tags: { v1000, vAbove1000, gII, gIII, gIV, gV }  // booleans from cols 1-6
+}
 ```
-1. Создать course (title, org = "Платформа Синтагма", is_published = true)
-2. Создать lesson (type = "test", course_id, title = название раздела)
-3. Создать test_questions (lesson_id, вопрос, варианты, correct_answer = 0)
-4. Создать marketplace_courses (course_id, цены)
+
+On "Вопрос N" row, read cols 1-6. A cell value of "+" = true, anything else = false. These tags are then applied to the question and all its options that follow.
+
+### UI component structure
+
+```text
+BulkCourseImporter
+├── Step 1: FileUploadZone (drag-drop, processing animation)
+├── Step 2: ConfigPanel
+│   ├── VoltageGroupSelector (checkboxes grid matching the Excel header)
+│   ├── SectionsList (expandable cards with question counts per tag)
+│   └── GeneratedCoursesPreview (table of courses to be created)
+└── Step 3: CreationProgress (animated, per-course status)
 ```
 
-Все вопросы создаются с `correct_answer = 0` (первый вариант по умолчанию) — потом можно загрузить правильные ответы.
+### Files to modify
 
-### Формат файла правильных ответов
+1. **`src/utils/excelTestBulkParser.ts`** — Add `tags` to `ParsedQuestion`, read cols 1-6 on question marker rows
+2. **`src/components/admin/BulkCourseImporter.tsx`** — Complete redesign with 3-step wizard, voltage/group selectors, visual processing feedback, and filtered course generation
 
-Поддержать два формата:
-- **Excel**: колонка A = номер вопроса, колонка B = номер правильного ответа (1-based)
-- **TXT**: каждая строка `номер_вопроса:номер_ответа` (например `1:3`)
-
-## Порядок реализации
-
-1. Создать парсер Excel (`excelTestBulkParser.ts`)
-2. Создать UI компонент (`BulkCourseImporter.tsx`)
-3. Добавить логику массового создания в хук
-4. Интегрировать вкладку в AdminMarketplaceManager
-5. Добавить функцию "загрузки ответов" в конструктор курсов
+No database changes needed. The same `courses` → `lessons` → `test_questions` → `marketplace_courses` creation logic is used, just with filtered question sets.
 
