@@ -173,9 +173,26 @@ export function useAdminMarketplace() {
 
   const handleDeleteCourse = async (courseId: string) => {
     try {
-      // Delete related records first (foreign key constraints)
-      await supabase.from("marketplace_course_comments").delete().eq("marketplace_course_id", courseId);
-      await supabase.from("marketplace_orders").delete().eq("marketplace_course_id", courseId);
+      // 1. Get all orders for this marketplace course
+      const { data: orders } = await supabase
+        .from("marketplace_orders")
+        .select("id")
+        .eq("marketplace_course_id", courseId);
+      
+      const orderIds = (orders || []).map(o => o.id);
+      
+      if (orderIds.length > 0) {
+        // 2. Clear balance_transactions referencing these orders
+        for (const oid of orderIds) {
+          await supabase.from("balance_transactions").update({ related_order_id: null }).eq("related_order_id", oid);
+        }
+        // 3. Clear courses.source_order_id referencing these orders
+        for (const oid of orderIds) {
+          await supabase.from("courses").update({ source_order_id: null }).eq("source_order_id", oid);
+        }
+      }
+
+      // 4. Delete marketplace course (cascades to orders and comments)
       const { error } = await supabase.from("marketplace_courses").delete().eq("id", courseId);
       if (error) throw error;
       toast.success("Курс удалён из маркетплейса");
