@@ -1,8 +1,18 @@
 import { getXLSX } from "./xlsxHelper";
 
+export interface QuestionTags {
+  v1000: boolean;
+  vAbove1000: boolean;
+  gII: boolean;
+  gIII: boolean;
+  gIV: boolean;
+  gV: boolean;
+}
+
 export interface ParsedQuestion {
   question: string;
   options: string[];
+  tags: QuestionTags;
 }
 
 export interface ParsedSection {
@@ -12,9 +22,31 @@ export interface ParsedSection {
   customTitle: string;
 }
 
+const emptyTags = (): QuestionTags => ({
+  v1000: false, vAbove1000: false, gII: false, gIII: false, gIV: false, gV: false,
+});
+
+/**
+ * Read "+" markers from columns 1-6 of a row.
+ * Col 1 = до 1000 В, Col 2 = до и выше 1000 В,
+ * Col 3 = II, Col 4 = III, Col 5 = IV, Col 6 = V
+ */
+function readTags(row: any[]): QuestionTags {
+  const is = (col: number) => String(row[col] || "").trim() === "+";
+  return {
+    v1000: is(1),
+    vAbove1000: is(2),
+    gII: is(3),
+    gIII: is(4),
+    gIV: is(5),
+    gV: is(6),
+  };
+}
+
 /**
  * Parses a bulk Excel file with test questions grouped by normative document sections.
  * Structure: Section header → "Вопрос N" → question text → answer options (3-5)
+ * Columns 1-6 contain "+" markers for voltage/group filtering.
  */
 export async function parseExcelBulkTests(file: File): Promise<ParsedSection[]> {
   const XLSX = await getXLSX();
@@ -33,6 +65,7 @@ export async function parseExcelBulkTests(file: File): Promise<ParsedSection[]> 
   let currentQuestions: ParsedQuestion[] = [];
   let currentQuestionText = "";
   let currentOptions: string[] = [];
+  let currentTags: QuestionTags = emptyTags();
   let state: "idle" | "after_marker" | "collecting_options" = "idle";
 
   const isQuestionMarker = (text: string) => /^Вопрос\s+\d+$/i.test(text.trim());
@@ -47,10 +80,12 @@ export async function parseExcelBulkTests(file: File): Promise<ParsedSection[]> 
       currentQuestions.push({
         question: currentQuestionText,
         options: [...currentOptions],
+        tags: { ...currentTags },
       });
     }
     currentQuestionText = "";
     currentOptions = [];
+    currentTags = emptyTags();
   };
 
   const flushSection = () => {
@@ -66,15 +101,10 @@ export async function parseExcelBulkTests(file: File): Promise<ParsedSection[]> 
     currentQuestions = [];
   };
 
-  // Determine if a row is likely a section header:
-  // - col 0 has text, doesn't match "Вопрос N"
-  // - other columns (1-6) are mostly empty
   const isSectionHeader = (row: any[]): boolean => {
     const text = String(row[0] || "").trim();
     if (!text || text.length < 10) return false;
     if (isQuestionMarker(text)) return false;
-
-    // Check if cols 1-6 are mostly empty
     let emptyCount = 0;
     for (let j = 1; j <= 6 && j < row.length; j++) {
       const val = String(row[j] || "").trim();
@@ -93,28 +123,21 @@ export async function parseExcelBulkTests(file: File): Promise<ParsedSection[]> 
     if (isQuestionMarker(cellText)) {
       const num = getQuestionNumber(cellText);
 
-      // If question number is 1 and we need to find section header
-      if (num === 1) {
-        // Look backwards for section header
-        flushSection();
+      // Read tags from columns 1-6 on the "Вопрос N" row
+      const tags = readTags(row);
 
-        // Find section header: look at rows before this "Вопрос 1"
-        // Check the row immediately before, or 2-3 rows before
+      if (num === 1) {
+        flushSection();
         for (let back = i - 1; back >= Math.max(0, i - 5); back--) {
           const prevRow = data[back];
           if (!prevRow || !prevRow[0]) continue;
           const prevText = String(prevRow[0]).trim();
           if (!prevText || isQuestionMarker(prevText)) break;
-
-          // This could be the section header or an option from previous section
-          // If it's relatively long and not a short answer, it's likely a section header
           if (prevText.length > 15 && !isQuestionMarker(prevText)) {
             currentSectionTitle = prevText;
             break;
           }
         }
-
-        // Fallback: if no section title found, use a default
         if (!currentSectionTitle) {
           currentSectionTitle = `Раздел ${sections.length + 1}`;
         }
@@ -122,38 +145,30 @@ export async function parseExcelBulkTests(file: File): Promise<ParsedSection[]> 
         flushQuestion();
       }
 
+      currentTags = tags;
       state = "after_marker";
       continue;
     }
 
     if (state === "after_marker") {
-      // This row is the question text
       currentQuestionText = cellText;
       state = "collecting_options";
       continue;
     }
 
     if (state === "collecting_options") {
-      // Check if this might be a section header for the next section
-      // (appears between questions when not preceded by "Вопрос N")
       if (isSectionHeader(row) && currentOptions.length >= 2) {
-        // This is likely a section header, not an option
-        // Don't consume it here; it will be picked up by the "Вопрос 1" logic
         continue;
       }
-
       currentOptions.push(cellText);
       continue;
     }
 
-    // If we're idle and see a potential section header, save it
     if (state === "idle" && cellText.length > 15) {
       currentSectionTitle = cellText;
     }
   }
 
-  // Flush remaining
   flushSection();
-
   return sections;
 }
