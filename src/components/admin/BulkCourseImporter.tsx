@@ -120,7 +120,7 @@ export function BulkCourseImporter({ onComplete }: BulkCourseImporterProps) {
           const batch = questions.slice(b, b + batchSize).map((q, idx) => ({
             lesson_id: lessonData.id,
             question: q.question,
-            options: JSON.stringify(q.options),
+            options: q.options.map(text => ({ text })),
             correct_answer: 0,
             order_index: b + idx,
             is_bank_question: true,
