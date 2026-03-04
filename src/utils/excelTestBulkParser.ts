@@ -157,9 +157,6 @@ export async function parseExcelBulkTests(file: File): Promise<ParsedSection[]> 
     }
 
     if (state === "collecting_options") {
-      if (isSectionHeader(row) && currentOptions.length >= 2) {
-        continue;
-      }
       currentOptions.push(cellText);
       continue;
     }
