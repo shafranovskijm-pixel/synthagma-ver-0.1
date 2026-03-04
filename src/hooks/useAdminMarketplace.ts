@@ -320,17 +320,35 @@ export function useAdminMarketplace() {
     return true;
   });
 
-  // Group filtered courses by category
-  const groupedCourses: { category: string; courses: MarketplaceCourseWithDetails[] }[] = (() => {
+  // Group filtered courses by category, then nest under "Курсы Ростехнадзора" except specific exclusions
+  const EXCLUDED_FROM_RTN = ["Охрана труда при работах на высоте"];
+  
+  const groupedCourses: { category: string; courses: MarketplaceCourseWithDetails[]; subGroups?: { category: string; courses: MarketplaceCourseWithDetails[] }[] }[] = (() => {
     const map = new Map<string, MarketplaceCourseWithDetails[]>();
     for (const c of filteredCourses) {
       const cat = extractCategory(c.course?.title);
       if (!map.has(cat)) map.set(cat, []);
       map.get(cat)!.push(c);
     }
-    return Array.from(map.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([category, courses]) => ({ category, courses }));
+    
+    const rtnSubGroups: { category: string; courses: MarketplaceCourseWithDetails[] }[] = [];
+    const standalone: { category: string; courses: MarketplaceCourseWithDetails[] }[] = [];
+    
+    for (const [category, courses] of Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b))) {
+      if (EXCLUDED_FROM_RTN.includes(category) || category === "Без категории") {
+        standalone.push({ category, courses });
+      } else {
+        rtnSubGroups.push({ category, courses });
+      }
+    }
+    
+    const result: { category: string; courses: MarketplaceCourseWithDetails[]; subGroups?: { category: string; courses: MarketplaceCourseWithDetails[] }[] }[] = [];
+    if (rtnSubGroups.length > 0) {
+      const allRtnCourses = rtnSubGroups.flatMap(g => g.courses);
+      result.push({ category: "Курсы Ростехнадзора", courses: allRtnCourses, subGroups: rtnSubGroups });
+    }
+    result.push(...standalone);
+    return result;
   })();
 
   return {
