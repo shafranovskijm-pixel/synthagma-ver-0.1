@@ -236,7 +236,10 @@ export function AdminMarketplaceManager() {
 
         {/* Import */}
         <TabsContent value="import" className="space-y-6">
-          <BulkCourseImporter />
+          <BulkCourseImporter onComplete={() => {
+            h.fetchData();
+            h.setActiveTab("catalog");
+          }} />
         </TabsContent>
 
         {/* Orders */}
