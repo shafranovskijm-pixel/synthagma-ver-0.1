@@ -5,10 +5,14 @@ import { ParsedSection } from "@/utils/excelTestBulkParser";
 import { FileUploadStep } from "./bulk-import/FileUploadStep";
 import { ConfigStep } from "./bulk-import/ConfigStep";
 import { CreationStep } from "./bulk-import/CreationStep";
-import { CourseCombo, VOLTAGE_OPTIONS, GROUP_OPTIONS } from "./bulk-import/types";
+import { CourseCombo } from "./bulk-import/types";
 import { Button } from "@/components/ui/button";
 
-export function BulkCourseImporter() {
+interface BulkCourseImporterProps {
+  onComplete?: () => void;
+}
+
+export function BulkCourseImporter({ onComplete }: BulkCourseImporterProps) {
   const [step, setStep] = useState<"upload" | "config" | "creating" | "done">("upload");
   const [sections, setSections] = useState<ParsedSection[]>([]);
   const [creationState, setCreationState] = useState({
@@ -150,6 +154,7 @@ export function BulkCourseImporter() {
 
       setStep("done");
       toast.success(`Создано ${completed.length} курсов!`);
+      onComplete?.();
     } catch (err: any) {
       console.error("Bulk create error:", err);
       toast.error(`Ошибка: ${err.message || "Не удалось создать курсы"}`);
