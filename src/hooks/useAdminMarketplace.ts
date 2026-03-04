@@ -335,7 +335,7 @@ export function useAdminMarketplace() {
     const standalone: { category: string; courses: MarketplaceCourseWithDetails[] }[] = [];
     
     for (const [category, courses] of Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b))) {
-      if (EXCLUDED_FROM_RTN.includes(category) || category === "Без категории") {
+      if (EXCLUDED_FROM_RTN.includes(category)) {
         standalone.push({ category, courses });
       } else {
         rtnSubGroups.push({ category, courses });
