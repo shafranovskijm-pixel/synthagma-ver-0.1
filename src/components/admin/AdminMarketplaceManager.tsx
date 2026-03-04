@@ -33,6 +33,37 @@ const statusLabels: Record<string, { label: string; color: string }> = {
   cancelled: { label: "Отменена", color: "bg-red-500/10 text-red-600 border-red-500/20" },
 };
 
+function renderCourseRow(item: any, h: any, navigate: any) {
+  return (
+    <TableRow key={item.id} className={!item.is_active ? "opacity-60" : ""}>
+      <TableCell>
+        <span className="text-sm">{h.extractShortTitle(item.course?.title)}</span>
+      </TableCell>
+      <TableCell className="w-[100px] text-sm">{item.price_student.toLocaleString()} ₽</TableCell>
+      <TableCell className="w-[100px] text-sm">{item.price_organization.toLocaleString()} ₽</TableCell>
+      <TableCell className="w-[60px]">
+        <Switch checked={item.is_active} onCheckedChange={() => h.handleToggleActive(item)} />
+      </TableCell>
+      <TableCell className="w-[110px]">
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="h-8 w-8" title="Переместить в категорию" onClick={() => { h.setMovingCourse(item); h.setTargetCategory(h.extractCategory(item.course?.title)); h.setShowMoveCategoryDialog(true); }}>
+            <FolderInput className="w-3.5 h-3.5" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8" title="Редактировать уроки" onClick={() => navigate(`/course-builder/${item.course_id}`)}>
+            <BookOpen className="w-3.5 h-3.5" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8" title="Редактировать курс" onClick={() => { h.setEditingCourse(item); h.setShowEditDialog(true); }}>
+            <Edit className="w-3.5 h-3.5" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => h.handleDeleteCourse(item.id)}>
+            <Trash2 className="w-3.5 h-3.5" />
+          </Button>
+        </div>
+      </TableCell>
+    </TableRow>
+  );
+}
+
 export function AdminMarketplaceManager() {
   const navigate = useNavigate();
   const h = useAdminMarketplace();
@@ -137,7 +168,7 @@ export function AdminMarketplaceManager() {
             /* Grouped list view */
             <div className="space-y-2">
               {h.groupedCourses.map((group) => (
-                <Collapsible key={group.category} defaultOpen>
+                <Collapsible key={group.category}>
                   <Card>
                     <CollapsibleTrigger className="flex items-center justify-between w-full px-4 py-3 hover:bg-secondary/30 transition-colors rounded-t-xl group">
                       <div className="flex items-center gap-3">
@@ -147,38 +178,34 @@ export function AdminMarketplaceManager() {
                       <Badge variant="secondary" className="shrink-0">{group.courses.length}</Badge>
                     </CollapsibleTrigger>
                     <CollapsibleContent>
-                      <Table>
-                        <TableBody>
-                          {group.courses.map((item) => (
-                            <TableRow key={item.id} className={!item.is_active ? "opacity-60" : ""}>
-                              <TableCell>
-                                <span className="text-sm">{h.extractShortTitle(item.course?.title)}</span>
-                              </TableCell>
-                              <TableCell className="w-[100px] text-sm">{item.price_student.toLocaleString()} ₽</TableCell>
-                              <TableCell className="w-[100px] text-sm">{item.price_organization.toLocaleString()} ₽</TableCell>
-                              <TableCell className="w-[60px]">
-                                <Switch checked={item.is_active} onCheckedChange={() => h.handleToggleActive(item)} />
-                              </TableCell>
-                              <TableCell className="w-[110px]">
-                              <div className="flex items-center gap-1">
-                                  <Button variant="ghost" size="icon" className="h-8 w-8" title="Переместить в категорию" onClick={() => { h.setMovingCourse(item); h.setTargetCategory(h.extractCategory(item.course?.title)); h.setShowMoveCategoryDialog(true); }}>
-                                    <FolderInput className="w-3.5 h-3.5" />
-                                  </Button>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8" title="Редактировать уроки" onClick={() => navigate(`/course-builder/${item.course_id}`)}>
-                                    <BookOpen className="w-3.5 h-3.5" />
-                                  </Button>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8" title="Редактировать курс" onClick={() => { h.setEditingCourse(item); h.setShowEditDialog(true); }}>
-                                    <Edit className="w-3.5 h-3.5" />
-                                  </Button>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => h.handleDeleteCourse(item.id)}>
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </Button>
+                      {group.subGroups ? (
+                        <div className="space-y-1 pb-2">
+                          {group.subGroups.map((sub) => (
+                            <Collapsible key={sub.category}>
+                              <CollapsibleTrigger className="flex items-center justify-between w-full px-6 py-2 hover:bg-secondary/20 transition-colors group">
+                                <div className="flex items-center gap-2">
+                                  <ChevronDown className="w-3.5 h-3.5 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
+                                  <span className="text-sm font-medium text-left">{sub.category}</span>
                                 </div>
-                              </TableCell>
-                            </TableRow>
+                                <Badge variant="outline" className="shrink-0 text-xs">{sub.courses.length}</Badge>
+                              </CollapsibleTrigger>
+                              <CollapsibleContent>
+                                <Table>
+                                  <TableBody>
+                                    {sub.courses.map((item) => renderCourseRow(item, h, navigate))}
+                                  </TableBody>
+                                </Table>
+                              </CollapsibleContent>
+                            </Collapsible>
                           ))}
-                        </TableBody>
-                      </Table>
+                        </div>
+                      ) : (
+                        <Table>
+                          <TableBody>
+                            {group.courses.map((item) => renderCourseRow(item, h, navigate))}
+                          </TableBody>
+                        </Table>
+                      )}
                     </CollapsibleContent>
                   </Card>
                 </Collapsible>
