@@ -537,10 +537,14 @@ export function AdminMarketplaceManager() {
             <div className="space-y-2">
               <Label>Или введите новую</Label>
               <Input
+                value={h.newMoveCategoryInput}
                 placeholder="Новая категория..."
                 className="rounded-xl"
                 onChange={(e) => {
-                  if (e.target.value.trim()) h.setTargetCategory(e.target.value.trim());
+                  h.setNewMoveCategoryInput(e.target.value);
+                  if (e.target.value.trim()) {
+                    h.setTargetCategory(e.target.value.trim());
+                  }
                 }}
               />
             </div>
