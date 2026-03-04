@@ -272,10 +272,23 @@ export function useAdminMarketplace() {
     return true;
   });
 
+  // Group filtered courses by category
+  const groupedCourses: { category: string; courses: MarketplaceCourseWithDetails[] }[] = (() => {
+    const map = new Map<string, MarketplaceCourseWithDetails[]>();
+    for (const c of filteredCourses) {
+      const cat = extractCategory(c.course?.title);
+      if (!map.has(cat)) map.set(cat, []);
+      map.get(cat)!.push(c);
+    }
+    return Array.from(map.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([category, courses]) => ({ category, courses }));
+  })();
+
   return {
     activeTab, setActiveTab, isLoading, searchQuery, setSearchQuery,
     selectedCategory, setSelectedCategory, viewMode, setViewMode,
-    courses, filteredCourses, orders, categories, extractCategory, extractShortTitle,
+    courses, filteredCourses, groupedCourses, orders, categories, extractCategory, extractShortTitle,
     // Create
     newTitle, setNewTitle, newDescription, setNewDescription,
     newDuration, setNewDuration, newPriceStudent, setNewPriceStudent,

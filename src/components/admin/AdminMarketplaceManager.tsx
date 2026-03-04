@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   Store, Plus, Search, Edit, Trash2, Eye, Loader2,
   Package, ShoppingCart, Building2, Users, Tag, Sparkles, BookOpen, Upload,
-  List, LayoutGrid,
+  List, LayoutGrid, ChevronDown,
 } from "lucide-react";
 import { BulkCourseImporter } from "./BulkCourseImporter";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,6 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useAdminMarketplace } from "@/hooks/useAdminMarketplace";
@@ -100,24 +101,6 @@ export function AdminMarketplaceManager() {
 
         {/* Catalog */}
         <TabsContent value="catalog" className="space-y-4">
-          {/* Category filter */}
-          <Select value={h.selectedCategory} onValueChange={h.setSelectedCategory}>
-            <SelectTrigger className="w-full max-w-md rounded-xl">
-              <SelectValue placeholder="Все категории" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Все категории ({h.courses.length})</SelectItem>
-              {h.categories.map((cat) => {
-                const count = h.courses.filter(c => h.extractCategory(c.course?.title) === cat).length;
-                return (
-                  <SelectItem key={cat} value={cat}>
-                    {cat} ({count})
-                  </SelectItem>
-                );
-              })}
-            </SelectContent>
-          </Select>
-
           {/* Search + view toggle */}
           <div className="flex items-center gap-4">
             <div className="relative flex-1 max-w-md">
@@ -148,50 +131,53 @@ export function AdminMarketplaceManager() {
               </CardContent>
             </Card>
           ) : h.viewMode === "list" ? (
-            /* List view */
-            <Card>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Название</TableHead>
-                    <TableHead className="w-[100px]">Студенты</TableHead>
-                    <TableHead className="w-[100px]">Организации</TableHead>
-                    <TableHead className="w-[80px]">Статус</TableHead>
-                    <TableHead className="w-[120px]"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {h.filteredCourses.map((item) => (
-                    <TableRow key={item.id} className={!item.is_active ? "opacity-60" : ""}>
-                      <TableCell>
-                        <div>
-                          <span className="font-semibold">{h.extractCategory(item.course?.title)}</span>
-                          <span className="block text-xs text-muted-foreground/60">{h.extractShortTitle(item.course?.title)}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-semibold text-sm">{item.price_student.toLocaleString()} ₽</TableCell>
-                      <TableCell className="font-semibold text-sm">{item.price_organization.toLocaleString()} ₽</TableCell>
-                      <TableCell>
-                        <Switch checked={item.is_active} onCheckedChange={() => h.handleToggleActive(item)} />
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="icon" className="h-8 w-8" title="Редактировать уроки" onClick={() => navigate(`/course-builder/${item.course_id}`)}>
-                            <BookOpen className="w-3.5 h-3.5" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8" title="Редактировать курс" onClick={() => { h.setEditingCourse(item); h.setShowEditDialog(true); }}>
-                            <Edit className="w-3.5 h-3.5" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => h.handleDeleteCourse(item.id)}>
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Card>
+            /* Grouped list view */
+            <div className="space-y-2">
+              {h.groupedCourses.map((group) => (
+                <Collapsible key={group.category} defaultOpen>
+                  <Card>
+                    <CollapsibleTrigger className="flex items-center justify-between w-full px-4 py-3 hover:bg-secondary/30 transition-colors rounded-t-xl group">
+                      <div className="flex items-center gap-3">
+                        <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
+                        <span className="font-semibold text-sm text-left">{group.category}</span>
+                      </div>
+                      <Badge variant="secondary" className="shrink-0">{group.courses.length}</Badge>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <Table>
+                        <TableBody>
+                          {group.courses.map((item) => (
+                            <TableRow key={item.id} className={!item.is_active ? "opacity-60" : ""}>
+                              <TableCell>
+                                <span className="text-sm">{h.extractShortTitle(item.course?.title)}</span>
+                              </TableCell>
+                              <TableCell className="w-[100px] text-sm">{item.price_student.toLocaleString()} ₽</TableCell>
+                              <TableCell className="w-[100px] text-sm">{item.price_organization.toLocaleString()} ₽</TableCell>
+                              <TableCell className="w-[60px]">
+                                <Switch checked={item.is_active} onCheckedChange={() => h.handleToggleActive(item)} />
+                              </TableCell>
+                              <TableCell className="w-[110px]">
+                                <div className="flex items-center gap-1">
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" title="Редактировать уроки" onClick={() => navigate(`/course-builder/${item.course_id}`)}>
+                                    <BookOpen className="w-3.5 h-3.5" />
+                                  </Button>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" title="Редактировать курс" onClick={() => { h.setEditingCourse(item); h.setShowEditDialog(true); }}>
+                                    <Edit className="w-3.5 h-3.5" />
+                                  </Button>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => h.handleDeleteCourse(item.id)}>
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </CollapsibleContent>
+                  </Card>
+                </Collapsible>
+              ))}
+            </div>
           ) : (
             /* Grid view */
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
