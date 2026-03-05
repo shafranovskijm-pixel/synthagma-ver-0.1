@@ -219,6 +219,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signInInProgress.current = true;
     
     try {
+      // CRITICAL: Clear any stale session BEFORE signing in
+      // This prevents the old refresh token from competing with the new one
+      try {
+        await supabase.auth.signOut({ scope: 'local' });
+      } catch (e) {
+        // Ignore signOut errors - we just want to clear local state
+        console.log('[Auth] Pre-signIn cleanup (ignore errors):', e);
+      }
+      
+      // Small delay to let the client settle after signOut
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -256,7 +268,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Delay clearing the flag so onAuthStateChange events from this login are still suppressed
       setTimeout(() => {
         signInInProgress.current = false;
-      }, 2000);
+      }, 3000);
     }
   };
 
