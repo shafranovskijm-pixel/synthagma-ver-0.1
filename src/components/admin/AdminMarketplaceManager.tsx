@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Store, Plus, Search, Edit, Trash2, Eye, Loader2,
@@ -88,6 +88,15 @@ export function AdminMarketplaceManager() {
   const [validatedCourses, setValidatedCourses] = useState<Record<string, 'ok' | 'error'>>({});
   const [validatingId, setValidatingId] = useState<string | null>(null);
 
+  // Initialize validated state from DB on courses load
+  useEffect(() => {
+    const init: Record<string, 'ok' | 'error'> = {};
+    h.courses.forEach((c: any) => {
+      if (c.is_validated) init[c.course_id] = 'ok';
+    });
+    setValidatedCourses(init);
+  }, [h.courses]);
+
   const handleValidateCourse = async (courseId: string) => {
     setValidatingId(courseId);
     try {
@@ -118,7 +127,15 @@ export function AdminMarketplaceManager() {
         issues.push("Нет уроков");
       }
 
-      setValidatedCourses(prev => ({ ...prev, [courseId]: issues.length === 0 ? 'ok' : 'error' }));
+      const isOk = issues.length === 0;
+      setValidatedCourses(prev => ({ ...prev, [courseId]: isOk ? 'ok' : 'error' }));
+      
+      // Persist to DB
+      const mpCourse = h.courses.find((c: any) => c.course_id === courseId);
+      if (mpCourse) {
+        await supabase.from("marketplace_courses").update({ is_validated: isOk } as any).eq("id", mpCourse.id);
+      }
+      
       if (issues.length > 0) {
         toast.error("Проблемы курса", { description: issues.join(" • "), duration: 8000 });
       } else {
@@ -231,23 +248,52 @@ export function AdminMarketplaceManager() {
               </CardContent>
             </Card>
           ) : h.viewMode === "list" ? (
-            /* Flat list view */
-            <Card>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Название</TableHead>
-                    <TableHead className="w-[100px]">Студенты</TableHead>
-                    <TableHead className="w-[100px]">Организации</TableHead>
-                    <TableHead className="w-[60px]">Активен</TableHead>
-                    <TableHead className="w-[130px]">Действия</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {h.filteredCourses.map((item) => renderCourseRow(item, h, navigate, handleBulkGenerate, validatedCourses, handleValidateCourse, validatingId))}
-                </TableBody>
-              </Table>
-            </Card>
+            /* Grouped accordion list view */
+            <div className="space-y-2">
+              {h.groupedCourses.map((group) => (
+                <Collapsible key={group.category}>
+                  <Card>
+                    <CollapsibleTrigger className="flex items-center justify-between w-full px-4 py-3 hover:bg-secondary/30 transition-colors rounded-t-xl group">
+                      <div className="flex items-center gap-3">
+                        <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
+                        <span className="font-semibold text-sm text-left">{group.category}</span>
+                      </div>
+                      <Badge variant="secondary" className="shrink-0">{group.courses.length}</Badge>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      {group.subGroups ? (
+                        <div className="space-y-1 pb-2">
+                          {group.subGroups.map((sub) => (
+                            <Collapsible key={sub.category}>
+                              <CollapsibleTrigger className="flex items-center justify-between w-full px-6 py-2 hover:bg-secondary/20 transition-colors group">
+                                <div className="flex items-center gap-2">
+                                  <ChevronDown className="w-3.5 h-3.5 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
+                                  <span className="text-sm font-medium text-left">{sub.category}</span>
+                                </div>
+                                <Badge variant="outline" className="shrink-0 text-xs">{sub.courses.length}</Badge>
+                              </CollapsibleTrigger>
+                              <CollapsibleContent>
+                                <Table>
+                                  <TableBody>
+                                    {sub.courses.map((item) => renderCourseRow(item, h, navigate, handleBulkGenerate, validatedCourses, handleValidateCourse, validatingId))}
+                                  </TableBody>
+                                </Table>
+                              </CollapsibleContent>
+                            </Collapsible>
+                          ))}
+                        </div>
+                      ) : (
+                        <Table>
+                          <TableBody>
+                            {group.courses.map((item) => renderCourseRow(item, h, navigate, handleBulkGenerate, validatedCourses, handleValidateCourse, validatingId))}
+                          </TableBody>
+                        </Table>
+                      )}
+                    </CollapsibleContent>
+                  </Card>
+                </Collapsible>
+              ))}
+            </div>
           ) : (
             /* Grid view */
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
