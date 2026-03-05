@@ -33,7 +33,7 @@ import {
   Presentation as PresentationIcon
 } from "lucide-react";
 import { ContentBlock, jsonToBlocks, BlockRenderer } from "@/components/course-builder/BlockEditor";
-import { cn } from "@/lib/utils";
+import { cn, getAdminAwareBackPath } from "@/lib/utils";
 import { FilePreviewDialog } from "@/components/course-learning/FilePreviewDialog";
 
 interface Lesson {
@@ -580,7 +580,7 @@ const CoursePreview = () => {
         <div className="text-center">
           <BookOpen className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
           <h1 className="text-2xl font-bold mb-4">Курс не найден</h1>
-          <Button onClick={() => navigate('/organization')}>
+          <Button onClick={() => navigate(getAdminAwareBackPath())}>
             Вернуться в панель
           </Button>
         </div>
@@ -596,7 +596,7 @@ const CoursePreview = () => {
           <Button 
             variant="ghost" 
             size="sm" 
-            onClick={() => fromStore ? navigate('/organization') : navigate(`/course-builder/${courseId}`)}
+            onClick={() => fromStore ? navigate(getAdminAwareBackPath()) : navigate(`/course-builder/${courseId}`)}
             className="mb-4 hover:bg-secondary"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -1003,7 +1003,7 @@ const CoursePreview = () => {
                 </Button>
               ) : fromStore ? (
                 <Button
-                  onClick={() => navigate('/organization')}
+                  onClick={() => navigate(getAdminAwareBackPath())}
                   className="gap-2"
                 >
                   <ArrowLeft className="w-4 h-4" />
