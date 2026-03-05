@@ -1,8 +1,10 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Building2, Plus, Search, Users, FileText, Loader2,
   ChevronRight, CheckCircle2, Clock, LayoutGrid, List,
+  CreditCard, Upload, RefreshCw,
 } from "lucide-react";
 
 import { useCompaniesManager } from "@/hooks/useCompaniesManager";
@@ -100,11 +102,53 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
 
       {/* Companies List */}
       {cm.filteredCompanies.length === 0 ? (
-        <div className="text-center py-16 text-muted-foreground">
-          <Building2 className="w-16 h-16 mx-auto mb-4 opacity-50" />
-          <p className="text-lg font-medium">{cm.searchQuery ? "Компании не найдены" : "Нет компаний"}</p>
-          <p className="text-sm mt-2">{cm.searchQuery ? "Попробуйте изменить поисковый запрос" : "Добавьте первую компанию"}</p>
-        </div>
+        cm.searchQuery ? (
+          <div className="text-center py-16 text-muted-foreground">
+            <Search className="w-16 h-16 mx-auto mb-4 opacity-50" />
+            <p className="text-lg font-medium">Компании не найдены</p>
+            <p className="text-sm mt-2">Попробуйте изменить поисковый запрос</p>
+          </div>
+        ) : (
+          <Card className="overflow-hidden border-0 shadow-lg">
+            <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-8">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-12 h-12 rounded-xl bg-primary/15 flex items-center justify-center">
+                  <Building2 className="w-6 h-6 text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold">Начните работу с корпоративными клиентами</h2>
+                  <p className="text-muted-foreground">Управляйте компаниями-заказчиками в одном месте</p>
+                </div>
+              </div>
+            </div>
+            <CardContent className="p-8 pt-6">
+              <div className="grid sm:grid-cols-2 gap-4 mb-8">
+                {[
+                  { icon: FileText, title: "База заказчиков", desc: "Ведите реестр компаний с реквизитами, ИНН, КПП и адресами — данные подтягиваются автоматически" },
+                  { icon: FileText, title: "Договоры, счета и акты", desc: "Автоматическое формирование документов по шаблонам с реквизитами компании" },
+                  { icon: CreditCard, title: "Контроль оплат", desc: "Отслеживание оплат и задолженностей в реальном времени с наглядной аналитикой" },
+                  { icon: Users, title: "Личный кабинет компании", desc: "Каждая компания получает свой кабинет с доступом к обучению сотрудников" },
+                  { icon: Upload, title: "Массовое зачисление", desc: "Загружайте списки сотрудников из Excel и зачисляйте на курсы в один клик" },
+                  { icon: RefreshCw, title: "Контроль переобучения", desc: "Планы обучения и автоматические напоминания о сроках переаттестации" },
+                ].map((feature, i) => (
+                  <div key={i} className="flex gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
+                    <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                      <feature.icon className="w-4 h-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">{feature.title}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{feature.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <Button size="lg" className="w-full sm:w-auto" onClick={() => cm.setShowCreateDialog(true)}>
+                <Plus className="w-4 h-4 mr-2" />
+                Добавить первую компанию
+              </Button>
+            </CardContent>
+          </Card>
+        )
       ) : lg.viewMode === 'grid' ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {cm.filteredCompanies.map((company) => (
