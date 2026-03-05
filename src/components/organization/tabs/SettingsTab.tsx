@@ -91,13 +91,23 @@ export function SettingsTab() {
   const isFreePlan = plan === 'free';
   const hasBranding = SUBSCRIPTION_PLANS[plan]?.limits?.branding ?? false;
 
-  const LockedOverlay = ({ requiredPlan = "Старт" }: { requiredPlan?: string }) => (
+  const LockedOverlay = ({ requiredPlan = "Старт", features = [] }: { requiredPlan?: string; features?: string[] }) => (
     <div className="absolute inset-0 z-10 bg-background/60 backdrop-blur-[2px] rounded-xl lg:rounded-2xl flex items-center justify-center">
-      <div className="flex flex-col items-center gap-2 text-center px-4">
+      <div className="flex flex-col items-center gap-2 text-center px-4 max-w-sm">
         <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center">
           <Lock className="w-5 h-5 text-muted-foreground" />
         </div>
         <p className="text-sm font-medium text-foreground">Доступно от тарифа «{requiredPlan}»</p>
+        {features.length > 0 && (
+          <ul className="text-left space-y-1 mt-1">
+            {features.map((f, i) => (
+              <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
+                <span className="text-primary mt-0.5">✓</span>
+                <span>{f}</span>
+              </li>
+            ))}
+          </ul>
+        )}
         <Button
           size="sm"
           variant="outline"
@@ -191,7 +201,12 @@ export function SettingsTab() {
 
       {/* Document Center */}
       <details className="bg-card rounded-xl lg:rounded-2xl border border-border group relative" open={!isFreePlan ? undefined : undefined}>
-        {isFreePlan && <LockedOverlay />}
+        {isFreePlan && <LockedOverlay features={[
+          "Шаблоны договоров с автозаполнением реквизитов",
+          "Протоколы аттестационной комиссии (Word)",
+          "Согласия на обработку персональных данных",
+          "Печать и подпись — автовставка во все документы",
+        ]} />}
         <summary className="p-4 lg:p-6 cursor-pointer list-none flex items-center justify-between">
           <h3 className="font-display font-semibold text-base lg:text-lg flex items-center gap-2">
             <FileText className="w-4 h-4 lg:w-5 lg:h-5" />
@@ -309,7 +324,10 @@ export function SettingsTab() {
 
       {/* Menu Items Settings */}
       <details className="bg-card rounded-xl lg:rounded-2xl border border-border group relative">
-        {isFreePlan && <LockedOverlay />}
+        {isFreePlan && <LockedOverlay features={[
+          "Гибкая настройка навигации под ваши задачи",
+          "Скрывайте неиспользуемые разделы",
+        ]} />}
         <summary className="p-4 lg:p-6 cursor-pointer list-none flex items-center justify-between">
           <h3 className="font-display font-semibold text-base lg:text-lg flex items-center gap-2">
             <LayoutGrid className="w-4 h-4 lg:w-5 lg:h-5" />
@@ -428,7 +446,11 @@ export function SettingsTab() {
 
       {/* Branding Settings */}
       <details className="bg-card rounded-2xl border border-border group relative">
-        {!hasBranding && <LockedOverlay requiredPlan="Стандарт" />}
+        {!hasBranding && <LockedOverlay requiredPlan="Стандарт" features={[
+          "Обложка и логотип вашей организации",
+          "Фирменные цвета в интерфейсе",
+          "Кастомное название в сайдбаре",
+        ]} />}
         <summary className="p-6 cursor-pointer list-none flex items-center justify-between">
           <h3 className="font-display font-semibold text-lg flex items-center gap-2">
             <Image className="w-5 h-5" />
@@ -666,7 +688,10 @@ export function SettingsTab() {
 
       {/* Login Page Branding */}
       <details className="bg-card rounded-2xl border border-border group relative">
-        {!hasBranding && <LockedOverlay requiredPlan="Стандарт" />}
+        {!hasBranding && <LockedOverlay requiredPlan="Стандарт" features={[
+          "Уникальная ссылка для входа учеников",
+          "Логотип и цвета на странице авторизации",
+        ]} />}
         <summary className="p-6 cursor-pointer list-none flex items-center justify-between">
           <h3 className="font-display font-semibold text-lg flex items-center gap-2">
             <LogIn className="w-5 h-5" />
@@ -690,7 +715,10 @@ export function SettingsTab() {
 
       {/* Student Dashboard Settings */}
       <details className="bg-card rounded-2xl border border-border group relative">
-        {!hasBranding && <LockedOverlay requiredPlan="Стандарт" />}
+        {!hasBranding && <LockedOverlay requiredPlan="Стандарт" features={[
+          "Выбор разделов: хранилище, достижения, ИИ-чат",
+          "Кастомизация под вашу программу обучения",
+        ]} />}
         <summary className="p-6 cursor-pointer list-none flex items-center justify-between">
           <h3 className="font-display font-semibold text-lg flex items-center gap-2">
             <Settings className="w-5 h-5" />
@@ -803,7 +831,10 @@ export function SettingsTab() {
 
       {/* System Diagnostics */}
       <details className="bg-card rounded-xl lg:rounded-2xl border border-border group relative">
-        {isFreePlan && <LockedOverlay />}
+        {isFreePlan && <LockedOverlay features={[
+          "Проверка заполненности данных организации",
+          "Мониторинг статуса интеграций",
+        ]} />}
         <summary className="p-4 lg:p-6 cursor-pointer list-none flex items-center justify-between">
           <h3 className="font-display font-semibold text-base lg:text-lg flex items-center gap-2">
             <AlertCircle className="w-4 h-4 lg:w-5 lg:h-5" />
