@@ -1,0 +1,1 @@
+ALTER TABLE public.marketplace_courses ADD COLUMN IF NOT EXISTS is_validated boolean NOT NULL DEFAULT false;

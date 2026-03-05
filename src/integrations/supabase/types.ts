@@ -1815,6 +1815,7 @@ export type Database = {
           description_short: string | null
           id: string
           is_active: boolean
+          is_validated: boolean
           organization_id: string | null
           preview_image_url: string | null
           price_organization: number
@@ -1827,6 +1828,7 @@ export type Database = {
           description_short?: string | null
           id?: string
           is_active?: boolean
+          is_validated?: boolean
           organization_id?: string | null
           preview_image_url?: string | null
           price_organization?: number
@@ -1839,6 +1841,7 @@ export type Database = {
           description_short?: string | null
           id?: string
           is_active?: boolean
+          is_validated?: boolean
           organization_id?: string | null
           preview_image_url?: string | null
           price_organization?: number
