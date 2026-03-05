@@ -105,6 +105,23 @@ export const TestQuestionEditor = forwardRef<TestQuestionEditorRef, TestQuestion
     }
   }, [generatedQuestions]);
 
+  // Sync correct_answer changes from parent (e.g. AI answers applied externally)
+  useEffect(() => {
+    if (!initialQuestions || initialQuestions.length === 0) return;
+    setQuestions(prev => {
+      let changed = false;
+      const updated = prev.map(q => {
+        const match = initialQuestions.find((iq: TestQuestion) => iq.id === q.id);
+        if (match && match.correct_answer !== q.correct_answer) {
+          changed = true;
+          return { ...q, correct_answer: match.correct_answer };
+        }
+        return q;
+      });
+      return changed ? updated : prev;
+    });
+  }, [initialQuestions]);
+
   useEffect(() => {
     // Only fetch once on mount
     if (hasFetched) return;
