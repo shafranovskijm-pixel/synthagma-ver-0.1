@@ -127,6 +127,33 @@ export function TestAnswersDialog({ questions, courseTitle, lessonTitle, onApply
     }
   };
 
+  const handleDownloadWithAnswers = (answers: (ParsedAnswer & { explanation?: string })[]) => {
+    const lines: string[] = [];
+    lines.push(`Курс: ${courseTitle}`);
+    if (lessonTitle) lines.push(`Урок: ${lessonTitle}`);
+    lines.push(`Модель: ${usedModel || 'AI'}`);
+    lines.push('');
+
+    answers.forEach((a) => {
+      const q = questions[a.questionNumber - 1];
+      if (!q) return;
+      const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+      lines.push(`Вопрос ${a.questionNumber}: ${q.question}`);
+      q.options.forEach((opt, j) => {
+        const marker = j === a.answerIndex ? '✅' : '  ';
+        lines.push(`${marker} ${letters[j] || (j + 1).toString()}) ${opt}`);
+      });
+      if (a.explanation) {
+        lines.push(`Пояснение: ${a.explanation}`);
+      }
+      lines.push('');
+    });
+
+    const safeName = courseTitle.replace(/[^a-zA-Zа-яА-ЯёЁ0-9 ]/g, '').trim().replace(/\s+/g, '_');
+    downloadTextFile(lines.join('\n'), `${safeName}_ответы_${usedModel || 'AI'}.txt`);
+    toast.success('Файл с ответами скачан');
+  };
+
   const handleApplyAutoAnswers = () => {
     if (!autoResult || autoResult.length === 0) return;
     onApplyAnswers(autoResult);
@@ -228,10 +255,16 @@ export function TestAnswersDialog({ questions, courseTitle, lessonTitle, onApply
                   </details>
                 )}
 
-                <Button onClick={handleApplyAutoAnswers} className="w-full gap-2">
-                  <CheckCircle2 className="w-4 h-4" />
-                  Применить {autoResult.length} ответов
-                </Button>
+                <div className="flex gap-2">
+                  <Button onClick={handleApplyAutoAnswers} className="flex-1 gap-2">
+                    <CheckCircle2 className="w-4 h-4" />
+                    Применить {autoResult.length} ответов
+                  </Button>
+                  <Button variant="outline" onClick={() => handleDownloadWithAnswers(autoResult)} className="gap-2">
+                    <Download className="w-4 h-4" />
+                    Скачать
+                  </Button>
+                </div>
               </div>
             )}
           </TabsContent>
