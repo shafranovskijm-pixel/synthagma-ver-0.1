@@ -285,7 +285,7 @@ export function SortableLessonItem({
                     const updated = [...(lesson.questions as any[] || [])];
                     answers.forEach(a => {
                       if (updated[a.questionNumber - 1]) {
-                        updated[a.questionNumber - 1] = { ...updated[a.questionNumber - 1], correctAnswer: a.answerIndex };
+                        updated[a.questionNumber - 1] = { ...updated[a.questionNumber - 1], correct_answer: a.answerIndex };
                       }
                     });
                     onUpdate({ questions: updated as TestQuestionLocal[] });
