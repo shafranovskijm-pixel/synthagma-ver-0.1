@@ -227,34 +227,9 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
 
         const blocks = textData.blocks;
 
-        updateLesson(lesson.id, { status: "generating_image" });
-        let imageUrl: string | null = null;
-        try {
-          // Build contextual image prompt from generated content
-          const textContent = blocks
-            .filter((b: any) => b.type === "paragraph" || b.type === "heading1" || b.type === "heading2")
-            .map((b: any) => b.content)
-            .join(" ")
-            .slice(0, 300);
-          const imagePrompt = `Профессиональная образовательная иллюстрация. Тема: ${lesson.title}. Ключевые понятия: ${textContent}. Стиль: чистая инфографика, схема или диаграмма для учебного курса.`;
-          const { data: imgData, error: imgError } = await supabase.functions.invoke("generate-image", {
-            body: { prompt: imagePrompt },
-          });
-          if (!imgError && imgData?.url) {
-            imageUrl = imgData.url;
-          }
-        } catch {
-          console.warn("Image generation failed for", lesson.title);
-        }
-
-        const finalBlocks = [...blocks];
-        if (imageUrl) {
-          finalBlocks.push({ type: "image", content: imageUrl });
-        }
-
         const { error: saveError } = await supabase
           .from("lessons")
-          .update({ content: JSON.stringify(finalBlocks) })
+          .update({ content: JSON.stringify(blocks) })
           .eq("id", lesson.id);
 
         if (saveError) throw new Error("Ошибка сохранения: " + saveError.message);
