@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -32,7 +33,7 @@ import {
   Search, Trash2, Loader2, Upload, Video, FileText,
   Image as ImageIcon, Music, HardDrive, FolderOpen, RefreshCw, File,
   ChevronDown, ChevronRight, Presentation, Stamp, Receipt, Building2, BookOpen,
-  UserCheck, ExternalLink, Download, Eye
+  UserCheck, ExternalLink, Download, Eye, Shield
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -510,13 +511,56 @@ export function StorageManager({ organizationId }: StorageManagerProps) {
           <span className="ml-2 text-muted-foreground">Загрузка файлов...</span>
         </div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-16 text-muted-foreground">
-          <FolderOpen className="w-12 h-12 mx-auto mb-3 opacity-40" />
-          <p className="font-medium">{files.length === 0 ? "Хранилище пусто" : "Нет файлов по фильтру"}</p>
-          <p className="text-sm mt-1">
-            {files.length === 0 ? "Загрузите файлы через курсы или кнопку «Загрузить файл»" : "Попробуйте изменить параметры поиска"}
-          </p>
-        </div>
+        files.length === 0 ? (
+          <Card className="overflow-hidden border-0 shadow-lg">
+            <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-8">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-12 h-12 rounded-xl bg-primary/15 flex items-center justify-center">
+                  <HardDrive className="w-6 h-6 text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold">Ваше облачное хранилище готово к работе</h2>
+                  <p className="text-muted-foreground">Все файлы организации — в одном месте</p>
+                </div>
+              </div>
+            </div>
+            <CardContent className="p-8 pt-6">
+              <div className="grid sm:grid-cols-2 gap-4 mb-8">
+                {[
+                  { icon: FolderOpen, title: "Все файлы из курсов", desc: "Автоматический сбор видео, изображений и документов из всех курсов в единый каталог" },
+                  { icon: Eye, title: "Инлайн-предпросмотр", desc: "Смотрите видео, PDF, изображения и аудио прямо в браузере без скачивания" },
+                  { icon: Search, title: "Умная группировка", desc: "Файлы сгруппированы по разделам с поиском и фильтрацией по типу" },
+                  { icon: Shield, title: "Безопасный доступ", desc: "Приватные документы студентов доступны через подписанные URL с ограниченным сроком" },
+                  { icon: Upload, title: "Загрузка в один клик", desc: "Загружайте файлы через интерфейс хранилища или напрямую из конструктора курсов" },
+                  { icon: HardDrive, title: "Внешнее хранилище", desc: "Подключите внешнее S3-совместимое хранилище для масштабирования объёмов" },
+                ].map((feature, i) => (
+                  <div key={i} className="flex gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
+                    <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                      <feature.icon className="w-4 h-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">{feature.title}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{feature.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <Button size="lg" className="w-full sm:w-auto" asChild>
+                <label>
+                  <input type="file" className="hidden" onChange={handleUpload} />
+                  <Upload className="w-4 h-4 mr-2" />
+                  Загрузить первый файл
+                </label>
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="text-center py-16 text-muted-foreground">
+            <Search className="w-12 h-12 mx-auto mb-3 opacity-40" />
+            <p className="font-medium">Нет файлов по фильтру</p>
+            <p className="text-sm mt-1">Попробуйте изменить параметры поиска</p>
+          </div>
+        )
       ) : (
         <ScrollArea className="h-[calc(100vh-460px)] min-h-[300px]">
           <div className="space-y-2">
