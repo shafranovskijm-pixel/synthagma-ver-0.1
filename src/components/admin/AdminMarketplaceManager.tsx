@@ -73,10 +73,10 @@ export function AdminMarketplaceManager() {
   const h = useAdminMarketplace();
   const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
   const [isGeneratingShortDesc, setIsGeneratingShortDesc] = useState(false);
-  const [bulkGenCourse, setBulkGenCourse] = useState<{ id: string; title: string } | null>(null);
+  const [bulkGenCourse, setBulkGenCourse] = useState<{ id: string; title: string; description?: string } | null>(null);
 
   const handleBulkGenerate = (item: any) => {
-    setBulkGenCourse({ id: item.course_id, title: item.course?.title || "" });
+    setBulkGenCourse({ id: item.course_id, title: item.course?.title || "", description: item.course?.description || "" });
   };
 
   const handleGenerateDescription = async () => {
@@ -606,6 +606,7 @@ export function AdminMarketplaceManager() {
           onOpenChange={(v) => { if (!v) setBulkGenCourse(null); }}
           courseId={bulkGenCourse.id}
           courseTitle={bulkGenCourse.title}
+          courseDescription={bulkGenCourse.description || ""}
         />
       )}
     </div>

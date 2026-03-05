@@ -12,7 +12,6 @@ serve(async (req) => {
   }
 
   try {
-    // SECURITY: Verify authentication
     const authHeader = req.headers.get('authorization');
     if (!authHeader) {
       return new Response(
@@ -21,14 +20,12 @@ serve(async (req) => {
       );
     }
 
-    // Create authenticated client to verify the caller
     const supabaseAuth = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    // Verify user identity
     const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
     if (authError || !user) {
       return new Response(
@@ -37,7 +34,6 @@ serve(async (req) => {
       );
     }
 
-    // Verify user has appropriate role (organization or admin)
     const { data: roleData } = await supabaseAuth
       .from('user_roles')
       .select('role')
@@ -65,17 +61,50 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const systemPrompt = `Ты - эксперт по созданию образовательных курсов. Твоя задача - создать структуру курса на основе названия и описания.
+    const systemPrompt = `Ты - эксперт по созданию образовательных курсов для дополнительного профессионального образования (ДПО).
 
-Правила:
-1. Создай от 5 до 12 уроков в зависимости от сложности темы
-2. Каждый урок должен иметь тип: "text" (теория), "video" (видеоурок), "audio" (аудиолекция), или "test" (тест)
-3. Структура должна быть логичной: от простого к сложному
-4. Начинай с введения, заканчивай итоговым тестом
-5. Добавляй тесты после каждых 2-3 теоретических уроков
-6. Названия уроков должны быть конкретными и информативными
+Твоя задача - создать структуру учебного курса на основе названия и описания.
 
-Ответ должен содержать массив уроков в формате JSON.`;
+ТИПЫ УРОКОВ (используй ТОЛЬКО эти три):
+- "text" — теоретическая лекция (основной тип)
+- "test" — промежуточный или итоговый тест для проверки знаний
+- "practice" — практическое задание: ситуационная задача, кейс, анализ документа, разбор реальной ситуации
+
+ЗАПРЕЩЕНО использовать типы "video" и "audio" — курс полностью текстовый.
+
+ПРАВИЛА СТРУКТУРЫ:
+1. Создай от 8 до 15 уроков в зависимости от сложности темы
+2. Начинай с вводной лекции (общие понятия, цели курса, нормативная база)
+3. После каждых 2-3 теоретических лекций ставь промежуточный тест
+4. Включи 1-2 практических задания (кейсы, ситуационные задачи, анализ документов)
+5. Завершай курс итоговым тестом
+6. Названия уроков должны быть конкретными и профессиональными
+7. Логика: от базовых понятий → к деталям → к практике → к проверке
+
+ПРИМЕРНАЯ СТРУКТУРА:
+- Лекция: Введение и основные понятия
+- Лекция: [Тема 1]
+- Лекция: [Тема 2]  
+- Тест: Проверка знаний по темам 1-2
+- Лекция: [Тема 3]
+- Практика: Ситуационная задача / кейс
+- Лекция: [Тема 4]
+- Лекция: [Тема 5]
+- Тест: Проверка знаний по темам 3-5
+- Практика: Анализ документа / разбор случая
+- Итоговый тест
+
+ПРАКТИЧЕСКИЕ ЗАДАНИЯ могут быть:
+- Ситуационные задачи (описание рабочей ситуации + вопросы для анализа)
+- Кейс-стади (реальный или приближённый к реальности случай из практики)
+- Анализ нормативного документа (разбор приказа, регламента, инструкции)
+- Составление документа (заполнение формы, акта, протокола)
+- Разбор типичных ошибок и нарушений
+
+ВАЖНО:
+- Ссылайся только на действующие нормативно-правовые акты
+- Учитывай современные требования законодательства РФ
+- Названия должны отражать конкретное содержание, а не быть абстрактными`;
 
     const userPrompt = `Создай структуру курса:
 Название: ${title}
@@ -112,8 +141,8 @@ ${description ? `Описание: ${description}` : ""}
                         title: { type: "string", description: "Название урока" },
                         type: { 
                           type: "string", 
-                          enum: ["text", "video", "audio", "test"],
-                          description: "Тип урока"
+                          enum: ["text", "test", "practice"],
+                          description: "Тип урока: text (лекция), test (тест), practice (практическое задание)"
                         },
                         description: { type: "string", description: "Краткое описание содержания урока" }
                       },
@@ -151,12 +180,10 @@ ${description ? `Описание: ${description}` : ""}
     }
 
     const result = await response.json();
-    
     console.log("AI response structure:", JSON.stringify(result, null, 2).substring(0, 500));
     
     let lessons = [];
     
-    // Try to extract from tool call first
     const toolCall = result.choices?.[0]?.message?.tool_calls?.[0];
     if (toolCall && toolCall.function?.name === "create_course_structure") {
       try {
@@ -167,13 +194,10 @@ ${description ? `Описание: ${description}` : ""}
       }
     }
     
-    // Fallback: try to parse from message content if tool call didn't work
     if (lessons.length === 0) {
       const content = result.choices?.[0]?.message?.content;
       if (content) {
-        console.log("Trying to parse from content:", content.substring(0, 300));
         try {
-          // Try to find JSON in the content
           const jsonMatch = content.match(/\[[\s\S]*\]/);
           if (jsonMatch) {
             lessons = JSON.parse(jsonMatch[0]);
