@@ -170,9 +170,7 @@ interface JournalsManagerProps {
 
 export function JournalsManager({ organizationId }: JournalsManagerProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [expandedCategories, setExpandedCategories] = useState<string[]>(
-    JOURNAL_CATEGORIES.map((c) => c.id)
-  );
+  const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
   const [activeJournal, setActiveJournal] = useState<{
     type: string;
     title: string;
@@ -413,36 +411,60 @@ export function JournalsManager({ organizationId }: JournalsManagerProps) {
 
   return (
     <div className="space-y-6">
-      {/* Header Card */}
-      <div className="bg-card rounded-2xl border border-border p-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-              <ClipboardList className="w-6 h-6 text-primary" />
+      {/* Onboarding Header Card */}
+      <div className="bg-card rounded-2xl border border-border overflow-hidden">
+        <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-6">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-xl bg-primary/15 flex items-center justify-center flex-shrink-0">
+                <ClipboardList className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold">Полная система учёта для организаций ДПО</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Электронные журналы с автоматическим заполнением, экспортом и шаблонами
+                </p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-lg font-semibold">Журналы учёта</h2>
-              <p className="text-sm text-muted-foreground">
-                Обязательные и рекомендуемые журналы для организаций ДПО
-              </p>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <Button
+                variant="outline"
+                onClick={() => setShowIdentificationJournal(true)}
+                className="rounded-xl"
+              >
+                <Camera className="w-4 h-4 mr-2" />
+                Видеоидентификация
+              </Button>
+              <Button
+                onClick={() => setShowCreateWizard(true)}
+                className="rounded-xl"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Создать журнал
+              </Button>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setShowIdentificationJournal(true)}
-              className="rounded-xl"
-            >
-              <Camera className="w-4 h-4 mr-2" />
-              Видеоидентификация
-            </Button>
-            <Button
-              onClick={() => setShowCreateWizard(true)}
-              className="rounded-xl"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Создать журнал
-            </Button>
+        </div>
+        <div className="p-6 pt-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {[
+              { icon: ClipboardCheck, title: "Обязательные журналы", desc: "Посещаемость, успеваемость, итоговая аттестация, регистрация документов — всё в одном месте" },
+              { icon: BarChart3, title: "Автоматическое заполнение", desc: "Данные из курсов подтягиваются автоматически, не нужно вводить вручную" },
+              { icon: BookOpen, title: "Электронные журналы онлайн", desc: "Ведите учёт прямо в браузере с еженедельной сеткой и быстрым вводом оценок" },
+              { icon: Download, title: "Экспорт и шаблоны", desc: "Скачайте готовые шаблоны или выгрузите заполненные журналы в Excel" },
+              { icon: Settings, title: "Пользовательские журналы", desc: "Создавайте свои журналы с произвольными полями под задачи вашей организации" },
+              { icon: Camera, title: "Видеоидентификация", desc: "Верификация личности студентов с фотографиями и контролем статуса" },
+            ].map((feature, i) => (
+              <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-secondary/40">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <feature.icon className="w-4 h-4 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">{feature.title}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{feature.desc}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
