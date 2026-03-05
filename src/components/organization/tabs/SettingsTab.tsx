@@ -112,7 +112,7 @@ export function SettingsTab() {
           size="sm"
           variant="outline"
           className="rounded-xl gap-1.5 text-xs mt-1"
-          onClick={() => d.tabNavigation.setActiveTab('subscription' as any)}
+          onClick={() => d.tabNavigation.setActiveTab('subscription')}
         >
           <ArrowUpRight className="w-3.5 h-3.5" />
           Сменить тариф
