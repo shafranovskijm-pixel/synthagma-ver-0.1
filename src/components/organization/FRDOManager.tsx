@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Download, Search, Users, CheckCircle2, AlertCircle, XCircle, Filter, FileSpreadsheet } from "lucide-react";
+import { Loader2, Download, Search, Users, CheckCircle2, AlertCircle, XCircle, Filter, FileSpreadsheet, Shield, BarChart3, Upload, ClipboardCheck, BookOpen } from "lucide-react";
 import { FRDOExportDialog } from "./FRDOExportDialog";
 import { useFRDOManager } from "@/hooks/useFRDOManager";
 
@@ -57,7 +57,41 @@ export function FRDOManager({ organizationId }: { organizationId: string }) {
       </div>
 
       <div className="bg-card rounded-2xl border border-border overflow-hidden">
-        {filteredStudents.length === 0 ? <div className="text-center py-12 text-muted-foreground"><FileSpreadsheet className="w-12 h-12 mx-auto mb-4 opacity-50" /><p>Нет студентов</p></div> : (
+        {filteredStudents.length === 0 ? (
+          students.length === 0 ? (
+            <div className="p-6">
+              <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent rounded-2xl p-6 mb-4">
+                <h3 className="text-xl font-bold flex items-center gap-2">
+                  <Shield className="w-6 h-6 text-primary" />
+                  Автоматизируйте отчётность в ФИС ФРДО
+                </h3>
+                <p className="text-muted-foreground text-sm mt-1">Зачислите студентов на курсы — данные для выгрузки появятся автоматически</p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {[
+                  { icon: FileSpreadsheet, title: "Шаблоны ДПО и ПО", desc: "Готовые Excel-шаблоны на 35 и 41 колонку по стандарту ФИС ФРДО" },
+                  { icon: BarChart3, title: "Статусы заполнения", desc: "Мгновенный контроль: «Заполнено», «Частично», «Не заполнено»" },
+                  { icon: Upload, title: "Автозаполнение данных", desc: "ФИО, паспортные данные и СНИЛС подтягиваются из профиля автоматически" },
+                  { icon: ClipboardCheck, title: "Контроль недостающих полей", desc: "Система покажет, каких именно данных не хватает у каждого студента" },
+                  { icon: BookOpen, title: "Привязка к курсам", desc: "Данные группируются по курсам для удобной пакетной выгрузки" },
+                  { icon: Download, title: "Пакетный экспорт", desc: "Выгрузка всех студентов разом в формате, готовом для загрузки в ФРДО" },
+                ].map((f, i) => (
+                  <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-muted/30">
+                    <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                      <f.icon className="w-4 h-4 text-primary" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-sm">{f.title}</div>
+                      <div className="text-xs text-muted-foreground">{f.desc}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-12 text-muted-foreground"><FileSpreadsheet className="w-12 h-12 mx-auto mb-4 opacity-50" /><p>Нет студентов</p></div>
+          )
+        ) : (
           <div className="overflow-x-auto"><table className="w-full"><thead><tr className="border-b border-border bg-muted/30"><th className="text-left px-4 py-4 w-12"><input type="checkbox" checked={selectedStudents.size === filteredStudents.length && filteredStudents.length > 0} onChange={toggleSelectAll} className="w-4 h-4 rounded" /></th><th className="text-left px-4 py-4 text-sm font-medium text-muted-foreground">Студент</th><th className="text-left px-4 py-4 text-sm font-medium text-muted-foreground">Статус</th><th className="text-left px-4 py-4 text-sm font-medium text-muted-foreground">Курс</th><th className="text-left px-4 py-4 text-sm font-medium text-muted-foreground">Действия</th></tr></thead><tbody>{filteredStudents.map(s => {
             const { status, missingFields } = getFrdoStatus(s.user_id);
             const isSelected = selectedStudents.has(s.user_id);
