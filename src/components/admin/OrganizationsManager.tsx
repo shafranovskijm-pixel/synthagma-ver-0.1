@@ -6,14 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -727,230 +719,187 @@ export function OrganizationsManager() {
         )}
       </div>
 
-      {/* Table */}
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Организация</TableHead>
-                <TableHead>Статус</TableHead>
-                <TableHead>Контакты</TableHead>
-                <TableHead>Учётные данные</TableHead>
-                <TableHead className="text-center">Статистика</TableHead>
-                <TableHead className="text-right">Действия</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredOrganizations.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                    <Building2 className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                    {searchQuery ? "Ничего не найдено" : "Организации не найдены"}
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredOrganizations.map((org) => (
-                  <TableRow 
-                    key={org.id}
-                    className={org.is_paid ? "bg-green-500/5" : "bg-orange-500/5"}
+      {/* Organizations Grid */}
+      {filteredOrganizations.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground">
+          <Building2 className="w-12 h-12 mx-auto mb-2 opacity-50" />
+          <p>{searchQuery ? "Ничего не найдено" : "Организации не найдены"}</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {filteredOrganizations.map((org) => (
+            <Card
+              key={org.id}
+              className={`transition-shadow hover:shadow-md ${org.is_paid ? 'border-green-500/30' : 'border-orange-500/30'}`}
+            >
+              {/* Header: Name + Status */}
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div
+                    className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity min-w-0 flex-1"
+                    onClick={() => setViewingOrg(org)}
                   >
-                    <TableCell>
-                      <div 
-                        className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
-                        onClick={() => setViewingOrg(org)}
-                      >
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${org.is_paid ? 'bg-green-500/20' : 'bg-orange-500/20'}`}>
-                          <Building2 className={`w-5 h-5 ${org.is_paid ? 'text-green-600' : 'text-orange-600'}`} />
-                        </div>
-                        <div>
-                          <div className="font-medium text-primary hover:underline">{org.name}</div>
-                          {org.inn && (
-                            <div className="text-sm text-muted-foreground">ИНН: {org.inn}</div>
-                          )}
-                          {org.promo_code && (
-                            <Badge variant="outline" className="text-xs mt-0.5 border-green-500 text-green-600">
-                              🎟 {org.promo_code}
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="space-y-1">
-                        {org.is_paid ? (
-                          <Badge className="bg-green-500 hover:bg-green-600">
-                            <DollarSign className="w-3 h-3 mr-1" />
-                            Оплачено
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="border-orange-500 text-orange-600">
-                            Без оплаты
-                          </Badge>
-                        )}
-                        {org.tariff_type && org.tariff_type !== 'trial' && (
-                          <div>
-                            <Badge variant="secondary" className="text-xs">
-                              <Calendar className="w-3 h-3 mr-1" />
-                              {org.tariff_type === 'yearly' ? 'Годовой' : 'Месячный'}
-                            </Badge>
-                          </div>
-                        )}
-                        {org.paid_until && (
-                          <div className="text-xs text-muted-foreground">
-                            до {format(new Date(org.paid_until), "d MMM yyyy", { locale: ru })}
-                          </div>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-sm">
-                        <div>{org.email}</div>
-                        {org.phone && <div className="text-muted-foreground">{org.phone}</div>}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {org.credentials === undefined && detailsLoading ? (
-                        <div className="space-y-1.5">
-                          <Skeleton className="h-4 w-32" />
-                          <Skeleton className="h-4 w-24" />
-                        </div>
-                      ) : org.credentials ? (
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-1">
-                            <Key className="w-3 h-3 text-muted-foreground" />
-                            <span className="text-sm font-mono">{org.credentials.login_email}</span>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={() => copyToClipboard(org.credentials!.login_email, `email-${org.id}`)}
-                            >
-                              {copiedField === `email-${org.id}` ? (
-                                <Check className="w-3 h-3 text-green-500" />
-                              ) : (
-                                <Copy className="w-3 h-3" />
-                              )}
-                            </Button>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <span className="text-sm font-mono text-muted-foreground">
-                              {showPasswords[org.id] ? org.credentials.login_password : '••••••••'}
-                            </span>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={() => togglePassword(org.id)}
-                            >
-                              {showPasswords[org.id] ? (
-                                <EyeOff className="w-3 h-3" />
-                              ) : (
-                                <Eye className="w-3 h-3" />
-                              )}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={() => copyToClipboard(org.credentials!.login_password, `pass-${org.id}`)}
-                            >
-                              {copiedField === `pass-${org.id}` ? (
-                                <Check className="w-3 h-3 text-green-500" />
-                              ) : (
-                                <Copy className="w-3 h-3" />
-                              )}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={() => {
-                                setResetPasswordOrg(org);
-                                setNewPassword(generatePassword());
-                              }}
-                              title="Сбросить пароль (если текущий не работает)"
-                            >
-                              <RefreshCw className="w-3 h-3 text-orange-500" />
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleGenerateCredentials(org)}
-                          disabled={generatingCredentials === org.id}
-                          className="text-xs"
-                        >
-                          {generatingCredentials === org.id ? (
-                            <Loader2 className="w-3 h-3 animate-spin mr-1" />
-                          ) : (
-                            <Key className="w-3 h-3 mr-1" />
-                          )}
-                          Создать
-                        </Button>
+                    <div className={`w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center ${org.is_paid ? 'bg-green-500/20' : 'bg-orange-500/20'}`}>
+                      <Building2 className={`w-5 h-5 ${org.is_paid ? 'text-green-600' : 'text-orange-600'}`} />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-medium text-primary hover:underline truncate">{org.name}</div>
+                      {org.inn && (
+                        <div className="text-xs text-muted-foreground">ИНН: {org.inn}</div>
                       )}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <div className="flex items-center justify-center gap-1.5">
-                        {org.users_count === undefined && detailsLoading ? (
-                          <>
-                            <Skeleton className="h-5 w-12 rounded-full" />
-                            <Skeleton className="h-5 w-12 rounded-full" />
-                          </>
-                        ) : (
-                          <>
-                            <Badge variant="secondary" className="gap-1 text-xs">
-                              <Users className="w-3 h-3" />
-                              {org.users_count ?? 0}
-                            </Badge>
-                            <Badge variant="secondary" className="gap-1 text-xs">
-                              <BookOpen className="w-3 h-3" />
-                              {org.courses_count ?? 0}
-                            </Badge>
-                          </>
-                        )}
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                    {org.is_paid ? (
+                      <Badge className="bg-green-500 hover:bg-green-600 text-xs">
+                        <DollarSign className="w-3 h-3 mr-0.5" />
+                        Оплачено
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="border-orange-500 text-orange-600 text-xs">
+                        Без оплаты
+                      </Badge>
+                    )}
+                    {org.tariff_type && org.tariff_type !== 'trial' && (
+                      <Badge variant="secondary" className="text-xs">
+                        <Calendar className="w-3 h-3 mr-0.5" />
+                        {org.tariff_type === 'yearly' ? 'Год' : 'Мес'}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                {(org.promo_code || org.paid_until) && (
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                    {org.promo_code && (
+                      <Badge variant="outline" className="text-xs border-green-500 text-green-600">
+                        🎟 {org.promo_code}
+                      </Badge>
+                    )}
+                    {org.paid_until && (
+                      <span className="text-xs text-muted-foreground">
+                        до {format(new Date(org.paid_until), "d MMM yyyy", { locale: ru })}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </CardHeader>
+
+              {/* Body: Contacts + Credentials */}
+              <CardContent className="pb-3 space-y-3">
+                {/* Contacts */}
+                <div className="text-sm space-y-0.5">
+                  <div className="truncate">📧 {org.email}</div>
+                  {org.phone && <div className="text-muted-foreground">📱 {org.phone}</div>}
+                </div>
+
+                {/* Credentials */}
+                <div className="border-t pt-2">
+                  {org.credentials === undefined && detailsLoading ? (
+                    <div className="space-y-1.5">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-4 w-24" />
+                    </div>
+                  ) : org.credentials ? (
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-1">
+                        <Key className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                        <span className="text-xs font-mono truncate">{org.credentials.login_email}</span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-5 w-5 flex-shrink-0"
+                          onClick={() => copyToClipboard(org.credentials!.login_email, `email-${org.id}`)}
+                        >
+                          {copiedField === `email-${org.id}` ? (
+                            <Check className="w-3 h-3 text-green-500" />
+                          ) : (
+                            <Copy className="w-3 h-3" />
+                          )}
+                        </Button>
                       </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => setViewingOrg(org)}
-                          title="Просмотреть детали"
-                        >
-                          <FolderOpen className="w-4 h-4 text-primary" />
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs font-mono text-muted-foreground ml-4">
+                          {showPasswords[org.id] ? org.credentials.login_password : '••••••••'}
+                        </span>
+                        <Button variant="ghost" size="icon" className="h-5 w-5 flex-shrink-0" onClick={() => togglePassword(org.id)}>
+                          {showPasswords[org.id] ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
                         </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => viewAsOrganization(org)}
-                          title="Войти в организацию"
-                        >
-                          <ExternalLink className="w-4 h-4 text-muted-foreground" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => openEdit(org)}>
-                          <Pencil className="w-4 h-4" />
+                        <Button variant="ghost" size="icon" className="h-5 w-5 flex-shrink-0" onClick={() => copyToClipboard(org.credentials!.login_password, `pass-${org.id}`)}>
+                          {copiedField === `pass-${org.id}` ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => setDeleteOrg(org)}
+                          className="h-5 w-5 flex-shrink-0"
+                          onClick={() => { setResetPasswordOrg(org); setNewPassword(generatePassword()); }}
+                          title="Сбросить пароль"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <RefreshCw className="w-3 h-3 text-orange-500" />
                         </Button>
                       </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleGenerateCredentials(org)}
+                      disabled={generatingCredentials === org.id}
+                      className="text-xs w-full"
+                    >
+                      {generatingCredentials === org.id ? (
+                        <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                      ) : (
+                        <Key className="w-3 h-3 mr-1" />
+                      )}
+                      Создать учётные данные
+                    </Button>
+                  )}
+                </div>
+
+                {/* Stats */}
+                <div className="flex items-center gap-2 border-t pt-2">
+                  {org.users_count === undefined && detailsLoading ? (
+                    <>
+                      <Skeleton className="h-5 w-12 rounded-full" />
+                      <Skeleton className="h-5 w-12 rounded-full" />
+                    </>
+                  ) : (
+                    <>
+                      <Badge variant="secondary" className="gap-1 text-xs">
+                        <Users className="w-3 h-3" />
+                        {org.users_count ?? 0}
+                      </Badge>
+                      <Badge variant="secondary" className="gap-1 text-xs">
+                        <BookOpen className="w-3 h-3" />
+                        {org.courses_count ?? 0}
+                      </Badge>
+                    </>
+                  )}
+                </div>
+              </CardContent>
+
+              {/* Footer: Actions */}
+              <div className="flex items-center justify-between px-6 pb-4">
+                <Button variant="outline" size="sm" onClick={() => setViewingOrg(org)} className="text-xs">
+                  <FolderOpen className="w-3.5 h-3.5 mr-1" />
+                  Просмотр
+                </Button>
+                <div className="flex items-center gap-0.5">
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => viewAsOrganization(org)} title="Войти как">
+                    <ExternalLink className="w-4 h-4 text-muted-foreground" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(org)}>
+                    <Pencil className="w-4 h-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteOrg(org)}>
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {/* Edit Dialog */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
