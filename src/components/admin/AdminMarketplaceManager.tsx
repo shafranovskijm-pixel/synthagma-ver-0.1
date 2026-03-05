@@ -141,6 +141,8 @@ export function AdminMarketplaceManager() {
       } else {
         toast.success("Курс готов ✅");
       }
+      // Refresh to move course between folders
+      h.fetchData();
     } catch (e) {
       console.error(e);
       toast.error("Ошибка проверки");
@@ -253,13 +255,19 @@ export function AdminMarketplaceManager() {
               {h.groupedCourses.map((group) => (
                 <Collapsible key={group.category}>
                   <Card>
-                    <CollapsibleTrigger className="flex items-center justify-between w-full px-4 py-3 hover:bg-secondary/30 transition-colors rounded-t-xl group">
-                      <div className="flex items-center gap-3">
-                        <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
-                        <span className="font-semibold text-sm text-left">{group.category}</span>
-                      </div>
-                      <Badge variant="secondary" className="shrink-0">{group.courses.length}</Badge>
-                    </CollapsibleTrigger>
+              <CollapsibleTrigger className="flex items-center justify-between w-full px-4 py-3 hover:bg-secondary/30 transition-colors rounded-t-xl group">
+                       <div className="flex items-center gap-3">
+                         <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
+                         <span className="font-semibold text-sm text-left">{group.category}</span>
+                         {group.status === 'ready' && (
+                           <Badge className="bg-green-500/10 text-green-600 border-green-500/20 text-[10px]">Готово</Badge>
+                         )}
+                         {group.status === 'progress' && (
+                           <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20 text-[10px]">В работе</Badge>
+                         )}
+                       </div>
+                       <Badge variant="secondary" className="shrink-0">{group.courses.length}</Badge>
+                     </CollapsibleTrigger>
                     <CollapsibleContent>
                       {group.subGroups ? (
                         <div className="space-y-1 pb-2">

@@ -320,10 +320,10 @@ export function useAdminMarketplace() {
     return true;
   });
 
-  // Group filtered courses by category, then nest under "Курсы Ростехнадзора" except specific exclusions
+  // Group filtered courses by category, split into "ready" (is_validated) and "in progress"
   const EXCLUDED_FROM_RTN = ["Охрана труда при работах на высоте"];
   
-  const groupedCourses: { category: string; courses: MarketplaceCourseWithDetails[]; subGroups?: { category: string; courses: MarketplaceCourseWithDetails[] }[] }[] = (() => {
+  const groupedCourses: { category: string; courses: MarketplaceCourseWithDetails[]; status?: 'ready' | 'progress'; subGroups?: { category: string; courses: MarketplaceCourseWithDetails[] }[] }[] = (() => {
     const map = new Map<string, MarketplaceCourseWithDetails[]>();
     for (const c of filteredCourses) {
       const cat = extractCategory(c.course?.title);
@@ -331,21 +331,29 @@ export function useAdminMarketplace() {
       map.get(cat)!.push(c);
     }
     
-    const rtnSubGroups: { category: string; courses: MarketplaceCourseWithDetails[] }[] = [];
-    const standalone: { category: string; courses: MarketplaceCourseWithDetails[] }[] = [];
+    const rtnReadySubGroups: { category: string; courses: MarketplaceCourseWithDetails[] }[] = [];
+    const rtnProgressSubGroups: { category: string; courses: MarketplaceCourseWithDetails[] }[] = [];
+    const standalone: { category: string; courses: MarketplaceCourseWithDetails[]; status?: 'ready' | 'progress' }[] = [];
     
     for (const [category, courses] of Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b))) {
       if (EXCLUDED_FROM_RTN.includes(category)) {
         standalone.push({ category, courses });
       } else {
-        rtnSubGroups.push({ category, courses });
+        const ready = courses.filter(c => (c as any).is_validated === true);
+        const progress = courses.filter(c => (c as any).is_validated !== true);
+        if (ready.length > 0) rtnReadySubGroups.push({ category, courses: ready });
+        if (progress.length > 0) rtnProgressSubGroups.push({ category, courses: progress });
       }
     }
     
-    const result: { category: string; courses: MarketplaceCourseWithDetails[]; subGroups?: { category: string; courses: MarketplaceCourseWithDetails[] }[] }[] = [];
-    if (rtnSubGroups.length > 0) {
-      const allRtnCourses = rtnSubGroups.flatMap(g => g.courses);
-      result.push({ category: "Курсы Ростехнадзора", courses: allRtnCourses, subGroups: rtnSubGroups });
+    const result: { category: string; courses: MarketplaceCourseWithDetails[]; status?: 'ready' | 'progress'; subGroups?: { category: string; courses: MarketplaceCourseWithDetails[] }[] }[] = [];
+    if (rtnReadySubGroups.length > 0) {
+      const allReady = rtnReadySubGroups.flatMap(g => g.courses);
+      result.push({ category: "Курсы Ростехнадзора", courses: allReady, status: 'ready', subGroups: rtnReadySubGroups });
+    }
+    if (rtnProgressSubGroups.length > 0) {
+      const allProgress = rtnProgressSubGroups.flatMap(g => g.courses);
+      result.push({ category: "В работе", courses: allProgress, status: 'progress', subGroups: rtnProgressSubGroups });
     }
     result.push(...standalone);
     return result;
