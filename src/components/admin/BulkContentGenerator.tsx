@@ -163,13 +163,23 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
         if (insertError) throw new Error("Ошибка сохранения уроков: " + insertError.message);
       }
 
-      // Move existing test lessons to the end
-      if (existingTestCount > 0) {
-        const testLessonIds = lessons.filter(l => l.type === "test").map(l => l.id);
-        for (let t = 0; t < testLessonIds.length; t++) {
-          await supabase.from("lessons")
-            .update({ order_index: lessonsToInsert.length + t })
-            .eq("id", testLessonIds[t]);
+      // Robust reorder: all non-test lessons first, then tests at the end
+      const { data: allLessons } = await supabase
+        .from("lessons")
+        .select("id, type, order_index")
+        .eq("course_id", courseId)
+        .order("order_index");
+
+      if (allLessons) {
+        const nonTests = allLessons.filter(l => l.type !== "test");
+        const tests = allLessons.filter(l => l.type === "test");
+        const ordered = [...nonTests, ...tests];
+        for (let idx = 0; idx < ordered.length; idx++) {
+          if (ordered[idx].order_index !== idx) {
+            await supabase.from("lessons")
+              .update({ order_index: idx })
+              .eq("id", ordered[idx].id);
+          }
         }
       }
 
@@ -220,8 +230,15 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
         updateLesson(lesson.id, { status: "generating_image" });
         let imageUrl: string | null = null;
         try {
+          // Build contextual image prompt from generated content
+          const textContent = blocks
+            .filter((b: any) => b.type === "paragraph" || b.type === "heading1" || b.type === "heading2")
+            .map((b: any) => b.content)
+            .join(" ")
+            .slice(0, 300);
+          const imagePrompt = `Профессиональная образовательная иллюстрация. Тема: ${lesson.title}. Ключевые понятия: ${textContent}. Стиль: чистая инфографика, схема или диаграмма для учебного курса.`;
           const { data: imgData, error: imgError } = await supabase.functions.invoke("generate-image", {
-            body: { prompt: `Образовательная иллюстрация для урока: ${lesson.title}` },
+            body: { prompt: imagePrompt },
           });
           if (!imgError && imgData?.url) {
             imageUrl = imgData.url;
