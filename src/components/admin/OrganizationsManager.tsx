@@ -773,8 +773,6 @@ export function OrganizationsManager() {
               <tr className="border-b border-border bg-muted/30">
                 <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Организация</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Контакты</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Тариф</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Учётные данные</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Статистика</th>
                 <th className="text-right px-4 py-3 text-xs font-medium text-muted-foreground">Действия</th>
               </tr>
@@ -782,69 +780,40 @@ export function OrganizationsManager() {
             <tbody>
               {filteredOrganizations.map((org) => (
                 <tr key={org.id} className={`border-b border-border last:border-0 hover:bg-muted/30 transition-colors border-l-4 ${org.is_paid ? 'border-l-green-500' : 'border-l-orange-500'}`}>
-                  {/* Name */}
+                  {/* Name + Tariff */}
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => setViewingOrg(org)}>
                       <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold text-primary-foreground ${org.is_paid ? 'bg-green-500' : 'bg-orange-500'}`}>
                         {org.name.charAt(0).toUpperCase()}
                       </div>
                       <div className="min-w-0">
-                        <div className="font-medium text-sm hover:underline truncate max-w-[180px]">{org.name}</div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-sm hover:underline truncate max-w-[200px]">{org.name}</span>
+                          {org.subscription_plan && org.subscription_plan !== 'free' && (
+                            <Badge variant="secondary" className="text-[10px] gap-0.5 px-1.5 py-0 h-4 flex-shrink-0">
+                              <Crown className="w-2.5 h-2.5" />
+                              {getPlanInfo(org.subscription_plan as SubscriptionPlan).name}
+                            </Badge>
+                          )}
+                        </div>
                         {org.inn && <div className="text-xs text-muted-foreground">ИНН: {org.inn}</div>}
                       </div>
                     </div>
                   </td>
                   {/* Contacts */}
                   <td className="px-4 py-3">
-                    <div className="text-sm space-y-0.5">
-                      <div className="flex items-center gap-1.5 truncate max-w-[180px]">
+                    <div className="text-xs space-y-0.5">
+                      <div className="flex items-center gap-1.5 truncate max-w-[200px]">
                         <Mail className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                        <span className="text-xs truncate">{org.email}</span>
+                        <span className="truncate">{org.email}</span>
                       </div>
                       {org.phone && (
                         <div className="flex items-center gap-1.5 text-muted-foreground">
                           <Phone className="w-3 h-3 flex-shrink-0" />
-                          <span className="text-xs">{org.phone}</span>
+                          <span>{org.phone}</span>
                         </div>
                       )}
                     </div>
-                  </td>
-                  {/* Tariff */}
-                  <td className="px-4 py-3">
-                    <div className="flex flex-col gap-1">
-                      {org.subscription_plan && org.subscription_plan !== 'free' ? (
-                        <Badge variant="secondary" className="text-xs gap-1 w-fit">
-                          <Crown className="w-3 h-3" />
-                          {getPlanInfo(org.subscription_plan as SubscriptionPlan).name}
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-xs text-muted-foreground w-fit">Бесплатный</Badge>
-                      )}
-                      {org.is_paid ? (
-                        <Badge className="bg-green-500 hover:bg-green-600 text-xs w-fit">Оплачено</Badge>
-                      ) : (
-                        <Badge variant="outline" className="border-orange-500 text-orange-600 text-xs w-fit">Без оплаты</Badge>
-                      )}
-                    </div>
-                  </td>
-                  {/* Credentials */}
-                  <td className="px-4 py-3">
-                    {org.credentials === undefined && detailsLoading ? (
-                      <Skeleton className="h-4 w-24" />
-                    ) : org.credentials ? (
-                      <div className="flex items-center gap-1">
-                        <Key className="w-3 h-3 text-muted-foreground" />
-                        <span className="text-xs font-mono truncate max-w-[120px]">{org.credentials.login_email}</span>
-                        <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => copyToClipboard(org.credentials!.login_email, `email-${org.id}`)}>
-                          {copiedField === `email-${org.id}` ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
-                        </Button>
-                      </div>
-                    ) : (
-                      <Button variant="outline" size="sm" onClick={() => handleGenerateCredentials(org)} disabled={generatingCredentials === org.id} className="text-xs h-7">
-                        {generatingCredentials === org.id ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Key className="w-3 h-3 mr-1" />}
-                        Создать
-                      </Button>
-                    )}
                   </td>
                   {/* Stats */}
                   <td className="px-4 py-3">
