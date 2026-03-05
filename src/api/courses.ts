@@ -106,7 +106,7 @@ export async function createCourse(
     .single();
 
   if (error) {
-    console.error("Error creating course:", error.message, error.details, error.hint, error.code);
+    console.error("Error creating course:", JSON.stringify(error));
     return null;
   }
 
