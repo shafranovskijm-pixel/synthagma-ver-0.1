@@ -25,7 +25,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Building2, Loader2, Users, BookOpen, Key, Eye, EyeOff, Copy, Check, Download, ExternalLink, Search, X, FolderOpen, DollarSign, Calendar, RefreshCw, Mail, Phone, MoreHorizontal, Crown } from "lucide-react";
+import { Plus, Pencil, Trash2, Building2, Loader2, Users, BookOpen, Key, Eye, EyeOff, Copy, Check, Download, ExternalLink, Search, X, FolderOpen, DollarSign, Calendar, RefreshCw, Mail, Phone, MoreHorizontal, Crown, LayoutGrid, List } from "lucide-react";
 import { getPlanInfo, type SubscriptionPlan } from "@/constants/subscriptionPlans";
 import {
   DropdownMenu,
@@ -79,6 +79,7 @@ export function OrganizationsManager() {
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -727,34 +728,166 @@ export function OrganizationsManager() {
         </Card>
       </div>
 
-      {/* Search */}
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input
-          placeholder="Поиск по названию, email, ИНН, телефону..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10 pr-10"
-        />
-        {searchQuery && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-            onClick={() => setSearchQuery("")}
-          >
-            <X className="w-4 h-4" />
+      {/* Search + View Toggle */}
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Поиск по названию, email, ИНН, телефону..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 pr-10"
+          />
+          {searchQuery && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+              onClick={() => setSearchQuery("")}
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
+        <div className="flex items-center border rounded-lg overflow-hidden">
+          <Button variant={viewMode === 'grid' ? 'default' : 'ghost'} size="icon" className="h-8 w-8 rounded-none" onClick={() => setViewMode('grid')}>
+            <LayoutGrid className="w-4 h-4" />
           </Button>
-        )}
+          <Button variant={viewMode === 'list' ? 'default' : 'ghost'} size="icon" className="h-8 w-8 rounded-none" onClick={() => setViewMode('list')}>
+            <List className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
 
-      {/* Organizations Grid */}
+      {/* Organizations */}
       {filteredOrganizations.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <Building2 className="w-12 h-12 mx-auto mb-2 opacity-50" />
           <p>{searchQuery ? "Ничего не найдено" : "Организации не найдены"}</p>
         </div>
+      ) : viewMode === 'list' ? (
+        /* LIST VIEW */
+        <div className="bg-card rounded-xl border border-border overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-border bg-muted/30">
+                <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Организация</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Контакты</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Тариф</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Учётные данные</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground">Статистика</th>
+                <th className="text-right px-4 py-3 text-xs font-medium text-muted-foreground">Действия</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredOrganizations.map((org) => (
+                <tr key={org.id} className={`border-b border-border last:border-0 hover:bg-muted/30 transition-colors border-l-4 ${org.is_paid ? 'border-l-green-500' : 'border-l-orange-500'}`}>
+                  {/* Name */}
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => setViewingOrg(org)}>
+                      <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold text-primary-foreground ${org.is_paid ? 'bg-green-500' : 'bg-orange-500'}`}>
+                        {org.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-medium text-sm hover:underline truncate max-w-[180px]">{org.name}</div>
+                        {org.inn && <div className="text-xs text-muted-foreground">ИНН: {org.inn}</div>}
+                      </div>
+                    </div>
+                  </td>
+                  {/* Contacts */}
+                  <td className="px-4 py-3">
+                    <div className="text-sm space-y-0.5">
+                      <div className="flex items-center gap-1.5 truncate max-w-[180px]">
+                        <Mail className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                        <span className="text-xs truncate">{org.email}</span>
+                      </div>
+                      {org.phone && (
+                        <div className="flex items-center gap-1.5 text-muted-foreground">
+                          <Phone className="w-3 h-3 flex-shrink-0" />
+                          <span className="text-xs">{org.phone}</span>
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                  {/* Tariff */}
+                  <td className="px-4 py-3">
+                    <div className="flex flex-col gap-1">
+                      {org.subscription_plan && org.subscription_plan !== 'free' ? (
+                        <Badge variant="secondary" className="text-xs gap-1 w-fit">
+                          <Crown className="w-3 h-3" />
+                          {getPlanInfo(org.subscription_plan as SubscriptionPlan).name}
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-xs text-muted-foreground w-fit">Бесплатный</Badge>
+                      )}
+                      {org.is_paid ? (
+                        <Badge className="bg-green-500 hover:bg-green-600 text-xs w-fit">Оплачено</Badge>
+                      ) : (
+                        <Badge variant="outline" className="border-orange-500 text-orange-600 text-xs w-fit">Без оплаты</Badge>
+                      )}
+                    </div>
+                  </td>
+                  {/* Credentials */}
+                  <td className="px-4 py-3">
+                    {org.credentials === undefined && detailsLoading ? (
+                      <Skeleton className="h-4 w-24" />
+                    ) : org.credentials ? (
+                      <div className="flex items-center gap-1">
+                        <Key className="w-3 h-3 text-muted-foreground" />
+                        <span className="text-xs font-mono truncate max-w-[120px]">{org.credentials.login_email}</span>
+                        <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => copyToClipboard(org.credentials!.login_email, `email-${org.id}`)}>
+                          {copiedField === `email-${org.id}` ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button variant="outline" size="sm" onClick={() => handleGenerateCredentials(org)} disabled={generatingCredentials === org.id} className="text-xs h-7">
+                        {generatingCredentials === org.id ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Key className="w-3 h-3 mr-1" />}
+                        Создать
+                      </Button>
+                    )}
+                  </td>
+                  {/* Stats */}
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="gap-1 text-xs"><Users className="w-3 h-3" />{org.users_count ?? 0}</Badge>
+                      <Badge variant="secondary" className="gap-1 text-xs"><BookOpen className="w-3 h-3" />{org.courses_count ?? 0}</Badge>
+                    </div>
+                  </td>
+                  {/* Actions */}
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <Button variant="outline" size="sm" onClick={() => setViewingOrg(org)} className="text-xs h-7">
+                        <FolderOpen className="w-3.5 h-3.5 mr-1" />
+                        Просмотр
+                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-7 w-7">
+                            <MoreHorizontal className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => viewAsOrganization(org)}>
+                            <ExternalLink className="w-4 h-4 mr-2" />Войти как
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => openEdit(org)}>
+                            <Pencil className="w-4 h-4 mr-2" />Редактировать
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="text-destructive" onClick={() => setDeleteOrg(org)}>
+                            <Trash2 className="w-4 h-4 mr-2" />Удалить
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : (
+        /* GRID VIEW */
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {filteredOrganizations.map((org) => (
             <Card
