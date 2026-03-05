@@ -51,7 +51,7 @@ serve(async (req) => {
       );
     }
 
-    const { lessonTitle, lessonType, courseTitle, courseDescription } = await req.json();
+    const { lessonTitle, lessonType, courseTitle, courseDescription, previousLessons } = await req.json();
 
     if (!lessonTitle?.trim()) {
       return new Response(
@@ -202,11 +202,15 @@ serve(async (req) => {
       };
     }
 
+    const previousLessonsList = Array.isArray(previousLessons) && previousLessons.length > 0
+      ? `\n\nУЖЕ СОЗДАННЫЕ УРОКИ (НЕ ДУБЛИРУЙ ИХ СОДЕРЖАНИЕ, создай УНИКАЛЬНЫЙ контент):\n${previousLessons.map((t: string, i: number) => `${i + 1}. ${t}`).join("\n")}`
+      : "";
+
     const userPrompt = `Создай контент для урока:
 Название урока: ${lessonTitle}
 ${courseTitle ? `Курс: ${courseTitle}` : ""}
 ${courseDescription ? `Описание курса: ${courseDescription}` : ""}
-Тип: ${lessonType === "test" ? "тест с вопросами" : lessonType === "practice" ? "практическое задание (кейс/ситуационная задача)" : "текстовая лекция"}`;
+Тип: ${lessonType === "test" ? "тест с вопросами" : lessonType === "practice" ? "практическое задание (кейс/ситуационная задача)" : "текстовая лекция"}${previousLessonsList}`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
