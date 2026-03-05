@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useRef, useCallback, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -21,21 +21,69 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [userRole, setUserRole] = useState<'admin' | 'organization' | 'student' | 'sales_manager' | 'company' | null>(null);
   const [loading, setLoading] = useState(true);
   const [roleLoaded, setRoleLoaded] = useState(false);
+  
+  // Prevent concurrent role fetches and auth state race conditions
+  const roleFetchInFlight = useRef<string | null>(null);
+  const lastAuthEvent = useRef<number>(0);
+
+  const fetchUserRole = useCallback(async (userId: string) => {
+    // Deduplicate: skip if already fetching for this user
+    if (roleFetchInFlight.current === userId) {
+      return;
+    }
+    roleFetchInFlight.current = userId;
+    
+    try {
+      const { data, error } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId)
+        .single();
+      
+      if (data && !error) {
+        console.log('Fetched user role:', data.role);
+        const role = data.role as 'admin' | 'organization' | 'student' | 'sales_manager' | 'company';
+        setUserRole(role);
+        localStorage.setItem('user_role', role);
+      } else if (error) {
+        console.error('Error fetching user role:', error);
+        setUserRole('student');
+      }
+    } catch (error) {
+      console.error('Error fetching user role:', error);
+      setUserRole('student');
+    } finally {
+      roleFetchInFlight.current = null;
+      setRoleLoaded(true);
+    }
+  }, []);
 
   useEffect(() => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        // Debounce rapid auth events (prevents token refresh storm)
+        const now = Date.now();
+        if (event === 'TOKEN_REFRESHED' && now - lastAuthEvent.current < 2000) {
+          // Skip rapid-fire token refresh events, just update session silently
+          setSession(session);
+          setUser(session?.user ?? null);
+          return;
+        }
+        lastAuthEvent.current = now;
+        
         setSession(session);
         setUser(session?.user ?? null);
         
         // Fetch user role after auth state change
         if (session?.user) {
+          // Use setTimeout to avoid Supabase deadlock warning
           setTimeout(() => {
             fetchUserRole(session.user.id);
           }, 0);
-        } else {
+        } else if (event === 'SIGNED_OUT') {
           setUserRole(null);
+          localStorage.removeItem('user_role');
         }
       }
     );
@@ -60,32 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initializeAuth();
 
     return () => subscription.unsubscribe();
-  }, []);
-
-  const fetchUserRole = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId)
-        .single();
-      
-      if (data && !error) {
-        console.log('Fetched user role:', data.role);
-        const role = data.role as 'admin' | 'organization' | 'student' | 'sales_manager' | 'company';
-        setUserRole(role);
-        localStorage.setItem('user_role', role);
-      } else if (error) {
-        console.error('Error fetching user role:', error);
-        setUserRole('student');
-      }
-    } catch (error) {
-      console.error('Error fetching user role:', error);
-      setUserRole('student');
-    } finally {
-      setRoleLoaded(true);
-    }
-  };
+  }, [fetchUserRole]);
 
   const signIn = async (email: string, password: string) => {
     console.log('[Auth] signIn attempt for:', email);
