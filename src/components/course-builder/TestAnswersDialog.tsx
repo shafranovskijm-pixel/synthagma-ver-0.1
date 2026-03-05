@@ -30,6 +30,7 @@ export function TestAnswersDialog({ questions, courseTitle, lessonTitle, onApply
   const [isAutoGenerating, setIsAutoGenerating] = useState(false);
   const [autoResult, setAutoResult] = useState<(ParsedAnswer & { explanation?: string })[] | null>(null);
   const [autoError, setAutoError] = useState<string | null>(null);
+  const [usedModel, setUsedModel] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleExport = () => {
@@ -101,9 +102,12 @@ export function TestAnswersDialog({ questions, courseTitle, lessonTitle, onApply
 
       if (data.parseError) {
         setAutoError("ИИ вернул ответ в неожиданном формате. Попробуйте ещё раз.");
-        console.warn("GigaChat raw response:", data.raw);
+        setUsedModel(data.model || null);
+        console.warn("AI raw response:", data.raw);
         return;
       }
+
+      setUsedModel(data.model || "AI");
 
       const answers: (ParsedAnswer & { explanation?: string })[] = (data.answers || []).map((a: any) => ({
         questionNumber: a.questionIndex + 1,
@@ -114,8 +118,8 @@ export function TestAnswersDialog({ questions, courseTitle, lessonTitle, onApply
 
       setAutoResult(answers);
     } catch (err: any) {
-      console.error("GigaChat error:", err);
-      const msg = err?.message || "Ошибка при обращении к GigaChat";
+      console.error("AI error:", err);
+      const msg = err?.message || "Ошибка при обращении к AI";
       setAutoError(msg);
       toast.error(msg);
     } finally {
@@ -126,9 +130,10 @@ export function TestAnswersDialog({ questions, courseTitle, lessonTitle, onApply
   const handleApplyAutoAnswers = () => {
     if (!autoResult || autoResult.length === 0) return;
     onApplyAnswers(autoResult);
-    toast.success(`Применено ${autoResult.length} ответов от GigaChat`);
+    toast.success(`Применено ${autoResult.length} ответов${usedModel ? ` (${usedModel})` : ''}`);
     setOpen(false);
     setAutoResult(null);
+    setUsedModel(null);
   };
 
   return (
@@ -140,14 +145,14 @@ export function TestAnswersDialog({ questions, courseTitle, lessonTitle, onApply
         </DialogHeader>
         <Tabs defaultValue="auto">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="auto" className="gap-1"><Sparkles className="w-3 h-3" />GigaChat</TabsTrigger>
+            <TabsTrigger value="auto" className="gap-1"><Sparkles className="w-3 h-3" />AI Ответы</TabsTrigger>
             <TabsTrigger value="export" className="gap-1"><Download className="w-3 h-3" />Скачать</TabsTrigger>
             <TabsTrigger value="import" className="gap-1"><Upload className="w-3 h-3" />Загрузить</TabsTrigger>
           </TabsList>
 
           <TabsContent value="auto" className="space-y-3 mt-3">
             <p className="text-sm text-muted-foreground">
-              GigaChat автоматически определит правильные ответы для {questions.length} вопросов
+              AI автоматически определит правильные ответы для {questions.length} вопросов
               на основе знаний нормативных документов Ростехнадзора.
             </p>
 
@@ -179,9 +184,16 @@ export function TestAnswersDialog({ questions, courseTitle, lessonTitle, onApply
 
             {autoResult && autoResult.length > 0 && (
               <div className="space-y-3">
-                <div className="flex items-center gap-2 text-sm">
-                  <CheckCircle2 className="w-4 h-4 text-green-500" />
-                  <span>Определено ответов: <strong>{autoResult.length}</strong> из {questions.length}</span>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm">
+                    <CheckCircle2 className="w-4 h-4 text-primary" />
+                    <span>Определено ответов: <strong>{autoResult.length}</strong> из {questions.length}</span>
+                  </div>
+                  {usedModel && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-secondary text-muted-foreground">
+                      {usedModel}
+                    </span>
+                  )}
                 </div>
 
                 <div className="bg-secondary/30 rounded-lg p-3 text-xs max-h-48 overflow-y-auto space-y-1.5">
@@ -191,7 +203,7 @@ export function TestAnswersDialog({ questions, courseTitle, lessonTitle, onApply
                     return (
                       <div key={a.questionNumber} className="flex gap-2">
                         <span className="text-muted-foreground shrink-0">#{a.questionNumber}</span>
-                        <span className="font-medium text-green-600 dark:text-green-400 shrink-0">{answerLetter}</span>
+                        <span className="font-medium text-primary shrink-0">{answerLetter}</span>
                         <span className="text-muted-foreground truncate">
                           {q?.question?.substring(0, 50)}...
                         </span>
@@ -267,7 +279,7 @@ export function TestAnswersDialog({ questions, courseTitle, lessonTitle, onApply
             {preview && (
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-sm">
-                  <CheckCircle2 className="w-4 h-4 text-green-500" />
+                  <CheckCircle2 className="w-4 h-4 text-primary" />
                   <span>Распознано ответов: <strong>{preview.answers.length}</strong> из {questions.length}</span>
                 </div>
                 {preview.errors.length > 0 && (
