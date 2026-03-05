@@ -779,17 +779,6 @@ export function OrganizationsManager() {
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                    {org.subscription_plan && org.subscription_plan !== 'free' && (
-                      <Badge variant="secondary" className="text-xs gap-1">
-                        <Crown className="w-3 h-3" />
-                        {getPlanInfo(org.subscription_plan as SubscriptionPlan).name}
-                      </Badge>
-                    )}
-                    {!org.subscription_plan || org.subscription_plan === 'free' ? (
-                      <Badge variant="outline" className="text-xs text-muted-foreground">
-                        Бесплатный
-                      </Badge>
-                    ) : null}
                     {org.is_paid ? (
                       <Badge className="bg-green-500 hover:bg-green-600 text-xs">
                         <DollarSign className="w-3 h-3 mr-0.5" />
