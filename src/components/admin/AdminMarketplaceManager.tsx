@@ -6,6 +6,7 @@ import {
   List, LayoutGrid, ChevronDown, FolderPlus, FolderInput,
 } from "lucide-react";
 import { BulkCourseImporter } from "./BulkCourseImporter";
+import { BulkContentGenerator } from "./BulkContentGenerator";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -33,7 +34,7 @@ const statusLabels: Record<string, { label: string; color: string }> = {
   cancelled: { label: "Отменена", color: "bg-red-500/10 text-red-600 border-red-500/20" },
 };
 
-function renderCourseRow(item: any, h: any, navigate: any) {
+function renderCourseRow(item: any, h: any, navigate: any, onBulkGenerate: (item: any) => void) {
   return (
     <TableRow key={item.id} className={!item.is_active ? "opacity-60" : ""}>
       <TableCell>
@@ -44,8 +45,11 @@ function renderCourseRow(item: any, h: any, navigate: any) {
       <TableCell className="w-[60px]">
         <Switch checked={item.is_active} onCheckedChange={() => h.handleToggleActive(item)} />
       </TableCell>
-      <TableCell className="w-[110px]">
+      <TableCell className="w-[130px]">
         <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="h-8 w-8" title="AI контент" onClick={() => onBulkGenerate(item)}>
+            <Sparkles className="w-3.5 h-3.5" />
+          </Button>
           <Button variant="ghost" size="icon" className="h-8 w-8" title="Переместить в категорию" onClick={() => { h.setMovingCourse(item); h.setTargetCategory(h.extractCategory(item.course?.title)); h.setShowMoveCategoryDialog(true); }}>
             <FolderInput className="w-3.5 h-3.5" />
           </Button>
@@ -69,6 +73,11 @@ export function AdminMarketplaceManager() {
   const h = useAdminMarketplace();
   const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
   const [isGeneratingShortDesc, setIsGeneratingShortDesc] = useState(false);
+  const [bulkGenCourse, setBulkGenCourse] = useState<{ id: string; title: string } | null>(null);
+
+  const handleBulkGenerate = (item: any) => {
+    setBulkGenCourse({ id: item.course_id, title: item.course?.title || "" });
+  };
 
   const handleGenerateDescription = async () => {
     if (!h.newTitle.trim()) { toast.error("Сначала введите название курса"); return; }
@@ -192,7 +201,7 @@ export function AdminMarketplaceManager() {
                               <CollapsibleContent>
                                 <Table>
                                   <TableBody>
-                                    {sub.courses.map((item) => renderCourseRow(item, h, navigate))}
+                                    {sub.courses.map((item) => renderCourseRow(item, h, navigate, handleBulkGenerate))}
                                   </TableBody>
                                 </Table>
                               </CollapsibleContent>
@@ -202,7 +211,7 @@ export function AdminMarketplaceManager() {
                       ) : (
                         <Table>
                           <TableBody>
-                            {group.courses.map((item) => renderCourseRow(item, h, navigate))}
+                            {group.courses.map((item) => renderCourseRow(item, h, navigate, handleBulkGenerate))}
                           </TableBody>
                         </Table>
                       )}
@@ -248,6 +257,9 @@ export function AdminMarketplaceManager() {
                         <span className="text-xs text-muted-foreground">{item.is_active ? "Виден" : "Скрыт"}</span>
                       </div>
                       <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" title="AI контент" onClick={() => handleBulkGenerate(item)}>
+                          <Sparkles className="w-3.5 h-3.5" />
+                        </Button>
                         <Button variant="ghost" size="icon" className="h-8 w-8" title="Переместить в категорию" onClick={() => { h.setMovingCourse(item); h.setTargetCategory(h.extractCategory(item.course?.title)); h.setShowMoveCategoryDialog(true); }}>
                           <FolderInput className="w-3.5 h-3.5" />
                         </Button>
@@ -587,6 +599,15 @@ export function AdminMarketplaceManager() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {bulkGenCourse && (
+        <BulkContentGenerator
+          open={!!bulkGenCourse}
+          onOpenChange={(v) => { if (!v) setBulkGenCourse(null); }}
+          courseId={bulkGenCourse.id}
+          courseTitle={bulkGenCourse.title}
+        />
+      )}
     </div>
   );
 }
