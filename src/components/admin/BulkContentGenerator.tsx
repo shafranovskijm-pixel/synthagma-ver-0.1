@@ -163,6 +163,16 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
         if (insertError) throw new Error("Ошибка сохранения уроков: " + insertError.message);
       }
 
+      // Move existing test lessons to the end
+      if (existingTestCount > 0) {
+        const testLessonIds = lessons.filter(l => l.type === "test").map(l => l.id);
+        for (let t = 0; t < testLessonIds.length; t++) {
+          await supabase.from("lessons")
+            .update({ order_index: lessonsToInsert.length + t })
+            .eq("id", testLessonIds[t]);
+        }
+      }
+
       // Return fresh lessons from DB
       const freshLessons = await loadLessons();
       return freshLessons;
