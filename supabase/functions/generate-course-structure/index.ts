@@ -34,15 +34,17 @@ serve(async (req) => {
       );
     }
 
-    const { data: roleData } = await supabaseAuth
+    const { data: roleData, error: roleError } = await supabaseAuth
       .from('user_roles')
       .select('role')
       .eq('user_id', user.id)
       .single();
 
+    console.log("Role check for user", user.id, ":", JSON.stringify(roleData), "error:", roleError?.message);
+
     if (!roleData || (roleData.role !== 'organization' && roleData.role !== 'admin')) {
       return new Response(
-        JSON.stringify({ error: "Insufficient permissions. Organization or admin role required." }),
+        JSON.stringify({ error: "Insufficient permissions. Organization or admin role required.", roleData, roleError: roleError?.message }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
