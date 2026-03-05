@@ -25,7 +25,14 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Building2, Loader2, Users, BookOpen, Key, Eye, EyeOff, Copy, Check, Download, ExternalLink, Search, X, FolderOpen, DollarSign, Calendar, RefreshCw } from "lucide-react";
+import { Plus, Pencil, Trash2, Building2, Loader2, Users, BookOpen, Key, Eye, EyeOff, Copy, Check, Download, ExternalLink, Search, X, FolderOpen, DollarSign, Calendar, RefreshCw, Mail, Phone, MoreHorizontal } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { getXLSX } from "@/utils/xlsxHelper";
@@ -654,43 +661,64 @@ export function OrganizationsManager() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <Card>
+        <Card className="transition-transform hover:scale-[1.02]">
           <CardHeader className="pb-2">
-            <CardDescription>Всего организаций</CardDescription>
+            <CardDescription className="flex items-center gap-1.5">
+              <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center">
+                <Building2 className="w-3.5 h-3.5 text-primary" />
+              </div>
+              Всего организаций
+            </CardDescription>
             <CardTitle className="text-3xl">{organizations.length}</CardTitle>
           </CardHeader>
         </Card>
-        <Card className="border-green-500/30 bg-green-500/5">
+        <Card className="border-green-500/30 bg-green-500/5 transition-transform hover:scale-[1.02]">
           <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-1">
-              <DollarSign className="w-3 h-3" /> С оплатой
+            <CardDescription className="flex items-center gap-1.5">
+              <div className="w-6 h-6 rounded-md bg-green-500/10 flex items-center justify-center">
+                <DollarSign className="w-3.5 h-3.5 text-green-600" />
+              </div>
+              С оплатой
             </CardDescription>
             <CardTitle className="text-3xl text-green-600">
               {organizations.filter(o => o.is_paid).length}
             </CardTitle>
           </CardHeader>
         </Card>
-        <Card className="border-orange-500/30 bg-orange-500/5">
+        <Card className="border-orange-500/30 bg-orange-500/5 transition-transform hover:scale-[1.02]">
           <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-1">
-              <Building2 className="w-3 h-3" /> Без оплаты
+            <CardDescription className="flex items-center gap-1.5">
+              <div className="w-6 h-6 rounded-md bg-orange-500/10 flex items-center justify-center">
+                <Building2 className="w-3.5 h-3.5 text-orange-600" />
+              </div>
+              Без оплаты
             </CardDescription>
             <CardTitle className="text-3xl text-orange-600">
               {organizations.filter(o => !o.is_paid).length}
             </CardTitle>
           </CardHeader>
         </Card>
-        <Card>
+        <Card className="transition-transform hover:scale-[1.02]">
           <CardHeader className="pb-2">
-            <CardDescription>Всего сотрудников</CardDescription>
+            <CardDescription className="flex items-center gap-1.5">
+              <div className="w-6 h-6 rounded-md bg-blue-500/10 flex items-center justify-center">
+                <Users className="w-3.5 h-3.5 text-blue-600" />
+              </div>
+              Всего сотрудников
+            </CardDescription>
             <CardTitle className="text-3xl">
               {organizations.reduce((acc, org) => acc + (org.users_count || 0), 0)}
             </CardTitle>
           </CardHeader>
         </Card>
-        <Card>
+        <Card className="transition-transform hover:scale-[1.02]">
           <CardHeader className="pb-2">
-            <CardDescription>Всего курсов</CardDescription>
+            <CardDescription className="flex items-center gap-1.5">
+              <div className="w-6 h-6 rounded-md bg-purple-500/10 flex items-center justify-center">
+                <BookOpen className="w-3.5 h-3.5 text-purple-600" />
+              </div>
+              Всего курсов
+            </CardDescription>
             <CardTitle className="text-3xl">
               {organizations.reduce((acc, org) => acc + (org.courses_count || 0), 0)}
             </CardTitle>
@@ -730,17 +758,17 @@ export function OrganizationsManager() {
           {filteredOrganizations.map((org) => (
             <Card
               key={org.id}
-              className={`transition-shadow hover:shadow-md ${org.is_paid ? 'border-green-500/30' : 'border-orange-500/30'}`}
+              className={`transition-all hover:shadow-lg border-l-4 ${org.is_paid ? 'border-l-green-500' : 'border-l-orange-500'}`}
             >
-              {/* Header: Name + Status */}
+              {/* Header: Avatar + Name + Status */}
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between gap-2">
                   <div
                     className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity min-w-0 flex-1"
                     onClick={() => setViewingOrg(org)}
                   >
-                    <div className={`w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center ${org.is_paid ? 'bg-green-500/20' : 'bg-orange-500/20'}`}>
-                      <Building2 className={`w-5 h-5 ${org.is_paid ? 'text-green-600' : 'text-orange-600'}`} />
+                    <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold text-white ${org.is_paid ? 'bg-green-500' : 'bg-orange-500'}`}>
+                      {org.name.charAt(0).toUpperCase()}
                     </div>
                     <div className="min-w-0">
                       <div className="font-medium text-primary hover:underline truncate">{org.name}</div>
@@ -787,13 +815,21 @@ export function OrganizationsManager() {
               {/* Body: Contacts + Credentials */}
               <CardContent className="pb-3 space-y-3">
                 {/* Contacts */}
-                <div className="text-sm space-y-0.5">
-                  <div className="truncate">📧 {org.email}</div>
-                  {org.phone && <div className="text-muted-foreground">📱 {org.phone}</div>}
+                <div className="text-sm space-y-1">
+                  <div className="flex items-center gap-2 truncate">
+                    <Mail className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                    <span className="truncate">{org.email}</span>
+                  </div>
+                  {org.phone && (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Phone className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span>{org.phone}</span>
+                    </div>
+                  )}
                 </div>
 
-                {/* Credentials */}
-                <div className="border-t pt-2">
+                {/* Credentials — mini-card */}
+                <div className="bg-muted/50 rounded-lg p-2.5">
                   {org.credentials === undefined && detailsLoading ? (
                     <div className="space-y-1.5">
                       <Skeleton className="h-4 w-32" />
@@ -855,9 +891,11 @@ export function OrganizationsManager() {
                     </Button>
                   )}
                 </div>
+              </CardContent>
 
-                {/* Stats */}
-                <div className="flex items-center gap-2 border-t pt-2">
+              {/* Footer: Stats + Actions */}
+              <div className="flex items-center justify-between px-6 pb-4">
+                <div className="flex items-center gap-2">
                   {org.users_count === undefined && detailsLoading ? (
                     <>
                       <Skeleton className="h-5 w-12 rounded-full" />
@@ -876,24 +914,33 @@ export function OrganizationsManager() {
                     </>
                   )}
                 </div>
-              </CardContent>
-
-              {/* Footer: Actions */}
-              <div className="flex items-center justify-between px-6 pb-4">
-                <Button variant="outline" size="sm" onClick={() => setViewingOrg(org)} className="text-xs">
-                  <FolderOpen className="w-3.5 h-3.5 mr-1" />
-                  Просмотр
-                </Button>
-                <div className="flex items-center gap-0.5">
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => viewAsOrganization(org)} title="Войти как">
-                    <ExternalLink className="w-4 h-4 text-muted-foreground" />
+                <div className="flex items-center gap-1">
+                  <Button variant="outline" size="sm" onClick={() => setViewingOrg(org)} className="text-xs">
+                    <FolderOpen className="w-3.5 h-3.5 mr-1" />
+                    Просмотр
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(org)}>
-                    <Pencil className="w-4 h-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteOrg(org)}>
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <MoreHorizontal className="w-4 h-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => viewAsOrganization(org)}>
+                        <ExternalLink className="w-4 h-4 mr-2" />
+                        Войти как
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => openEdit(org)}>
+                        <Pencil className="w-4 h-4 mr-2" />
+                        Редактировать
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem className="text-destructive" onClick={() => setDeleteOrg(org)}>
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Удалить
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
             </Card>
