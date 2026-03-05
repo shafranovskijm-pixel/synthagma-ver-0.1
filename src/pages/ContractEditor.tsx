@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { ContractTemplateEditor } from "@/components/organization/ContractTemplateEditor";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
+import { getAdminAwareBackPath } from "@/lib/utils";
 
 export default function ContractEditor() {
   const navigate = useNavigate();
@@ -35,7 +36,7 @@ export default function ContractEditor() {
               variant="ghost"
               size="sm"
               className="gap-1.5 rounded-lg"
-              onClick={() => navigate("/organization")}
+              onClick={() => navigate(getAdminAwareBackPath())}
             >
               <ArrowLeft className="w-4 h-4" />
               <span className="hidden sm:inline">Назад</span>

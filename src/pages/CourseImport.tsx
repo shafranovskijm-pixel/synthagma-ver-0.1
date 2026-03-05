@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
+import { getAdminAwareBackPath } from "@/lib/utils";
 
 interface ParsedLesson {
   id: string;
@@ -237,7 +238,7 @@ export default function CourseImport() {
             <Button 
               variant="ghost" 
               size="icon" 
-              onClick={() => navigate('/organization')}
+            onClick={() => navigate(getAdminAwareBackPath())}
               className="rounded-xl"
             >
               <ArrowLeft className="w-5 h-5" />
@@ -505,7 +506,7 @@ export default function CourseImport() {
               <Button 
                 variant="outline" 
                 className="rounded-xl"
-                onClick={() => navigate('/organization')}
+                onClick={() => navigate(getAdminAwareBackPath())}
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 К списку курсов

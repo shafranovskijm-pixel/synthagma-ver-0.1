@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { getAdminAwareBackPath } from "@/lib/utils";
 import {
   DndContext,
   closestCenter,
@@ -435,7 +436,7 @@ const CourseEditor = () => {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-4">Курс не найден</h1>
-          <Button onClick={() => navigate("/organization")}>
+          <Button onClick={() => navigate(getAdminAwareBackPath())}>
             Вернуться к курсам
           </Button>
         </div>
@@ -452,7 +453,7 @@ const CourseEditor = () => {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => navigate("/organization")}
+              onClick={() => navigate(getAdminAwareBackPath())}
             >
               <ArrowLeft className="w-5 h-5" />
             </Button>
