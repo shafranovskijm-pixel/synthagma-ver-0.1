@@ -1,4 +1,5 @@
 // GigaChat integration for test answer generation and content creation
+// Falls back to Lovable AI when GigaChat certificate errors occur
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limiter.ts";
@@ -8,7 +9,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// Cache for GigaChat OAuth token (lives for 30 min, we refresh at 25 min)
+// Cache for GigaChat OAuth token
 let cachedToken: string | null = null;
 let tokenExpiresAt = 0;
 
@@ -77,6 +78,45 @@ async function callGigaChat(messages: Array<{ role: string; content: string }>, 
   return result.choices?.[0]?.message?.content || "";
 }
 
+async function callLovableAI(messages: Array<{ role: string; content: string }>): Promise<string> {
+  const apiKey = Deno.env.get("LOVABLE_API_KEY");
+  if (!apiKey) throw new Error("LOVABLE_API_KEY is not configured");
+
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "google/gemini-2.5-flash",
+      messages,
+      temperature: 0.7,
+      max_tokens: 4096,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("Lovable AI error:", response.status, errorText);
+    throw new Error(`AI gateway error: ${response.status}`);
+  }
+
+  const result = await response.json();
+  return result.choices?.[0]?.message?.content || "";
+}
+
+async function callAI(messages: Array<{ role: string; content: string }>): Promise<string> {
+  // Try GigaChat first, fallback to Lovable AI on certificate/network errors
+  try {
+    return await callGigaChat(messages);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn("GigaChat unavailable, falling back to Lovable AI:", msg);
+    return await callLovableAI(messages);
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -135,7 +175,6 @@ serve(async (req) => {
     let result: any;
 
     if (action === "generate_answers") {
-      // Generate correct answers for test questions
       const questionsText = questions.map((q: any, i: number) => {
         const opts = q.options.map((o: string, j: number) => `  ${j + 1}) ${o}`).join("\n");
         return `Вопрос ${i + 1}: ${q.question}\n${opts}`;
@@ -152,22 +191,20 @@ serve(async (req) => {
 Отвечай ТОЛЬКО JSON-массивом, без markdown-обертки.`;
 
       const prompt = `Курс: "${courseTitle}"\nУрок: "${lessonTitle}"\n\n${questionsText}`;
-      const response = await callGigaChat([
+      const response = await callAI([
         { role: "system", content: systemPrompt },
         { role: "user", content: prompt },
       ]);
 
-      // Parse JSON from response
       try {
         const cleaned = response.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
         result = { answers: JSON.parse(cleaned) };
       } catch {
-        console.error("Failed to parse GigaChat response:", response);
+        console.error("Failed to parse AI response:", response);
         result = { answers: [], raw: response, parseError: true };
       }
 
     } else if (action === "generate_content") {
-      // Generate educational content
       const contextNote = existingContent
         ? `\n\nВ уроке уже есть контент, НЕ повторяй его:\n${existingContent.slice(0, 1500)}`
         : "";
@@ -180,14 +217,13 @@ serve(async (req) => {
 4. Минимум 500 слов
 5. На русском языке${contextNote}`;
 
-      const content = await callGigaChat([
+      const content = await callAI([
         { role: "system", content: systemPrompt },
         { role: "user", content: `Напиши учебный материал для урока "${lessonTitle}" курса "${courseTitle}"` },
       ]);
       result = { content };
 
     } else if (action === "generate_questions") {
-      // Generate test questions
       const systemPrompt = `Ты эксперт по промышленной безопасности и нормативам Ростехнадзора. Создай тестовые вопросы.
 Отвечай СТРОГО в формате JSON-массива, каждый элемент:
 - "question": текст вопроса
@@ -197,7 +233,7 @@ serve(async (req) => {
 
 Создай 10 вопросов разной сложности. Отвечай ТОЛЬКО JSON-массивом.`;
 
-      const response = await callGigaChat([
+      const response = await callAI([
         { role: "system", content: systemPrompt },
         { role: "user", content: `Создай тестовые вопросы для теста "${lessonTitle}" курса "${courseTitle}"` },
       ]);
