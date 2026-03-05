@@ -29,7 +29,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import {
   Plus, Download, Trash2, Edit, Users, Loader2, Search, CheckCircle, FileText, X,
   GraduationCap, ArrowLeft, MoreHorizontal, SortAsc, SortDesc, FolderOpen, Calendar,
-  Shield, ChevronRight, User, Key,
+  Shield, ChevronRight, User, Key, RefreshCw, ClipboardCheck, BarChart3, BookOpen,
 } from "lucide-react";
 import { format } from "date-fns";
 import { LaborSafetyStudentDetailCard } from "./LaborSafetyStudentDetailCard";
@@ -117,13 +117,56 @@ export function LaborSafetyManager({ organizationId }: LaborSafetyManagerProps) 
 
         {/* Groups grid */}
         {h.filteredGroups.length === 0 ? (
-          <Card className="border-dashed">
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <FolderOpen className="h-12 w-12 text-muted-foreground/50 mb-4" />
-              <p className="text-muted-foreground text-center">{h.groups.length === 0 ? "Нет групп. Создайте первую группу для учёта сотрудников." : "Группы не найдены по заданным критериям."}</p>
-              {h.groups.length === 0 && <Button className="mt-4" onClick={() => h.setShowGroupDialog(true)}><Plus className="h-4 w-4 mr-2" />Создать группу</Button>}
-            </CardContent>
-          </Card>
+          h.groups.length === 0 && !h.groupSearch ? (
+            <div className="bg-card rounded-2xl border border-border overflow-hidden">
+              <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-6">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                  <div>
+                    <h2 className="text-xl font-bold flex items-center gap-2">
+                      <Shield className="w-6 h-6 text-primary" />
+                      Организуйте обучение по охране труда
+                    </h2>
+                    <p className="text-muted-foreground text-sm mt-1">Изолированный модуль для работы с группами слушателей по программам ОТ</p>
+                  </div>
+                </div>
+              </div>
+              <div className="p-6 pt-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {[
+                    { icon: Users, title: "Группы слушателей", desc: "Массовое зачисление на несколько курсов одновременно" },
+                    { icon: RefreshCw, title: "Автосинхронизация", desc: "Профили и результаты автоматически синхронизируются с основной системой" },
+                    { icon: ClipboardCheck, title: "Протоколы", desc: "Генерация протоколов проверки знаний с полями для подписей комиссии (Word)" },
+                    { icon: FileText, title: "Сокращённый чек-лист", desc: "Только Договор, Паспорт и СНИЛС — ничего лишнего" },
+                    { icon: BarChart3, title: "Статусы обучения", desc: "Динамический прогресс: «Сдано», «Обучение: X%», «Не начато»" },
+                    { icon: BookOpen, title: "Курсы по ОТ", desc: "Список ограничен программами категории «Охрана труда»" },
+                  ].map((f, i) => (
+                    <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-muted/30">
+                      <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                        <f.icon className="w-4 h-4 text-primary" />
+                      </div>
+                      <div>
+                        <div className="font-medium text-sm">{f.title}</div>
+                        <div className="text-xs text-muted-foreground">{f.desc}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-6 flex justify-center">
+                  <Button className="rounded-xl gap-2" onClick={() => h.setShowGroupDialog(true)}>
+                    <Plus className="h-4 w-4" />
+                    Создать первую группу
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <Card className="border-dashed">
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <FolderOpen className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                <p className="text-muted-foreground text-center">Группы не найдены по заданным критериям.</p>
+              </CardContent>
+            </Card>
+          )
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {h.filteredGroups.map(group => (
