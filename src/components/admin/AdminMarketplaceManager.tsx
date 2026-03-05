@@ -114,13 +114,14 @@ export function AdminMarketplaceManager() {
       if (dupes.length) issues.push(`Дубликаты: ${[...new Set(dupes)].join(", ")}`);
 
       const testIds = lessons?.filter(l => l.type === "test").map(l => l.id) || [];
+      let unansweredQuestions: any[] = [];
       if (testIds.length) {
         const { data: questions } = await supabase
-          .from("test_questions").select("id, lesson_id, correct_answer").in("lesson_id", testIds);
+          .from("test_questions").select("id, lesson_id, correct_answer, question, options").in("lesson_id", testIds);
         const testsWithNoQ = testIds.filter(id => !questions?.some(q => q.lesson_id === id));
-        const unanswered = questions?.filter(q => q.correct_answer === null || q.correct_answer === undefined);
+        unansweredQuestions = questions?.filter(q => q.correct_answer === null || q.correct_answer === undefined) || [];
         if (testsWithNoQ.length) issues.push(`${testsWithNoQ.length} тестов без вопросов`);
-        if (unanswered?.length) issues.push(`${unanswered.length} вопросов без ответа`);
+        if (unansweredQuestions.length) issues.push(`${unansweredQuestions.length} вопросов без ответа`);
       }
 
       if (!lessons?.length) {
@@ -144,13 +145,7 @@ export function AdminMarketplaceManager() {
           action: {
             label: "Исправить ИИ",
             onClick: () => {
-              if (mpItem) {
-                setBulkGenCourse({
-                  id: courseId,
-                  title: mpItem.course?.title || "",
-                  description: mpItem.course?.description || "",
-                });
-              }
+              autoFixCourse(courseId, mpItem?.course?.title || "", emptyLessons || [], unansweredQuestions);
             },
           },
         });
@@ -164,6 +159,99 @@ export function AdminMarketplaceManager() {
       toast.error("Ошибка проверки");
     } finally {
       setValidatingId(null);
+    }
+  };
+
+  const autoFixCourse = async (
+    courseId: string,
+    courseTitle: string,
+    emptyLessons: Array<{ id: string; title: string; type: string }>,
+    unansweredQuestions: Array<{ id: string; lesson_id: string; question: string; options: any }>
+  ) => {
+    const totalTasks = emptyLessons.length + (unansweredQuestions.length > 0 ? 1 : 0);
+    if (totalTasks === 0) { toast.info("Нечего исправлять"); return; }
+
+    const toastId = toast.loading(`Исправляю курс... 0/${totalTasks}`, { duration: Infinity });
+    let completed = 0;
+
+    try {
+      // 1. Generate content for empty lessons
+      for (const lesson of emptyLessons) {
+        completed++;
+        toast.loading(`Генерирую контент: ${lesson.title} (${completed}/${totalTasks})`, { id: toastId });
+        try {
+          const { data, error } = await supabase.functions.invoke("generate-lesson-content", {
+            body: { courseTitle, lessonTitle: lesson.title, lessonType: lesson.type },
+          });
+          if (error) throw error;
+          if (data?.content) {
+            const blocks = [{ id: crypto.randomUUID(), type: "text", content: data.content }];
+            await supabase.from("lessons").update({ content: JSON.stringify(blocks) }).eq("id", lesson.id);
+          }
+        } catch (e) {
+          console.error(`Failed to generate content for lesson ${lesson.title}:`, e);
+        }
+      }
+
+      // 2. Fix unanswered test questions in batches
+      if (unansweredQuestions.length > 0) {
+        completed++;
+        toast.loading(`Решаю тесты: ${unansweredQuestions.length} вопросов (${completed}/${totalTasks})`, { id: toastId });
+
+        // Group by lesson_id
+        const byLesson = new Map<string, typeof unansweredQuestions>();
+        for (const q of unansweredQuestions) {
+          const arr = byLesson.get(q.lesson_id) || [];
+          arr.push(q);
+          byLesson.set(q.lesson_id, arr);
+        }
+
+        // Get lesson titles for context
+        const lessonIds = [...byLesson.keys()];
+        const { data: testLessons } = await supabase
+          .from("lessons").select("id, title, course_id").in("id", lessonIds);
+
+        for (const [lessonId, questions] of byLesson) {
+          const lessonInfo = testLessons?.find(l => l.id === lessonId);
+          const batchSize = 20;
+          for (let i = 0; i < questions.length; i += batchSize) {
+            const batch = questions.slice(i, i + batchSize);
+            try {
+              const { data, error } = await supabase.functions.invoke("gigachat", {
+                body: {
+                  action: "generate_answers",
+                  courseTitle,
+                  lessonTitle: lessonInfo?.title || "Тест",
+                  questions: batch.map(q => ({
+                    question: q.question,
+                    options: q.options || [],
+                  })),
+                },
+              });
+              if (error) throw error;
+              if (data?.answers && !data.parseError) {
+                for (const ans of data.answers) {
+                  const q = batch[ans.questionIndex];
+                  if (q && ans.correctAnswer !== undefined) {
+                    await supabase.from("test_questions")
+                      .update({ correct_answer: ans.correctAnswer, explanation: ans.explanation || null })
+                      .eq("id", q.id);
+                  }
+                }
+              }
+            } catch (e) {
+              console.error(`Failed to solve test batch for lesson ${lessonId}:`, e);
+            }
+          }
+        }
+      }
+
+      toast.success(`Курс исправлен! Повторная проверка...`, { id: toastId, duration: 3000 });
+      // Re-validate
+      setTimeout(() => handleValidateCourse(courseId), 1000);
+    } catch (e) {
+      console.error("Auto-fix error:", e);
+      toast.error("Ошибка автоисправления", { id: toastId, duration: 5000 });
     }
   };
 
