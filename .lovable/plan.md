@@ -1,40 +1,30 @@
 
 
-## Plan: Fix 3 Bugs in Bulk Content Generator
+## Plan: Fix — Content Not Generated When Course Has Only Test Lessons
 
-### Bug 1: Stale state after structure generation
-In `startFullPipeline()`, after `generateStructure()` calls `loadLessons()` which does `setLessons(items)`, the React state hasn't updated yet when `generateContent()` runs on the next line. So `lessons` is still empty, `contentLessons` is 0, nothing gets generated.
+### Root Cause
 
-**Fix**: Make `generateStructure` return the newly loaded lessons, and make `generateContent` / `solveTests` accept a `lessonsOverride` parameter instead of reading from stale state.
+The course was imported with **only test lessons** (Ростехнадзор questions). The condition on line 343 `if (!hasLessons)` checks `lessons.length > 0` — since test lessons exist, it's `true`, so **structure generation is skipped entirely**. No text/practice lessons are created, so Phase 2 has 0 targets. Only Phase 3 (solve tests) runs.
 
-### Bug 2: Test solving fails — response truncated
-The gigachat function uses `max_tokens: 4096` which is too small for 50+ questions with explanations. The AI response gets cut off mid-JSON, `JSON.parse` fails, and `parseError: true` is returned.
+### Fix
 
-**Fix**: 
-- In `gigachat/index.ts`: increase `max_tokens` to 16384 for the `generate_answers` action
-- In `BulkContentGenerator.tsx`: batch test questions in groups of 20 to avoid truncation, then merge results
+**`src/components/admin/BulkContentGenerator.tsx`**
 
-### Bug 3: Practice lessons skipped
-Structure generation inserts practice as `type: "text"` with placeholder content `[{"type":"heading1","content":"Практическое задание"}]`. The `isContentEmpty` function correctly detects this as empty. But in `generateContent`, `isPractice` check at line 171 looks at `lesson.content` from the *state* which might not match. Also the lesson type is "text" not "practice" so the edge function gets `lessonType: "text"` instead of `"practice"`.
+1. **Change structure generation condition**: Instead of `!hasLessons`, check if there are **no non-test lessons**. If all existing lessons are tests, we still need to generate the text/practice structure:
+   ```
+   const hasContentLessons = lessons.some(l => l.type !== "test");
+   if (!hasContentLessons) { generateStructure(); }
+   ```
 
-**Fix**: Check content string for "Практическое задание" to determine practice type. Ensure `isContentEmpty` handles this correctly.
+2. **Update `generateStructure`**: When test lessons already exist, don't create a new test — only insert the text/practice lessons. The structure generator should skip inserting a test lesson if one already exists in the course.
 
-### Changes
+3. **Merge fresh lessons with existing tests**: After structure generation, reload all lessons (including existing tests) so Phase 2 processes new text lessons and Phase 3 processes existing test lessons.
 
-**1. `src/components/admin/BulkContentGenerator.tsx`**
+4. **Fix `totalToProcess` display**: Currently shows "0 к генерации, 0 тестов" even when test is present — ensure counts use the correct source data before pipeline starts.
 
-- `generateStructure()` → returns `LessonItem[]` after reload
-- `generateContent(overrideLessons?)` → uses passed lessons if provided, not stale state
-- `solveTests(overrideLessons?)` → same pattern
-- `startFullPipeline()`: pass freshly loaded lessons to phase 2 and 3
-- Batch test questions in groups of 20 when calling gigachat
-- Recalculate `totalToProcess` after structure is created using fresh data
+### Changes summary
 
-**2. `supabase/functions/gigachat/index.ts`**
-- Increase `max_tokens` from 4096 to 16384 for `generate_answers` action
-- Keep 4096 for other actions
-
-**3. `supabase/functions/generate-course-structure/index.ts`**
-- Add explicit instruction: the last lesson MUST be titled "Итоговое тестирование"
-- Post-process: rename and reorder if AI doesn't comply
+| File | Change |
+|------|--------|
+| `BulkContentGenerator.tsx` | Replace `!hasLessons` with `!hasContentLessons` check; filter out test type from structure insert when tests exist; ensure fresh data flows to all phases |
 
