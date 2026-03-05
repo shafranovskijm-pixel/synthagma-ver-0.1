@@ -15,48 +15,21 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Cross-tab lock: only one tab should refresh token at a time
-const LOCK_KEY = 'sintagma_auth_lock';
-const LOCK_TTL = 5000; // 5 seconds
-
-function acquireLock(): boolean {
-  const now = Date.now();
-  const existing = localStorage.getItem(LOCK_KEY);
-  if (existing) {
-    const lockTime = parseInt(existing, 10);
-    if (now - lockTime < LOCK_TTL) {
-      return false; // Another tab holds the lock
-    }
-  }
-  localStorage.setItem(LOCK_KEY, String(now));
-  return true;
-}
-
-function releaseLock() {
-  localStorage.removeItem(LOCK_KEY);
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
-  // Use cached role from localStorage for instant init
   const cachedRole = localStorage.getItem('user_role') as AuthContextType['userRole'];
   
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [userRole, setUserRole] = useState<'admin' | 'organization' | 'student' | 'sales_manager' | 'company' | null>(cachedRole);
   const [loading, setLoading] = useState(true);
-  const [roleLoaded, setRoleLoaded] = useState(false);
   
-  // Prevent concurrent role fetches and auth state race conditions
   const roleFetchInFlight = useRef<string | null>(null);
   const signInInProgress = useRef(false);
-  const hadSession = useRef(false); // Track if we ever had a session
+  const hadSession = useRef(false);
   const recoveryInProgress = useRef(false);
 
   const fetchUserRole = useCallback(async (userId: string) => {
-    // Deduplicate: skip if already fetching for this user
-    if (roleFetchInFlight.current === userId) {
-      return;
-    }
+    if (roleFetchInFlight.current === userId) return;
     roleFetchInFlight.current = userId;
     
     try {
@@ -71,7 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const role = data.role as 'admin' | 'organization' | 'student' | 'sales_manager' | 'company';
         setUserRole(role);
         localStorage.setItem('user_role', role);
-      } else if (error) {
+      } else {
         console.error('Error fetching user role:', error);
         setUserRole('student');
       }
@@ -80,47 +53,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUserRole('student');
     } finally {
       roleFetchInFlight.current = null;
-      setRoleLoaded(true);
     }
   }, []);
 
-  // Session recovery: when token refresh fails (429), try to recover
+  // Simple session recovery: wait and retry once
   const attemptSessionRecovery = useCallback(async () => {
     if (recoveryInProgress.current) return;
     recoveryInProgress.current = true;
     
     console.log('[Auth] Attempting session recovery...');
-    
-    // Wait for rate limit to cool down
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    await new Promise(resolve => setTimeout(resolve, 2000));
     
     try {
-      // Only one tab should try recovery
-      if (!acquireLock()) {
-        console.log('[Auth] Another tab is handling recovery, waiting...');
-        await new Promise(resolve => setTimeout(resolve, 5000));
-        // Check if session was restored by another tab
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          console.log('[Auth] Session restored by another tab');
-          setSession(session);
-          setUser(session.user);
-          hadSession.current = true;
-        }
-        recoveryInProgress.current = false;
-        return;
-      }
-      
       const { data: { session } } = await supabase.auth.getSession();
-      releaseLock();
-      
       if (session) {
-        console.log('[Auth] Session recovered successfully');
+        console.log('[Auth] Session recovered');
         setSession(session);
         setUser(session.user);
         hadSession.current = true;
       } else {
-        console.log('[Auth] Session recovery failed, redirecting to login');
+        console.log('[Auth] Session recovery failed, clearing state');
         setUser(null);
         setSession(null);
         setUserRole(null);
@@ -129,19 +81,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     } catch (error) {
       console.error('[Auth] Session recovery error:', error);
-      releaseLock();
     } finally {
       recoveryInProgress.current = false;
     }
   }, []);
 
   useEffect(() => {
-    // Set up auth state listener FIRST
+    // Visibility-based auto-refresh: only active tab refreshes tokens
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        supabase.auth.startAutoRefresh();
+      } else {
+        supabase.auth.stopAutoRefresh();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Ensure auto-refresh is running for the initially visible tab
+    if (document.visibilityState === 'visible') {
+      supabase.auth.startAutoRefresh();
+    } else {
+      supabase.auth.stopAutoRefresh();
+    }
+
+    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         console.log('[Auth] onAuthStateChange:', event, !!session);
         
-        // Completely ignore TOKEN_REFRESHED — never refetch role on token refresh
         if (event === 'TOKEN_REFRESHED') {
           if (session) {
             setSession(session);
@@ -150,7 +117,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
         
-        // If signIn is in progress, skip — signIn handles everything itself
         if (signInInProgress.current) {
           if (session) {
             setSession(session);
@@ -159,7 +125,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
         
-        // Explicit sign out — clear everything
         if (event === 'SIGNED_OUT') {
           setSession(null);
           setUser(null);
@@ -174,20 +139,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(session.user);
           hadSession.current = true;
           
-          // Use setTimeout to avoid Supabase deadlock warning
           setTimeout(() => {
             fetchUserRole(session.user.id);
           }, 0);
         } else if (!session && hadSession.current) {
-          // Session lost unexpectedly (not SIGNED_OUT) — likely 429/token revoked
-          // Don't clear state immediately! Try to recover.
           console.warn('[Auth] Session lost unexpectedly, attempting recovery...');
           attemptSessionRecovery();
         }
       }
     );
 
-    // THEN check for existing session
+    // Check for existing session
     const initializeAuth = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -198,7 +160,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           hadSession.current = true;
           await fetchUserRole(session.user.id);
         } else {
-          // No session — clear cached role
           localStorage.removeItem('user_role');
           setUserRole(null);
         }
@@ -211,7 +172,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     initializeAuth();
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [fetchUserRole, attemptSessionRecovery]);
 
   const signIn = async (email: string, password: string) => {
@@ -219,18 +183,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signInInProgress.current = true;
     
     try {
-      // CRITICAL: Clear any stale session BEFORE signing in
-      // This prevents the old refresh token from competing with the new one
-      try {
-        await supabase.auth.signOut({ scope: 'local' });
-      } catch (e) {
-        // Ignore signOut errors - we just want to clear local state
-        console.log('[Auth] Pre-signIn cleanup (ignore errors):', e);
-      }
-      
-      // Small delay to let the client settle after signOut
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -242,11 +194,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(data.session);
         setUser(data.user);
         
-        // Await role fetch BEFORE returning to prevent race condition
         await fetchUserRole(data.user.id);
         console.log('[Auth] role fetched, userRole is now set');
         
-        // Fire-and-forget: log the login event (no await!)
+        // Fire-and-forget: log the login event
         supabase
           .from("profiles")
           .select("organization_id")
@@ -265,7 +216,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       return { error };
     } finally {
-      // Delay clearing the flag so onAuthStateChange events from this login are still suppressed
       setTimeout(() => {
         signInInProgress.current = false;
       }, 3000);
