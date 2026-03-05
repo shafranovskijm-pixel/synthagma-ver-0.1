@@ -549,7 +549,7 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (processing) stopGeneration(); onOpenChange(v); }}>
-      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-primary" />
@@ -587,9 +587,9 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
                   <><Square className="w-4 h-4 mr-1.5" />Выбрать все</>
                 )}
               </Button>
-              <div className="flex gap-1.5">
+              <div className="flex gap-1.5 items-center">
                 <Badge variant="secondary">{contentLessons.length} к генерации</Badge>
-                <Badge variant="outline" className="border-orange-500/30 text-orange-600">{testLessons.length} тестов</Badge>
+                <Badge variant="outline" className="border-orange-500/30 text-orange-600" title="ИИ подберёт правильные ответы к вопросам теста">{testLessons.length} тестов</Badge>
               </div>
             </div>
 
@@ -605,7 +605,7 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
             )}
 
             {/* Lesson list */}
-            <ScrollArea className="flex-1 max-h-[350px] -mx-2 px-2">
+            <ScrollArea className="flex-1 min-h-[200px] max-h-[50vh] -mx-2 px-2">
               <div className="space-y-1">
                 {lessons.map((lesson) => (
                   <div
