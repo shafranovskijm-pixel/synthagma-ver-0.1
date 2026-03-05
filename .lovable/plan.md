@@ -1,42 +1,54 @@
 
 
-## Улучшение визуала карточек организаций
+## Plan: Bulk AI Content Generation for Marketplace Courses
 
-Текущий вид функционален, но визуально "плоский" и перегружен мелкими элементами. Предлагаю следующие улучшения:
+### Problem
+You have 200+ courses with many text lessons that need content (text + image). Generating content for each lesson individually is very time-consuming.
 
-### 1. Карточки организаций — визуальная иерархия
+### Solution
+Add a "Bulk AI Generation" button to each course row in the admin marketplace catalog. When clicked, it opens a dialog that:
 
-- **Левая цветная полоска** (`border-l-4 border-green-500` / `border-orange-500`) вместо бледной рамки — мгновенно видно статус оплаты
-- **Аватар организации** — первая буква названия в цветном круге вместо иконки Building2
-- **Убрать эмодзи** (📧📱) — заменить на иконки Lucide (Mail, Phone) с единым стилем
-- **Credentials блок** — оформить как мини-карточку с `bg-muted/50 rounded-lg p-2` вместо разделителя `border-t`
-- **Stats** — перенести в footer рядом с кнопками, компактнее
+1. Fetches all text-type lessons for the selected course
+2. Shows a checklist of lessons (pre-selected: those without content)
+3. On "Generate" — sequentially processes each selected lesson:
+   - Calls `generate-lesson-content` to create text blocks
+   - Calls `generate-image` with a prompt based on lesson title to create 1 illustration
+   - Saves both to the lesson's `content` field
+4. Shows real-time progress (lesson X of Y, with status per lesson)
 
-### 2. Stats-карточки сверху — добавить иконки и микроанимации
+### Files to create/modify
 
-- Добавить цветные иконки в каждую stat-карточку (Building2, DollarSign, Users, BookOpen)
-- Hover-эффект `hover:scale-[1.02]` для интерактивности
+**1. New component: `src/components/admin/BulkContentGenerator.tsx`**
+- Dialog with course title header
+- Loads lessons via `supabase.from('lessons').select('*').eq('course_id', courseId)`
+- Checkbox list of lessons (auto-select those with empty content)
+- "Select all / Deselect all" toggle
+- Progress bar + per-lesson status (pending / generating text / generating image / done / error)
+- Sequential processing with delay between requests (avoid rate limits)
+- Save generated blocks + image block to lesson content
+- Error handling with retry option per lesson
 
-### 3. Кнопки действий — группировка
+**2. Modify: `src/components/admin/AdminMarketplaceManager.tsx`**
+- Add a new "AI Content" button (Sparkles icon) to each course row in `renderCourseRow`
+- Import and render `BulkContentGenerator` dialog
 
-- "Просмотр" сделать основной кнопкой (по клику на всю карточку)
-- Действия (edit, delete, login-as) — в компактный `dropdown-menu` через "⋯" кнопку, чтобы не загромождать footer
+**3. Modify: `supabase/functions/generate-lesson-content/index.ts`**
+- No changes needed — already supports text lesson generation
 
-### Файл: `src/components/admin/OrganizationsManager.tsx`
+**4. Edge function `generate-image` already exists**
+- Will reuse it to generate 1 image per lesson based on lesson title
 
-Визуальная структура карточки после изменений:
+### Processing flow per lesson
 ```text
-┌──────────────────────────────────────────┐
-│ ▌ [A] ООО "АВРОРА"        Без оплаты    │
-│ ▌     ИНН: 2721223198     🎟 PROMO  Мес │
-│ ▌                                        │
-│ ▌  ✉ mail@avrora.ru   📞 +7914...       │
-│ ▌  ┌──────────────────────────────┐      │
-│ ▌  │ 🔑 admin@avrora.ru  [📋]    │      │
-│ ▌  │    ••••••••  [👁][📋][🔄]   │      │
-│ ▌  └──────────────────────────────┘      │
-│ ▌                                        │
-│ ▌  👥 1  📚 0    [Просмотр]  [⋯]        │
-└──────────────────────────────────────────┘
+For each selected lesson:
+  1. Call generate-lesson-content → get blocks[]
+  2. Call generate-image with prompt = lesson title → get image URL
+  3. Append image block to blocks[]
+  4. Save combined content JSON to lessons.content
+  5. Update progress UI
+  6. Wait 2s before next lesson (rate limit protection)
 ```
+
+### UI in the catalog row
+A small Sparkles icon button next to the existing BookOpen/Edit/Delete buttons, opening the bulk generator dialog.
 
