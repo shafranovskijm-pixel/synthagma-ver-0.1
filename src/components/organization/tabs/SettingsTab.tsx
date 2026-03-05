@@ -7,7 +7,7 @@ import {
   Library, BarChart3, Link, ShoppingBag, Save, Settings, HardDrive,
   Trophy, MessageCircle, ChevronRight, Loader2, Upload,
   X, ExternalLink, Image, Eye, AlertCircle, LogIn, KeyRound,
-  Stamp, Award, GraduationCap, UserCheck, ScrollText
+  Stamp, Award, GraduationCap, UserCheck, ScrollText, Lock, ArrowUpRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -91,6 +91,26 @@ export function SettingsTab() {
   const isFreePlan = plan === 'free';
   const hasBranding = SUBSCRIPTION_PLANS[plan]?.limits?.branding ?? false;
 
+  const LockedOverlay = ({ requiredPlan = "Старт" }: { requiredPlan?: string }) => (
+    <div className="absolute inset-0 z-10 bg-background/60 backdrop-blur-[2px] rounded-xl lg:rounded-2xl flex items-center justify-center">
+      <div className="flex flex-col items-center gap-2 text-center px-4">
+        <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center">
+          <Lock className="w-5 h-5 text-muted-foreground" />
+        </div>
+        <p className="text-sm font-medium text-foreground">Доступно от тарифа «{requiredPlan}»</p>
+        <Button
+          size="sm"
+          variant="outline"
+          className="rounded-xl gap-1.5 text-xs mt-1"
+          onClick={() => d.tabNavigation.setActiveTab('subscription' as any)}
+        >
+          <ArrowUpRight className="w-3.5 h-3.5" />
+          Сменить тариф
+        </Button>
+      </div>
+    </div>
+  );
+
   const handleSaveStudentSettings = async () => {
     if (!organizationId) return;
     setIsSavingSettings(true);
@@ -170,7 +190,8 @@ export function SettingsTab() {
       </details>
 
       {/* Document Center */}
-      {!isFreePlan && <details className="bg-card rounded-xl lg:rounded-2xl border border-border group" open>
+      <details className="bg-card rounded-xl lg:rounded-2xl border border-border group relative" open={!isFreePlan ? undefined : undefined}>
+        {isFreePlan && <LockedOverlay />}
         <summary className="p-4 lg:p-6 cursor-pointer list-none flex items-center justify-between">
           <h3 className="font-display font-semibold text-base lg:text-lg flex items-center gap-2">
             <FileText className="w-4 h-4 lg:w-5 lg:h-5" />
@@ -284,10 +305,11 @@ export function SettingsTab() {
             </TabsContent>
           </Tabs>
         </div>
-      </details>}
+      </details>
 
       {/* Menu Items Settings */}
-      {!isFreePlan && <details className="bg-card rounded-xl lg:rounded-2xl border border-border group">
+      <details className="bg-card rounded-xl lg:rounded-2xl border border-border group relative">
+        {isFreePlan && <LockedOverlay />}
         <summary className="p-4 lg:p-6 cursor-pointer list-none flex items-center justify-between">
           <h3 className="font-display font-semibold text-base lg:text-lg flex items-center gap-2">
             <LayoutGrid className="w-4 h-4 lg:w-5 lg:h-5" />
@@ -402,10 +424,11 @@ export function SettingsTab() {
             </Button>
           </div>
         </div>
-      </details>}
+      </details>
 
       {/* Branding Settings */}
-      {hasBranding && <details className="bg-card rounded-2xl border border-border group">
+      <details className="bg-card rounded-2xl border border-border group relative">
+        {!hasBranding && <LockedOverlay requiredPlan="Стандарт" />}
         <summary className="p-6 cursor-pointer list-none flex items-center justify-between">
           <h3 className="font-display font-semibold text-lg flex items-center gap-2">
             <Image className="w-5 h-5" />
@@ -639,10 +662,11 @@ export function SettingsTab() {
             </Button>
           </div>
         </div>
-      </details>}
+      </details>
 
       {/* Login Page Branding */}
-      {hasBranding && <details className="bg-card rounded-2xl border border-border group">
+      <details className="bg-card rounded-2xl border border-border group relative">
+        {!hasBranding && <LockedOverlay requiredPlan="Стандарт" />}
         <summary className="p-6 cursor-pointer list-none flex items-center justify-between">
           <h3 className="font-display font-semibold text-lg flex items-center gap-2">
             <LogIn className="w-5 h-5" />
@@ -662,10 +686,11 @@ export function SettingsTab() {
             />
           )}
         </div>
-      </details>}
+      </details>
 
       {/* Student Dashboard Settings */}
-      {hasBranding && <details className="bg-card rounded-2xl border border-border group">
+      <details className="bg-card rounded-2xl border border-border group relative">
+        {!hasBranding && <LockedOverlay requiredPlan="Стандарт" />}
         <summary className="p-6 cursor-pointer list-none flex items-center justify-between">
           <h3 className="font-display font-semibold text-lg flex items-center gap-2">
             <Settings className="w-5 h-5" />
@@ -757,7 +782,7 @@ export function SettingsTab() {
             </Button>
           </div>
         </div>
-      </details>}
+      </details>
 
       {/* Organization Credentials Settings */}
       <details className="bg-card rounded-xl lg:rounded-2xl border border-border group">
@@ -777,7 +802,8 @@ export function SettingsTab() {
       </details>
 
       {/* System Diagnostics */}
-      {!isFreePlan && <details className="bg-card rounded-xl lg:rounded-2xl border border-border group">
+      <details className="bg-card rounded-xl lg:rounded-2xl border border-border group relative">
+        {isFreePlan && <LockedOverlay />}
         <summary className="p-4 lg:p-6 cursor-pointer list-none flex items-center justify-between">
           <h3 className="font-display font-semibold text-base lg:text-lg flex items-center gap-2">
             <AlertCircle className="w-4 h-4 lg:w-5 lg:h-5" />
@@ -788,7 +814,7 @@ export function SettingsTab() {
         <div className="px-4 lg:px-6 pb-4 lg:pb-6">
           {organizationId && <SystemDiagnostics organizationId={organizationId} />}
         </div>
-      </details>}
+      </details>
 
       {/* System Info */}
       <div className="bg-card rounded-xl lg:rounded-2xl border border-border p-4 lg:p-6">
