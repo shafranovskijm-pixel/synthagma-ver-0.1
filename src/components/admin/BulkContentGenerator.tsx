@@ -125,6 +125,7 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
   }, []);
 
   const hasLessons = lessons.length > 0;
+  const hasContentLessons = lessons.some((l) => l.type !== "test");
   const contentLessons = lessons.filter((l) => l.selected && l.type !== "test" && isContentEmpty(l.content));
   const testLessons = lessons.filter((l) => l.selected && l.type === "test");
   const selectedCount = lessons.filter((l) => l.selected).length;
@@ -142,19 +143,25 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
         throw new Error(data?.error || "Не удалось создать структуру");
       }
 
-      const lessonsToInsert = data.lessons.map((l: any, i: number) => ({
-        course_id: courseId,
-        title: l.title,
-        type: l.type === "practice" ? "text" : l.type,
-        content: l.type === "practice" ? JSON.stringify([{ type: "heading1", content: "Практическое задание" }]) : null,
-        order_index: i,
-      }));
+      // Check if test lessons already exist — skip inserting new tests
+      const existingTestCount = lessons.filter((l) => l.type === "test").length;
+      const lessonsToInsert = data.lessons
+        .filter((l: any) => !(l.type === "test" && existingTestCount > 0))
+        .map((l: any, i: number) => ({
+          course_id: courseId,
+          title: l.title,
+          type: l.type === "practice" ? "text" : l.type,
+          content: l.type === "practice" ? JSON.stringify([{ type: "heading1", content: "Практическое задание" }]) : null,
+          order_index: existingTestCount > 0 ? i : i, // will be reordered after reload
+        }));
 
-      const { error: insertError } = await supabase
-        .from("lessons")
-        .insert(lessonsToInsert);
+      if (lessonsToInsert.length > 0) {
+        const { error: insertError } = await supabase
+          .from("lessons")
+          .insert(lessonsToInsert);
 
-      if (insertError) throw new Error("Ошибка сохранения уроков: " + insertError.message);
+        if (insertError) throw new Error("Ошибка сохранения уроков: " + insertError.message);
+      }
 
       // Return fresh lessons from DB
       const freshLessons = await loadLessons();
@@ -339,8 +346,8 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
 
     let freshLessons: LessonItem[] | undefined;
 
-    // Phase 1: Structure (if no lessons)
-    if (!hasLessons) {
+    // Phase 1: Structure (if no content lessons — only tests or empty)
+    if (!hasContentLessons) {
       freshLessons = await generateStructure();
       if (!freshLessons.length || abortRef.current) {
         setProcessing(false);
