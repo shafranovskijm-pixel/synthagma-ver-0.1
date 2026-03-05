@@ -2,35 +2,33 @@
 
 ## Диагностика
 
-Из auth-логов видно, что за 1-2 секунды после входа `svetlana-voa@mail.ru` происходит **20+ одновременных refresh_token запросов**, каждый из которых отзывает предыдущий токен (`token_revoked`). Это вызывает `429: Request rate limit reached`, после чего сессия становится невалидной и пользователя выбрасывает на /login.
+Проблема **двойная**:
 
-**Корневая причина**: после `signInWithPassword` одновременно происходят:
-1. `signIn()` явно вызывает `fetchUserRole()` (делает DB-запрос)
-2. `onAuthStateChange(SIGNED_IN)` тоже вызывает `fetchUserRole()` через setTimeout
-3. `signIn()` ещё делает `await supabase.from("profiles").select(...)` - ещё один DB-запрос
-4. Supabase client с `autoRefreshToken: true` параллельно пытается обновить токен
-5. Если открыто несколько вкладок, каждая подхватывает изменение из localStorage и тоже рефрешит
+1. **Нестабильная авторизация** — вызов `signOut({ scope: 'local' })` перед `signInWithPassword` очищает сессию во всех вкладках, вызывая каскад `SIGNED_OUT` → `SIGNED_IN` событий и гонку за токенами. Это корень проблемы "выкидывает через 1-2 секунды".
 
-Всё это создаёт каскад конкурентных refresh-запросов.
+2. **Edge Function не получает запрос** — логи показывают только `booted`, ни одного обработанного запроса. Это значит, что Supabase SDK не может отправить запрос из-за невалидной/отсутствующей сессии (следствие п.1).
 
-## План исправления
+## План исправления: `src/hooks/useAuth.tsx`
 
-### 1. Защита signIn от дублирования (`useAuth.tsx`)
+### 1. Убрать `signOut({ scope: 'local' })` из signIn
+Это главная причина каскада. `signInWithPassword` сам атомарно заменяет сессию — предварительный signOut не нужен и вреден.
 
-- Добавить флаг `signInInProgress` (ref), при котором `onAuthStateChange` **полностью пропускает** вызов `fetchUserRole` (signIn уже сам его вызывает)
-- Убрать `await` с запроса `profiles` и `student_login_history` в signIn - сделать полностью fire-and-forget, чтобы не держать auth-окно открытым
-- Использовать кэш роли из `localStorage` как мгновенный fallback при инициализации, чтобы не ждать сетевого запроса
+### 2. Добавить управление auto-refresh по видимости вкладки
+Стандартная рекомендация Supabase для multi-tab:
+- Скрытая вкладка → `supabase.auth.stopAutoRefresh()` 
+- Видимая вкладка → `supabase.auth.startAutoRefresh()`
+Это предотвращает 10+ вкладок от одновременного refresh.
 
-### 2. Агрессивный debounce в onAuthStateChange
+### 3. Убрать cross-tab lock (acquireLock/releaseLock)
+Механизм через localStorage ненадёжен и добавляет сложность. С visibility-based refresh он не нужен.
 
-- Увеличить debounce с 2 секунд до 5 секунд для **всех** событий кроме SIGNED_OUT
-- Полностью игнорировать TOKEN_REFRESHED события (не вызывать fetchUserRole)
+### 4. Упростить recovery
+При потере сессии — один вызов `getSession()` через 2 секунды, без сложной логики блокировок.
 
-### 3. Результат
+### Результат
+- Только **активная** вкладка обновляет токен → нет каскада `token_revoked` → `429`
+- Нет `signOut` перед входом → нет волны `SIGNED_OUT` во всех вкладках  
+- Стабильная сессия → Edge Functions работают нормально
 
-- signIn: `signInWithPassword` → `fetchUserRole` → return (без лишних запросов)
-- onAuthStateChange: не дублирует fetchUserRole если signIn уже в процессе
-- Кэш роли из localStorage: мгновенный redirect без ожидания сети
-
-Изменяется один файл: `src/hooks/useAuth.tsx`
+**Файл**: `src/hooks/useAuth.tsx` (1 файл)
 
