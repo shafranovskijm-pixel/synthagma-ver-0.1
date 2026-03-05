@@ -139,9 +139,10 @@ export function TestAnswersDialog({ questions, courseTitle, lessonTitle, onApply
       if (!q) return;
       const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
       lines.push(`Вопрос ${a.questionNumber}: ${q.question}`);
-      q.options.forEach((opt, j) => {
+      q.options.forEach((opt: any, j: number) => {
+        const optText = typeof opt === 'string' ? opt : (opt?.text || opt?.label || String(opt));
         const marker = j === a.answerIndex ? '✅' : '  ';
-        lines.push(`${marker} ${letters[j] || (j + 1).toString()}) ${opt}`);
+        lines.push(`${marker} ${letters[j] || (j + 1).toString()}) ${optText}`);
       });
       if (a.explanation) {
         lines.push(`Пояснение: ${a.explanation}`);

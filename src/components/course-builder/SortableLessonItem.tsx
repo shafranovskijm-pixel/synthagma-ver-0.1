@@ -278,7 +278,7 @@ export function SortableLessonItem({
                   <Button variant="outline" size="sm" className="rounded-lg text-xs gap-1"><FileSpreadsheet className="w-3 h-3" />Импорт из Excel / TXT</Button>
                 </TestImportDialog>
                 <TestAnswersDialog
-                  questions={(lesson.questions as any[] || []).map((q: any) => ({ question: q.question, options: q.options }))}
+                  questions={(lesson.questions as any[] || []).map((q: any) => ({ question: q.question, options: (q.options || []).map((o: any) => typeof o === 'string' ? o : (o?.text || o?.label || String(o))) }))}
                   courseTitle={courseTitle}
                   lessonTitle={lesson.title}
                   onApplyAnswers={(answers: ParsedAnswer[]) => {
