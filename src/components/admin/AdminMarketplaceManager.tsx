@@ -104,28 +104,52 @@ export function AdminMarketplaceManager() {
         .from("lessons").select("id, title, type, content").eq("course_id", courseId);
       const issues: string[] = [];
 
-      const emptyLessons = lessons?.filter(l =>
-        (l.type === "text" || l.type === "practice") && (!l.content || l.content === "[]" || l.content === "")
-      );
-      if (emptyLessons?.length) issues.push(`${emptyLessons.length} уроков без контента`);
-
-      const titles = lessons?.map(l => l.title) || [];
-      const dupes = titles.filter((t, i) => titles.indexOf(t) !== i);
-      if (dupes.length) issues.push(`Дубликаты: ${[...new Set(dupes)].join(", ")}`);
-
-      const testIds = lessons?.filter(l => l.type === "test").map(l => l.id) || [];
-      let unansweredQuestions: any[] = [];
-      if (testIds.length) {
-        const { data: questions } = await supabase
-          .from("test_questions").select("id, lesson_id, correct_answer, question, options").in("lesson_id", testIds);
-        const testsWithNoQ = testIds.filter(id => !questions?.some(q => q.lesson_id === id));
-        unansweredQuestions = questions?.filter(q => q.correct_answer === null || q.correct_answer === undefined) || [];
-        if (testsWithNoQ.length) issues.push(`${testsWithNoQ.length} тестов без вопросов`);
-        if (unansweredQuestions.length) issues.push(`${unansweredQuestions.length} вопросов без ответа`);
-      }
-
       if (!lessons?.length) {
         issues.push("Нет уроков");
+      } else {
+        // Check minimum structure: must have text/practice lessons AND tests
+        const textLessons = lessons.filter(l => l.type === "text" || l.type === "practice");
+        const testLessons = lessons.filter(l => l.type === "test");
+
+        if (textLessons.length === 0) {
+          issues.push("Нет учебных уроков (текст/практика)");
+        }
+        if (testLessons.length === 0) {
+          issues.push("Нет тестов");
+        }
+        if (lessons.length < 3) {
+          issues.push(`Слишком мало уроков (${lessons.length}, нужно минимум 3)`);
+        }
+
+        // Check empty content in text/practice lessons
+        const emptyLessons = textLessons.filter(l =>
+          !l.content || l.content === "[]" || l.content === "" || l.content.length < 50
+        );
+        if (emptyLessons.length) issues.push(`${emptyLessons.length} уроков без контента`);
+
+        // Check filled lessons have substantial content
+        const filledLessons = textLessons.filter(l =>
+          l.content && l.content !== "[]" && l.content !== "" && l.content.length >= 50
+        );
+        if (textLessons.length > 0 && filledLessons.length === 0) {
+          issues.push("Ни один урок не содержит учебного материала");
+        }
+
+        // Check duplicates
+        const titles = lessons.map(l => l.title);
+        const dupes = titles.filter((t, i) => titles.indexOf(t) !== i);
+        if (dupes.length) issues.push(`Дубликаты: ${[...new Set(dupes)].join(", ")}`);
+
+        // Check tests
+        const testIds = testLessons.map(l => l.id);
+        if (testIds.length) {
+          const { data: questions } = await supabase
+            .from("test_questions").select("id, lesson_id, correct_answer, question, options").in("lesson_id", testIds);
+          const testsWithNoQ = testIds.filter(id => !questions?.some(q => q.lesson_id === id));
+          const unansweredQuestions = questions?.filter(q => q.correct_answer === null || q.correct_answer === undefined) || [];
+          if (testsWithNoQ.length) issues.push(`${testsWithNoQ.length} тестов без вопросов`);
+          if (unansweredQuestions.length) issues.push(`${unansweredQuestions.length} вопросов без ответа`);
+        }
       }
 
       const isOk = issues.length === 0;
