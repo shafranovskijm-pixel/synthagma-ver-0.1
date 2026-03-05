@@ -428,10 +428,53 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
     c.organization?.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Category grouping logic (same as admin marketplace)
+  const extractCategory = (title: string | undefined): string => {
+    if (!title) return "Без категории";
+    const dashIndex = title.indexOf(" — ");
+    return dashIndex > 0 ? title.substring(0, dashIndex) : "Без категории";
+  };
+
+  const extractShortTitle = (title: string | undefined): string => {
+    if (!title) return "";
+    const dashIndex = title.indexOf(" — ");
+    return dashIndex > 0 ? title.substring(dashIndex + 3) : title;
+  };
+
+  const EXCLUDED_FROM_RTN = ["Охрана труда при работах на высоте"];
+
+  const groupedCatalog: { category: string; courses: MarketplaceCourse[]; subGroups?: { category: string; courses: MarketplaceCourse[] }[] }[] = (() => {
+    const map = new Map<string, MarketplaceCourse[]>();
+    for (const c of filteredCatalog) {
+      const cat = extractCategory(c.course?.title);
+      if (!map.has(cat)) map.set(cat, []);
+      map.get(cat)!.push(c);
+    }
+
+    const rtnSubGroups: { category: string; courses: MarketplaceCourse[] }[] = [];
+    const standalone: { category: string; courses: MarketplaceCourse[] }[] = [];
+
+    for (const [category, courses] of Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b))) {
+      if (EXCLUDED_FROM_RTN.includes(category)) {
+        standalone.push({ category, courses });
+      } else {
+        rtnSubGroups.push({ category, courses });
+      }
+    }
+
+    const result: { category: string; courses: MarketplaceCourse[]; subGroups?: { category: string; courses: MarketplaceCourse[] }[] }[] = [];
+    if (rtnSubGroups.length > 0) {
+      const allRtnCourses = rtnSubGroups.flatMap(g => g.courses);
+      result.push({ category: "Курсы Ростехнадзора", courses: allRtnCourses, subGroups: rtnSubGroups });
+    }
+    result.push(...standalone);
+    return result;
+  })();
+
   return {
     activeTab, setActiveTab,
     isLoading, searchQuery, setSearchQuery,
-    catalogCourses, filteredCatalog, myCourses, myOrders, receivedOrders, availableCourses, courseRequests,
+    catalogCourses, filteredCatalog, groupedCatalog, extractShortTitle, myCourses, myOrders, receivedOrders, availableCourses, courseRequests,
     // Add dialog
     showAddDialog, setShowAddDialog, selectedCourseToAdd, setSelectedCourseToAdd,
     priceStudent, setPriceStudent, priceOrg, setPriceOrg, shortDescription, setShortDescription,

@@ -5,6 +5,7 @@ import {
   Eye, Edit, Trash2, Plus, Users, Building2, Search,
   DollarSign, Tag, Package, MessageSquarePlus, Megaphone, Send,
   Clock, Wallet, ChevronDown, ArrowLeft, Info, CreditCard, PlusCircle,
+  List, LayoutGrid,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -17,6 +18,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useCourseStoreManager } from "@/hooks/useCourseStoreManager";
@@ -44,6 +46,7 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
   const navigate = useNavigate();
   const h = useCourseStoreManager({ organizationId, userRole, userId, orgBalance, deductBalance });
   const [requestsOpen, setRequestsOpen] = useState(false);
+  const [catalogViewMode, setCatalogViewMode] = useState<'list' | 'grid'>('list');
   const [selectedCourseDetail, setSelectedCourseDetail] = useState<any>(null);
   const [showTopUpDialog, setShowTopUpDialog] = useState(false);
   const [topUpAmount, setTopUpAmount] = useState("");
@@ -181,8 +184,17 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input placeholder="Поиск курсов..." value={h.searchQuery} onChange={(e) => h.setSearchQuery(e.target.value)} className="pl-10 rounded-xl" />
                 </div>
+                <div className="flex items-center gap-1 border rounded-lg p-0.5">
+                  <Button variant={catalogViewMode === "list" ? "default" : "ghost"} size="icon" className="h-8 w-8" onClick={() => setCatalogViewMode("list")}>
+                    <List className="w-4 h-4" />
+                  </Button>
+                  <Button variant={catalogViewMode === "grid" ? "default" : "ghost"} size="icon" className="h-8 w-8" onClick={() => setCatalogViewMode("grid")}>
+                    <LayoutGrid className="w-4 h-4" />
+                  </Button>
+                </div>
+                <Badge variant="secondary">{h.filteredCatalog.length} курсов</Badge>
                 <Button variant="outline" className="rounded-xl gap-2" onClick={() => h.setShowRequestDialog(true)}>
-                  <MessageSquarePlus className="w-4 h-4" /><span className="hidden sm:inline">Разместить объявление</span>
+                  <MessageSquarePlus className="w-4 h-4" /><span className="hidden sm:inline">Объявление</span>
                 </Button>
               </div>
 
@@ -233,7 +245,73 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
 
               {h.filteredCatalog.length === 0 ? (
                 <Card className="border-dashed"><CardContent className="py-12 text-center"><Package className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" /><p className="text-muted-foreground">{h.searchQuery ? 'Курсы не найдены' : 'В каталоге пока нет курсов'}</p></CardContent></Card>
+              ) : catalogViewMode === 'list' ? (
+                /* Grouped list view */
+                <div className="space-y-2">
+                  {h.groupedCatalog.map((group) => (
+                    <Collapsible key={group.category}>
+                      <Card>
+                        <CollapsibleTrigger className="flex items-center justify-between w-full px-4 py-3 hover:bg-secondary/30 transition-colors rounded-t-xl group">
+                          <div className="flex items-center gap-3">
+                            <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
+                            <span className="font-semibold text-sm text-left">{group.category}</span>
+                          </div>
+                          <Badge variant="secondary" className="shrink-0">{group.courses.length}</Badge>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          {group.subGroups ? (
+                            <div className="space-y-1 pb-2">
+                              {group.subGroups.map((sub) => (
+                                <Collapsible key={sub.category}>
+                                  <CollapsibleTrigger className="flex items-center justify-between w-full px-6 py-2 hover:bg-secondary/20 transition-colors group">
+                                    <div className="flex items-center gap-2">
+                                      <ChevronDown className="w-3.5 h-3.5 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
+                                      <span className="text-sm font-medium text-left">{sub.category}</span>
+                                    </div>
+                                    <Badge variant="outline" className="shrink-0 text-xs">{sub.courses.length}</Badge>
+                                  </CollapsibleTrigger>
+                                  <CollapsibleContent>
+                                    <Table>
+                                      <TableBody>
+                                        {sub.courses.map((item) => (
+                                          <TableRow key={item.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedCourseDetail(item)}>
+                                            <TableCell>
+                                              <span className="text-sm">{h.extractShortTitle(item.course?.title)}</span>
+                                            </TableCell>
+                                            <TableCell className="w-[120px] text-sm text-right font-medium text-primary">
+                                              {h.userRole === 'student' ? item.price_student.toLocaleString() : item.price_organization.toLocaleString()} ₽
+                                            </TableCell>
+                                          </TableRow>
+                                        ))}
+                                      </TableBody>
+                                    </Table>
+                                  </CollapsibleContent>
+                                </Collapsible>
+                              ))}
+                            </div>
+                          ) : (
+                            <Table>
+                              <TableBody>
+                                {group.courses.map((item) => (
+                                  <TableRow key={item.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedCourseDetail(item)}>
+                                    <TableCell>
+                                      <span className="text-sm">{h.extractShortTitle(item.course?.title)}</span>
+                                    </TableCell>
+                                    <TableCell className="w-[120px] text-sm text-right font-medium text-primary">
+                                      {h.userRole === 'student' ? item.price_student.toLocaleString() : item.price_organization.toLocaleString()} ₽
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          )}
+                        </CollapsibleContent>
+                      </Card>
+                    </Collapsible>
+                  ))}
+                </div>
               ) : (
+                /* Grid view */
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {h.filteredCatalog.map((item) => (
                     <Card key={item.id} className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer" onClick={() => setSelectedCourseDetail(item)}>
