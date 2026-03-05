@@ -2,6 +2,7 @@
 export interface QuestionForExport {
   question: string;
   options: string[];
+  correctAnswer?: number | null;
 }
 
 export function exportQuestionsForAI(questions: QuestionForExport[], courseTitle: string): string {
@@ -13,7 +14,8 @@ export function exportQuestionsForAI(questions: QuestionForExport[], courseTitle
     lines.push(`Вопрос ${i + 1}: ${q.question}`);
     const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
     q.options.forEach((opt, j) => {
-      lines.push(`${letters[j] || (j + 1).toString()}) ${opt}`);
+      const marker = (q.correctAnswer != null && q.correctAnswer === j) ? '✅' : '  ';
+      lines.push(`${marker} ${letters[j] || (j + 1).toString()}) ${opt}`);
     });
     lines.push('');
   });
