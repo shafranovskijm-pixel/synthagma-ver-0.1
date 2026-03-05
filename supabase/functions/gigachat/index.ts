@@ -106,14 +106,16 @@ async function callLovableAI(messages: Array<{ role: string; content: string }>)
   return result.choices?.[0]?.message?.content || "";
 }
 
-async function callAI(messages: Array<{ role: string; content: string }>): Promise<string> {
+async function callAI(messages: Array<{ role: string; content: string }>): Promise<{ text: string; model: string }> {
   // Try GigaChat first, fallback to Lovable AI on certificate/network errors
   try {
-    return await callGigaChat(messages);
+    const text = await callGigaChat(messages);
+    return { text, model: "GigaChat" };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.warn("GigaChat unavailable, falling back to Lovable AI:", msg);
-    return await callLovableAI(messages);
+    const text = await callLovableAI(messages);
+    return { text, model: "Gemini 2.5 Flash" };
   }
 }
 
@@ -176,7 +178,10 @@ serve(async (req) => {
 
     if (action === "generate_answers") {
       const questionsText = questions.map((q: any, i: number) => {
-        const opts = q.options.map((o: string, j: number) => `  ${j + 1}) ${o}`).join("\n");
+        const opts = q.options.map((o: any, j: number) => {
+          const text = typeof o === 'string' ? o : (o?.text || o?.label || String(o));
+          return `  ${j + 1}) ${text}`;
+        }).join("\n");
         return `Вопрос ${i + 1}: ${q.question}\n${opts}`;
       }).join("\n\n");
 
@@ -191,17 +196,17 @@ serve(async (req) => {
 Отвечай ТОЛЬКО JSON-массивом, без markdown-обертки.`;
 
       const prompt = `Курс: "${courseTitle}"\nУрок: "${lessonTitle}"\n\n${questionsText}`;
-      const response = await callAI([
+      const { text: response, model } = await callAI([
         { role: "system", content: systemPrompt },
         { role: "user", content: prompt },
       ]);
 
       try {
         const cleaned = response.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
-        result = { answers: JSON.parse(cleaned) };
+        result = { answers: JSON.parse(cleaned), model };
       } catch {
         console.error("Failed to parse AI response:", response);
-        result = { answers: [], raw: response, parseError: true };
+        result = { answers: [], raw: response, parseError: true, model };
       }
 
     } else if (action === "generate_content") {
@@ -217,11 +222,11 @@ serve(async (req) => {
 4. Минимум 500 слов
 5. На русском языке${contextNote}`;
 
-      const content = await callAI([
+      const { text: content, model } = await callAI([
         { role: "system", content: systemPrompt },
         { role: "user", content: `Напиши учебный материал для урока "${lessonTitle}" курса "${courseTitle}"` },
       ]);
-      result = { content };
+      result = { content, model };
 
     } else if (action === "generate_questions") {
       const systemPrompt = `Ты эксперт по промышленной безопасности и нормативам Ростехнадзора. Создай тестовые вопросы.
@@ -233,16 +238,16 @@ serve(async (req) => {
 
 Создай 10 вопросов разной сложности. Отвечай ТОЛЬКО JSON-массивом.`;
 
-      const response = await callAI([
+      const { text: response, model } = await callAI([
         { role: "system", content: systemPrompt },
         { role: "user", content: `Создай тестовые вопросы для теста "${lessonTitle}" курса "${courseTitle}"` },
       ]);
 
       try {
         const cleaned = response.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
-        result = { questions: JSON.parse(cleaned) };
+        result = { questions: JSON.parse(cleaned), model };
       } catch {
-        result = { questions: [], raw: response, parseError: true };
+        result = { questions: [], raw: response, parseError: true, model };
       }
 
     } else {
