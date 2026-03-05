@@ -137,7 +137,23 @@ export function AdminMarketplaceManager() {
       }
       
       if (issues.length > 0) {
-        toast.error("Проблемы курса", { description: issues.join(" • "), duration: 8000 });
+        const mpItem = h.courses.find((c: any) => c.course_id === courseId);
+        toast.error("Проблемы курса", {
+          description: issues.join(" • "),
+          duration: 12000,
+          action: {
+            label: "Исправить ИИ",
+            onClick: () => {
+              if (mpItem) {
+                setBulkGenCourse({
+                  id: courseId,
+                  title: mpItem.course?.title || "",
+                  description: mpItem.course?.description || "",
+                });
+              }
+            },
+          },
+        });
       } else {
         toast.success("Курс готов ✅");
       }
