@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   Store, Plus, Search, Edit, Trash2, Eye, Loader2,
   Package, ShoppingCart, Building2, Users, Tag, Sparkles, BookOpen, Upload,
-  List, LayoutGrid, ChevronDown, FolderPlus, FolderInput,
+  List, LayoutGrid, ChevronDown, FolderPlus, FolderInput, CheckCircle2, AlertTriangle,
 } from "lucide-react";
 import { BulkCourseImporter } from "./BulkCourseImporter";
 import { BulkContentGenerator } from "./BulkContentGenerator";
@@ -34,11 +34,24 @@ const statusLabels: Record<string, { label: string; color: string }> = {
   cancelled: { label: "Отменена", color: "bg-red-500/10 text-red-600 border-red-500/20" },
 };
 
-function renderCourseRow(item: any, h: any, navigate: any, onBulkGenerate: (item: any) => void) {
+function renderCourseRow(
+  item: any, h: any, navigate: any, onBulkGenerate: (item: any) => void,
+  validatedCourses: Record<string, 'ok' | 'error'>, onValidate: (courseId: string) => void, validatingId: string | null
+) {
+  const status = validatedCourses[item.course_id];
   return (
     <TableRow key={item.id} className={!item.is_active ? "opacity-60" : ""}>
       <TableCell>
-        <span className="text-sm">{h.extractShortTitle(item.course?.title)}</span>
+        <button
+          className="text-sm text-left hover:underline cursor-pointer inline-flex items-center gap-1.5"
+          onClick={() => onValidate(item.course_id)}
+          disabled={validatingId === item.course_id}
+        >
+          {validatingId === item.course_id && <Loader2 className="w-3 h-3 animate-spin" />}
+          {status === 'ok' && <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />}
+          {status === 'error' && <AlertTriangle className="w-3.5 h-3.5 text-red-500 shrink-0" />}
+          {h.extractShortTitle(item.course?.title)}
+        </button>
       </TableCell>
       <TableCell className="w-[100px] text-sm">{item.price_student.toLocaleString()} ₽</TableCell>
       <TableCell className="w-[100px] text-sm">{item.price_organization.toLocaleString()} ₽</TableCell>
@@ -74,6 +87,52 @@ export function AdminMarketplaceManager() {
   const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
   const [isGeneratingShortDesc, setIsGeneratingShortDesc] = useState(false);
   const [bulkGenCourse, setBulkGenCourse] = useState<{ id: string; title: string; description?: string } | null>(null);
+  const [validatedCourses, setValidatedCourses] = useState<Record<string, 'ok' | 'error'>>({});
+  const [validatingId, setValidatingId] = useState<string | null>(null);
+
+  const handleValidateCourse = async (courseId: string) => {
+    setValidatingId(courseId);
+    try {
+      const { data: lessons } = await supabase
+        .from("lessons").select("id, title, type, content").eq("course_id", courseId);
+      const issues: string[] = [];
+
+      const emptyLessons = lessons?.filter(l =>
+        (l.type === "text" || l.type === "practice") && (!l.content || l.content === "[]" || l.content === "")
+      );
+      if (emptyLessons?.length) issues.push(`${emptyLessons.length} уроков без контента`);
+
+      const titles = lessons?.map(l => l.title) || [];
+      const dupes = titles.filter((t, i) => titles.indexOf(t) !== i);
+      if (dupes.length) issues.push(`Дубликаты: ${[...new Set(dupes)].join(", ")}`);
+
+      const testIds = lessons?.filter(l => l.type === "test").map(l => l.id) || [];
+      if (testIds.length) {
+        const { data: questions } = await supabase
+          .from("test_questions").select("id, lesson_id, correct_answer").in("lesson_id", testIds);
+        const testsWithNoQ = testIds.filter(id => !questions?.some(q => q.lesson_id === id));
+        const unanswered = questions?.filter(q => q.correct_answer === null || q.correct_answer === undefined);
+        if (testsWithNoQ.length) issues.push(`${testsWithNoQ.length} тестов без вопросов`);
+        if (unanswered?.length) issues.push(`${unanswered.length} вопросов без ответа`);
+      }
+
+      if (!lessons?.length) {
+        issues.push("Нет уроков");
+      }
+
+      setValidatedCourses(prev => ({ ...prev, [courseId]: issues.length === 0 ? 'ok' : 'error' }));
+      if (issues.length > 0) {
+        toast.error("Проблемы курса", { description: issues.join(" • "), duration: 8000 });
+      } else {
+        toast.success("Курс готов ✅");
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error("Ошибка проверки");
+    } finally {
+      setValidatingId(null);
+    }
+  };
 
   const handleBulkGenerate = (item: any) => {
     setBulkGenCourse({ id: item.course_id, title: item.course?.title || "", description: item.course?.description || "" });
@@ -201,7 +260,7 @@ export function AdminMarketplaceManager() {
                               <CollapsibleContent>
                                 <Table>
                                   <TableBody>
-                                    {sub.courses.map((item) => renderCourseRow(item, h, navigate, handleBulkGenerate))}
+                                    {sub.courses.map((item) => renderCourseRow(item, h, navigate, handleBulkGenerate, validatedCourses, handleValidateCourse, validatingId))}
                                   </TableBody>
                                 </Table>
                               </CollapsibleContent>
@@ -211,7 +270,7 @@ export function AdminMarketplaceManager() {
                       ) : (
                         <Table>
                           <TableBody>
-                            {group.courses.map((item) => renderCourseRow(item, h, navigate, handleBulkGenerate))}
+                            {group.courses.map((item) => renderCourseRow(item, h, navigate, handleBulkGenerate, validatedCourses, handleValidateCourse, validatingId))}
                           </TableBody>
                         </Table>
                       )}
