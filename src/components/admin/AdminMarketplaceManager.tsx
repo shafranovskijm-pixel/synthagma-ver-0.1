@@ -4,6 +4,7 @@ import {
   Store, Plus, Search, Edit, Trash2, Eye, Loader2,
   Package, ShoppingCart, Building2, Users, Tag, Sparkles, BookOpen, Upload,
   List, LayoutGrid, ChevronDown, FolderPlus, FolderInput, CheckCircle2, AlertTriangle,
+  FolderOpen,
 } from "lucide-react";
 import { BulkCourseImporter } from "./BulkCourseImporter";
 import { BulkContentGenerator } from "./BulkContentGenerator";
@@ -60,16 +61,13 @@ function renderCourseRow(
       </TableCell>
       <TableCell className="w-[130px]">
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-8 w-8" title="AI контент" onClick={() => onBulkGenerate(item)}>
-            <Sparkles className="w-3.5 h-3.5" />
+          <Button variant="ghost" size="icon" className="h-8 w-8" title="Войти" onClick={() => navigate(`/course-builder/${item.course_id}`)}>
+            <Eye className="w-3.5 h-3.5" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" title="Переместить в категорию" onClick={() => { h.setMovingCourse(item); h.setTargetCategory(h.extractCategory(item.course?.title)); h.setShowMoveCategoryDialog(true); }}>
-            <FolderInput className="w-3.5 h-3.5" />
+          <Button variant="ghost" size="icon" className="h-8 w-8" title="Просмотр" onClick={() => onBulkGenerate(item)}>
+            <FolderOpen className="w-3.5 h-3.5" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" title="Редактировать уроки" onClick={() => navigate(`/course-builder/${item.course_id}`)}>
-            <BookOpen className="w-3.5 h-3.5" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" title="Редактировать курс" onClick={() => { h.setEditingCourse(item); h.setShowEditDialog(true); }}>
+          <Button variant="ghost" size="icon" className="h-8 w-8" title="Редактировать" onClick={() => { h.setEditingCourse(item); h.setShowEditDialog(true); }}>
             <Edit className="w-3.5 h-3.5" />
           </Button>
           <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => h.handleDeleteCourse(item.id)}>
@@ -233,52 +231,23 @@ export function AdminMarketplaceManager() {
               </CardContent>
             </Card>
           ) : h.viewMode === "list" ? (
-            /* Grouped list view */
-            <div className="space-y-2">
-              {h.groupedCourses.map((group) => (
-                <Collapsible key={group.category}>
-                  <Card>
-                    <CollapsibleTrigger className="flex items-center justify-between w-full px-4 py-3 hover:bg-secondary/30 transition-colors rounded-t-xl group">
-                      <div className="flex items-center gap-3">
-                        <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
-                        <span className="font-semibold text-sm text-left">{group.category}</span>
-                      </div>
-                      <Badge variant="secondary" className="shrink-0">{group.courses.length}</Badge>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      {group.subGroups ? (
-                        <div className="space-y-1 pb-2">
-                          {group.subGroups.map((sub) => (
-                            <Collapsible key={sub.category}>
-                              <CollapsibleTrigger className="flex items-center justify-between w-full px-6 py-2 hover:bg-secondary/20 transition-colors group">
-                                <div className="flex items-center gap-2">
-                                  <ChevronDown className="w-3.5 h-3.5 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
-                                  <span className="text-sm font-medium text-left">{sub.category}</span>
-                                </div>
-                                <Badge variant="outline" className="shrink-0 text-xs">{sub.courses.length}</Badge>
-                              </CollapsibleTrigger>
-                              <CollapsibleContent>
-                                <Table>
-                                  <TableBody>
-                                    {sub.courses.map((item) => renderCourseRow(item, h, navigate, handleBulkGenerate, validatedCourses, handleValidateCourse, validatingId))}
-                                  </TableBody>
-                                </Table>
-                              </CollapsibleContent>
-                            </Collapsible>
-                          ))}
-                        </div>
-                      ) : (
-                        <Table>
-                          <TableBody>
-                            {group.courses.map((item) => renderCourseRow(item, h, navigate, handleBulkGenerate, validatedCourses, handleValidateCourse, validatingId))}
-                          </TableBody>
-                        </Table>
-                      )}
-                    </CollapsibleContent>
-                  </Card>
-                </Collapsible>
-              ))}
-            </div>
+            /* Flat list view */
+            <Card>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Название</TableHead>
+                    <TableHead className="w-[100px]">Студенты</TableHead>
+                    <TableHead className="w-[100px]">Организации</TableHead>
+                    <TableHead className="w-[60px]">Активен</TableHead>
+                    <TableHead className="w-[130px]">Действия</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {h.filteredCourses.map((item) => renderCourseRow(item, h, navigate, handleBulkGenerate, validatedCourses, handleValidateCourse, validatingId))}
+                </TableBody>
+              </Table>
+            </Card>
           ) : (
             /* Grid view */
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
