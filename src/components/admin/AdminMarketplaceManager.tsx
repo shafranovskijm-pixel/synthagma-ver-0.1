@@ -145,7 +145,7 @@ export function AdminMarketplaceManager() {
           action: {
             label: "Исправить ИИ",
             onClick: () => {
-              autoFixCourse(courseId, mpItem?.course?.title || "", emptyLessons || [], unansweredQuestions);
+              autoFixCourse(courseId, mpItem?.course?.title || "");
             },
           },
         });
@@ -162,20 +162,33 @@ export function AdminMarketplaceManager() {
     }
   };
 
-  const autoFixCourse = async (
-    courseId: string,
-    courseTitle: string,
-    emptyLessons: Array<{ id: string; title: string; type: string }>,
-    unansweredQuestions: Array<{ id: string; lesson_id: string; question: string; options: any }>
-  ) => {
-    const totalTasks = emptyLessons.length + (unansweredQuestions.length > 0 ? 1 : 0);
-    if (totalTasks === 0) { toast.info("Нечего исправлять"); return; }
-
-    const toastId = toast.loading(`Исправляю курс... 0/${totalTasks}`, { duration: Infinity });
-    let completed = 0;
+  const autoFixCourse = async (courseId: string, courseTitle: string) => {
+    const toastId = toast.loading("Анализирую курс...", { duration: Infinity });
 
     try {
-      // 1. Generate content for empty lessons
+      // 1. Fetch fresh data from DB
+      const { data: lessons } = await supabase
+        .from("lessons").select("id, title, type, content").eq("course_id", courseId);
+
+      const emptyLessons = lessons?.filter(l =>
+        (l.type === "text" || l.type === "practice") && (!l.content || l.content === "[]" || l.content === "")
+      ) || [];
+
+      const testIds = lessons?.filter(l => l.type === "test").map(l => l.id) || [];
+      let unansweredQuestions: Array<{ id: string; lesson_id: string; question: string; options: any }> = [];
+
+      if (testIds.length) {
+        const { data: questions } = await supabase
+          .from("test_questions").select("id, lesson_id, correct_answer, question, options").in("lesson_id", testIds);
+        unansweredQuestions = (questions?.filter(q => q.correct_answer === null || q.correct_answer === undefined) || []) as typeof unansweredQuestions;
+      }
+
+      const totalTasks = emptyLessons.length + (unansweredQuestions.length > 0 ? 1 : 0);
+      if (totalTasks === 0) { toast.info("Нечего исправлять", { id: toastId, duration: 3000 }); return; }
+
+      let completed = 0;
+
+      // 2. Generate content for empty lessons
       for (const lesson of emptyLessons) {
         completed++;
         toast.loading(`Генерирую контент: ${lesson.title} (${completed}/${totalTasks})`, { id: toastId });
@@ -193,7 +206,7 @@ export function AdminMarketplaceManager() {
         }
       }
 
-      // 2. Fix unanswered test questions in batches
+      // 3. Fix unanswered test questions in batches
       if (unansweredQuestions.length > 0) {
         completed++;
         toast.loading(`Решаю тесты: ${unansweredQuestions.length} вопросов (${completed}/${totalTasks})`, { id: toastId });
@@ -206,13 +219,8 @@ export function AdminMarketplaceManager() {
           byLesson.set(q.lesson_id, arr);
         }
 
-        // Get lesson titles for context
-        const lessonIds = [...byLesson.keys()];
-        const { data: testLessons } = await supabase
-          .from("lessons").select("id, title, course_id").in("id", lessonIds);
-
         for (const [lessonId, questions] of byLesson) {
-          const lessonInfo = testLessons?.find(l => l.id === lessonId);
+          const lessonInfo = lessons?.find(l => l.id === lessonId);
           const batchSize = 20;
           for (let i = 0; i < questions.length; i += batchSize) {
             const batch = questions.slice(i, i + batchSize);
