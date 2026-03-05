@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Sparkles, Loader2, Check, X, AlertCircle, RotateCcw, CheckSquare, Square, Layers, FileText, ClipboardCheck } from "lucide-react";
+import { Sparkles, Loader2, Check, X, AlertCircle, RotateCcw, CheckSquare, Square, Layers, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -10,8 +10,8 @@ import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 
-type LessonStatus = "pending" | "generating_text" | "generating_image" | "generating_questions" | "done" | "error";
-type Phase = "idle" | "structure" | "content" | "tests" | "complete";
+type LessonStatus = "pending" | "generating_text" | "generating_image" | "done" | "error";
+type Phase = "idle" | "structure" | "content" | "complete";
 
 interface LessonItem {
   id: string;
@@ -36,7 +36,6 @@ const PHASE_LABELS: Record<Phase, string> = {
   idle: "Готово к запуску",
   structure: "Фаза 1: Генерация структуры",
   content: "Фаза 2: Генерация контента",
-  tests: "Фаза 3: Генерация тестов",
   complete: "Завершено",
 };
 
@@ -68,11 +67,14 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
 
       if (error) throw error;
 
-      const items: LessonItem[] = (data || []).map((l) => ({
-        ...l,
-        selected: true,
-        status: "pending" as LessonStatus,
-      }));
+      // Filter out test lessons — they don't need content generation
+      const items: LessonItem[] = (data || [])
+        .filter((l) => l.type !== "test")
+        .map((l) => ({
+          ...l,
+          selected: true,
+          status: "pending" as LessonStatus,
+        }));
 
       setLessons(items);
       setDoneCount(0);
@@ -101,9 +103,7 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
   }, []);
 
   const hasLessons = lessons.length > 0;
-  const contentLessons = lessons.filter((l) => l.selected && (l.type === "text" || l.type === "practice" || l.type === "lesson"));
-  const testLessons = lessons.filter((l) => l.selected && l.type === "test");
-  const needsContent = contentLessons.filter((l) => !l.content || l.content === "[]" || l.content === "null");
+  const needsContent = lessons.filter((l) => l.selected && (!l.content || l.content === "[]" || l.content === "null"));
   const selectedCount = lessons.filter((l) => l.selected).length;
 
   // Phase 1: Generate structure
@@ -119,11 +119,10 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
         throw new Error(data?.error || "Не удалось создать структуру");
       }
 
-      // Insert lessons into DB
       const lessonsToInsert = data.lessons.map((l: any, i: number) => ({
         course_id: courseId,
         title: l.title,
-        type: l.type === "practice" ? "text" : l.type, // store practice as text in DB, tag via content
+        type: l.type === "practice" ? "text" : l.type,
         content: l.type === "practice" ? JSON.stringify([{ type: "heading1", content: "Практическое задание" }]) : null,
         order_index: i,
       }));
@@ -134,7 +133,6 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
 
       if (insertError) throw new Error("Ошибка сохранения уроков: " + insertError.message);
 
-      // Reload lessons
       await loadLessons();
       return true;
     } catch (e: any) {
@@ -148,8 +146,7 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
   const generateContent = async () => {
     setPhase("content");
     const targets = lessons.filter(
-      (l) => l.selected && (l.type === "text" || l.type === "practice" || l.type === "lesson") &&
-        (!l.content || l.content === "[]" || l.content === "null")
+      (l) => l.selected && (!l.content || l.content === "[]" || l.content === "null")
     );
 
     let completed = 0;
@@ -157,7 +154,6 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
       if (abortRef.current) break;
       const lesson = targets[i];
 
-      // Determine if this is a practice lesson (check content for marker)
       const isPractice = lesson.content && lesson.content.includes("Практическое задание");
       const lessonType = isPractice ? "practice" : "text";
 
@@ -173,7 +169,6 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
 
         const blocks = textData.blocks;
 
-        // Generate image
         updateLesson(lesson.id, { status: "generating_image" });
         let imageUrl: string | null = null;
         try {
@@ -214,62 +209,11 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
     return completed;
   };
 
-  // Phase 3: Generate test questions
-  const generateTests = async () => {
-    setPhase("tests");
-    const targets = lessons.filter((l) => l.selected && l.type === "test");
-
-    let completed = 0;
-    for (let i = 0; i < targets.length; i++) {
-      if (abortRef.current) break;
-      const lesson = targets[i];
-
-      updateLesson(lesson.id, { status: "generating_questions" });
-      try {
-        const { data: testData, error: testError } = await supabase.functions.invoke("generate-lesson-content", {
-          body: { lessonTitle: lesson.title, lessonType: "test", courseTitle, courseDescription },
-        });
-        if (testError) throw new Error(testError.message || "Ошибка генерации теста");
-        if (!testData?.success || !testData?.questions?.length) {
-          throw new Error(testData?.error || "Пустой ответ от ИИ");
-        }
-
-        // Insert questions into test_questions table
-        const questionsToInsert = testData.questions.map((q: any, idx: number) => ({
-          lesson_id: lesson.id,
-          question: q.question,
-          options: q.options,
-          correct_answer: q.correctAnswer,
-          order_index: idx,
-        }));
-
-        const { error: insertError } = await supabase
-          .from("test_questions")
-          .insert(questionsToInsert);
-
-        if (insertError) throw new Error("Ошибка сохранения вопросов: " + insertError.message);
-
-        updateLesson(lesson.id, { status: "done" });
-        completed++;
-        setDoneCount((prev) => prev + 1);
-      } catch (e: any) {
-        console.error("Error generating test", lesson.title, e);
-        updateLesson(lesson.id, { status: "error", error: e.message || "Неизвестная ошибка" });
-      }
-
-      if (i < targets.length - 1 && !abortRef.current) {
-        await new Promise((r) => setTimeout(r, 2000));
-      }
-    }
-    return completed;
-  };
-
   const startFullPipeline = async () => {
     setProcessing(true);
     setDoneCount(0);
     abortRef.current = false;
 
-    // Reset all statuses
     setLessons((prev) => prev.map((l) => ({ ...l, status: "pending", error: undefined })));
 
     // Phase 1: Structure (if no lessons)
@@ -283,23 +227,15 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
       await new Promise((r) => setTimeout(r, 1000));
     }
 
-    // Calculate total
-    const currentLessons = lessons;
-    const contentTargets = currentLessons.filter(
-      (l) => l.selected && (l.type === "text" || l.type === "practice" || l.type === "lesson") &&
-        (!l.content || l.content === "[]" || l.content === "null")
+    // Calculate total — only content targets
+    const contentTargets = lessons.filter(
+      (l) => l.selected && (!l.content || l.content === "[]" || l.content === "null")
     ).length;
-    const testTargets = currentLessons.filter((l) => l.selected && l.type === "test").length;
-    setTotalToProcess(contentTargets + testTargets);
+    setTotalToProcess(contentTargets);
 
     // Phase 2: Content
     if (!abortRef.current) {
       await generateContent();
-    }
-
-    // Phase 3: Tests
-    if (!abortRef.current) {
-      await generateTests();
     }
 
     setPhase(abortRef.current ? "idle" : "complete");
@@ -320,61 +256,33 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
       if (abortRef.current) break;
       const lesson = errorLessons[i];
 
-      if (lesson.type === "test") {
-        updateLesson(lesson.id, { status: "generating_questions", error: undefined });
+      updateLesson(lesson.id, { status: "generating_text", error: undefined });
+      try {
+        const { data: textData, error: textError } = await supabase.functions.invoke("generate-lesson-content", {
+          body: { lessonTitle: lesson.title, lessonType: "text", courseTitle, courseDescription },
+        });
+        if (textError) throw new Error(textError.message);
+        if (!textData?.success || !textData?.blocks?.length) throw new Error(textData?.error || "Пустой ответ");
+
+        updateLesson(lesson.id, { status: "generating_image" });
+        let imageUrl: string | null = null;
         try {
-          const { data: testData, error: testError } = await supabase.functions.invoke("generate-lesson-content", {
-            body: { lessonTitle: lesson.title, lessonType: "test", courseTitle, courseDescription },
+          const { data: imgData } = await supabase.functions.invoke("generate-image", {
+            body: { prompt: `Образовательная иллюстрация для урока: ${lesson.title}` },
           });
-          if (testError) throw new Error(testError.message);
-          if (!testData?.success || !testData?.questions?.length) throw new Error(testData?.error || "Пустой ответ");
+          if (imgData?.url) imageUrl = imgData.url;
+        } catch {}
 
-          const questionsToInsert = testData.questions.map((q: any, idx: number) => ({
-            lesson_id: lesson.id,
-            question: q.question,
-            options: q.options,
-            correct_answer: q.correctAnswer,
-            order_index: idx,
-          }));
+        const finalBlocks = [...textData.blocks];
+        if (imageUrl) finalBlocks.push({ type: "image", content: imageUrl });
 
-          const { error: insertError } = await supabase.from("test_questions").insert(questionsToInsert);
-          if (insertError) throw new Error(insertError.message);
+        const { error: saveError } = await supabase.from("lessons").update({ content: JSON.stringify(finalBlocks) }).eq("id", lesson.id);
+        if (saveError) throw new Error(saveError.message);
 
-          updateLesson(lesson.id, { status: "done" });
-          setDoneCount((prev) => prev + 1);
-        } catch (e: any) {
-          updateLesson(lesson.id, { status: "error", error: e.message });
-        }
-      } else {
-        // text/practice retry
-        updateLesson(lesson.id, { status: "generating_text", error: undefined });
-        try {
-          const { data: textData, error: textError } = await supabase.functions.invoke("generate-lesson-content", {
-            body: { lessonTitle: lesson.title, lessonType: "text", courseTitle, courseDescription },
-          });
-          if (textError) throw new Error(textError.message);
-          if (!textData?.success || !textData?.blocks?.length) throw new Error(textData?.error || "Пустой ответ");
-
-          updateLesson(lesson.id, { status: "generating_image" });
-          let imageUrl: string | null = null;
-          try {
-            const { data: imgData } = await supabase.functions.invoke("generate-image", {
-              body: { prompt: `Образовательная иллюстрация для урока: ${lesson.title}` },
-            });
-            if (imgData?.url) imageUrl = imgData.url;
-          } catch {}
-
-          const finalBlocks = [...textData.blocks];
-          if (imageUrl) finalBlocks.push({ type: "image", content: imageUrl });
-
-          const { error: saveError } = await supabase.from("lessons").update({ content: JSON.stringify(finalBlocks) }).eq("id", lesson.id);
-          if (saveError) throw new Error(saveError.message);
-
-          updateLesson(lesson.id, { status: "done" });
-          setDoneCount((prev) => prev + 1);
-        } catch (e: any) {
-          updateLesson(lesson.id, { status: "error", error: e.message });
-        }
+        updateLesson(lesson.id, { status: "done" });
+        setDoneCount((prev) => prev + 1);
+      } catch (e: any) {
+        updateLesson(lesson.id, { status: "error", error: e.message });
       }
 
       if (i < errorLessons.length - 1 && !abortRef.current) {
@@ -394,7 +302,6 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
     switch (status) {
       case "generating_text":
       case "generating_image":
-      case "generating_questions":
         return <Loader2 className="w-4 h-4 animate-spin text-primary" />;
       case "done":
         return <Check className="w-4 h-4 text-accent-foreground" />;
@@ -409,7 +316,6 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
     switch (status) {
       case "generating_text": return "Текст...";
       case "generating_image": return "Изображение...";
-      case "generating_questions": return "Вопросы...";
       case "done": return "Готово";
       case "error": return "Ошибка";
       default: return "";
@@ -418,14 +324,13 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
 
   const typeBadge = (type: string) => {
     switch (type) {
-      case "test": return <Badge variant="outline" className="text-xs">Тест</Badge>;
       case "practice": return <Badge variant="outline" className="text-xs">Практика</Badge>;
       default: return <Badge variant="secondary" className="text-xs">Лекция</Badge>;
     }
   };
 
   const isPhaseComplete = (p: string) => {
-    const order = ["idle", "structure", "content", "tests", "complete"];
+    const order = ["idle", "structure", "content", "complete"];
     return order.indexOf(phase) > order.indexOf(p);
   };
 
@@ -455,8 +360,6 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
           {phaseIndicator("structure", "Структура", <Layers className="w-3.5 h-3.5" />, phase === "structure")}
           <span className="text-muted-foreground">→</span>
           {phaseIndicator("content", "Контент", <FileText className="w-3.5 h-3.5" />, phase === "content")}
-          <span className="text-muted-foreground">→</span>
-          {phaseIndicator("tests", "Тесты", <ClipboardCheck className="w-3.5 h-3.5" />, phase === "tests")}
         </div>
 
         {loading ? (
@@ -465,8 +368,8 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
           </div>
         ) : !hasLessons ? (
           <div className="text-center py-8 space-y-2">
-            <p className="text-muted-foreground">Уроков пока нет — ИИ создаст структуру, контент и тесты автоматически</p>
-            <p className="text-xs text-muted-foreground">Структура: лекции → тесты → практические задания → итоговый тест</p>
+            <p className="text-muted-foreground">Уроков пока нет — ИИ создаст структуру и контент автоматически</p>
+            <p className="text-xs text-muted-foreground">Структура: лекции → практические задания</p>
           </div>
         ) : (
           <>
@@ -479,10 +382,7 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
                   <><Square className="w-4 h-4 mr-1.5" />Выбрать все</>
                 )}
               </Button>
-              <div className="flex items-center gap-2">
-                <Badge variant="secondary">{needsContent.length} лекций</Badge>
-                <Badge variant="outline">{testLessons.length} тестов</Badge>
-              </div>
+              <Badge variant="secondary">{needsContent.length} к генерации</Badge>
             </div>
 
             {/* Progress */}
@@ -505,7 +405,7 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
                     className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
                       lesson.status === "done" ? "bg-green-500/5" :
                       lesson.status === "error" ? "bg-destructive/5" :
-                      ["generating_text", "generating_image", "generating_questions"].includes(lesson.status) ? "bg-primary/5" :
+                      ["generating_text", "generating_image"].includes(lesson.status) ? "bg-primary/5" :
                       "hover:bg-secondary/50"
                     }`}
                   >
