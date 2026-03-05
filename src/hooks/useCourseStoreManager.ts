@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
 
 interface Course {
   id: string;
@@ -81,6 +82,7 @@ interface UseCourseStoreManagerProps {
 }
 
 export function useCourseStoreManager({ organizationId, userRole = 'organization', userId, orgBalance, deductBalance }: UseCourseStoreManagerProps) {
+  const { checkLimit, refetch: refetchLimits } = useSubscriptionLimits(organizationId);
   const [activeTab, setActiveTab] = useState<'catalog' | 'my-courses' | 'orders' | 'my-orders'>('catalog');
   const [isLoading, setIsLoading] = useState(true);
   const [catalogCourses, setCatalogCourses] = useState<MarketplaceCourse[]>([]);
@@ -277,6 +279,14 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
 
   const handleOrder = async () => {
     if (!selectedCourseForOrder) return;
+    
+    // Check subscription course limit
+    const limitResult = checkLimit('course');
+    if (!limitResult.allowed) {
+      toast.error(limitResult.message);
+      return;
+    }
+    
     setIsOrdering(true);
     try {
       const price = userRole === 'student' ? selectedCourseForOrder.price_student : selectedCourseForOrder.price_organization * studentsCount;
@@ -356,6 +366,7 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
         } catch (cloneError) {
           console.error('Error cloning course:', cloneError);
         }
+        refetchLimits();
       }
 
       try {
