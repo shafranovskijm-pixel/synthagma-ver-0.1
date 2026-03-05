@@ -1,34 +1,27 @@
 
 
-## Plan: Return to admin panel when exiting course view in admin mode
+## Plan: Remove image generation from bulk content pipeline
 
 ### Problem
-When an admin views a course (from marketplace or organization details) and clicks "Back", they get redirected to `/organization` instead of back to `/admin`. Only `useCourseBuilder.ts` checks `adminViewAsOrg` — other pages (`CourseEditor`, `CoursePreview`, `CourseImport`, `ContractEditor`) hardcode `/organization`.
+Each lesson generates both text content AND an image via separate AI calls. The image generation (`generate-image` function) consumes additional AI credits, causing the balance to run out quickly on a single course.
 
-### Solution
-Create a shared utility function `getBackPath()` and use it in all course-related pages:
+### Fix
 
+**File: `src/components/admin/BulkContentGenerator.tsx`** — lines 230-253
+
+Remove the entire image generation block. After generating text blocks, save them directly without generating/appending an image.
+
+Replace lines 230-253 with just saving the text blocks:
 ```typescript
-// Helper: check if admin is viewing as org
-function getAdminAwareBackPath(defaultPath = "/organization") {
-  if (localStorage.getItem("adminViewAsOrg")) return "/admin";
-  return defaultPath;
-}
+const finalBlocks = [...blocks];
+
+const { error: saveError } = await supabase
+  .from("lessons")
+  .update({ content: JSON.stringify(finalBlocks) })
+  .eq("id", lesson.id);
 ```
 
-### Files to change
+Also remove the `"generating_image"` status update (line 230) since that phase no longer exists.
 
-1. **`src/lib/utils.ts`** — Add `getAdminAwareBackPath()` helper
-
-2. **`src/pages/CourseEditor.tsx`** — Replace all `navigate("/organization")` with `navigate(getAdminAwareBackPath())`
-
-3. **`src/pages/CoursePreview.tsx`** — Same replacement for back buttons (~3 places)
-
-4. **`src/pages/CourseImport.tsx`** — Same replacement (~2 places)
-
-5. **`src/pages/ContractEditor.tsx`** — Same replacement (1 place)
-
-6. **`src/hooks/useCourseBuilder.ts`** — Simplify existing `getBackPath()` to use the shared helper
-
-This ensures any "back" navigation from course pages respects the admin viewing context and returns to `/admin` (where the marketplace tab was active).
+This is a deletion of ~20 lines in one file. Text generation remains intact; only image generation is removed.
 
