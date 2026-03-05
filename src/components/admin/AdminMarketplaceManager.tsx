@@ -194,58 +194,12 @@ export function AdminMarketplaceManager() {
       const { data: lessons } = await supabase
         .from("lessons").select("id, title, type, content, order_index").eq("course_id", courseId);
 
-      const textLessons = (lessons || []).filter(l => l.type === "text" || l.type === "practice");
-      const testLessons = (lessons || []).filter(l => l.type === "test");
-      const needsStructure = !lessons?.length || lessons.length < 3 || testLessons.length === 0 || textLessons.length === 0;
-
-      // Step 0: Generate full course structure if course is empty or incomplete
-      if (needsStructure) {
-        toast.loading("Генерирую структуру курса...", { id: toastId });
-        try {
-          const { data: structData, error: structError } = await supabase.functions.invoke("generate-course-structure", {
-            body: { title: courseTitle },
-          });
-          if (structError) throw structError;
-          const generatedLessons = structData?.lessons || [];
-          if (generatedLessons.length > 0) {
-            // Delete existing lessons first if any
-            if (lessons?.length) {
-              for (const l of lessons) {
-                await supabase.from("lessons").delete().eq("id", l.id);
-              }
-            }
-            // Insert generated lessons
-            const nonTestLessons = generatedLessons.filter((l: any) => l.type !== "test");
-            const testLessonsGen = generatedLessons.filter((l: any) => l.type === "test");
-            const orderedLessons = [...nonTestLessons, ...testLessonsGen];
-            for (let i = 0; i < orderedLessons.length; i++) {
-              const l = orderedLessons[i];
-              await supabase.from("lessons").insert({
-                course_id: courseId,
-                title: l.title,
-                type: l.type || "text",
-                content: "",
-                order_index: i,
-              });
-            }
-          }
-        } catch (e) {
-          console.error("Failed to generate structure:", e);
-          toast.error("Не удалось создать структуру курса", { id: toastId, duration: 3000 });
-          return;
-        }
-      }
-
-      // Re-fetch lessons after possible structure generation
-      const { data: freshLessons } = await supabase
-        .from("lessons").select("id, title, type, content, order_index").eq("course_id", courseId);
-
-      const emptyLessons = (freshLessons || []).filter(l =>
+      const emptyLessons = (lessons || []).filter(l =>
         (l.type === "text" || l.type === "practice") && (!l.content || l.content === "[]" || l.content === "" || l.content.length < 50)
       );
 
-      const freshTestLessons = (freshLessons || []).filter(l => l.type === "test");
-      const testIds = freshTestLessons.map(l => l.id);
+      const testLessons = (lessons || []).filter(l => l.type === "test");
+      const testIds = testLessons.map(l => l.id);
       let allQuestions: Array<{ id: string; lesson_id: string; correct_answer: number | null; question: string; options: any }> = [];
 
       if (testIds.length) {
@@ -254,58 +208,26 @@ export function AdminMarketplaceManager() {
         allQuestions = (questions || []) as typeof allQuestions;
       }
 
-      // Find empty tests (no questions at all)
-      const emptyTests = freshTestLessons.filter(t => !allQuestions.some(q => q.lesson_id === t.id));
-
       // Find unanswered questions
       const unansweredQuestions = allQuestions.filter(q => q.correct_answer === null || q.correct_answer === undefined);
 
       // Find duplicate titles
       const titleCounts = new Map<string, Array<{ id: string; title: string }>>();
-      for (const l of (freshLessons || [])) {
+      for (const l of (lessons || [])) {
         const arr = titleCounts.get(l.title) || [];
         arr.push(l);
         titleCounts.set(l.title, arr);
       }
       const duplicateGroups = [...titleCounts.values()].filter(g => g.length > 1);
 
-      const totalTasks = emptyLessons.length + emptyTests.length + (unansweredQuestions.length > 0 ? 1 : 0) + (duplicateGroups.length > 0 ? 1 : 0);
-      if (totalTasks === 0 && !needsStructure) { toast.info("Нечего исправлять", { id: toastId, duration: 3000 }); return; }
+      const totalTasks = emptyLessons.length + (unansweredQuestions.length > 0 ? 1 : 0) + (duplicateGroups.length > 0 ? 1 : 0);
+      if (totalTasks === 0) { toast.info("Нечего исправлять", { id: toastId, duration: 3000 }); return; }
 
       let completed = 0;
 
       // 2. Generate content for empty lessons (already exists above)
 
-      // 3. Generate questions for empty tests
-      for (const test of emptyTests) {
-        completed++;
-        toast.loading(`Генерирую вопросы: ${test.title} (${completed}/${totalTasks})`, { id: toastId });
-        try {
-          const { data, error } = await supabase.functions.invoke("gigachat", {
-            body: {
-              action: "generate_questions",
-              courseTitle,
-              lessonTitle: test.title,
-            },
-          });
-          if (error) throw error;
-          if (data?.questions && !data.parseError && Array.isArray(data.questions)) {
-            for (const q of data.questions) {
-              await supabase.from("test_questions").insert({
-                lesson_id: test.id,
-                question: q.question,
-                options: q.options || [],
-                correct_answer: q.correctAnswer ?? null,
-                explanation: q.explanation || null,
-              });
-            }
-          }
-        } catch (e) {
-          console.error(`Failed to generate questions for test ${test.title}:`, e);
-        }
-      }
-
-      // 4. Fix unanswered test questions in batches
+      // 3. Fix unanswered test questions in batches
       if (unansweredQuestions.length > 0) {
         completed++;
         toast.loading(`Решаю тесты: ${unansweredQuestions.length} вопросов (${completed}/${totalTasks})`, { id: toastId });
