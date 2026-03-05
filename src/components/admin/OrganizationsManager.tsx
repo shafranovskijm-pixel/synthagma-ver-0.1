@@ -25,7 +25,8 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Building2, Loader2, Users, BookOpen, Key, Eye, EyeOff, Copy, Check, Download, ExternalLink, Search, X, FolderOpen, DollarSign, Calendar, RefreshCw, Mail, Phone, MoreHorizontal } from "lucide-react";
+import { Plus, Pencil, Trash2, Building2, Loader2, Users, BookOpen, Key, Eye, EyeOff, Copy, Check, Download, ExternalLink, Search, X, FolderOpen, DollarSign, Calendar, RefreshCw, Mail, Phone, MoreHorizontal, Crown } from "lucide-react";
+import { getPlanInfo, type SubscriptionPlan } from "@/constants/subscriptionPlans";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -778,6 +779,17 @@ export function OrganizationsManager() {
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                    {org.subscription_plan && org.subscription_plan !== 'free' && (
+                      <Badge variant="secondary" className="text-xs gap-1">
+                        <Crown className="w-3 h-3" />
+                        {getPlanInfo(org.subscription_plan as SubscriptionPlan).name}
+                      </Badge>
+                    )}
+                    {!org.subscription_plan || org.subscription_plan === 'free' ? (
+                      <Badge variant="outline" className="text-xs text-muted-foreground">
+                        Бесплатный
+                      </Badge>
+                    ) : null}
                     {org.is_paid ? (
                       <Badge className="bg-green-500 hover:bg-green-600 text-xs">
                         <DollarSign className="w-3 h-3 mr-0.5" />
