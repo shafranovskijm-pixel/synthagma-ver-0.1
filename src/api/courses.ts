@@ -3,6 +3,7 @@ import type { Course, CourseCategory, Enrollment } from "@/types";
 
 // ============= Courses API =============
 
+
 export async function fetchCourses(organizationId: string): Promise<Course[]> {
   const { data: coursesData, error } = await supabase
     .from("courses")
