@@ -54,6 +54,14 @@ const isContentEmpty = (content: string | null): boolean => {
   }
 };
 
+/** Detect if lesson is a practice task by its content placeholder */
+const isPracticeLesson = (lesson: LessonItem): boolean => {
+  if (!lesson.content) return false;
+  return lesson.content.includes("Практическое задание");
+};
+
+const TEST_BATCH_SIZE = 20;
+
 export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle, courseDescription }: Props) {
   const [lessons, setLessons] = useState<LessonItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -71,7 +79,7 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
     return () => { abortRef.current = true; };
   }, [open, courseId]);
 
-  const loadLessons = async () => {
+  const loadLessons = async (): Promise<LessonItem[]> => {
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -93,9 +101,11 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
       setTotalToProcess(0);
       setProcessing(false);
       abortRef.current = false;
+      return items;
     } catch (e) {
       console.error(e);
       toast.error("Ошибка загрузки уроков");
+      return [];
     } finally {
       setLoading(false);
     }
@@ -119,8 +129,8 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
   const testLessons = lessons.filter((l) => l.selected && l.type === "test");
   const selectedCount = lessons.filter((l) => l.selected).length;
 
-  // Phase 1: Generate structure
-  const generateStructure = async (): Promise<boolean> => {
+  // Phase 1: Generate structure — returns fresh lessons
+  const generateStructure = async (): Promise<LessonItem[]> => {
     setPhase("structure");
     try {
       const { data, error } = await supabase.functions.invoke("generate-course-structure", {
@@ -146,19 +156,21 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
 
       if (insertError) throw new Error("Ошибка сохранения уроков: " + insertError.message);
 
-      await loadLessons();
-      return true;
+      // Return fresh lessons from DB
+      const freshLessons = await loadLessons();
+      return freshLessons;
     } catch (e: any) {
       console.error("Structure generation error:", e);
       toast.error(e.message || "Ошибка генерации структуры");
-      return false;
+      return [];
     }
   };
 
   // Phase 2: Generate content for text/practice lessons
-  const generateContent = async () => {
+  const generateContent = async (overrideLessons?: LessonItem[]) => {
     setPhase("content");
-    const targets = lessons.filter(
+    const source = overrideLessons || lessons;
+    const targets = source.filter(
       (l) => l.selected && l.type !== "test" && isContentEmpty(l.content)
     );
 
@@ -168,8 +180,7 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
       if (abortRef.current) break;
       const lesson = targets[i];
 
-      const isPractice = lesson.content && lesson.content.includes("Практическое задание");
-      const lessonType = isPractice ? "practice" : "text";
+      const lessonType = isPracticeLesson(lesson) ? "practice" : "text";
 
       updateLesson(lesson.id, { status: "generating_text" });
       try {
@@ -229,10 +240,11 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
     }
   };
 
-  // Phase 3: Solve test questions using AI
-  const solveTests = async () => {
+  // Phase 3: Solve test questions using AI (with batching)
+  const solveTests = async (overrideLessons?: LessonItem[]) => {
     setPhase("tests");
-    const targets = lessons.filter((l) => l.selected && l.type === "test");
+    const source = overrideLessons || lessons;
+    const targets = source.filter((l) => l.selected && l.type === "test");
 
     for (let i = 0; i < targets.length; i++) {
       if (abortRef.current) break;
@@ -254,28 +266,44 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
           continue;
         }
 
-        // Call gigachat to solve questions
-        const questionsForAI = questions.map((q: any) => ({
-          question: q.question,
-          options: Array.isArray(q.options) ? q.options.map((o: any) => typeof o === "string" ? o : o.text || String(o)) : [],
-        }));
+        // Process in batches of TEST_BATCH_SIZE
+        const allAnswers: Array<{ questionIndex: number; correctAnswer: number; explanation?: string }> = [];
 
-        const { data: aiData, error: aiError } = await supabase.functions.invoke("gigachat", {
-          body: {
-            action: "generate_answers",
-            courseTitle,
-            lessonTitle: lesson.title,
-            questions: questionsForAI,
-          },
-        });
+        for (let batchStart = 0; batchStart < questions.length; batchStart += TEST_BATCH_SIZE) {
+          if (abortRef.current) break;
+          const batch = questions.slice(batchStart, batchStart + TEST_BATCH_SIZE);
 
-        if (aiError) throw new Error(aiError.message || "Ошибка AI");
-        if (aiData.parseError) throw new Error("ИИ вернул ответ в неожиданном формате");
+          const questionsForAI = batch.map((q: any) => ({
+            question: q.question,
+            options: Array.isArray(q.options) ? q.options.map((o: any) => typeof o === "string" ? o : o.text || String(o)) : [],
+          }));
 
-        const answers = aiData.answers || [];
+          const { data: aiData, error: aiError } = await supabase.functions.invoke("gigachat", {
+            body: {
+              action: "generate_answers",
+              courseTitle,
+              lessonTitle: lesson.title,
+              questions: questionsForAI,
+            },
+          });
+
+          if (aiError) throw new Error(aiError.message || "Ошибка AI");
+          if (aiData.parseError) throw new Error("ИИ вернул ответ в неожиданном формате");
+
+          // Adjust questionIndex to global index
+          const batchAnswers = (aiData.answers || []).map((a: any) => ({
+            ...a,
+            questionIndex: a.questionIndex + batchStart,
+          }));
+          allAnswers.push(...batchAnswers);
+
+          if (batchStart + TEST_BATCH_SIZE < questions.length) {
+            await new Promise((r) => setTimeout(r, 1500));
+          }
+        }
 
         // Update each question with AI answer
-        for (const answer of answers) {
+        for (const answer of allAnswers) {
           const questionIdx = answer.questionIndex;
           if (questionIdx >= 0 && questionIdx < questions.length) {
             const q = questions[questionIdx];
@@ -309,10 +337,12 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
 
     setLessons((prev) => prev.map((l) => ({ ...l, status: "pending", error: undefined })));
 
+    let freshLessons: LessonItem[] | undefined;
+
     // Phase 1: Structure (if no lessons)
     if (!hasLessons) {
-      const structOk = await generateStructure();
-      if (!structOk || abortRef.current) {
+      freshLessons = await generateStructure();
+      if (!freshLessons.length || abortRef.current) {
         setProcessing(false);
         setPhase("idle");
         return;
@@ -320,19 +350,20 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
       await new Promise((r) => setTimeout(r, 1000));
     }
 
-    // Calculate total
-    const cTargets = lessons.filter((l) => l.selected && l.type !== "test" && isContentEmpty(l.content)).length;
-    const tTargets = lessons.filter((l) => l.selected && l.type === "test").length;
+    // Calculate total using fresh data if available
+    const source = freshLessons || lessons;
+    const cTargets = source.filter((l) => l.selected && l.type !== "test" && isContentEmpty(l.content)).length;
+    const tTargets = source.filter((l) => l.selected && l.type === "test").length;
     setTotalToProcess(cTargets + tTargets);
 
     // Phase 2: Content
     if (!abortRef.current) {
-      await generateContent();
+      await generateContent(freshLessons);
     }
 
     // Phase 3: Solve tests
     if (!abortRef.current) {
-      await solveTests();
+      await solveTests(freshLessons);
     }
 
     setPhase(abortRef.current ? "idle" : "complete");
@@ -370,19 +401,35 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
             continue;
           }
 
-          const questionsForAI = questions.map((q: any) => ({
-            question: q.question,
-            options: Array.isArray(q.options) ? q.options.map((o: any) => typeof o === "string" ? o : o.text || String(o)) : [],
-          }));
+          // Batch test questions
+          const allAnswers: Array<{ questionIndex: number; correctAnswer: number; explanation?: string }> = [];
+          for (let batchStart = 0; batchStart < questions.length; batchStart += TEST_BATCH_SIZE) {
+            if (abortRef.current) break;
+            const batch = questions.slice(batchStart, batchStart + TEST_BATCH_SIZE);
+            const questionsForAI = batch.map((q: any) => ({
+              question: q.question,
+              options: Array.isArray(q.options) ? q.options.map((o: any) => typeof o === "string" ? o : o.text || String(o)) : [],
+            }));
 
-          const { data: aiData, error: aiError } = await supabase.functions.invoke("gigachat", {
-            body: { action: "generate_answers", courseTitle, lessonTitle: lesson.title, questions: questionsForAI },
-          });
+            const { data: aiData, error: aiError } = await supabase.functions.invoke("gigachat", {
+              body: { action: "generate_answers", courseTitle, lessonTitle: lesson.title, questions: questionsForAI },
+            });
 
-          if (aiError) throw new Error(aiError.message);
-          if (aiData.parseError) throw new Error("Неожиданный формат ответа AI");
+            if (aiError) throw new Error(aiError.message);
+            if (aiData.parseError) throw new Error("Неожиданный формат ответа AI");
 
-          for (const answer of (aiData.answers || [])) {
+            const batchAnswers = (aiData.answers || []).map((a: any) => ({
+              ...a,
+              questionIndex: a.questionIndex + batchStart,
+            }));
+            allAnswers.push(...batchAnswers);
+
+            if (batchStart + TEST_BATCH_SIZE < questions.length) {
+              await new Promise((r) => setTimeout(r, 1500));
+            }
+          }
+
+          for (const answer of allAnswers) {
             const questionIdx = answer.questionIndex;
             if (questionIdx >= 0 && questionIdx < questions.length) {
               await supabase
@@ -401,8 +448,7 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
         // Retry content generation
         updateLesson(lesson.id, { status: "generating_text", error: undefined });
         try {
-          const isPractice = lesson.content && lesson.content.includes("Практическое задание");
-          const lessonType = isPractice ? "practice" : "text";
+          const lessonType = isPracticeLesson(lesson) ? "practice" : "text";
 
           const { data: textData, error: textError } = await supabase.functions.invoke("generate-lesson-content", {
             body: { lessonTitle: lesson.title, lessonType, courseTitle, courseDescription, previousLessons: [] },

@@ -104,7 +104,12 @@ serve(async (req) => {
 ВАЖНО:
 - Ссылайся только на действующие нормативно-правовые акты
 - Учитывай современные требования законодательства РФ
-- Названия должны отражать конкретное содержание, а не быть абстрактными`;
+- Названия должны отражать конкретное содержание, а не быть абстрактными
+
+КРИТИЧЕСКИ ВАЖНО:
+- Последний урок ОБЯЗАТЕЛЬНО должен называться ТОЧНО "Итоговое тестирование" (тип "test")
+- Он ВСЕГДА идёт последним в списке, после всех лекций и практик
+- НЕ ДОБАВЛЯЙ другие уроки после итогового тестирования`;
 
     const userPrompt = `Создай структуру курса:
 Название: ${title}
@@ -217,6 +222,25 @@ ${description ? `Описание: ${description}` : ""}
     if (lessons.length === 0) {
       console.error("No lessons extracted. Full response:", JSON.stringify(result));
       throw new Error("Не удалось сгенерировать структуру курса. Попробуйте ещё раз.");
+    }
+
+    // Post-process: ensure last lesson is "Итоговое тестирование" (test)
+    const lastLesson = lessons[lessons.length - 1];
+    if (lastLesson.type !== "test" || !lastLesson.title?.includes("тестирование")) {
+      // Find existing final test and move it to end
+      const finalTestIdx = lessons.findIndex((l: any) => 
+        l.type === "test" && (l.title?.includes("Итоговое") || l.title?.includes("итоговое"))
+      );
+      if (finalTestIdx >= 0 && finalTestIdx !== lessons.length - 1) {
+        const [finalTest] = lessons.splice(finalTestIdx, 1);
+        lessons.push(finalTest);
+      } else if (lastLesson.type !== "test") {
+        // No final test found, add one
+        lessons.push({ title: "Итоговое тестирование", type: "test", description: "Итоговый тест по всему курсу" });
+      } else {
+        // Last is test but wrong name — rename
+        lastLesson.title = "Итоговое тестирование";
+      }
     }
 
     console.log(`Generated course structure for user ${user.id}: ${lessons.length} lessons`);

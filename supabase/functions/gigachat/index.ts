@@ -47,7 +47,7 @@ async function getGigaChatToken(): Promise<string> {
   return cachedToken!;
 }
 
-async function callGigaChat(messages: Array<{ role: string; content: string }>, model = "GigaChat"): Promise<string> {
+async function callGigaChat(messages: Array<{ role: string; content: string }>, model = "GigaChat", maxTokens = 4096): Promise<string> {
   const token = await getGigaChatToken();
 
   const response = await fetch("https://gigachat.devices.sberbank.ru/api/v1/chat/completions", {
@@ -61,7 +61,7 @@ async function callGigaChat(messages: Array<{ role: string; content: string }>, 
       model,
       messages,
       temperature: 0.7,
-      max_tokens: 4096,
+      max_tokens: maxTokens,
     }),
   });
 
@@ -78,7 +78,7 @@ async function callGigaChat(messages: Array<{ role: string; content: string }>, 
   return result.choices?.[0]?.message?.content || "";
 }
 
-async function callLovableAI(messages: Array<{ role: string; content: string }>): Promise<string> {
+async function callLovableAI(messages: Array<{ role: string; content: string }>, maxTokens = 4096): Promise<string> {
   const apiKey = Deno.env.get("LOVABLE_API_KEY");
   if (!apiKey) throw new Error("LOVABLE_API_KEY is not configured");
 
@@ -92,7 +92,7 @@ async function callLovableAI(messages: Array<{ role: string; content: string }>)
       model: "google/gemini-2.5-flash",
       messages,
       temperature: 0.7,
-      max_tokens: 4096,
+      max_tokens: maxTokens,
     }),
   });
 
@@ -106,15 +106,15 @@ async function callLovableAI(messages: Array<{ role: string; content: string }>)
   return result.choices?.[0]?.message?.content || "";
 }
 
-async function callAI(messages: Array<{ role: string; content: string }>): Promise<{ text: string; model: string }> {
+async function callAI(messages: Array<{ role: string; content: string }>, maxTokens = 4096): Promise<{ text: string; model: string }> {
   // Try GigaChat first, fallback to Lovable AI on certificate/network errors
   try {
-    const text = await callGigaChat(messages);
+    const text = await callGigaChat(messages, "GigaChat", maxTokens);
     return { text, model: "GigaChat" };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.warn("GigaChat unavailable, falling back to Lovable AI:", msg);
-    const text = await callLovableAI(messages);
+    const text = await callLovableAI(messages, maxTokens);
     return { text, model: "Gemini 2.5 Flash" };
   }
 }
@@ -199,7 +199,7 @@ serve(async (req) => {
       const { text: response, model } = await callAI([
         { role: "system", content: systemPrompt },
         { role: "user", content: prompt },
-      ]);
+      ], 16384);
 
       try {
         const cleaned = response.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
