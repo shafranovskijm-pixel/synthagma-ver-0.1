@@ -16,15 +16,18 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  // Use cached role from localStorage for instant init
+  const cachedRole = localStorage.getItem('user_role') as AuthContextType['userRole'];
+  
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [userRole, setUserRole] = useState<'admin' | 'organization' | 'student' | 'sales_manager' | 'company' | null>(null);
+  const [userRole, setUserRole] = useState<'admin' | 'organization' | 'student' | 'sales_manager' | 'company' | null>(cachedRole);
   const [loading, setLoading] = useState(true);
   const [roleLoaded, setRoleLoaded] = useState(false);
   
   // Prevent concurrent role fetches and auth state race conditions
   const roleFetchInFlight = useRef<string | null>(null);
-  const lastAuthEvent = useRef<number>(0);
+  const signInInProgress = useRef(false);
 
   const fetchUserRole = useCallback(async (userId: string) => {
     // Deduplicate: skip if already fetching for this user
@@ -62,15 +65,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        // Debounce rapid auth events (prevents token refresh storm)
-        const now = Date.now();
-        if (event === 'TOKEN_REFRESHED' && now - lastAuthEvent.current < 2000) {
-          // Skip rapid-fire token refresh events, just update session silently
+        // Completely ignore TOKEN_REFRESHED — never refetch role on token refresh
+        if (event === 'TOKEN_REFRESHED') {
           setSession(session);
           setUser(session?.user ?? null);
           return;
         }
-        lastAuthEvent.current = now;
+        
+        // If signIn is in progress, skip — signIn handles role fetch itself
+        if (signInInProgress.current && event === 'SIGNED_IN') {
+          setSession(session);
+          setUser(session?.user ?? null);
+          return;
+        }
         
         setSession(session);
         setUser(session?.user ?? null);
@@ -97,6 +104,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (session?.user) {
           await fetchUserRole(session.user.id);
+        } else {
+          // No session — clear cached role
+          localStorage.removeItem('user_role');
+          setUserRole(null);
         }
       } catch (error) {
         console.error('Auth initialization error:', error);
@@ -112,34 +123,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     console.log('[Auth] signIn attempt for:', email);
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    signInInProgress.current = true;
     
-    if (!error && data?.user) {
-      console.log('[Auth] signIn success, fetching role for:', data.user.id);
-      // Await role fetch BEFORE returning to prevent race condition
-      await fetchUserRole(data.user.id);
-      console.log('[Auth] role fetched, userRole is now set');
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
       
-      // Log the login event (fire-and-forget)
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("organization_id")
-        .eq("user_id", data.user.id)
-        .maybeSingle();
-      
-      if (profile?.organization_id) {
-        supabase.from("student_login_history").insert({
-          user_id: data.user.id,
-          organization_id: profile.organization_id,
-          user_agent: navigator.userAgent,
-        }).then(() => {});
+      if (!error && data?.user) {
+        console.log('[Auth] signIn success, fetching role for:', data.user.id);
+        // Await role fetch BEFORE returning to prevent race condition
+        await fetchUserRole(data.user.id);
+        console.log('[Auth] role fetched, userRole is now set');
+        
+        // Fire-and-forget: log the login event (no await!)
+        supabase
+          .from("profiles")
+          .select("organization_id")
+          .eq("user_id", data.user.id)
+          .maybeSingle()
+          .then(({ data: profile }) => {
+            if (profile?.organization_id) {
+              supabase.from("student_login_history").insert({
+                user_id: data.user!.id,
+                organization_id: profile.organization_id,
+                user_agent: navigator.userAgent,
+              }).then(() => {});
+            }
+          });
       }
+      
+      return { error };
+    } finally {
+      signInInProgress.current = false;
     }
-    
-    return { error };
   };
 
   const signUp = async (email: string, password: string, fullName: string) => {
