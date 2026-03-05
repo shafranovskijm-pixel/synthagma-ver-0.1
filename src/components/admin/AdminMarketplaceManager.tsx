@@ -174,44 +174,72 @@ export function AdminMarketplaceManager() {
         (l.type === "text" || l.type === "practice") && (!l.content || l.content === "[]" || l.content === "")
       ) || [];
 
-      const testIds = lessons?.filter(l => l.type === "test").map(l => l.id) || [];
-      let unansweredQuestions: Array<{ id: string; lesson_id: string; question: string; options: any }> = [];
+      const testLessons = lessons?.filter(l => l.type === "test") || [];
+      const testIds = testLessons.map(l => l.id);
+      let allQuestions: Array<{ id: string; lesson_id: string; correct_answer: number | null; question: string; options: any }> = [];
 
       if (testIds.length) {
         const { data: questions } = await supabase
           .from("test_questions").select("id, lesson_id, correct_answer, question, options").in("lesson_id", testIds);
-        unansweredQuestions = (questions?.filter(q => q.correct_answer === null || q.correct_answer === undefined) || []) as typeof unansweredQuestions;
+        allQuestions = (questions || []) as typeof allQuestions;
       }
 
-      const totalTasks = emptyLessons.length + (unansweredQuestions.length > 0 ? 1 : 0);
+      // Find empty tests (no questions at all)
+      const emptyTests = testLessons.filter(t => !allQuestions.some(q => q.lesson_id === t.id));
+
+      // Find unanswered questions
+      const unansweredQuestions = allQuestions.filter(q => q.correct_answer === null || q.correct_answer === undefined);
+
+      // Find duplicate titles
+      const titleCounts = new Map<string, Array<{ id: string; title: string }>>();
+      for (const l of (lessons || [])) {
+        const arr = titleCounts.get(l.title) || [];
+        arr.push(l);
+        titleCounts.set(l.title, arr);
+      }
+      const duplicateGroups = [...titleCounts.values()].filter(g => g.length > 1);
+
+      const totalTasks = emptyLessons.length + emptyTests.length + (unansweredQuestions.length > 0 ? 1 : 0) + (duplicateGroups.length > 0 ? 1 : 0);
       if (totalTasks === 0) { toast.info("Нечего исправлять", { id: toastId, duration: 3000 }); return; }
 
       let completed = 0;
 
-      // 2. Generate content for empty lessons
-      for (const lesson of emptyLessons) {
+      // 2. Generate content for empty lessons (already exists above)
+
+      // 3. Generate questions for empty tests
+      for (const test of emptyTests) {
         completed++;
-        toast.loading(`Генерирую контент: ${lesson.title} (${completed}/${totalTasks})`, { id: toastId });
+        toast.loading(`Генерирую вопросы: ${test.title} (${completed}/${totalTasks})`, { id: toastId });
         try {
-          const { data, error } = await supabase.functions.invoke("generate-lesson-content", {
-            body: { courseTitle, lessonTitle: lesson.title, lessonType: lesson.type },
+          const { data, error } = await supabase.functions.invoke("gigachat", {
+            body: {
+              action: "generate_questions",
+              courseTitle,
+              lessonTitle: test.title,
+            },
           });
           if (error) throw error;
-          if (data?.content) {
-            const blocks = [{ id: crypto.randomUUID(), type: "text", content: data.content }];
-            await supabase.from("lessons").update({ content: JSON.stringify(blocks) }).eq("id", lesson.id);
+          if (data?.questions && !data.parseError && Array.isArray(data.questions)) {
+            for (const q of data.questions) {
+              await supabase.from("test_questions").insert({
+                lesson_id: test.id,
+                question: q.question,
+                options: q.options || [],
+                correct_answer: q.correctAnswer ?? null,
+                explanation: q.explanation || null,
+              });
+            }
           }
         } catch (e) {
-          console.error(`Failed to generate content for lesson ${lesson.title}:`, e);
+          console.error(`Failed to generate questions for test ${test.title}:`, e);
         }
       }
 
-      // 3. Fix unanswered test questions in batches
+      // 4. Fix unanswered test questions in batches
       if (unansweredQuestions.length > 0) {
         completed++;
         toast.loading(`Решаю тесты: ${unansweredQuestions.length} вопросов (${completed}/${totalTasks})`, { id: toastId });
 
-        // Group by lesson_id
         const byLesson = new Map<string, typeof unansweredQuestions>();
         for (const q of unansweredQuestions) {
           const arr = byLesson.get(q.lesson_id) || [];
@@ -250,6 +278,18 @@ export function AdminMarketplaceManager() {
             } catch (e) {
               console.error(`Failed to solve test batch for lesson ${lessonId}:`, e);
             }
+          }
+        }
+      }
+
+      // 5. Fix duplicate titles
+      if (duplicateGroups.length > 0) {
+        completed++;
+        toast.loading(`Исправляю дубликаты заголовков (${completed}/${totalTasks})`, { id: toastId });
+        for (const group of duplicateGroups) {
+          for (let i = 1; i < group.length; i++) {
+            const newTitle = `${group[i].title} (${i + 1})`;
+            await supabase.from("lessons").update({ title: newTitle }).eq("id", group[i].id);
           }
         }
       }
