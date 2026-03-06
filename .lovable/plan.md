@@ -1,30 +1,78 @@
 
 
-## План: восстановление вопросов в готовых курсах
+## Проблема
 
-### Проблема
-4 курса «Правила работы с персоналом — до и выше 1000 В» (Группы II–V) были валидированы с 3 вопросами, тогда как их дубликаты в работе содержат 22–50 вопросов.
+При массовом импорте из Excel (`BulkCourseImporter.tsx`, строка 124) все вопросы создаются с `correct_answer: 0` вместо `null`. Далее pipeline (`BulkPipelineWidget.tsx`, строка 311) проверяет `correct_answer === null`, видит `0` (не null) и пропускает вопросы, считая их решёнными.
 
-### Решение — миграция БД
+**Масштаб**: 11,051 из 11,263 вопросов во всех курсах маркетплейса имеют `correct_answer = 0` (ответ A). Это затрагивает ВСЕ импортированные курсы, не только «Правила работы с персоналом».
 
-Для каждого из 4 курсов:
-1. Найти дубликат с максимальным числом вопросов
-2. Скопировать все вопросы из дубликата в тестовый урок готового курса (с новыми UUID, исключая уже существующие по тексту вопроса)
-3. Скопировать `correct_answer` и `explanation` из источника
+## Решение (2 части)
 
-**Конкретные пары (validated → source):**
+### 1. Исправить код — предотвратить повторение
 
-| Validated lesson_id | Source lesson_id | Будет вопросов |
-|---|---|---|
-| `fbdb6b7b-...` (Гр. II, 3 шт) | `563c6e20-...` (22 шт) | ~22 |
-| `a0fbe7f3-...` (Гр. III, 3 шт) | `c50ba1ea-...` (50 шт) | ~50 |
-| `b85e3d3f-...` (Гр. IV, 3 шт) | `b5fd7372-...` (50 шт) | ~50 |
-| `3f814e4b-...` (Гр. V, 3 шт) | `aee80902-...` (50 шт) | ~50 |
+| Файл | Изменение |
+|------|-----------|
+| `src/components/admin/BulkCourseImporter.tsx` (стр. 124) | Изменить `correct_answer: 0` → `correct_answer: null` |
+| `src/components/admin/BulkPipelineWidget.tsx` (стр. 311) | Добавить проверку на подозрительные ответы: если ВСЕ вопросы урока = 0, считать их нерешёнными |
+| `src/components/admin/AdminMarketplaceManager.tsx` (стр. 150) | Аналогичная проверка подозрительных ответов |
 
-### SQL-миграция
+### 2. Миграция БД — сбросить фейковые ответы
 
-Для каждой пары выполнить INSERT ... SELECT: скопировать вопросы из source_lesson в target_lesson, генерируя новые id, и пропуская вопросы с совпадающим текстом (чтобы не дублировать 3 существующих).
+SQL-миграция: для всех вопросов в курсах маркетплейса, у которых `correct_answer = 0` и `explanation IS NULL` (ИИ всегда ставит explanation), сбросить `correct_answer` в `null`, чтобы pipeline мог решить их заново.
 
-### Файлы
-Только миграция БД, без изменений в коде.
+```sql
+UPDATE test_questions SET correct_answer = NULL
+WHERE id IN (
+  SELECT tq.id FROM test_questions tq
+  JOIN lessons l ON l.id = tq.lesson_id AND l.type = 'test'
+  JOIN marketplace_courses mc ON mc.course_id = l.course_id
+  WHERE tq.correct_answer = 0 AND tq.explanation IS NULL
+);
+```
+
+Также сбросить `is_validated = false` для всех затронутых курсов, чтобы они вернулись «В работу»:
+
+```sql
+UPDATE marketplace_courses SET is_validated = false
+WHERE course_id IN (
+  SELECT DISTINCT l.course_id FROM test_questions tq
+  JOIN lessons l ON l.id = tq.lesson_id
+  WHERE tq.correct_answer IS NULL
+);
+```
+
+### 3. Улучшить детекцию «нерешённых» вопросов
+
+В pipeline добавить эвристику: если в уроке все вопросы имеют одинаковый `correct_answer` и нет `explanation`, считать их нерешёнными. Это защитит от повторения проблемы.
+
+```typescript
+// Вместо простой проверки на null:
+const unanswered = (questions || []).filter((q: any) => 
+  q.correct_answer === null || q.correct_answer === undefined
+);
+
+// Добавить проверку подозрительных ответов:
+const byLesson = new Map<string, any[]>();
+for (const q of questions || []) {
+  const arr = byLesson.get(q.lesson_id) || [];
+  arr.push(q);
+  byLesson.set(q.lesson_id, arr);
+}
+const suspicious = new Set<string>();
+for (const [lessonId, qs] of byLesson) {
+  const allSame = qs.every(q => q.correct_answer === qs[0]?.correct_answer);
+  const noExplanations = qs.every(q => !q.explanation);
+  if (allSame && noExplanations && qs.length > 3) suspicious.add(lessonId);
+}
+
+const unanswered = (questions || []).filter((q: any) =>
+  q.correct_answer === null || q.correct_answer === undefined || suspicious.has(q.lesson_id)
+);
+```
+
+### Порядок выполнения
+1. Миграция БД — сбросить `correct_answer` и `is_validated`
+2. Исправить `BulkCourseImporter` — `null` вместо `0`
+3. Улучшить детекцию в `BulkPipelineWidget` и `AdminMarketplaceManager`
+4. После этого запустить конвейер заново — он решит все 11 000+ вопросов через ИИ
 
