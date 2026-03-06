@@ -328,7 +328,7 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
       );
 
       if (unanswered.length > 0) {
-        setCurrentPhase(`Решаю тесты: ${unanswered.length} вопросов`);
+        setCurrentPhase(`Решаю тесты: 0/${unanswered.length} вопросов`);
         const byLesson = new Map<string, typeof unanswered>();
         for (const q of unanswered) {
           const arr = byLesson.get(q.lesson_id) || [];
@@ -340,33 +340,53 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
           const lessonInfo = currentLessons.find(l => l.id === lessonId);
           const batchSize = 20;
           for (let i = 0; i < qs.length; i += batchSize) {
+            if (stopRef.current) return { ok: false, lessonsFilled, testsSolved };
             const batch = qs.slice(i, i + batchSize);
-            try {
-              const { data, error } = await supabase.functions.invoke("gigachat", {
-                body: {
-                  action: "generate_answers", courseTitle,
-                  lessonTitle: lessonInfo?.title || "Тест",
-                  questions: batch.map(q => ({ question: q.question, options: q.options || [] })),
-                  customSystemPrompt: currentPrompts.answers || undefined,
-                },
-              });
-              if (error) throw error;
-              if (data?.answers && !data.parseError) {
-                for (const ans of data.answers) {
-                  const q = batch[ans.questionIndex];
-                  if (q && ans.correctAnswer !== undefined) {
-                    await supabase.from("test_questions")
-                      .update({ correct_answer: ans.correctAnswer, explanation: ans.explanation || null })
-                      .eq("id", q.id);
-                    testsSolved++;
+            setCurrentPhase(`Решаю тесты: ${testsSolved}/${unanswered.length} — «${lessonInfo?.title || "Тест"}»`);
+
+            let retries = 0;
+            let batchSuccess = false;
+            while (retries < 3 && !batchSuccess) {
+              try {
+                const { data, error } = await supabase.functions.invoke("gigachat", {
+                  body: {
+                    action: "generate_answers", courseTitle,
+                    lessonTitle: lessonInfo?.title || "Тест",
+                    questions: batch.map(q => ({ question: q.question, options: q.options || [] })),
+                    customSystemPrompt: currentPrompts.answers || undefined,
+                  },
+                });
+                if (error) throw error;
+                if (data?.answers && !data.parseError) {
+                  for (const ans of data.answers) {
+                    const q = batch[ans.questionIndex];
+                    if (q && ans.correctAnswer !== undefined) {
+                      await supabase.from("test_questions")
+                        .update({ correct_answer: ans.correctAnswer, explanation: ans.explanation || null })
+                        .eq("id", q.id);
+                      testsSolved++;
+                    }
                   }
                 }
+                batchSuccess = true;
+              } catch (e) {
+                retries++;
+                const errMsg = e instanceof Error ? e.message : String(e);
+                console.error(`Test solve attempt ${retries}/3 failed for lesson ${lessonId}:`, errMsg);
+                if (retries < 3) {
+                  const delay = retries * 5000;
+                  setCurrentPhase(`Ошибка, повтор через ${delay / 1000}с... (${retries}/3)`);
+                  await new Promise(r => setTimeout(r, delay));
+                } else {
+                  console.error(`Batch skipped after 3 retries for lesson ${lessonId}`);
+                }
               }
-            } catch (e) {
-              console.error(`Test solve failed for lesson ${lessonId}:`, e);
             }
+            // Delay between batches to avoid rate limiting
+            await new Promise(r => setTimeout(r, 2000));
           }
         }
+        setCurrentPhase(`Тесты решены: ${testsSolved}/${unanswered.length}`);
       }
     }
 
