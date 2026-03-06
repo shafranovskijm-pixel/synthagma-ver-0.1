@@ -1,0 +1,1 @@
+ALTER TABLE test_questions ALTER COLUMN correct_answer DROP NOT NULL;

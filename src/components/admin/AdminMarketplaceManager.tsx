@@ -145,9 +145,18 @@ export function AdminMarketplaceManager() {
         const testIds = testLessons.map(l => l.id);
         if (testIds.length) {
           const { data: questions } = await supabase
-            .from("test_questions").select("id, lesson_id, correct_answer, question, options").in("lesson_id", testIds);
+            .from("test_questions").select("id, lesson_id, correct_answer, explanation, question, options").in("lesson_id", testIds);
           const testsWithNoQ = testIds.filter(id => !questions?.some(q => q.lesson_id === id));
-          const unansweredQuestions = questions?.filter(q => q.correct_answer === null || q.correct_answer === undefined) || [];
+          
+          // Detect suspicious: all same answer + no explanations in a lesson
+          const byL = new Map<string, any[]>();
+          for (const q of questions || []) { const a = byL.get(q.lesson_id) || []; a.push(q); byL.set(q.lesson_id, a); }
+          const susL = new Set<string>();
+          for (const [lid, qs] of byL) {
+            if (qs.length > 3 && qs.every((q: any) => q.correct_answer === qs[0]?.correct_answer) && qs.every((q: any) => !q.explanation)) susL.add(lid);
+          }
+          const unansweredQuestions = questions?.filter(q => q.correct_answer === null || q.correct_answer === undefined || susL.has(q.lesson_id)) || [];
+          
           if (testsWithNoQ.length) issues.push(`${testsWithNoQ.length} тестов без вопросов`);
           if (unansweredQuestions.length) issues.push(`${unansweredQuestions.length} вопросов без ответа`);
         }
@@ -243,17 +252,23 @@ export function AdminMarketplaceManager() {
       );
 
       const testIds = allLessons.filter(l => l.type === "test").map(l => l.id);
-      let allQuestions: Array<{ id: string; lesson_id: string; correct_answer: number | null; question: string; options: any }> = [];
+      let allQuestions: Array<{ id: string; lesson_id: string; correct_answer: number | null; explanation?: string | null; question: string; options: any }> = [];
 
       if (testIds.length) {
         const { data: questions } = await supabase
-          .from("test_questions").select("id, lesson_id, correct_answer, question, options").in("lesson_id", testIds);
+          .from("test_questions").select("id, lesson_id, correct_answer, explanation, question, options").in("lesson_id", testIds);
         allQuestions = (questions || []) as typeof allQuestions;
       }
 
 
-      // Find unanswered questions
-      const unansweredQuestions = allQuestions.filter(q => q.correct_answer === null || q.correct_answer === undefined);
+      // Find unanswered questions (including suspicious: all same answer, no explanations)
+      const byLessonFix = new Map<string, any[]>();
+      for (const q of allQuestions) { const a = byLessonFix.get(q.lesson_id) || []; a.push(q); byLessonFix.set(q.lesson_id, a); }
+      const suspiciousFix = new Set<string>();
+      for (const [lid, qs] of byLessonFix) {
+        if (qs.length > 3 && qs.every((q: any) => q.correct_answer === qs[0]?.correct_answer) && qs.every((q: any) => !q.explanation)) suspiciousFix.add(lid);
+      }
+      const unansweredQuestions = allQuestions.filter(q => q.correct_answer === null || q.correct_answer === undefined || suspiciousFix.has(q.lesson_id));
 
       // Find duplicate titles
       const titleCounts = new Map<string, Array<{ id: string; title: string }>>();
