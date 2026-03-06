@@ -1,7 +1,7 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import {
   Play, Square, CheckCircle2, Loader2, AlertTriangle, Brain, FileSpreadsheet,
-  DollarSign, RotateCcw, Upload, Clock, ListChecks, ChevronDown, FlaskConical, Eye,
+  DollarSign, RotateCcw, Upload, Clock, ListChecks, ChevronDown, FlaskConical, Eye, BarChart3, RefreshCw,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -35,6 +35,13 @@ interface PipelineCourse {
   course?: { id: string; title: string; description: string | null; duration: string | null };
 }
 
+interface AllMarketplaceCourse {
+  id: string;
+  course_id: string;
+  is_validated?: boolean;
+  course?: { id: string; title: string };
+}
+
 interface LogEntry {
   courseName: string;
   status: "ok" | "error" | "pending" | "active";
@@ -49,13 +56,19 @@ interface ExcelCourse {
   duration?: string;
 }
 
+interface TestStats {
+  total: number;
+  solved: number;
+}
+
 interface Props {
   courses: PipelineCourse[];
+  allCourses?: AllMarketplaceCourse[];
   onComplete: () => void;
   customPrompts?: MarketplacePrompts;
 }
 
-export function BulkPipelineWidget({ courses, onComplete }: Props) {
+export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
   const [isRunning, setIsRunning] = useState(false);
   const [isTestRunning, setIsTestRunning] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -82,9 +95,82 @@ export function BulkPipelineWidget({ courses, onComplete }: Props) {
   // Settings state
   const [settings, setSettings] = useState<MarketplaceSettingsData>(getMarketplaceSettings);
 
+  // Test stats
+  const [testStatsProgress, setTestStatsProgress] = useState<TestStats>({ total: 0, solved: 0 });
+  const [testStatsReady, setTestStatsReady] = useState<TestStats>({ total: 0, solved: 0 });
+  const [isLoadingStats, setIsLoadingStats] = useState(false);
+
   const totalCount = courses.length;
   const completedCount = completedLog.length;
   const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+  // ── Load test stats ──
+  const loadTestStats = useCallback(async () => {
+    if (!allCourses || allCourses.length === 0) return;
+    setIsLoadingStats(true);
+    try {
+      const courseIds = allCourses.map(c => c.course_id);
+      const validatedSet = new Set(allCourses.filter(c => (c as any).is_validated === true).map(c => c.course_id));
+
+      // Fetch test lessons in batches
+      const batchSize = 200;
+      const allLessons: { id: string; course_id: string }[] = [];
+      for (let i = 0; i < courseIds.length; i += batchSize) {
+        const batch = courseIds.slice(i, i + batchSize);
+        const { data } = await supabase
+          .from("lessons")
+          .select("id, course_id")
+          .in("course_id", batch)
+          .eq("type", "test");
+        if (data) allLessons.push(...data);
+      }
+
+      if (allLessons.length === 0) {
+        setTestStatsProgress({ total: 0, solved: 0 });
+        setTestStatsReady({ total: 0, solved: 0 });
+        setIsLoadingStats(false);
+        return;
+      }
+
+      // Map lesson -> course for validated check
+      const lessonToCourse = new Map(allLessons.map(l => [l.id, l.course_id]));
+      const lessonIds = allLessons.map(l => l.id);
+
+      // Fetch test questions in batches
+      let progressTotal = 0, progressSolved = 0, readyTotal = 0, readySolved = 0;
+      for (let i = 0; i < lessonIds.length; i += batchSize) {
+        const batch = lessonIds.slice(i, i + batchSize);
+        const { data: questions } = await supabase
+          .from("test_questions")
+          .select("id, lesson_id, correct_answer")
+          .in("lesson_id", batch);
+        if (questions) {
+          for (const q of questions) {
+            const courseId = lessonToCourse.get(q.lesson_id);
+            const isValidated = courseId ? validatedSet.has(courseId) : false;
+            const isSolved = q.correct_answer !== null && q.correct_answer !== undefined && q.correct_answer >= 0;
+            if (isValidated) {
+              readyTotal++;
+              if (isSolved) readySolved++;
+            } else {
+              progressTotal++;
+              if (isSolved) progressSolved++;
+            }
+          }
+        }
+      }
+
+      setTestStatsProgress({ total: progressTotal, solved: progressSolved });
+      setTestStatsReady({ total: readyTotal, solved: readySolved });
+    } catch (e) {
+      console.error("Failed to load test stats:", e);
+    }
+    setIsLoadingStats(false);
+  }, [allCourses]);
+
+  useEffect(() => {
+    loadTestStats();
+  }, [loadTestStats]);
 
   // ── Prompts helpers ──
   const savePrompts = (newPrompts: MarketplacePrompts) => {
@@ -470,6 +556,58 @@ export function BulkPipelineWidget({ courses, onComplete }: Props) {
               <span className="font-medium">{progressPercent}%</span>
             </div>
             <Progress value={progressPercent} className="h-2" />
+          </div>
+        )}
+
+        {/* Test stats widget */}
+        {allCourses && allCourses.length > 0 && (
+          <div className="rounded-lg border bg-card p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <BarChart3 className="w-4 h-4 text-primary" />
+                Статистика тестов
+              </div>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 w-7 p-0"
+                onClick={loadTestStats}
+                disabled={isLoadingStats}
+                title="Обновить статистику"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isLoadingStats ? "animate-spin" : ""}`} />
+              </Button>
+            </div>
+            {isLoadingStats ? (
+              <div className="text-xs text-muted-foreground">Загрузка...</div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                {/* In progress */}
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1.5">
+                    <Badge variant="outline" className="text-xs border-yellow-500/30 text-yellow-600 bg-yellow-500/10">В работе</Badge>
+                    <span className="text-xs text-muted-foreground">{testStatsProgress.total.toLocaleString()} вопр.</span>
+                  </div>
+                  <Progress value={testStatsProgress.total > 0 ? (testStatsProgress.solved / testStatsProgress.total) * 100 : 0} className="h-1.5" />
+                  <div className="text-xs text-muted-foreground">
+                    {testStatsProgress.solved.toLocaleString()} решено
+                    {testStatsProgress.total > 0 && ` (${Math.round((testStatsProgress.solved / testStatsProgress.total) * 100)}%)`}
+                  </div>
+                </div>
+                {/* Ready */}
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1.5">
+                    <Badge variant="outline" className="text-xs border-green-500/30 text-green-600 bg-green-500/10">Готово</Badge>
+                    <span className="text-xs text-muted-foreground">{testStatsReady.total.toLocaleString()} вопр.</span>
+                  </div>
+                  <Progress value={testStatsReady.total > 0 ? (testStatsReady.solved / testStatsReady.total) * 100 : 0} className="h-1.5" />
+                  <div className="text-xs text-muted-foreground">
+                    {testStatsReady.solved.toLocaleString()} решено
+                    {testStatsReady.total > 0 && ` (${Math.round((testStatsReady.solved / testStatsReady.total) * 100)}%)`}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
