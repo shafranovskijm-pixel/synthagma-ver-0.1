@@ -96,13 +96,19 @@ async function callLovableAI(messages: Array<{ role: string; content: string }>,
     }),
   });
 
+  let text: string;
+  try {
+    text = await response.text();
+  } catch (bodyErr) {
+    console.error("Failed to read AI response body:", bodyErr);
+    throw new Error("AI gateway: failed to read response body");
+  }
+
   if (!response.ok) {
-    const errorText = await response.text();
-    console.error("Lovable AI error:", response.status, errorText);
+    console.error("Lovable AI error:", response.status, text);
     throw new Error(`AI gateway error: ${response.status}`);
   }
 
-  const text = await response.text();
   if (!text || text.trim() === "") {
     throw new Error("AI gateway returned empty response");
   }
