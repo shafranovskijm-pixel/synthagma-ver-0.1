@@ -428,6 +428,7 @@ export function AdminMarketplaceManager() {
           {/* Pipeline widget */}
           <BulkPipelineWidget
             courses={h.courses.filter((c: any) => !c.is_validated)}
+            allCourses={h.courses}
             onComplete={() => h.fetchData()}
           />
           {/* Search + view toggle */}
