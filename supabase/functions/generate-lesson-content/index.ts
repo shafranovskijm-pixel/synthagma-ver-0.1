@@ -216,7 +216,7 @@ ${courseDescription ? `Описание курса: ${courseDescription}` : ""}
           { role: "user", content: userPrompt }
         ],
         toolDefinition ? { type: "function", function: toolDefinition.function } : undefined,
-        "GigaChat-2-Max",
+        "GigaChat-Pro",
         "google/gemini-3-flash-preview"
       );
 
