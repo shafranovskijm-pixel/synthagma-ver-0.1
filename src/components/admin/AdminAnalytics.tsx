@@ -647,10 +647,6 @@ export function AdminAnalytics() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-display font-bold">Аналитика</h2>
-          <p className="text-muted-foreground">Статистика и графики платформы</p>
-        </div>
         <Select value={period} onValueChange={(v) => setPeriod(v as typeof period)}>
           <SelectTrigger className="w-40">
             <SelectValue />
