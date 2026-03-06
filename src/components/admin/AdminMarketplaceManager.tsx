@@ -88,6 +88,8 @@ export function AdminMarketplaceManager() {
   const [bulkGenCourse, setBulkGenCourse] = useState<{ id: string; title: string; description?: string } | null>(null);
   const [validatedCourses, setValidatedCourses] = useState<Record<string, 'ok' | 'error'>>({});
   const [validatingId, setValidatingId] = useState<string | null>(null);
+  const [bulkValidatingGroup, setBulkValidatingGroup] = useState<string | null>(null);
+  const [bulkValidateProgress, setBulkValidateProgress] = useState("");
 
   // Initialize validated state from DB on courses load
   useEffect(() => {
@@ -194,6 +196,68 @@ export function AdminMarketplaceManager() {
     } finally {
       setValidatingId(null);
     }
+  };
+
+  const handleBulkValidate = async (group: any) => {
+    if (bulkValidatingGroup) return;
+    setBulkValidatingGroup(group.category);
+    let okCount = 0;
+    let errCount = 0;
+    const total = group.courses.length;
+
+    for (let i = 0; i < total; i++) {
+      const item = group.courses[i];
+      setBulkValidateProgress(`${i + 1}/${total}...`);
+      try {
+        const { data: lessons } = await supabase
+          .from("lessons").select("id, title, type, content").eq("course_id", item.course_id);
+        const issues: string[] = [];
+
+        if (!lessons?.length) {
+          issues.push("Нет уроков");
+        } else {
+          const textLessons = lessons.filter(l => l.type === "text" || l.type === "practice");
+          const testLessons = lessons.filter(l => l.type === "test");
+          if (textLessons.length === 0) issues.push("Нет учебных уроков");
+          if (testLessons.length === 0) issues.push("Нет тестов");
+          if (lessons.length < 3) issues.push("Мало уроков");
+          const emptyLessons = textLessons.filter(l => !l.content || l.content === "[]" || l.content === "" || l.content.length < 50);
+          if (emptyLessons.length) issues.push(`${emptyLessons.length} без контента`);
+          const titles = lessons.map(l => l.title);
+          const dupes = titles.filter((t, i) => titles.indexOf(t) !== i);
+          if (dupes.length) issues.push("Дубликаты");
+          const testIds = testLessons.map(l => l.id);
+          if (testIds.length) {
+            const { data: questions } = await supabase
+              .from("test_questions").select("id, lesson_id, correct_answer, explanation").in("lesson_id", testIds);
+            const testsWithNoQ = testIds.filter(id => !questions?.some(q => q.lesson_id === id));
+            const byL = new Map<string, any[]>();
+            for (const q of questions || []) { const a = byL.get(q.lesson_id) || []; a.push(q); byL.set(q.lesson_id, a); }
+            const susL = new Set<string>();
+            for (const [lid, qs] of byL) {
+              if (qs.length > 3 && qs.every((q: any) => q.correct_answer === qs[0]?.correct_answer) && qs.every((q: any) => !q.explanation)) susL.add(lid);
+            }
+            const unanswered = questions?.filter(q => q.correct_answer === null || q.correct_answer === undefined || susL.has(q.lesson_id)) || [];
+            if (testsWithNoQ.length) issues.push(`${testsWithNoQ.length} тестов без вопросов`);
+            if (unanswered.length) issues.push(`${unanswered.length} без ответа`);
+          }
+        }
+
+        const isOk = issues.length === 0;
+        setValidatedCourses(prev => ({ ...prev, [item.course_id]: isOk ? 'ok' : 'error' }));
+        await supabase.from("marketplace_courses").update({ is_validated: isOk } as any).eq("id", item.id);
+        if (isOk) okCount++; else errCount++;
+      } catch (e) {
+        console.error("Bulk validate error for", item.course_id, e);
+        setValidatedCourses(prev => ({ ...prev, [item.course_id]: 'error' }));
+        errCount++;
+      }
+    }
+
+    setBulkValidatingGroup(null);
+    setBulkValidateProgress("");
+    toast.success(`Проверено ${total}: ✅ ${okCount} готово, ❌ ${errCount} с ошибками`);
+    h.fetchData();
   };
 
   const autoFixCourse = async (courseId: string, courseTitle: string) => {
@@ -489,7 +553,20 @@ export function AdminMarketplaceManager() {
                          <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
                          <span className="font-semibold text-sm text-left">{group.category}</span>
                          {group.status === 'ready' && (
-                           <Badge className="bg-green-500/10 text-green-600 border-green-500/20 text-[10px]">Готово</Badge>
+                           <>
+                             <Badge className="bg-green-500/10 text-green-600 border-green-500/20 text-[10px]">Готово</Badge>
+                             <Button
+                               variant="ghost"
+                               size="sm"
+                               className="h-6 text-xs px-2"
+                               disabled={!!bulkValidatingGroup}
+                               onClick={(e) => { e.stopPropagation(); handleBulkValidate(group); }}
+                             >
+                               {bulkValidatingGroup === group.category
+                                 ? <><Loader2 className="w-3 h-3 animate-spin mr-1" />{bulkValidateProgress}</>
+                                 : <><CheckCircle2 className="w-3 h-3 mr-1" />Проверить все</>}
+                             </Button>
+                           </>
                          )}
                          {group.status === 'progress' && (
                            <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20 text-[10px]">В работе</Badge>
