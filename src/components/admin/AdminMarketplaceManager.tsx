@@ -191,15 +191,55 @@ export function AdminMarketplaceManager() {
 
     try {
       // 1. Fetch fresh data from DB
-      const { data: lessons } = await supabase
-        .from("lessons").select("id, title, type, content, order_index").eq("course_id", courseId);
+      let { data: lessons } = await supabase
+        .from("lessons").select("id, title, type, content, order_index").eq("course_id", courseId).order("order_index");
 
-      const emptyLessons = (lessons || []).filter(l =>
+      const currentLessons = lessons || [];
+      const textPracticeLessons = currentLessons.filter(l => l.type === "text" || l.type === "practice");
+      const testLessons = currentLessons.filter(l => l.type === "test");
+      const needsStructure = textPracticeLessons.length === 0 || currentLessons.length < 3;
+
+      // If course needs structural fix (missing text lessons or too few lessons), generate structure first
+      if (needsStructure) {
+        toast.loading("Генерирую структуру курса...", { id: toastId });
+        try {
+          const { data: structData, error: structErr } = await supabase.functions.invoke("generate-course-structure", {
+            body: { courseTitle, courseDescription: "" },
+          });
+          if (structErr) throw structErr;
+          const generatedLessons: Array<{ title: string; type: string }> = structData?.lessons || [];
+          if (generatedLessons.length > 0) {
+            // Determine max order_index
+            const maxOrder = currentLessons.reduce((mx, l) => Math.max(mx, l.order_index ?? 0), -1);
+            // Filter out lessons that would be duplicates by title
+            const existingTitles = new Set(currentLessons.map(l => l.title.toLowerCase()));
+            const newLessons = generatedLessons.filter(gl => !existingTitles.has(gl.title.toLowerCase()));
+            if (newLessons.length > 0) {
+              const toInsert = newLessons.map((gl, i) => ({
+                course_id: courseId,
+                title: gl.title,
+                type: gl.type || "text",
+                order_index: maxOrder + 1 + i,
+                content: null,
+              }));
+              await supabase.from("lessons").insert(toInsert);
+            }
+            // Re-fetch lessons after structural changes
+            const { data: refreshed } = await supabase
+              .from("lessons").select("id, title, type, content, order_index").eq("course_id", courseId).order("order_index");
+            lessons = refreshed;
+          }
+        } catch (e) {
+          console.error("Structure generation failed:", e);
+        }
+      }
+
+      const allLessons = lessons || [];
+      const emptyLessons = allLessons.filter(l =>
         (l.type === "text" || l.type === "practice") && (!l.content || l.content === "[]" || l.content === "" || l.content.length < 50)
       );
 
-      const testLessons = (lessons || []).filter(l => l.type === "test");
-      const testIds = testLessons.map(l => l.id);
+      const testIds = allLessons.filter(l => l.type === "test").map(l => l.id);
       let allQuestions: Array<{ id: string; lesson_id: string; correct_answer: number | null; question: string; options: any }> = [];
 
       if (testIds.length) {
@@ -213,7 +253,7 @@ export function AdminMarketplaceManager() {
 
       // Find duplicate titles
       const titleCounts = new Map<string, Array<{ id: string; title: string }>>();
-      for (const l of (lessons || [])) {
+      for (const l of allLessons) {
         const arr = titleCounts.get(l.title) || [];
         arr.push(l);
         titleCounts.set(l.title, arr);
@@ -221,12 +261,32 @@ export function AdminMarketplaceManager() {
       const duplicateGroups = [...titleCounts.values()].filter(g => g.length > 1);
 
       const totalTasks = emptyLessons.length + (unansweredQuestions.length > 0 ? 1 : 0) + (duplicateGroups.length > 0 ? 1 : 0);
-      if (totalTasks === 0) { toast.info("Нечего исправлять", { id: toastId, duration: 3000 }); return; }
+      if (totalTasks === 0 && !needsStructure) { toast.info("Нечего исправлять", { id: toastId, duration: 3000 }); return; }
+      if (totalTasks === 0) { toast.success("Структура создана! Повторная проверка...", { id: toastId, duration: 3000 }); setTimeout(() => handleValidateCourse(courseId), 1000); return; }
 
       let completed = 0;
 
-      // 2. Generate content for empty lessons (already exists above)
-
+      // 2. Generate content for empty lessons
+      for (const lesson of emptyLessons) {
+        completed++;
+        toast.loading(`Генерирую контент: "${lesson.title}" (${completed}/${totalTasks})`, { id: toastId });
+        try {
+          const { data, error } = await supabase.functions.invoke("gigachat", {
+            body: {
+              action: "generate_content",
+              courseTitle,
+              lessonTitle: lesson.title,
+              existingContent: null,
+            },
+          });
+          if (error) throw error;
+          if (data?.content) {
+            await supabase.from("lessons").update({ content: data.content }).eq("id", lesson.id);
+          }
+        } catch (e) {
+          console.error(`Failed to generate content for lesson ${lesson.id}:`, e);
+        }
+      }
       // 3. Fix unanswered test questions in batches
       if (unansweredQuestions.length > 0) {
         completed++;
