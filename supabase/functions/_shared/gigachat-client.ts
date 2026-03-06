@@ -200,6 +200,9 @@ async function _rawCallGigaChat(
   if (!response.ok) {
     const errorText = await response.text();
     console.error("GigaChat API error:", response.status, errorText);
+    if (response.status === 402) {
+      throw new Error("GigaChat 402: Payment required — tokens exhausted");
+    }
     if (response.status === 429) {
       throw new Error("GigaChat rate limit exceeded (429)");
     }
@@ -234,6 +237,11 @@ export async function callGigaChat(
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         console.warn(`[GigaChat] Model ${m} failed: ${msg}`);
+
+        // On 402, stop immediately — all models share the same balance
+        if (msg.includes("402")) {
+          throw err;
+        }
 
         // On 429, wait 10s then try next model
         if (msg.includes("429")) {

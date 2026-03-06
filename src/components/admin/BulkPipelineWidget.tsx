@@ -71,7 +71,11 @@ class CreditsExhaustedError extends Error {
 
 function checkFor402(error: any) {
   const msg = error?.message || String(error || "");
-  if (msg.includes("402") || msg.includes("кредит") || msg.includes("баланс") || msg.includes("payment_required") || msg.includes("Not enough credits")) {
+  if (msg.includes("402") || msg.includes("кредит") || msg.includes("баланс") || msg.includes("payment_required") || msg.includes("Not enough credits") || msg.includes("non-2xx")) {
+    throw new CreditsExhaustedError();
+  }
+  // Also check FunctionsHttpError context
+  if (error?.context?.status === 402 || error?.status === 402) {
     throw new CreditsExhaustedError();
   }
 }
@@ -409,7 +413,8 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
                     customSystemPrompt: currentPrompts.answers || undefined,
                   },
                 });
-                if (error) throw error;
+                if (error) { checkFor402(error); throw error; }
+                if (data?.error) { checkFor402(data); throw new Error(data.error); }
                 if (data?.answers && !data.parseError) {
                   for (const ans of data.answers) {
                     const q = batch[ans.questionIndex];
@@ -457,6 +462,7 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
           body: { title: courseTitle, description: "", customSystemPrompt: currentPrompts.structure || undefined },
         });
         if (structErr) { checkFor402(structErr); throw structErr; }
+        if (structData?.error) { checkFor402(structData); throw new Error(structData.error); }
         // Post-request delay for GigaChat sequential mode
         await new Promise(r => setTimeout(r, 3000));
         const generatedLessons: Array<{ title: string; type: string }> = structData?.lessons || [];
@@ -501,6 +507,7 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
           body: { action: "generate_content", courseTitle, lessonTitle: lesson.title, existingContent: null, customSystemPrompt: currentPrompts.content || undefined },
         });
         if (error) { checkFor402(error); throw error; }
+        if (data?.error) { checkFor402(data); throw new Error(data.error); }
         if (data?.content) {
           await supabase.from("lessons").update({ content: data.content }).eq("id", lesson.id);
           lessonsFilled++;
