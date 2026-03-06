@@ -121,7 +121,7 @@ export function BulkCourseImporter({ onComplete }: BulkCourseImporterProps) {
             lesson_id: lessonData.id,
             question: q.question,
             options: q.options.map(text => ({ text })),
-            correct_answer: 0,
+            correct_answer: null,
             order_index: b + idx,
             is_bank_question: true,
           }));

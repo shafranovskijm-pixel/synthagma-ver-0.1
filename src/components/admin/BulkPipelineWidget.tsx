@@ -307,8 +307,25 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
     const testIds = currentLessons.filter(l => l.type === "test").map(l => l.id);
     if (testIds.length > 0) {
       const { data: questions } = await supabase
-        .from("test_questions").select("id, lesson_id, correct_answer, question, options").in("lesson_id", testIds);
-      const unanswered = (questions || []).filter((q: any) => q.correct_answer === null || q.correct_answer === undefined);
+        .from("test_questions").select("id, lesson_id, correct_answer, explanation, question, options").in("lesson_id", testIds);
+      // Detect suspicious lessons: all answers identical + no explanations = likely placeholder
+      const byLessonMap = new Map<string, any[]>();
+      for (const q of questions || []) {
+        const arr = byLessonMap.get(q.lesson_id) || [];
+        arr.push(q);
+        byLessonMap.set(q.lesson_id, arr);
+      }
+      const suspiciousLessons = new Set<string>();
+      for (const [lid, qs] of byLessonMap) {
+        if (qs.length > 3) {
+          const allSame = qs.every((q: any) => q.correct_answer === qs[0]?.correct_answer);
+          const noExplanations = qs.every((q: any) => !q.explanation);
+          if (allSame && noExplanations) suspiciousLessons.add(lid);
+        }
+      }
+      const unanswered = (questions || []).filter((q: any) =>
+        q.correct_answer === null || q.correct_answer === undefined || suspiciousLessons.has(q.lesson_id)
+      );
 
       if (unanswered.length > 0) {
         setCurrentPhase(`Решаю тесты: ${unanswered.length} вопросов`);

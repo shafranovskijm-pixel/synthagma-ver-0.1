@@ -3733,7 +3733,7 @@ export type Database = {
       }
       test_questions: {
         Row: {
-          correct_answer: number
+          correct_answer: number | null
           explanation: string | null
           id: string
           image_url: string | null
@@ -3744,7 +3744,7 @@ export type Database = {
           question: string
         }
         Insert: {
-          correct_answer?: number
+          correct_answer?: number | null
           explanation?: string | null
           id?: string
           image_url?: string | null
@@ -3755,7 +3755,7 @@ export type Database = {
           question: string
         }
         Update: {
-          correct_answer?: number
+          correct_answer?: number | null
           explanation?: string | null
           id?: string
           image_url?: string | null
