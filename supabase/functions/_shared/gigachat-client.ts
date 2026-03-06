@@ -212,13 +212,13 @@ async function _rawCallGigaChat(
 
 // ═══════════════════════════════════════════════════════════
 // GigaChat with mutex + 429 retry + model fallback chain
-// Models: GigaChat-2-Max → GigaChat-2-Lite
+// Models: GigaChat-Pro (928K package) → GigaChat (Lite 891K) → fallback to Lovable AI
 // ═══════════════════════════════════════════════════════════
-const GIGACHAT_MODEL_CHAIN = ["GigaChat-2-Max", "GigaChat"];
+const GIGACHAT_MODEL_CHAIN = ["GigaChat-Pro", "GigaChat"];
 
 export async function callGigaChat(
   messages: Array<{ role: string; content: string }>,
-  model = "GigaChat-2-Max",
+  model = "GigaChat-Pro",
   maxTokens = 4096,
 ): Promise<string> {
   return withGigaChatLock(async () => {
@@ -383,8 +383,8 @@ export async function callAI(
   maxTokens = 4096,
 ): Promise<{ text: string; model: string }> {
   try {
-    const text = await callGigaChat(messages, "GigaChat-2-Max", maxTokens);
-    return { text, model: "GigaChat-2-Max" };
+    const text = await callGigaChat(messages, "GigaChat-Pro", maxTokens);
+    return { text, model: "GigaChat-Pro" };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.warn("[callAI] GigaChat unavailable, falling back to Lovable AI:", msg);
@@ -399,7 +399,7 @@ export async function callAI(
 export async function callAIWithTools(
   messages: Array<{ role: string; content: string }>,
   tool?: any,
-  gigachatModel = "GigaChat-2-Max",
+  gigachatModel = "GigaChat-Pro",
   lovableModel = "google/gemini-3-flash-preview",
 ): Promise<any> {
   try {
