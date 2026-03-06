@@ -611,6 +611,7 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
     setCurrentPhase("");
     const mins = Math.round(duration / 60000);
     toast.success(`Конвейер завершён за ${mins} мин. Решено ${totalSolved} тестов, заполнено ${totalFilled} уроков.`);
+    onComplete?.();
   }, [courses, processCourse, onComplete, currentPhase]);
 
   const handleStop = useCallback(() => {
