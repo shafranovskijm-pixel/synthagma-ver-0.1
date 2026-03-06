@@ -215,10 +215,61 @@ export function BulkPipelineWidget({ courses, onComplete }: Props) {
       .from("lessons").select("id, title, type, content, order_index").eq("course_id", courseId).order("order_index");
 
     const currentLessons = lessons || [];
+
+    // 2. Solve existing test questions FIRST (before any structure changes)
+    const testIds = currentLessons.filter(l => l.type === "test").map(l => l.id);
+    if (testIds.length > 0) {
+      const { data: questions } = await supabase
+        .from("test_questions").select("id, lesson_id, correct_answer, question, options").in("lesson_id", testIds);
+      const unanswered = (questions || []).filter((q: any) => q.correct_answer === null || q.correct_answer === undefined);
+
+      if (unanswered.length > 0) {
+        setCurrentPhase(`Решаю тесты: ${unanswered.length} вопросов`);
+        const byLesson = new Map<string, typeof unanswered>();
+        for (const q of unanswered) {
+          const arr = byLesson.get(q.lesson_id) || [];
+          arr.push(q);
+          byLesson.set(q.lesson_id, arr);
+        }
+        for (const [lessonId, qs] of byLesson) {
+          if (stopRef.current) return { ok: false, lessonsFilled, testsSolved };
+          const lessonInfo = currentLessons.find(l => l.id === lessonId);
+          const batchSize = 20;
+          for (let i = 0; i < qs.length; i += batchSize) {
+            const batch = qs.slice(i, i + batchSize);
+            try {
+              const { data, error } = await supabase.functions.invoke("gigachat", {
+                body: {
+                  action: "generate_answers", courseTitle,
+                  lessonTitle: lessonInfo?.title || "Тест",
+                  questions: batch.map(q => ({ question: q.question, options: q.options || [] })),
+                  customSystemPrompt: currentPrompts.answers || undefined,
+                },
+              });
+              if (error) throw error;
+              if (data?.answers && !data.parseError) {
+                for (const ans of data.answers) {
+                  const q = batch[ans.questionIndex];
+                  if (q && ans.correctAnswer !== undefined) {
+                    await supabase.from("test_questions")
+                      .update({ correct_answer: ans.correctAnswer, explanation: ans.explanation || null })
+                      .eq("id", q.id);
+                    testsSolved++;
+                  }
+                }
+              }
+            } catch (e) {
+              console.error(`Test solve failed for lesson ${lessonId}:`, e);
+            }
+          }
+        }
+      }
+    }
+
     const textPracticeLessons = currentLessons.filter(l => l.type === "text" || l.type === "practice");
     const needsStructure = textPracticeLessons.length === 0 || currentLessons.length < 3;
 
-    // 2. Generate structure if needed (no tests)
+    // 3. Generate structure if needed (no tests — filter ensures existing tests untouched)
     if (needsStructure) {
       setCurrentPhase("Генерация структуры...");
       try {
@@ -252,7 +303,7 @@ export function BulkPipelineWidget({ courses, onComplete }: Props) {
 
     const allLessons = lessons || [];
 
-    // 3. Fill empty text/practice lessons
+    // 4. Fill empty text/practice lessons
     const emptyLessons = allLessons.filter(l =>
       (l.type === "text" || l.type === "practice") && (!l.content || l.content === "[]" || l.content === "" || l.content.length < 50)
     );
@@ -272,56 +323,6 @@ export function BulkPipelineWidget({ courses, onComplete }: Props) {
         }
       } catch (e) {
         console.error(`Content gen failed for ${lesson.id}:`, e);
-      }
-    }
-
-    // 4. Solve unanswered test questions
-    const testIds = allLessons.filter(l => l.type === "test").map(l => l.id);
-    if (testIds.length > 0) {
-      const { data: questions } = await supabase
-        .from("test_questions").select("id, lesson_id, correct_answer, question, options").in("lesson_id", testIds);
-      const unanswered = (questions || []).filter((q: any) => q.correct_answer === null || q.correct_answer === undefined);
-
-      if (unanswered.length > 0) {
-        setCurrentPhase(`Решаю тесты: ${unanswered.length} вопросов`);
-        const byLesson = new Map<string, typeof unanswered>();
-        for (const q of unanswered) {
-          const arr = byLesson.get(q.lesson_id) || [];
-          arr.push(q);
-          byLesson.set(q.lesson_id, arr);
-        }
-        for (const [lessonId, qs] of byLesson) {
-          if (stopRef.current) return { ok: false, lessonsFilled, testsSolved };
-          const lessonInfo = allLessons.find(l => l.id === lessonId);
-          const batchSize = 20;
-          for (let i = 0; i < qs.length; i += batchSize) {
-            const batch = qs.slice(i, i + batchSize);
-            try {
-              const { data, error } = await supabase.functions.invoke("gigachat", {
-                body: {
-                  action: "generate_answers", courseTitle,
-                  lessonTitle: lessonInfo?.title || "Тест",
-                  questions: batch.map(q => ({ question: q.question, options: q.options || [] })),
-                  customSystemPrompt: currentPrompts.answers || undefined,
-                },
-              });
-              if (error) throw error;
-              if (data?.answers && !data.parseError) {
-                for (const ans of data.answers) {
-                  const q = batch[ans.questionIndex];
-                  if (q && ans.correctAnswer !== undefined) {
-                    await supabase.from("test_questions")
-                      .update({ correct_answer: ans.correctAnswer, explanation: ans.explanation || null })
-                      .eq("id", q.id);
-                    testsSolved++;
-                  }
-                }
-              }
-            } catch (e) {
-              console.error(`Test solve failed for lesson ${lessonId}:`, e);
-            }
-          }
-        }
       }
     }
 
