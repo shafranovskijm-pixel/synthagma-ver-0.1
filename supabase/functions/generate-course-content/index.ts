@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { checkRateLimit, rateLimitResponse } from "../_shared/rate-limiter.ts";
+import { callAIWithTools, callLovableAIWithTools } from "../_shared/gigachat-client.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -24,53 +25,15 @@ interface ContentBlock {
   content: string;
 }
 
+// Uses shared AI client: GigaChat first → Lovable AI fallback
 async function generateWithAI(prompt: string, systemPrompt: string, tool?: any): Promise<any> {
-  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
-
-  const body: any = {
-    model: "google/gemini-3-flash-preview",
-    messages: [
+  return await callAIWithTools(
+    [
       { role: "system", content: systemPrompt },
       { role: "user", content: prompt }
     ],
-  };
-
-  if (tool) {
-    body.tools = [tool];
-    body.tool_choice = { type: "function", function: { name: tool.function.name } };
-  }
-
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${LOVABLE_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
-
-  if (!response.ok) {
-    if (response.status === 429) {
-      throw new Error("Rate limit exceeded, please try again later");
-    }
-    if (response.status === 402) {
-      throw new Error("Payment required, please add credits");
-    }
-    const errorText = await response.text();
-    console.error("AI error:", response.status, errorText);
-    throw new Error(`AI error: ${response.status}`);
-  }
-
-  const result = await response.json();
-  
-  if (tool) {
-    const toolCall = result.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall) throw new Error("No tool call in response");
-    return JSON.parse(toolCall.function.arguments);
-  } else {
-    return { content: result.choices?.[0]?.message?.content || "" };
-  }
+    tool
+  );
 }
 
 async function generateCourseStructure(courseTitle: string): Promise<Lesson[]> {
