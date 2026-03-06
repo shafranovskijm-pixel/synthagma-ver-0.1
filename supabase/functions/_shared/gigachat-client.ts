@@ -214,7 +214,7 @@ async function _rawCallGigaChat(
 // GigaChat with mutex + 429 retry + model fallback chain
 // Models: GigaChat-2-Max → GigaChat-2-Lite
 // ═══════════════════════════════════════════════════════════
-const GIGACHAT_MODEL_CHAIN = ["GigaChat-2-Max", "GigaChat-2-Lite"];
+const GIGACHAT_MODEL_CHAIN = ["GigaChat-2-Max", "GigaChat"];
 
 export async function callGigaChat(
   messages: Array<{ role: string; content: string }>,
