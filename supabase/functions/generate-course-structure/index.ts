@@ -130,7 +130,16 @@ serve(async (req) => {
         8192
       );
 
-      const cleaned = gcResponse.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+      // Extract JSON robustly - GigaChat often wraps in text/code blocks
+      let cleaned = gcResponse.replace(/```(?:json|python|js)?\s*/g, "").replace(/```\s*/g, "").trim();
+      // Find first [ or { and last ] or }
+      const jsonStart = cleaned.search(/[\[{]/);
+      const jsonEndBracket = cleaned.lastIndexOf(']');
+      const jsonEndBrace = cleaned.lastIndexOf('}');
+      const jsonEnd = Math.max(jsonEndBracket, jsonEndBrace);
+      if (jsonStart >= 0 && jsonEnd > jsonStart) {
+        cleaned = cleaned.substring(jsonStart, jsonEnd + 1);
+      }
       const parsed = JSON.parse(cleaned);
       lessons = parsed.lessons || parsed;
       usedModel = "GigaChat-Pro";
