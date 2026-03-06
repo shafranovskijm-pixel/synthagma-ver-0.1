@@ -90,6 +90,7 @@ export function AdminMarketplaceManager() {
   const [validatingId, setValidatingId] = useState<string | null>(null);
   const [bulkValidatingGroup, setBulkValidatingGroup] = useState<string | null>(null);
   const [bulkValidateProgress, setBulkValidateProgress] = useState("");
+  const [bulkFixing, setBulkFixing] = useState(false);
 
   // Initialize validated state from DB on courses load
   useEffect(() => {
@@ -204,6 +205,7 @@ export function AdminMarketplaceManager() {
     let okCount = 0;
     let errCount = 0;
     const total = group.courses.length;
+    const failedCourses: { courseId: string; title: string }[] = [];
 
     for (let i = 0; i < total; i++) {
       const item = group.courses[i];
@@ -246,17 +248,62 @@ export function AdminMarketplaceManager() {
         const isOk = issues.length === 0;
         setValidatedCourses(prev => ({ ...prev, [item.course_id]: isOk ? 'ok' : 'error' }));
         await supabase.from("marketplace_courses").update({ is_validated: isOk } as any).eq("id", item.id);
-        if (isOk) okCount++; else errCount++;
+        if (isOk) {
+          okCount++;
+        } else {
+          errCount++;
+          failedCourses.push({ courseId: item.course_id, title: item.course?.title || "" });
+        }
       } catch (e) {
         console.error("Bulk validate error for", item.course_id, e);
         setValidatedCourses(prev => ({ ...prev, [item.course_id]: 'error' }));
         errCount++;
+        failedCourses.push({ courseId: item.course_id, title: item.course?.title || "" });
       }
     }
 
     setBulkValidatingGroup(null);
     setBulkValidateProgress("");
-    toast.success(`Проверено ${total}: ✅ ${okCount} готово, ❌ ${errCount} с ошибками`);
+
+    if (errCount > 0) {
+      toast.error(`Проверено ${total}: ✅ ${okCount} готово, ❌ ${errCount} с ошибками`, {
+        duration: 30000,
+        action: {
+          label: "🔧 Исправить все ИИ",
+          onClick: () => {
+            handleBulkAutoFix(failedCourses);
+          },
+        },
+      });
+    } else {
+      toast.success(`Проверено ${total}: ✅ ${okCount} готово`);
+    }
+    h.fetchData();
+  };
+
+
+  const handleBulkAutoFix = async (courses: { courseId: string; title: string }[]) => {
+    if (bulkFixing) return;
+    setBulkFixing(true);
+    const total = courses.length;
+    let fixed = 0;
+    let failed = 0;
+
+    for (let i = 0; i < total; i++) {
+      const { courseId, title } = courses[i];
+      toast.loading(`Исправляю ${i + 1}/${total}: ${title.slice(0, 40)}...`, { id: "bulk-fix-progress", duration: Infinity });
+      try {
+        await autoFixCourse(courseId, title);
+        fixed++;
+      } catch (e) {
+        console.error("Bulk fix error for", courseId, e);
+        failed++;
+      }
+    }
+
+    toast.dismiss("bulk-fix-progress");
+    setBulkFixing(false);
+    toast.success(`Исправление завершено: ✅ ${fixed} исправлено${failed > 0 ? `, ❌ ${failed} с ошибками` : ""}`, { duration: 10000 });
     h.fetchData();
   };
 
