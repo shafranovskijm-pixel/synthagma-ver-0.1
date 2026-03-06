@@ -102,7 +102,17 @@ async function callLovableAI(messages: Array<{ role: string; content: string }>,
     throw new Error(`AI gateway error: ${response.status}`);
   }
 
-  const result = await response.json();
+  const text = await response.text();
+  if (!text || text.trim() === "") {
+    throw new Error("AI gateway returned empty response");
+  }
+  let result;
+  try {
+    result = JSON.parse(text);
+  } catch (e) {
+    console.error("Failed to parse AI response:", text.substring(0, 500));
+    throw new Error("AI gateway returned invalid JSON");
+  }
   return result.choices?.[0]?.message?.content || "";
 }
 
