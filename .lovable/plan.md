@@ -1,24 +1,48 @@
-## План: подключение GigaChat — ВЫПОЛНЕНО ✅
 
-### Что сделано
 
-**1. Создан общий модуль `_shared/gigachat-client.ts`**
-- OAuth-токен с кешированием, исправлен баг `expires_at` (мс → секунды)
-- Модель обновлена на `GigaChat-2-Pro`
-- TLS bypass через `Deno.createHttpClient` (если доступен)
-- Fallback на Lovable AI с retry (3 попытки)
-- `callAI()` — текстовый режим, GigaChat → Lovable AI
-- `callAIWithTools()` — JSON/tool mode, GigaChat (JSON prompt) → Lovable AI (tool calling)
-- `callLovableAIWithTools()` — прямой вызов Lovable AI с tools
+## Plan: Sequential GigaChat Requests with Model Fallback
 
-**2. `gigachat/index.ts` — рефакторинг**
-- Импортирует `callAI` из shared модуля
-- Удалён дублированный код OAuth/GigaChat/LovableAI
+### Problem
+GigaChat Freemium plan supports only **1 concurrent stream**. The pipeline currently sends requests with only 2s delays between batches, which triggers 429 rate limits. Additionally, the screenshot shows **GigaChat Pro subscription tokens are exhausted** — only package tokens (960K) remain, plus GigaChat Lite has 891K tokens.
 
-**3. `generate-course-structure/index.ts` — GigaChat first**
-- GigaChat-2-Pro → JSON parse → если ошибка → Lovable AI с tool calling
-- 402/429 прокидываются клиенту
+### Changes
 
-**4. `generate-course-content/index.ts` — GigaChat first**
-- `generateWithAI` теперь использует `callAIWithTools`
-- GigaChat-2-Pro (JSON prompt) → Lovable AI (tool calling)
+#### 1. `supabase/functions/_shared/gigachat-client.ts`
+- Add a **global mutex/queue** so only one GigaChat request runs at a time across all callers within the same edge function invocation
+- Add a configurable **post-request delay** (default 3s) after each GigaChat call completes before releasing the lock
+- On 429 from GigaChat, wait 10s then retry once before falling back to Lovable AI
+- Change default model from `GigaChat-2-Pro` to `GigaChat-2-Max` (has 50K tokens available) with fallback chain: Max → Lite → Lovable AI
+
+#### 2. `src/components/admin/BulkPipelineWidget.tsx`
+- Increase inter-batch delay from 2s to **5s** (line 442)
+- Add a **3s delay** after each content generation call (line 498-510 area)
+- Add a **3s delay** after structure generation call (line 456 area)
+- Display which AI model was used in the log entries (from response `data.model`)
+
+### Technical Details
+
+**Mutex in gigachat-client.ts:**
+```typescript
+let requestLock: Promise<void> = Promise.resolve();
+
+async function withGigaChatLock<T>(fn: () => Promise<T>, delayMs = 3000): Promise<T> {
+  const prev = requestLock;
+  let resolve: () => void;
+  requestLock = new Promise(r => { resolve = r; });
+  await prev;
+  try {
+    const result = await fn();
+    await new Promise(r => setTimeout(r, delayMs));
+    return result;
+  } finally {
+    resolve!();
+  }
+}
+```
+
+**Model fallback chain in `callGigaChat`:**
+Try GigaChat-2-Max first (50K tokens). On failure/429, try GigaChat-2-Lite (891K tokens). On failure, fall back to Lovable AI.
+
+**Pipeline delays:**
+All AI-calling points in `processCourse` will have explicit sequential waits — no concurrent requests possible.
+
