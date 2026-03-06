@@ -33,6 +33,7 @@ interface ProfileInfo {
   user_id: string;
   full_name: string | null;
   email: string | null;
+  login: string | null;
   organization_id: string | null;
 }
 
@@ -125,7 +126,7 @@ export function AdminAnalytics() {
         supabase.from("ai_usage_log").select("user_id, organization_id, function_name, created_at").order("created_at", { ascending: false }).limit(1000),
         supabase.from("student_login_history").select("user_id, logged_in_at, ip_address, user_agent"),
         supabase.from("course_access_log").select("user_id, course_id, accessed_at, ip_address, user_agent"),
-        supabase.from("profiles").select("user_id, full_name, email, organization_id"),
+        supabase.from("profiles").select("user_id, full_name, email, login, organization_id"),
         supabase.from("courses").select("id, title"),
       ]);
 
@@ -335,7 +336,7 @@ export function AdminAnalytics() {
         entries.push({
           userId: r.user_id,
           name: p?.full_name || "—",
-          email: p?.email || "—",
+          email: p?.email || p?.login || "—",
           time: d,
           ip: r.ip_address || "—",
           device: parseDevice(r.user_agent),
@@ -356,7 +357,7 @@ export function AdminAnalytics() {
         entries.push({
           userId: r.user_id,
           name: p?.full_name || "—",
-          email: p?.email || "—",
+          email: p?.email || p?.login || "—",
           time: d,
           ip: r.ip_address || "—",
           device: parseDevice(r.user_agent),
@@ -408,7 +409,7 @@ export function AdminAnalytics() {
         return {
           userId,
           name: p?.full_name || "—",
-          email: p?.email || "—",
+          email: p?.email || p?.login || "—",
           platform: s.platform,
           courses: s.courses,
           total: s.platform + s.courses,
