@@ -160,7 +160,7 @@ serve(async (req) => {
     if (!rl.allowed) return rateLimitResponse(rl, corsHeaders);
 
     const body = await req.json();
-    const { action, courseTitle, lessonTitle, questions, existingContent } = body;
+    const { action, courseTitle, lessonTitle, questions, existingContent, customSystemPrompt } = body;
 
     // Log AI usage
     const { data: profile } = await supabase
@@ -185,7 +185,7 @@ serve(async (req) => {
         return `Вопрос ${i + 1}: ${q.question}\n${opts}`;
       }).join("\n\n");
 
-      const systemPrompt = `Ты эксперт в области промышленной безопасности, охраны труда и нормативов Ростехнадзора. 
+      const defaultAnswersPrompt = `Ты эксперт в области промышленной безопасности, охраны труда и нормативов Ростехнадзора. 
 Тебе даны тестовые вопросы с вариантами ответов. Определи правильный ответ для каждого вопроса.
 Отвечай СТРОГО в формате JSON-массива, где каждый элемент — объект с полями:
 - "questionIndex": номер вопроса (начиная с 0)
@@ -194,6 +194,7 @@ serve(async (req) => {
 
 Пример: [{"questionIndex": 0, "correctAnswer": 2, "explanation": "Согласно ФЗ-116..."}]
 Отвечай ТОЛЬКО JSON-массивом, без markdown-обертки.`;
+      const systemPrompt = (action === "generate_answers" && customSystemPrompt) ? customSystemPrompt : defaultAnswersPrompt;
 
       const prompt = `Курс: "${courseTitle}"\nУрок: "${lessonTitle}"\n\n${questionsText}`;
       const { text: response, model } = await callAI([
@@ -214,13 +215,14 @@ serve(async (req) => {
         ? `\n\nВ уроке уже есть контент, НЕ повторяй его:\n${existingContent.slice(0, 1500)}`
         : "";
 
-      const systemPrompt = `Ты эксперт по промышленной безопасности и нормативам Ростехнадзора. Создай подробный учебный материал.
+      const defaultContentPrompt = `Ты эксперт по промышленной безопасности и нормативам Ростехнадзора. Создай подробный учебный материал.
 Правила:
 1. Структурированный текст с заголовками (используй Markdown)
 2. Ссылки на нормативные документы (ФЗ, приказы, постановления)
 3. Практические примеры и ситуации
 4. Минимум 500 слов
 5. На русском языке${contextNote}`;
+      const systemPrompt = customSystemPrompt ? (customSystemPrompt + contextNote) : defaultContentPrompt;
 
       const { text: content, model } = await callAI([
         { role: "system", content: systemPrompt },
@@ -236,7 +238,7 @@ serve(async (req) => {
 - "correctAnswer": индекс правильного ответа (0-3)
 - "explanation": краткое пояснение
 
-Создай 10 вопросов разной сложности. Отвечай ТОЛЬКО JSON-массивом.`;
+Создай 10 вопросов разной сложности. Отвечай ТОЛЬКО JSON-массивом.`; // generate_questions doesn't use customSystemPrompt
 
       const { text: response, model } = await callAI([
         { role: "system", content: systemPrompt },

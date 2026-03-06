@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { type MarketplacePrompts } from "./MarketplaceSettings";
 
 interface PipelineCourse {
   id: string;
@@ -24,9 +25,10 @@ interface LogEntry {
 interface Props {
   courses: PipelineCourse[];
   onComplete: () => void;
+  customPrompts?: MarketplacePrompts;
 }
 
-export function BulkPipelineWidget({ courses, onComplete }: Props) {
+export function BulkPipelineWidget({ courses, onComplete, customPrompts }: Props) {
   const [isRunning, setIsRunning] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentPhase, setCurrentPhase] = useState("");
@@ -55,7 +57,7 @@ export function BulkPipelineWidget({ courses, onComplete }: Props) {
       setCurrentPhase("Генерация структуры...");
       try {
         const { data: structData, error: structErr } = await supabase.functions.invoke("generate-course-structure", {
-          body: { title: courseTitle, description: "" },
+          body: { title: courseTitle, description: "", customSystemPrompt: customPrompts?.structure || undefined },
         });
         if (structErr) throw structErr;
         const generatedLessons: Array<{ title: string; type: string }> = structData?.lessons || [];
@@ -95,7 +97,7 @@ export function BulkPipelineWidget({ courses, onComplete }: Props) {
       setCurrentPhase(`Контент: "${lesson.title}" (${i + 1}/${emptyLessons.length})`);
       try {
         const { data, error } = await supabase.functions.invoke("gigachat", {
-          body: { action: "generate_content", courseTitle, lessonTitle: lesson.title, existingContent: null },
+          body: { action: "generate_content", courseTitle, lessonTitle: lesson.title, existingContent: null, customSystemPrompt: customPrompts?.content || undefined },
         });
         if (error) throw error;
         if (data?.content) {
@@ -133,6 +135,7 @@ export function BulkPipelineWidget({ courses, onComplete }: Props) {
                   action: "generate_answers", courseTitle,
                   lessonTitle: lessonInfo?.title || "Тест",
                   questions: batch.map(q => ({ question: q.question, options: q.options || [] })),
+                  customSystemPrompt: customPrompts?.answers || undefined,
                 },
               });
               if (error) throw error;
