@@ -82,44 +82,79 @@ async function callLovableAI(messages: Array<{ role: string; content: string }>,
   const apiKey = Deno.env.get("LOVABLE_API_KEY");
   if (!apiKey) throw new Error("LOVABLE_API_KEY is not configured");
 
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
-      messages,
-      temperature: 0.7,
-      max_tokens: maxTokens,
-    }),
-  });
+  const MAX_RETRIES = 3;
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    if (attempt > 0) {
+      const delay = attempt * 3000;
+      console.log(`[callLovableAI] retry ${attempt + 1}/${MAX_RETRIES}, waiting ${delay}ms`);
+      await new Promise(r => setTimeout(r, delay));
+    }
 
-  let text: string;
-  try {
-    text = await response.text();
-  } catch (bodyErr) {
-    console.error("Failed to read AI response body:", bodyErr);
-    throw new Error("AI gateway: failed to read response body");
+    let response: Response;
+    try {
+      response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages,
+          temperature: 0.7,
+          max_tokens: maxTokens,
+        }),
+      });
+    } catch (fetchErr) {
+      console.warn(`[callLovableAI] fetch error attempt ${attempt + 1}:`, fetchErr);
+      if (attempt === MAX_RETRIES - 1) throw new Error("AI gateway: network error after retries");
+      continue;
+    }
+
+    // Surface 402/429 immediately without retry
+    if (response.status === 402) {
+      try { await response.text(); } catch {}
+      throw new Error("Требуется пополнение баланса ИИ-кредитов (402)");
+    }
+    if (response.status === 429) {
+      try { await response.text(); } catch {}
+      throw new Error("AI rate limit exceeded (429)");
+    }
+
+    let text: string;
+    try {
+      text = await response.text();
+    } catch (bodyErr) {
+      console.warn(`[callLovableAI] body read error attempt ${attempt + 1}:`, bodyErr);
+      if (attempt === MAX_RETRIES - 1) throw new Error("AI gateway: failed to read response body after retries");
+      continue;
+    }
+
+    if (!response.ok) {
+      console.error("Lovable AI error:", response.status, text);
+      if (attempt === MAX_RETRIES - 1) throw new Error(`AI gateway error: ${response.status}`);
+      continue;
+    }
+
+    if (!text || text.trim() === "") {
+      console.warn(`[callLovableAI] empty response attempt ${attempt + 1}`);
+      if (attempt === MAX_RETRIES - 1) throw new Error("AI gateway returned empty response");
+      continue;
+    }
+
+    let result;
+    try {
+      result = JSON.parse(text);
+    } catch {
+      console.error("Failed to parse AI response:", text.substring(0, 500));
+      if (attempt === MAX_RETRIES - 1) throw new Error("AI gateway returned invalid JSON");
+      continue;
+    }
+
+    return result.choices?.[0]?.message?.content || "";
   }
 
-  if (!response.ok) {
-    console.error("Lovable AI error:", response.status, text);
-    throw new Error(`AI gateway error: ${response.status}`);
-  }
-
-  if (!text || text.trim() === "") {
-    throw new Error("AI gateway returned empty response");
-  }
-  let result;
-  try {
-    result = JSON.parse(text);
-  } catch (e) {
-    console.error("Failed to parse AI response:", text.substring(0, 500));
-    throw new Error("AI gateway returned invalid JSON");
-  }
-  return result.choices?.[0]?.message?.content || "";
+  throw new Error("AI gateway: all retries exhausted");
 }
 
 async function callAI(messages: Array<{ role: string; content: string }>, maxTokens = 4096): Promise<{ text: string; model: string }> {
