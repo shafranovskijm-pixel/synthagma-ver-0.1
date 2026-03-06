@@ -2,6 +2,17 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 
+// Force clear old caches on load
+if ('caches' in window) {
+  caches.keys().then(names => {
+    names.forEach(name => {
+      if (name.includes('workbox') || name.includes('pages-cache') || name.includes('static-cache')) {
+        caches.delete(name);
+      }
+    });
+  });
+}
+
 // Only register SW in browser context, not in Capacitor native
 const isNative = typeof (window as any).Capacitor !== 'undefined';
 if (!isNative) {
@@ -9,19 +20,14 @@ if (!isNative) {
     const updateSW = registerSW({
       immediate: true,
       onNeedRefresh() {
-        const key = '__sw_reload_count';
-        const count = parseInt(sessionStorage.getItem(key) || '0', 10);
-        if (count < 2) {
-          sessionStorage.setItem(key, String(count + 1));
-          updateSW(true);
-        }
+        updateSW(true);
       },
       onOfflineReady() {
         console.log('App ready for offline use');
       },
       onRegistered(registration) {
         if (registration) {
-          setInterval(() => registration.update(), 60 * 1000);
+          setInterval(() => registration.update(), 30 * 1000);
         }
       },
     });
