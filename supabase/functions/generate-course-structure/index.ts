@@ -211,20 +211,23 @@ serve(async (req) => {
       }
     }
 
+    // Filter out any malformed entries
+    lessons = lessons.filter((l: any) => l && typeof l === "object" && l.title && l.type);
+
     if (lessons.length === 0) {
       throw new Error("Не удалось сгенерировать структуру курса. Попробуйте ещё раз.");
     }
 
     // Post-process: ensure last lesson is "Итоговое тестирование" (test)
     const lastLesson = lessons[lessons.length - 1];
-    if (lastLesson.type !== "test" || !lastLesson.title?.includes("тестирование")) {
+    if (lastLesson?.type !== "test" || !lastLesson?.title?.includes("тестирование")) {
       const finalTestIdx = lessons.findIndex((l: any) =>
         l.type === "test" && (l.title?.includes("Итоговое") || l.title?.includes("итоговое"))
       );
       if (finalTestIdx >= 0 && finalTestIdx !== lessons.length - 1) {
         const [finalTest] = lessons.splice(finalTestIdx, 1);
         lessons.push(finalTest);
-      } else if (lastLesson.type !== "test") {
+      } else if (lastLesson?.type !== "test") {
         lessons.push({ title: "Итоговое тестирование", type: "test", description: "Итоговый тест по всему курсу" });
       } else {
         lastLesson.title = "Итоговое тестирование";
