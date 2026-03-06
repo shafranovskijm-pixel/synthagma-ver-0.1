@@ -419,7 +419,8 @@ export function BulkPipelineWidget({ courses, onComplete }: Props) {
 
     setIsTestRunning(false);
     setCurrentPhase("");
-  }, [courses, processCourse]);
+    onComplete?.();
+  }, [courses, processCourse, onComplete]);
 
   const isBusy = isRunning || isTestRunning;
 
