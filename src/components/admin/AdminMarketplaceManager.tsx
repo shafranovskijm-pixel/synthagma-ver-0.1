@@ -239,7 +239,8 @@ export function AdminMarketplaceManager() {
         (l.type === "text" || l.type === "practice") && (!l.content || l.content === "[]" || l.content === "" || l.content.length < 50)
       );
 
-      const testIds = allLessons.filter(l => l.type === "test").map(l => l.id);
+      const testLessonsFull = allLessons.filter(l => l.type === "test");
+      const testIds = testLessonsFull.map(l => l.id);
       let allQuestions: Array<{ id: string; lesson_id: string; correct_answer: number | null; question: string; options: any }> = [];
 
       if (testIds.length) {
@@ -247,6 +248,9 @@ export function AdminMarketplaceManager() {
           .from("test_questions").select("id, lesson_id, correct_answer, question, options").in("lesson_id", testIds);
         allQuestions = (questions || []) as typeof allQuestions;
       }
+
+      // Find tests with ZERO questions — need to generate questions
+      const testsWithNoQuestions = testLessonsFull.filter(t => !allQuestions.some(q => q.lesson_id === t.id));
 
       // Find unanswered questions
       const unansweredQuestions = allQuestions.filter(q => q.correct_answer === null || q.correct_answer === undefined);
@@ -260,7 +264,7 @@ export function AdminMarketplaceManager() {
       }
       const duplicateGroups = [...titleCounts.values()].filter(g => g.length > 1);
 
-      const totalTasks = emptyLessons.length + (unansweredQuestions.length > 0 ? 1 : 0) + (duplicateGroups.length > 0 ? 1 : 0);
+      const totalTasks = emptyLessons.length + (testsWithNoQuestions.length > 0 ? 1 : 0) + (unansweredQuestions.length > 0 ? 1 : 0) + (duplicateGroups.length > 0 ? 1 : 0);
       if (totalTasks === 0 && !needsStructure) { toast.info("Нечего исправлять", { id: toastId, duration: 3000 }); return; }
       if (totalTasks === 0) { toast.success("Структура создана! Повторная проверка...", { id: toastId, duration: 3000 }); setTimeout(() => handleValidateCourse(courseId), 1000); return; }
 
@@ -287,13 +291,55 @@ export function AdminMarketplaceManager() {
           console.error(`Failed to generate content for lesson ${lesson.id}:`, e);
         }
       }
-      // 3. Fix unanswered test questions in batches
-      if (unansweredQuestions.length > 0) {
+      // 3. Generate questions for empty tests
+      if (testsWithNoQuestions.length > 0) {
         completed++;
-        toast.loading(`Решаю тесты: ${unansweredQuestions.length} вопросов (${completed}/${totalTasks})`, { id: toastId });
+        toast.loading(`Генерирую вопросы для ${testsWithNoQuestions.length} тестов (${completed}/${totalTasks})`, { id: toastId });
+        for (const testLesson of testsWithNoQuestions) {
+          try {
+            const { data, error } = await supabase.functions.invoke("gigachat", {
+              body: {
+                action: "generate_questions",
+                courseTitle,
+                lessonTitle: testLesson.title,
+                questionsCount: 10,
+              },
+            });
+            if (error) throw error;
+            if (data?.questions && Array.isArray(data.questions)) {
+              const toInsert = data.questions.map((q: any, idx: number) => ({
+                lesson_id: testLesson.id,
+                question: q.question,
+                options: q.options || [],
+                correct_answer: q.correctAnswer ?? q.correct_answer ?? null,
+                explanation: q.explanation || null,
+                order_index: idx,
+              }));
+              if (toInsert.length > 0) {
+                await supabase.from("test_questions").insert(toInsert);
+              }
+            }
+          } catch (e) {
+            console.error(`Failed to generate questions for test ${testLesson.id}:`, e);
+          }
+        }
+      }
 
-        const byLesson = new Map<string, typeof unansweredQuestions>();
-        for (const q of unansweredQuestions) {
+      // 4. Fix unanswered test questions in batches — re-fetch to include newly generated
+      // Re-fetch all questions to catch newly generated ones that may need solving
+      let freshUnanswered = unansweredQuestions;
+      if (testsWithNoQuestions.length > 0 && testIds.length > 0) {
+        const { data: freshQ } = await supabase
+          .from("test_questions").select("id, lesson_id, correct_answer, question, options").in("lesson_id", testIds);
+        freshUnanswered = ((freshQ || []) as typeof allQuestions).filter(q => q.correct_answer === null || q.correct_answer === undefined);
+      }
+
+      if (freshUnanswered.length > 0) {
+        completed++;
+        toast.loading(`Решаю тесты: ${freshUnanswered.length} вопросов (${completed}/${totalTasks})`, { id: toastId });
+
+        const byLesson = new Map<string, typeof freshUnanswered>();
+        for (const q of freshUnanswered) {
           const arr = byLesson.get(q.lesson_id) || [];
           arr.push(q);
           byLesson.set(q.lesson_id, arr);
