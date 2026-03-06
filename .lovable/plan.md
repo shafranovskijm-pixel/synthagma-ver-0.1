@@ -1,45 +1,45 @@
 
 
-## Problem
+## Bulk Content Pipeline Widget
 
-The `autoFixCourse` function has two behaviors that conflict with the user's requirements:
+### What it does
+A card widget at the top of the Catalog tab that sequentially processes all "В работе" courses one by one. When you click "Запустить", it:
+1. Picks the next unvalidated course
+2. Generates content for empty text/practice lessons
+3. Solves unanswered test questions
+4. Validates the course and marks it as `is_validated = true`
+5. Moves to the next course, showing real-time progress
 
-1. **Structure generation creates new test lessons**: When `needsStructure` is true, the `generate-course-structure` edge function generates a full course structure including `test` type lessons. These get inserted even though the course already has tests.
+### UI Design
+A `Card` above the course list with:
+- Total courses in pipeline / completed count
+- Progress bar
+- Current course name being processed
+- Log of completed courses with checkmarks
+- Start/Stop button
 
-2. **Question generation for empty tests**: The code generates new AI questions for tests that have zero questions in the DB. The user says tests already have questions imported — they just need correct answers filled in.
+### Technical Plan
 
-The user's expectation is simple:
-- Tests are already in the course with questions — **only solve them** (fill `correct_answer`)
-- Fill empty text/practice lessons with content
-- **Never** create new test lessons or new test questions
+**1. New component: `src/components/admin/BulkPipelineWidget.tsx`**
 
-## Plan
+A self-contained widget that:
+- Receives `courses` (the "В работе" list from `h.groupedCourses`)
+- Has state: `isRunning`, `currentIndex`, `currentCourseName`, `completedCourses[]`, `currentPhase` (structure/content/tests/validate)
+- On start, iterates through unvalidated courses sequentially
+- For each course, reuses the same logic as `autoFixCourse`:
+  - Fetch lessons → generate structure if needed (no tests) → fill empty content → solve unanswered questions → validate → mark `is_validated`
+- Shows progress via `Progress` bar and a scrollable log
+- Calls `onComplete` callback to refresh the parent data
 
-### 1. Filter out test lessons from structure generation (AdminMarketplaceManager.tsx ~line 216)
+**2. Integration in `AdminMarketplaceManager.tsx`**
 
-When inserting newly generated lessons, filter out any with `type === "test"` — only insert `text` and `practice` lessons:
+- Add `<BulkPipelineWidget>` at the top of the catalog `TabsContent`, above the search bar
+- Pass unvalidated courses from `h.courses.filter(c => !c.is_validated)`
+- On completion, call `h.fetchData()` to refresh grouping
 
-```typescript
-const newLessons = generatedLessons
-  .filter(gl => !existingTitles.has(gl.title.toLowerCase()))
-  .filter(gl => gl.type !== "test"); // Never create new tests
-```
-
-### 2. Remove the "generate questions for empty tests" block (lines 294-326)
-
-Delete the entire `testsWithNoQuestions` block that calls `gigachat` with `action: "generate_questions"`. Tests should already have their questions; the system should only solve existing unanswered questions.
-
-### 3. Clean up related code
-
-- Remove `testsWithNoQuestions` variable (line 253) and its inclusion in `totalTasks` (line 267)
-- Remove the re-fetch logic for `freshUnanswered` (lines 330-335) since there are no newly generated questions to catch
-- Simplify back to using `unansweredQuestions` directly
-
-### Result
-
-The autofix pipeline becomes:
-1. Generate text/practice structure if needed (no tests)
-2. Fill empty text/practice lessons with content
-3. Solve existing unanswered test questions
-4. Fix duplicate titles
+**3. Progress display**
+- `{completedCount} / {totalCount}` with percentage
+- Current phase text: "Генерация контента: Урок X", "Решаю тесты", "Проверка..."
+- Completed courses list with green checkmarks
+- Ability to stop mid-process
 
