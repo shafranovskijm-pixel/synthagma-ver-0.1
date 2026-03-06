@@ -1,29 +1,18 @@
 
 
-## Problem
+## Plan: Auto-fix after "Проверить все"
 
-The pipeline stops after 1-2 courses because of a **component unmount** issue:
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-1. After each course completes, `onComplete` calls `h.fetchData()`
-2. `fetchData()` sets `isLoading = true`
-3. `AdminMarketplaceManager` has `if (h.isLoading) return <Loading />` at line 519
-4. This **unmounts** the `BulkPipelineWidget`, killing the running async pipeline loop
-5. When loading finishes, the widget remounts fresh with all state reset
+### Changes
 
-## Fix
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-Two changes needed:
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-### 1. `src/components/admin/AdminMarketplaceManager.tsx`
-- Remove or modify the early return for `isLoading` so it doesn't unmount the entire content when data is being refreshed
-- Option: only show loading on initial load (when `courses.length === 0`), or overlay a spinner without unmounting
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-### 2. `src/components/admin/BulkPipelineWidget.tsx`
-- Change `onComplete` to not trigger a full refetch during pipeline execution
-- Instead, defer the refetch until the pipeline finishes completely
-- Use a `ref` to track running state and skip `onComplete` calls mid-pipeline, or batch the refresh to the end
-
-### Recommended approach
-- In `AdminMarketplaceManager`: change `if (h.isLoading)` to only apply on first load: `if (h.isLoading && h.courses.length === 0)`
-- In `BulkPipelineWidget`: move the `onComplete?.()` call from inside the per-course loop (line 584) to after the entire pipeline finishes (after line 614), so data is refreshed once at the end
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 

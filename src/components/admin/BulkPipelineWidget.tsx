@@ -581,7 +581,6 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
           totalQuestions: result.totalQuestions,
           message: hasSkips ? `${result.skippedBatches} батч(ей) пропущено` : undefined,
         }]);
-        onComplete?.();
       } catch (e: any) {
         if (e instanceof CreditsExhaustedError) {
           console.error("Credits exhausted, stopping pipeline");
@@ -612,6 +611,7 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
     setCurrentPhase("");
     const mins = Math.round(duration / 60000);
     toast.success(`Конвейер завершён за ${mins} мин. Решено ${totalSolved} тестов, заполнено ${totalFilled} уроков.`);
+    onComplete?.();
   }, [courses, processCourse, onComplete, currentPhase]);
 
   const handleStop = useCallback(() => {
