@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from "react";
 import {
   Play, Square, CheckCircle2, Loader2, AlertTriangle, Brain, FileSpreadsheet,
-  DollarSign, RotateCcw, Upload, Clock, ListChecks, ChevronDown, FlaskConical,
+  DollarSign, RotateCcw, Upload, Clock, ListChecks, ChevronDown, FlaskConical, Eye,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -373,6 +373,7 @@ export function BulkPipelineWidget({ courses, onComplete }: Props) {
           lessonsFilled: result.lessonsFilled,
           testsSolved: result.testsSolved,
         }]);
+        onComplete?.();
       } catch (e: any) {
         console.error(`Pipeline error for course ${course.course_id}:`, e);
         setCompletedLog(prev => [...prev, { courseName: name, status: "error", message: e?.message || "Ошибка" }]);
@@ -381,7 +382,6 @@ export function BulkPipelineWidget({ courses, onComplete }: Props) {
 
     setIsRunning(false);
     setCurrentPhase("");
-    onComplete();
     toast.success("Конвейер завершён!");
   }, [courses, processCourse, onComplete]);
 
@@ -500,6 +500,7 @@ export function BulkPipelineWidget({ courses, onComplete }: Props) {
                       <TableHead className="text-xs">Название</TableHead>
                       <TableHead className="w-16 text-xs">Статус</TableHead>
                       <TableHead className="text-xs">Детали</TableHead>
+                      <TableHead className="w-10 text-xs"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -523,6 +524,15 @@ export function BulkPipelineWidget({ courses, onComplete }: Props) {
                             )}
                             {log?.status === "error" && <span className="text-red-500">{log.message}</span>}
                             {isActive && <span className="text-primary">{currentPhase}</span>}
+                          </TableCell>
+                          <TableCell className="py-1.5">
+                            <button
+                              onClick={() => window.open(`/course-builder/${c.course_id}`, '_blank')}
+                              className="p-1 rounded hover:bg-secondary/50 transition-colors"
+                              title="Открыть в конструкторе"
+                            >
+                              <Eye className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground" />
+                            </button>
                           </TableCell>
                         </TableRow>
                       );
