@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { BulkCourseImporter } from "./BulkCourseImporter";
 import { BulkContentGenerator } from "./BulkContentGenerator";
+import { BulkPipelineWidget } from "./BulkPipelineWidget";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -424,6 +425,11 @@ export function AdminMarketplaceManager() {
 
         {/* Catalog */}
         <TabsContent value="catalog" className="space-y-4">
+          {/* Pipeline widget */}
+          <BulkPipelineWidget
+            courses={h.courses.filter((c: any) => !c.is_validated)}
+            onComplete={() => h.fetchData()}
+          />
           {/* Search + view toggle */}
           <div className="flex items-center gap-4">
             <div className="relative flex-1 max-w-md">
