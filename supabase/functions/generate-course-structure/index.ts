@@ -126,14 +126,14 @@ serve(async (req) => {
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
-        "GigaChat-2-Pro",
+        "GigaChat-2-Max",
         8192
       );
 
       const cleaned = gcResponse.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
       const parsed = JSON.parse(cleaned);
       lessons = parsed.lessons || parsed;
-      usedModel = "GigaChat-2-Pro";
+      usedModel = "GigaChat-2-Max";
       console.log(`[generate-course-structure] GigaChat succeeded: ${lessons.length} lessons`);
     } catch (gcErr) {
       const gcMsg = gcErr instanceof Error ? gcErr.message : String(gcErr);
