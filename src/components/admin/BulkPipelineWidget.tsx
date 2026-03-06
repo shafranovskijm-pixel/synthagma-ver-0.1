@@ -48,6 +48,18 @@ interface LogEntry {
   message?: string;
   lessonsFilled?: number;
   testsSolved?: number;
+  skippedBatches?: number;
+  totalQuestions?: number;
+}
+
+interface PipelineSummary {
+  totalCourses: number;
+  successCourses: number;
+  errorCourses: number;
+  totalTestsSolved: number;
+  totalLessonsFilled: number;
+  totalSkippedBatches: number;
+  durationMs: number;
 }
 
 interface ExcelCourse {
@@ -75,6 +87,7 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
   const [currentPhase, setCurrentPhase] = useState("");
   const [completedLog, setCompletedLog] = useState<LogEntry[]>([]);
   const stopRef = useRef(false);
+  const [summary, setSummary] = useState<PipelineSummary | null>(null);
 
   // Collapsible sections
   const [queueOpen, setQueueOpen] = useState(false);
@@ -289,12 +302,14 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
   };
 
   // ── Pipeline logic ──
-  const processCourse = useCallback(async (course: PipelineCourse): Promise<{ ok: boolean; lessonsFilled: number; testsSolved: number }> => {
+  const processCourse = useCallback(async (course: PipelineCourse): Promise<{ ok: boolean; lessonsFilled: number; testsSolved: number; skippedBatches: number; totalQuestions: number }> => {
     const courseId = course.course_id;
     const courseTitle = course.course?.title || "";
     const currentPrompts = getMarketplacePrompts();
     let lessonsFilled = 0;
     let testsSolved = 0;
+    let skippedBatches = 0;
+    let totalQuestions = 0;
 
     // 1. Fetch lessons
     setCurrentPhase("Загрузка уроков...");
@@ -327,6 +342,7 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
         q.correct_answer === null || q.correct_answer === undefined || suspiciousLessons.has(q.lesson_id)
       );
 
+      totalQuestions = unanswered.length;
       if (unanswered.length > 0) {
         setCurrentPhase(`Решаю тесты: 0/${unanswered.length} вопросов`);
         const byLesson = new Map<string, typeof unanswered>();
@@ -336,11 +352,11 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
           byLesson.set(q.lesson_id, arr);
         }
         for (const [lessonId, qs] of byLesson) {
-          if (stopRef.current) return { ok: false, lessonsFilled, testsSolved };
+          if (stopRef.current) return { ok: false, lessonsFilled, testsSolved, skippedBatches, totalQuestions };
           const lessonInfo = currentLessons.find(l => l.id === lessonId);
           const batchSize = 20;
           for (let i = 0; i < qs.length; i += batchSize) {
-            if (stopRef.current) return { ok: false, lessonsFilled, testsSolved };
+      if (stopRef.current) return { ok: false, lessonsFilled, testsSolved, skippedBatches, totalQuestions };
             const batch = qs.slice(i, i + batchSize);
             setCurrentPhase(`Решаю тесты: ${testsSolved}/${unanswered.length} — «${lessonInfo?.title || "Тест"}»`);
 
@@ -377,8 +393,9 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
                   const delay = retries * 5000;
                   setCurrentPhase(`Ошибка, повтор через ${delay / 1000}с... (${retries}/3)`);
                   await new Promise(r => setTimeout(r, delay));
-                } else {
-                  console.error(`Batch skipped after 3 retries for lesson ${lessonId}`);
+              } else {
+                  skippedBatches++;
+                  console.error(`Batch skipped after 3 retries for lesson ${lessonId} (skipped: ${skippedBatches})`);
                 }
               }
             }
@@ -433,7 +450,7 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
     );
 
     for (let i = 0; i < emptyLessons.length; i++) {
-      if (stopRef.current) return { ok: false, lessonsFilled, testsSolved };
+      if (stopRef.current) return { ok: false, lessonsFilled, testsSolved, skippedBatches, totalQuestions };
       const lesson = emptyLessons[i];
       setCurrentPhase(`Контент: "${lesson.title}" (${i + 1}/${emptyLessons.length})`);
       try {
@@ -469,7 +486,7 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
     setCurrentPhase("Валидация...");
     await supabase.from("marketplace_courses").update({ is_validated: true } as any).eq("id", course.id);
 
-    return { ok: true, lessonsFilled, testsSolved };
+    return { ok: true, lessonsFilled, testsSolved, skippedBatches, totalQuestions };
   }, []);
 
   const handleStart = useCallback(async () => {
@@ -477,6 +494,10 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
     setIsRunning(true);
     setCompletedLog([]);
     setCurrentIndex(0);
+    setQueueOpen(true);
+    setSummary(null);
+    const startTime = Date.now();
+    let totalSolved = 0, totalFilled = 0, totalErrors = 0, totalSuccess = 0, totalSkipped = 0;
 
     for (let i = 0; i < courses.length; i++) {
       if (stopRef.current) break;
@@ -488,25 +509,48 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
         const result = await processCourse(course);
         if (!result.ok && stopRef.current) {
           setCompletedLog(prev => [...prev, { courseName: name, status: "error", message: "Остановлено" }]);
+          totalErrors++;
           break;
         }
+        const hasSkips = result.skippedBatches > 0;
+        totalSolved += result.testsSolved;
+        totalFilled += result.lessonsFilled;
+        totalSkipped += result.skippedBatches;
+        totalSuccess++;
         setCompletedLog(prev => [...prev, {
           courseName: name,
           status: "ok",
           lessonsFilled: result.lessonsFilled,
           testsSolved: result.testsSolved,
+          skippedBatches: result.skippedBatches,
+          totalQuestions: result.totalQuestions,
+          message: hasSkips ? `${result.skippedBatches} батч(ей) пропущено` : undefined,
         }]);
         onComplete?.();
       } catch (e: any) {
         console.error(`Pipeline error for course ${course.course_id}:`, e);
-        setCompletedLog(prev => [...prev, { courseName: name, status: "error", message: e?.message || "Ошибка" }]);
+        const phaseInfo = currentPhase ? ` [${currentPhase}]` : "";
+        setCompletedLog(prev => [...prev, { courseName: name, status: "error", message: (e?.message || "Ошибка") + phaseInfo }]);
+        totalErrors++;
       }
     }
 
+    const duration = Date.now() - startTime;
+    const finalSummary: PipelineSummary = {
+      totalCourses: courses.length,
+      successCourses: totalSuccess,
+      errorCourses: totalErrors,
+      totalTestsSolved: totalSolved,
+      totalLessonsFilled: totalFilled,
+      totalSkippedBatches: totalSkipped,
+      durationMs: duration,
+    };
+    setSummary(finalSummary);
     setIsRunning(false);
     setCurrentPhase("");
-    toast.success("Конвейер завершён!");
-  }, [courses, processCourse, onComplete]);
+    const mins = Math.round(duration / 60000);
+    toast.success(`Конвейер завершён за ${mins} мин. Решено ${totalSolved} тестов, заполнено ${totalFilled} уроков.`);
+  }, [courses, processCourse, onComplete, currentPhase]);
 
   const handleStop = useCallback(() => {
     stopRef.current = true;
@@ -656,6 +700,36 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
           </div>
         )}
 
+        {/* Summary card after completion */}
+        {summary && !isBusy && (
+          <div className="rounded-lg border bg-card p-3 space-y-2">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <CheckCircle2 className="w-4 h-4 text-primary" />
+              Итоги конвейера
+            </div>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+              <span className="text-muted-foreground">Курсов обработано:</span>
+              <span className="font-medium">{summary.totalCourses}</span>
+              <span className="text-muted-foreground">Успешно:</span>
+              <span className="font-medium text-green-600">{summary.successCourses}</span>
+              <span className="text-muted-foreground">С ошибками:</span>
+              <span className="font-medium text-destructive">{summary.errorCourses}</span>
+              <span className="text-muted-foreground">Тестов решено:</span>
+              <span className="font-medium">{summary.totalTestsSolved.toLocaleString()}</span>
+              <span className="text-muted-foreground">Уроков заполнено:</span>
+              <span className="font-medium">{summary.totalLessonsFilled}</span>
+              {summary.totalSkippedBatches > 0 && (
+                <>
+                  <span className="text-muted-foreground">Батчей пропущено:</span>
+                  <span className="font-medium text-yellow-600">{summary.totalSkippedBatches}</span>
+                </>
+              )}
+              <span className="text-muted-foreground">Время работы:</span>
+              <span className="font-medium">{Math.round(summary.durationMs / 60000)} мин</span>
+            </div>
+          </div>
+        )}
+
         {/* ── Section: Queue ── */}
         {totalCount > 0 && (
           <Collapsible open={queueOpen} onOpenChange={setQueueOpen}>
@@ -695,9 +769,14 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground py-1.5">
                             {log?.status === "ok" && (
-                              <span>{log.lessonsFilled || 0} уроков, {log.testsSolved || 0} тестов</span>
+                              <span>
+                                {log.testsSolved || 0}/{log.totalQuestions || 0} тестов, {log.lessonsFilled || 0} уроков
+                                {(log.skippedBatches ?? 0) > 0 && (
+                                  <span className="text-yellow-600 ml-1">⚠ {log.skippedBatches} пропущено</span>
+                                )}
+                              </span>
                             )}
-                            {log?.status === "error" && <span className="text-red-500">{log.message}</span>}
+                            {log?.status === "error" && <span className="text-destructive">{log.message}</span>}
                             {isActive && <span className="text-primary">{currentPhase}</span>}
                           </TableCell>
                           <TableCell className="py-1.5">
