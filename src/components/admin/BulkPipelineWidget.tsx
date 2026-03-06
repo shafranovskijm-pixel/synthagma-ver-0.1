@@ -438,8 +438,8 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
                 }
               }
             }
-            // Delay between batches to avoid rate limiting
-            await new Promise(r => setTimeout(r, 2000));
+            // Delay between batches — GigaChat supports only 1 stream
+            await new Promise(r => setTimeout(r, 5000));
           }
         }
         setCurrentPhase(`Тесты решены: ${testsSolved}/${unanswered.length}`);
@@ -457,6 +457,8 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
           body: { title: courseTitle, description: "", customSystemPrompt: currentPrompts.structure || undefined },
         });
         if (structErr) { checkFor402(structErr); throw structErr; }
+        // Post-request delay for GigaChat sequential mode
+        await new Promise(r => setTimeout(r, 3000));
         const generatedLessons: Array<{ title: string; type: string }> = structData?.lessons || [];
         if (generatedLessons.length > 0) {
           setAiSessionCalls(prev => prev + 1);
@@ -504,6 +506,8 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
           lessonsFilled++;
           setAiSessionCalls(prev => prev + 1);
         }
+        // Post-request delay for GigaChat sequential mode
+        await new Promise(r => setTimeout(r, 3000));
       } catch (e) {
         if (e instanceof CreditsExhaustedError) throw e;
         console.error(`Content gen failed for ${lesson.id}:`, e);
