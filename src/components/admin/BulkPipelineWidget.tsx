@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from "react";
 import {
   Play, Square, CheckCircle2, Loader2, AlertTriangle, Brain, FileSpreadsheet,
-  DollarSign, RotateCcw, Upload, Clock, ListChecks, ChevronDown,
+  DollarSign, RotateCcw, Upload, Clock, ListChecks, ChevronDown, FlaskConical,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -57,6 +57,7 @@ interface Props {
 
 export function BulkPipelineWidget({ courses, onComplete }: Props) {
   const [isRunning, setIsRunning] = useState(false);
+  const [isTestRunning, setIsTestRunning] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentPhase, setCurrentPhase] = useState("");
   const [completedLog, setCompletedLog] = useState<LogEntry[]>([]);
@@ -389,9 +390,42 @@ export function BulkPipelineWidget({ courses, onComplete }: Props) {
     setCurrentPhase("Остановка...");
   }, []);
 
+  const handleTestRun = useCallback(async () => {
+    if (courses.length === 0) return;
+    stopRef.current = false;
+    setIsTestRunning(true);
+    setCompletedLog([]);
+    setCurrentIndex(0);
+    setQueueOpen(true);
+
+    const course = courses[0];
+    const name = course.course?.title || "Курс 1";
+
+    try {
+      const result = await processCourse(course);
+      setCompletedLog([{
+        courseName: name,
+        status: result.ok ? "ok" : "error",
+        message: result.ok ? undefined : "Остановлено",
+        lessonsFilled: result.lessonsFilled,
+        testsSolved: result.testsSolved,
+      }]);
+      toast[result.ok ? "success" : "warning"](`Тест: ${name} — ${result.ok ? "готово" : "прервано"}`);
+    } catch (e: any) {
+      console.error("Test run error:", e);
+      setCompletedLog([{ courseName: name, status: "error", message: e?.message || "Ошибка" }]);
+      toast.error(`Тест: ошибка — ${e?.message}`);
+    }
+
+    setIsTestRunning(false);
+    setCurrentPhase("");
+  }, [courses, processCourse]);
+
+  const isBusy = isRunning || isTestRunning;
+
   if (totalCount === 0 && parsedCourses.length === 0) return null;
 
-  const currentCourseName = isRunning ? (courses[currentIndex]?.course?.title || "") : "";
+  const currentCourseName = isBusy ? (courses[currentIndex]?.course?.title || "") : "";
 
   const promptSections: Array<{ key: keyof MarketplacePrompts; label: string; desc: string }> = [
     { key: "structure", label: "Генерация структуры", desc: "Промт для создания списка уроков курса" },
@@ -409,10 +443,15 @@ export function BulkPipelineWidget({ courses, onComplete }: Props) {
             {totalCount > 0 && <Badge variant="secondary" className="ml-1">{totalCount} курсов</Badge>}
           </CardTitle>
           {totalCount > 0 && (
-            !isRunning ? (
-              <Button size="sm" onClick={handleStart} className="gap-1.5">
-                <Play className="w-3.5 h-3.5" />Запустить
-              </Button>
+            !isBusy ? (
+              <div className="flex items-center gap-1.5">
+                <Button size="sm" variant="outline" onClick={handleTestRun} className="gap-1.5">
+                  <FlaskConical className="w-3.5 h-3.5" />Тест 1 курса
+                </Button>
+                <Button size="sm" onClick={handleStart} className="gap-1.5">
+                  <Play className="w-3.5 h-3.5" />Запустить все
+                </Button>
+              </div>
             ) : (
               <Button size="sm" variant="destructive" onClick={handleStop} className="gap-1.5">
                 <Square className="w-3.5 h-3.5" />Стоп
@@ -434,7 +473,7 @@ export function BulkPipelineWidget({ courses, onComplete }: Props) {
         )}
 
         {/* Current status */}
-        {isRunning && currentCourseName && (
+        {isBusy && currentCourseName && (
           <div className="text-sm space-y-0.5">
             <p className="font-medium truncate">▶ {currentCourseName}</p>
             <p className="text-muted-foreground text-xs truncate">{currentPhase}</p>
@@ -465,7 +504,7 @@ export function BulkPipelineWidget({ courses, onComplete }: Props) {
                   <TableBody>
                     {courses.map((c, i) => {
                       const log = completedLog[i];
-                      const isActive = isRunning && i === currentIndex;
+                      const isActive = isBusy && i === currentIndex;
                       const isPending = !log && !isActive;
                       return (
                         <TableRow key={c.id} className={isActive ? "bg-primary/10" : ""}>
