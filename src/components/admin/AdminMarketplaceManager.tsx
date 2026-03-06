@@ -204,7 +204,7 @@ export function AdminMarketplaceManager() {
         toast.loading("Генерирую структуру курса...", { id: toastId });
         try {
           const { data: structData, error: structErr } = await supabase.functions.invoke("generate-course-structure", {
-            body: { courseTitle, courseDescription: "" },
+            body: { title: courseTitle, description: "" },
           });
           if (structErr) throw structErr;
           const generatedLessons: Array<{ title: string; type: string }> = structData?.lessons || [];
