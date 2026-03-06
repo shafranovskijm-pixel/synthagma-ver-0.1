@@ -266,15 +266,8 @@ export function AdminMarketplaceManager() {
     setBulkValidateProgress("");
 
     if (errCount > 0) {
-      toast.error(`Проверено ${total}: ✅ ${okCount} готово, ❌ ${errCount} с ошибками`, {
-        duration: 30000,
-        action: {
-          label: "🔧 Исправить все ИИ",
-          onClick: () => {
-            handleBulkAutoFix(failedCourses);
-          },
-        },
-      });
+      toast.info(`Проверено ${total}: ✅ ${okCount}, ❌ ${errCount}. Запускаем авто-исправление...`);
+      handleBulkAutoFix(failedCourses);
     } else {
       toast.success(`Проверено ${total}: ✅ ${okCount} готово`);
     }
