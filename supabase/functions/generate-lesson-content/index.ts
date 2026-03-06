@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { callAIWithTools } from "../_shared/gigachat-client.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -60,11 +61,7 @@ serve(async (req) => {
       );
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
-    }
-
+    let usedModel = "unknown";
     let systemPrompt = "";
     let toolDefinition: any = null;
 
@@ -212,162 +209,48 @@ ${courseTitle ? `Курс: ${courseTitle}` : ""}
 ${courseDescription ? `Описание курса: ${courseDescription}` : ""}
 Тип: ${lessonType === "test" ? "тест с вопросами" : lessonType === "practice" ? "практическое задание (кейс/ситуационная задача)" : "текстовая лекция"}${previousLessonsList}`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
+    try {
+      const args = await callAIWithTools(
+        [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
         ],
-        tools: [toolDefinition],
-        tool_choice: { 
-          type: "function", 
-          function: { name: lessonType === "test" ? "create_test_questions" : "create_lesson_content" } 
-        }
-      }),
-    });
+        toolDefinition ? { type: "function", function: toolDefinition.function } : undefined,
+        "GigaChat-2-Max",
+        "google/gemini-3-flash-preview"
+      );
 
-    if (!response.ok) {
-      if (response.status === 429) {
+      usedModel = "GigaChat/Lovable AI";
+      console.log("AI response for user", user.id, "- extracted", lessonType === "test" ? "questions" : "blocks");
+
+      if (lessonType === "test") {
         return new Response(
-          JSON.stringify({ error: "Превышен лимит запросов. Попробуйте позже." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          JSON.stringify({ success: true, questions: args.questions || [], model: usedModel }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      } else {
+        return new Response(
+          JSON.stringify({ success: true, blocks: args.blocks || [], model: usedModel }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      if (response.status === 402) {
+    } catch (aiErr) {
+      const errMsg = aiErr instanceof Error ? aiErr.message : String(aiErr);
+      console.error("AI generation error:", errMsg);
+      
+      if (errMsg.includes("402") || errMsg.includes("Payment")) {
         return new Response(
           JSON.stringify({ error: "Требуется пополнение баланса." }),
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
-      throw new Error("Ошибка AI сервиса");
-    }
-
-    const result = await response.json();
-    console.log("AI response structure:", JSON.stringify(result, null, 2).substring(0, 800));
-    
-    // Check if the response contains an error (gateway may return 200 with error body)
-    if (result.error) {
-      console.error("AI gateway returned error in body:", result.error);
-      const errorMessage = result.error.message || "Ошибка AI сервиса";
-      const errorCode = result.error.code || 500;
-      
-      if (errorCode === 429) {
+      if (errMsg.includes("429") || errMsg.includes("Rate limit")) {
         return new Response(
           JSON.stringify({ error: "Превышен лимит запросов. Попробуйте позже." }),
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      if (errorCode === 402) {
-        return new Response(
-          JSON.stringify({ error: "Требуется пополнение баланса." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      
-      return new Response(
-        JSON.stringify({ error: "Временная ошибка AI сервиса. Попробуйте ещё раз через несколько секунд." }),
-        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    
-    // Try to get tool call first
-    let args: any = null;
-    const toolCall = result.choices?.[0]?.message?.tool_calls?.[0];
-    
-    if (toolCall?.function?.arguments) {
-      try {
-        args = JSON.parse(toolCall.function.arguments);
-        console.log("Parsed from tool call successfully");
-      } catch (e) {
-        console.error("Failed to parse tool call arguments:", e);
-      }
-    }
-    
-    // Fallback: try to parse content as JSON if no tool call
-    if (!args) {
-      const content = result.choices?.[0]?.message?.content;
-      if (content) {
-        console.log("No tool call, trying to parse content. Content preview:", content.substring(0, 300));
-        try {
-          // Try to extract JSON from markdown code block
-          const jsonCodeBlockMatch = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-          if (jsonCodeBlockMatch) {
-            args = JSON.parse(jsonCodeBlockMatch[1]);
-            console.log("Parsed from markdown code block");
-          }
-        } catch (e) {
-          console.error("Failed to parse markdown code block:", e);
-        }
-        
-        // Try direct JSON object
-        if (!args) {
-          try {
-            const objectMatch = content.match(/\{[\s\S]*"(?:blocks|questions)"[\s\S]*\}/);
-            if (objectMatch) {
-              args = JSON.parse(objectMatch[0]);
-              console.log("Parsed from JSON object in content");
-            }
-          } catch (e) {
-            console.error("Failed to parse JSON object:", e);
-          }
-        }
-        
-        // Try array format for blocks/questions
-        if (!args) {
-          try {
-            const arrayMatch = content.match(/\[[\s\S]*\]/);
-            if (arrayMatch) {
-              const parsed = JSON.parse(arrayMatch[0]);
-              if (Array.isArray(parsed)) {
-                // Determine if it's blocks or questions based on content
-                if (lessonType === "test") {
-                  args = { questions: parsed };
-                } else {
-                  args = { blocks: parsed };
-                }
-                console.log("Parsed from array in content");
-              }
-            }
-          } catch (e) {
-            console.error("Failed to parse array:", e);
-          }
-        }
-      }
-    }
-    
-    // If still no args, provide helpful error
-    if (!args) {
-      console.error("Could not extract structured data. Full response:", JSON.stringify(result));
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: "Не удалось сгенерировать контент. Попробуйте ещё раз.",
-          [lessonType === "test" ? "questions" : "blocks"]: []
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    
-    console.log("AI response for user", user.id, "- extracted", lessonType === "test" ? "questions" : "blocks");
-
-    if (lessonType === "test") {
-      return new Response(
-        JSON.stringify({ success: true, questions: args.questions || [] }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    } else {
-      return new Response(
-        JSON.stringify({ success: true, blocks: args.blocks || [] }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      throw aiErr;
     }
   } catch (error) {
     console.error("generate-lesson-content error:", error);
