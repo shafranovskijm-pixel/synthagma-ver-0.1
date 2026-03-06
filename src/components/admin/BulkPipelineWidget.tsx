@@ -62,6 +62,20 @@ interface PipelineSummary {
   durationMs: number;
 }
 
+class CreditsExhaustedError extends Error {
+  constructor() {
+    super("Кредиты ИИ исчерпаны");
+    this.name = "CreditsExhaustedError";
+  }
+}
+
+function checkFor402(error: any) {
+  const msg = error?.message || String(error || "");
+  if (msg.includes("402") || msg.includes("кредит") || msg.includes("баланс") || msg.includes("payment_required") || msg.includes("Not enough credits")) {
+    throw new CreditsExhaustedError();
+  }
+}
+
 interface ExcelCourse {
   title: string;
   description?: string;
@@ -112,6 +126,11 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
   const [testStatsProgress, setTestStatsProgress] = useState<TestStats>({ total: 0, solved: 0 });
   const [testStatsReady, setTestStatsReady] = useState<TestStats>({ total: 0, solved: 0 });
   const [isLoadingStats, setIsLoadingStats] = useState(false);
+
+  // AI usage stats
+  const [aiSessionCalls, setAiSessionCalls] = useState(0);
+  const [aiMonthCalls, setAiMonthCalls] = useState(0);
+  const [isLoadingAiStats, setIsLoadingAiStats] = useState(false);
 
   const totalCount = courses.length;
   const completedCount = completedLog.length;
@@ -181,9 +200,27 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
     setIsLoadingStats(false);
   }, [allCourses]);
 
+  const loadAiStats = useCallback(async () => {
+    setIsLoadingAiStats(true);
+    try {
+      const monthStart = new Date();
+      monthStart.setDate(1);
+      monthStart.setHours(0, 0, 0, 0);
+      const { count } = await supabase
+        .from("ai_usage_log")
+        .select("id", { count: "exact", head: true })
+        .gte("created_at", monthStart.toISOString());
+      setAiMonthCalls(count || 0);
+    } catch (e) {
+      console.error("Failed to load AI stats:", e);
+    }
+    setIsLoadingAiStats(false);
+  }, []);
+
   useEffect(() => {
     loadTestStats();
-  }, [loadTestStats]);
+    loadAiStats();
+  }, [loadTestStats, loadAiStats]);
 
   // ── Prompts helpers ──
   const savePrompts = (newPrompts: MarketplacePrompts) => {
@@ -385,7 +422,9 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
                   }
                 }
                 batchSuccess = true;
+                setAiSessionCalls(prev => prev + 1);
               } catch (e) {
+                checkFor402(e);
                 retries++;
                 const errMsg = e instanceof Error ? e.message : String(e);
                 console.error(`Test solve attempt ${retries}/3 failed for lesson ${lessonId}:`, errMsg);
@@ -417,9 +456,10 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
         const { data: structData, error: structErr } = await supabase.functions.invoke("generate-course-structure", {
           body: { title: courseTitle, description: "", customSystemPrompt: currentPrompts.structure || undefined },
         });
-        if (structErr) throw structErr;
+        if (structErr) { checkFor402(structErr); throw structErr; }
         const generatedLessons: Array<{ title: string; type: string }> = structData?.lessons || [];
         if (generatedLessons.length > 0) {
+          setAiSessionCalls(prev => prev + 1);
           const maxOrder = currentLessons.reduce((mx, l) => Math.max(mx, l.order_index ?? 0), -1);
           const existingTitles = new Set(currentLessons.map(l => l.title.toLowerCase()));
           const newLessons = generatedLessons
@@ -438,6 +478,7 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
           lessons = refreshed;
         }
       } catch (e) {
+        if (e instanceof CreditsExhaustedError) throw e;
         console.error("Structure generation failed:", e);
       }
     }
@@ -457,12 +498,14 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
         const { data, error } = await supabase.functions.invoke("gigachat", {
           body: { action: "generate_content", courseTitle, lessonTitle: lesson.title, existingContent: null, customSystemPrompt: currentPrompts.content || undefined },
         });
-        if (error) throw error;
+        if (error) { checkFor402(error); throw error; }
         if (data?.content) {
           await supabase.from("lessons").update({ content: data.content }).eq("id", lesson.id);
           lessonsFilled++;
+          setAiSessionCalls(prev => prev + 1);
         }
       } catch (e) {
+        if (e instanceof CreditsExhaustedError) throw e;
         console.error(`Content gen failed for ${lesson.id}:`, e);
       }
     }
@@ -528,6 +571,13 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
         }]);
         onComplete?.();
       } catch (e: any) {
+        if (e instanceof CreditsExhaustedError) {
+          console.error("Credits exhausted, stopping pipeline");
+          setCompletedLog(prev => [...prev, { courseName: name, status: "error", message: "⚠️ Кредиты ИИ исчерпаны" }]);
+          totalErrors++;
+          toast.error("🛑 Кредиты ИИ исчерпаны. Конвейер остановлен. GigaChat недоступен (ошибка сертификата), а резервный ИИ вернул 402. Проверьте баланс Lovable AI или настройте GigaChat.", { duration: 15000 });
+          break;
+        }
         console.error(`Pipeline error for course ${course.course_id}:`, e);
         const phaseInfo = currentPhase ? ` [${currentPhase}]` : "";
         setCompletedLog(prev => [...prev, { courseName: name, status: "error", message: (e?.message || "Ошибка") + phaseInfo }]);
@@ -691,6 +741,30 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
             )}
           </div>
         )}
+
+        {/* AI Usage Widget */}
+        <div className="rounded-lg border bg-card p-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <Brain className="w-4 h-4 text-primary" />
+              Расход ИИ
+            </div>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 w-7 p-0"
+              onClick={loadAiStats}
+              disabled={isLoadingAiStats}
+              title="Обновить"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isLoadingAiStats ? "animate-spin" : ""}`} />
+            </Button>
+          </div>
+          <div className="flex items-center gap-4 mt-1.5 text-xs text-muted-foreground">
+            <span>🧠 Сессия: <strong className="text-foreground">{aiSessionCalls}</strong> вызовов</span>
+            <span>📅 За месяц: <strong className="text-foreground">{aiMonthCalls.toLocaleString()}</strong></span>
+          </div>
+        </div>
 
         {/* Current status */}
         {isBusy && currentCourseName && (
