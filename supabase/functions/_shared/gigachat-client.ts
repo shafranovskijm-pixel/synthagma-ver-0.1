@@ -1,9 +1,9 @@
 /**
- * Shared GigaChat client with OAuth token caching, Russian CA certs, and Lovable AI fallback.
+ * Shared GigaChat client with OAuth token caching, Russian CA certs,
+ * sequential request queue (mutex), and Lovable AI fallback.
  */
 
 // === Russian Trusted Root CA (Минцифры России) ===
-// Downloaded from https://gu-st.ru/content/lending/russian_trusted_root_ca_pem.crt
 const RUSSIAN_TRUSTED_ROOT_CA = `-----BEGIN CERTIFICATE-----
 MIIFwjCCA6qgAwIBAgICEAAwDQYJKoZIhvcNAQELBQAwcDELMAkGA1UEBhMCUlUx
 PzA9BgNVBAoMNlRoZSBNaW5pc3RyeSBvZiBEaWdpdGFsIERldmVsb3BtZW50IGFu
@@ -39,7 +39,6 @@ EYVMxjh8zNbFuoc7fzvvrFILLe7ifvEIUqSVIC/AzplM/Jxw7buXFeGP1qVCBEHq
 -----END CERTIFICATE-----`;
 
 // === Russian Trusted Sub CA (Минцифры России) ===
-// Downloaded from https://gu-st.ru/content/lending/russian_trusted_sub_ca_pem.crt
 const RUSSIAN_TRUSTED_SUB_CA = `-----BEGIN CERTIFICATE-----
 MIIHQjCCBSqgAwIBAgICEAIwDQYJKoZIhvcNAQELBQAwcDELMAkGA1UEBhMCUlUx
 PzA9BgNVBAoMNlRoZSBNaW5pc3RyeSBvZiBEaWdpdGFsIERldmVsb3BtZW50IGFu
@@ -82,16 +81,38 @@ GcyIdu7yNMMRihGVZCYr8rYiJoKiOzDqOkPkLOPdhtVlgnhowzHDxMHND/E2WA5p
 ZHuNM/m0TXt2wTTPL7JH2YC0gPz/BvvSzjksgzU5rLbRyUKQkgU=
 -----END CERTIFICATE-----`;
 
+// ═══════════════════════════════════════════════════════════
 // Cached OAuth token
+// ═══════════════════════════════════════════════════════════
 let cachedToken: string | null = null;
-let tokenExpiresAt = 0; // in seconds (unix)
+let tokenExpiresAt = 0;
 
-/**
- * Create an HTTP client with Russian CA certificates for Sber domains.
- */
+// ═══════════════════════════════════════════════════════════
+// Sequential request queue (mutex) — only 1 GigaChat request at a time
+// ═══════════════════════════════════════════════════════════
+let requestLock: Promise<void> = Promise.resolve();
+
+async function withGigaChatLock<T>(fn: () => Promise<T>, postDelayMs = 3000): Promise<T> {
+  const prev = requestLock;
+  let releaseLock!: () => void;
+  requestLock = new Promise<void>((resolve) => { releaseLock = resolve; });
+  await prev; // wait for previous request to finish
+  try {
+    const result = await fn();
+    // mandatory cooldown after successful request
+    await new Promise((r) => setTimeout(r, postDelayMs));
+    return result;
+  } finally {
+    releaseLock();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// HTTP client with Russian CA certs
+// ═══════════════════════════════════════════════════════════
 function createSberHttpClient(): Deno.HttpClient | undefined {
   try {
-    // @ts-ignore — Deno.createHttpClient may not exist in all runtimes
+    // @ts-ignore
     if (typeof Deno.createHttpClient === "function") {
       // @ts-ignore
       return Deno.createHttpClient({
@@ -106,6 +127,9 @@ function createSberHttpClient(): Deno.HttpClient | undefined {
 
 const httpClient = createSberHttpClient();
 
+// ═══════════════════════════════════════════════════════════
+// OAuth token
+// ═══════════════════════════════════════════════════════════
 async function getGigaChatToken(): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   if (cachedToken && tokenExpiresAt > now + 300) {
@@ -121,9 +145,9 @@ async function getGigaChatToken(): Promise<string> {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
-      "Accept": "application/json",
-      "RqUID": rquid,
-      "Authorization": `Basic ${authKey}`,
+      Accept: "application/json",
+      RqUID: rquid,
+      Authorization: `Basic ${authKey}`,
     },
     body: "scope=GIGACHAT_API_PERS",
   };
@@ -131,7 +155,7 @@ async function getGigaChatToken(): Promise<string> {
 
   const response = await fetch(
     "https://ngw.devices.sberbank.ru:9443/api/v2/oauth",
-    fetchOpts
+    fetchOpts,
   );
 
   if (!response.ok) {
@@ -142,20 +166,18 @@ async function getGigaChatToken(): Promise<string> {
 
   const data = await response.json();
   cachedToken = data.access_token;
-  // BUGFIX: expires_at comes in MILLISECONDS from Sber API, convert to seconds
   tokenExpiresAt = Math.floor(data.expires_at / 1000);
   console.log(`[GigaChat] OAuth token obtained, expires in ${tokenExpiresAt - now}s`);
   return cachedToken!;
 }
 
-/**
- * Call GigaChat API directly.
- * Model options: GigaChat-2, GigaChat-2-Pro, GigaChat-2-Max
- */
-export async function callGigaChat(
+// ═══════════════════════════════════════════════════════════
+// Raw GigaChat API call (no mutex — internal use only)
+// ═══════════════════════════════════════════════════════════
+async function _rawCallGigaChat(
   messages: Array<{ role: string; content: string }>,
-  model = "GigaChat-2-Pro",
-  maxTokens = 4096
+  model: string,
+  maxTokens: number,
 ): Promise<string> {
   const token = await getGigaChatToken();
 
@@ -163,28 +185,23 @@ export async function callGigaChat(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Accept": "application/json",
-      "Authorization": `Bearer ${token}`,
+      Accept: "application/json",
+      Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({
-      model,
-      messages,
-      temperature: 0.7,
-      max_tokens: maxTokens,
-    }),
+    body: JSON.stringify({ model, messages, temperature: 0.7, max_tokens: maxTokens }),
   };
   if (httpClient) (fetchOpts as any).client = httpClient;
 
   const response = await fetch(
     "https://gigachat.devices.sberbank.ru/api/v1/chat/completions",
-    fetchOpts
+    fetchOpts,
   );
 
   if (!response.ok) {
     const errorText = await response.text();
     console.error("GigaChat API error:", response.status, errorText);
     if (response.status === 429) {
-      throw new Error("GigaChat rate limit exceeded");
+      throw new Error("GigaChat rate limit exceeded (429)");
     }
     throw new Error(`GigaChat API error: ${response.status}`);
   }
@@ -193,13 +210,53 @@ export async function callGigaChat(
   return result.choices?.[0]?.message?.content || "";
 }
 
-/**
- * Call Lovable AI Gateway (Gemini) as fallback.
- */
+// ═══════════════════════════════════════════════════════════
+// GigaChat with mutex + 429 retry + model fallback chain
+// Models: GigaChat-2-Max → GigaChat-2-Lite
+// ═══════════════════════════════════════════════════════════
+const GIGACHAT_MODEL_CHAIN = ["GigaChat-2-Max", "GigaChat-2-Lite"];
+
+export async function callGigaChat(
+  messages: Array<{ role: string; content: string }>,
+  model = "GigaChat-2-Max",
+  maxTokens = 4096,
+): Promise<string> {
+  return withGigaChatLock(async () => {
+    // Try requested model first, then fallback chain
+    const modelsToTry = [model, ...GIGACHAT_MODEL_CHAIN.filter((m) => m !== model)];
+
+    for (const m of modelsToTry) {
+      try {
+        console.log(`[GigaChat] Trying model: ${m}`);
+        const result = await _rawCallGigaChat(messages, m, maxTokens);
+        console.log(`[GigaChat] Success with model: ${m}`);
+        return result;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn(`[GigaChat] Model ${m} failed: ${msg}`);
+
+        // On 429, wait 10s then try next model
+        if (msg.includes("429")) {
+          console.log(`[GigaChat] Rate limited on ${m}, waiting 10s before next model...`);
+          await new Promise((r) => setTimeout(r, 10000));
+          continue;
+        }
+        // On other errors, try next model immediately
+        continue;
+      }
+    }
+
+    throw new Error("All GigaChat models exhausted");
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// Lovable AI Gateway (Gemini) — fallback
+// ═══════════════════════════════════════════════════════════
 export async function callLovableAI(
   messages: Array<{ role: string; content: string }>,
   maxTokens = 4096,
-  model = "google/gemini-2.5-flash"
+  model = "google/gemini-2.5-flash",
 ): Promise<string> {
   const apiKey = Deno.env.get("LOVABLE_API_KEY");
   if (!apiKey) throw new Error("LOVABLE_API_KEY is not configured");
@@ -209,7 +266,7 @@ export async function callLovableAI(
     if (attempt > 0) {
       const delay = attempt * 3000;
       console.log(`[LovableAI] retry ${attempt + 1}/${MAX_RETRIES}, waiting ${delay}ms`);
-      await new Promise(r => setTimeout(r, delay));
+      await new Promise((r) => setTimeout(r, delay));
     }
 
     let response: Response;
@@ -273,13 +330,13 @@ export async function callLovableAI(
   throw new Error("AI gateway: all retries exhausted");
 }
 
-/**
- * Call Lovable AI with tool calling support (for structured output).
- */
+// ═══════════════════════════════════════════════════════════
+// Lovable AI with tool calling support
+// ═══════════════════════════════════════════════════════════
 export async function callLovableAIWithTools(
   messages: Array<{ role: string; content: string }>,
   tool?: any,
-  model = "google/gemini-3-flash-preview"
+  model = "google/gemini-3-flash-preview",
 ): Promise<any> {
   const apiKey = Deno.env.get("LOVABLE_API_KEY");
   if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");
@@ -318,16 +375,16 @@ export async function callLovableAIWithTools(
   }
 }
 
-/**
- * Universal AI caller: tries GigaChat first, falls back to Lovable AI.
- */
+// ═══════════════════════════════════════════════════════════
+// Universal AI caller: GigaChat first → Lovable AI fallback
+// ═══════════════════════════════════════════════════════════
 export async function callAI(
   messages: Array<{ role: string; content: string }>,
-  maxTokens = 4096
+  maxTokens = 4096,
 ): Promise<{ text: string; model: string }> {
   try {
-    const text = await callGigaChat(messages, "GigaChat-2-Pro", maxTokens);
-    return { text, model: "GigaChat-2-Pro" };
+    const text = await callGigaChat(messages, "GigaChat-2-Max", maxTokens);
+    return { text, model: "GigaChat-2-Max" };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.warn("[callAI] GigaChat unavailable, falling back to Lovable AI:", msg);
@@ -336,20 +393,19 @@ export async function callAI(
   }
 }
 
-/**
- * Universal AI caller with tool support: tries GigaChat (text mode + JSON parse),
- * falls back to Lovable AI with proper tool calling.
- */
+// ═══════════════════════════════════════════════════════════
+// Universal AI caller with tool support
+// ═══════════════════════════════════════════════════════════
 export async function callAIWithTools(
   messages: Array<{ role: string; content: string }>,
   tool?: any,
-  gigachatModel = "GigaChat-2-Pro",
-  lovableModel = "google/gemini-3-flash-preview"
+  gigachatModel = "GigaChat-2-Max",
+  lovableModel = "google/gemini-3-flash-preview",
 ): Promise<any> {
   try {
-    const systemMsg = messages.find(m => m.role === "system");
-    const userMsg = messages.find(m => m.role === "user");
-    
+    const systemMsg = messages.find((m) => m.role === "system");
+    const userMsg = messages.find((m) => m.role === "user");
+
     const jsonHint = tool
       ? `\n\nОтветь СТРОГО в формате JSON, соответствующем следующей структуре: ${JSON.stringify(tool.function.parameters)}. Без markdown-обёртки, только JSON.`
       : "";
@@ -360,7 +416,7 @@ export async function callAIWithTools(
     ];
 
     const text = await callGigaChat(gcMessages, gigachatModel, 8192);
-    
+
     const cleaned = text.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
     const parsed = JSON.parse(cleaned);
     console.log("[callAIWithTools] GigaChat succeeded");
