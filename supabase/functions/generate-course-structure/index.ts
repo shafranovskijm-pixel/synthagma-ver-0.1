@@ -49,7 +49,7 @@ serve(async (req) => {
       );
     }
 
-    const { title, description } = await req.json();
+    const { title, description, customSystemPrompt } = await req.json();
 
     if (!title?.trim()) {
       return new Response(
@@ -63,7 +63,7 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const systemPrompt = `Ты - эксперт по созданию образовательных курсов для дополнительного профессионального образования (ДПО).
+    const defaultSystemPrompt = `Ты - эксперт по созданию образовательных курсов для дополнительного профессионального образования (ДПО).
 
 Твоя задача - создать структуру учебного курса на основе названия и описания.
 
@@ -112,6 +112,8 @@ serve(async (req) => {
 - Последний урок ОБЯЗАТЕЛЬНО должен называться ТОЧНО "Итоговое тестирование" (тип "test")
 - Он ВСЕГДА идёт последним в списке, после всех лекций и практик
 - НЕ ДОБАВЛЯЙ другие уроки после итогового тестирования`;
+
+    const systemPrompt = customSystemPrompt || defaultSystemPrompt;
 
     const userPrompt = `Создай структуру курса:
 Название: ${title}
