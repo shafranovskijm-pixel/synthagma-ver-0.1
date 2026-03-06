@@ -70,12 +70,13 @@ class CreditsExhaustedError extends Error {
 }
 
 function checkFor402(error: any) {
-  const msg = error?.message || String(error || "");
-  if (msg.includes("402") || msg.includes("кредит") || msg.includes("баланс") || msg.includes("payment_required") || msg.includes("Not enough credits") || msg.includes("non-2xx")) {
+  // Check HTTP status directly first
+  if (error?.context?.status === 402 || error?.status === 402) {
     throw new CreditsExhaustedError();
   }
-  // Also check FunctionsHttpError context
-  if (error?.context?.status === 402 || error?.status === 402) {
+  const msg = error?.message || String(error || "");
+  // Only check specific credit-related keywords, NOT generic "non-2xx"
+  if (msg.includes("402") || msg.includes("кредит") || msg.includes("баланс") || msg.includes("payment_required") || msg.includes("Not enough credits")) {
     throw new CreditsExhaustedError();
   }
 }
