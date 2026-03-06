@@ -581,7 +581,6 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
           totalQuestions: result.totalQuestions,
           message: hasSkips ? `${result.skippedBatches} батч(ей) пропущено` : undefined,
         }]);
-        onComplete?.();
       } catch (e: any) {
         if (e instanceof CreditsExhaustedError) {
           console.error("Credits exhausted, stopping pipeline");
