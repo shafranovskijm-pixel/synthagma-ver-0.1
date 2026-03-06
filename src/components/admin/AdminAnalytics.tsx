@@ -33,6 +33,7 @@ interface ProfileInfo {
   user_id: string;
   full_name: string | null;
   email: string | null;
+  organization_id: string | null;
 }
 
 interface CourseInfo {
@@ -124,7 +125,7 @@ export function AdminAnalytics() {
         supabase.from("ai_usage_log").select("user_id, organization_id, function_name, created_at").order("created_at", { ascending: false }).limit(1000),
         supabase.from("student_login_history").select("user_id, logged_in_at, ip_address, user_agent"),
         supabase.from("course_access_log").select("user_id, course_id, accessed_at, ip_address, user_agent"),
-        supabase.from("profiles").select("user_id, full_name, email"),
+        supabase.from("profiles").select("user_id, full_name, email, organization_id"),
         supabase.from("courses").select("id, title"),
       ]);
 
@@ -165,6 +166,13 @@ export function AdminAnalytics() {
     if (!data) return new Map<string, string>();
     const map = new Map<string, string>();
     data.coursesInfo.forEach(c => map.set(c.id, c.title));
+    return map;
+  }, [data]);
+
+  const orgsMap = useMemo(() => {
+    if (!data) return new Map<string, string>();
+    const map = new Map<string, string>();
+    data.organizations.forEach(o => map.set(o.id, o.name));
     return map;
   }, [data]);
 
@@ -314,6 +322,7 @@ export function AdminAnalytics() {
       browser: string;
       type: "platform" | "course";
       courseTitle: string | null;
+      orgName: string | null;
     };
 
     const entries: VisitEntry[] = [];
@@ -333,6 +342,7 @@ export function AdminAnalytics() {
           browser: parseBrowser(r.user_agent),
           type: "platform",
           courseTitle: null,
+          orgName: p?.organization_id ? orgsMap.get(p.organization_id) || null : null,
         });
       });
     }
@@ -353,6 +363,7 @@ export function AdminAnalytics() {
           browser: parseBrowser(r.user_agent),
           type: "course",
           courseTitle: coursesMap.get(r.course_id) || r.course_id,
+          orgName: p?.organization_id ? orgsMap.get(p.organization_id) || null : null,
         });
       });
     }
@@ -367,7 +378,7 @@ export function AdminAnalytics() {
     filtered.sort((a, b) => b.time.getTime() - a.time.getTime());
 
     return filtered.slice(0, 200);
-  }, [data, periodDays, visitFilter, visitSearch, profilesMap, coursesMap]);
+  }, [data, periodDays, visitFilter, visitSearch, profilesMap, coursesMap, orgsMap]);
 
   // Top active users
   const topUsers = useMemo(() => {
@@ -1005,7 +1016,7 @@ export function AdminAnalytics() {
                       <TableHead>Имя</TableHead>
                       <TableHead>Email</TableHead>
                       <TableHead>Дата и время</TableHead>
-                      <TableHead>Тип</TableHead>
+                      <TableHead>Организация</TableHead>
                       <TableHead>Курс</TableHead>
                       <TableHead>Устройство</TableHead>
                       <TableHead>IP</TableHead>
@@ -1026,10 +1037,8 @@ export function AdminAnalytics() {
                           <TableCell className="whitespace-nowrap text-xs">
                             {format(v.time, "d MMM yyyy, HH:mm", { locale: ru })}
                           </TableCell>
-                          <TableCell>
-                            <Badge variant={v.type === "platform" ? "secondary" : "default"} className="text-xs">
-                              {v.type === "platform" ? "Платформа" : "Курс"}
-                            </Badge>
+                          <TableCell className="text-xs max-w-[150px] truncate">
+                            {v.orgName || "—"}
                           </TableCell>
                           <TableCell className="max-w-[200px] truncate text-xs">{v.courseTitle || "—"}</TableCell>
                           <TableCell className="text-xs whitespace-nowrap">
