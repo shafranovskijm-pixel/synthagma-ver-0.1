@@ -1,78 +1,66 @@
 
 
-## Проблема
+## План: улучшение надёжности конвейера
 
-При массовом импорте из Excel (`BulkCourseImporter.tsx`, строка 124) все вопросы создаются с `correct_answer: 0` вместо `null`. Далее pipeline (`BulkPipelineWidget.tsx`, строка 311) проверяет `correct_answer === null`, видит `0` (не null) и пропускает вопросы, считая их решёнными.
+### Проблемы
+1. **Rate limit**: батчи по 20 вопросов отправляются без паузы → 429 от ИИ
+2. **Прогресс невидим**: счётчик `0/209` обновляется только по завершении курса целиком
+3. **Нет retry**: при ошибке на одном батче — весь курс «падает»
 
-**Масштаб**: 11,051 из 11,263 вопросов во всех курсах маркетплейса имеют `correct_answer = 0` (ответ A). Это затрагивает ВСЕ импортированные курсы, не только «Правила работы с персоналом».
+### Изменения в `BulkPipelineWidget.tsx`
 
-## Решение (2 части)
+#### 1. Добавить задержку между батчами
+После каждого вызова `gigachat` — пауза 2 секунды (`await new Promise(r => setTimeout(r, 2000))`). Это предотвратит rate limit.
 
-### 1. Исправить код — предотвратить повторение
+#### 2. Показать реальный прогресс в реальном времени
+- Добавить state: `solvedSoFar` (число решённых вопросов в текущем курсе)
+- Обновлять `currentPhase` после каждого батча: `"Решаю тесты: 15/50 вопросов"`
+- В UI отображать номер текущего курса и подробный статус
 
-| Файл | Изменение |
-|------|-----------|
-| `src/components/admin/BulkCourseImporter.tsx` (стр. 124) | Изменить `correct_answer: 0` → `correct_answer: null` |
-| `src/components/admin/BulkPipelineWidget.tsx` (стр. 311) | Добавить проверку на подозрительные ответы: если ВСЕ вопросы урока = 0, считать их нерешёнными |
-| `src/components/admin/AdminMarketplaceManager.tsx` (стр. 150) | Аналогичная проверка подозрительных ответов |
+#### 3. Retry с экспоненциальной задержкой
+При ошибке 429 или network error — повторить через 5, 10, 20 секунд (макс. 3 попытки). Если все 3 неудачны — пропустить батч и продолжить.
 
-### 2. Миграция БД — сбросить фейковые ответы
+#### 4. Не останавливать конвейер при ошибке одного курса
+Сейчас `processCourse` бросает исключение → `handleStart` ловит его и помечает курс как error, но ПРОДОЛЖАЕТ цикл. Это работает верно. Проблема в том что при ошибке внутри `processCourse` на этапе решения тестов — функция завершается с `throw`, не доходя до валидации. Нужно обернуть каждый батч в try/catch и продолжать.
 
-SQL-миграция: для всех вопросов в курсах маркетплейса, у которых `correct_answer = 0` и `explanation IS NULL` (ИИ всегда ставит explanation), сбросить `correct_answer` в `null`, чтобы pipeline мог решить их заново.
+### Конкретные правки
 
-```sql
-UPDATE test_questions SET correct_answer = NULL
-WHERE id IN (
-  SELECT tq.id FROM test_questions tq
-  JOIN lessons l ON l.id = tq.lesson_id AND l.type = 'test'
-  JOIN marketplace_courses mc ON mc.course_id = l.course_id
-  WHERE tq.correct_answer = 0 AND tq.explanation IS NULL
-);
-```
+**Файл: `src/components/admin/BulkPipelineWidget.tsx`**
 
-Также сбросить `is_validated = false` для всех затронутых курсов, чтобы они вернулись «В работу»:
-
-```sql
-UPDATE marketplace_courses SET is_validated = false
-WHERE course_id IN (
-  SELECT DISTINCT l.course_id FROM test_questions tq
-  JOIN lessons l ON l.id = tq.lesson_id
-  WHERE tq.correct_answer IS NULL
-);
-```
-
-### 3. Улучшить детекцию «нерешённых» вопросов
-
-В pipeline добавить эвристику: если в уроке все вопросы имеют одинаковый `correct_answer` и нет `explanation`, считать их нерешёнными. Это защитит от повторения проблемы.
-
+1. **Строки 342-368** (цикл батчей тестов): добавить retry-логику и задержку:
 ```typescript
-// Вместо простой проверки на null:
-const unanswered = (questions || []).filter((q: any) => 
-  q.correct_answer === null || q.correct_answer === undefined
-);
-
-// Добавить проверку подозрительных ответов:
-const byLesson = new Map<string, any[]>();
-for (const q of questions || []) {
-  const arr = byLesson.get(q.lesson_id) || [];
-  arr.push(q);
-  byLesson.set(q.lesson_id, arr);
+for (let i = 0; i < qs.length; i += batchSize) {
+  if (stopRef.current) return { ok: false, lessonsFilled, testsSolved };
+  const batch = qs.slice(i, i + batchSize);
+  setCurrentPhase(`Решаю тесты: ${testsSolved}/${unanswered.length} — "${lessonInfo?.title}"`);
+  
+  let retries = 0;
+  while (retries < 3) {
+    try {
+      const { data, error } = await supabase.functions.invoke("gigachat", { ... });
+      if (error) throw error;
+      // process answers...
+      break; // success
+    } catch (e) {
+      retries++;
+      if (retries >= 3) { console.error(...); break; }
+      const delay = retries * 5000;
+      setCurrentPhase(`Rate limit, жду ${delay/1000}с...`);
+      await new Promise(r => setTimeout(r, delay));
+    }
+  }
+  // Delay between batches
+  await new Promise(r => setTimeout(r, 2000));
 }
-const suspicious = new Set<string>();
-for (const [lessonId, qs] of byLesson) {
-  const allSame = qs.every(q => q.correct_answer === qs[0]?.correct_answer);
-  const noExplanations = qs.every(q => !q.explanation);
-  if (allSame && noExplanations && qs.length > 3) suspicious.add(lessonId);
-}
-
-const unanswered = (questions || []).filter((q: any) =>
-  q.correct_answer === null || q.correct_answer === undefined || suspicious.has(q.lesson_id)
-);
 ```
 
-### Порядок выполнения
-1. Миграция БД — сбросить `correct_answer` и `is_validated`
-2. Исправить `BulkCourseImporter` — `null` вместо `0`
-3. Улучшить детекцию в `BulkPipelineWidget` и `AdminMarketplaceManager`
-4. После этого запустить конвейер заново — он решит все 11 000+ вопросов через ИИ
+2. **Строка 105** (progressPercent): показывать прогресс на основе решённых вопросов, а не только завершённых курсов. Добавить вторую строку прогресса для текущего курса.
+
+### Файлы
+- `src/components/admin/BulkPipelineWidget.tsx` — единственный файл
+
+### Результат
+- Конвейер будет стабильно работать без 429 ошибок
+- Пользователь видит реальный прогресс (сколько вопросов решено)
+- При ошибке — автоматический retry, а не остановка
 
