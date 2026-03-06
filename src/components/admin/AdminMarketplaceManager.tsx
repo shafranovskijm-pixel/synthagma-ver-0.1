@@ -6,11 +6,9 @@ import {
   List, LayoutGrid, ChevronDown, FolderPlus, FolderInput, CheckCircle2, AlertTriangle,
   FolderOpen,
 } from "lucide-react";
-import { Settings } from "lucide-react";
 import { BulkCourseImporter } from "./BulkCourseImporter";
 import { BulkContentGenerator } from "./BulkContentGenerator";
 import { BulkPipelineWidget } from "./BulkPipelineWidget";
-import { MarketplaceSettings, getMarketplacePrompts } from "./MarketplaceSettings";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -410,7 +408,7 @@ export function AdminMarketplaceManager() {
   return (
     <div className="space-y-6">
       <Tabs value={h.activeTab} onValueChange={(v) => h.setActiveTab(v as any)} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5 max-w-2xl">
+        <TabsList className="grid w-full grid-cols-4 max-w-2xl">
           <TabsTrigger value="catalog" className="flex items-center gap-2">
             <Package className="w-4 h-4" />Каталог
           </TabsTrigger>
@@ -423,9 +421,6 @@ export function AdminMarketplaceManager() {
           <TabsTrigger value="orders" className="flex items-center gap-2">
             <ShoppingCart className="w-4 h-4" />Заявки
           </TabsTrigger>
-          <TabsTrigger value="settings" className="flex items-center gap-2">
-            <Settings className="w-4 h-4" />Настройки
-          </TabsTrigger>
         </TabsList>
 
         {/* Catalog */}
@@ -434,7 +429,6 @@ export function AdminMarketplaceManager() {
           <BulkPipelineWidget
             courses={h.courses.filter((c: any) => !c.is_validated)}
             onComplete={() => h.fetchData()}
-            customPrompts={getMarketplacePrompts()}
           />
           {/* Search + view toggle */}
           <div className="flex items-center gap-4">
@@ -705,10 +699,7 @@ export function AdminMarketplaceManager() {
           )}
         </TabsContent>
 
-        {/* Settings */}
-        <TabsContent value="settings" className="space-y-6">
-          <MarketplaceSettings onRefresh={() => h.fetchData()} />
-        </TabsContent>
+
       </Tabs>
 
       {/* Edit Dialog */}
