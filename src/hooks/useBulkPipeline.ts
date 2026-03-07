@@ -386,6 +386,7 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
               action: "generate_structure", courseTitle,
               existingLessons: currentLessons.map(l => ({ title: l.title, type: l.type })),
               customSystemPrompt: currentPrompts.structure || undefined,
+              ai_provider: aiProvider,
             },
           }),
           AI_CALL_TIMEOUT, "generate_structure"
