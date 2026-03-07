@@ -155,7 +155,6 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
     inn: organization.inn || "",
     contact_name: organization.contact_name || "",
     storage_limit_bytes: organization.storage_limit_bytes || getPlanInfo((organization.subscription_plan as SubscriptionPlan) || 'free').limits.storageBytes,
-    ai_tokens_limit: organization.ai_tokens_limit || 100000,
     notify_on_limit_80: organization.notify_on_limit_80 ?? true,
     notify_on_limit_exceeded: organization.notify_on_limit_exceeded ?? true,
   });
