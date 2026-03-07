@@ -145,7 +145,7 @@ async function generateWithGigaChat(prompt: string, keySlot?: string) {
   if (!authKey) throw new Error(`${envKey} is not configured`);
 
   // Step 1: Get access token
-  const tokenRes = await fetch("https://ngw.devices.sberbank.ru:9443/api/v2/oauth", {
+  const tokenFetchOpts: RequestInit & { client?: Deno.HttpClient } = {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
@@ -154,7 +154,10 @@ async function generateWithGigaChat(prompt: string, keySlot?: string) {
       RqUID: crypto.randomUUID(),
     },
     body: "scope=GIGACHAT_API_PERS",
-  });
+  };
+  if (sberHttpClient) (tokenFetchOpts as any).client = sberHttpClient;
+
+  const tokenRes = await fetch("https://ngw.devices.sberbank.ru:9443/api/v2/oauth", tokenFetchOpts);
 
   if (!tokenRes.ok) {
     const text = await tokenRes.text();
