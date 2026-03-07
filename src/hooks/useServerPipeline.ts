@@ -154,6 +154,7 @@ export function useServerPipeline({ courses, enableVerification, onComplete, aiP
           courses: courseEntries,
           enableVerification,
           prompts,
+          ai_provider: aiProvider,
         },
       });
 

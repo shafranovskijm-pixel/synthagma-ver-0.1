@@ -66,7 +66,7 @@ export function BulkPipelineWidget({ courses, readyCourses = [], allCourses, onC
     : courses;
 
   const pipeline = useBulkPipeline({ courses: activeCourses, onComplete, enableVerification, aiProvider });
-  const serverPipeline = useServerPipeline({ courses: activeCourses, enableVerification, onComplete });
+  const serverPipeline = useServerPipeline({ courses: activeCourses, enableVerification, onComplete, aiProvider });
   const excelImport = usePipelineExcelImport({ onComplete });
 
   // Collapsible sections
