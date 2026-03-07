@@ -44,18 +44,27 @@ interface TestStats {
   solved: number;
 }
 
+type PipelineMode = "progress" | "ready" | "all";
+
 interface Props {
   courses: PipelineCourse[];
+  readyCourses?: PipelineCourse[];
   allCourses?: AllMarketplaceCourse[];
   onComplete: () => void;
   customPrompts?: MarketplacePrompts;
 }
 
-export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
+export function BulkPipelineWidget({ courses, readyCourses = [], allCourses, onComplete }: Props) {
   const [enableVerification, setEnableVerification] = useState(false);
   const [serverMode, setServerMode] = useState(false);
-  const pipeline = useBulkPipeline({ courses, onComplete, enableVerification });
-  const serverPipeline = useServerPipeline({ courses, enableVerification, onComplete });
+  const [pipelineMode, setPipelineMode] = useState<PipelineMode>("progress");
+
+  const activeCourses = pipelineMode === "ready" ? readyCourses
+    : pipelineMode === "all" ? [...courses, ...readyCourses]
+    : courses;
+
+  const pipeline = useBulkPipeline({ courses: activeCourses, onComplete, enableVerification });
+  const serverPipeline = useServerPipeline({ courses: activeCourses, enableVerification, onComplete });
   const excelImport = usePipelineExcelImport({ onComplete });
 
   // Collapsible sections
@@ -235,9 +244,9 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
     }
   }, [serverMode, pipeline.handleStop, serverPipeline.handleStop]);
 
-  if (totalCount === 0 && excelImport.parsedCourses.length === 0) return null;
+  if (activeCourses.length === 0 && excelImport.parsedCourses.length === 0 && pipelineMode === "progress") return null;
 
-  const currentCourseName = isBusy ? (courses[currentIndex]?.course?.title || "") : "";
+  const currentCourseName = isBusy ? (activeCourses[currentIndex]?.course?.title || "") : "";
 
   const promptSections: Array<{ key: keyof MarketplacePrompts; label: string; desc: string }> = [
     { key: "structure", label: "Генерация структуры", desc: "Промт для создания списка уроков курса" },
@@ -253,8 +262,27 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
             <Loader2 className={`w-4 h-4 ${effectiveBusy ? "animate-spin" : "hidden"}`} />
             Конвейер заполнения
             {serverMode && <Badge variant="outline" className="text-[10px]"><Server className="w-3 h-3 mr-0.5 inline" />Сервер</Badge>}
-            {totalCount > 0 && <Badge variant="secondary" className="ml-1">{totalCount} курсов</Badge>}
           </CardTitle>
+          <div className="flex items-center gap-1 bg-muted rounded-md p-0.5">
+            {([
+              ["progress", "В работе", courses.length],
+              ["ready", "Готово", readyCourses.length],
+              ["all", "Все", courses.length + readyCourses.length],
+            ] as [PipelineMode, string, number][]).map(([mode, label, count]) => (
+              <button
+                key={mode}
+                onClick={() => !effectiveBusy && setPipelineMode(mode)}
+                disabled={effectiveBusy}
+                className={`px-2 py-1 text-xs rounded font-medium transition-colors ${
+                  pipelineMode === mode
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                } disabled:opacity-50`}
+              >
+                {label} ({count})
+              </button>
+            ))}
+          </div>
           {totalCount > 0 && (
             !effectiveBusy ? (
               <div className="flex items-center gap-1.5">
