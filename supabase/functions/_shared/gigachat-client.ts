@@ -488,24 +488,36 @@ function buildChannels(): Array<{
 }> {
   const channels: ReturnType<typeof buildChannels> = [];
 
+  // Helper: wait for a specific slot to become free, then use it directly
+  const useSlot = async (
+    slotIdx: number,
+    msgs: Array<{ role: string; content: string }>,
+    mt: number,
+  ): Promise<string> => {
+    // Wait until slot is free
+    while (slots[slotIdx].busy) {
+      await slots[slotIdx].lock;
+    }
+    // Claim it
+    slots[slotIdx].busy = true;
+    const prev = slots[slotIdx].lock;
+    slots[slotIdx].lock = new Promise<void>((resolve) => {
+      slots[slotIdx].releaseLock = resolve;
+    });
+    await prev;
+    try {
+      return await callGigaChatOnSlot(slotIdx, msgs, "GigaChat-Pro", mt);
+    } finally {
+      releaseSlot(slotIdx);
+    }
+  };
+
   // GigaChat slot-0
   channels.push({
     name: "GigaChat slot-0",
     call: async (msgs, mt) => {
-      const idx = await acquireSlot();
-      // If we got slot-0, use it; otherwise release and force slot-0
-      if (idx !== 0) { releaseSlot(idx, 0); }
-      const useIdx = 0;
-      slots[useIdx].busy = true;
-      const prev = slots[useIdx].lock;
-      slots[useIdx].lock = new Promise<void>((resolve) => { slots[useIdx].releaseLock = resolve; });
-      await prev;
-      try {
-        const text = await callGigaChatOnSlot(useIdx, msgs, "GigaChat-Pro", mt);
-        return { text, model: "GigaChat-Pro (slot-0)" };
-      } finally {
-        releaseSlot(useIdx);
-      }
+      const text = await useSlot(0, msgs, mt);
+      return { text, model: "GigaChat-Pro (slot-0)" };
     },
   });
 
@@ -514,17 +526,8 @@ function buildChannels(): Array<{
     channels.push({
       name: "GigaChat slot-1",
       call: async (msgs, mt) => {
-        const useIdx = 1;
-        slots[useIdx].busy = true;
-        const prev = slots[useIdx].lock;
-        slots[useIdx].lock = new Promise<void>((resolve) => { slots[useIdx].releaseLock = resolve; });
-        await prev;
-        try {
-          const text = await callGigaChatOnSlot(useIdx, msgs, "GigaChat-Pro", mt);
-          return { text, model: "GigaChat-Pro (slot-1)" };
-        } finally {
-          releaseSlot(useIdx);
-        }
+        const text = await useSlot(1, msgs, mt);
+        return { text, model: "GigaChat-Pro (slot-1)" };
       },
     });
   }
