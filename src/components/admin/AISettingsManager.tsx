@@ -327,7 +327,7 @@ export function AISettingsManager() {
         {renderProviderSelect("pipeline", PIPELINE_PROVIDERS)}
 
         {s.provider === "round_robin" && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4 p-4 rounded-lg bg-muted/50">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4 p-4 rounded-lg bg-muted/50">
             <div className="space-y-2">
               <Label className="text-xs">Slot-0 (GigaChat Key 1)</Label>
               <Select value={extra.slot0_model || "GigaChat-Max"} onValueChange={(v) => updateExtra("pipeline", "slot0_model", v)}>
@@ -355,7 +355,20 @@ export function AISettingsManager() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label className="text-xs">Slot-2 (Gemini)</Label>
+              <Label className="text-xs">Slot-2 (GigaChat Key 3)</Label>
+              <Select value={extra.slot2_model || "GigaChat-Pro"} onValueChange={(v) => updateExtra("pipeline", "slot2_model", v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {GIGACHAT_MODELS.map((m) => (
+                    <SelectItem key={m.value} value={m.value}>
+                      <span className="flex items-center">{m.label}<CostBadge model={m.value} /></span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs">Slot-3 (Gemini)</Label>
               <Select value={extra.gemini_model || "google/gemini-2.5-flash"} onValueChange={(v) => updateExtra("pipeline", "gemini_model", v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
