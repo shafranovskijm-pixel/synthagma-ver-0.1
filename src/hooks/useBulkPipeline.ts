@@ -426,9 +426,12 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
         if (stopRef.current) return;
         updatePhase(`Контент: «${lesson.title}» (${filledSoFar + 1}/${emptyLessons.length})`);
         try {
-          const { data, error } = await supabase.functions.invoke("gigachat", {
-            body: { action: "generate_content", courseTitle, lessonTitle: lesson.title, existingContent: null, customSystemPrompt: currentPrompts.content || undefined },
-          });
+          const { data, error } = await withTimeout(
+            supabase.functions.invoke("gigachat", {
+              body: { action: "generate_content", courseTitle, lessonTitle: lesson.title, existingContent: null, customSystemPrompt: currentPrompts.content || undefined },
+            }),
+            AI_CALL_TIMEOUT, "generate_content"
+          );
           if (error) { checkFor402(error); throw error; }
           if (data?.error) { checkFor402(data); throw new Error(data.error); }
           detectProvider(data);
