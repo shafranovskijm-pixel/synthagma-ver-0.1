@@ -4001,6 +4001,126 @@ export type Database = {
           },
         ]
       }
+      webinar_participants: {
+        Row: {
+          id: string
+          joined_at: string
+          left_at: string | null
+          role: string
+          user_id: string
+          webinar_id: string
+        }
+        Insert: {
+          id?: string
+          joined_at?: string
+          left_at?: string | null
+          role?: string
+          user_id: string
+          webinar_id: string
+        }
+        Update: {
+          id?: string
+          joined_at?: string
+          left_at?: string | null
+          role?: string
+          user_id?: string
+          webinar_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webinar_participants_webinar_id_fkey"
+            columns: ["webinar_id"]
+            isOneToOne: false
+            referencedRelation: "webinars"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      webinars: {
+        Row: {
+          access_type: string
+          company_id: string | null
+          course_id: string | null
+          created_at: string
+          description: string | null
+          duration_minutes: number
+          host_user_id: string
+          id: string
+          max_participants: number | null
+          organization_id: string
+          recording_size_bytes: number | null
+          recording_url: string | null
+          room_name: string | null
+          room_url: string | null
+          scheduled_at: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          access_type?: string
+          company_id?: string | null
+          course_id?: string | null
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number
+          host_user_id: string
+          id?: string
+          max_participants?: number | null
+          organization_id: string
+          recording_size_bytes?: number | null
+          recording_url?: string | null
+          room_name?: string | null
+          room_url?: string | null
+          scheduled_at: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          access_type?: string
+          company_id?: string | null
+          course_id?: string | null
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number
+          host_user_id?: string
+          id?: string
+          max_participants?: number | null
+          organization_id?: string
+          recording_size_bytes?: number | null
+          recording_url?: string | null
+          room_name?: string | null
+          room_url?: string | null
+          scheduled_at?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webinars_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "webinars_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "webinars_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       profiles_safe: {
