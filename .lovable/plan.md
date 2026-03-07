@@ -1,40 +1,18 @@
 
 
-# Round-Robin распределение задач по ИИ-провайдерам
+## Plan: Auto-fix after "Проверить все"
 
-## Идея
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-Вместо «все запросы в GigaChat → fallback на Gemini» — распределять задачи циклически: задача 1 → GigaChat slot-0, задача 2 → GigaChat slot-1, задача 3 → Lovable AI, задача 4 → slot-0, и т.д. Каждый запрос идёт только к одному провайдеру — токены не тратятся впустую.
+### Changes
 
-## Что сделаем
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-### 1. `gigachat-client.ts` — новая функция `callAIRoundRobin`
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-Атомарный счётчик задач. Каждый вызов берёт следующий канал по модулю:
-- Канал 0: GigaChat slot-0
-- Канал 1: GigaChat slot-1 (если есть второй ключ)
-- Канал 2: Lovable AI (Gemini)
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-При ошибке конкретного канала — fallback на любой другой. Без дублирования запросов.
-
-```text
-callAIRoundRobin(messages, maxTokens)
-  counter++ → channel = counter % totalChannels
-  try channel[N]
-  catch → try next channel
-```
-
-### 2. `bulk-pipeline/index.ts` — использовать round-robin
-
-- Заменить `callAI` на `callAIRoundRobin` в конвейере
-- Поднять concurrency с 2 до 3 (три параллельных канала)
-- Существующий `callAI` остаётся для единичных вызовов вне конвейера
-
-### 3. `callAI` — новый режим `preferredProvider === "round_robin"`
-
-Добавить ветку в `callAI` для обратной совместимости — если `preferredProvider === "round_robin"`, вызывать `callAIRoundRobin`.
-
-## Файлы
-- `supabase/functions/_shared/gigachat-client.ts` — добавить `callAIRoundRobin` с round-robin счётчиком
-- `supabase/functions/bulk-pipeline/index.ts` — concurrency=3, использовать round-robin режим
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 

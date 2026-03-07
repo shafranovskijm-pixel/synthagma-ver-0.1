@@ -9,7 +9,7 @@
  */
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { callAI } from "../_shared/gigachat-client.ts";
+import { callAI, callAIRoundRobin } from "../_shared/gigachat-client.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -234,7 +234,7 @@ async function processCourse(
         return { solved: localSolved, skipped: localSkipped, stopped: false };
       };
 
-      const lessonResults = await processInParallel(lessonEntries, 2, solveLesson, shouldStop, 2000);
+      const lessonResults = await processInParallel(lessonEntries, 3, solveLesson, shouldStop, 1500);
       for (const r of lessonResults) {
         testsSolved += r.solved;
         skippedBatches += r.skipped;
@@ -365,7 +365,7 @@ async function processCourse(
     return false;
   };
 
-  const contentResults = await processInParallel(emptyLessons, 2, fillLesson, shouldStop, 2000);
+  const contentResults = await processInParallel(emptyLessons, 3, fillLesson, shouldStop, 1500);
   lessonsFilled += contentResults.filter(Boolean).length;
 
   // 5. Fix duplicate titles
@@ -478,7 +478,7 @@ serve(async (req) => {
 
       const prompts: PromptSet = body.prompts || {};
       const enableVerification = body.enableVerification || false;
-      const aiProvider = body.ai_provider || undefined;
+      const aiProvider = body.ai_provider || "round_robin";
       const startTime = Date.now();
       let totalSolved = 0, totalFilled = 0, totalErrors = 0, totalSuccess = 0, totalSkipped = 0;
 
