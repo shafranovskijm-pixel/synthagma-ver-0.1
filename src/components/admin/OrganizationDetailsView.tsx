@@ -520,25 +520,25 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
       </div>
 
       {/* Limit Warnings */}
-      {(isStorageExceeded || isTokensExceeded) && (
+      {(isStorageExceeded || isAiGenExceeded) && (
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Лимит превышен!</AlertTitle>
           <AlertDescription>
             {isStorageExceeded && "Лимит хранилища превышен. "}
-            {isTokensExceeded && "Лимит ИИ токенов превышен. ИИ-помощник автоматически заблокирован. "}
+            {isAiGenExceeded && "Лимит ИИ-генераций превышен. ИИ-помощник автоматически заблокирован. "}
             Увеличьте лимиты в настройках организации.
           </AlertDescription>
         </Alert>
       )}
 
-      {!isStorageExceeded && !isTokensExceeded && (isStorageWarning || isTokensWarning) && (
+      {!isStorageExceeded && !isAiGenExceeded && (isStorageWarning || isAiGenWarning) && (
         <Alert className="border-yellow-500 bg-yellow-500/10">
           <AlertTriangle className="h-4 w-4 text-yellow-500" />
           <AlertTitle className="text-yellow-600">Приближение к лимиту</AlertTitle>
           <AlertDescription className="text-yellow-600">
             {isStorageWarning && `Хранилище: ${storageLimitPercent.toFixed(0)}% использовано. `}
-            {isTokensWarning && `ИИ токены: ${tokensLimitPercent.toFixed(0)}% использовано. `}
+            {isAiGenWarning && `ИИ-генерации: ${aiGenerationsPercent.toFixed(0)}% использовано. `}
           </AlertDescription>
         </Alert>
       )}
