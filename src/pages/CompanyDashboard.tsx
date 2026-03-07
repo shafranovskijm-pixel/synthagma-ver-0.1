@@ -142,7 +142,7 @@ const CompanyDashboard = () => {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 max-w-6xl mx-auto px-6 py-8 space-y-8">
+      <main className={`flex-1 max-w-6xl mx-auto px-6 py-8 space-y-8 ${isOrgView ? 'mt-10' : ''}`}>
         {/* Welcome for empty state */}
         {activeTab === "home" && employees.length === 0 && (
           <Card className="border-primary/20 bg-primary/5">
