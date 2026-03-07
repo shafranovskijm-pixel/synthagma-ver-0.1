@@ -25,6 +25,7 @@ import { SystemFeaturesReport } from "@/components/organization/SystemFeaturesRe
 import { SystemDiagnostics } from "@/components/organization/SystemDiagnostics";
 import { LoginBrandingSettings } from "@/components/organization/LoginBrandingSettings";
 import { OrgCredentialsSettings } from "@/components/organization/OrgCredentialsSettings";
+import { ThemePersonalization } from "@/components/ui/ThemePersonalization";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 
 export function SettingsTab() {
