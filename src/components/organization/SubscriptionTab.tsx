@@ -178,6 +178,25 @@ export function SubscriptionTab() {
       setShowUpgradeDialog(false);
       setMessage("");
       setSelectedPlan(null);
+
+      // Send Telegram notification
+      const planInfo = SUBSCRIPTION_PLANS[selectedPlan];
+      const orgName = organizationId;
+      try {
+        await supabase.functions.invoke("send-telegram-notification", {
+          body: {
+            message: `📋 <b>Заявка на повышение тарифа</b>\n\n` +
+              `🏢 Организация: <code>${organizationId}</code>\n` +
+              `📊 Текущий тариф: ${SUBSCRIPTION_PLANS[currentPlan]?.name || currentPlan}\n` +
+              `🆕 Запрошенный тариф: ${planInfo?.name || selectedPlan}\n` +
+              `💰 Стоимость: ${planInfo?.price?.toLocaleString() || '?'} ₽/мес\n` +
+              (message ? `💬 Комментарий: ${message}\n` : '') +
+              `\n🕐 ${new Date().toLocaleString('ru-RU')}`,
+          },
+        });
+      } catch (tgErr) {
+        console.error("Telegram notification failed:", tgErr);
+      }
     }
     setSubmitting(false);
   };
