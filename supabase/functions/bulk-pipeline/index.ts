@@ -270,7 +270,7 @@ async function processCourse(
         callAI([
           { role: "system", content: prompts.structure || "Создай структуру курса из 8-15 уроков. Типы: text, test, practice. Последний урок — итоговый тест. Отвечай JSON-массивом [{title, type}]." },
           { role: "user", content: `Создай структуру курса "${courseTitle}"` },
-        ]),
+        ], 4096, aiProvider),
         AI_CALL_TIMEOUT, "callAI:structure"
       );
       const parsed = parseJsonResponse(response);
