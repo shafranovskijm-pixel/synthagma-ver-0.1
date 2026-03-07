@@ -265,10 +265,13 @@ async function processCourse(
   if (currentLessons.length < 3) {
     await updatePhase("Генерация структуры...");
     try {
-      const { text: response } = await callAI([
-        { role: "system", content: prompts.structure || "Создай структуру курса из 8-15 уроков. Типы: text, test, practice. Последний урок — итоговый тест. Отвечай JSON-массивом [{title, type}]." },
-        { role: "user", content: `Создай структуру курса "${courseTitle}"` },
-      ]);
+      const { text: response } = await withTimeout(
+        callAI([
+          { role: "system", content: prompts.structure || "Создай структуру курса из 8-15 уроков. Типы: text, test, practice. Последний урок — итоговый тест. Отвечай JSON-массивом [{title, type}]." },
+          { role: "user", content: `Создай структуру курса "${courseTitle}"` },
+        ]),
+        AI_CALL_TIMEOUT, "callAI:structure"
+      );
       const parsed = parseJsonResponse(response);
       if (Array.isArray(parsed)) {
         const newLessons = parsed
