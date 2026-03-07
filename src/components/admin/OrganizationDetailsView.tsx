@@ -837,10 +837,12 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                 </div>
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-muted-foreground">ИИ токены (месяц)</span>
-                    <span className="text-sm font-medium">{formatTokens(usage.ai_tokens_used)} / {formatTokens(settings.ai_tokens_limit)}</span>
+                    <span className="text-sm text-muted-foreground">ИИ-генерации (месяц)</span>
+                    <span className="text-sm font-medium">
+                      {usage.ai_generations_count} / {aiGenerationsLimit === Infinity ? "∞" : aiGenerationsLimit}
+                    </span>
                   </div>
-                  <Progress value={Math.min(tokensLimitPercent, 100)} className="h-2" />
+                  <Progress value={aiGenerationsLimit === Infinity ? 0 : Math.min(aiGenerationsPercent, 100)} className="h-2" />
                 </div>
               </div>
             </CardContent>
