@@ -16,7 +16,7 @@ import { SALUTE_VOICES, getStoredTTSSettings, saveTTSSettings } from "@/componen
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { MediaLibraryDialog } from "@/components/course-builder/MediaLibraryDialog";
-import { BlockEditor, blocksToJson } from "@/components/course-builder/BlockEditor";
+import { BlockEditor, blocksToJson, ContentBlock } from "@/components/course-builder/BlockEditor";
 import { TestQuestionEditor } from "@/components/course-builder/TestQuestionEditor";
 import { TestImportDialog } from "@/components/course-builder/TestImportDialog";
 import { useSortable } from "@dnd-kit/sortable";
