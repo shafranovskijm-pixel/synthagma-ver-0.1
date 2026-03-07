@@ -6,6 +6,7 @@ import {
   UserCheck, Stamp, ExternalLink, Lock, ArrowUpRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { OrgDocumentsManager } from "@/components/organization/OrgDocumentsManager";
 import { DocumentArchiveView } from "@/components/organization/DocumentArchiveView";
@@ -149,16 +150,23 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
         </div>
 
         {onShowBulkUploadDialog && (
-          <Button 
-            variant="outline" 
-            size="sm"
-            className="rounded-xl gap-2" 
-            onClick={onShowBulkUploadDialog}
-          >
-            <Upload className="w-4 h-4" />
-            <span className="hidden sm:inline">Массовая загрузка</span>
-            <span className="sm:hidden">Загрузка</span>
-          </Button>
+          <TooltipProvider delayDuration={300}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="rounded-xl gap-2" 
+                  onClick={onShowBulkUploadDialog}
+                >
+                  <Upload className="w-4 h-4" />
+                  <span className="hidden sm:inline">Массовая загрузка</span>
+                  <span className="sm:hidden">Загрузка</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Загрузить документы пакетно</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         )}
       </div>
 

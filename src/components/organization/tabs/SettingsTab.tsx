@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
 import { SUBSCRIPTION_PLANS } from "@/constants/subscriptionPlans";
 import { 
@@ -489,10 +490,17 @@ export function SettingsTab() {
                 </>
               )}
             </Button>
-            <Button variant="outline" className="rounded-xl gap-2" onClick={previewStudentDashboard}>
-              <Eye className="w-4 h-4" />
-              Предпросмотр
-            </Button>
+            <TooltipProvider delayDuration={300}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" className="rounded-xl gap-2" onClick={previewStudentDashboard}>
+                    <Eye className="w-4 h-4" />
+                    Предпросмотр
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Предпросмотр кабинета ученика</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         </div>
       </details>
@@ -542,10 +550,17 @@ export function SettingsTab() {
             <p className="text-sm text-muted-foreground">
               Настройте, какие разделы будут отображаться в личном кабинете учеников
             </p>
-            <Button variant="outline" size="sm" className="rounded-xl gap-2" onClick={previewStudentDashboard}>
-              <ExternalLink className="w-4 h-4" />
-              Просмотр кабинета
-            </Button>
+            <TooltipProvider delayDuration={300}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="sm" className="rounded-xl gap-2" onClick={previewStudentDashboard}>
+                    <ExternalLink className="w-4 h-4" />
+                    Просмотр кабинета
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Предпросмотр личного кабинета ученика</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
           <div className="space-y-4">
             {/* Library */}
