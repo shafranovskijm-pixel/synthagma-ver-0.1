@@ -475,7 +475,7 @@ export async function callLovableAIWithTools(
 }
 
 // ═══════════════════════════════════════════════════════════
-// Universal AI caller: GigaChat first → Lovable AI fallback
+// Universal AI caller: Lovable AI first → GigaChat fallback
 // ═══════════════════════════════════════════════════════════
 // ═══════════════════════════════════════════════════════════
 // Round-Robin distribution across all providers
