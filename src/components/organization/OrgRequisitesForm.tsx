@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Loader2, Search, Save, Building2, CheckCircle2, MapPin, User, Landmark } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -188,161 +189,175 @@ export function OrgRequisitesForm({ organizationId }: OrgRequisitesFormProps) {
         )}
       </div>
 
-      {/* Основные реквизиты */}
-      <div className="bg-card border border-border rounded-xl p-4 space-y-4">
-        <div className="flex items-center gap-2 text-sm font-medium">
-          <Building2 className="w-4 h-4 text-primary" />
-          Основные реквизиты
-        </div>
-        <div className="grid md:grid-cols-3 gap-4">
-          <div className="space-y-2">
-            <Label>ИНН</Label>
-            <Input
-              value={requisites.inn}
-              onChange={(e) => setRequisites(prev => ({ ...prev, inn: e.target.value.replace(/\D/g, '').slice(0, 12) }))}
-              className="rounded-xl"
-              placeholder="1234567890"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>КПП</Label>
-            <Input
-              value={requisites.kpp}
-              onChange={(e) => setRequisites(prev => ({ ...prev, kpp: e.target.value.replace(/\D/g, '').slice(0, 9) }))}
-              className="rounded-xl"
-              placeholder="123456789"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>ОГРН</Label>
-            <Input
-              value={requisites.ogrn}
-              onChange={(e) => setRequisites(prev => ({ ...prev, ogrn: e.target.value.replace(/\D/g, '').slice(0, 15) }))}
-              className="rounded-xl"
-              placeholder="1234567890123"
-            />
-          </div>
-        </div>
-      </div>
+      <Accordion type="multiple" defaultValue={[]} className="space-y-2">
+        <AccordionItem value="main" className="bg-card border border-border rounded-xl px-4">
+          <AccordionTrigger className="hover:no-underline">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <Building2 className="w-4 h-4 text-primary" />
+              Основные реквизиты
+            </div>
+          </AccordionTrigger>
+          <AccordionContent>
+            <div className="grid md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label>ИНН</Label>
+                <Input
+                  value={requisites.inn}
+                  onChange={(e) => setRequisites(prev => ({ ...prev, inn: e.target.value.replace(/\D/g, '').slice(0, 12) }))}
+                  className="rounded-xl"
+                  placeholder="1234567890"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>КПП</Label>
+                <Input
+                  value={requisites.kpp}
+                  onChange={(e) => setRequisites(prev => ({ ...prev, kpp: e.target.value.replace(/\D/g, '').slice(0, 9) }))}
+                  className="rounded-xl"
+                  placeholder="123456789"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>ОГРН</Label>
+                <Input
+                  value={requisites.ogrn}
+                  onChange={(e) => setRequisites(prev => ({ ...prev, ogrn: e.target.value.replace(/\D/g, '').slice(0, 15) }))}
+                  className="rounded-xl"
+                  placeholder="1234567890123"
+                />
+              </div>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
 
-      {/* Адреса */}
-      <div className="bg-card border border-border rounded-xl p-4 space-y-4">
-        <div className="flex items-center gap-2 text-sm font-medium">
-          <MapPin className="w-4 h-4 text-primary" />
-          Адреса
-        </div>
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label>Юридический адрес</Label>
-            <Input
-              value={requisites.legal_address}
-              onChange={(e) => setRequisites(prev => ({ ...prev, legal_address: e.target.value }))}
-              className="rounded-xl"
-              placeholder="г. Москва, ул. Примерная, д. 1"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Фактический адрес</Label>
-            <Input
-              value={requisites.actual_address}
-              onChange={(e) => setRequisites(prev => ({ ...prev, actual_address: e.target.value }))}
-              className="rounded-xl"
-              placeholder="г. Москва, ул. Примерная, д. 1"
-            />
-          </div>
-        </div>
-      </div>
+        <AccordionItem value="address" className="bg-card border border-border rounded-xl px-4">
+          <AccordionTrigger className="hover:no-underline">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <MapPin className="w-4 h-4 text-primary" />
+              Адреса
+            </div>
+          </AccordionTrigger>
+          <AccordionContent>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Юридический адрес</Label>
+                <Input
+                  value={requisites.legal_address}
+                  onChange={(e) => setRequisites(prev => ({ ...prev, legal_address: e.target.value }))}
+                  className="rounded-xl"
+                  placeholder="г. Москва, ул. Примерная, д. 1"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Фактический адрес</Label>
+                <Input
+                  value={requisites.actual_address}
+                  onChange={(e) => setRequisites(prev => ({ ...prev, actual_address: e.target.value }))}
+                  className="rounded-xl"
+                  placeholder="г. Москва, ул. Примерная, д. 1"
+                />
+              </div>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
 
-      {/* Руководитель */}
-      <div className="bg-card border border-border rounded-xl p-4 space-y-4">
-        <div className="flex items-center gap-2 text-sm font-medium">
-          <User className="w-4 h-4 text-primary" />
-          Руководитель
-        </div>
-        <div className="grid md:grid-cols-3 gap-4">
-          <div className="space-y-2">
-            <Label>ФИО руководителя</Label>
-            <Input
-              value={requisites.director_name}
-              onChange={(e) => setRequisites(prev => ({ ...prev, director_name: e.target.value }))}
-              className="rounded-xl"
-              placeholder="Иванов Иван Иванович"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Должность руководителя</Label>
-            <Input
-              value={requisites.director_position}
-              onChange={(e) => setRequisites(prev => ({ ...prev, director_position: e.target.value }))}
-              className="rounded-xl"
-              placeholder="Генеральный директор"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Пол руководителя</Label>
-            <Select
-              value={requisites.director_gender}
-              onValueChange={(value) => setRequisites(prev => ({ ...prev, director_gender: value }))}
-            >
-              <SelectTrigger className="rounded-xl">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="male">Мужской</SelectItem>
-                <SelectItem value="female">Женский</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </div>
+        <AccordionItem value="director" className="bg-card border border-border rounded-xl px-4">
+          <AccordionTrigger className="hover:no-underline">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <User className="w-4 h-4 text-primary" />
+              Руководитель
+            </div>
+          </AccordionTrigger>
+          <AccordionContent>
+            <div className="grid md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label>ФИО руководителя</Label>
+                <Input
+                  value={requisites.director_name}
+                  onChange={(e) => setRequisites(prev => ({ ...prev, director_name: e.target.value }))}
+                  className="rounded-xl"
+                  placeholder="Иванов Иван Иванович"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Должность руководителя</Label>
+                <Input
+                  value={requisites.director_position}
+                  onChange={(e) => setRequisites(prev => ({ ...prev, director_position: e.target.value }))}
+                  className="rounded-xl"
+                  placeholder="Генеральный директор"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Пол руководителя</Label>
+                <Select
+                  value={requisites.director_gender}
+                  onValueChange={(value) => setRequisites(prev => ({ ...prev, director_gender: value }))}
+                >
+                  <SelectTrigger className="rounded-xl">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="male">Мужской</SelectItem>
+                    <SelectItem value="female">Женский</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
 
-      {/* Банковские реквизиты */}
-      <div className="bg-card border border-border rounded-xl p-4 space-y-4">
-        <div className="flex items-center gap-2 text-sm font-medium">
-          <Landmark className="w-4 h-4 text-primary" />
-          Банковские реквизиты
-        </div>
-        <div className="grid md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>Наименование банка</Label>
-            <Input
-              value={requisites.bank_name}
-              onChange={(e) => setRequisites(prev => ({ ...prev, bank_name: e.target.value }))}
-              className="rounded-xl"
-              placeholder="ПАО Сбербанк"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>БИК</Label>
-            <Input
-              value={requisites.bank_bik}
-              onChange={(e) => setRequisites(prev => ({ ...prev, bank_bik: e.target.value.replace(/\D/g, '').slice(0, 9) }))}
-              className="rounded-xl"
-              placeholder="044525225"
-            />
-          </div>
-        </div>
-        <div className="grid md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>Расчётный счёт</Label>
-            <Input
-              value={requisites.bank_account}
-              onChange={(e) => setRequisites(prev => ({ ...prev, bank_account: e.target.value.replace(/\D/g, '').slice(0, 20) }))}
-              className="rounded-xl"
-              placeholder="40702810000000000000"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Корреспондентский счёт</Label>
-            <Input
-              value={requisites.bank_corr_account}
-              onChange={(e) => setRequisites(prev => ({ ...prev, bank_corr_account: e.target.value.replace(/\D/g, '').slice(0, 20) }))}
-              className="rounded-xl"
-              placeholder="30101810400000000225"
-            />
-          </div>
-        </div>
-      </div>
+        <AccordionItem value="bank" className="bg-card border border-border rounded-xl px-4">
+          <AccordionTrigger className="hover:no-underline">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <Landmark className="w-4 h-4 text-primary" />
+              Банковские реквизиты
+            </div>
+          </AccordionTrigger>
+          <AccordionContent>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Наименование банка</Label>
+                <Input
+                  value={requisites.bank_name}
+                  onChange={(e) => setRequisites(prev => ({ ...prev, bank_name: e.target.value }))}
+                  className="rounded-xl"
+                  placeholder="ПАО Сбербанк"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>БИК</Label>
+                <Input
+                  value={requisites.bank_bik}
+                  onChange={(e) => setRequisites(prev => ({ ...prev, bank_bik: e.target.value.replace(/\D/g, '').slice(0, 9) }))}
+                  className="rounded-xl"
+                  placeholder="044525225"
+                />
+              </div>
+            </div>
+            <div className="grid md:grid-cols-2 gap-4 mt-4">
+              <div className="space-y-2">
+                <Label>Расчётный счёт</Label>
+                <Input
+                  value={requisites.bank_account}
+                  onChange={(e) => setRequisites(prev => ({ ...prev, bank_account: e.target.value.replace(/\D/g, '').slice(0, 20) }))}
+                  className="rounded-xl"
+                  placeholder="40702810000000000000"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Корреспондентский счёт</Label>
+                <Input
+                  value={requisites.bank_corr_account}
+                  onChange={(e) => setRequisites(prev => ({ ...prev, bank_corr_account: e.target.value.replace(/\D/g, '').slice(0, 20) }))}
+                  className="rounded-xl"
+                  placeholder="30101810400000000225"
+                />
+              </div>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
 
       <Button 
         className="btn-gradient rounded-xl gap-2" 
