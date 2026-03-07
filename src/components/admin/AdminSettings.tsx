@@ -29,8 +29,6 @@ export function AdminSettings() {
   const [systemSettings, setSystemSettings] = useState<SystemSettings>({
     maintenanceMode: false,
     registrationEnabled: true,
-    defaultTokensLimit: 100000,
-    defaultStorageLimit: 1073741824,
   });
 
   const [isSaving, setIsSaving] = useState(false);
