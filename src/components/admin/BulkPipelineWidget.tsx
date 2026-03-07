@@ -418,6 +418,33 @@ export function BulkPipelineWidget({ courses, readyCourses = [], allCourses, onC
           />
         </div>
 
+        {/* AI Provider selector */}
+        <div className="flex items-center justify-between p-2.5 rounded-lg border bg-card">
+          <div>
+            <p className="text-xs font-medium">🤖 ИИ-провайдер</p>
+            <p className="text-[10px] text-muted-foreground">Выбор модели для генерации контента и решения тестов</p>
+          </div>
+          <Select
+            value={aiProvider}
+            onValueChange={(v) => {
+              setAiProvider(v);
+              localStorage.setItem("pipeline_ai_provider", v);
+            }}
+            disabled={effectiveBusy}
+          >
+            <SelectTrigger className="w-[160px] h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="gigachat">
+                <span className="flex items-center gap-1.5"><Bot className="w-3.5 h-3.5" />GigaChat</span>
+              </SelectItem>
+              <SelectItem value="lovable_ai">
+                <span className="flex items-center gap-1.5"><Brain className="w-3.5 h-3.5" />Lovable AI</span>
+              </SelectItem>
+            </SelectContent>
+          </Select>
+
         {/* Server pipeline status */}
         {serverMode && serverPipeline.currentRun && (
           <div className="text-sm space-y-0.5">
