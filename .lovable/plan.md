@@ -1,26 +1,18 @@
 
 
-## План: Убрать переключатель «Разрешить организациям менять провайдера» + установить Lovable AI по умолчанию с фоллбэком на GigaChat Max
+## Plan: Auto-fix after "Проверить все"
 
-### Что делаем
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-1. **Убрать переключатель `allow_org_override`** из `renderOrgDefault()` в `AISettingsManager.tsx` — организации не смогут менять провайдера, только админ управляет этим.
+### Changes
 
-2. **Установить дефолтную модель для организаций**: самая мощная Lovable AI модель — `openai/gpt-5` (или `google/gemini-2.5-pro`). При исчерпании токенов — фоллбэк на GigaChat Max.
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-3. **В `gigachat-client.ts`** убедиться, что дефолтная модель в `callAI()` использует мощную модель Lovable AI, а фоллбэк — `GigaChat-Max` вместо `GigaChat-Pro`.
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-### Изменения
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-**`src/components/admin/AISettingsManager.tsx`**
-- В `renderOrgDefault()` (строки 563-578): удалить блок с `Switch` и `allow_org_override` (строки 570-576). Оставить только `renderProviderSelect("org_default")`.
-
-**`supabase/functions/_shared/gigachat-client.ts`**
-- В `callAI()` (строка 592): изменить дефолтную модель GigaChat с `"GigaChat-Pro"` на `"GigaChat-Max"` — чтобы при фоллбэке использовалась максимальная модель.
-- В `callAI()` (строка 593): изменить дефолтную модель Lovable AI с `"google/gemini-2.5-flash"` на `"google/gemini-2.5-pro"` — самая мощная по умолчанию.
-- В `callAIWithTools()` (строка 635): аналогично обновить дефолт lovableModel на `"google/gemini-2.5-pro"`.
-
-### Файлы
-- `src/components/admin/AISettingsManager.tsx`
-- `supabase/functions/_shared/gigachat-client.ts`
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 
