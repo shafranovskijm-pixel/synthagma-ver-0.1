@@ -94,6 +94,11 @@ const CONTEXT_META: Record<string, { icon: React.ReactNode; title: string; descr
     title: "Дефолт для организаций",
     description: "Провайдер по умолчанию для новых организаций",
   },
+  image_generation: {
+    icon: <ImagePlus className="w-5 h-5" />,
+    title: "Генерация картинок",
+    description: "ИИ для создания и редактирования изображений в курсах",
+  },
 };
 
 export function AISettingsManager() {
