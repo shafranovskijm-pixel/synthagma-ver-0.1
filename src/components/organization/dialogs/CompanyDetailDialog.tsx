@@ -350,6 +350,30 @@ export function CompanyDetailDialog({
                   </div>
                   <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
                 </button>
+
+                <button
+                  className="flex items-center gap-4 p-4 rounded-xl border border-border bg-card hover:bg-secondary/50 transition-all text-left group"
+                  onClick={() => {
+                    localStorage.setItem('orgViewAsCompany', JSON.stringify({
+                      companyId: company.id,
+                      companyName: company.name,
+                      userId: company.user_id,
+                    }));
+                    window.open('/company', '_blank');
+                  }}
+                  disabled={!company.user_id}
+                >
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                    <Eye className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-medium">Личный кабинет компании</div>
+                    <div className="text-xs text-muted-foreground">
+                      {company.user_id ? 'Просмотр от лица компании' : 'У компании нет учётной записи'}
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                </button>
               </div>
             </TabsContent>
 
