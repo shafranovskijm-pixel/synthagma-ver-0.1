@@ -110,13 +110,13 @@ interface OrgDocument {
 
 interface UsageData {
   storage_bytes: number;
-  ai_tokens_used: number;
+  ai_generations_count: number;
 }
 
 interface UsageHistoryItem {
   month: string;
   month_label: string;
-  ai_tokens_used: number;
+  ai_generations_count: number;
   storage_bytes: number;
 }
 
