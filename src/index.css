@@ -490,6 +490,26 @@
   100% { background-position: 200% 0; }
 }
 
+/* Density: Compact */
+html.density-compact {
+  font-size: 14px;
+}
+html.density-compact .p-4 { padding: 0.75rem; }
+html.density-compact .p-6 { padding: 1rem; }
+html.density-compact .gap-4 { gap: 0.75rem; }
+html.density-compact .gap-6 { gap: 1rem; }
+html.density-compact .space-y-4 > :not([hidden]) ~ :not([hidden]) { --tw-space-y-reverse: 0; margin-top: 0.75rem; }
+html.density-compact .py-3 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+
+/* Density: Comfortable */
+html.density-comfortable {
+  font-size: 17px;
+}
+html.density-comfortable .p-4 { padding: 1.25rem; }
+html.density-comfortable .p-6 { padding: 1.75rem; }
+html.density-comfortable .gap-4 { gap: 1.25rem; }
+html.density-comfortable .gap-6 { gap: 1.75rem; }
+
 /* Smooth scroll */
 html {
   scroll-behavior: smooth;
