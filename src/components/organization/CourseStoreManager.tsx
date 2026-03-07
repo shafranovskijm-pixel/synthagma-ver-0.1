@@ -5,7 +5,7 @@ import {
   Eye, Edit, Trash2, Plus, Users, Building2, Search,
   Tag, Package, MessageSquarePlus, Megaphone, Send,
   Clock, ChevronDown, ArrowLeft, Info,
-  List, LayoutGrid, Gift, Award, Zap, BookOpen, ShieldCheck,
+  List, LayoutGrid, Gift, Award, Zap, BookOpen, ShieldCheck, Lightbulb,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
