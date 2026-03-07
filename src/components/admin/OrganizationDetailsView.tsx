@@ -683,7 +683,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                   <div className="p-1.5 rounded-lg bg-violet-500/10">
                     <Sparkles className="w-5 h-5 text-violet-500" />
                   </div>
-                  Использование ИИ токенов
+                  ИИ-генерации
                 </CardTitle>
                 <CardDescription>Последние 6 месяцев</CardDescription>
               </CardHeader>
@@ -699,11 +699,11 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                       />
                       <YAxis 
                         tick={{ fontSize: 12 }}
-                        tickFormatter={(value) => formatTokens(value)}
                         className="text-muted-foreground"
+                        allowDecimals={false}
                       />
                       <Tooltip 
-                        formatter={(value: number) => [formatTokens(value), "Токены"]}
+                        formatter={(value: number) => [value, "Генерации"]}
                         labelClassName="text-foreground"
                         contentStyle={{ 
                           backgroundColor: 'hsl(var(--card))', 
@@ -712,7 +712,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                         }}
                       />
                       <Bar 
-                        dataKey="ai_tokens_used" 
+                        dataKey="ai_generations_count" 
                         fill="hsl(var(--primary))" 
                         radius={[4, 4, 0, 0]}
                       />
