@@ -14,6 +14,7 @@ import { JournalsManager } from "@/components/organization/JournalsManager";
 import { LaborSafetyManager } from "@/components/organization/LaborSafetyManager";
 import { OrgChatsTab } from "@/components/organization/OrgChatsTab";
 import { SubscriptionTab } from "@/components/organization/SubscriptionTab";
+import { WebinarsManager } from "@/components/organization/WebinarsManager";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 
 export function TabContentRenderer() {
@@ -29,6 +30,7 @@ export function TabContentRenderer() {
     activeTab !== "library" && 
     activeTab !== "journals" && 
     activeTab !== "labor-safety" &&
+    activeTab !== "webinars" &&
     activeTab !== "subscription" &&
     activeTab !== "chats" &&
     !activeTab.startsWith("documents");
@@ -143,6 +145,11 @@ export function TabContentRenderer() {
       {/* FRDO Tab */}
       {activeTab === "frdo" && organizationId && (
         <FRDOManager organizationId={organizationId} />
+      )}
+
+      {/* Webinars Tab */}
+      {activeTab === "webinars" && organizationId && (
+        <WebinarsManager organizationId={organizationId} />
       )}
 
       {/* Course Store Tab */}

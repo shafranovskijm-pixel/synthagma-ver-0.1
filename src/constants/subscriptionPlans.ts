@@ -88,7 +88,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, PlanInfo> = {
       frdoEnabled: false,
       reportsEnabled: false,
     },
-    enabledCategories: ['courses', 'students', 'companies', 'links', 'services', 'settings', 'student_cabinet'],
+    enabledCategories: ['courses', 'students', 'companies', 'links', 'services', 'settings', 'student_cabinet', 'webinars'],
   },
   professional: {
     id: 'professional',
@@ -109,7 +109,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, PlanInfo> = {
       frdoEnabled: true,
       reportsEnabled: true,
     },
-    enabledCategories: ['courses', 'students', 'companies', 'documents', 'journals', 'frdo', 'links', 'library', 'services', 'settings', 'student_cabinet', 'labor_safety'],
+    enabledCategories: ['courses', 'students', 'companies', 'documents', 'journals', 'frdo', 'links', 'library', 'services', 'settings', 'student_cabinet', 'labor_safety', 'webinars'],
   },
   maximum: {
     id: 'maximum',
@@ -130,7 +130,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, PlanInfo> = {
       frdoEnabled: true,
       reportsEnabled: true,
     },
-    enabledCategories: ['courses', 'students', 'companies', 'documents', 'journals', 'frdo', 'links', 'library', 'services', 'settings', 'student_cabinet', 'labor_safety'],
+    enabledCategories: ['courses', 'students', 'companies', 'documents', 'journals', 'frdo', 'links', 'library', 'services', 'settings', 'student_cabinet', 'labor_safety', 'webinars'],
   },
 };
 
