@@ -353,7 +353,7 @@ async function processCourse(
         callAI([
           { role: "system", content: prompts.content || DEFAULT_CONTENT_PROMPT },
           { role: "user", content: `Напиши учебный материал для урока "${lesson.title}" курса "${courseTitle}"` },
-        ], 4096, aiProvider),
+        ], 4096, aiProvider, gigachatModel, lovableModel),
         AI_CALL_TIMEOUT, "callAI:content"
       );
       if (content && content.length > 50) {
