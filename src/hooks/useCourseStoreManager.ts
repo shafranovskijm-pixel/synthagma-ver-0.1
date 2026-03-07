@@ -289,11 +289,14 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
     setIsOrdering(true);
     try {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
+      const orderPrice = userRole === 'organization' 
+        ? selectedCourseForOrder.price_organization 
+        : selectedCourseForOrder.price_student;
       const { data: orderData, error } = await supabase.from('marketplace_orders').insert({
         marketplace_course_id: selectedCourseForOrder.id,
         buyer_user_id: currentUser?.id || userId || null,
         buyer_organization_id: userRole === 'organization' ? organizationId : null,
-        buyer_type: userRole, price: 0,
+        buyer_type: userRole, price: orderPrice,
         students_count: userRole === 'organization' ? studentsCount : 1,
         notes: orderNotes || null, 
         status: 'paid',
