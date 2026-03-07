@@ -240,7 +240,7 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
     setAvailableCourses((courses || []).filter(c => !existingIds.has(c.id)));
   };
 
-  const resetAddForm = () => { setSelectedCourseToAdd(""); setShortDescription(""); };
+  const resetAddForm = () => { setSelectedCourseToAdd(""); setShortDescription(""); setPriceStudent(0); setPriceOrganization(0); };
 
   const handleAddToMarketplace = async () => {
     if (!selectedCourseToAdd) { toast.error('Выберите курс'); return; }
