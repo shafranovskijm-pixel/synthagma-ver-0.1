@@ -1,18 +1,26 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+# Параллельная обработка в конвейере
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+## Текущая проблема
+- Конвейер обрабатывает курсы **строго последовательно** (цикл `for` в `bulk-pipeline/index.ts:460`)
+- Внутри курса батчи тестов и генерация контента тоже последовательны
+- Пул слотов GigaChat (slot-0, slot-1) никогда не нагружается параллельно — вызовы идут по одному
+- Сейчас GigaChat недоступен (402), все идет через Lovable AI — слоты вообще не задействованы
 
-### Changes
+## Что сделаем
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+### 1. Параллельная обработка батчей тестов внутри курса
+В `bulk-pipeline/index.ts`, при решении тестов по урокам — запускать **2 урока параллельно** через `Promise.all` (concurrency=2). Это напрямую задействует оба слота GigaChat или делает 2 параллельных запроса к Lovable AI.
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+### 2. Параллельная генерация контента для лекций
+Аналогично — заполнять пустые лекции по 2 параллельно.
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+### 3. Логика
+- Функция `processInParallel(items, concurrency, handler)` — обрабатывает массив элементов с ограничением параллелизма
+- Задержка между запусками (1-2с) сохраняется для соблюдения rate-limit
+- `shouldStop()` проверяется перед каждым элементом
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+### Файл
+- `supabase/functions/bulk-pipeline/index.ts` — добавить параллелизм в обработку батчей тестов и генерацию контента
 
