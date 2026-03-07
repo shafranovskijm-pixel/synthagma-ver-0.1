@@ -96,41 +96,69 @@ const TTS_PROVIDERS = [
   { value: "lovable_ai", label: "Lovable AI" },
 ];
 
-const CONTEXT_META: Record<string, { icon: React.ReactNode; title: string; description: string }> = {
+const CONTEXT_META: Record<string, { icon: React.ReactNode; title: string; description: string; color: string }> = {
   course_generation: {
     icon: <Cpu className="w-5 h-5" />,
     title: "Генерация курсов",
     description: "ИИ для создания структуры и контента курсов организаций",
+    color: "bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400",
   },
   tts: {
     icon: <Mic className="w-5 h-5" />,
     title: "Озвучка (TTS)",
     description: "Провайдер для синтеза речи в лекциях",
+    color: "bg-purple-100 text-purple-600 dark:bg-purple-900/40 dark:text-purple-400",
   },
   consultant: {
     icon: <MessageSquare className="w-5 h-5" />,
     title: "ИИ-консультант",
     description: "Чат-бот для помощи студентам",
+    color: "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400",
   },
   marketplace: {
     icon: <Store className="w-5 h-5" />,
     title: "Маркетплейс",
     description: "Генерация описаний, SEO-текстов для витрины",
+    color: "bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400",
   },
   pipeline: {
     icon: <Layers className="w-5 h-5" />,
     title: "Конвейер (Bulk Pipeline)",
     description: "Массовая генерация вопросов и ответов",
+    color: "bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-400",
   },
   org_default: {
     icon: <Building2 className="w-5 h-5" />,
     title: "Дефолт для организаций",
     description: "Провайдер по умолчанию для новых организаций",
+    color: "bg-slate-100 text-slate-600 dark:bg-slate-900/40 dark:text-slate-400",
   },
   image_generation: {
     icon: <ImagePlus className="w-5 h-5" />,
     title: "Генерация картинок",
     description: "ИИ для создания и редактирования изображений в курсах",
+    color: "bg-pink-100 text-pink-600 dark:bg-pink-900/40 dark:text-pink-400",
+  },
+};
+
+const TOOLS_META: Record<string, { icon: React.ReactNode; title: string; description: string; color: string }> = {
+  comparison: {
+    icon: <GitCompareArrows className="w-5 h-5" />,
+    title: "Сравнение провайдеров",
+    description: "A/B тест моделей — один промпт, несколько ИИ",
+    color: "bg-cyan-100 text-cyan-600 dark:bg-cyan-900/40 dark:text-cyan-400",
+  },
+  pricing: {
+    icon: <DollarSign className="w-5 h-5" />,
+    title: "Тарифы моделей",
+    description: "Справочник стоимости и скорости всех моделей",
+    color: "bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400",
+  },
+  api_keys: {
+    icon: <Key className="w-5 h-5" />,
+    title: "API-ключи",
+    description: "Статус подключенных ключей",
+    color: "bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400",
   },
 };
 
@@ -473,16 +501,52 @@ export function AISettingsManager() {
     </div>
   );
 
+  const getStatusBadge = (ctx: string) => {
+    const s = settings[ctx];
+    if (!s) return null;
+    const providerLabel = s.provider === "gigachat" ? "GigaChat" : s.provider === "lovable_ai" ? "Lovable AI" : s.provider === "round_robin" ? "Round-Robin" : s.provider === "elevenlabs" ? "ElevenLabs" : s.provider;
+    const modelLabel = s.provider === "gigachat" || s.provider === "round_robin"
+      ? GIGACHAT_MODELS.find(m => m.value === s.gigachat_model)?.label || s.gigachat_model
+      : LOVABLE_MODELS.find(m => m.value === s.lovable_model)?.label || IMAGE_MODELS.find(m => m.value === s.lovable_model)?.label || s.lovable_model;
+    return (
+      <Badge variant="secondary" className="text-[10px] font-normal ml-auto mr-2 hidden sm:inline-flex">
+        {providerLabel} · {modelLabel}
+      </Badge>
+    );
+  };
+
+  const contextCount = Object.keys(CONTEXT_META).length;
+  const keyCount = 5; // GigaChat x3 + ElevenLabs + Lovable AI
+
+  const renderAccordionItem = (ctx: string, meta: typeof CONTEXT_META[string], content: React.ReactNode) => (
+    <AccordionItem key={ctx} value={ctx} className="border rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 bg-card">
+      <AccordionTrigger className="px-4 py-3 hover:no-underline">
+        <div className="flex items-center gap-3 w-full">
+          <div className={`p-2 rounded-lg ${meta.color}`}>{meta.icon}</div>
+          <div className="text-left">
+            <div className="font-semibold">{meta.title}</div>
+            <div className="text-xs text-muted-foreground font-normal">{meta.description}</div>
+          </div>
+          {settings[ctx] && getStatusBadge(ctx)}
+        </div>
+      </AccordionTrigger>
+      <AccordionContent className="px-4 pb-4">
+        {content}
+      </AccordionContent>
+    </AccordionItem>
+  );
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold flex items-center gap-2">
-            <Bot className="w-6 h-6 text-primary" />
-            Настройки ИИ-провайдеров
+            <Bot className="w-6 h-6" />
+            <span>Настройки <span className="gradient-text">ИИ-провайдеров</span></span>
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Управление моделями и провайдерами для каждого контекста системы
+            {contextCount} контекстов · {keyCount} ключей подключено
           </p>
         </div>
         <Button onClick={handleSave} disabled={saving} className="gap-2">
@@ -491,106 +555,123 @@ export function AISettingsManager() {
         </Button>
       </div>
 
-      <Accordion type="multiple" defaultValue={Object.keys(CONTEXT_META)} className="space-y-2">
-        {Object.entries(CONTEXT_META).map(([ctx, meta]) => (
-          <AccordionItem key={ctx} value={ctx} className="border rounded-xl px-1">
+      {/* Models section */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <div className="h-px flex-1 bg-border" />
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-2">Настройки моделей</span>
+          <div className="h-px flex-1 bg-border" />
+        </div>
+
+        <Accordion type="multiple" defaultValue={Object.keys(CONTEXT_META)} className="space-y-3">
+          {Object.entries(CONTEXT_META).map(([ctx, meta]) => {
+            let content: React.ReactNode;
+            if (ctx === "pipeline") {
+              content = renderPipelineSection();
+            } else if (ctx === "org_default") {
+              content = renderOrgDefault();
+            } else if (ctx === "tts") {
+              content = (
+                <div className="space-y-4">
+                  {renderProviderSelect(ctx, TTS_PROVIDERS)}
+                  {settings[ctx]?.provider === "elevenlabs" && (
+                    <div className="space-y-2 mt-4 p-4 rounded-lg bg-muted/50">
+                      <Label className="text-sm">Свой API-ключ ElevenLabs (опционально)</Label>
+                      <Input
+                        type="password"
+                        placeholder="sk-... (оставьте пустым для ключа по умолчанию)"
+                        value={settings[ctx]?.extra_config?.custom_api_key || ""}
+                        onChange={(e) => updateExtra(ctx, "custom_api_key", e.target.value)}
+                        className="max-w-md font-mono text-xs"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Если указан, будет использоваться вместо системного ключа ElevenLabs
+                      </p>
+                    </div>
+                  )}
+                </div>
+              );
+            } else if (ctx === "image_generation") {
+              content = renderProviderSelect(ctx, IMAGE_PROVIDERS, IMAGE_MODELS);
+            } else {
+              content = renderProviderSelect(ctx);
+            }
+
+            return renderAccordionItem(ctx, meta, (
+              <>
+                {content}
+                {settings[ctx] && (
+                  <AITestSandbox
+                    context={ctx}
+                    provider={settings[ctx].provider}
+                    gigachatModel={settings[ctx].gigachat_model}
+                    lovableModel={settings[ctx].lovable_model}
+                  />
+                )}
+              </>
+            ));
+          })}
+        </Accordion>
+      </div>
+
+      {/* Tools section */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <div className="h-px flex-1 bg-border" />
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-2">Инструменты</span>
+          <div className="h-px flex-1 bg-border" />
+        </div>
+
+        <Accordion type="multiple" className="space-y-3">
+          {/* Comparison */}
+          <AccordionItem value="comparison" className="border rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 bg-card">
             <AccordionTrigger className="px-4 py-3 hover:no-underline">
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-primary/10 text-primary">{meta.icon}</div>
+                <div className={`p-2 rounded-lg ${TOOLS_META.comparison.color}`}>{TOOLS_META.comparison.icon}</div>
                 <div className="text-left">
-                  <div className="font-semibold">{meta.title}</div>
-                  <div className="text-xs text-muted-foreground font-normal">{meta.description}</div>
+                  <div className="font-semibold">{TOOLS_META.comparison.title}</div>
+                  <div className="text-xs text-muted-foreground font-normal">{TOOLS_META.comparison.description}</div>
                 </div>
               </div>
             </AccordionTrigger>
             <AccordionContent className="px-4 pb-4">
-              {ctx === "pipeline"
-                ? renderPipelineSection()
-                : ctx === "org_default"
-                ? renderOrgDefault()
-                : ctx === "tts"
-                ? (
-                  <div className="space-y-4">
-                    {renderProviderSelect(ctx, TTS_PROVIDERS)}
-                    {settings[ctx]?.provider === "elevenlabs" && (
-                      <div className="space-y-2 mt-4 p-4 rounded-lg bg-muted/50">
-                        <Label className="text-sm">Свой API-ключ ElevenLabs (опционально)</Label>
-                        <Input
-                          type="password"
-                          placeholder="sk-... (оставьте пустым для ключа по умолчанию)"
-                          value={settings[ctx]?.extra_config?.custom_api_key || ""}
-                          onChange={(e) => updateExtra(ctx, "custom_api_key", e.target.value)}
-                          className="max-w-md font-mono text-xs"
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          Если указан, будет использоваться вместо системного ключа ElevenLabs
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )
-                : ctx === "image_generation"
-                ? renderProviderSelect(ctx, IMAGE_PROVIDERS, IMAGE_MODELS)
-                : renderProviderSelect(ctx)}
-              {settings[ctx] && (
-                <AITestSandbox
-                  context={ctx}
-                  provider={settings[ctx].provider}
-                  gigachatModel={settings[ctx].gigachat_model}
-                  lovableModel={settings[ctx].lovable_model}
-                />
-              )}
+              <AIComparisonPanel />
             </AccordionContent>
           </AccordionItem>
-        ))}
 
-        {/* Comparison Panel */}
-        <AccordionItem value="comparison" className="border rounded-xl px-1">
-          <AccordionTrigger className="px-4 py-3 hover:no-underline">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/10 text-primary"><GitCompareArrows className="w-5 h-5" /></div>
-              <div className="text-left">
-                <div className="font-semibold">Сравнение провайдеров</div>
-                <div className="text-xs text-muted-foreground font-normal">A/B тест моделей — один промпт, несколько ИИ</div>
+          {/* Pricing */}
+          <AccordionItem value="pricing" className="border rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 bg-card">
+            <AccordionTrigger className="px-4 py-3 hover:no-underline">
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-lg ${TOOLS_META.pricing.color}`}>{TOOLS_META.pricing.icon}</div>
+                <div className="text-left">
+                  <div className="font-semibold">{TOOLS_META.pricing.title}</div>
+                  <div className="text-xs text-muted-foreground font-normal">{TOOLS_META.pricing.description}</div>
+                </div>
               </div>
-            </div>
-          </AccordionTrigger>
-          <AccordionContent className="px-4 pb-4">
-            <AIComparisonPanel />
-          </AccordionContent>
-        </AccordionItem>
+            </AccordionTrigger>
+            <AccordionContent className="px-4 pb-4">
+              {renderPricingTable()}
+            </AccordionContent>
+          </AccordionItem>
 
-        {/* Pricing Table */}
-        <AccordionItem value="pricing" className="border rounded-xl px-1">
-          <AccordionTrigger className="px-4 py-3 hover:no-underline">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/10 text-primary"><DollarSign className="w-5 h-5" /></div>
-              <div className="text-left">
-                <div className="font-semibold">Тарифы моделей</div>
-                <div className="text-xs text-muted-foreground font-normal">Справочник стоимости и скорости всех моделей</div>
+          {/* API Keys */}
+          <AccordionItem value="api_keys" className="border rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 bg-card">
+            <AccordionTrigger className="px-4 py-3 hover:no-underline">
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-lg ${TOOLS_META.api_keys.color}`}>{TOOLS_META.api_keys.icon}</div>
+                <div className="text-left">
+                  <div className="font-semibold">{TOOLS_META.api_keys.title}</div>
+                  <div className="text-xs text-muted-foreground font-normal">{TOOLS_META.api_keys.description}</div>
+                </div>
               </div>
-            </div>
-          </AccordionTrigger>
-          <AccordionContent className="px-4 pb-4">
-            {renderPricingTable()}
-          </AccordionContent>
-        </AccordionItem>
-
-        <AccordionItem value="api_keys" className="border rounded-xl px-1">
-          <AccordionTrigger className="px-4 py-3 hover:no-underline">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/10 text-primary"><Key className="w-5 h-5" /></div>
-              <div className="text-left">
-                <div className="font-semibold">API-ключи</div>
-                <div className="text-xs text-muted-foreground font-normal">Статус подключенных ключей</div>
-              </div>
-            </div>
-          </AccordionTrigger>
-          <AccordionContent className="px-4 pb-4">
-            {renderApiKeys()}
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
+            </AccordionTrigger>
+            <AccordionContent className="px-4 pb-4">
+              {renderApiKeys()}
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+      </div>
     </div>
   );
 }
