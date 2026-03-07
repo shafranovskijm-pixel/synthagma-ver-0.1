@@ -196,11 +196,16 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
     }
   };
 
-  const { isBusy, totalCount, completedCount, progressPercent, currentIndex, currentPhase, completedLog, summary, aiSessionCalls } = pipeline;
+  const { isBusy, totalCount, completedCount, progressPercent, currentIndex, currentPhase, completedLog, summary, aiSessionCalls, hasResumableProgress } = pipeline;
 
   const handleStartWithQueue = useCallback(() => {
     setQueueOpen(true);
-    pipeline.handleStart();
+    pipeline.handleStart(false);
+  }, [pipeline.handleStart]);
+
+  const handleResumeWithQueue = useCallback(() => {
+    setQueueOpen(true);
+    pipeline.handleStart(true);
   }, [pipeline.handleStart]);
 
   const handleTestRunWithQueue = useCallback(() => {
