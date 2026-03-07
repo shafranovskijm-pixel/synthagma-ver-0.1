@@ -490,6 +490,7 @@ serve(async (req) => {
       const lovableModel = body.lovable_model;
       const startTime = Date.now();
       let totalSolved = 0, totalFilled = 0, totalErrors = 0, totalSuccess = 0, totalSkipped = 0;
+      const taskCounter = { value: 0 }; // Deterministic round-robin distribution across AI channels
 
       // Count existing successes from resume
       for (const entry of existingLog) {
