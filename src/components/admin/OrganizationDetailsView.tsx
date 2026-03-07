@@ -1141,7 +1141,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                     </Label>
                     <p className="text-sm text-muted-foreground">
                       {shouldBlockAI 
-                        ? "ИИ-помощник заблокирован из-за превышения лимита токенов"
+                        ? "ИИ-помощник заблокирован из-за превышения лимита генераций"
                         : "Разрешить использование ИИ-помощника для учеников"
                       }
                     </p>
