@@ -50,7 +50,8 @@ export function StudentOrgChat({ studentUserId, organizationId, organizationName
         filter: `student_user_id=eq.${studentUserId}`,
       }, (payload) => {
         const newMsg = payload.new as Message;
-        setMessages((prev) => [...prev, newMsg]);
+        if ((newMsg as any).organization_id !== organizationId) return;
+        setMessages((prev) => prev.some(m => m.id === newMsg.id) ? prev : [...prev, newMsg]);
         if (newMsg.attachment_url) loadSignedUrl(newMsg.attachment_url);
         setTimeout(scrollToBottom, 100);
       })
@@ -93,14 +94,23 @@ export function StudentOrgChat({ studentUserId, organizationId, organizationName
     if (!text) return;
     setIsSending(true);
     try {
-      const { error } = await supabase.from("org_student_messages").insert({
+      const tempId = crypto.randomUUID();
+      const optimisticMsg: Message = {
+        id: tempId, sender_user_id: studentUserId, content: text,
+        attachment_url: null, attachment_name: null, attachment_type: null,
+        is_read: false, created_at: new Date().toISOString(),
+      };
+      setMessages(prev => [...prev, optimisticMsg]);
+      setNewMessage("");
+      setTimeout(scrollToBottom, 50);
+      const { data, error } = await supabase.from("org_student_messages").insert({
         organization_id: organizationId,
         student_user_id: studentUserId,
         sender_user_id: studentUserId,
         content: text,
-      });
+      }).select().single();
       if (error) throw error;
-      setNewMessage("");
+      if (data) setMessages(prev => prev.map(m => m.id === tempId ? (data as Message) : m));
     } catch {
       toast.error("Ошибка отправки");
     } finally {

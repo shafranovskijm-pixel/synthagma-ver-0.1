@@ -1,47 +1,18 @@
 
 
-## Анализ чата и план улучшений
+## Plan: Auto-fix after "Проверить все"
 
-### Найденные проблемы
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-**1. Дублирование сообщений при realtime**
-В `ChatTab.tsx` и `StudentOrgChat.tsx` подписка на realtime ловит INSERT и добавляет сообщение в state. Но фильтр `student_user_id=eq.${studentUserId}` — ловит ВСЕ сообщения этого студента, включая те, что отправил сам текущий пользователь. Когда организация отправляет сообщение, оно добавляется через insert → realtime → payload.new добавляется повторно. Итог: **дублирование собственных сообщений**.
+### Changes
 
-**Исправление:** В realtime-обработчике проверять, нет ли уже этого `id` в массиве messages, ИЛИ игнорировать сообщения от текущего пользователя (и добавлять их вручную после успешного insert).
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-**2. Вложенность ChatTab в OrgChatsTab вызывает двойной скролл**
-`ChatTab` имеет `h-[55vh]`, а `OrgChatsTab` оборачивает его в `div.flex-1.p-4.overflow-hidden`. Результат — область сообщений может быть обрезана или иметь конфликтующий скролл. ChatTab должен занимать всё доступное пространство родителя.
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-**Исправление:** В `ChatTab` заменить `h-[55vh]` на `h-full`, чтобы он адаптировался к контейнеру.
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-**3. Отсутствие фильтра по organization_id в realtime**
-Подписка фильтрует только `student_user_id`, но не `organization_id`. Если студент состоит в нескольких организациях, сообщения из другой организации попадут в чат.
-
-**Исправление:** Не критично при текущей архитектуре (1 студент — 1 орг), но для надёжности — дополнительно фильтровать `organization_id` в обработчике payload.
-
-**4. Нет оптимистичного обновления**
-После отправки сообщения пользователь ждёт, пока realtime доставит его обратно. Визуальная задержка 200-500мс.
-
-**Исправление:** Добавить сообщение в state сразу после успешного insert, а realtime-обработчик будет пропускать дубли по `id`.
-
-**5. Mark as read при открытии — может быть неточным**
-`loadMessages` помечает как прочитанные все сообщения `sender_user_id !== currentUserId`. Но unread в `useOrgUnreadChats` считается по `sender_user_id === student_user_id`. Логика совпадает, но badge в списке не обновляется мгновенно — только после следующего realtime-события.
-
-**Исправление:** После mark-as-read вызвать `refresh` из `useOrgUnreadChats` (пробросить через контекст или callback).
-
-### План реализации
-
-**Файл: `src/components/organization/student-detail/ChatTab.tsx`**
-1. Дедупликация в realtime: `setMessages(prev => prev.some(m => m.id === newMsg.id) ? prev : [...prev, newMsg])`
-2. Оптимистичное добавление: после insert добавить сообщение в state с временным id, заменить при получении realtime
-3. Заменить `h-[55vh]` на `h-full`
-
-**Файл: `src/components/student/StudentOrgChat.tsx`**
-1. Аналогичная дедупликация в realtime
-2. Оптимистичное добавление
-
-**Файл: `src/components/organization/OrgChatsTab.tsx`**
-1. После выбора чата и прочтения — вызвать `d.orgChats.refresh()` чтобы badge обновился
-
-Это устранит дублирование, улучшит отзывчивость и корректность отображения непрочитанных.
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 

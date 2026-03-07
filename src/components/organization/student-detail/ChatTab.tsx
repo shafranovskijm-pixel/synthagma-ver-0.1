@@ -10,6 +10,7 @@ import { getSignedStorageUrl } from "@/utils/storageHelpers";
 
 interface Message {
   id: string;
+  organization_id?: string;
   sender_user_id: string;
   content: string | null;
   attachment_url: string | null;
@@ -56,7 +57,8 @@ export function ChatTab({ studentUserId, organizationId, currentUserId, studentN
         },
         (payload) => {
           const newMsg = payload.new as Message;
-          setMessages((prev) => [...prev, newMsg]);
+          if (newMsg.organization_id !== organizationId) return;
+          setMessages((prev) => prev.some(m => m.id === newMsg.id) ? prev : [...prev, newMsg]);
           if (newMsg.attachment_url) {
             loadSignedUrl(newMsg.attachment_url);
           }
@@ -119,14 +121,23 @@ export function ChatTab({ studentUserId, organizationId, currentUserId, studentN
     if (!text) return;
     setIsSending(true);
     try {
-      const { error } = await supabase.from("org_student_messages").insert({
+      const tempId = crypto.randomUUID();
+      const optimisticMsg: Message = {
+        id: tempId, sender_user_id: currentUserId, content: text,
+        attachment_url: null, attachment_name: null, attachment_type: null,
+        is_read: false, created_at: new Date().toISOString(),
+      };
+      setMessages(prev => [...prev, optimisticMsg]);
+      setNewMessage("");
+      setTimeout(scrollToBottom, 50);
+      const { data, error } = await supabase.from("org_student_messages").insert({
         organization_id: organizationId,
         student_user_id: studentUserId,
         sender_user_id: currentUserId,
         content: text,
-      });
+      }).select().single();
       if (error) throw error;
-      setNewMessage("");
+      if (data) setMessages(prev => prev.map(m => m.id === tempId ? (data as Message) : m));
     } catch {
       toast.error("Ошибка отправки");
     } finally {
@@ -187,7 +198,7 @@ export function ChatTab({ studentUserId, organizationId, currentUserId, studentN
   }
 
   return (
-    <div className="flex flex-col h-[55vh]">
+    <div className="flex flex-col h-full">
       {/* Messages area */}
       <div className="flex-1 overflow-y-auto space-y-3 mb-4 pr-1">
         {messages.length === 0 ? (
