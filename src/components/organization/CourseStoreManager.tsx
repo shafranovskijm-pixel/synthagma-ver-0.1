@@ -279,7 +279,15 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
                       </CardHeader>
                       <CardContent className="space-y-4">
                         {item.description_short && <p className="text-sm text-muted-foreground line-clamp-2">{item.description_short}</p>}
-                        {item.course?.duration && <Badge variant="outline" className="text-xs">{item.course.duration}</Badge>}
+                        <div className="flex items-center gap-2">
+                          {item.course?.duration && <Badge variant="outline" className="text-xs">{item.course.duration}</Badge>}
+                          {(() => {
+                            const price = h.userRole === 'organization' ? item.price_organization : item.price_student;
+                            return price > 0 
+                              ? <Badge className="bg-primary/10 text-primary border-primary/20">{price.toLocaleString()} ₽</Badge>
+                              : <Badge className="bg-green-500/10 text-green-600 border-green-500/20">Бесплатно</Badge>;
+                          })()}
+                        </div>
                       </CardContent>
                     </Card>
                   ))}
