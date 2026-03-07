@@ -89,7 +89,7 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
       for (let i = 0; i < courseIds.length; i += batchSize) {
         const batch = courseIds.slice(i, i + batchSize);
         lessonBatches.push(
-          supabase.from("lessons").select("id, course_id").in("course_id", batch).eq("type", "test")
+          Promise.resolve(supabase.from("lessons").select("id, course_id").in("course_id", batch).eq("type", "test"))
             .then(({ data }) => data || [])
         );
       }
