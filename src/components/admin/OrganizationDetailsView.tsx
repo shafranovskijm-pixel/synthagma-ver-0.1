@@ -366,7 +366,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
 
     const { data, error } = await supabase
       .from("organization_usage")
-      .select("month_start, ai_tokens_used, storage_bytes")
+      .select("month_start, ai_generations_count, storage_bytes")
       .eq("organization_id", organization.id)
       .gte("month_start", startDate)
       .order("month_start", { ascending: true });
@@ -386,7 +386,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
       months.push({
         month: monthStr,
         month_label: format(date, "MMM yy", { locale: ru }),
-        ai_tokens_used: existingData?.ai_tokens_used || 0,
+        ai_generations_count: (existingData as any)?.ai_generations_count || 0,
         storage_bytes: existingData?.storage_bytes || 0,
       });
     }
