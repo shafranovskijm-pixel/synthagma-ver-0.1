@@ -2561,6 +2561,54 @@ export type Database = {
         }
         Relationships: []
       }
+      pipeline_runs: {
+        Row: {
+          completed_log: Json
+          course_ids: Json
+          created_at: string | null
+          current_index: number
+          current_phase: string | null
+          enable_verification: boolean | null
+          id: string
+          prompts: Json | null
+          status: string
+          summary: Json | null
+          total_courses: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          completed_log?: Json
+          course_ids?: Json
+          created_at?: string | null
+          current_index?: number
+          current_phase?: string | null
+          enable_verification?: boolean | null
+          id?: string
+          prompts?: Json | null
+          status?: string
+          summary?: Json | null
+          total_courses?: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          completed_log?: Json
+          course_ids?: Json
+          created_at?: string | null
+          current_index?: number
+          current_phase?: string | null
+          enable_verification?: boolean | null
+          id?: string
+          prompts?: Json | null
+          status?: string
+          summary?: Json | null
+          total_courses?: number
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       plan_requests: {
         Row: {
           created_at: string

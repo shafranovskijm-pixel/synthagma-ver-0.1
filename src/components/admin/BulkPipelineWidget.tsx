@@ -1,13 +1,14 @@
 import { useState, useCallback, useEffect } from "react";
 import {
   Play, Square, CheckCircle2, Loader2, AlertTriangle, Brain, FileSpreadsheet,
-  DollarSign, RotateCcw, Upload, Clock, ListChecks, ChevronDown, FlaskConical, Eye, BarChart3, RefreshCw, Trash2, SkipForward,
+  DollarSign, RotateCcw, Upload, Clock, ListChecks, ChevronDown, FlaskConical, Eye, BarChart3, RefreshCw, Trash2, SkipForward, Server,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { MARKETPLACE_ORG_ID } from "@/constants/marketplace";
 import { useBulkPipeline, type PipelineCourse } from "@/hooks/useBulkPipeline";
 import { usePipelineExcelImport } from "@/hooks/usePipelineExcelImport";
+import { useServerPipeline } from "@/hooks/useServerPipeline";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -52,7 +53,9 @@ interface Props {
 
 export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
   const [enableVerification, setEnableVerification] = useState(false);
+  const [serverMode, setServerMode] = useState(false);
   const pipeline = useBulkPipeline({ courses, onComplete, enableVerification });
+  const serverPipeline = useServerPipeline({ courses, enableVerification, onComplete });
   const excelImport = usePipelineExcelImport({ onComplete });
 
   // Collapsible sections
@@ -199,10 +202,20 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
 
   const { isBusy, totalCount, completedCount, progressPercent, currentIndex, currentPhase, completedLog, summary, aiSessionCalls, hasResumableProgress } = pipeline;
 
+  // Determine effective busy state (either local or server)
+  const effectiveBusy = isBusy || serverPipeline.isRunning;
+  const effectiveProgress = serverMode && serverPipeline.currentRun
+    ? serverPipeline.progressPercent
+    : progressPercent;
+
   const handleStartWithQueue = useCallback(() => {
     setQueueOpen(true);
-    pipeline.handleStart(false);
-  }, [pipeline.handleStart]);
+    if (serverMode) {
+      serverPipeline.handleStart();
+    } else {
+      pipeline.handleStart(false);
+    }
+  }, [serverMode, pipeline.handleStart, serverPipeline.handleStart]);
 
   const handleResumeWithQueue = useCallback(() => {
     setQueueOpen(true);
@@ -213,6 +226,14 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
     setQueueOpen(true);
     pipeline.handleTestRun();
   }, [pipeline.handleTestRun]);
+
+  const handleEffectiveStop = useCallback(() => {
+    if (serverMode) {
+      serverPipeline.handleStop();
+    } else {
+      pipeline.handleStop();
+    }
+  }, [serverMode, pipeline.handleStop, serverPipeline.handleStop]);
 
   if (totalCount === 0 && excelImport.parsedCourses.length === 0) return null;
 
@@ -229,17 +250,20 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
-            <Loader2 className={`w-4 h-4 ${pipeline.isRunning ? "animate-spin" : "hidden"}`} />
+            <Loader2 className={`w-4 h-4 ${effectiveBusy ? "animate-spin" : "hidden"}`} />
             Конвейер заполнения
+            {serverMode && <Badge variant="outline" className="text-[10px]"><Server className="w-3 h-3 mr-0.5 inline" />Сервер</Badge>}
             {totalCount > 0 && <Badge variant="secondary" className="ml-1">{totalCount} курсов</Badge>}
           </CardTitle>
           {totalCount > 0 && (
-            !isBusy ? (
+            !effectiveBusy ? (
               <div className="flex items-center gap-1.5">
-                <Button size="sm" variant="outline" onClick={handleTestRunWithQueue} className="gap-1.5">
-                  <FlaskConical className="w-3.5 h-3.5" />Тест 1
-                </Button>
-                {hasResumableProgress && (
+                {!serverMode && (
+                  <Button size="sm" variant="outline" onClick={handleTestRunWithQueue} className="gap-1.5">
+                    <FlaskConical className="w-3.5 h-3.5" />Тест 1
+                  </Button>
+                )}
+                {!serverMode && hasResumableProgress && (
                   <>
                     <Button size="sm" variant="outline" onClick={handleResumeWithQueue} className="gap-1.5">
                       <SkipForward className="w-3.5 h-3.5" />Продолжить
@@ -250,11 +274,11 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
                   </>
                 )}
                 <Button size="sm" onClick={handleStartWithQueue} className="gap-1.5">
-                  <Play className="w-3.5 h-3.5" />Запустить все
+                  <Play className="w-3.5 h-3.5" />{serverMode ? "Запустить на сервере" : "Запустить все"}
                 </Button>
               </div>
             ) : (
-              <Button size="sm" variant="destructive" onClick={pipeline.handleStop} className="gap-1.5">
+              <Button size="sm" variant="destructive" onClick={handleEffectiveStop} className="gap-1.5">
                 <Square className="w-3.5 h-3.5" />Стоп
               </Button>
             )
@@ -266,10 +290,15 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
         {totalCount > 0 && (
           <div className="space-y-1.5">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">{completedCount} / {totalCount} готово</span>
-              <span className="font-medium">{progressPercent}%</span>
+              <span className="text-muted-foreground">
+                {serverMode && serverPipeline.currentRun
+                  ? `${serverPipeline.currentRun.completed_log?.length || 0} / ${serverPipeline.currentRun.total_courses} готово`
+                  : `${completedCount} / ${totalCount} готово`
+                }
+              </span>
+              <span className="font-medium">{effectiveProgress}%</span>
             </div>
-            <Progress value={progressPercent} className="h-2" />
+            <Progress value={effectiveProgress} className="h-2" />
           </div>
         )}
 
@@ -342,11 +371,33 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
           <Switch
             checked={enableVerification}
             onCheckedChange={setEnableVerification}
-            disabled={isBusy}
+            disabled={effectiveBusy}
           />
         </div>
 
-        {isBusy && currentCourseName && (
+        {/* Server mode toggle */}
+        <div className="flex items-center justify-between p-2.5 rounded-lg border bg-card">
+          <div>
+            <p className="text-xs font-medium">🖥️ Серверный режим</p>
+            <p className="text-[10px] text-muted-foreground">Обработка на сервере — закрытие вкладки не прервёт процесс</p>
+          </div>
+          <Switch
+            checked={serverMode}
+            onCheckedChange={setServerMode}
+            disabled={effectiveBusy}
+          />
+        </div>
+
+        {/* Server pipeline status */}
+        {serverMode && serverPipeline.currentRun && (
+          <div className="text-sm space-y-0.5">
+            <p className="font-medium truncate">🖥️ {serverPipeline.currentRun.current_phase || "Ожидание..."}</p>
+            <p className="text-[10px] text-muted-foreground">Статус: {serverPipeline.currentRun.status}</p>
+          </div>
+        )}
+
+        {/* Local pipeline status */}
+        {!serverMode && isBusy && currentCourseName && (
           <div className="text-sm space-y-0.5">
             <p className="font-medium truncate">▶ {currentCourseName}</p>
             <p className="text-muted-foreground text-xs truncate">{currentPhase}</p>
