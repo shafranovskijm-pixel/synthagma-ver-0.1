@@ -1,18 +1,40 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## Проблема
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+`LockedOverlay` использует `absolute inset-0` внутри `<details>`, перекрывая кнопку `<summary>` (заголовок). После открытия секции оверлей блокирует клик по заголовку и секцию невозможно закрыть.
 
-### Changes
+## Решение
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+Переместить `LockedOverlay` так, чтобы он не перекрывал `<summary>`. Вместо размещения оверлея внутри `<details>` на уровне всего блока — применить его только к контенту внутри `<details>` (после `<summary>`), обернув контент в `div.relative`.
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+### Изменения
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+**Файл:** `src/components/organization/tabs/SettingsTab.tsx`
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+Для каждого `<details>` с `LockedOverlay` (~6 мест):
+- Убрать `LockedOverlay` из начала `<details>` (перед `<summary>`)
+- Обернуть содержимое после `<summary>` в `<div className="relative">` и поместить `LockedOverlay` внутрь этой обёртки
+
+Пример текущего кода:
+```tsx
+<details className="... relative">
+  {isFreePlan && <LockedOverlay ... />}
+  <summary>Заголовок</summary>
+  {/* контент */}
+</details>
+```
+
+Станет:
+```tsx
+<details className="...">
+  <summary>Заголовок</summary>
+  <div className="relative">
+    {isFreePlan && <LockedOverlay ... />}
+    {/* контент */}
+  </div>
+</details>
+```
+
+Это позволит `<summary>` всегда оставаться кликабельным, а оверлей будет перекрывать только содержимое секции.
 
