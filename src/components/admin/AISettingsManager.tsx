@@ -576,27 +576,103 @@ export function AISettingsManager() {
 
 
 
+  const handleSaveKey = async (name: string) => {
+    if (!editValue.trim()) {
+      toast.error("Введите значение ключа");
+      return;
+    }
+    setSavingKey(name);
+    try {
+      const { data, error } = await supabase.functions.invoke("manage-secret", {
+        body: { action: "set", name, value: editValue.trim() },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success(`Ключ ${name} сохранён`);
+      setSecretsStatus((prev) => ({ ...prev, [name]: true }));
+      setEditingKey(null);
+      setEditValue("");
+    } catch (e: any) {
+      toast.error(e.message || "Ошибка сохранения ключа");
+    } finally {
+      setSavingKey(null);
+    }
+  };
+
   const renderApiKeys = () => (
     <div className="space-y-3">
       {API_KEYS_LIST.map((k) => {
         const isConfigured = secretsStatus[k.name];
         const isLoading = secretsLoading && Object.keys(secretsStatus).length === 0;
+        const isEditing = editingKey === k.name;
+        const isSaving = savingKey === k.name;
+        const isSystemKey = k.name === "LOVABLE_API_KEY";
         return (
           <div key={k.name} className="flex items-center gap-3">
             <Label className="w-40 text-sm shrink-0">{k.label}</Label>
-            <Input disabled value="••••••••••••" className="max-w-[200px] font-mono text-xs" />
-            {isLoading ? (
-              <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
-            ) : isConfigured ? (
-              <span className="text-xs text-green-600 dark:text-green-400 font-medium">Настроен ✓</span>
+            {isEditing ? (
+              <>
+                <Input
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  placeholder="Вставьте API-ключ..."
+                  className="max-w-[280px] font-mono text-xs"
+                  type={showValue[k.name] ? "text" : "password"}
+                  autoFocus
+                />
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-7 w-7"
+                  onClick={() => setShowValue((p) => ({ ...p, [k.name]: !p[k.name] }))}
+                >
+                  {showValue[k.name] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-7 w-7 text-green-600"
+                  onClick={() => handleSaveKey(k.name)}
+                  disabled={isSaving}
+                >
+                  {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-7 w-7 text-destructive"
+                  onClick={() => { setEditingKey(null); setEditValue(""); }}
+                >
+                  <X className="w-3.5 h-3.5" />
+                </Button>
+              </>
             ) : (
-              <span className="text-xs text-destructive font-medium">Не настроен ✗</span>
+              <>
+                <Input disabled value="••••••••••••" className="max-w-[200px] font-mono text-xs" />
+                {isLoading ? (
+                  <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
+                ) : isConfigured ? (
+                  <span className="text-xs text-green-600 dark:text-green-400 font-medium">Настроен ✓</span>
+                ) : (
+                  <span className="text-xs text-destructive font-medium">Не настроен ✗</span>
+                )}
+                {!isSystemKey && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7"
+                    onClick={() => { setEditingKey(k.name); setEditValue(""); }}
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </Button>
+                )}
+              </>
             )}
           </div>
         );
       })}
       <p className="text-xs text-muted-foreground mt-2">
-        API-ключи управляются через секреты Lovable Cloud. Для изменения используйте панель секретов.
+        Нажмите на иконку карандаша, чтобы добавить или обновить API-ключ.
       </p>
     </div>
   );
