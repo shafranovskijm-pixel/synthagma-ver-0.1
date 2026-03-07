@@ -425,12 +425,7 @@ export function SettingsTab() {
       </details>
 
       {/* Branding Settings */}
-      <details className="bg-card rounded-2xl border border-border group relative">
-        {!hasBranding && <LockedOverlay requiredPlan="Стандарт" features={[
-          "Обложка и логотип вашей организации",
-          "Фирменные цвета в интерфейсе",
-          "Кастомное название в сайдбаре",
-        ]} />}
+      <details className="bg-card rounded-2xl border border-border group">
         <summary className="p-6 cursor-pointer list-none flex items-center justify-between">
           <h3 className="font-display font-semibold text-lg flex items-center gap-2">
             <Image className="w-5 h-5" />
@@ -438,7 +433,12 @@ export function SettingsTab() {
           </h3>
           <ChevronRight className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90" />
         </summary>
-        <div className="px-6 pb-6">
+        <div className="px-6 pb-6 relative">
+          {!hasBranding && <LockedOverlay requiredPlan="Стандарт" features={[
+            "Обложка и логотип вашей организации",
+            "Фирменные цвета в интерфейсе",
+            "Кастомное название в сайдбаре",
+          ]} />}
           <p className="text-sm text-muted-foreground mb-4">
             Настройте внешний вид кабинета с вашим фирменным стилем
           </p>
