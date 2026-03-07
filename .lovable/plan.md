@@ -1,31 +1,18 @@
 
 
-## Добавить предпросмотр документа во вкладку «Печать»
+## Plan: Auto-fix after "Проверить все"
 
-Во вкладке «Печать» (`stamp` tab) нет аккордеона с предпросмотром, хотя он был добавлен в остальные вкладки конструктора. Нужно добавить аналогичный аккордеон «Предпросмотр документа» после загрузчиков печати/подписи.
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-### Изменения
+### Changes
 
-**`src/components/organization/tabs/DocumentsTab.tsx`**
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-- Импортировать `Accordion, AccordionContent, AccordionItem, AccordionTrigger` и `Eye` из lucide-react, а также `DocumentPreview`
-- После `<div className="grid ...">` с двумя `StampSignatureUploader` (строка ~272), добавить аккордеон:
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-```tsx
-<Accordion type="single" collapsible>
-  <AccordionItem value="preview" className="border rounded-xl px-4">
-    <AccordionTrigger className="text-sm hover:no-underline gap-2">
-      <span className="flex items-center gap-2">
-        <Eye className="w-4 h-4" />
-        Предпросмотр документа
-      </span>
-    </AccordionTrigger>
-    <AccordionContent>
-      <DocumentPreview type="certificate" data={{}} />
-    </AccordionContent>
-  </AccordionItem>
-</Accordion>
-```
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-Покажет пример удостоверения с дефолтными данными, чтобы пользователь видел, как печать/подпись будут выглядеть на документе.
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 

@@ -18,6 +18,9 @@ import { ProtocolTemplateEditor } from "@/components/organization/ProtocolTempla
 import { CertificateTemplateEditor } from "@/components/organization/CertificateTemplateEditor";
 import { StampSignatureUploader } from "@/components/organization/StampSignatureUploader";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { DocumentPreview } from "@/components/organization/DocumentPreview";
+import { Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 type DocumentSubTab = "constructor" | "programs" | "org" | "orders" | "protocols" | "certificates" | "diplomas" | "testimonials";
@@ -270,6 +273,19 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
                     organizationId={organizationId}
                   />
                 </div>
+                <Accordion type="single" collapsible className="mt-6">
+                  <AccordionItem value="preview" className="border border-border rounded-xl px-4">
+                    <AccordionTrigger className="text-sm hover:no-underline">
+                      <span className="flex items-center gap-2">
+                        <Eye className="w-4 h-4" />
+                        Предпросмотр документа
+                      </span>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <DocumentPreview type="certificate" data={{}} />
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
               </TabsContent>
             </Tabs>
           </div>
