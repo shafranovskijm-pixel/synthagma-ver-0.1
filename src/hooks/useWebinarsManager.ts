@@ -77,13 +77,6 @@ export function useWebinarsManager(organizationId: string | null) {
     setCreating(true);
     try {
       const { data: session } = await supabase.auth.getSession();
-      const res = await supabase.functions.invoke("manage-webinar", {
-        body: { ...data, organization_id: organizationId },
-        headers: { "Content-Type": "application/json" },
-        method: "POST",
-      });
-      // The invoke method doesn't support query params directly, so we need to construct the URL
-      // Actually let's use fetch directly
       const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-webinar?action=create`;
       const response = await fetch(url, {
         method: "POST",
