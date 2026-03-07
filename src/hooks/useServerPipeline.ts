@@ -198,24 +198,34 @@ export function useServerPipeline({ courses, enableVerification, onComplete, aiP
   }, [enableVerification, startPolling]);
 
   const handleStop = useCallback(async () => {
-    if (!currentRun) {
-      // No current run but stuck — force reset
-      setIsRunning(false);
-      return;
-    }
-    try {
-      await supabase.functions.invoke("bulk-pipeline", {
-        body: { action: "stop", runId: currentRun.id },
-      });
-    } catch (e: any) {
-      console.error("Stop error:", e);
-    }
-    // Always stop polling and reset state
+    // Always stop polling and reset UI state first
     if (pollRef.current) {
       clearInterval(pollRef.current);
       pollRef.current = null;
     }
     setIsRunning(false);
+
+    if (!currentRun) return;
+
+    // Try edge function stop, but don't depend on it
+    try {
+      await supabase.functions.invoke("bulk-pipeline", {
+        body: { action: "stop", runId: currentRun.id },
+      });
+    } catch (e: any) {
+      console.error("Stop edge function failed, updating DB directly:", e);
+      // Fallback: update DB directly
+      try {
+        await supabase.from("pipeline_runs").update({
+          status: "stopped",
+          current_phase: "Остановлено вручную",
+          updated_at: new Date().toISOString(),
+        } as any).eq("id", currentRun.id);
+      } catch (dbErr) {
+        console.error("DB stop fallback also failed:", dbErr);
+      }
+    }
+    toast.info("Конвейер остановлен");
   }, [currentRun]);
 
   const progressPercent = currentRun
