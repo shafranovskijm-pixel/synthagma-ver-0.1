@@ -68,6 +68,18 @@ function parseJsonResponse(text: string): any[] {
   return JSON.parse(cleaned);
 }
 
+// Timeout wrapper for AI calls
+const AI_CALL_TIMEOUT = 120_000; // 120s
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`Timeout: ${label} (${ms / 1000}s)`)), ms)
+    ),
+  ]);
+}
+
 // ── Process a single course ──
 
 async function processCourse(
@@ -151,10 +163,13 @@ async function processCourse(
                 return `Вопрос ${idx + 1}: ${q.question}\n${opts}`;
               }).join("\n\n");
 
-              const { text: response } = await callAI([
-                { role: "system", content: prompts.answers || DEFAULT_ANSWERS_PROMPT },
-                { role: "user", content: `Курс: "${courseTitle}"\nУрок: "${lessonInfo?.title || "Тест"}"\n\n${questionsText}` },
-              ], 16384);
+              const { text: response } = await withTimeout(
+                callAI([
+                  { role: "system", content: prompts.answers || DEFAULT_ANSWERS_PROMPT },
+                  { role: "user", content: `Курс: "${courseTitle}"\nУрок: "${lessonInfo?.title || "Тест"}"\n\n${questionsText}` },
+                ], 16384),
+                AI_CALL_TIMEOUT, "callAI:answers"
+              );
 
               const answers = parseJsonResponse(response);
               for (const ans of answers) {
@@ -214,10 +229,13 @@ async function processCourse(
                 return `Вопрос ${idx + 1}: ${q.question}\n${opts}${prev}`;
               }).join("\n\n");
 
-              const { text: response } = await callAI([
-                { role: "system", content: VERIFY_PROMPT },
-                { role: "user", content: `Курс: "${courseTitle}"\nУрок: "${lessonInfo?.title || "Тест"}"\n\n${questionsText}` },
-              ], 16384);
+              const { text: response } = await withTimeout(
+                callAI([
+                  { role: "system", content: VERIFY_PROMPT },
+                  { role: "user", content: `Курс: "${courseTitle}"\nУрок: "${lessonInfo?.title || "Тест"}"\n\n${questionsText}` },
+                ], 16384),
+                AI_CALL_TIMEOUT, "callAI:verify"
+              );
 
               const answers = parseJsonResponse(response);
               for (const ans of answers) {
@@ -247,10 +265,13 @@ async function processCourse(
   if (currentLessons.length < 3) {
     await updatePhase("Генерация структуры...");
     try {
-      const { text: response } = await callAI([
-        { role: "system", content: prompts.structure || "Создай структуру курса из 8-15 уроков. Типы: text, test, practice. Последний урок — итоговый тест. Отвечай JSON-массивом [{title, type}]." },
-        { role: "user", content: `Создай структуру курса "${courseTitle}"` },
-      ]);
+      const { text: response } = await withTimeout(
+        callAI([
+          { role: "system", content: prompts.structure || "Создай структуру курса из 8-15 уроков. Типы: text, test, practice. Последний урок — итоговый тест. Отвечай JSON-массивом [{title, type}]." },
+          { role: "user", content: `Создай структуру курса "${courseTitle}"` },
+        ]),
+        AI_CALL_TIMEOUT, "callAI:structure"
+      );
       const parsed = parseJsonResponse(response);
       if (Array.isArray(parsed)) {
         const newLessons = parsed
@@ -281,10 +302,13 @@ async function processCourse(
     const lesson = emptyLessons[i];
     await updatePhase(`Контент: «${lesson.title}» (${i + 1}/${emptyLessons.length})`);
     try {
-      const { text: content } = await callAI([
-        { role: "system", content: prompts.content || DEFAULT_CONTENT_PROMPT },
-        { role: "user", content: `Напиши учебный материал для урока "${lesson.title}" курса "${courseTitle}"` },
-      ]);
+      const { text: content } = await withTimeout(
+        callAI([
+          { role: "system", content: prompts.content || DEFAULT_CONTENT_PROMPT },
+          { role: "user", content: `Напиши учебный материал для урока "${lesson.title}" курса "${courseTitle}"` },
+        ]),
+        AI_CALL_TIMEOUT, "callAI:content"
+      );
       if (content && content.length > 50) {
         await db.from("lessons").update({ content }).eq("id", lesson.id);
         lessonsFilled++;

@@ -94,7 +94,21 @@ function detectProvider(data: any) {
   }
 }
 
-// ── Parallel with concurrency limit ──
+// ── Timeout wrapper ──
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`Timeout: ${label} (${ms / 1000}s)`)), ms)
+    ),
+  ]);
+}
+
+const AI_CALL_TIMEOUT = 90_000; // 90s per AI call
+const PARALLEL_ITEM_TIMEOUT = 120_000; // 120s per parallel item
+const MAX_CLIENT_RUNTIME = 2 * 60 * 60 * 1000; // 2 hours
+
+// ── Parallel with concurrency limit + per-item timeout ──
 async function parallelMap<T, R>(
   items: T[],
   concurrency: number,
@@ -106,7 +120,13 @@ async function parallelMap<T, R>(
   async function worker() {
     while (nextIndex < items.length) {
       const i = nextIndex++;
-      results[i] = await fn(items[i], i);
+      try {
+        results[i] = await withTimeout(fn(items[i], i), PARALLEL_ITEM_TIMEOUT, `parallelMap[${i}]`);
+      } catch (e) {
+        if (e instanceof CreditsExhaustedError) throw e;
+        console.error(`[parallelMap] Item ${i} failed/timed out:`, e instanceof Error ? e.message : String(e));
+        results[i] = undefined as any;
+      }
     }
   }
 
@@ -219,14 +239,17 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
             let batchSuccess = false;
             while (retries < 3 && !batchSuccess) {
               try {
-                const { data, error } = await supabase.functions.invoke("gigachat", {
-                  body: {
-                    action: "generate_answers", courseTitle,
-                    lessonTitle: lessonInfo?.title || "Тест",
-                    questions: batch.map(q => ({ question: q.question, options: q.options || [] })),
-                    customSystemPrompt: currentPrompts.answers || undefined,
-                  },
-                });
+                const { data, error } = await withTimeout(
+                  supabase.functions.invoke("gigachat", {
+                    body: {
+                      action: "generate_answers", courseTitle,
+                      lessonTitle: lessonInfo?.title || "Тест",
+                      questions: batch.map(q => ({ question: q.question, options: q.options || [] })),
+                      customSystemPrompt: currentPrompts.answers || undefined,
+                    },
+                  }),
+                  AI_CALL_TIMEOUT, "generate_answers"
+                );
                 if (error) { checkFor402(error); throw error; }
                 if (data?.error) { checkFor402(data); throw new Error(data.error); }
                 detectProvider(data);
@@ -297,18 +320,21 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
             updatePhase(`Верификация: ${verified}/${toVerify.length} — «${lessonInfo?.title || "Тест"}»`);
 
             try {
-              const { data, error } = await supabase.functions.invoke("gigachat", {
-                body: {
-                  action: "verify_answers",
-                  courseTitle,
-                  lessonTitle: lessonInfo?.title || "Тест",
-                  questions: batch.map(q => ({ question: q.question, options: q.options || [] })),
-                  previousAnswers: batch.map(q => ({
-                    correctAnswer: q.correct_answer,
-                    explanation: q.explanation || "",
-                  })),
-                },
-              });
+              const { data, error } = await withTimeout(
+                supabase.functions.invoke("gigachat", {
+                  body: {
+                    action: "verify_answers",
+                    courseTitle,
+                    lessonTitle: lessonInfo?.title || "Тест",
+                    questions: batch.map(q => ({ question: q.question, options: q.options || [] })),
+                    previousAnswers: batch.map(q => ({
+                      correctAnswer: q.correct_answer,
+                      explanation: q.explanation || "",
+                    })),
+                  },
+                }),
+                AI_CALL_TIMEOUT, "verify_answers"
+              );
               if (error) { checkFor402(error); throw error; }
               if (data?.error) { checkFor402(data); throw new Error(data.error); }
               detectProvider(data);
@@ -351,13 +377,16 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
     if (currentLessons.length < 3) {
       updatePhase("Генерация структуры...");
       try {
-        const { data, error } = await supabase.functions.invoke("gigachat", {
-          body: {
-            action: "generate_structure", courseTitle,
-            existingLessons: currentLessons.map(l => ({ title: l.title, type: l.type })),
-            customSystemPrompt: currentPrompts.structure || undefined,
-          },
-        });
+        const { data, error } = await withTimeout(
+          supabase.functions.invoke("gigachat", {
+            body: {
+              action: "generate_structure", courseTitle,
+              existingLessons: currentLessons.map(l => ({ title: l.title, type: l.type })),
+              customSystemPrompt: currentPrompts.structure || undefined,
+            },
+          }),
+          AI_CALL_TIMEOUT, "generate_structure"
+        );
         if (error) { checkFor402(error); throw error; }
         if (data?.error) { checkFor402(data); throw new Error(data.error); }
         detectProvider(data);
@@ -397,9 +426,12 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
         if (stopRef.current) return;
         updatePhase(`Контент: «${lesson.title}» (${filledSoFar + 1}/${emptyLessons.length})`);
         try {
-          const { data, error } = await supabase.functions.invoke("gigachat", {
-            body: { action: "generate_content", courseTitle, lessonTitle: lesson.title, existingContent: null, customSystemPrompt: currentPrompts.content || undefined },
-          });
+          const { data, error } = await withTimeout(
+            supabase.functions.invoke("gigachat", {
+              body: { action: "generate_content", courseTitle, lessonTitle: lesson.title, existingContent: null, customSystemPrompt: currentPrompts.content || undefined },
+            }),
+            AI_CALL_TIMEOUT, "generate_content"
+          );
           if (error) { checkFor402(error); throw error; }
           if (data?.error) { checkFor402(data); throw new Error(data.error); }
           detectProvider(data);
@@ -454,6 +486,12 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
 
     for (let i = 0; i < courses.length; i++) {
       if (stopRef.current) break;
+      // Global 2-hour timeout
+      if (Date.now() - startTime > MAX_CLIENT_RUNTIME) {
+        const { toast } = await import("sonner");
+        toast.warning("Конвейер работает более 2 часов — автоматическая остановка с сохранением прогресса.");
+        break;
+      }
       const course = courses[i];
 
       // Skip already completed (resume mode)
