@@ -124,6 +124,7 @@ export function SubscriptionTab() {
   const [submitting, setSubmitting] = useState(false);
   const [pendingRequest, setPendingRequest] = useState<{ requested_plan: string; created_at: string } | null>(null);
   const [billingDocs, setBillingDocs] = useState<BillingDoc[]>([]);
+  const [orgContact, setOrgContact] = useState<{ email?: string; phone?: string; contact_name?: string }>({});
 
   const currentPlan = subscriptionLimits.plan;
   const currentPlanInfo = SUBSCRIPTION_PLANS[currentPlan];
