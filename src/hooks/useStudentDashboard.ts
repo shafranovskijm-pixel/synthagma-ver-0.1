@@ -54,7 +54,7 @@ export function useStudentDashboard() {
   const isMobile = useIsMobile();
   const { theme, setTheme } = useTheme();
 
-  const [activeTab, setActiveTab] = useState<"courses" | "chat" | "store">("courses");
+  const [activeTab, setActiveTab] = useState<"courses" | "chat" | "store" | "webinars">("courses");
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [inputValue, setInputValue] = useState("");
   const [isAiLoading, setIsAiLoading] = useState(false);
