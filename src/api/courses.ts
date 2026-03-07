@@ -283,6 +283,7 @@ export async function fetchCourseEnrollments(courseId: string): Promise<Enrollme
 
 /**
  * Fetch students for a course using batch queries (no N+1).
+ * Uses a single batch RPC call for passwords instead of per-student queries.
  */
 export async function fetchCourseStudents(courseId: string, courseTitle: string): Promise<any[]> {
   const { data: enrollments } = await supabase
@@ -294,32 +295,38 @@ export async function fetchCourseStudents(courseId: string, courseTitle: string)
 
   const userIds = Array.from(new Set(enrollments.map(e => e.user_id)));
 
-  // Batch fetch profiles + passwords in parallel
-  const [profilesResult, passwordsResult] = await Promise.all([
-    supabase
-      .from("profiles")
-      .select("id, user_id, full_name, email, login")
-      .in("user_id", userIds),
-    supabase
-      .rpc("get_decrypted_student_passwords", { p_organization_id: null as any })
-      // We can't filter by org here easily; fall back to per-user RPC or use the profiles approach
-  ]);
+  // Batch fetch profiles
+  const { data: profilesData } = await supabase
+    .from("profiles")
+    .select("id, user_id, full_name, email, login, organization_id")
+    .in("user_id", userIds);
+
+  if (!profilesData || profilesData.length === 0) return [];
+
+  // Get organization_id from first profile for batch password decryption
+  const orgId = profilesData[0]?.organization_id;
+
+  // Batch fetch passwords — single RPC call instead of N calls
+  const passwordMap = new Map<string, string>();
+  if (orgId) {
+    const { data: passwordData } = await supabase
+      .rpc("get_decrypted_student_passwords", { p_organization_id: orgId });
+    if (passwordData) {
+      for (const row of passwordData) {
+        if (row.decrypted_password) {
+          passwordMap.set(row.user_id, row.decrypted_password);
+        }
+      }
+    }
+  }
 
   // Build profile map
-  const profileMap = new Map((profilesResult.data || []).map(p => [p.user_id, p]));
-
-  // For passwords, fetch individually only for found profiles (still better than N+1 on everything)
-  const passwordMap = new Map<string, string>();
-  // Use batch RPC if available, otherwise skip passwords here (they're fetched at dashboard level)
+  const profileMap = new Map(profilesData.map(p => [p.user_id, p]));
 
   const students: any[] = [];
   for (const enrollment of enrollments) {
     const profile = profileMap.get(enrollment.user_id);
     if (profile) {
-      // Fetch decrypted password via secure RPC
-      const { data: decryptedPw } = await supabase
-        .rpc("get_decrypted_student_password", { p_user_id: profile.user_id });
-
       students.push({
         id: profile.id,
         user_id: profile.user_id,
@@ -327,7 +334,7 @@ export async function fetchCourseStudents(courseId: string, courseTitle: string)
         name: profile.full_name || "Без имени",
         email: profile.email || "",
         login: profile.login || null,
-        generated_password: decryptedPw || null,
+        generated_password: passwordMap.get(profile.user_id) || null,
         course: courseTitle,
         course_id: courseId,
         progress: enrollment.progress,
