@@ -51,6 +51,7 @@ const tabCategoryMap: Record<string, string> = {
   documents: "documents",
   journals: "journals",
   "labor-safety": "labor_safety",
+  webinars: "webinars",
   frdo: "frdo",
   services: "services",
   settings: "settings",
