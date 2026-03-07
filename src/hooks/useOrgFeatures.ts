@@ -132,6 +132,7 @@ const defaultFeatures: OrgFeaturesState = {
   settings: true,
   student_cabinet: true,
   labor_safety: true,
+  webinars: true,
   
   // Individual features - all enabled by default
   courses_create: true,
