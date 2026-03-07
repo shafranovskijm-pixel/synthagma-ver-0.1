@@ -1,18 +1,25 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## Добавление второго потока API для SaluteSpeech
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+### Проблема
+Сейчас SaluteSpeech использует один ключ `SALUTESPEECH_AUTH_KEY`. При высокой нагрузке или rate-limit'ах запросы могут блокироваться. У GigaChat уже реализован пул слотов с двумя ключами — нужно сделать аналогично для SaluteSpeech.
 
-### Changes
+### Решение
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+**1. Edge-функция `supabase/functions/salutespeech-tts/index.ts`**
+- Реализовать систему слотов (аналогично `gigachat-client.ts`):
+  - Слот 0: `SALUTESPEECH_AUTH_KEY` (основной)
+  - Слот 1: `SALUTESPEECH_AUTH_KEY_2` (опциональный, подключается если секрет задан)
+- Каждый слот хранит свой `cachedToken` и `tokenExpiresAt` (токены SaluteSpeech живут 30 минут)
+- Round-robin: выбирать первый свободный слот; при ошибке — пробовать второй
+- Логирование: какой слот использовался
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+**2. Админ-панель `src/components/admin/AISettingsManager.tsx`**
+- Добавить `SALUTESPEECH_AUTH_KEY_2` в список API-ключей с лейблом "SaluteSpeech Key 2"
+- Добавить `SALUTESPEECH_AUTH_KEY` (Key 1) — сейчас его нет в списке отображаемых ключей
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
-
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+### Файлы
+1. `supabase/functions/salutespeech-tts/index.ts` — пул слотов с кэшированием токенов и fallback
+2. `src/components/admin/AISettingsManager.tsx` — отображение двух ключей SaluteSpeech
 
