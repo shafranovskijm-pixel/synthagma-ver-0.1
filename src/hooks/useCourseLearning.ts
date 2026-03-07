@@ -104,6 +104,10 @@ export function useCourseLearning() {
   const [ttsSettings, setTtsSettings] = useState<TTSSettings>(() => getStoredTTSSettings());
   const speechSynthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
   const [isBrowserSpeaking, setIsBrowserSpeaking] = useState(false);
+  const [isSaluteSpeaking, setIsSaluteSpeaking] = useState(false);
+  const [isSaluteLoading, setIsSaluteLoading] = useState(false);
+  const saluteAudioRef = useRef<HTMLAudioElement | null>(null);
+  const saluteAbortRef = useRef<AbortController | null>(null);
 
   const elevenLabsTTS = useElevenLabsTTS({ voiceId: ttsSettings.voiceId });
 
