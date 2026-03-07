@@ -1,18 +1,39 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## Диагностика: почему Lovable AI не получает задачи в Round-Robin
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+### Проблема
 
-### Changes
+В `callAIRoundRobin` (gigachat-client.ts) распределение идёт по каналам: slot-0, slot-1, Lovable AI. Каунтер `rrCounter` корректно чередует стартовый канал. **Но** каждый GigaChat-слот имеет цепочку фоллбэка моделей: `GigaChat-Pro → GigaChat-Max → GigaChat (базовый)`. Даже когда Pro получает 402 (токены кончились) и Max — 429, базовый GigaChat всё равно **успешно** отвечает. Это видно в логах:
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+```
+slot-0: GigaChat-Pro failed (402) → GigaChat-Max failed (429) → GigaChat: Success
+```
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+В итоге GigaChat-слоты **никогда не «падают»** полностью, а Round-Robin переходит к Lovable AI только как к **фоллбэку при ошибке**. Когда `rrCounter` отправляет задачу на слот — слот справляется (через базовую модель) и Lovable AI не нужен.
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+Второй фактор: при рестарте edge-функции `rrCounter` сбрасывается в 0, всегда начиная со slot-0.
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+### Решение
+
+Добавить **принудительное распределение** — передавать индекс задачи из bulk-pipeline в `callAI`, чтобы Round-Robin работал детерминированно:
+
+**Файл: `supabase/functions/_shared/gigachat-client.ts`**
+1. В `callAIRoundRobin` добавить параметр `taskIndex?: number`
+2. Если передан `taskIndex`, использовать `taskIndex % channels.length` вместо `rrCounter`
+3. Когда `taskIndex % channels.length` указывает на Lovable AI — идти **напрямую** на Lovable AI, без попытки GigaChat
+
+**Файл: `supabase/functions/_shared/gigachat-client.ts` — `callAI`**
+1. Добавить параметр `taskIndex?: number` и прокинуть в `callAIRoundRobin`
+
+**Файл: `supabase/functions/bulk-pipeline/index.ts`**
+1. Завести счётчик `let taskCounter = 0` на уровне pipeline-run
+2. При каждом вызове `callAI(...)` передавать `taskCounter++` как `taskIndex`
+3. Это обеспечит: задача 0 → slot-0, задача 1 → slot-1, задача 2 → Lovable AI, задача 3 → slot-0 и т.д.
+
+**Дополнительное логирование:**
+- Добавить `console.log` в `callAIRoundRobin` с указанием `taskIndex` и выбранного канала для отслеживания распределения
+
+### Итог
+Каждый третий вызов ИИ в конвейере будет **гарантированно** идти на Lovable AI, а не застревать на базовом GigaChat.
 
