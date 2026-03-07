@@ -53,7 +53,9 @@ interface Props {
 
 export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
   const [enableVerification, setEnableVerification] = useState(false);
+  const [serverMode, setServerMode] = useState(false);
   const pipeline = useBulkPipeline({ courses, onComplete, enableVerification });
+  const serverPipeline = useServerPipeline({ courses, enableVerification, onComplete });
   const excelImport = usePipelineExcelImport({ onComplete });
 
   // Collapsible sections
