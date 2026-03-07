@@ -1,18 +1,31 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## Проблема
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+В админ-панели раздел «API-ключи» показывает **все** ключи как «Настроен ✓» — это захардкожено. Реальный статус не проверяется. Секрет `SALUTESPEECH_AUTH_KEY_2` **отсутствует** в проекте (его нет в списке секретов).
 
-### Changes
+## Решение
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+### 1. Добавить секрет `SALUTESPEECH_AUTH_KEY_2`
+После утверждения плана я запрошу добавление секрета через панель секретов — вам нужно будет вставить значение второго ключа SaluteSpeech.
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+### 2. Исправить отображение статуса ключей в админке
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+**Файл:** `src/components/admin/AISettingsManager.tsx`
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+Сейчас (строки 561-565):
+```tsx
+<Input disabled value="••••••••••••" />
+<span>Настроен ✓</span>  // всегда показывает "Настроен"
+```
+
+Нужно: проверять наличие секрета через edge-функцию `get-external-storage-config` (или аналогичную) и показывать реальный статус:
+- **Настроен ✓** (зелёный) — секрет существует
+- **Не настроен** (серый) — секрет отсутствует
+
+Для этого создать простую edge-функцию `check-secrets-status`, которая принимает список имён секретов и возвращает `{ name: boolean }` — есть ли значение у каждого.
+
+### Файлы
+1. `supabase/functions/check-secrets-status/index.ts` — новая функция проверки
+2. `src/components/admin/AISettingsManager.tsx` — динамический статус ключей + добавление секрета
 
