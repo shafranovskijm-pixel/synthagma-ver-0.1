@@ -183,12 +183,15 @@ export function SubscriptionTab() {
 
       // Send Telegram notification
       const planInfo = SUBSCRIPTION_PLANS[selectedPlan];
-      const orgName = organizationId;
+      const orgDisplayName = d.organizationName || organizationId;
       try {
         await supabase.functions.invoke("send-telegram-notification", {
           body: {
             message: `📋 <b>Заявка на повышение тарифа</b>\n\n` +
-              `🏢 Организация: <code>${organizationId}</code>\n` +
+              `🏢 Организация: ${orgDisplayName}\n` +
+              (orgContact.contact_name ? `👤 Контакт: ${orgContact.contact_name}\n` : '') +
+              (orgContact.email ? `📧 Email: ${orgContact.email}\n` : '') +
+              (orgContact.phone ? `📞 Телефон: ${orgContact.phone}\n` : '') +
               `📊 Текущий тариф: ${SUBSCRIPTION_PLANS[currentPlan]?.name || currentPlan}\n` +
               `🆕 Запрошенный тариф: ${planInfo?.name || selectedPlan}\n` +
               `💰 Стоимость: ${planInfo?.price?.toLocaleString() || '?'} ₽/мес\n` +
