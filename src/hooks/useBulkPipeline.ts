@@ -486,6 +486,12 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
 
     for (let i = 0; i < courses.length; i++) {
       if (stopRef.current) break;
+      // Global 2-hour timeout
+      if (Date.now() - startTime > MAX_CLIENT_RUNTIME) {
+        const { toast } = await import("sonner");
+        toast.warning("Конвейер работает более 2 часов — автоматическая остановка с сохранением прогресса.");
+        break;
+      }
       const course = courses[i];
 
       // Skip already completed (resume mode)

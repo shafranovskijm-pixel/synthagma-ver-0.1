@@ -302,10 +302,13 @@ async function processCourse(
     const lesson = emptyLessons[i];
     await updatePhase(`Контент: «${lesson.title}» (${i + 1}/${emptyLessons.length})`);
     try {
-      const { text: content } = await callAI([
-        { role: "system", content: prompts.content || DEFAULT_CONTENT_PROMPT },
-        { role: "user", content: `Напиши учебный материал для урока "${lesson.title}" курса "${courseTitle}"` },
-      ]);
+      const { text: content } = await withTimeout(
+        callAI([
+          { role: "system", content: prompts.content || DEFAULT_CONTENT_PROMPT },
+          { role: "user", content: `Напиши учебный материал для урока "${lesson.title}" курса "${courseTitle}"` },
+        ]),
+        AI_CALL_TIMEOUT, "callAI:content"
+      );
       if (content && content.length > 50) {
         await db.from("lessons").update({ content }).eq("id", lesson.id);
         lessonsFilled++;
