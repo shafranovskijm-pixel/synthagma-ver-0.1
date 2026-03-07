@@ -6,6 +6,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
+import { MARKETPLACE_ORG_ID } from "@/constants/marketplace";
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -253,7 +254,7 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
       const { error } = await supabase
         .from("marketplace_courses")
         .update({ price_organization: 0 } as any)
-        .gte("id", "00000000-0000-0000-0000-000000000000");
+        .gte("id", MARKETPLACE_ORG_ID);
       if (error) throw error;
       toast.success("Все курсы стали бесплатными для организаций");
       onComplete();
@@ -317,7 +318,7 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
             title: course.title,
             description: course.description || null,
             duration: course.duration || null,
-            organization_id: "00000000-0000-0000-0000-000000000000",
+            organization_id: MARKETPLACE_ORG_ID,
             is_published: true,
           })
           .select("id")
@@ -325,7 +326,7 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
         if (courseErr) throw courseErr;
         await supabase.from("marketplace_courses").insert({
           course_id: courseData.id,
-          organization_id: "00000000-0000-0000-0000-000000000000",
+          organization_id: MARKETPLACE_ORG_ID,
           price_student: priceStudent,
           price_organization: priceOrg,
           is_active: true,

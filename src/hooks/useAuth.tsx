@@ -87,6 +87,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    // Sync role across tabs via storage events
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'user_role') {
+        const newRole = e.newValue as AuthContextType['userRole'];
+        setUserRole(newRole);
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+
     // Visibility-based auto-refresh: only active tab refreshes tokens
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
@@ -175,6 +184,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       subscription.unsubscribe();
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('storage', handleStorageChange);
     };
   }, [fetchUserRole, attemptSessionRecovery]);
 
