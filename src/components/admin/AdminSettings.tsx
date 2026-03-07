@@ -1,16 +1,17 @@
 import { useState, useEffect } from "react";
 import { 
   Sun, Moon, Palette, ChevronRight, Database,
-   Shield, Bell, Loader2, Save, AlertCircle, Package, Globe, Tag
+  Shield, Bell, Loader2, Save, Globe, Tag, Sparkles, Settings
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { PatchUpdatesManager } from "./PatchUpdatesManager";
 import { SEOSettingsManager } from "./SEOSettingsManager";
 import { PromoCodesManager } from "./PromoCodesManager";
+import { SigmaLogo } from "@/components/ui/SigmaLogo";
 
 interface SystemSettings {
   maintenanceMode: boolean;
@@ -31,7 +32,7 @@ export function AdminSettings() {
     maintenanceMode: false,
     registrationEnabled: true,
     defaultTokensLimit: 100000,
-    defaultStorageLimit: 1073741824, // 1GB
+    defaultStorageLimit: 1073741824,
   });
 
   const [isSaving, setIsSaving] = useState(false);
@@ -73,7 +74,6 @@ export function AdminSettings() {
   const handleSaveSettings = async () => {
     setIsSaving(true);
     try {
-      // Here you would save to a system_settings table
       await new Promise(resolve => setTimeout(resolve, 500));
       toast.success('Настройки сохранены');
     } catch (error) {
@@ -83,13 +83,28 @@ export function AdminSettings() {
     }
   };
 
+  const cardClass = "bg-card rounded-xl lg:rounded-2xl border border-border/60 shadow-sm hover:shadow-md transition-shadow duration-200 group";
+
   return (
     <div className="max-w-2xl space-y-4 lg:space-y-6">
+      {/* Page Header */}
+      <div className="space-y-1">
+        <div className="flex items-center gap-2">
+          <Settings className="w-5 h-5 text-muted-foreground" />
+          <h2 className="text-2xl font-display font-bold bg-gradient-to-r from-foreground to-foreground/60 bg-clip-text text-transparent">
+            Настройки
+          </h2>
+        </div>
+        <p className="text-sm text-muted-foreground">6 секций • Панель администратора</p>
+      </div>
+
       {/* Theme Settings */}
-      <details className="bg-card rounded-xl lg:rounded-2xl border border-border group" open>
+      <details className={cardClass} open>
         <summary className="p-4 lg:p-6 cursor-pointer list-none flex items-center justify-between">
           <h3 className="font-display font-semibold text-base lg:text-lg flex items-center gap-2">
-            <Palette className="w-4 h-4 lg:w-5 lg:h-5" />
+            <div className="p-1.5 rounded-lg bg-violet-500/10">
+              <Palette className="w-4 h-4 lg:w-5 lg:h-5 text-violet-500" />
+            </div>
             Тема оформления
           </h3>
           <ChevronRight className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90" />
@@ -133,10 +148,12 @@ export function AdminSettings() {
       </details>
 
       {/* Database Stats */}
-      <details className="bg-card rounded-xl lg:rounded-2xl border border-border group">
+      <details className={cardClass}>
         <summary className="p-4 lg:p-6 cursor-pointer list-none flex items-center justify-between">
           <h3 className="font-display font-semibold text-base lg:text-lg flex items-center gap-2">
-            <Database className="w-4 h-4 lg:w-5 lg:h-5" />
+            <div className="p-1.5 rounded-lg bg-blue-500/10">
+              <Database className="w-4 h-4 lg:w-5 lg:h-5 text-blue-500" />
+            </div>
             Статистика базы данных
           </h3>
           <ChevronRight className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90" />
@@ -148,20 +165,20 @@ export function AdminSettings() {
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-secondary/50 rounded-xl p-4">
-                <div className="text-2xl font-bold">{dbStats.totalOrgs}</div>
+              <div className="bg-blue-500/5 border border-blue-500/10 rounded-xl p-4">
+                <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{dbStats.totalOrgs}</div>
                 <div className="text-sm text-muted-foreground">Организаций</div>
               </div>
-              <div className="bg-secondary/50 rounded-xl p-4">
-                <div className="text-2xl font-bold">{dbStats.totalUsers}</div>
+              <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-xl p-4">
+                <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{dbStats.totalUsers}</div>
                 <div className="text-sm text-muted-foreground">Пользователей</div>
               </div>
-              <div className="bg-secondary/50 rounded-xl p-4">
-                <div className="text-2xl font-bold">{dbStats.totalCourses}</div>
+              <div className="bg-violet-500/5 border border-violet-500/10 rounded-xl p-4">
+                <div className="text-2xl font-bold text-violet-600 dark:text-violet-400">{dbStats.totalCourses}</div>
                 <div className="text-sm text-muted-foreground">Курсов</div>
               </div>
-              <div className="bg-secondary/50 rounded-xl p-4">
-                <div className="text-2xl font-bold">{dbStats.totalEnrollments}</div>
+              <div className="bg-orange-500/5 border border-orange-500/10 rounded-xl p-4">
+                <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{dbStats.totalEnrollments}</div>
                 <div className="text-sm text-muted-foreground">Зачислений</div>
               </div>
             </div>
@@ -178,31 +195,34 @@ export function AdminSettings() {
         </div>
       </details>
 
-       {/* SEO Settings */}
-       <details className="bg-card rounded-xl lg:rounded-2xl border border-border group">
-         <summary className="p-4 lg:p-6 cursor-pointer list-none flex items-center justify-between">
-           <h3 className="font-display font-semibold text-base lg:text-lg flex items-center gap-2">
-             <Globe className="w-4 h-4 lg:w-5 lg:h-5" />
-             SEO настройки
-           </h3>
-           <ChevronRight className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90" />
-         </summary>
-         <div className="px-4 lg:px-6 pb-4 lg:pb-6">
-           <SEOSettingsManager />
-         </div>
-       </details>
- 
-      {/* System Settings */}
-      <details className="bg-card rounded-xl lg:rounded-2xl border border-border group">
+      {/* SEO Settings */}
+      <details className={cardClass}>
         <summary className="p-4 lg:p-6 cursor-pointer list-none flex items-center justify-between">
           <h3 className="font-display font-semibold text-base lg:text-lg flex items-center gap-2">
-            <Shield className="w-4 h-4 lg:w-5 lg:h-5" />
+            <div className="p-1.5 rounded-lg bg-emerald-500/10">
+              <Globe className="w-4 h-4 lg:w-5 lg:h-5 text-emerald-500" />
+            </div>
+            SEO настройки
+          </h3>
+          <ChevronRight className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90" />
+        </summary>
+        <div className="px-4 lg:px-6 pb-4 lg:pb-6">
+          <SEOSettingsManager />
+        </div>
+      </details>
+
+      {/* System Settings */}
+      <details className={cardClass}>
+        <summary className="p-4 lg:p-6 cursor-pointer list-none flex items-center justify-between">
+          <h3 className="font-display font-semibold text-base lg:text-lg flex items-center gap-2">
+            <div className="p-1.5 rounded-lg bg-orange-500/10">
+              <Shield className="w-4 h-4 lg:w-5 lg:h-5 text-orange-500" />
+            </div>
             Системные настройки
           </h3>
           <ChevronRight className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90" />
         </summary>
         <div className="px-4 lg:px-6 pb-4 lg:pb-6 space-y-4">
-          {/* Registration */}
           <div className="flex items-center justify-between py-3 border-b border-border">
             <div>
               <p className="font-medium text-sm lg:text-base">Регистрация организаций</p>
@@ -216,7 +236,6 @@ export function AdminSettings() {
             </button>
           </div>
 
-          {/* Maintenance Mode */}
           <div className="flex items-center justify-between py-3 border-b border-border">
             <div>
               <p className="font-medium text-sm lg:text-base flex items-center gap-2">
@@ -235,7 +254,6 @@ export function AdminSettings() {
             </button>
           </div>
 
-          {/* Default Limits */}
           <div className="space-y-3 py-3">
             <div>
               <Label className="text-sm">Лимит AI-токенов по умолчанию</Label>
@@ -281,10 +299,12 @@ export function AdminSettings() {
       </details>
 
       {/* Promo Codes */}
-      <details className="bg-card rounded-xl lg:rounded-2xl border border-border group">
+      <details className={cardClass}>
         <summary className="p-4 lg:p-6 cursor-pointer list-none flex items-center justify-between">
           <h3 className="font-display font-semibold text-base lg:text-lg flex items-center gap-2">
-            <Tag className="w-4 h-4 lg:w-5 lg:h-5" />
+            <div className="p-1.5 rounded-lg bg-pink-500/10">
+              <Tag className="w-4 h-4 lg:w-5 lg:h-5 text-pink-500" />
+            </div>
             Промоакции
           </h3>
           <ChevronRight className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90" />
@@ -294,61 +314,57 @@ export function AdminSettings() {
         </div>
       </details>
 
-      {/* Notifications Settings */}
-      <details className="bg-card rounded-xl lg:rounded-2xl border border-border group">
+      {/* Notifications */}
+      <details className={cardClass}>
         <summary className="p-4 lg:p-6 cursor-pointer list-none flex items-center justify-between">
           <h3 className="font-display font-semibold text-base lg:text-lg flex items-center gap-2">
-            <Bell className="w-4 h-4 lg:w-5 lg:h-5" />
+            <div className="p-1.5 rounded-lg bg-amber-500/10">
+              <Bell className="w-4 h-4 lg:w-5 lg:h-5 text-amber-500" />
+            </div>
             Уведомления
+            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 font-normal">Скоро</Badge>
           </h3>
           <ChevronRight className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90" />
         </summary>
         <div className="px-4 lg:px-6 pb-4 lg:pb-6">
-          <p className="text-sm text-muted-foreground">
-            Настройка уведомлений для администраторов о важных событиях в системе.
-          </p>
-          <div className="mt-4 p-4 bg-secondary/50 rounded-xl flex items-center gap-3">
-            <AlertCircle className="w-5 h-5 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">
-              Функция уведомлений находится в разработке
-            </span>
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <div className="p-3 rounded-full bg-amber-500/10 mb-3">
+              <Sparkles className="w-6 h-6 text-amber-500" />
+            </div>
+            <p className="font-medium text-sm">Уведомления скоро появятся</p>
+            <p className="text-xs text-muted-foreground mt-1 max-w-xs">
+              Настройка уведомлений для администраторов о важных событиях в системе
+            </p>
           </div>
-        </div>
-      </details>
-
-      {/* Developer Mode - Patch Updates */}
-      <details className="bg-card rounded-xl lg:rounded-2xl border border-border group">
-        <summary className="p-4 lg:p-6 cursor-pointer list-none flex items-center justify-between">
-          <h3 className="font-display font-semibold text-base lg:text-lg flex items-center gap-2">
-            <Package className="w-4 h-4 lg:w-5 lg:h-5" />
-            Режим разработчика
-            <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">Dev</span>
-          </h3>
-          <ChevronRight className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90" />
-        </summary>
-        <div className="px-4 lg:px-6 pb-4 lg:pb-6">
-          <PatchUpdatesManager />
         </div>
       </details>
 
       {/* System Info */}
-      <div className="bg-card rounded-xl lg:rounded-2xl border border-border p-4 lg:p-6">
-        <h3 className="font-display font-semibold text-base lg:text-lg flex items-center gap-2 mb-4">
-          <Shield className="w-4 h-4 lg:w-5 lg:h-5" />
-          О системе
-        </h3>
+      <div className={`${cardClass} p-4 lg:p-6`}>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-display font-semibold text-base lg:text-lg flex items-center gap-2">
+            <div className="p-1.5 rounded-lg bg-slate-500/10">
+              <Shield className="w-4 h-4 lg:w-5 lg:h-5 text-slate-500" />
+            </div>
+            О системе
+          </h3>
+          <Badge variant="outline" className="text-xs font-mono">v1.0.0</Badge>
+        </div>
+        <div className="flex items-center gap-3 mb-4 p-3 rounded-xl bg-muted/50">
+          <SigmaLogo size="sm" showText={false} />
+          <div>
+            <p className="font-display font-semibold text-sm">Синтагма</p>
+            <p className="text-xs text-muted-foreground">Платформа дистанционного обучения</p>
+          </div>
+        </div>
         <div className="space-y-2 text-sm">
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Версия</span>
-            <span className="font-medium">1.0.0</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Платформа</span>
-            <span className="font-medium">Синтагма</span>
-          </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Окружение</span>
             <span className="font-medium">Production</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Сборка</span>
+            <span className="font-medium font-mono text-xs">2026.03.07</span>
           </div>
         </div>
       </div>
