@@ -118,7 +118,7 @@ serve(async (req) => {
       const { text: content, model } = await callAI([
         { role: "system", content: systemPrompt },
         { role: "user", content: `Напиши учебный материал для урока "${lessonTitle}" курса "${courseTitle}"` },
-      ]);
+      ], 4096, ai_provider);
       result = { content, model };
 
     } else if (action === "generate_questions") {
