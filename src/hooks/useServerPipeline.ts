@@ -23,9 +23,11 @@ interface UseServerPipelineProps {
   enableVerification: boolean;
   onComplete: () => void;
   aiProvider?: string;
+  gigachatModel?: string;
+  lovableModel?: string;
 }
 
-export function useServerPipeline({ courses, enableVerification, onComplete, aiProvider }: UseServerPipelineProps) {
+export function useServerPipeline({ courses, enableVerification, onComplete, aiProvider, gigachatModel, lovableModel }: UseServerPipelineProps) {
   const [isRunning, setIsRunning] = useState(false);
   const [currentRun, setCurrentRun] = useState<PipelineRun | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
