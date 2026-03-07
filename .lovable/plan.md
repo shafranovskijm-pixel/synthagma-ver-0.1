@@ -1,18 +1,49 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+# План: Визуальное улучшение меню «Настройки»
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+## Что меняем
 
-### Changes
+### 1. Убрать «Режим разработчика»
+Удалить секцию целиком (строки 319-332), включая импорт `PatchUpdatesManager` и иконку `Package`.
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+### 2. Цветовые акценты для иконок
+Каждая секция получает свой цвет иконки (как сделали в ИИ-провайдерах):
+- Тема оформления → фиолетовый (`text-violet-500`)
+- Статистика БД → синий (`text-blue-500`)
+- SEO → зелёный (`text-emerald-500`)
+- Системные настройки → оранжевый (`text-orange-500`)
+- Промоакции → розовый (`text-pink-500`)
+- Уведомления → жёлтый (`text-amber-500`)
+- О системе → серый (`text-slate-500`)
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+### 3. Карточки с тенью и hover-эффектом
+Заменить плоский `border border-border` на `border border-border/60 shadow-sm hover:shadow-md transition-shadow duration-200` — карточки станут объёмнее и интерактивнее.
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+### 4. Заголовок страницы с градиентом
+Добавить заголовок «Настройки» с подзаголовком «Панель администратора» и мини-статистикой (количество секций). Текст заголовка — с градиентом, как в ИИ-провайдерах.
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+### 5. Статистика БД — цветные карточки
+Вместо одинаковых `bg-secondary/50` сделать каждую карточку со своим акцентом:
+- Организации → синий фон
+- Пользователи → зелёный фон
+- Курсы → фиолетовый фон
+- Зачисления → оранжевый фон
+
+### 6. «О системе» — компактнее и красивее
+Добавить логотип/иконку платформы, версию показать как бейдж, добавить дату сборки.
+
+### 7. Секция «Уведомления» — убрать заглушку, заменить на CTA
+Вместо «в разработке» — показать красивый placeholder с иконкой и кнопкой «Скоро», чтобы выглядело как полноценная фича.
+
+## Файл
+
+### `src/components/admin/AdminSettings.tsx`
+- Удалить импорт `PatchUpdatesManager` и `Package`
+- Удалить блок «Режим разработчика»
+- Добавить цветовые классы к иконкам каждой секции
+- Добавить `shadow-sm hover:shadow-md transition-shadow` ко всем `details`
+- Обновить заголовок страницы с градиентом
+- Раскрасить карточки статистики БД
+- Обновить блок «О системе» с бейджем версии
 
