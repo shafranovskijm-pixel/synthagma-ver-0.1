@@ -247,6 +247,7 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
                       lessonTitle: lessonInfo?.title || "Тест",
                       questions: batch.map(q => ({ question: q.question, options: q.options || [] })),
                       customSystemPrompt: currentPrompts.answers || undefined,
+                      ai_provider: aiProvider,
                     },
                   }),
                   AI_CALL_TIMEOUT, "generate_answers"
