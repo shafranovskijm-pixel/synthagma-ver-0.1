@@ -152,6 +152,7 @@ export function useCourseLearning() {
   }, []);
 
 
+  const currentLesson = lessons[currentLessonIndex];
   const completedCount = lessonProgress.filter(p => p.completed).length;
   const progressPercent = lessons.length > 0 ? (completedCount / lessons.length) * 100 : 0;
 
