@@ -13,6 +13,7 @@ export type AdminTabType =
   | "content"
   | "marketplace"
   | "sales"
+  | "ai"
   | "support"
   | "devtools"
   | "settings";
