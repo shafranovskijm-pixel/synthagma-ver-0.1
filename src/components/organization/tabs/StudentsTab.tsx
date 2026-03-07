@@ -8,7 +8,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { 
   Users, Search, BookOpen, Filter, FileCheck, FileSpreadsheet, 
   GraduationCap, Key, Mail, XCircle, X, Loader2, Copy, Trash2, 
-  CheckCircle2, ChevronRight, AlertCircle, FileText, FolderOpen, Plus, Pencil, MessageCircle
+  CheckCircle2, ChevronRight, AlertCircle, FileText, FolderOpen, Plus, Pencil, MessageCircle, Eye
 } from "lucide-react";
 import { useStudents } from "@/hooks/useStudents";
 import { toast } from "sonner";
