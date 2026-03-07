@@ -67,6 +67,7 @@ interface Organization {
   inn: string | null;
   contact_name: string | null;
   ai_enabled: boolean;
+  ai_provider?: string;
   frdo_enabled?: boolean;
   created_at: string;
   storage_limit_bytes?: number;
