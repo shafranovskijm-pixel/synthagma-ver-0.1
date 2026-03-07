@@ -1,18 +1,28 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+# Исправление 402 — пробовать все модели и оба слота
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+## Проблема
 
-### Changes
+В `gigachat-client.ts:298` при ошибке 402 происходит `throw err`, что:
+- Пропускает модель GigaChat (Lite) с 900K доступных токенов
+- Не пробует второй слот (slot-1)
+- Сразу уходит в Lovable AI fallback
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+## Что исправим
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+### 1. Убрать `throw err` на 402 в цикле моделей (строка 298)
+Вместо немедленного выброса — продолжить цикл (`continue`), чтобы попробовать следующую модель (GigaChat Lite).
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+### 2. Добавить модель GigaChat-Max в цепочку
+Раз у вас есть токены GigaChat Max (50K) — добавить её в `GIGACHAT_MODEL_CHAIN`: `["GigaChat-Max", "GigaChat-Pro", "GigaChat"]`.
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+### 3. Пробовать второй слот при полном 402
+Если все модели на текущем слоте вернули 402 — не бросать ошибку сразу, а попробовать другой слот. Реализация: в `callAI` при 402 от `callGigaChat` — попробовать вызвать с принудительным указанием второго слота.
+
+### 4. Логирование
+Добавить лог какую модель пробует и какой слот, чтобы было видно что Lite/Max пробуется.
+
+## Файл
+- `supabase/functions/_shared/gigachat-client.ts` — убрать throw на 402, расширить цепочку моделей, добавить retry на втором слоте
 
