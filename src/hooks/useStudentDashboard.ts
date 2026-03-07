@@ -143,6 +143,22 @@ export function useStudentDashboard() {
   };
 
   const loadData = async () => {
+    // In preview mode, show demo data instead of real user data
+    const previewFlag = localStorage.getItem('previewStudentDashboard');
+    if (previewFlag === 'true' || isPreviewMode) {
+      setCourses([
+        { id: "demo-1", title: "Пример курса: Охрана труда", description: "Демонстрационный курс для ознакомления с платформой", duration: "2ч", progress: 35, totalLessons: 10, completedLessons: 3, status: "in_progress", skip_video_identification: false },
+        { id: "demo-2", title: "Пожарная безопасность", description: "Ещё один пример курса", duration: "4ч", progress: 100, totalLessons: 8, completedLessons: 8, status: "completed", skip_video_identification: false },
+        { id: "demo-3", title: "Первая помощь", description: "Курс ещё не начат", duration: "1ч", progress: 0, totalLessons: 5, completedLessons: 0, status: "in_progress", skip_video_identification: false },
+      ]);
+      setTotalTimeSpent(125);
+      setTotalCompletedLessons(11);
+      setProfile({ full_name: "Иванов Иван Иванович", organization_name: "Демо-организация", organization_id: null });
+      setDocumentsProgress({ completed: 2, total: 3 });
+      setLoading(false);
+      return;
+    }
+
     const uid = effectiveUserId;
     if (!uid) return;
     setLoading(true);

@@ -297,110 +297,147 @@ export const StudentsTab = React.memo(function StudentsTab({
         
         {/* Filters - scrollable on mobile */}
         <div className="flex items-center gap-2 lg:gap-3 overflow-x-auto pb-2 lg:overflow-visible lg:flex-wrap scrollbar-hide max-w-full">
+        <TooltipProvider delayDuration={300}>
           {selectedStudentIds.size > 0 && (
             <>
-              <Button 
-                onClick={() => onShowEnrollDialog?.(Array.from(selectedStudentIds))} 
-                className="btn-gradient rounded-xl gap-2 shrink-0 text-xs lg:text-sm"
-              >
-                <GraduationCap className="w-4 h-4" />
-                <span className="hidden sm:inline">Зачислить</span> ({selectedStudentIds.size})
-              </Button>
-              <Button 
-                onClick={() => setShowLoginsConfirm(true)} 
-                variant="outline" 
-                className="rounded-xl gap-2 shrink-0 text-xs lg:text-sm" 
-                disabled={isCreatingBulkCredentials}
-              >
-                {isCreatingBulkCredentials ? <Loader2 className="w-4 h-4 animate-spin" /> : <Key className="w-4 h-4" />}
-                <span className="hidden sm:inline">Логины</span>
-              </Button>
-              <Button 
-                onClick={() => setShowSendConfirm(true)} 
-                variant="outline" 
-                className="rounded-xl gap-2 shrink-0 text-xs lg:text-sm" 
-                disabled={isSendingBulkCredentials}
-              >
-                {isSendingBulkCredentials ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
-                <span className="hidden sm:inline">На почту</span>
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    onClick={() => onShowEnrollDialog?.(Array.from(selectedStudentIds))} 
+                    className="btn-gradient rounded-xl gap-2 shrink-0 text-xs lg:text-sm"
+                  >
+                    <GraduationCap className="w-4 h-4" />
+                    <span className="hidden sm:inline">Зачислить</span> ({selectedStudentIds.size})
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Зачислить выбранных учеников на курс</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    onClick={() => setShowLoginsConfirm(true)} 
+                    variant="outline" 
+                    className="rounded-xl gap-2 shrink-0 text-xs lg:text-sm" 
+                    disabled={isCreatingBulkCredentials}
+                  >
+                    {isCreatingBulkCredentials ? <Loader2 className="w-4 h-4 animate-spin" /> : <Key className="w-4 h-4" />}
+                    <span className="hidden sm:inline">Логины</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Создать логины и пароли</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    onClick={() => setShowSendConfirm(true)} 
+                    variant="outline" 
+                    className="rounded-xl gap-2 shrink-0 text-xs lg:text-sm" 
+                    disabled={isSendingBulkCredentials}
+                  >
+                    {isSendingBulkCredentials ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
+                    <span className="hidden sm:inline">На почту</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Отправить данные для входа на почту</TooltipContent>
+              </Tooltip>
               {getSelectedEnrollmentsCount() > 0 && (
-                <Button 
-                  onClick={() => onShowUnenrollConfirm?.(Array.from(selectedStudentIds))} 
-                  variant="outline" 
-                  className="rounded-xl gap-2 text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0 text-xs lg:text-sm"
-                >
-                  <XCircle className="w-4 h-4" />
-                  <span className="hidden sm:inline">Отчислить</span> ({getSelectedEnrollmentsCount()})
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      onClick={() => onShowUnenrollConfirm?.(Array.from(selectedStudentIds))} 
+                      variant="outline" 
+                      className="rounded-xl gap-2 text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0 text-xs lg:text-sm"
+                    >
+                      <XCircle className="w-4 h-4" />
+                      <span className="hidden sm:inline">Отчислить</span> ({getSelectedEnrollmentsCount()})
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Отчислить выбранных из курса</TooltipContent>
+                </Tooltip>
               )}
-              <Button 
-                onClick={() => onShowBulkFRDOExport?.(Array.from(selectedStudentIds))} 
-                variant="outline" 
-                className="rounded-xl gap-2 shrink-0 text-xs lg:text-sm"
-              >
-                <FileSpreadsheet className="w-4 h-4" />
-                <span className="hidden sm:inline">ФРДО</span> ({selectedStudentIds.size})
-              </Button>
-              <Button 
-                onClick={() => setShowDeleteConfirm(true)} 
-                variant="outline" 
-                className="rounded-xl gap-2 text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0 text-xs lg:text-sm"
-              >
-                <Trash2 className="w-4 h-4" />
-                <span className="hidden sm:inline">Удалить</span> ({selectedStudentIds.size})
-              </Button>
-              <Button 
-                onClick={handleGeneratePrikaz} 
-                variant="outline" 
-                className="rounded-xl gap-2 shrink-0 text-xs lg:text-sm"
-                disabled={isGenerating}
-              >
-                {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
-                <span className="hidden sm:inline">Приказ</span>
-              </Button>
-              <Button 
-                onClick={handleGenerateProtokol} 
-                variant="outline" 
-                className="rounded-xl gap-2 shrink-0 text-xs lg:text-sm"
-                disabled={isGenerating}
-              >
-                {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
-                <span className="hidden sm:inline">Протокол</span>
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    onClick={() => onShowBulkFRDOExport?.(Array.from(selectedStudentIds))} 
+                    variant="outline" 
+                    className="rounded-xl gap-2 shrink-0 text-xs lg:text-sm"
+                  >
+                    <FileSpreadsheet className="w-4 h-4" />
+                    <span className="hidden sm:inline">ФРДО</span> ({selectedStudentIds.size})
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Экспорт данных для ФРДО</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    onClick={() => setShowDeleteConfirm(true)} 
+                    variant="outline" 
+                    className="rounded-xl gap-2 text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0 text-xs lg:text-sm"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span className="hidden sm:inline">Удалить</span> ({selectedStudentIds.size})
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Удалить выбранных учеников</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    onClick={handleGeneratePrikaz} 
+                    variant="outline" 
+                    className="rounded-xl gap-2 shrink-0 text-xs lg:text-sm"
+                    disabled={isGenerating}
+                  >
+                    {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+                    <span className="hidden sm:inline">Приказ</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Сгенерировать приказ</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    onClick={handleGenerateProtokol} 
+                    variant="outline" 
+                    className="rounded-xl gap-2 shrink-0 text-xs lg:text-sm"
+                    disabled={isGenerating}
+                  >
+                    {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+                    <span className="hidden sm:inline">Протокол</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Сгенерировать протокол</TooltipContent>
+              </Tooltip>
             </>
           )}
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  className="rounded-xl gap-2 shrink-0 text-xs lg:text-sm" 
-                  onClick={() => setShowRemindConfirm(true)}
-                  disabled={isSendingBulkDocReminders}
-                >
-                  {isSendingBulkDocReminders ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
-                  <span className="hidden sm:inline">Напомнить</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Отправить напоминание о документах</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  className="rounded-xl gap-2 shrink-0 text-xs lg:text-sm" 
-                  onClick={handleExportStudents}
-                >
-                  <FileSpreadsheet className="w-4 h-4" />
-                  <span className="hidden sm:inline">Экспорт</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Экспорт данных учеников в Excel</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="outline" 
+                className="rounded-xl gap-2 shrink-0 text-xs lg:text-sm" 
+                onClick={() => setShowRemindConfirm(true)}
+                disabled={isSendingBulkDocReminders}
+              >
+                {isSendingBulkDocReminders ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+                <span className="hidden sm:inline">Напомнить</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Отправить напоминание о документах</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="outline" 
+                className="rounded-xl gap-2 shrink-0 text-xs lg:text-sm" 
+                onClick={handleExportStudents}
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                <span className="hidden sm:inline">Экспорт</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Экспорт данных учеников в Excel</TooltipContent>
+          </Tooltip>
           <Select value={courseFilter} onValueChange={setCourseFilter}>
             <SelectTrigger className="w-32 lg:w-48 rounded-xl shrink-0 text-xs lg:text-sm">
               <BookOpen className="w-4 h-4 mr-1 lg:mr-2" />
