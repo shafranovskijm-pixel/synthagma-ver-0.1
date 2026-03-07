@@ -1,18 +1,28 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+# План: Тарифная сетка моделей + GigaChat в генерации картинок
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+## Что делаем
 
-### Changes
+### 1. Добавить тарифную сетку моделей в UI настроек
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+Внутри `AISettingsManager.tsx` добавить новую секцию-аккордеон «Тарифы моделей» (иконка `Flame` или `DollarSign`) с таблицей, показывающей все доступные модели, их уровень, скорость и примерную стоимость — как на скриншоте. Данные статические, захардкожены в константу.
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+Также добавить **мини-бейджи** стоимости рядом с каждой моделью в селектах (например: `Gemini 2.5 Flash — 💰💰 Средняя`), чтобы при выборе модели сразу была видна ценовая категория.
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+### 2. Добавить GigaChat в генерацию картинок
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+GigaChat действительно умеет генерировать картинки (модель GigaChat с функцией генерации изображений). Добавить `gigachat` в `IMAGE_PROVIDERS` и отображать выбор модели GigaChat когда выбран этот провайдер. Обновить edge function `generate-image` для поддержки GigaChat-провайдера через существующую `gigachat` edge function.
+
+## Файлы
+
+1. **`src/components/admin/AISettingsManager.tsx`**:
+   - Добавить константу `MODEL_PRICING` с данными таблицы (модель, уровень, скорость, стоимость)
+   - Новый аккордеон «Тарифы моделей» с таблицей
+   - Расширить `IMAGE_PROVIDERS` — добавить `{ value: "gigachat", label: "GigaChat" }`
+   - Добавить ценовые подсказки в label каждой модели в селектах
+
+2. **`supabase/functions/generate-image/index.ts`**:
+   - Добавить ветку для `provider === "gigachat"` — вызов GigaChat API для генерации изображений
+   - Принимать параметр `provider` в body запроса
 
