@@ -180,13 +180,7 @@ export function SettingsTab() {
       </details>
 
       {/* Document Center */}
-      <details className="bg-card rounded-xl lg:rounded-2xl border border-border group relative" open={!isFreePlan ? undefined : undefined}>
-        {isFreePlan && <LockedOverlay features={[
-          "Шаблоны договоров с автозаполнением реквизитов",
-          "Протоколы аттестационной комиссии (Word)",
-          "Согласия на обработку персональных данных",
-          "Печать и подпись — автовставка во все документы",
-        ]} />}
+      <details className="bg-card rounded-xl lg:rounded-2xl border border-border group" open={!isFreePlan ? undefined : undefined}>
         <summary className="p-4 lg:p-6 cursor-pointer list-none flex items-center justify-between">
           <h3 className="font-display font-semibold text-base lg:text-lg flex items-center gap-2">
             <FileText className="w-4 h-4 lg:w-5 lg:h-5" />
@@ -194,7 +188,13 @@ export function SettingsTab() {
           </h3>
           <ChevronRight className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90" />
         </summary>
-        <div className="px-4 lg:px-6 pb-4 lg:pb-6">
+        <div className="px-4 lg:px-6 pb-4 lg:pb-6 relative">
+          {isFreePlan && <LockedOverlay features={[
+            "Шаблоны договоров с автозаполнением реквизитов",
+            "Протоколы аттестационной комиссии (Word)",
+            "Согласия на обработку персональных данных",
+            "Печать и подпись — автовставка во все документы",
+          ]} />}
           <Tabs value={docTab} onValueChange={setDocTab}>
             <TabsList className="flex flex-wrap h-auto gap-1 bg-muted/50 p-1 rounded-xl">
               <TabsTrigger value="requisites" className="rounded-lg text-xs gap-1.5 px-2.5 py-1.5">
@@ -303,11 +303,7 @@ export function SettingsTab() {
       </details>
 
       {/* Menu Items Settings */}
-      <details className="bg-card rounded-xl lg:rounded-2xl border border-border group relative">
-        {isFreePlan && <LockedOverlay features={[
-          "Гибкая настройка навигации под ваши задачи",
-          "Скрывайте неиспользуемые разделы",
-        ]} />}
+      <details className="bg-card rounded-xl lg:rounded-2xl border border-border group">
         <summary className="p-4 lg:p-6 cursor-pointer list-none flex items-center justify-between">
           <h3 className="font-display font-semibold text-base lg:text-lg flex items-center gap-2">
             <LayoutGrid className="w-4 h-4 lg:w-5 lg:h-5" />
@@ -315,7 +311,11 @@ export function SettingsTab() {
           </h3>
           <ChevronRight className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90" />
         </summary>
-        <div className="px-4 lg:px-6 pb-4 lg:pb-6">
+        <div className="px-4 lg:px-6 pb-4 lg:pb-6 relative">
+          {isFreePlan && <LockedOverlay features={[
+            "Гибкая настройка навигации под ваши задачи",
+            "Скрывайте неиспользуемые разделы",
+          ]} />}
           <p className="text-xs lg:text-sm text-muted-foreground mb-3 lg:mb-4">
             Включите или отключите разделы в боковом меню
           </p>
@@ -425,12 +425,7 @@ export function SettingsTab() {
       </details>
 
       {/* Branding Settings */}
-      <details className="bg-card rounded-2xl border border-border group relative">
-        {!hasBranding && <LockedOverlay requiredPlan="Стандарт" features={[
-          "Обложка и логотип вашей организации",
-          "Фирменные цвета в интерфейсе",
-          "Кастомное название в сайдбаре",
-        ]} />}
+      <details className="bg-card rounded-2xl border border-border group">
         <summary className="p-6 cursor-pointer list-none flex items-center justify-between">
           <h3 className="font-display font-semibold text-lg flex items-center gap-2">
             <Image className="w-5 h-5" />
@@ -438,7 +433,12 @@ export function SettingsTab() {
           </h3>
           <ChevronRight className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90" />
         </summary>
-        <div className="px-6 pb-6">
+        <div className="px-6 pb-6 relative">
+          {!hasBranding && <LockedOverlay requiredPlan="Стандарт" features={[
+            "Обложка и логотип вашей организации",
+            "Фирменные цвета в интерфейсе",
+            "Кастомное название в сайдбаре",
+          ]} />}
           <p className="text-sm text-muted-foreground mb-4">
             Настройте внешний вид кабинета с вашим фирменным стилем
           </p>
@@ -667,11 +667,7 @@ export function SettingsTab() {
       </details>
 
       {/* Login Page Branding */}
-      <details className="bg-card rounded-2xl border border-border group relative">
-        {!hasBranding && <LockedOverlay requiredPlan="Стандарт" features={[
-          "Уникальная ссылка для входа учеников",
-          "Логотип и цвета на странице авторизации",
-        ]} />}
+      <details className="bg-card rounded-2xl border border-border group">
         <summary className="p-6 cursor-pointer list-none flex items-center justify-between">
           <h3 className="font-display font-semibold text-lg flex items-center gap-2">
             <LogIn className="w-5 h-5" />
@@ -679,7 +675,11 @@ export function SettingsTab() {
           </h3>
           <ChevronRight className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90" />
         </summary>
-        <div className="px-6 pb-6">
+        <div className="px-6 pb-6 relative">
+          {!hasBranding && <LockedOverlay requiredPlan="Стандарт" features={[
+            "Уникальная ссылка для входа учеников",
+            "Логотип и цвета на странице авторизации",
+          ]} />}
           <p className="text-sm text-muted-foreground mb-4">
             Создайте индивидуальную страницу входа с вашим брендом и уникальной ссылкой
           </p>
@@ -694,11 +694,7 @@ export function SettingsTab() {
       </details>
 
       {/* Student Dashboard Settings */}
-      <details className="bg-card rounded-2xl border border-border group relative">
-        {!hasBranding && <LockedOverlay requiredPlan="Стандарт" features={[
-          "Выбор разделов: хранилище, достижения, ИИ-чат",
-          "Кастомизация под вашу программу обучения",
-        ]} />}
+      <details className="bg-card rounded-2xl border border-border group">
         <summary className="p-6 cursor-pointer list-none flex items-center justify-between">
           <h3 className="font-display font-semibold text-lg flex items-center gap-2">
             <Settings className="w-5 h-5" />
@@ -706,7 +702,11 @@ export function SettingsTab() {
           </h3>
           <ChevronRight className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90" />
         </summary>
-        <div className="px-6 pb-6">
+        <div className="px-6 pb-6 relative">
+          {!hasBranding && <LockedOverlay requiredPlan="Стандарт" features={[
+            "Выбор разделов: хранилище, достижения, ИИ-чат",
+            "Кастомизация под вашу программу обучения",
+          ]} />}
           <div className="flex items-center justify-between mb-4">
             <p className="text-sm text-muted-foreground">
               Настройте, какие разделы будут отображаться в личном кабинете учеников
@@ -810,11 +810,7 @@ export function SettingsTab() {
       </details>
 
       {/* System Diagnostics */}
-      <details className="bg-card rounded-xl lg:rounded-2xl border border-border group relative">
-        {isFreePlan && <LockedOverlay features={[
-          "Проверка заполненности данных организации",
-          "Мониторинг статуса интеграций",
-        ]} />}
+      <details className="bg-card rounded-xl lg:rounded-2xl border border-border group">
         <summary className="p-4 lg:p-6 cursor-pointer list-none flex items-center justify-between">
           <h3 className="font-display font-semibold text-base lg:text-lg flex items-center gap-2">
             <AlertCircle className="w-4 h-4 lg:w-5 lg:h-5" />
@@ -822,7 +818,11 @@ export function SettingsTab() {
           </h3>
           <ChevronRight className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90" />
         </summary>
-        <div className="px-4 lg:px-6 pb-4 lg:pb-6">
+        <div className="px-4 lg:px-6 pb-4 lg:pb-6 relative">
+          {isFreePlan && <LockedOverlay features={[
+            "Проверка заполненности данных организации",
+            "Мониторинг статуса интеграций",
+          ]} />}
           {organizationId && <SystemDiagnostics organizationId={organizationId} />}
         </div>
       </details>
