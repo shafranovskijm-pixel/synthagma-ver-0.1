@@ -140,23 +140,12 @@ function buildSlots(): TokenSlot[] {
 }
 
 const slots = buildSlots();
-let roundRobinIndex = 0;
-
 function pickSlot(): TokenSlot | null {
   if (slots.length === 0) return null;
   if (slots.length === 1) return slots[0];
-  // Round-robin: prefer non-busy
-  for (let i = 0; i < slots.length; i++) {
-    const idx = (roundRobinIndex + i) % slots.length;
-    if (!slots[idx].busy) {
-      roundRobinIndex = (idx + 1) % slots.length;
-      return slots[idx];
-    }
-  }
-  // All busy — just pick next
-  const slot = slots[roundRobinIndex % slots.length];
-  roundRobinIndex = (roundRobinIndex + 1) % slots.length;
-  return slot;
+  // Random distribution (stateless — no shared state between invocations)
+  const idx = Math.random() < 0.5 ? 0 : 1;
+  return slots[idx];
 }
 
 async function getAccessToken(slot: TokenSlot): Promise<string> {
