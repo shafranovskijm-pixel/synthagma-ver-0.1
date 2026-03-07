@@ -94,7 +94,21 @@ function detectProvider(data: any) {
   }
 }
 
-// ── Parallel with concurrency limit ──
+// ── Timeout wrapper ──
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`Timeout: ${label} (${ms / 1000}s)`)), ms)
+    ),
+  ]);
+}
+
+const AI_CALL_TIMEOUT = 90_000; // 90s per AI call
+const PARALLEL_ITEM_TIMEOUT = 120_000; // 120s per parallel item
+const MAX_CLIENT_RUNTIME = 2 * 60 * 60 * 1000; // 2 hours
+
+// ── Parallel with concurrency limit + per-item timeout ──
 async function parallelMap<T, R>(
   items: T[],
   concurrency: number,
@@ -106,7 +120,13 @@ async function parallelMap<T, R>(
   async function worker() {
     while (nextIndex < items.length) {
       const i = nextIndex++;
-      results[i] = await fn(items[i], i);
+      try {
+        results[i] = await withTimeout(fn(items[i], i), PARALLEL_ITEM_TIMEOUT, `parallelMap[${i}]`);
+      } catch (e) {
+        if (e instanceof CreditsExhaustedError) throw e;
+        console.error(`[parallelMap] Item ${i} failed/timed out:`, e instanceof Error ? e.message : String(e));
+        results[i] = undefined as any;
+      }
     }
   }
 
