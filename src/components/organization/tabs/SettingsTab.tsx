@@ -7,20 +7,13 @@ import {
   Library, BarChart3, Link, ShoppingBag, Save, Settings, HardDrive,
   Trophy, MessageCircle, ChevronRight, Loader2, Upload,
   X, ExternalLink, Image, Eye, AlertCircle, LogIn, KeyRound,
-  Stamp, Award, GraduationCap, UserCheck, ScrollText, Lock, ArrowUpRight
+  Lock, ArrowUpRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { OrgRequisitesForm } from "@/components/organization/OrgRequisitesForm";
-import { ContractTemplateEditor } from "@/components/organization/ContractTemplateEditor";
-import { ConsentGenerator } from "@/components/organization/ConsentGenerator";
-import { ProtocolTemplateEditor } from "@/components/organization/ProtocolTemplateEditor";
-import { CertificateTemplateEditor } from "@/components/organization/CertificateTemplateEditor";
-import { StampSignatureUploader } from "@/components/organization/StampSignatureUploader";
 import { SystemFeaturesReport } from "@/components/organization/SystemFeaturesReport";
 import { SystemDiagnostics } from "@/components/organization/SystemDiagnostics";
 import { LoginBrandingSettings } from "@/components/organization/LoginBrandingSettings";
