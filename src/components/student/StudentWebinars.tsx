@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Video, Calendar, Clock, Users, Radio, ExternalLink, Play, Loader2 } from "lucide-react";
+import { Video, Calendar, Clock, Radio, ExternalLink, Play, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import type { Webinar } from "@/hooks/useWebinarsManager";
@@ -16,8 +16,6 @@ interface StudentWebinarsProps {
 export function StudentWebinars({ userId, organizationId }: StudentWebinarsProps) {
   const [webinars, setWebinars] = useState<Webinar[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeWebinar, setActiveWebinar] = useState<Webinar | null>(null);
-  const [meetingToken, setMeetingToken] = useState<string | null>(null);
 
   const fetchWebinars = useCallback(async () => {
     try {
@@ -45,64 +43,12 @@ export function StudentWebinars({ userId, organizationId }: StudentWebinarsProps
     return () => { supabase.removeChannel(channel); };
   }, [fetchWebinars]);
 
-  const handleJoin = async (webinar: Webinar) => {
-    if (!webinar.room_name) return;
-    try {
-      const { data: session } = await supabase.auth.getSession();
-      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-webinar?action=token`;
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${session?.session?.access_token}`,
-          "Content-Type": "application/json",
-          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-        },
-        body: JSON.stringify({ room_name: webinar.room_name, is_owner: false }),
-      });
-      if (!response.ok) throw new Error("Failed to get token");
-      const data = await response.json();
-
-      // Log participation
-      await supabase.from("webinar_participants").insert({
-        webinar_id: webinar.id,
-        user_id: userId,
-        role: "viewer",
-      });
-
-      setMeetingToken(data.token);
-      setActiveWebinar(webinar);
-    } catch (e) {
-      console.error("Error joining webinar:", e);
+  const handleJoin = (webinar: Webinar) => {
+    const url = webinar.stream_url;
+    if (url) {
+      window.open(url, "_blank", "noopener,noreferrer");
     }
   };
-
-  const handleLeave = () => {
-    setActiveWebinar(null);
-    setMeetingToken(null);
-  };
-
-  // Active stream
-  if (activeWebinar && meetingToken) {
-    return (
-      <div className="p-4 lg:p-8 space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Radio className="w-5 h-5 text-destructive animate-pulse" />
-            <h2 className="text-lg font-semibold">{activeWebinar.title}</h2>
-          </div>
-          <Button variant="outline" onClick={handleLeave}>Покинуть</Button>
-        </div>
-        <div className="rounded-xl overflow-hidden border border-border bg-black aspect-video">
-          <iframe
-            src={`${activeWebinar.room_url}?t=${meetingToken}`}
-            allow="camera; microphone; fullscreen; display-capture; autoplay"
-            className="w-full h-full"
-            style={{ border: "none" }}
-          />
-        </div>
-      </div>
-    );
-  }
 
   const live = webinars.filter(w => w.status === "live");
   const upcoming = webinars.filter(w => w.status === "scheduled");
