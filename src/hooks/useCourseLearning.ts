@@ -109,6 +109,7 @@ export function useCourseLearning() {
   const [isSaluteLoading, setIsSaluteLoading] = useState(false);
   const saluteAudioRef = useRef<HTMLAudioElement | null>(null);
   const saluteAbortRef = useRef<AbortController | null>(null);
+  const saluteCacheRef = useRef<Map<string, string>>(new Map());
 
   const elevenLabsTTS = useElevenLabsTTS({ voiceId: ttsSettings.voiceId });
 
