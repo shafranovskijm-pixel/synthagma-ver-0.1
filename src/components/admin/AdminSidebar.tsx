@@ -14,6 +14,7 @@ export type AdminTabType =
   | "marketplace"
   | "sales"
   | "ai"
+  | "broadcast"
   | "support"
   | "devtools"
   | "settings";
