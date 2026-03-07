@@ -571,7 +571,10 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
 
   const handleStop = useCallback(() => {
     stopRef.current = true;
-    updatePhase("Остановка...");
+    setIsRunning(false);
+    setIsTestRunning(false);
+    updatePhase("Остановлено");
+    import("sonner").then(({ toast }) => toast.info("Конвейер остановлен"));
   }, [updatePhase]);
 
   const handleResetProgress = useCallback(() => {
