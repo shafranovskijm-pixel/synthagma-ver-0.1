@@ -279,11 +279,12 @@ async function processCourse(
                 return `Вопрос ${idx + 1}: ${q.question}\n${opts}${prev}`;
               }).join("\n\n");
 
+              const verifyTaskIdx = taskCounter ? taskCounter.value++ : undefined;
               const { text: response } = await withTimeout(
                 callAI([
                   { role: "system", content: VERIFY_PROMPT },
                   { role: "user", content: `Курс: "${courseTitle}"\nУрок: "${lessonInfo?.title || "Тест"}"\n\n${questionsText}` },
-                ], 16384, aiProvider, gigachatModel, lovableModel),
+                ], 16384, aiProvider, gigachatModel, lovableModel, verifyTaskIdx),
                 AI_CALL_TIMEOUT, "callAI:verify"
               );
 
