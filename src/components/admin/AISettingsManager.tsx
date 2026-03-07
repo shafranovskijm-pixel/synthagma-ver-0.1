@@ -280,6 +280,8 @@ export function AISettingsManager() {
   const [settings, setSettings] = useState<Record<string, AISetting>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [secretsStatus, setSecretsStatus] = useState<Record<string, boolean>>({});
+  const [secretsLoading, setSecretsLoading] = useState(false);
 
   useEffect(() => {
     loadSettings();
