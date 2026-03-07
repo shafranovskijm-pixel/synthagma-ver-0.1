@@ -390,7 +390,7 @@ serve(async (req) => {
       let existingLog: any[] = [];
 
       if (action === "start") {
-        const { courses, enableVerification, prompts } = body;
+        const { courses, enableVerification, prompts, ai_provider: bodyProvider } = body;
         courseEntries = courses;
 
         const { data: run, error: insertErr } = await db.from("pipeline_runs").insert({
