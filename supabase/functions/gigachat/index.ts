@@ -143,6 +143,49 @@ serve(async (req) => {
         result = { questions: [], raw: response, parseError: true, model };
       }
 
+    } else if (action === "verify_answers") {
+      // Verification: re-check answers with a different model or prompt
+      const questionsText = questions.map((q: any, i: number) => {
+        const opts = q.options.map((o: any, j: number) => {
+          const text = typeof o === 'string' ? o : (o?.text || o?.label || String(o));
+          return `  ${j + 1}) ${text}`;
+        }).join("\n");
+        const prevAnswer = previousAnswers?.[i];
+        const prevNote = prevAnswer !== undefined
+          ? `\nПредыдущий ответ ИИ: вариант ${prevAnswer.correctAnswer + 1}${prevAnswer.explanation ? ` (${prevAnswer.explanation})` : ""}`
+          : "";
+        return `Вопрос ${i + 1}: ${q.question}\n${opts}${prevNote}`;
+      }).join("\n\n");
+
+      const verifyPrompt = `Ты эксперт-верификатор в области промышленной безопасности, охраны труда и нормативов Ростехнадзора.
+
+Тебе даны тестовые вопросы с вариантами ответов. Для некоторых вопросов уже есть предыдущий ответ от другого ИИ.
+Твоя задача — НЕЗАВИСИМО проверить каждый вопрос и определить правильный ответ.
+
+Если предыдущий ответ верен — подтверди его. Если нет — исправь и объясни почему.
+
+Отвечай СТРОГО в формате JSON-массива:
+[{"questionIndex": 0, "correctAnswer": 2, "explanation": "...", "changed": false}]
+
+Поле "changed" = true если твой ответ отличается от предыдущего.
+Отвечай ТОЛЬКО JSON-массивом, без markdown-обертки.`;
+
+      const prompt = `Курс: "${courseTitle}"\nУрок: "${lessonTitle}"\n\n${questionsText}`;
+
+      // Use a different model for verification (Lovable AI Gemini Pro for higher accuracy)
+      const { text: response, model } = await callAI([
+        { role: "system", content: verifyPrompt },
+        { role: "user", content: prompt },
+      ], 16384);
+
+      try {
+        const cleaned = response.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+        result = { answers: JSON.parse(cleaned), model, isVerification: true };
+      } catch {
+        console.error("Failed to parse verification response:", response);
+        result = { answers: [], raw: response, parseError: true, model, isVerification: true };
+      }
+
     } else {
       return new Response(JSON.stringify({ error: "Unknown action" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
