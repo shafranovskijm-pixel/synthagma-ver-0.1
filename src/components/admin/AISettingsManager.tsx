@@ -600,6 +600,12 @@ export function AISettingsManager() {
                       </p>
                     </div>
                   )}
+                  {settings[ctx]?.provider === "salutespeech" && (
+                    <SaluteSpeechTestPanel
+                      voice={settings[ctx]?.extra_config?.salute_voice || "natalya"}
+                      onVoiceChange={(v) => updateExtra(ctx, "salute_voice", v)}
+                    />
+                  )}
                 </div>
               );
             } else if (ctx === "image_generation") {
