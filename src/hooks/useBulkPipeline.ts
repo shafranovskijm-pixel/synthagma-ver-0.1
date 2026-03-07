@@ -128,6 +128,7 @@ function isReliablySolved(q: { correct_answer: number | null; explanation?: stri
 interface UseBulkPipelineProps {
   courses: PipelineCourse[];
   onComplete: () => void;
+  enableVerification?: boolean;
 }
 
 export function useBulkPipeline({ courses, onComplete }: UseBulkPipelineProps) {
