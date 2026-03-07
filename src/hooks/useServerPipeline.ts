@@ -58,14 +58,17 @@ export function useServerPipeline({ courses, enableVerification, onComplete, aiP
           const updatedAt = new Date(run.updated_at).getTime();
           if (Date.now() - updatedAt > STALE_RUN_THRESHOLD) {
             console.warn(`[ServerPipeline] Stale run detected: ${runId}, last update ${Math.round((Date.now() - updatedAt) / 1000)}s ago`);
-            // Mark as partial so it can be resumed
+            // Mark as partial and stop — don't auto-resume (avoid infinite loop)
             await supabase.from("pipeline_runs").update({
               status: "partial",
-              current_phase: "Зависание обнаружено — можно возобновить",
+              current_phase: "Зависание обнаружено — нажмите «Продолжить» для возобновления",
               updated_at: new Date().toISOString(),
             } as any).eq("id", runId);
-            toast.warning("Серверный процесс завис. Попытка возобновления...");
-            return; // Next poll will pick up 'partial' and auto-resume
+            if (pollRef.current) clearInterval(pollRef.current);
+            pollRef.current = null;
+            setIsRunning(false);
+            toast.warning("Серверный процесс завис. Нажмите «Продолжить» для возобновления.", { duration: 8000 });
+            return;
           }
         }
 
