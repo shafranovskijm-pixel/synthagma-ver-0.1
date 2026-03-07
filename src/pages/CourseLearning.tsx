@@ -11,16 +11,19 @@ import {
   ChevronLeft, ChevronRight, Trophy, Sparkles, Clock, Loader2, 
   Volume2, Square, MessageCircle, X, Send, List, Presentation, 
   Lock, RotateCcw, Settings2, Headphones, Download, FileText as FileTextIcon,
-  FileSpreadsheet, Presentation as PresentationIcon, File, Eye
+  FileSpreadsheet, Presentation as PresentationIcon, File, Eye, ChevronDown
 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, 
   AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel,
+} from "@/components/ui/dropdown-menu";
 import { BlockRenderer } from "@/components/course-builder/BlockEditor";
 import { cn } from "@/lib/utils";
-import { TTSSettingsDialog } from "@/components/student/TTSSettingsDialog";
+import { TTSSettingsDialog, SALUTE_VOICES, saveTTSSettings } from "@/components/student/TTSSettingsDialog";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { VideoPlayerInline } from "@/components/course-learning/VideoPlayerInline";
 import { SliderLessonViewer } from "@/components/course-learning/SliderLessonViewer";
