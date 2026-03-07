@@ -102,7 +102,6 @@ const httpClient = createSberHttpClient();
 
 // SaluteSpeech voices (Russian)
 const VOICES: Record<string, string> = {
-  // Client IDs (from TTSSettingsDialog SALUTE_VOICES)
   "Natalya_24000": "Nec_24000",
   "Boris_24000": "Bys_24000",
   "Marfa_24000": "May_24000",
@@ -110,7 +109,6 @@ const VOICES: Record<string, string> = {
   "Alexandra_24000": "Ost_24000",
   "Sergey_24000": "Pon_24000",
   "Kira_24000": "Kin_24000",
-  // Backward compat — lowercase keys from admin panel
   natalya: "Nec_24000",
   boris: "Bys_24000",
   marfa: "May_24000",
@@ -120,16 +118,61 @@ const VOICES: Record<string, string> = {
   kira: "Kin_24000",
 };
 
-async function getAccessToken(authKey: string): Promise<string> {
-  const rqUID = crypto.randomUUID();
+// === Slot-based token pool (dual-key support) ===
 
+interface TokenSlot {
+  authKey: string;
+  cachedToken: string | null;
+  tokenExpiresAt: number; // epoch ms
+  busy: boolean;
+  slotIndex: number;
+}
+
+const TOKEN_TTL_MS = 28 * 60 * 1000; // 28 min (tokens live 30 min, refresh early)
+
+function buildSlots(): TokenSlot[] {
+  const slots: TokenSlot[] = [];
+  const key1 = Deno.env.get("SALUTESPEECH_AUTH_KEY");
+  const key2 = Deno.env.get("SALUTESPEECH_AUTH_KEY_2");
+  if (key1) slots.push({ authKey: key1, cachedToken: null, tokenExpiresAt: 0, busy: false, slotIndex: 0 });
+  if (key2) slots.push({ authKey: key2, cachedToken: null, tokenExpiresAt: 0, busy: false, slotIndex: 1 });
+  return slots;
+}
+
+const slots = buildSlots();
+let roundRobinIndex = 0;
+
+function pickSlot(): TokenSlot | null {
+  if (slots.length === 0) return null;
+  if (slots.length === 1) return slots[0];
+  // Round-robin: prefer non-busy
+  for (let i = 0; i < slots.length; i++) {
+    const idx = (roundRobinIndex + i) % slots.length;
+    if (!slots[idx].busy) {
+      roundRobinIndex = (idx + 1) % slots.length;
+      return slots[idx];
+    }
+  }
+  // All busy — just pick next
+  const slot = slots[roundRobinIndex % slots.length];
+  roundRobinIndex = (roundRobinIndex + 1) % slots.length;
+  return slot;
+}
+
+async function getAccessToken(slot: TokenSlot): Promise<string> {
+  const now = Date.now();
+  if (slot.cachedToken && now < slot.tokenExpiresAt) {
+    return slot.cachedToken;
+  }
+
+  const rqUID = crypto.randomUUID();
   const fetchOpts: RequestInit & { client?: Deno.HttpClient } = {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
       Accept: "application/json",
       RqUID: rqUID,
-      Authorization: `Basic ${authKey}`,
+      Authorization: `Basic ${slot.authKey}`,
     },
     body: "scope=SALUTE_SPEECH_PERS",
   };
@@ -139,12 +182,58 @@ async function getAccessToken(authKey: string): Promise<string> {
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error("Auth error:", response.status, errorText);
-    throw new Error(`SaluteSpeech auth failed: ${response.status}`);
+    console.error(`[SaluteSpeech] Auth error slot ${slot.slotIndex}:`, response.status, errorText);
+    throw new Error(`SaluteSpeech auth failed (slot ${slot.slotIndex}): ${response.status}`);
   }
 
   const data = await response.json();
+  slot.cachedToken = data.access_token;
+  slot.tokenExpiresAt = now + TOKEN_TTL_MS;
+  console.log(`[SaluteSpeech] Token refreshed for slot ${slot.slotIndex}`);
   return data.access_token;
+}
+
+async function synthesizeWithSlot(
+  slot: TokenSlot,
+  text: string,
+  voiceParam: string,
+  audioFormat: string
+): Promise<ArrayBuffer> {
+  slot.busy = true;
+  try {
+    const accessToken = await getAccessToken(slot);
+
+    const synthFetchOpts: RequestInit & { client?: Deno.HttpClient } = {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/text",
+      },
+      body: text,
+    };
+    if (httpClient) (synthFetchOpts as any).client = httpClient;
+
+    const synthesisResponse = await fetch(
+      `https://smartspeech.sber.ru/rest/v1/text:synthesize?voice=${encodeURIComponent(voiceParam)}&format=${encodeURIComponent(audioFormat)}`,
+      synthFetchOpts
+    );
+
+    if (!synthesisResponse.ok) {
+      const errorText = await synthesisResponse.text();
+      console.error(`[SaluteSpeech] Synthesis error slot ${slot.slotIndex}:`, synthesisResponse.status, errorText);
+      // Invalidate token on 401
+      if (synthesisResponse.status === 401) {
+        slot.cachedToken = null;
+        slot.tokenExpiresAt = 0;
+      }
+      throw new Error(`Synthesis failed (slot ${slot.slotIndex}): ${synthesisResponse.status} ${errorText}`);
+    }
+
+    console.log(`[SaluteSpeech] Synthesis OK via slot ${slot.slotIndex}`);
+    return await synthesisResponse.arrayBuffer();
+  } finally {
+    slot.busy = false;
+  }
 }
 
 serve(async (req) => {
@@ -169,51 +258,34 @@ serve(async (req) => {
       });
     }
 
-    const authKey = Deno.env.get("SALUTESPEECH_AUTH_KEY");
-    if (!authKey) {
+    if (slots.length === 0) {
       throw new Error("SALUTESPEECH_AUTH_KEY is not configured");
     }
 
-    // Step 1: Get access token
-    const accessToken = await getAccessToken(authKey);
-
-    // Step 2: Synthesize speech
-    console.log("[SaluteSpeech] Requested voice:", voice, "-> mapped to:", VOICES[voice] || "FALLBACK natalya");
     const voiceParam = VOICES[voice] || VOICES.natalya;
-    
-    const contentType = format === "wav16" 
-      ? "audio/x-wav" 
-      : format === "pcm16" 
-        ? "audio/x-pcm;bit=16;rate=24000" 
+    const audioFormat = format === "wav16" ? "wav16" : format === "pcm16" ? "pcm16" : "opus";
+    const contentType = format === "wav16"
+      ? "audio/x-wav"
+      : format === "pcm16"
+        ? "audio/x-pcm;bit=16;rate=24000"
         : "audio/ogg;codecs=opus";
 
-    const audioFormat = format === "wav16" ? "wav16" : format === "pcm16" ? "pcm16" : "opus";
+    console.log(`[SaluteSpeech] voice=${voice} -> ${voiceParam}, slots=${slots.length}`);
 
-    const synthFetchOpts: RequestInit & { client?: Deno.HttpClient } = {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/text",
-      },
-      body: text,
-    };
-    if (httpClient) (synthFetchOpts as any).client = httpClient;
+    // Try primary slot, fallback to secondary
+    const primarySlot = pickSlot()!;
+    let audioBuffer: ArrayBuffer;
 
-    const synthesisResponse = await fetch(
-      `https://smartspeech.sber.ru/rest/v1/text:synthesize?voice=${encodeURIComponent(voiceParam)}&format=${encodeURIComponent(audioFormat)}`,
-      synthFetchOpts
-    );
+    try {
+      audioBuffer = await synthesizeWithSlot(primarySlot, text, voiceParam, audioFormat);
+    } catch (primaryError) {
+      // If only one slot or same slot — rethrow
+      if (slots.length < 2) throw primaryError;
 
-    if (!synthesisResponse.ok) {
-      const errorText = await synthesisResponse.text();
-      console.error("Synthesis error:", synthesisResponse.status, errorText);
-      return new Response(JSON.stringify({ error: "Speech synthesis failed", details: errorText }), {
-        status: synthesisResponse.status,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      const fallbackSlot = slots.find(s => s.slotIndex !== primarySlot.slotIndex)!;
+      console.warn(`[SaluteSpeech] Slot ${primarySlot.slotIndex} failed, trying slot ${fallbackSlot.slotIndex}`);
+      audioBuffer = await synthesizeWithSlot(fallbackSlot, text, voiceParam, audioFormat);
     }
-
-    const audioBuffer = await synthesisResponse.arrayBuffer();
 
     return new Response(audioBuffer, {
       headers: {
