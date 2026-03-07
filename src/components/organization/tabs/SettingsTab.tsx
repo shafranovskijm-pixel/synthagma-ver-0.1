@@ -303,11 +303,7 @@ export function SettingsTab() {
       </details>
 
       {/* Menu Items Settings */}
-      <details className="bg-card rounded-xl lg:rounded-2xl border border-border group relative">
-        {isFreePlan && <LockedOverlay features={[
-          "Гибкая настройка навигации под ваши задачи",
-          "Скрывайте неиспользуемые разделы",
-        ]} />}
+      <details className="bg-card rounded-xl lg:rounded-2xl border border-border group">
         <summary className="p-4 lg:p-6 cursor-pointer list-none flex items-center justify-between">
           <h3 className="font-display font-semibold text-base lg:text-lg flex items-center gap-2">
             <LayoutGrid className="w-4 h-4 lg:w-5 lg:h-5" />
@@ -315,7 +311,11 @@ export function SettingsTab() {
           </h3>
           <ChevronRight className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90" />
         </summary>
-        <div className="px-4 lg:px-6 pb-4 lg:pb-6">
+        <div className="px-4 lg:px-6 pb-4 lg:pb-6 relative">
+          {isFreePlan && <LockedOverlay features={[
+            "Гибкая настройка навигации под ваши задачи",
+            "Скрывайте неиспользуемые разделы",
+          ]} />}
           <p className="text-xs lg:text-sm text-muted-foreground mb-3 lg:mb-4">
             Включите или отключите разделы в боковом меню
           </p>
