@@ -25,7 +25,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Building2, Loader2, Users, BookOpen, Key, Eye, EyeOff, Copy, Check, Download, ExternalLink, Search, X, FolderOpen, DollarSign, Calendar, RefreshCw, Mail, Phone, MoreHorizontal, Crown, LayoutGrid, List } from "lucide-react";
+import { Plus, Pencil, Trash2, Building2, Loader2, Users, BookOpen, Key, Eye, EyeOff, Copy, Check, Download, ExternalLink, Search, X, FolderOpen, DollarSign, Calendar, RefreshCw, Mail, Phone, MoreHorizontal, Crown, LayoutGrid, List, Sparkles } from "lucide-react";
 import { getPlanInfo, type SubscriptionPlan } from "@/constants/subscriptionPlans";
 import {
   DropdownMenu,
@@ -192,6 +192,17 @@ export function OrganizationsManager() {
       setLoading(false);
       setDetailsLoading(false);
     }
+  };
+
+  const toggleAiProvider = async (org: Organization) => {
+    const newProvider = org.ai_provider === 'lovable_ai' ? 'gigachat' : 'lovable_ai';
+    const { error } = await supabase.from("organizations").update({ ai_provider: newProvider } as any).eq("id", org.id);
+    if (error) {
+      toast({ title: "Ошибка", description: "Не удалось сменить провайдера", variant: "destructive" });
+      return;
+    }
+    setOrganizations(prev => prev.map(o => o.id === org.id ? { ...o, ai_provider: newProvider } : o));
+    toast({ title: "ИИ-провайдер изменён", description: `${org.name}: ${newProvider === 'lovable_ai' ? 'Lovable AI' : 'GigaChat'}` });
   };
 
   const handleCreate = async () => {
@@ -843,6 +854,10 @@ export function OrganizationsManager() {
                           <DropdownMenuItem onClick={() => openEdit(org)}>
                             <Pencil className="w-4 h-4 mr-2" />Редактировать
                           </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => toggleAiProvider(org)}>
+                            <Sparkles className="w-4 h-4 mr-2" />
+                            ИИ: {org.ai_provider === 'lovable_ai' ? 'Lovable AI → GigaChat' : 'GigaChat → Lovable AI'}
+                          </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem className="text-destructive" onClick={() => setDeleteOrg(org)}>
                             <Trash2 className="w-4 h-4 mr-2" />Удалить
@@ -1037,6 +1052,10 @@ export function OrganizationsManager() {
                       <DropdownMenuItem onClick={() => openEdit(org)}>
                         <Pencil className="w-4 h-4 mr-2" />
                         Редактировать
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => toggleAiProvider(org)}>
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        ИИ: {org.ai_provider === 'lovable_ai' ? 'Lovable AI → GigaChat' : 'GigaChat → Lovable AI'}
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem className="text-destructive" onClick={() => setDeleteOrg(org)}>
