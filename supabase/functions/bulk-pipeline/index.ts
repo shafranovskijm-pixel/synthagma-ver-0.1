@@ -91,6 +91,7 @@ async function processCourse(
   runId: string,
   updatePhase: (phase: string) => Promise<void>,
   shouldStop: () => Promise<boolean>,
+  aiProvider?: string,
 ): Promise<{ ok: boolean; testsSolved: number; lessonsFilled: number; skippedBatches: number; totalQuestions: number }> {
   let testsSolved = 0;
   let lessonsFilled = 0;
