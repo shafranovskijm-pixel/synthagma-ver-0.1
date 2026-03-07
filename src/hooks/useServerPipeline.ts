@@ -84,8 +84,10 @@ export function useServerPipeline({ courses, enableVerification, onComplete, aiP
             toast.info("Конвейер остановлен");
           }
         } else if (run.status === "partial") {
-          setIsRunning(true);
-          handleResume(runId);
+          // Don't auto-resume — let user click "Продолжить" manually
+          setIsRunning(false);
+          if (pollRef.current) clearInterval(pollRef.current);
+          pollRef.current = null;
         }
       } catch (e) {
         pollErrorCountRef.current++;
