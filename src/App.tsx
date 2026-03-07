@@ -13,6 +13,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LazyLoadFallback } from "@/components/LazyLoadFallback";
 import { ScrollToTop } from "./components/ScrollToTop";
 import { OfflineIndicator } from "./components/OfflineIndicator";
+import { useThemePersonalization } from "@/components/ui/ThemePersonalization";
 
 // Lazy-loaded pages for code splitting
 const Index = lazy(() => import("./pages/Index"));
@@ -70,6 +71,8 @@ const LearningRedirect = () => { const { courseId } = useParams(); return <Navig
 const isNative = typeof (window as any).Capacitor !== 'undefined';
 const Router = isNative ? HashRouter : BrowserRouter;
 
+function ThemeInit() { useThemePersonalization(); return null; }
+
 const App = () => (
   <ErrorBoundary>
     <HelmetProvider>
@@ -77,6 +80,7 @@ const App = () => (
         <QueryClientProvider client={queryClient}>
           <Router>
             <AuthProvider>
+              <ThemeInit />
               <ScrollToTop />
                 <OfflineIndicator />
               <TooltipProvider>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
+import { ThemePersonalization } from "@/components/ui/ThemePersonalization";
 import { 
-  Sun, Moon, Palette, ChevronRight, Database,
+  Palette, ChevronRight, Database,
   Shield, Bell, Loader2, Save, Globe, Tag, Sparkles, Settings
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -106,40 +107,19 @@ export function AdminSettings() {
           <ChevronRight className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90" />
         </summary>
         <div className="px-4 lg:px-6 pb-4 lg:pb-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <p className="font-medium text-sm lg:text-base">Режим оформления</p>
-              <p className="text-xs lg:text-sm text-muted-foreground">Выберите светлую или тёмную тему</p>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant={!isDarkMode ? "default" : "outline"}
-                className="rounded-xl gap-2 text-xs lg:text-sm flex-1 sm:flex-none"
-                size="sm"
-                onClick={() => {
-                  setIsDarkMode(false);
-                  document.documentElement.classList.remove('dark');
-                  localStorage.setItem('theme', 'light');
-                }}
-              >
-                <Sun className="w-4 h-4" />
-                Светлая
-              </Button>
-              <Button
-                variant={isDarkMode ? "default" : "outline"}
-                className="rounded-xl gap-2 text-xs lg:text-sm flex-1 sm:flex-none"
-                size="sm"
-                onClick={() => {
-                  setIsDarkMode(true);
-                  document.documentElement.classList.add('dark');
-                  localStorage.setItem('theme', 'dark');
-                }}
-              >
-                <Moon className="w-4 h-4" />
-                Тёмная
-              </Button>
-            </div>
-          </div>
+          <ThemePersonalization
+            isDarkMode={isDarkMode}
+            onToggleDark={(dark) => {
+              setIsDarkMode(dark);
+              if (dark) {
+                document.documentElement.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+              } else {
+                document.documentElement.classList.remove('dark');
+                localStorage.setItem('theme', 'light');
+              }
+            }}
+          />
         </div>
       </details>
 
