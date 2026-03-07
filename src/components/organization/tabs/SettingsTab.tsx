@@ -490,10 +490,17 @@ export function SettingsTab() {
                 </>
               )}
             </Button>
-            <Button variant="outline" className="rounded-xl gap-2" onClick={previewStudentDashboard}>
-              <Eye className="w-4 h-4" />
-              Предпросмотр
-            </Button>
+            <TooltipProvider delayDuration={300}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" className="rounded-xl gap-2" onClick={previewStudentDashboard}>
+                    <Eye className="w-4 h-4" />
+                    Предпросмотр
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Предпросмотр кабинета ученика</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         </div>
       </details>
