@@ -275,7 +275,7 @@ function SaluteSpeechTestPanel({ voice, onVoiceChange }: { voice: string; onVoic
     </div>
   );
 }
-
+export function AISettingsManager() {
 
   const [settings, setSettings] = useState<Record<string, AISetting>>({});
   const [loading, setLoading] = useState(true);
