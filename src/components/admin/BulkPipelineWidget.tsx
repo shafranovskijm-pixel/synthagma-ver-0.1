@@ -371,11 +371,33 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
           <Switch
             checked={enableVerification}
             onCheckedChange={setEnableVerification}
-            disabled={isBusy}
+            disabled={effectiveBusy}
           />
         </div>
 
-        {isBusy && currentCourseName && (
+        {/* Server mode toggle */}
+        <div className="flex items-center justify-between p-2.5 rounded-lg border bg-card">
+          <div>
+            <p className="text-xs font-medium">🖥️ Серверный режим</p>
+            <p className="text-[10px] text-muted-foreground">Обработка на сервере — закрытие вкладки не прервёт процесс</p>
+          </div>
+          <Switch
+            checked={serverMode}
+            onCheckedChange={setServerMode}
+            disabled={effectiveBusy}
+          />
+        </div>
+
+        {/* Server pipeline status */}
+        {serverMode && serverPipeline.currentRun && (
+          <div className="text-sm space-y-0.5">
+            <p className="font-medium truncate">🖥️ {serverPipeline.currentRun.current_phase || "Ожидание..."}</p>
+            <p className="text-[10px] text-muted-foreground">Статус: {serverPipeline.currentRun.status}</p>
+          </div>
+        )}
+
+        {/* Local pipeline status */}
+        {!serverMode && isBusy && currentCourseName && (
           <div className="text-sm space-y-0.5">
             <p className="font-medium truncate">▶ {currentCourseName}</p>
             <p className="text-muted-foreground text-xs truncate">{currentPhase}</p>
