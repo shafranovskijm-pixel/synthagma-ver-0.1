@@ -25,15 +25,8 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Building2, Loader2, Users, BookOpen, Key, Eye, EyeOff, Copy, Check, Download, ExternalLink, Search, X, FolderOpen, DollarSign, Calendar, RefreshCw, Mail, Phone, MoreHorizontal, Crown, LayoutGrid, List } from "lucide-react";
+import { Plus, Pencil, Trash2, Building2, Loader2, Users, BookOpen, Key, Eye, EyeOff, Copy, Check, Download, ExternalLink, Search, X, FolderOpen, DollarSign, Calendar, RefreshCw, Mail, Phone, Crown, LayoutGrid, List } from "lucide-react";
 import { getPlanInfo, type SubscriptionPlan } from "@/constants/subscriptionPlans";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { getXLSX } from "@/utils/xlsxHelper";
@@ -833,25 +826,16 @@ export function OrganizationsManager() {
                         <FolderOpen className="w-3.5 h-3.5 mr-1" />
                         Просмотр
                       </Button>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-7 w-7">
-                            <MoreHorizontal className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => viewAsOrganization(org)}>
-                            <ExternalLink className="w-4 h-4 mr-2" />Войти как
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => openEdit(org)}>
-                            <Pencil className="w-4 h-4 mr-2" />Редактировать
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-destructive" onClick={() => setDeleteOrg(org)}>
-                            <Trash2 className="w-4 h-4 mr-2" />Удалить
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <Button variant="outline" size="sm" onClick={() => viewAsOrganization(org)} className="text-xs h-7">
+                        <ExternalLink className="w-3.5 h-3.5 mr-1" />
+                        Войти как
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(org)}>
+                        <Pencil className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleteOrg(org)}>
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
                     </div>
                   </td>
                 </tr>
@@ -1026,28 +1010,16 @@ export function OrganizationsManager() {
                     <FolderOpen className="w-3.5 h-3.5 mr-1" />
                     Просмотр
                   </Button>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreHorizontal className="w-4 h-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => viewAsOrganization(org)}>
-                        <ExternalLink className="w-4 h-4 mr-2" />
-                        Войти как
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => openEdit(org)}>
-                        <Pencil className="w-4 h-4 mr-2" />
-                        Редактировать
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem className="text-destructive" onClick={() => setDeleteOrg(org)}>
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Удалить
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <Button variant="outline" size="sm" onClick={() => viewAsOrganization(org)} className="text-xs">
+                    <ExternalLink className="w-3.5 h-3.5 mr-1" />
+                    Войти как
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(org)}>
+                    <Pencil className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteOrg(org)}>
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
                 </div>
               </div>
             </Card>
