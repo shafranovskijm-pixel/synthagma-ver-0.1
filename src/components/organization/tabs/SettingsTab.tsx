@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
 import { SUBSCRIPTION_PLANS } from "@/constants/subscriptionPlans";
 import { 
