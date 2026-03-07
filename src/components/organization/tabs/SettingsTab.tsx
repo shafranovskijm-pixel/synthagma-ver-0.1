@@ -180,13 +180,7 @@ export function SettingsTab() {
       </details>
 
       {/* Document Center */}
-      <details className="bg-card rounded-xl lg:rounded-2xl border border-border group relative" open={!isFreePlan ? undefined : undefined}>
-        {isFreePlan && <LockedOverlay features={[
-          "Шаблоны договоров с автозаполнением реквизитов",
-          "Протоколы аттестационной комиссии (Word)",
-          "Согласия на обработку персональных данных",
-          "Печать и подпись — автовставка во все документы",
-        ]} />}
+      <details className="bg-card rounded-xl lg:rounded-2xl border border-border group" open={!isFreePlan ? undefined : undefined}>
         <summary className="p-4 lg:p-6 cursor-pointer list-none flex items-center justify-between">
           <h3 className="font-display font-semibold text-base lg:text-lg flex items-center gap-2">
             <FileText className="w-4 h-4 lg:w-5 lg:h-5" />
@@ -194,7 +188,13 @@ export function SettingsTab() {
           </h3>
           <ChevronRight className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90" />
         </summary>
-        <div className="px-4 lg:px-6 pb-4 lg:pb-6">
+        <div className="px-4 lg:px-6 pb-4 lg:pb-6 relative">
+          {isFreePlan && <LockedOverlay features={[
+            "Шаблоны договоров с автозаполнением реквизитов",
+            "Протоколы аттестационной комиссии (Word)",
+            "Согласия на обработку персональных данных",
+            "Печать и подпись — автовставка во все документы",
+          ]} />}
           <Tabs value={docTab} onValueChange={setDocTab}>
             <TabsList className="flex flex-wrap h-auto gap-1 bg-muted/50 p-1 rounded-xl">
               <TabsTrigger value="requisites" className="rounded-lg text-xs gap-1.5 px-2.5 py-1.5">
