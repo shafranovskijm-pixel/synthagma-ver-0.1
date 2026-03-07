@@ -150,7 +150,11 @@ export function useCourseLearning() {
     : [];
 
   // Computed isSpeaking
-  const isSpeaking = ttsSettings.useElevenLabs ? elevenLabsTTS.isActive : isBrowserSpeaking;
+  const isSpeaking = ttsSettings.provider === 'elevenlabs'
+    ? elevenLabsTTS.isActive
+    : ttsSettings.provider === 'salutespeech'
+      ? (isSaluteSpeaking || isSaluteLoading)
+      : isBrowserSpeaking;
 
   // Text extraction from blocks
   const extractTextFromBlocks = (blocks: ContentBlock[]): string => {
