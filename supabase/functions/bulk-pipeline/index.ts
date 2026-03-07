@@ -176,15 +176,19 @@ async function processCourse(
         byLesson.set(q.lesson_id, arr);
       }
 
-      for (const [lessonId, qs] of byLesson) {
-        if (await shouldStop()) return { ok: false, testsSolved, lessonsFilled, skippedBatches, totalQuestions };
+      // Process lessons in parallel (concurrency=2)
+      const lessonEntries = Array.from(byLesson.entries());
+      
+      const solveLesson = async ([lessonId, qs]: [string, any[]]) => {
         const lessonInfo = currentLessons.find(l => l.id === lessonId);
         const batchSize = 40;
+        let localSolved = 0;
+        let localSkipped = 0;
 
         for (let i = 0; i < qs.length; i += batchSize) {
-          if (await shouldStop()) return { ok: false, testsSolved, lessonsFilled, skippedBatches, totalQuestions };
+          if (await shouldStop()) return { solved: localSolved, skipped: localSkipped, stopped: true };
           const batch = qs.slice(i, i + batchSize);
-          await updatePhase(`Тесты: ${testsSolved}/${unanswered.length} — «${lessonInfo?.title || "Тест"}»`);
+          await updatePhase(`Тесты: ${testsSolved + localSolved}/${unanswered.length} — «${lessonInfo?.title || "Тест"}»`);
 
           let retries = 0;
           let success = false;
@@ -213,7 +217,7 @@ async function processCourse(
                   await db.from("test_questions")
                     .update({ correct_answer: ans.correctAnswer, explanation: ans.explanation || null })
                     .eq("id", q.id);
-                  testsSolved++;
+                  localSolved++;
                 }
               }
               success = true;
@@ -222,12 +226,19 @@ async function processCourse(
               retries++;
               console.error(`[bulk-pipeline] Test batch attempt ${retries}/3:`, e?.message);
               if (retries < 3) await new Promise(r => setTimeout(r, retries * 5000));
-              else skippedBatches++;
+              else localSkipped++;
             }
           }
           await new Promise(r => setTimeout(r, 3000));
         }
-        await new Promise(r => setTimeout(r, 2000));
+        return { solved: localSolved, skipped: localSkipped, stopped: false };
+      };
+
+      const lessonResults = await processInParallel(lessonEntries, 2, solveLesson, shouldStop, 2000);
+      for (const r of lessonResults) {
+        testsSolved += r.solved;
+        skippedBatches += r.skipped;
+        if (r.stopped) return { ok: false, testsSolved, lessonsFilled, skippedBatches, totalQuestions };
       }
     }
 
