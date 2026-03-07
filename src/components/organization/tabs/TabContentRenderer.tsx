@@ -30,7 +30,6 @@ export function TabContentRenderer() {
     activeTab !== "library" && 
     activeTab !== "journals" && 
     activeTab !== "labor-safety" &&
-    activeTab !== "webinars" &&
     activeTab !== "subscription" &&
     activeTab !== "chats" &&
     !activeTab.startsWith("documents");
