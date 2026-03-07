@@ -1,52 +1,18 @@
 
 
-## Проблема
+## Plan: Auto-fix after "Проверить все"
 
-Настройка голоса SaluteSpeech из админки (`AISettingsManager`) **не применяется** при озвучивании уроков студентами. Причины:
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-1. `TTSSettings` содержит только `voiceId` (ElevenLabs) и `useElevenLabs: boolean` — нет поддержки SaluteSpeech как провайдера
-2. `speakText()` в `useCourseLearning.ts` знает только два пути: ElevenLabs или браузерный синтез
-3. `TTSSettingsDialog` не предлагает SaluteSpeech как вариант
-4. Админская настройка `extra_config.salute_voice` из `AISettingsManager` никак не читается в клиентском коде озвучивания
+### Changes
 
-## План исправления
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-### 1. Расширить `TTSSettings` (TTSSettingsDialog.tsx)
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-```ts
-interface TTSSettings {
-  provider: 'elevenlabs' | 'salutespeech' | 'browser';
-  voiceId: string;           // ElevenLabs voice
-  saluteVoice: string;       // SaluteSpeech voice (natalya, boris, etc.)
-}
-```
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-Обратная совместимость: при чтении из localStorage, если `useElevenLabs === true` → `provider: 'elevenlabs'`, иначе → `provider: 'browser'`.
-
-### 2. Обновить `TTSSettingsDialog` UI
-
-- Заменить Switch «Использовать ElevenLabs» на Select с тремя провайдерами: ElevenLabs, SaluteSpeech (Sber), Браузер
-- При выборе ElevenLabs — показывать выбор голоса ElevenLabs (как сейчас)
-- При выборе SaluteSpeech — показывать выбор голоса SaluteSpeech (natalya, boris, marfa и т.д.)
-- При выборе Браузер — показывать информацию о встроенном синтезе
-
-### 3. Добавить хук `useSaluteSpeechTTS` или расширить `speakText()`
-
-В `useCourseLearning.ts` добавить третью ветку в `speakText()`:
-
-```ts
-if (ttsSettings.provider === 'salutespeech') {
-  // fetch salutespeech-tts edge function с voice = ttsSettings.saluteVoice
-} else if (ttsSettings.provider === 'elevenlabs') {
-  elevenLabsTTS.speak(text);
-} else {
-  // browser speech synthesis
-}
-```
-
-### 4. Файлы для изменения
-
-- `src/components/student/TTSSettingsDialog.tsx` — новый интерфейс, Select провайдера, голоса SaluteSpeech
-- `src/hooks/useCourseLearning.ts` — добавить SaluteSpeech ветку в `speakText()`, состояние загрузки
-- `src/pages/CourseLearning.tsx` — минимальные правки если нужны для нового состояния
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 
