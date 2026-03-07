@@ -318,7 +318,7 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
             title: course.title,
             description: course.description || null,
             duration: course.duration || null,
-            organization_id: "00000000-0000-0000-0000-000000000000",
+            organization_id: MARKETPLACE_ORG_ID,
             is_published: true,
           })
           .select("id")
