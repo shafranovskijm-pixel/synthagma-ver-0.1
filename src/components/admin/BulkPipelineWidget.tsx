@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import {
   Play, Square, CheckCircle2, Loader2, AlertTriangle, Brain, FileSpreadsheet,
-  DollarSign, RotateCcw, Upload, Clock, ListChecks, ChevronDown, FlaskConical, Eye, BarChart3, RefreshCw,
+  DollarSign, RotateCcw, Upload, Clock, ListChecks, ChevronDown, FlaskConical, Eye, BarChart3, RefreshCw, Trash2, SkipForward,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -196,11 +196,16 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
     }
   };
 
-  const { isBusy, totalCount, completedCount, progressPercent, currentIndex, currentPhase, completedLog, summary, aiSessionCalls } = pipeline;
+  const { isBusy, totalCount, completedCount, progressPercent, currentIndex, currentPhase, completedLog, summary, aiSessionCalls, hasResumableProgress } = pipeline;
 
   const handleStartWithQueue = useCallback(() => {
     setQueueOpen(true);
-    pipeline.handleStart();
+    pipeline.handleStart(false);
+  }, [pipeline.handleStart]);
+
+  const handleResumeWithQueue = useCallback(() => {
+    setQueueOpen(true);
+    pipeline.handleStart(true);
   }, [pipeline.handleStart]);
 
   const handleTestRunWithQueue = useCallback(() => {
@@ -231,8 +236,18 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
             !isBusy ? (
               <div className="flex items-center gap-1.5">
                 <Button size="sm" variant="outline" onClick={handleTestRunWithQueue} className="gap-1.5">
-                  <FlaskConical className="w-3.5 h-3.5" />Тест 1 курса
+                  <FlaskConical className="w-3.5 h-3.5" />Тест 1
                 </Button>
+                {hasResumableProgress && (
+                  <>
+                    <Button size="sm" variant="outline" onClick={handleResumeWithQueue} className="gap-1.5">
+                      <SkipForward className="w-3.5 h-3.5" />Продолжить
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={pipeline.handleResetProgress} className="gap-1 px-2" title="Сбросить прогресс">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </>
+                )}
                 <Button size="sm" onClick={handleStartWithQueue} className="gap-1.5">
                   <Play className="w-3.5 h-3.5" />Запустить все
                 </Button>

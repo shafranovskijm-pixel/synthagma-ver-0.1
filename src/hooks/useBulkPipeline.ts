@@ -52,6 +52,77 @@ function checkFor402(error: any) {
 
 export { CreditsExhaustedError, checkFor402 };
 
+// ── Resume helpers ──
+const RESUME_KEY = "pipeline_completed_ids";
+
+function getCompletedIds(): Set<string> {
+  try {
+    const saved = localStorage.getItem(RESUME_KEY);
+    if (saved) return new Set(JSON.parse(saved));
+  } catch {}
+  return new Set();
+}
+
+function saveCompletedId(id: string) {
+  const ids = getCompletedIds();
+  ids.add(id);
+  localStorage.setItem(RESUME_KEY, JSON.stringify([...ids]));
+}
+
+function clearCompletedIds() {
+  localStorage.removeItem(RESUME_KEY);
+}
+
+// ── Adaptive delay ──
+let lastModelProvider: "gigachat" | "lovable" | "unknown" = "unknown";
+
+function getDelay(type: "batch" | "lesson"): number {
+  if (lastModelProvider === "lovable") return type === "batch" ? 2000 : 1500;
+  if (lastModelProvider === "gigachat") return type === "batch" ? 5000 : 3000;
+  return type === "batch" ? 4000 : 2500;
+}
+
+function detectProvider(data: any) {
+  const model = data?.model || data?.modelUsed || "";
+  if (typeof model === "string") {
+    const lower = model.toLowerCase();
+    if (lower.includes("gemini") || lower.includes("gpt") || lower.includes("lovable")) {
+      lastModelProvider = "lovable";
+    } else if (lower.includes("gigachat")) {
+      lastModelProvider = "gigachat";
+    }
+  }
+}
+
+// ── Parallel with concurrency limit ──
+async function parallelMap<T, R>(
+  items: T[],
+  concurrency: number,
+  fn: (item: T, index: number) => Promise<R>
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let nextIndex = 0;
+
+  async function worker() {
+    while (nextIndex < items.length) {
+      const i = nextIndex++;
+      results[i] = await fn(items[i], i);
+    }
+  }
+
+  const workers = Array.from({ length: Math.min(concurrency, items.length) }, () => worker());
+  await Promise.all(workers);
+  return results;
+}
+
+// ── Smart filter for already-solved questions ──
+function isReliablySolved(q: { correct_answer: number | null; explanation?: string | null }): boolean {
+  if (q.correct_answer === null || q.correct_answer === undefined) return false;
+  // Has answer AND meaningful explanation → reliably solved
+  if (q.explanation && q.explanation.length > 20) return true;
+  return false;
+}
+
 // ── Hook ──
 
 interface UseBulkPipelineProps {
@@ -69,8 +140,8 @@ export function useBulkPipeline({ courses, onComplete }: UseBulkPipelineProps) {
   const [summary, setSummary] = useState<PipelineSummary | null>(null);
   const [aiSessionCalls, setAiSessionCalls] = useState(0);
   const currentPhaseRef = useRef("");
+  const [hasResumableProgress, setHasResumableProgress] = useState(() => getCompletedIds().size > 0);
 
-  // Keep ref in sync
   const updatePhase = useCallback((phase: string) => {
     currentPhaseRef.current = phase;
     setCurrentPhase(phase);
@@ -101,12 +172,15 @@ export function useBulkPipeline({ courses, onComplete }: UseBulkPipelineProps) {
     if (testIds.length > 0) {
       const { data: questions } = await supabase
         .from("test_questions").select("id, lesson_id, correct_answer, explanation, question, options").in("lesson_id", testIds);
+
       const byLessonMap = new Map<string, any[]>();
       for (const q of questions || []) {
         const arr = byLessonMap.get(q.lesson_id) || [];
         arr.push(q);
         byLessonMap.set(q.lesson_id, arr);
       }
+
+      // Suspicious detection: all same answer + no explanations
       const suspiciousLessons = new Set<string>();
       for (const [lid, qs] of byLessonMap) {
         if (qs.length > 3) {
@@ -115,9 +189,12 @@ export function useBulkPipeline({ courses, onComplete }: UseBulkPipelineProps) {
           if (allSame && noExplanations) suspiciousLessons.add(lid);
         }
       }
-      const unanswered = (questions || []).filter((q: any) =>
-        q.correct_answer === null || q.correct_answer === undefined || suspiciousLessons.has(q.lesson_id)
-      );
+
+      // Smart filter: skip reliably solved questions
+      const unanswered = (questions || []).filter((q: any) => {
+        if (suspiciousLessons.has(q.lesson_id)) return true;
+        return !isReliablySolved(q);
+      });
 
       totalQuestions = unanswered.length;
       if (unanswered.length > 0) {
@@ -131,7 +208,7 @@ export function useBulkPipeline({ courses, onComplete }: UseBulkPipelineProps) {
         for (const [lessonId, qs] of byLesson) {
           if (stopRef.current) return { ok: false, lessonsFilled, testsSolved, skippedBatches, totalQuestions };
           const lessonInfo = currentLessons.find(l => l.id === lessonId);
-          const batchSize = 20;
+          const batchSize = 40; // Increased from 20
           for (let i = 0; i < qs.length; i += batchSize) {
             if (stopRef.current) return { ok: false, lessonsFilled, testsSolved, skippedBatches, totalQuestions };
             const batch = qs.slice(i, i + batchSize);
@@ -151,6 +228,7 @@ export function useBulkPipeline({ courses, onComplete }: UseBulkPipelineProps) {
                 });
                 if (error) { checkFor402(error); throw error; }
                 if (data?.error) { checkFor402(data); throw new Error(data.error); }
+                detectProvider(data);
                 if (data?.answers && !data.parseError) {
                   for (const ans of data.answers) {
                     const q = batch[ans.questionIndex];
@@ -177,11 +255,11 @@ export function useBulkPipeline({ courses, onComplete }: UseBulkPipelineProps) {
                 }
               }
             }
-            // Delay between batches
-            await new Promise(r => setTimeout(r, 5000));
+            // Adaptive delay between batches
+            await new Promise(r => setTimeout(r, getDelay("batch")));
           }
-          // Delay between lessons
-          await new Promise(r => setTimeout(r, 3000));
+          // Adaptive delay between lessons
+          await new Promise(r => setTimeout(r, getDelay("lesson")));
         }
       }
     }
@@ -199,6 +277,7 @@ export function useBulkPipeline({ courses, onComplete }: UseBulkPipelineProps) {
         });
         if (error) { checkFor402(error); throw error; }
         if (data?.error) { checkFor402(data); throw new Error(data.error); }
+        detectProvider(data);
         if (data?.lessons && Array.isArray(data.lessons)) {
           const newLessons = data.lessons
             .filter((l: any) => l.type !== "test")
@@ -214,14 +293,14 @@ export function useBulkPipeline({ courses, onComplete }: UseBulkPipelineProps) {
           }
           setAiSessionCalls(prev => prev + 1);
         }
-        await new Promise(r => setTimeout(r, 3000));
+        await new Promise(r => setTimeout(r, getDelay("lesson")));
       } catch (e) {
         if (e instanceof CreditsExhaustedError) throw e;
         console.error("Structure gen failed:", e);
       }
     }
 
-    // 4. Fill empty text lessons
+    // 4. Fill empty text lessons — parallel with concurrency=2
     const { data: allLessons } = await supabase
       .from("lessons").select("id, title, type, content, order_index").eq("course_id", courseId).order("order_index");
 
@@ -229,26 +308,30 @@ export function useBulkPipeline({ courses, onComplete }: UseBulkPipelineProps) {
       (l.type === "text" || l.type === "practice") && (!l.content || l.content === "[]" || l.content === "" || l.content.length < 50)
     );
 
-    for (let i = 0; i < emptyLessons.length; i++) {
-      if (stopRef.current) return { ok: false, lessonsFilled, testsSolved, skippedBatches, totalQuestions };
-      const lesson = emptyLessons[i];
-      updatePhase(`Контент: «${lesson.title}» (${i + 1}/${emptyLessons.length})`);
-      try {
-        const { data, error } = await supabase.functions.invoke("gigachat", {
-          body: { action: "generate_content", courseTitle, lessonTitle: lesson.title, existingContent: null, customSystemPrompt: currentPrompts.content || undefined },
-        });
-        if (error) { checkFor402(error); throw error; }
-        if (data?.error) { checkFor402(data); throw new Error(data.error); }
-        if (data?.content) {
-          await supabase.from("lessons").update({ content: data.content }).eq("id", lesson.id);
-          lessonsFilled++;
-          setAiSessionCalls(prev => prev + 1);
+    if (emptyLessons.length > 0) {
+      let filledSoFar = 0;
+      await parallelMap(emptyLessons, 2, async (lesson, i) => {
+        if (stopRef.current) return;
+        updatePhase(`Контент: «${lesson.title}» (${filledSoFar + 1}/${emptyLessons.length})`);
+        try {
+          const { data, error } = await supabase.functions.invoke("gigachat", {
+            body: { action: "generate_content", courseTitle, lessonTitle: lesson.title, existingContent: null, customSystemPrompt: currentPrompts.content || undefined },
+          });
+          if (error) { checkFor402(error); throw error; }
+          if (data?.error) { checkFor402(data); throw new Error(data.error); }
+          detectProvider(data);
+          if (data?.content) {
+            await supabase.from("lessons").update({ content: data.content }).eq("id", lesson.id);
+            lessonsFilled++;
+            filledSoFar++;
+            setAiSessionCalls(prev => prev + 1);
+          }
+          await new Promise(r => setTimeout(r, getDelay("lesson")));
+        } catch (e) {
+          if (e instanceof CreditsExhaustedError) throw e;
+          console.error(`Content gen failed for ${lesson.id}:`, e);
         }
-        await new Promise(r => setTimeout(r, 3000));
-      } catch (e) {
-        if (e instanceof CreditsExhaustedError) throw e;
-        console.error(`Content gen failed for ${lesson.id}:`, e);
-      }
+      });
     }
 
     // 5. Fix duplicate titles
@@ -273,19 +356,31 @@ export function useBulkPipeline({ courses, onComplete }: UseBulkPipelineProps) {
     return { ok: true, lessonsFilled, testsSolved, skippedBatches, totalQuestions };
   }, [updatePhase]);
 
-  const handleStart = useCallback(async () => {
+  const handleStart = useCallback(async (resume = false) => {
     stopRef.current = false;
     setIsRunning(true);
     setCompletedLog([]);
     setCurrentIndex(0);
     setSummary(null);
+
+    const completedIds = resume ? getCompletedIds() : new Set<string>();
+    if (!resume) clearCompletedIds();
+
     const startTime = Date.now();
     let totalSolved = 0, totalFilled = 0, totalErrors = 0, totalSuccess = 0, totalSkipped = 0;
 
     for (let i = 0; i < courses.length; i++) {
       if (stopRef.current) break;
-      setCurrentIndex(i);
       const course = courses[i];
+
+      // Skip already completed (resume mode)
+      if (completedIds.has(course.id)) {
+        setCompletedLog(prev => [...prev, { courseName: course.course?.title || `Курс ${i + 1}`, status: "ok", message: "Ранее обработан" }]);
+        totalSuccess++;
+        continue;
+      }
+
+      setCurrentIndex(i);
       const name = course.course?.title || `Курс ${i + 1}`;
 
       try {
@@ -299,6 +394,8 @@ export function useBulkPipeline({ courses, onComplete }: UseBulkPipelineProps) {
         totalFilled += result.lessonsFilled;
         totalSkipped += result.skippedBatches;
         totalSuccess++;
+        saveCompletedId(course.id);
+        setHasResumableProgress(true);
         setCompletedLog(prev => [...prev, {
           courseName: name,
           status: "ok",
@@ -343,6 +440,11 @@ export function useBulkPipeline({ courses, onComplete }: UseBulkPipelineProps) {
     updatePhase("Остановка...");
   }, [updatePhase]);
 
+  const handleResetProgress = useCallback(() => {
+    clearCompletedIds();
+    setHasResumableProgress(false);
+  }, []);
+
   const handleTestRun = useCallback(async () => {
     if (courses.length === 0) return;
     stopRef.current = false;
@@ -381,7 +483,8 @@ export function useBulkPipeline({ courses, onComplete }: UseBulkPipelineProps) {
     currentIndex, currentPhase, completedLog, summary,
     totalCount, completedCount, progressPercent,
     aiSessionCalls,
-    handleStart, handleStop, handleTestRun,
-    setQueueOpen: undefined as any, // handled by parent
+    hasResumableProgress,
+    handleStart, handleStop, handleTestRun, handleResetProgress,
+    setQueueOpen: undefined as any,
   };
 }
