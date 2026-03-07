@@ -18,6 +18,9 @@ import { ProtocolTemplateEditor } from "@/components/organization/ProtocolTempla
 import { CertificateTemplateEditor } from "@/components/organization/CertificateTemplateEditor";
 import { StampSignatureUploader } from "@/components/organization/StampSignatureUploader";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { DocumentPreview } from "@/components/organization/DocumentPreview";
+import { Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 type DocumentSubTab = "constructor" | "programs" | "org" | "orders" | "protocols" | "certificates" | "diplomas" | "testimonials";
