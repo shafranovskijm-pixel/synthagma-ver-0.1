@@ -1227,20 +1227,18 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
 
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label>Лимит ИИ токенов (в месяц)</Label>
-                    <Input
-                      type="number"
-                      min="1000"
-                      step="1000"
-                      value={settings.ai_tokens_limit}
-                      onChange={(e) => setSettings({ 
-                        ...settings, 
-                        ai_tokens_limit: parseInt(e.target.value || "100000")
-                      })}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Текущее использование: {formatTokens(usage.ai_tokens_used)} ({tokensLimitPercent.toFixed(1)}%)
-                    </p>
+                    <Label>ИИ-генерации (лимит по тарифу)</Label>
+                    <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg border">
+                      <Sparkles className="w-4 h-4 text-purple-500" />
+                      <div>
+                        <p className="text-sm font-medium">
+                          {aiGenerationsLimit === Infinity ? "Безлимит" : `${aiGenerationsLimit} генераций / мес`}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Использовано: {usage.ai_generations_count} {aiGenerationsLimit !== Infinity ? `(${aiGenerationsPercent.toFixed(1)}%)` : ""}
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
