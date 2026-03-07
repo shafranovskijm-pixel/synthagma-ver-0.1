@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
+import { ThemePersonalization } from "@/components/ui/ThemePersonalization";
 import { 
-  Sun, Moon, Palette, ChevronRight, Database,
+  Palette, ChevronRight, Database,
   Shield, Bell, Loader2, Save, Globe, Tag, Sparkles, Settings
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
