@@ -125,6 +125,12 @@ export function AdminSidebar({
             Поддержка
           </button>
 
+          {/* Broadcast */}
+          <button onClick={() => handleTabClick("broadcast")} className={tabButtonClass("broadcast")}>
+            <Megaphone className="w-5 h-5" />
+            Рассылка
+          </button>
+
           {/* Dev Tools */}
           <button onClick={() => handleTabClick("devtools")} className={tabButtonClass("devtools")}>
             <Terminal className="w-5 h-5" />

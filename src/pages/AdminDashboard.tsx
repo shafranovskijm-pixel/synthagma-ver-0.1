@@ -102,6 +102,7 @@ const AdminDashboard = () => {
           {activeTab === "users" && <UsersManager />}
           {activeTab === "content" && <BlogManager />}
           {activeTab === "support" && <SupportRequestsManager />}
+          {activeTab === "broadcast" && <BroadcastManager />}
           {activeTab === "devtools" && <DevToolsPanel />}
           {activeTab === "settings" && <AdminSettings />}
         </div>
