@@ -93,7 +93,18 @@ const PIPELINE_PROVIDERS = [
 
 const TTS_PROVIDERS = [
   { value: "elevenlabs", label: "ElevenLabs" },
+  { value: "salutespeech", label: "SaluteSpeech (Sber)" },
   { value: "lovable_ai", label: "Lovable AI" },
+];
+
+const SALUTE_VOICES = [
+  { value: "natalya", label: "Наталья (жен.)" },
+  { value: "boris", label: "Борис (муж.)" },
+  { value: "marfa", label: "Марфа (жен., молодой)" },
+  { value: "taras", label: "Тарас (муж., молодой)" },
+  { value: "alexandr", label: "Александр (муж., старший)" },
+  { value: "sergey", label: "Сергей (муж.)" },
+  { value: "kira", label: "Кира (жен.)" },
 ];
 
 const CONTEXT_META: Record<string, { icon: React.ReactNode; title: string; description: string; color: string }> = {
