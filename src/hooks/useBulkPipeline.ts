@@ -333,6 +333,7 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
                       correctAnswer: q.correct_answer,
                       explanation: q.explanation || "",
                     })),
+                    ai_provider: aiProvider,
                   },
                 }),
                 AI_CALL_TIMEOUT, "verify_answers"
