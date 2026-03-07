@@ -234,7 +234,7 @@ async function processCourse(
                 callAI([
                   { role: "system", content: VERIFY_PROMPT },
                   { role: "user", content: `Курс: "${courseTitle}"\nУрок: "${lessonInfo?.title || "Тест"}"\n\n${questionsText}` },
-                ], 16384),
+                ], 16384, aiProvider),
                 AI_CALL_TIMEOUT, "callAI:verify"
               );
 
