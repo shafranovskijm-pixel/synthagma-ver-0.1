@@ -473,6 +473,7 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
     // Add dialog
     showAddDialog, setShowAddDialog, selectedCourseToAdd, setSelectedCourseToAdd,
     shortDescription, setShortDescription,
+    priceStudent, setPriceStudent, priceOrganization, setPriceOrganization,
     isAdding, handleAddToMarketplace,
     // Order dialog
     showOrderDialog, setShowOrderDialog, selectedCourseForOrder, setSelectedCourseForOrder,

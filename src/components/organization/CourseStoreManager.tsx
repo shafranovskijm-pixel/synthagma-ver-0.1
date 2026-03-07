@@ -388,20 +388,39 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
       {/* Order Dialog — simplified to direct clone */}
       <Dialog open={h.showOrderDialog} onOpenChange={h.setShowOrderDialog}>
         <DialogContent className="rounded-2xl max-w-md">
-          <DialogHeader><DialogTitle>Добавить курс</DialogTitle><DialogDescription>{h.selectedCourseForOrder?.course?.title}</DialogDescription></DialogHeader>
-          <div className="space-y-4 py-4">
-            {h.userRole === 'organization' && (
-              <div className="flex gap-3 p-4 rounded-xl border border-blue-500/20 bg-blue-500/5">
-                <Info className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
-                <p className="text-sm text-muted-foreground">Курс будет скопирован в вашу организацию. Вы сможете использовать его для обучения своих студентов.</p>
-              </div>
-            )}
-            <div className="bg-secondary/50 rounded-xl p-4 space-y-3">
-              <div className="flex justify-between items-center"><span className="text-muted-foreground">Источник:</span><span className="font-medium">{h.selectedCourseForOrder?.organization?.name || "Платформа Синтагма"}</span></div>
-            </div>
-            <div className="space-y-2"><Label>Комментарий</Label><Textarea value={h.orderNotes} onChange={(e) => h.setOrderNotes(e.target.value)} placeholder="Дополнительная информация..." className="rounded-xl" /></div>
-          </div>
-          <DialogFooter><Button className="w-full btn-gradient rounded-xl gap-2" onClick={h.handleOrder} disabled={h.isOrdering}>{h.isOrdering ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Добавление...</> : <><Plus className="w-4 h-4" />Добавить курс</>}</Button></DialogFooter>
+          {(() => {
+            const orderPrice = h.selectedCourseForOrder ? (h.userRole === 'organization' ? h.selectedCourseForOrder.price_organization : h.selectedCourseForOrder.price_student) : 0;
+            const totalPrice = h.userRole === 'organization' ? orderPrice * h.studentsCount : orderPrice;
+            return (
+              <>
+                <DialogHeader><DialogTitle>{orderPrice > 0 ? 'Купить курс' : 'Добавить курс'}</DialogTitle><DialogDescription>{h.selectedCourseForOrder?.course?.title}</DialogDescription></DialogHeader>
+                <div className="space-y-4 py-4">
+                  {h.userRole === 'organization' && (
+                    <div className="flex gap-3 p-4 rounded-xl border border-blue-500/20 bg-blue-500/5">
+                      <Info className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
+                      <p className="text-sm text-muted-foreground">Курс будет скопирован в вашу организацию.</p>
+                    </div>
+                  )}
+                  <div className="bg-secondary/50 rounded-xl p-4 space-y-3">
+                    <div className="flex justify-between items-center"><span className="text-muted-foreground">Источник:</span><span className="font-medium">{h.selectedCourseForOrder?.organization?.name || "Платформа Синтагма"}</span></div>
+                    {orderPrice > 0 && (
+                      <>
+                        <div className="flex justify-between items-center"><span className="text-muted-foreground">Цена:</span><span className="font-medium">{orderPrice.toLocaleString()} ₽</span></div>
+                        {h.userRole === 'organization' && h.studentsCount > 1 && (
+                          <div className="flex justify-between items-center border-t pt-2"><span className="text-muted-foreground font-medium">Итого:</span><span className="font-bold text-primary">{totalPrice.toLocaleString()} ₽</span></div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                  {h.userRole === 'organization' && (
+                    <div className="space-y-2"><Label>Количество студентов</Label><Input type="number" min={1} value={h.studentsCount} onChange={(e) => h.setStudentsCount(Number(e.target.value) || 1)} className="rounded-xl" /></div>
+                  )}
+                  <div className="space-y-2"><Label>Комментарий</Label><Textarea value={h.orderNotes} onChange={(e) => h.setOrderNotes(e.target.value)} placeholder="Дополнительная информация..." className="rounded-xl" /></div>
+                </div>
+                <DialogFooter><Button className="w-full btn-gradient rounded-xl gap-2" onClick={h.handleOrder} disabled={h.isOrdering}>{h.isOrdering ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Оформление...</> : orderPrice > 0 ? <><ShoppingCart className="w-4 h-4" />Купить за {totalPrice.toLocaleString()} ₽</> : <><Plus className="w-4 h-4" />Добавить курс</>}</Button></DialogFooter>
+              </>
+            );
+          })()}
         </DialogContent>
       </Dialog>
 
