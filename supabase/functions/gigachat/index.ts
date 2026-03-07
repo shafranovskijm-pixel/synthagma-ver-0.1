@@ -176,7 +176,7 @@ serve(async (req) => {
       const { text: response, model } = await callAI([
         { role: "system", content: verifyPrompt },
         { role: "user", content: prompt },
-      ], 16384);
+      ], 16384, ai_provider);
 
       try {
         const cleaned = response.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
