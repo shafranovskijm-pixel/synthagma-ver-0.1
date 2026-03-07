@@ -128,6 +128,7 @@ async function processCourse(
   aiProvider?: string,
   gigachatModel?: string,
   lovableModel?: string,
+  taskCounter?: { value: number },
 ): Promise<{ ok: boolean; testsSolved: number; lessonsFilled: number; skippedBatches: number; totalQuestions: number }> {
   let testsSolved = 0;
   let lessonsFilled = 0;
@@ -204,11 +205,12 @@ async function processCourse(
                 return `Вопрос ${idx + 1}: ${q.question}\n${opts}`;
               }).join("\n\n");
 
+              const currentTaskIdx = taskCounter ? taskCounter.value++ : undefined;
               const { text: response } = await withTimeout(
                 callAI([
                   { role: "system", content: prompts.answers || DEFAULT_ANSWERS_PROMPT },
                   { role: "user", content: `Курс: "${courseTitle}"\nУрок: "${lessonInfo?.title || "Тест"}"\n\n${questionsText}` },
-                ], 16384, aiProvider, gigachatModel, lovableModel),
+                ], 16384, aiProvider, gigachatModel, lovableModel, currentTaskIdx),
                 AI_CALL_TIMEOUT, "callAI:answers"
               );
 
@@ -277,11 +279,12 @@ async function processCourse(
                 return `Вопрос ${idx + 1}: ${q.question}\n${opts}${prev}`;
               }).join("\n\n");
 
+              const verifyTaskIdx = taskCounter ? taskCounter.value++ : undefined;
               const { text: response } = await withTimeout(
                 callAI([
                   { role: "system", content: VERIFY_PROMPT },
                   { role: "user", content: `Курс: "${courseTitle}"\nУрок: "${lessonInfo?.title || "Тест"}"\n\n${questionsText}` },
-                ], 16384, aiProvider, gigachatModel, lovableModel),
+                ], 16384, aiProvider, gigachatModel, lovableModel, verifyTaskIdx),
                 AI_CALL_TIMEOUT, "callAI:verify"
               );
 
@@ -313,11 +316,12 @@ async function processCourse(
   if (currentLessons.length < 3) {
     await updatePhase("Генерация структуры...");
     try {
+      const structTaskIdx = taskCounter ? taskCounter.value++ : undefined;
       const { text: response } = await withTimeout(
         callAI([
           { role: "system", content: prompts.structure || "Создай структуру курса из 8-15 уроков. Типы: text, test, practice. Последний урок — итоговый тест. Отвечай JSON-массивом [{title, type}]." },
           { role: "user", content: `Создай структуру курса "${courseTitle}"` },
-        ], 4096, aiProvider, gigachatModel, lovableModel),
+        ], 4096, aiProvider, gigachatModel, lovableModel, structTaskIdx),
         AI_CALL_TIMEOUT, "callAI:structure"
       );
       const parsed = parseJsonResponse(response);
@@ -349,11 +353,12 @@ async function processCourse(
   const fillLesson = async (lesson: any, idx: number) => {
     await updatePhase(`Контент: «${lesson.title}» (${idx + 1}/${emptyLessons.length})`);
     try {
+      const contentTaskIdx = taskCounter ? taskCounter.value++ : undefined;
       const { text: content } = await withTimeout(
         callAI([
           { role: "system", content: prompts.content || DEFAULT_CONTENT_PROMPT },
           { role: "user", content: `Напиши учебный материал для урока "${lesson.title}" курса "${courseTitle}"` },
-        ], 4096, aiProvider, gigachatModel, lovableModel),
+        ], 4096, aiProvider, gigachatModel, lovableModel, contentTaskIdx),
         AI_CALL_TIMEOUT, "callAI:content"
       );
       if (content && content.length > 50) {
@@ -485,6 +490,7 @@ serve(async (req) => {
       const lovableModel = body.lovable_model;
       const startTime = Date.now();
       let totalSolved = 0, totalFilled = 0, totalErrors = 0, totalSuccess = 0, totalSkipped = 0;
+      const taskCounter = { value: 0 }; // Deterministic round-robin distribution across AI channels
 
       // Count existing successes from resume
       for (const entry of existingLog) {
@@ -525,7 +531,7 @@ serve(async (req) => {
 
         try {
           const result = await processCourse(
-            db, entry.course_id, name, prompts, enableVerification, runId, updatePhase, shouldStop, aiProvider, gigachatModel, lovableModel,
+            db, entry.course_id, name, prompts, enableVerification, runId, updatePhase, shouldStop, aiProvider, gigachatModel, lovableModel, taskCounter,
           );
 
           if (!result.ok) {
