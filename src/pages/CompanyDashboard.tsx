@@ -1,10 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import {
   Building2, GraduationCap, UserPlus, LogOut,
   LayoutDashboard, Users, ClipboardList, FileText, Bell, Send,
+  Eye, X,
 } from "lucide-react";
 import { useCompanyDashboard } from "@/hooks/useCompanyDashboard";
 import { useAuth } from "@/hooks/useAuth";
@@ -30,11 +32,25 @@ const tabs: { id: TabId; label: string; icon: React.ElementType }[] = [
 ];
 
 const CompanyDashboard = () => {
+  const navigate = useNavigate();
+  const viewAsData = useMemo(() => {
+    try {
+      const raw = localStorage.getItem('orgViewAsCompany');
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  }, []);
+  const isOrgView = !!viewAsData;
+
   const { company, employees, stats, loading, addingEmployee, addEmployee, refresh } =
-    useCompanyDashboard();
+    useCompanyDashboard(viewAsData?.userId || undefined);
   const { signOut, user } = useAuth();
   const [activeTab, setActiveTab] = useState<TabId>("home");
   const [showOnboarding, setShowOnboarding] = useState(false);
+
+  const exitOrgView = () => {
+    localStorage.removeItem('orgViewAsCompany');
+    navigate('/organization');
+  };
 
   useEffect(() => {
     if (!user) return;
