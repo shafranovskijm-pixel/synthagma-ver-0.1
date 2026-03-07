@@ -67,22 +67,7 @@ function OrganizationDashboardContent() {
         <OrgDashboardHeader />
 
         <div className="p-4 lg:p-8 overflow-hidden">
-          <Collapsible open={alertsOpen} onOpenChange={setAlertsOpen}>
-            <CollapsibleTrigger asChild>
-              <button className="w-full flex items-center gap-2 p-3 rounded-lg border border-border bg-muted/30 hover:bg-muted/50 transition-colors text-sm text-muted-foreground mb-2">
-                <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
-                <span>Уведомления и предупреждения</span>
-                <ChevronDown className={`w-4 h-4 ml-auto transition-transform ${alertsOpen ? "rotate-180" : ""}`} />
-              </button>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <MissingCredentialsAlert 
-                students={d.students}
-                isCreating={d.studentActions.isCreatingBulkCredentials}
-                onCreateCredentials={d.handleBulkCreateCredentials}
-              />
-            </CollapsibleContent>
-          </Collapsible>
+          <PlatformAnnouncementsBanner />
           
           <AnimatedTabContent tabKey={d.tabNavigation.activeTab} direction={d.tabNavigation.swipeDirection} isMobile={d.isMobile}>
             <TabContentRenderer />
