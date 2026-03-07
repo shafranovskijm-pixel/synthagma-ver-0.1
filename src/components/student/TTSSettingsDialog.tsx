@@ -15,7 +15,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import { ELEVENLABS_VOICES, DEFAULT_VOICE_ID } from '@/hooks/useElevenLabsTTS';
 import { Volume2, Settings2 } from 'lucide-react';
 
@@ -26,10 +25,26 @@ interface TTSSettingsDialogProps {
   onSettingsChange: (settings: TTSSettings) => void;
 }
 
+export type TTSProvider = 'elevenlabs' | 'salutespeech' | 'browser';
+
 export interface TTSSettings {
+  provider: TTSProvider;
   voiceId: string;
-  useElevenLabs: boolean;
+  saluteVoice: string;
+  /** @deprecated kept for backward compat migration */
+  useElevenLabs?: boolean;
 }
+
+export const SALUTE_VOICES = [
+  { id: 'Natalya_24000', name: 'Наталья (женский, РУ)' },
+  { id: 'Boris_24000', name: 'Борис (мужской, РУ)' },
+  { id: 'Marfa_24000', name: 'Марфа (женский, РУ)' },
+  { id: 'Taras_24000', name: 'Тарас (мужской, РУ)' },
+  { id: 'Alexandra_24000', name: 'Александра (женский, РУ)' },
+  { id: 'Sergey_24000', name: 'Сергей (мужской, РУ)' },
+] as const;
+
+const DEFAULT_SALUTE_VOICE = 'Natalya_24000';
 
 const TTS_SETTINGS_KEY = 'tts-settings';
 
@@ -37,14 +52,22 @@ export function getStoredTTSSettings(): TTSSettings {
   try {
     const stored = localStorage.getItem(TTS_SETTINGS_KEY);
     if (stored) {
-      return JSON.parse(stored);
+      const parsed = JSON.parse(stored);
+      // Backward compatibility: migrate old format
+      if (parsed.provider) return parsed;
+      return {
+        provider: parsed.useElevenLabs ? 'elevenlabs' : 'browser',
+        voiceId: parsed.voiceId || DEFAULT_VOICE_ID,
+        saluteVoice: parsed.saluteVoice || DEFAULT_SALUTE_VOICE,
+      };
     }
   } catch {
     // Ignore parse errors
   }
   return {
+    provider: 'elevenlabs',
     voiceId: DEFAULT_VOICE_ID,
-    useElevenLabs: true,
+    saluteVoice: DEFAULT_SALUTE_VOICE,
   };
 }
 
@@ -79,41 +102,42 @@ export function TTSSettingsDialog({
             Настройки озвучивания
           </DialogTitle>
           <DialogDescription>
-            Выберите голос и настройки для озвучивания текста
+            Выберите провайдер и голос для озвучивания текста
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
-          {/* ElevenLabs toggle */}
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label htmlFor="use-elevenlabs" className="text-sm font-medium">
-                Использовать ElevenLabs
-              </Label>
-              <p className="text-xs text-muted-foreground">
-                Качественный ИИ-голос (рекомендуется)
-              </p>
-            </div>
-            <Switch
-              id="use-elevenlabs"
-              checked={localSettings.useElevenLabs}
-              onCheckedChange={(checked) =>
-                setLocalSettings((prev) => ({ ...prev, useElevenLabs: checked }))
+          {/* Provider selection */}
+          <div className="space-y-2">
+            <Label>Провайдер озвучивания</Label>
+            <Select
+              value={localSettings.provider}
+              onValueChange={(value: TTSProvider) =>
+                setLocalSettings((prev) => ({ ...prev, provider: value }))
               }
-            />
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Выберите провайдер" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="elevenlabs">ElevenLabs (рекомендуется)</SelectItem>
+                <SelectItem value="salutespeech">SaluteSpeech (Сбер)</SelectItem>
+                <SelectItem value="browser">Браузер (встроенный)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
-          {/* Voice selection (only for ElevenLabs) */}
-          {localSettings.useElevenLabs && (
+          {/* ElevenLabs voice selection */}
+          {localSettings.provider === 'elevenlabs' && (
             <div className="space-y-2">
-              <Label htmlFor="voice-select">Голос</Label>
+              <Label>Голос</Label>
               <Select
                 value={localSettings.voiceId}
                 onValueChange={(value) =>
                   setLocalSettings((prev) => ({ ...prev, voiceId: value }))
                 }
               >
-                <SelectTrigger id="voice-select">
+                <SelectTrigger>
                   <SelectValue placeholder="Выберите голос" />
                 </SelectTrigger>
                 <SelectContent>
@@ -133,7 +157,37 @@ export function TTSSettingsDialog({
             </div>
           )}
 
-          {!localSettings.useElevenLabs && (
+          {/* SaluteSpeech voice selection */}
+          {localSettings.provider === 'salutespeech' && (
+            <div className="space-y-2">
+              <Label>Голос</Label>
+              <Select
+                value={localSettings.saluteVoice}
+                onValueChange={(value) =>
+                  setLocalSettings((prev) => ({ ...prev, saluteVoice: value }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Выберите голос" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SALUTE_VOICES.map((voice) => (
+                    <SelectItem key={voice.id} value={voice.id}>
+                      <div className="flex items-center gap-2">
+                        <Volume2 className="w-3.5 h-3.5 text-muted-foreground" />
+                        {voice.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Русские голоса от SaluteSpeech (Сбер)
+              </p>
+            </div>
+          )}
+
+          {localSettings.provider === 'browser' && (
             <div className="rounded-lg bg-muted p-3">
               <p className="text-sm text-muted-foreground">
                 Будет использоваться встроенный синтезатор речи браузера. 
