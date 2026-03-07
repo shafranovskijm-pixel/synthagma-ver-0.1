@@ -320,18 +320,21 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
             updatePhase(`Верификация: ${verified}/${toVerify.length} — «${lessonInfo?.title || "Тест"}»`);
 
             try {
-              const { data, error } = await supabase.functions.invoke("gigachat", {
-                body: {
-                  action: "verify_answers",
-                  courseTitle,
-                  lessonTitle: lessonInfo?.title || "Тест",
-                  questions: batch.map(q => ({ question: q.question, options: q.options || [] })),
-                  previousAnswers: batch.map(q => ({
-                    correctAnswer: q.correct_answer,
-                    explanation: q.explanation || "",
-                  })),
-                },
-              });
+              const { data, error } = await withTimeout(
+                supabase.functions.invoke("gigachat", {
+                  body: {
+                    action: "verify_answers",
+                    courseTitle,
+                    lessonTitle: lessonInfo?.title || "Тест",
+                    questions: batch.map(q => ({ question: q.question, options: q.options || [] })),
+                    previousAnswers: batch.map(q => ({
+                      correctAnswer: q.correct_answer,
+                      explanation: q.explanation || "",
+                    })),
+                  },
+                }),
+                AI_CALL_TIMEOUT, "verify_answers"
+              );
               if (error) { checkFor402(error); throw error; }
               if (data?.error) { checkFor402(data); throw new Error(data.error); }
               detectProvider(data);
