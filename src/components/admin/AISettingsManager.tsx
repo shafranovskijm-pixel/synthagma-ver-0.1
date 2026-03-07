@@ -387,10 +387,36 @@ export function AISettingsManager() {
                 ? renderOrgDefault()
                 : ctx === "tts"
                 ? renderProviderSelect(ctx, TTS_PROVIDERS)
+                : ctx === "image_generation"
+                ? renderProviderSelect(ctx, IMAGE_PROVIDERS, IMAGE_MODELS)
                 : renderProviderSelect(ctx)}
+              {settings[ctx] && (
+                <AITestSandbox
+                  context={ctx}
+                  provider={settings[ctx].provider}
+                  gigachatModel={settings[ctx].gigachat_model}
+                  lovableModel={settings[ctx].lovable_model}
+                />
+              )}
             </AccordionContent>
           </AccordionItem>
         ))}
+
+        {/* Comparison Panel */}
+        <AccordionItem value="comparison" className="border rounded-xl px-1">
+          <AccordionTrigger className="px-4 py-3 hover:no-underline">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10 text-primary"><GitCompareArrows className="w-5 h-5" /></div>
+              <div className="text-left">
+                <div className="font-semibold">Сравнение провайдеров</div>
+                <div className="text-xs text-muted-foreground font-normal">A/B тест моделей — один промпт, несколько ИИ</div>
+              </div>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="px-4 pb-4">
+            <AIComparisonPanel />
+          </AccordionContent>
+        </AccordionItem>
 
         <AccordionItem value="api_keys" className="border rounded-xl px-1">
           <AccordionTrigger className="px-4 py-3 hover:no-underline">
