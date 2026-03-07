@@ -239,6 +239,23 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
                           <Badge variant="secondary" className="shrink-0">{group.courses.length}</Badge>
                         </CollapsibleTrigger>
                         <CollapsibleContent>
+                          {group.category === "Курсы Ростехнадзора" && (
+                            <div className="mx-4 mt-3 mb-2 bg-gradient-to-r from-primary/5 via-accent/5 to-primary/3 border border-border rounded-lg p-4">
+                              <div className="flex gap-3 items-start">
+                                <ShieldCheck className="w-5 h-5 text-primary mt-0.5 shrink-0" />
+                                <div>
+                                  <h4 className="font-semibold text-sm text-foreground mb-1">Подготовка к аттестации Ростехнадзора</h4>
+                                  <p className="text-xs text-muted-foreground leading-relaxed">
+                                    Курсы разработаны для подготовки к официальной аттестации. Тесты соответствуют требованиям Единого портала тестирования.
+                                  </p>
+                                  <div className="flex gap-2 mt-2">
+                                    <Badge variant="secondary" className="text-xs">Актуально 2026</Badge>
+                                    <Badge variant="secondary" className="text-xs">Бесплатно</Badge>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
                           {group.subGroups ? (
                             <div className="space-y-1 pb-2">
                               {group.subGroups.map((sub) => (
