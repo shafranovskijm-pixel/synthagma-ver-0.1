@@ -601,14 +601,27 @@ export async function callAI(
     return callAIRoundRobin(messages, maxTokens, gigachatModel, lovableModel, taskIndex);
   }
 
+  if (preferredProvider === "gigachat") {
+    try {
+      const text = await callGigaChat(messages, gcModel, maxTokens);
+      return { text, model: gcModel };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn("[callAI] GigaChat failed, falling back to Lovable AI:", msg);
+      const text = await callLovableAI(messages, maxTokens, lModel);
+      return { text, model: lModel };
+    }
+  }
+
+  // Default: Lovable AI first, GigaChat as fallback
   try {
-    const text = await callGigaChat(messages, gcModel, maxTokens);
-    return { text, model: gcModel };
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.warn("[callAI] GigaChat unavailable, falling back to Lovable AI:", msg);
     const text = await callLovableAI(messages, maxTokens, lModel);
     return { text, model: lModel };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn("[callAI] Lovable AI unavailable, falling back to GigaChat:", msg);
+    const text = await callGigaChat(messages, gcModel, maxTokens);
+    return { text, model: gcModel };
   }
 }
 
