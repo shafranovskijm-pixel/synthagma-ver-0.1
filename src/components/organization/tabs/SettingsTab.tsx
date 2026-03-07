@@ -694,11 +694,7 @@ export function SettingsTab() {
       </details>
 
       {/* Student Dashboard Settings */}
-      <details className="bg-card rounded-2xl border border-border group relative">
-        {!hasBranding && <LockedOverlay requiredPlan="Стандарт" features={[
-          "Выбор разделов: хранилище, достижения, ИИ-чат",
-          "Кастомизация под вашу программу обучения",
-        ]} />}
+      <details className="bg-card rounded-2xl border border-border group">
         <summary className="p-6 cursor-pointer list-none flex items-center justify-between">
           <h3 className="font-display font-semibold text-lg flex items-center gap-2">
             <Settings className="w-5 h-5" />
@@ -706,7 +702,11 @@ export function SettingsTab() {
           </h3>
           <ChevronRight className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90" />
         </summary>
-        <div className="px-6 pb-6">
+        <div className="px-6 pb-6 relative">
+          {!hasBranding && <LockedOverlay requiredPlan="Стандарт" features={[
+            "Выбор разделов: хранилище, достижения, ИИ-чат",
+            "Кастомизация под вашу программу обучения",
+          ]} />}
           <div className="flex items-center justify-between mb-4">
             <p className="text-sm text-muted-foreground">
               Настройте, какие разделы будут отображаться в личном кабинете учеников
