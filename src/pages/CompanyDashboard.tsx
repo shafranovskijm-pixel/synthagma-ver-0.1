@@ -106,7 +106,7 @@ const CompanyDashboard = () => {
         </div>
       )}
       {/* Sidebar */}
-      <aside className="w-60 border-r border-border bg-card/80 backdrop-blur-sm flex flex-col sticky top-0 h-screen">
+      <aside className={`w-60 border-r border-border bg-card/80 backdrop-blur-sm flex flex-col sticky top-0 h-screen ${isOrgView ? 'mt-10' : ''}`}>
         <div className="p-4 border-b border-border">
           <div className="flex items-center gap-3">
             <SigmaLogo size="sm" />
