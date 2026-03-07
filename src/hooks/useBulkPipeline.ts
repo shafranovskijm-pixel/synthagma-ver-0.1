@@ -377,13 +377,16 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
     if (currentLessons.length < 3) {
       updatePhase("Генерация структуры...");
       try {
-        const { data, error } = await supabase.functions.invoke("gigachat", {
-          body: {
-            action: "generate_structure", courseTitle,
-            existingLessons: currentLessons.map(l => ({ title: l.title, type: l.type })),
-            customSystemPrompt: currentPrompts.structure || undefined,
-          },
-        });
+        const { data, error } = await withTimeout(
+          supabase.functions.invoke("gigachat", {
+            body: {
+              action: "generate_structure", courseTitle,
+              existingLessons: currentLessons.map(l => ({ title: l.title, type: l.type })),
+              customSystemPrompt: currentPrompts.structure || undefined,
+            },
+          }),
+          AI_CALL_TIMEOUT, "generate_structure"
+        );
         if (error) { checkFor402(error); throw error; }
         if (data?.error) { checkFor402(data); throw new Error(data.error); }
         detectProvider(data);
