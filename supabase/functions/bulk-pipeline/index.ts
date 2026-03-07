@@ -431,6 +431,7 @@ serve(async (req) => {
 
       const prompts: PromptSet = body.prompts || {};
       const enableVerification = body.enableVerification || false;
+      const aiProvider = body.ai_provider || undefined;
       const startTime = Date.now();
       let totalSolved = 0, totalFilled = 0, totalErrors = 0, totalSuccess = 0, totalSkipped = 0;
 
