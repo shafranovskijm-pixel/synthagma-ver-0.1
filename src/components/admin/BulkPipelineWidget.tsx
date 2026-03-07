@@ -244,7 +244,7 @@ export function BulkPipelineWidget({ courses, readyCourses = [], allCourses, onC
     }
   }, [serverMode, pipeline.handleStop, serverPipeline.handleStop]);
 
-  if (totalCount === 0 && excelImport.parsedCourses.length === 0) return null;
+  if (activeCourses.length === 0 && excelImport.parsedCourses.length === 0 && pipelineMode === "progress") return null;
 
   const currentCourseName = isBusy ? (courses[currentIndex]?.course?.title || "") : "";
 
