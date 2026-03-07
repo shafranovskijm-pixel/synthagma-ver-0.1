@@ -39,6 +39,15 @@ const LOVABLE_MODELS = [
   { value: "openai/gpt-5-nano", label: "GPT-5 Nano" },
 ];
 
+const IMAGE_MODELS = [
+  { value: "google/gemini-2.5-flash-image", label: "Gemini Flash Image (быстрая)" },
+  { value: "google/gemini-3-pro-image-preview", label: "Gemini 3 Pro Image (качественная)" },
+];
+
+const IMAGE_PROVIDERS = [
+  { value: "lovable_ai", label: "Lovable AI" },
+];
+
 const PROVIDERS = [
   { value: "gigachat", label: "GigaChat" },
   { value: "lovable_ai", label: "Lovable AI" },
