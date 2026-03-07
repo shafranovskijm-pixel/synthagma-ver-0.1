@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Bot, Cpu, Mic, MessageSquare, Store, Layers, Building2, Key, Save, Loader2 } from "lucide-react";
+import { Bot, Cpu, Mic, MessageSquare, Store, Layers, Building2, Key, Save, Loader2, ImagePlus, GitCompareArrows } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { AITestSandbox } from "./ai-settings/AITestSandbox";
+import { AIComparisonPanel } from "./ai-settings/AIComparisonPanel";
 
 type AISetting = {
   id: string;
@@ -35,6 +37,15 @@ const LOVABLE_MODELS = [
   { value: "openai/gpt-5", label: "GPT-5" },
   { value: "openai/gpt-5-mini", label: "GPT-5 Mini" },
   { value: "openai/gpt-5-nano", label: "GPT-5 Nano" },
+];
+
+const IMAGE_MODELS = [
+  { value: "google/gemini-2.5-flash-image", label: "Gemini Flash Image (быстрая)" },
+  { value: "google/gemini-3-pro-image-preview", label: "Gemini 3 Pro Image (качественная)" },
+];
+
+const IMAGE_PROVIDERS = [
+  { value: "lovable_ai", label: "Lovable AI" },
 ];
 
 const PROVIDERS = [
@@ -82,6 +93,11 @@ const CONTEXT_META: Record<string, { icon: React.ReactNode; title: string; descr
     icon: <Building2 className="w-5 h-5" />,
     title: "Дефолт для организаций",
     description: "Провайдер по умолчанию для новых организаций",
+  },
+  image_generation: {
+    icon: <ImagePlus className="w-5 h-5" />,
+    title: "Генерация картинок",
+    description: "ИИ для создания и редактирования изображений в курсах",
   },
 };
 
@@ -183,7 +199,8 @@ export function AISettingsManager() {
 
   const renderProviderSelect = (
     ctx: string,
-    options: { value: string; label: string }[] = PROVIDERS
+    options: { value: string; label: string }[] = PROVIDERS,
+    modelOptions?: { value: string; label: string }[]
   ) => {
     const s = settings[ctx];
     if (!s) return null;
@@ -202,7 +219,7 @@ export function AISettingsManager() {
             </Select>
           </div>
 
-          {(s.provider === "gigachat" || s.provider === "round_robin") && (
+          {(s.provider === "gigachat" || s.provider === "round_robin") && !modelOptions && (
             <div className="space-y-2">
               <Label>Модель GigaChat</Label>
               <Select value={s.gigachat_model} onValueChange={(v) => updateField(ctx, "gigachat_model", v)}>
@@ -218,11 +235,11 @@ export function AISettingsManager() {
 
           {(s.provider === "lovable_ai" || s.provider === "round_robin") && (
             <div className="space-y-2">
-              <Label>Модель Lovable AI</Label>
+              <Label>{modelOptions ? "Модель" : "Модель Lovable AI"}</Label>
               <Select value={s.lovable_model} onValueChange={(v) => updateField(ctx, "lovable_model", v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {LOVABLE_MODELS.map((m) => (
+                  {(modelOptions || LOVABLE_MODELS).map((m) => (
                     <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
                   ))}
                 </SelectContent>
@@ -370,10 +387,36 @@ export function AISettingsManager() {
                 ? renderOrgDefault()
                 : ctx === "tts"
                 ? renderProviderSelect(ctx, TTS_PROVIDERS)
+                : ctx === "image_generation"
+                ? renderProviderSelect(ctx, IMAGE_PROVIDERS, IMAGE_MODELS)
                 : renderProviderSelect(ctx)}
+              {settings[ctx] && (
+                <AITestSandbox
+                  context={ctx}
+                  provider={settings[ctx].provider}
+                  gigachatModel={settings[ctx].gigachat_model}
+                  lovableModel={settings[ctx].lovable_model}
+                />
+              )}
             </AccordionContent>
           </AccordionItem>
         ))}
+
+        {/* Comparison Panel */}
+        <AccordionItem value="comparison" className="border rounded-xl px-1">
+          <AccordionTrigger className="px-4 py-3 hover:no-underline">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10 text-primary"><GitCompareArrows className="w-5 h-5" /></div>
+              <div className="text-left">
+                <div className="font-semibold">Сравнение провайдеров</div>
+                <div className="text-xs text-muted-foreground font-normal">A/B тест моделей — один промпт, несколько ИИ</div>
+              </div>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="px-4 pb-4">
+            <AIComparisonPanel />
+          </AccordionContent>
+        </AccordionItem>
 
         <AccordionItem value="api_keys" className="border rounded-xl px-1">
           <AccordionTrigger className="px-4 py-3 hover:no-underline">
