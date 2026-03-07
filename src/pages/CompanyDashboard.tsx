@@ -92,6 +92,19 @@ const CompanyDashboard = () => {
 
   return (
     <div className="min-h-screen bg-background flex">
+      {/* Org View Banner */}
+      {isOrgView && (
+        <div className="fixed top-0 left-0 right-0 z-50 bg-primary text-primary-foreground py-2 px-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Eye className="w-4 h-4" />
+            <span className="text-sm font-medium">Режим просмотра: {viewAsData?.companyName}</span>
+          </div>
+          <Button variant="secondary" size="sm" onClick={exitOrgView} className="gap-1">
+            <X className="w-3 h-3" />
+            Выйти
+          </Button>
+        </div>
+      )}
       {/* Sidebar */}
       <aside className="w-60 border-r border-border bg-card/80 backdrop-blur-sm flex flex-col sticky top-0 h-screen">
         <div className="p-4 border-b border-border">
