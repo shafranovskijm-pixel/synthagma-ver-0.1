@@ -49,7 +49,23 @@ const DEFAULT_SALUTE_VOICE = 'Natalya_24000';
 
 const TTS_SETTINGS_KEY = 'tts-settings';
 
-export function getStoredTTSSettings(): TTSSettings {
+/** Maps lowercase admin-style voice keys to client-side IDs */
+export const ADMIN_TO_CLIENT_VOICE: Record<string, string> = {
+  natalya: 'Natalya_24000',
+  boris: 'Boris_24000',
+  marfa: 'Marfa_24000',
+  taras: 'Taras_24000',
+  alexandr: 'Alexandra_24000',
+  sergey: 'Sergey_24000',
+  kira: 'Kira_24000',
+};
+
+export interface AdminTTSDefaults {
+  provider?: string;
+  saluteVoice?: string;
+}
+
+export function getStoredTTSSettings(adminDefaults?: AdminTTSDefaults): TTSSettings {
   try {
     const stored = localStorage.getItem(TTS_SETTINGS_KEY);
     if (stored) {
@@ -65,10 +81,16 @@ export function getStoredTTSSettings(): TTSSettings {
   } catch {
     // Ignore parse errors
   }
+
+  // No user override — use admin defaults if available
+  const defaultProvider = (adminDefaults?.provider as TTSProvider) || 'elevenlabs';
+  const adminVoiceRaw = adminDefaults?.saluteVoice || '';
+  const defaultSaluteVoice = ADMIN_TO_CLIENT_VOICE[adminVoiceRaw] || adminVoiceRaw || DEFAULT_SALUTE_VOICE;
+
   return {
-    provider: 'elevenlabs',
+    provider: defaultProvider,
     voiceId: DEFAULT_VOICE_ID,
-    saluteVoice: DEFAULT_SALUTE_VOICE,
+    saluteVoice: defaultSaluteVoice,
   };
 }
 

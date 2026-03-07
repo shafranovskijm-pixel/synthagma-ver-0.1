@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ContentBlock, jsonToBlocks } from "@/components/course-builder/BlockEditor";
 import { generateAttestationProtocol } from "@/utils/generateAttestationProtocol";
-import { TTSSettings, getStoredTTSSettings } from "@/components/student/TTSSettingsDialog";
+import { TTSSettings, getStoredTTSSettings, AdminTTSDefaults } from "@/components/student/TTSSettingsDialog";
 
 export interface Lesson {
   id: string;
