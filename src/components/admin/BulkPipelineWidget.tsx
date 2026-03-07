@@ -239,7 +239,7 @@ export function BulkPipelineWidget({ courses, readyCourses = [], allCourses, onC
   const { isBusy, totalCount, completedCount, progressPercent, currentIndex, currentPhase, completedLog, summary, aiSessionCalls, hasResumableProgress } = pipeline;
 
   // Determine effective busy state (either local or server)
-  const effectiveBusy = isBusy || serverPipeline.isRunning;
+  const effectiveBusy = isBusy || (serverMode && serverPipeline.isRunning);
   const effectiveProgress = serverMode && serverPipeline.currentRun
     ? serverPipeline.progressPercent
     : progressPercent;

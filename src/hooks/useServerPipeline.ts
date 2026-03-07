@@ -116,7 +116,7 @@ export function useServerPipeline({ courses, enableVerification, onComplete, aiP
 
       const { data } = await supabase
         .from("pipeline_runs")
-        .select("id, status, current_index, total_courses, current_phase, completed_log, summary")
+        .select("id, status, current_index, total_courses, current_phase, completed_log, summary, updated_at")
         .eq("user_id", user.id)
         .in("status", ["running", "partial"])
         .order("created_at", { ascending: false })
@@ -124,12 +124,28 @@ export function useServerPipeline({ courses, enableVerification, onComplete, aiP
 
       if (data && data.length > 0) {
         const run = data[0] as unknown as PipelineRun;
+        const updatedAt = run.updated_at ? new Date(run.updated_at).getTime() : 0;
+        const elapsed = Date.now() - updatedAt;
+
+        // If record is stale (>5 min with no heartbeat), mark as stopped
+        if (elapsed > STALE_RUN_THRESHOLD) {
+          console.warn(`[ServerPipeline] Mount: stale run ${run.id}, elapsed ${Math.round(elapsed / 1000)}s — marking stopped`);
+          await supabase.from("pipeline_runs").update({
+            status: "stopped",
+            current_phase: "Автоостановка: процесс завис",
+            updated_at: new Date().toISOString(),
+          } as any).eq("id", run.id);
+          // Show run info but don't set isRunning
+          setCurrentRun({ ...run, status: "stopped", current_phase: "Автоостановка: процесс завис" });
+          return;
+        }
+
+        // Active run — resume polling
         setCurrentRun(run);
         setIsRunning(true);
 
         if (run.status === "partial") {
-          toast.info("Обнаружен незавершённый серверный конвейер. Продолжаю...");
-          handleResume(run.id);
+          toast.info("Обнаружен незавершённый серверный конвейер. Нажмите «Продолжить» для возобновления.");
         } else {
           startPolling(run.id);
         }

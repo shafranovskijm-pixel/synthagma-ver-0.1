@@ -1,28 +1,18 @@
 
 
-## Проблема
+## Plan: Auto-fix after "Проверить все"
 
-Конвейер показывает "включён" после каждой перезагрузки из-за трёх проблем:
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-1. **`effectiveBusy` не учитывает `serverMode`** — `effectiveBusy = isBusy || serverPipeline.isRunning` срабатывает даже когда серверный режим выключен, потому что `useServerPipeline` всё равно проверяет БД на активные процессы
-2. **Авто-подхват зависших процессов** — при монтировании `useServerPipeline` ищет записи со статусом `"running"` или `"partial"` в `pipeline_runs` и сразу ставит `isRunning = true`, даже если процесс давно завис
-3. **Зависшие записи в БД** — старые записи со статусом `"running"` никогда не очищаются, их подхватывает каждая перезагрузка
+### Changes
 
-## Изменения
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-### 1. `src/components/admin/BulkPipelineWidget.tsx`
-- Изменить `effectiveBusy` чтобы учитывать `serverMode`:
-  ```typescript
-  const effectiveBusy = isBusy || (serverMode && serverPipeline.isRunning);
-  ```
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-### 2. `src/hooks/useServerPipeline.ts`
-- В `checkActive` (useEffect на маунте): при обнаружении записи со статусом `"running"` — сразу проверять `updated_at` на зависание (порог 5 мин). Если запись зависла — автоматически обновить статус на `"stopped"` в БД и **не** ставить `isRunning = true`
-- Для `"partial"` записей — показывать информацию но **не** авто-возобновлять (уже так, но убрать `setIsRunning(true)` до проверки)
-- Добавить проверку: если запись старше 2 часов — считать завершённой, обновить статус в БД на `"stopped"`
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-### 3. Очистка зависших записей (миграция)
-- SQL-запрос для обновления всех зависших `pipeline_runs` со статусом `"running"` и `updated_at` старше 10 минут → статус `"stopped"`
-
-Эти три изменения гарантируют что после перезагрузки конвейер не будет ложно показывать активное состояние.
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 
