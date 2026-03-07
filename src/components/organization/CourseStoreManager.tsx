@@ -372,9 +372,14 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
       <Dialog open={h.showAddDialog} onOpenChange={h.setShowAddDialog}>
         <DialogContent className="rounded-2xl max-w-md">
           <DialogHeader><DialogTitle>Добавить курс в магазин</DialogTitle><DialogDescription>Выберите курс для публикации</DialogDescription></DialogHeader>
-          <div className="space-y-4 py-4">
+           <div className="space-y-4 py-4">
             <div className="space-y-2"><Label>Курс</Label><Select value={h.selectedCourseToAdd} onValueChange={h.setSelectedCourseToAdd}><SelectTrigger className="rounded-xl"><SelectValue placeholder="Выберите курс" /></SelectTrigger><SelectContent>{h.availableCourses.map((c) => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}</SelectContent></Select></div>
             <div className="space-y-2"><Label>Краткое описание</Label><Textarea value={h.shortDescription} onChange={(e) => h.setShortDescription(e.target.value)} placeholder="Расскажите о курсе..." className="rounded-xl" /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2"><Label>Цена для студента (₽)</Label><Input type="number" min={0} value={h.priceStudent} onChange={(e) => h.setPriceStudent(Number(e.target.value) || 0)} className="rounded-xl" /></div>
+              <div className="space-y-2"><Label>Цена для организации (₽)</Label><Input type="number" min={0} value={h.priceOrganization} onChange={(e) => h.setPriceOrganization(Number(e.target.value) || 0)} className="rounded-xl" /></div>
+            </div>
+            <p className="text-xs text-muted-foreground">Оставьте 0 для бесплатного доступа</p>
           </div>
           <DialogFooter><Button className="w-full btn-gradient rounded-xl" onClick={h.handleAddToMarketplace} disabled={h.isAdding || !h.selectedCourseToAdd}>{h.isAdding ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Добавление...</> : 'Добавить в магазин'}</Button></DialogFooter>
         </DialogContent>
