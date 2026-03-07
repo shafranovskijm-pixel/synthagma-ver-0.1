@@ -424,7 +424,7 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
 
     if (emptyLessons.length > 0) {
       let filledSoFar = 0;
-      await parallelMap(emptyLessons, 2, async (lesson, i) => {
+      await parallelMap(emptyLessons, 3, async (lesson, i) => {
         if (stopRef.current) return;
         updatePhase(`Контент: «${lesson.title}» (${filledSoFar + 1}/${emptyLessons.length})`);
         try {
