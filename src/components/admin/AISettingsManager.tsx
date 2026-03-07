@@ -199,7 +199,8 @@ export function AISettingsManager() {
 
   const renderProviderSelect = (
     ctx: string,
-    options: { value: string; label: string }[] = PROVIDERS
+    options: { value: string; label: string }[] = PROVIDERS,
+    modelOptions?: { value: string; label: string }[]
   ) => {
     const s = settings[ctx];
     if (!s) return null;
@@ -218,7 +219,7 @@ export function AISettingsManager() {
             </Select>
           </div>
 
-          {(s.provider === "gigachat" || s.provider === "round_robin") && (
+          {(s.provider === "gigachat" || s.provider === "round_robin") && !modelOptions && (
             <div className="space-y-2">
               <Label>Модель GigaChat</Label>
               <Select value={s.gigachat_model} onValueChange={(v) => updateField(ctx, "gigachat_model", v)}>
@@ -234,11 +235,11 @@ export function AISettingsManager() {
 
           {(s.provider === "lovable_ai" || s.provider === "round_robin") && (
             <div className="space-y-2">
-              <Label>Модель Lovable AI</Label>
+              <Label>{modelOptions ? "Модель" : "Модель Lovable AI"}</Label>
               <Select value={s.lovable_model} onValueChange={(v) => updateField(ctx, "lovable_model", v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {LOVABLE_MODELS.map((m) => (
+                  {(modelOptions || LOVABLE_MODELS).map((m) => (
                     <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
                   ))}
                 </SelectContent>
