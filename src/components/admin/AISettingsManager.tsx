@@ -547,23 +547,57 @@ export function AISettingsManager() {
     );
   };
 
+  const [secretsStatus, setSecretsStatus] = useState<Record<string, boolean>>({});
+  const [secretsLoading, setSecretsLoading] = useState(false);
+
+  const API_KEYS_LIST = [
+    { name: "GIGACHAT_AUTH_KEY", label: "GigaChat Key 1" },
+    { name: "GIGACHAT_AUTH_KEY_2", label: "GigaChat Key 2" },
+    { name: "GIGACHAT_AUTH_KEY_3", label: "GigaChat Key 3" },
+    { name: "SALUTESPEECH_AUTH_KEY", label: "SaluteSpeech Key 1" },
+    { name: "SALUTESPEECH_AUTH_KEY_2", label: "SaluteSpeech Key 2" },
+    { name: "ELEVENLABS_API_KEY", label: "ElevenLabs" },
+    { name: "LOVABLE_API_KEY", label: "Lovable AI" },
+  ];
+
+  useEffect(() => {
+    const checkSecrets = async () => {
+      setSecretsLoading(true);
+      try {
+        const { data, error } = await supabase.functions.invoke("check-secrets-status", {
+          body: { names: API_KEYS_LIST.map((k) => k.name) },
+        });
+        if (!error && data) {
+          setSecretsStatus(data);
+        }
+      } catch (e) {
+        console.error("Failed to check secrets status:", e);
+      } finally {
+        setSecretsLoading(false);
+      }
+    };
+    checkSecrets();
+  }, []);
+
   const renderApiKeys = () => (
     <div className="space-y-3">
-      {[
-        { name: "GIGACHAT_AUTH_KEY", label: "GigaChat Key 1" },
-        { name: "GIGACHAT_AUTH_KEY_2", label: "GigaChat Key 2" },
-        { name: "GIGACHAT_AUTH_KEY_3", label: "GigaChat Key 3" },
-        { name: "SALUTESPEECH_AUTH_KEY", label: "SaluteSpeech Key 1" },
-        { name: "SALUTESPEECH_AUTH_KEY_2", label: "SaluteSpeech Key 2" },
-        { name: "ELEVENLABS_API_KEY", label: "ElevenLabs" },
-        { name: "LOVABLE_API_KEY", label: "Lovable AI" },
-      ].map((k) => (
-        <div key={k.name} className="flex items-center gap-3">
-          <Label className="w-40 text-sm shrink-0">{k.label}</Label>
-          <Input disabled value="••••••••••••" className="max-w-[200px] font-mono text-xs" />
-          <span className="text-xs text-muted-foreground">Настроен ✓</span>
-        </div>
-      ))}
+      {API_KEYS_LIST.map((k) => {
+        const isConfigured = secretsStatus[k.name];
+        const isLoading = secretsLoading && Object.keys(secretsStatus).length === 0;
+        return (
+          <div key={k.name} className="flex items-center gap-3">
+            <Label className="w-40 text-sm shrink-0">{k.label}</Label>
+            <Input disabled value="••••••••••••" className="max-w-[200px] font-mono text-xs" />
+            {isLoading ? (
+              <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
+            ) : isConfigured ? (
+              <span className="text-xs text-green-600 dark:text-green-400 font-medium">Настроен ✓</span>
+            ) : (
+              <span className="text-xs text-destructive font-medium">Не настроен ✗</span>
+            )}
+          </div>
+        );
+      })}
       <p className="text-xs text-muted-foreground mt-2">
         API-ключи управляются через секреты Lovable Cloud. Для изменения используйте панель секретов.
       </p>
