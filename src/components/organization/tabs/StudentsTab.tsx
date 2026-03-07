@@ -370,23 +370,37 @@ export const StudentsTab = React.memo(function StudentsTab({
               </Button>
             </>
           )}
-          <Button 
-            variant="outline" 
-            className="rounded-xl gap-2 shrink-0 text-xs lg:text-sm" 
-            onClick={() => setShowRemindConfirm(true)}
-            disabled={isSendingBulkDocReminders}
-          >
-            {isSendingBulkDocReminders ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
-            <span className="hidden sm:inline">Напомнить</span>
-          </Button>
-          <Button 
-            variant="outline" 
-            className="rounded-xl gap-2 shrink-0 text-xs lg:text-sm" 
-            onClick={handleExportStudents}
-          >
-            <FileSpreadsheet className="w-4 h-4" />
-            <span className="hidden sm:inline">Экспорт</span>
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  className="rounded-xl gap-2 shrink-0 text-xs lg:text-sm" 
+                  onClick={() => setShowRemindConfirm(true)}
+                  disabled={isSendingBulkDocReminders}
+                >
+                  {isSendingBulkDocReminders ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+                  <span className="hidden sm:inline">Напомнить</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Отправить напоминание о документах</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  className="rounded-xl gap-2 shrink-0 text-xs lg:text-sm" 
+                  onClick={handleExportStudents}
+                >
+                  <FileSpreadsheet className="w-4 h-4" />
+                  <span className="hidden sm:inline">Экспорт</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Экспорт данных учеников в Excel</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           <Select value={courseFilter} onValueChange={setCourseFilter}>
             <SelectTrigger className="w-32 lg:w-48 rounded-xl shrink-0 text-xs lg:text-sm">
               <BookOpen className="w-4 h-4 mr-1 lg:mr-2" />
