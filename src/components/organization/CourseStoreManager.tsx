@@ -133,9 +133,14 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
                 <Button variant="outline" className="flex-1 rounded-xl gap-2" onClick={() => { const id = selectedCourseDetail.course_id; setSelectedCourseDetail(null); navigate(`/course-preview/${id}?from=store`); }}>
                   <Eye className="w-4 h-4" />Просмотр
                 </Button>
-                <Button className="flex-1 rounded-xl gap-2 bg-green-600 hover:bg-green-700 text-white" onClick={() => { const item = selectedCourseDetail; setSelectedCourseDetail(null); h.setSelectedCourseForOrder(item); h.setShowOrderDialog(true); }}>
-                  <Plus className="w-4 h-4" />Добавить курс
-                </Button>
+                {(() => {
+                  const price = h.userRole === 'organization' ? selectedCourseDetail.price_organization : selectedCourseDetail.price_student;
+                  return (
+                    <Button className={`flex-1 rounded-xl gap-2 ${price > 0 ? 'bg-primary hover:bg-primary/90' : 'bg-green-600 hover:bg-green-700'} text-white`} onClick={() => { const item = selectedCourseDetail; setSelectedCourseDetail(null); h.setSelectedCourseForOrder(item); h.setShowOrderDialog(true); }}>
+                      {price > 0 ? <><ShoppingCart className="w-4 h-4" />Купить курс</> : <><Plus className="w-4 h-4" />Добавить курс</>}
+                    </Button>
+                  );
+                })()}
               </div>
 
               {/* Comments */}
