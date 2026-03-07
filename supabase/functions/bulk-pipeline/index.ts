@@ -474,7 +474,7 @@ serve(async (req) => {
 
         try {
           const result = await processCourse(
-            db, entry.course_id, name, prompts, enableVerification, runId, updatePhase, shouldStop,
+            db, entry.course_id, name, prompts, enableVerification, runId, updatePhase, shouldStop, aiProvider,
           );
 
           if (!result.ok) {
