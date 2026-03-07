@@ -1,18 +1,35 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+# Улучшение продажной презентации в магазине курсов
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+## Что меняем
 
-### Changes
+### 1. CTA-кнопки с учётом цены
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+**Организации (`CourseStoreManager.tsx`):**
+- Бесплатные: `"Получить бесплатно"` (зелёная кнопка с иконкой Gift) вместо `"Добавить курс"`
+- Платные: `"Купить за X ₽"` (основная кнопка) — цена прямо в кнопке
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+**Студенты (`StudentCourseStore.tsx`):**
+- Карточки: вместо `"Заявка"` → `"Получить бесплатно"` (зелёная) или `"Купить за X ₽"`
+- Sheet-превью footer: аналогично — зелёная кнопка `"Получить бесплатно"` или `"Купить за X ₽"`
+- Диалог заказа: заголовок `"Получить курс бесплатно"` / `"Купить курс"`
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+### 2. Продающие элементы на странице деталей курса (оба компонента)
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+- **Блок преимуществ** под описанием: 3 пункта с иконками (CheckCircle):
+  - «Доступ сразу после получения»
+  - «Все материалы и тесты включены»  
+  - «Удостоверение по завершении»
+- **Блок цены** переделать: крупная цена или яркий бейдж `"БЕСПЛАТНО"` с подписью «Ограниченное предложение» для платных / «Доступно всем» для бесплатных
+- **Количество уроков** — бейдж рядом с длительностью (уже есть в студенческом превью, добавить в орг)
+
+### 3. Карточки каталога для студентов
+
+- Бесплатные курсы: зелёный бейдж `"Бесплатно"` вместо `"0 ₽"`
+- Добавить кол-во уроков в карточку (через существующий запрос lessons count)
+
+### Файлы для изменения
+- `src/components/organization/CourseStoreManager.tsx` — детальная страница курса, кнопки CTA, блок преимуществ
+- `src/components/student/StudentCourseStore.tsx` — карточки, Sheet-превью, кнопки CTA, блок преимуществ
 
