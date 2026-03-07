@@ -34,7 +34,7 @@ interface CompanyStats {
   activeCourses: number;
 }
 
-export function useCompanyDashboard() {
+export function useCompanyDashboard(viewAsUserId?: string) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [company, setCompany] = useState<CompanyData | null>(null);
@@ -48,8 +48,10 @@ export function useCompanyDashboard() {
   const [loading, setLoading] = useState(true);
   const [addingEmployee, setAddingEmployee] = useState(false);
 
+  const targetUserId = viewAsUserId || user?.id;
+
   const loadData = useCallback(async () => {
-    if (!user) return;
+    if (!targetUserId) return;
     setLoading(true);
 
     try {
@@ -57,7 +59,7 @@ export function useCompanyDashboard() {
       const { data: companyData } = await supabase
         .from('companies')
         .select('id, name, inn, email, director, organization_id')
-        .eq('user_id', user.id)
+        .eq('user_id', targetUserId)
         .single();
 
       if (!companyData) {
@@ -135,7 +137,7 @@ export function useCompanyDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [targetUserId]);
 
   useEffect(() => {
     loadData();

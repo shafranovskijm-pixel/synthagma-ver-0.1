@@ -1,10 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import {
   Building2, GraduationCap, UserPlus, LogOut,
   LayoutDashboard, Users, ClipboardList, FileText, Bell, Send,
+  Eye, X,
 } from "lucide-react";
 import { useCompanyDashboard } from "@/hooks/useCompanyDashboard";
 import { useAuth } from "@/hooks/useAuth";
@@ -30,11 +32,25 @@ const tabs: { id: TabId; label: string; icon: React.ElementType }[] = [
 ];
 
 const CompanyDashboard = () => {
+  const navigate = useNavigate();
+  const viewAsData = useMemo(() => {
+    try {
+      const raw = localStorage.getItem('orgViewAsCompany');
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  }, []);
+  const isOrgView = !!viewAsData;
+
   const { company, employees, stats, loading, addingEmployee, addEmployee, refresh } =
-    useCompanyDashboard();
+    useCompanyDashboard(viewAsData?.userId || undefined);
   const { signOut, user } = useAuth();
   const [activeTab, setActiveTab] = useState<TabId>("home");
   const [showOnboarding, setShowOnboarding] = useState(false);
+
+  const exitOrgView = () => {
+    localStorage.removeItem('orgViewAsCompany');
+    navigate('/organization');
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -76,8 +92,21 @@ const CompanyDashboard = () => {
 
   return (
     <div className="min-h-screen bg-background flex">
+      {/* Org View Banner */}
+      {isOrgView && (
+        <div className="fixed top-0 left-0 right-0 z-50 bg-primary text-primary-foreground py-2 px-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Eye className="w-4 h-4" />
+            <span className="text-sm font-medium">Режим просмотра: {viewAsData?.companyName}</span>
+          </div>
+          <Button variant="secondary" size="sm" onClick={exitOrgView} className="gap-1">
+            <X className="w-3 h-3" />
+            Выйти
+          </Button>
+        </div>
+      )}
       {/* Sidebar */}
-      <aside className="w-60 border-r border-border bg-card/80 backdrop-blur-sm flex flex-col sticky top-0 h-screen">
+      <aside className={`w-60 border-r border-border bg-card/80 backdrop-blur-sm flex flex-col sticky top-0 h-screen ${isOrgView ? 'mt-10' : ''}`}>
         <div className="p-4 border-b border-border">
           <div className="flex items-center gap-3">
             <SigmaLogo size="sm" />
@@ -113,7 +142,7 @@ const CompanyDashboard = () => {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 max-w-6xl mx-auto px-6 py-8 space-y-8">
+      <main className={`flex-1 max-w-6xl mx-auto px-6 py-8 space-y-8 ${isOrgView ? 'mt-10' : ''}`}>
         {/* Welcome for empty state */}
         {activeTab === "home" && employees.length === 0 && (
           <Card className="border-primary/20 bg-primary/5">
