@@ -136,6 +136,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
   const [searchQuery, setSearchQuery] = useState("");
   const [settings, setSettings] = useState({
     ai_enabled: organization.ai_enabled,
+    ai_provider: organization.ai_provider || "gigachat",
     frdo_enabled: organization.frdo_enabled ?? false,
     name: organization.name,
     email: organization.email,
