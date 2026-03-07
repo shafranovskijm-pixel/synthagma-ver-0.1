@@ -310,12 +310,13 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
           byLesson.set(q.lesson_id, arr);
         }
 
-        for (const [lessonId, qs] of byLesson) {
-          if (stopRef.current) break;
+        const verifyEntries = Array.from(byLesson.entries());
+        await parallelMap(verifyEntries, 3, async ([lessonId, qs]) => {
+          if (stopRef.current) return;
           const lessonInfo = currentLessons.find(l => l.id === lessonId);
           const batchSize = 40;
           for (let i = 0; i < qs.length; i += batchSize) {
-            if (stopRef.current) break;
+            if (stopRef.current) return;
             const batch = qs.slice(i, i + batchSize);
             updatePhase(`Верификация: ${verified}/${toVerify.length} — «${lessonInfo?.title || "Тест"}»`);
 
@@ -364,8 +365,7 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
             }
             await new Promise(r => setTimeout(r, getDelay("batch")));
           }
-          await new Promise(r => setTimeout(r, getDelay("lesson")));
-        }
+        });
 
         if (corrected > 0) {
           console.log(`[Verification] Corrected ${corrected}/${verified} answers for course "${courseTitle}"`);
