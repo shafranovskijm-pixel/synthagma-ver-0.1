@@ -589,8 +589,8 @@ export async function callAI(
   lovableModel?: string,
   taskIndex?: number,
 ): Promise<{ text: string; model: string }> {
-  const gcModel = gigachatModel || "GigaChat-Pro";
-  const lModel = lovableModel || "google/gemini-2.5-flash";
+  const gcModel = gigachatModel || "GigaChat-Max";
+  const lModel = lovableModel || "google/gemini-2.5-pro";
 
   if (preferredProvider === "lovable_ai") {
     const text = await callLovableAI(messages, maxTokens, lModel);
