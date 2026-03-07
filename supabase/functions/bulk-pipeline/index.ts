@@ -128,6 +128,7 @@ async function processCourse(
   aiProvider?: string,
   gigachatModel?: string,
   lovableModel?: string,
+  taskCounter?: { value: number },
 ): Promise<{ ok: boolean; testsSolved: number; lessonsFilled: number; skippedBatches: number; totalQuestions: number }> {
   let testsSolved = 0;
   let lessonsFilled = 0;
