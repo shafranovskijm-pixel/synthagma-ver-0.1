@@ -128,9 +128,10 @@ function isReliablySolved(q: { correct_answer: number | null; explanation?: stri
 interface UseBulkPipelineProps {
   courses: PipelineCourse[];
   onComplete: () => void;
+  enableVerification?: boolean;
 }
 
-export function useBulkPipeline({ courses, onComplete }: UseBulkPipelineProps) {
+export function useBulkPipeline({ courses, onComplete, enableVerification = false }: UseBulkPipelineProps) {
   const [isRunning, setIsRunning] = useState(false);
   const [isTestRunning, setIsTestRunning] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -260,8 +261,90 @@ export function useBulkPipeline({ courses, onComplete }: UseBulkPipelineProps) {
           }
           // Adaptive delay between lessons
           await new Promise(r => setTimeout(r, getDelay("lesson")));
+      }
+    }
+
+    // 2b. Verification pass — re-check answers with a second model
+    if (enableVerification && testsSolved > 0 && testIds.length > 0) {
+      const { data: solvedQuestions } = await supabase
+        .from("test_questions").select("id, lesson_id, correct_answer, explanation, question, options").in("lesson_id", testIds);
+
+      // Only verify questions that were just solved (have answer but short/missing explanation or were suspicious)
+      const toVerify = (solvedQuestions || []).filter((q: any) =>
+        q.correct_answer !== null && q.correct_answer !== undefined &&
+        (!q.explanation || q.explanation.length < 30)
+      );
+
+      if (toVerify.length > 0) {
+        updatePhase(`Верификация: 0/${toVerify.length} вопросов`);
+        let verified = 0;
+        let corrected = 0;
+
+        const byLesson = new Map<string, typeof toVerify>();
+        for (const q of toVerify) {
+          const arr = byLesson.get(q.lesson_id) || [];
+          arr.push(q);
+          byLesson.set(q.lesson_id, arr);
+        }
+
+        for (const [lessonId, qs] of byLesson) {
+          if (stopRef.current) break;
+          const lessonInfo = currentLessons.find(l => l.id === lessonId);
+          const batchSize = 40;
+          for (let i = 0; i < qs.length; i += batchSize) {
+            if (stopRef.current) break;
+            const batch = qs.slice(i, i + batchSize);
+            updatePhase(`Верификация: ${verified}/${toVerify.length} — «${lessonInfo?.title || "Тест"}»`);
+
+            try {
+              const { data, error } = await supabase.functions.invoke("gigachat", {
+                body: {
+                  action: "verify_answers",
+                  courseTitle,
+                  lessonTitle: lessonInfo?.title || "Тест",
+                  questions: batch.map(q => ({ question: q.question, options: q.options || [] })),
+                  previousAnswers: batch.map(q => ({
+                    correctAnswer: q.correct_answer,
+                    explanation: q.explanation || "",
+                  })),
+                },
+              });
+              if (error) { checkFor402(error); throw error; }
+              if (data?.error) { checkFor402(data); throw new Error(data.error); }
+              detectProvider(data);
+              if (data?.answers && !data.parseError) {
+                for (const ans of data.answers) {
+                  const q = batch[ans.questionIndex];
+                  if (q && ans.correctAnswer !== undefined) {
+                    const changed = ans.changed === true || ans.correctAnswer !== q.correct_answer;
+                    if (changed || (ans.explanation && ans.explanation.length > (q.explanation?.length || 0))) {
+                      await supabase.from("test_questions")
+                        .update({
+                          correct_answer: ans.correctAnswer,
+                          explanation: ans.explanation || q.explanation || null,
+                        })
+                        .eq("id", q.id);
+                      if (changed) corrected++;
+                    }
+                    verified++;
+                  }
+                }
+              }
+              setAiSessionCalls(prev => prev + 1);
+            } catch (e) {
+              checkFor402(e);
+              console.error(`Verification failed for lesson ${lessonId}:`, e instanceof Error ? e.message : String(e));
+            }
+            await new Promise(r => setTimeout(r, getDelay("batch")));
+          }
+          await new Promise(r => setTimeout(r, getDelay("lesson")));
+        }
+
+        if (corrected > 0) {
+          console.log(`[Verification] Corrected ${corrected}/${verified} answers for course "${courseTitle}"`);
         }
       }
+    }
     }
 
     // 3. Generate structure if needed
