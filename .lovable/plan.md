@@ -1,18 +1,111 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+# Глобальный аудит кода: найденные проблемы и предложения
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+## 1. Дублирование логики загрузки данных организации
 
-### Changes
+**Проблема**: Существуют два почти идентичных файла — `useOrganizationDataLoader.ts` (366 строк) и `useOrganizationData.ts` (449 строк). Оба содержат одинаковую логику загрузки курсов, студентов, enrollments, документов. Это прямое нарушение DRY.
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+**Решение**: Удалить `useOrganizationData.ts` и оставить только `useOrganizationDataLoader.ts`. Обновить все импорты.
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+---
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+## 2. Отсутствие пагинации при загрузке данных
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+**Проблема**: В `useOrganizationDataLoader.ts` используется `.limit(10000)` вместо утилиты `fetchAllRows`, которая уже реализована в `src/utils/retryFetch.ts`. При >10000 профилях данные будут обрезаны без предупреждения.
+
+**Решение**: Заменить `.limit(10000)` на `fetchAllRows` для запросов `profiles` и `user_roles`.
+
+---
+
+## 3. Водопад запросов в загрузчике данных
+
+**Проблема**: В `useOrganizationDataLoader.ts` ~10 последовательных запросов к БД (profile → org → courses → enrollments → profiles → roles → documents → FRDO → categories → companies). Время загрузки дашборда линейно складывается.
+
+**Решение**: Параллелизировать независимые запросы через `Promise.all`:
+```text
+Группа 1 (после получения orgId):
+  courses, profiles, categories, companies — параллельно
+
+Группа 2 (после получения profileUserIds):
+  user_roles, student_identity_documents, student_frdo_data — параллельно
+```
+
+---
+
+## 4. Массовое использование `as any` (220+ мест)
+
+**Проблема**: 220 мест в хуках используют `as any`, что отключает проверку типов. Основная причина — типы Supabase не синхронизированы с реальной схемой БД (таблицы `sales_services`, `marketplace_courses`, `commercial_proposals` и др. отсутствуют в `types.ts`).
+
+**Решение**: Запустить регенерацию типов Supabase. После этого большинство `as any` можно будет убрать. Для оставшихся — создать явные интерфейсы.
+
+---
+
+## 5. Отсутствие `withRetry` на критических запросах
+
+**Проблема**: Утилита `withRetry` существует, но используется только в `api/students.ts`. Загрузчик данных дашборда (`useOrganizationDataLoader`) не оборачивает запросы в retry, что приводит к пустым экранам при временных сбоях сети.
+
+**Решение**: Обернуть ключевые запросы в `useOrganizationDataLoader` в `withSupabaseRetry`.
+
+---
+
+## 6. `BulkPipelineWidget` — 1049 строк, монолит
+
+**Проблема**: Компонент совмещает UI, бизнес-логику конвейера, импорт Excel, управление промтами, статистику тестов и AI-аналитику в одном файле. Это затрудняет отладку и поддержку.
+
+**Решение**: Разделить на:
+- `useBulkPipeline.ts` — логика конвейера (`processCourse`, `handleStart`, `handleStop`)
+- `usePipelineExcelImport.ts` — парсинг и создание курсов из Excel
+- `BulkPipelineWidget.tsx` — только UI-рендеринг
+
+---
+
+## 7. `loadCourseStudentsForModal` дублирует `fetchCourseStudents`
+
+**Проблема**: В `useOrganizationDashboard.ts` (строки 163-221) реализована загрузка студентов курса, которая дублирует `fetchCourseStudents` из `api/courses.ts`. Причем версия в API менее эффективна (N+1 запросов — цикл `for` с отдельным запросом для каждого студента).
+
+**Решение**: Унифицировать — использовать батч-версию из `useOrganizationDashboard` как основную в `api/courses.ts`, удалив N+1 паттерн.
+
+---
+
+## 8. Утечка состояния через `localStorage` в Auth
+
+**Проблема**: Роль пользователя кешируется в `localStorage.getItem('user_role')` и используется как начальное значение `userRole`. Если пользователь меняет роль (admin→organization) в другой вкладке, кеш не обновляется.
+
+**Решение**: Добавить `storage` event listener для синхронизации роли между вкладками, или полагаться только на серверные данные при инициализации.
+
+---
+
+## 9. Нет отмены запросов при размонтировании
+
+**Проблема**: `useOrganizationDataLoader` выполняет длинную цепочку запросов в `useEffect` без `AbortController`. При быстром переключении между страницами запросы продолжают выполняться и обновлять state уже размонтированного компонента.
+
+**Решение**: Добавить флаг `isMounted` или `AbortController` в useEffect cleanup.
+
+---
+
+## 10. Хардкод UUID маркетплейса
+
+**Проблема**: В `BulkPipelineWidget.tsx` используется `"00000000-0000-0000-0000-000000000000"` как `organization_id` для маркетплейса. Этот ID разбросан по коду без константы.
+
+**Решение**: Вынести в `src/constants/marketplace.ts`:
+```typescript
+export const MARKETPLACE_ORG_ID = "00000000-0000-0000-0000-000000000000";
+```
+
+---
+
+## Приоритеты реализации
+
+| Приоритет | Задача | Влияние |
+|-----------|--------|---------|
+| 1 | Параллелизация запросов (#3) | Скорость загрузки дашборда x2-3 |
+| 2 | Удаление дублирующего хука (#1) | Устранение путаницы, -449 строк |
+| 3 | Добавление retry + abort (#5, #9) | Надёжность при сбоях сети |
+| 4 | Замена `.limit(10000)` на `fetchAllRows` (#2) | Корректность для крупных орг-ций |
+| 5 | Декомпозиция BulkPipelineWidget (#6) | Поддерживаемость |
+| 6 | Устранение N+1 в API (#7) | Производительность |
+| 7 | Регенерация типов + убрать `as any` (#4) | Типобезопасность |
+| 8 | Константа маркетплейса (#10) | Читаемость |
+| 9 | Синхронизация роли между вкладками (#8) | UX edge-case |
 
