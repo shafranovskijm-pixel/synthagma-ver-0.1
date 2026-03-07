@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import {
   Store, Search, Clock, ShoppingCart, Loader2, CheckCircle2,
   Building2, Send, FileText, Video, ClipboardList, Presentation,
-  Headphones, BookOpen, Eye,
+  Headphones, BookOpen, Eye, Gift, Zap, Award,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
@@ -326,9 +326,13 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
                 )}
               </CardContent>
               <CardFooter className="flex items-center justify-between border-t border-border pt-4">
-                <span className="text-lg font-bold text-primary">
-                  {formatPrice(item.price_student)}
-                </span>
+                {item.price_student > 0 ? (
+                  <span className="text-lg font-bold text-primary">
+                    {formatPrice(item.price_student)}
+                  </span>
+                ) : (
+                  <Badge className="bg-green-500/10 text-green-600 border-green-500/20 text-sm px-3 py-1">Бесплатно</Badge>
+                )}
                 <div className="flex gap-2">
                   <Button
                     size="sm"
@@ -341,11 +345,10 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
                   </Button>
                   <Button
                     size="sm"
-                    className="rounded-xl gap-1.5"
+                    className={`rounded-xl gap-1.5 ${item.price_student === 0 ? 'bg-green-600 hover:bg-green-700 text-white' : ''}`}
                     onClick={(e) => { e.stopPropagation(); setSelectedCourse(item); }}
                   >
-                    <ShoppingCart className="w-4 h-4" />
-                    Заявка
+                    {item.price_student > 0 ? <><ShoppingCart className="w-4 h-4" />Купить</> : <><Gift className="w-4 h-4" />Получить</>}
                   </Button>
                 </div>
               </CardFooter>
@@ -500,12 +503,15 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
           {/* Sticky footer */}
           {previewCourse && (
             <div className="border-t p-4 flex items-center justify-between bg-background">
-              <span className="text-lg font-bold text-primary">
-                {formatPrice(previewCourse.price_student)}
-              </span>
-              <Button className="rounded-xl gap-2" onClick={handleOrderFromPreview}>
-                <ShoppingCart className="w-4 h-4" />
-                Оставить заявку
+              {previewCourse.price_student > 0 ? (
+                <span className="text-lg font-bold text-primary">
+                  {formatPrice(previewCourse.price_student)}
+                </span>
+              ) : (
+                <Badge className="bg-green-500/10 text-green-600 border-green-500/20 text-sm px-3 py-1">Бесплатно</Badge>
+              )}
+              <Button className={`rounded-xl gap-2 ${previewCourse.price_student === 0 ? 'bg-green-600 hover:bg-green-700 text-white' : ''}`} onClick={handleOrderFromPreview}>
+                {previewCourse.price_student > 0 ? <><ShoppingCart className="w-4 h-4" />Купить за {formatPrice(previewCourse.price_student)}</> : <><Gift className="w-4 h-4" />Получить бесплатно</>}
               </Button>
             </div>
           )}
@@ -516,9 +522,9 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
       <Dialog open={!!selectedCourse} onOpenChange={(open) => !open && setSelectedCourse(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Оставить заявку</DialogTitle>
+            <DialogTitle>{selectedCourse?.price_student ? 'Купить курс' : 'Получить курс бесплатно'}</DialogTitle>
             <DialogDescription>
-              Заявка будет отправлена организации-продавцу для рассмотрения
+              {selectedCourse?.price_student ? 'Заявка будет отправлена организации-продавцу' : 'Курс будет добавлен в ваш личный кабинет'}
             </DialogDescription>
           </DialogHeader>
           {selectedCourse && (
@@ -528,9 +534,11 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {selectedCourse.organization?.name}
                 </p>
-                <p className="text-primary font-bold mt-2">
-                  {formatPrice(selectedCourse.price_student)}
-                </p>
+                {selectedCourse.price_student > 0 ? (
+                  <p className="text-primary font-bold mt-2">{formatPrice(selectedCourse.price_student)}</p>
+                ) : (
+                  <Badge className="bg-green-500/10 text-green-600 border-green-500/20 mt-2">Бесплатно</Badge>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Комментарий (необязательно)</Label>
@@ -547,9 +555,9 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
             <Button variant="outline" onClick={() => setSelectedCourse(null)}>
               Отмена
             </Button>
-            <Button onClick={handleOrder} disabled={isOrdering} className="gap-2">
-              {isOrdering ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              Отправить заявку
+            <Button onClick={handleOrder} disabled={isOrdering} className={`gap-2 ${selectedCourse?.price_student === 0 ? 'bg-green-600 hover:bg-green-700 text-white' : ''}`}>
+              {isOrdering ? <Loader2 className="w-4 h-4 animate-spin" /> : selectedCourse?.price_student ? <Send className="w-4 h-4" /> : <Gift className="w-4 h-4" />}
+              {selectedCourse?.price_student ? 'Отправить заявку' : 'Получить бесплатно'}
             </Button>
           </DialogFooter>
         </DialogContent>
