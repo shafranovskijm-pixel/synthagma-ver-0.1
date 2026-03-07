@@ -1,18 +1,29 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## Сделать Lovable AI основным провайдером + исправить интерфейс
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+### Проблема 1: AI баланс не тратится
+Функция `callAI()` в `gigachat-client.ts` (строка 583) по умолчанию вызывает GigaChat первым, а Lovable AI — только как fallback. Поэтому баланс Lovable Cloud не расходуется.
 
-### Changes
+### Решение
+Изменить порядок в `callAI()` — Lovable AI первым, GigaChat как fallback:
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+**`supabase/functions/_shared/gigachat-client.ts`**
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+В функции `callAI()` (строки 583-611):
+- Если `preferredProvider` не указан — вызывать `callLovableAI()` первым
+- При ошибке — fallback на `callGigaChat()`
+- Оставить явные пути для `preferredProvider === "gigachat"` и `"round_robin"`
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+В функции `callAIRoundRobin()` (строки 514-581):
+- Поставить канал Lovable AI первым в массиве `channels`, затем GigaChat слоты
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+В функции `callAIWithTools()` (строки 617-652):
+- Аналогично: сначала Lovable AI, fallback на GigaChat
+
+### Проблема 2: Старый интерфейс
+Скорее всего это кеш браузера. Опубликованная версия не обновлена — нужно нажать «Update» в диалоге публикации. Код в проекте уже содержит все новые вкладки (Рассылка, ИИ-провайдеры и т.д.). Кодовых изменений не требуется.
+
+### Файлы для изменения
+- `supabase/functions/_shared/gigachat-client.ts` — приоритет Lovable AI
 
