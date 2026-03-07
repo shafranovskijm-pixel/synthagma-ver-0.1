@@ -82,8 +82,8 @@ export function WebinarsManager({ organizationId }: WebinarsManagerProps) {
   };
 
   const handleStart = async (webinar: Webinar) => {
-    await updateWebinarStatus(webinar.id, "live");
-    toast.success("Вебинар запущен — студенты могут подключиться");
+    const ok = await updateWebinarStatus(webinar.id, "live");
+    if (ok) toast.success("Вебинар запущен — студенты могут подключиться");
   };
 
   const handleEnd = async (webinarId: string) => {
