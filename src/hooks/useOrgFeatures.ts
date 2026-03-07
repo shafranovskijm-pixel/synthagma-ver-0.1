@@ -17,6 +17,7 @@ interface OrgFeaturesState {
   frdo: boolean;
   links: boolean;
   library: boolean;
+  webinars: boolean;
   services: boolean;
   settings: boolean;
   student_cabinet: boolean;
