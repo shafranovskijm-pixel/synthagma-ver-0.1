@@ -5,6 +5,7 @@ import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { 
   Users, Search, BookOpen, Filter, FileCheck, FileSpreadsheet, 
   GraduationCap, Key, Mail, XCircle, X, Loader2, Copy, Trash2, 
@@ -279,18 +280,6 @@ export const StudentsTab = React.memo(function StudentsTab({
               </Button>
             )}
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="rounded-xl gap-2"
-            onClick={() => {
-              localStorage.setItem('previewStudentDashboard', 'true');
-              window.open('/student', '_blank');
-            }}
-          >
-            <Eye className="w-4 h-4" />
-            <span className="hidden sm:inline">Предпросмотр кабинета</span>
-          </Button>
         </div>
         
         {/* Mobile: Search first */}
@@ -381,23 +370,37 @@ export const StudentsTab = React.memo(function StudentsTab({
               </Button>
             </>
           )}
-          <Button 
-            variant="outline" 
-            className="rounded-xl gap-2 shrink-0 text-xs lg:text-sm" 
-            onClick={() => setShowRemindConfirm(true)}
-            disabled={isSendingBulkDocReminders}
-          >
-            {isSendingBulkDocReminders ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
-            <span className="hidden sm:inline">Напомнить</span>
-          </Button>
-          <Button 
-            variant="outline" 
-            className="rounded-xl gap-2 shrink-0 text-xs lg:text-sm" 
-            onClick={handleExportStudents}
-          >
-            <FileSpreadsheet className="w-4 h-4" />
-            <span className="hidden sm:inline">Экспорт</span>
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  className="rounded-xl gap-2 shrink-0 text-xs lg:text-sm" 
+                  onClick={() => setShowRemindConfirm(true)}
+                  disabled={isSendingBulkDocReminders}
+                >
+                  {isSendingBulkDocReminders ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+                  <span className="hidden sm:inline">Напомнить</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Отправить напоминание о документах</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  className="rounded-xl gap-2 shrink-0 text-xs lg:text-sm" 
+                  onClick={handleExportStudents}
+                >
+                  <FileSpreadsheet className="w-4 h-4" />
+                  <span className="hidden sm:inline">Экспорт</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Экспорт данных учеников в Excel</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           <Select value={courseFilter} onValueChange={setCourseFilter}>
             <SelectTrigger className="w-32 lg:w-48 rounded-xl shrink-0 text-xs lg:text-sm">
               <BookOpen className="w-4 h-4 mr-1 lg:mr-2" />
@@ -537,6 +540,17 @@ export const StudentsTab = React.memo(function StudentsTab({
             <p className="text-muted-foreground mt-2 max-w-lg mx-auto">
               Добавьте учеников и начните отслеживать их прогресс, документы и результаты
             </p>
+            <Button
+              variant="outline"
+              className="rounded-xl gap-2 mt-4"
+              onClick={() => {
+                localStorage.setItem('previewStudentDashboard', 'true');
+                window.open('/student', '_blank');
+              }}
+            >
+              <Eye className="w-4 h-4" />
+              Посмотрите, как выглядит кабинет ученика
+            </Button>
           </div>
 
           <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
