@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { StudentCourseStore } from "@/components/student/StudentCourseStore";
 import { StudentOrgChat } from "@/components/student/StudentOrgChat";
-import { StudentWebinars } from "@/components/student/StudentWebinars";
+
 
 export default function StudentDashboard() {
   const [chatMode, setChatMode] = useState<'select' | 'org' | 'ai'>('select');
