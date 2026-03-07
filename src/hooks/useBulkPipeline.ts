@@ -438,7 +438,7 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
         try {
           const { data, error } = await withTimeout(
             supabase.functions.invoke("gigachat", {
-              body: { action: "generate_content", courseTitle, lessonTitle: lesson.title, existingContent: null, customSystemPrompt: currentPrompts.content || undefined, ai_provider: aiProvider },
+              body: { action: "generate_content", courseTitle, lessonTitle: lesson.title, existingContent: null, customSystemPrompt: currentPrompts.content || undefined, ai_provider: aiProvider, gigachat_model: gigachatModel, lovable_model: lovableModel },
             }),
             AI_CALL_TIMEOUT, "generate_content"
           );

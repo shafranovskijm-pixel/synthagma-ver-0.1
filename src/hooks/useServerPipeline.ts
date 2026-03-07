@@ -191,7 +191,7 @@ export function useServerPipeline({ courses, enableVerification, onComplete, aiP
     try {
       const prompts = getMarketplacePrompts();
       const { data, error } = await supabase.functions.invoke("bulk-pipeline", {
-        body: { action: "resume", runId, prompts, enableVerification },
+        body: { action: "resume", runId, prompts, enableVerification, gigachat_model: gigachatModel, lovable_model: lovableModel },
       });
 
       if (error) throw error;

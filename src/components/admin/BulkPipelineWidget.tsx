@@ -453,7 +453,6 @@ export function BulkPipelineWidget({ courses, readyCourses = [], allCourses, onC
             value={aiProvider}
             onValueChange={(v) => {
               setAiProvider(v);
-              localStorage.setItem("pipeline_ai_provider", v);
             }}
             disabled={false}
           >
@@ -466,6 +465,9 @@ export function BulkPipelineWidget({ courses, readyCourses = [], allCourses, onC
               </SelectItem>
               <SelectItem value="lovable_ai">
                 <span className="flex items-center gap-1.5"><Brain className="w-3.5 h-3.5" />Lovable AI</span>
+              </SelectItem>
+              <SelectItem value="round_robin">
+                <span className="flex items-center gap-1.5"><RefreshCw className="w-3.5 h-3.5" />Round-Robin</span>
               </SelectItem>
             </SelectContent>
           </Select>
