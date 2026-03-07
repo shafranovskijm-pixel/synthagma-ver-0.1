@@ -96,6 +96,8 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [selectedCourseToAdd, setSelectedCourseToAdd] = useState("");
   const [shortDescription, setShortDescription] = useState("");
+  const [priceStudent, setPriceStudent] = useState(0);
+  const [priceOrganization, setPriceOrganization] = useState(0);
   const [isAdding, setIsAdding] = useState(false);
 
   // Order dialog
@@ -238,7 +240,7 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
     setAvailableCourses((courses || []).filter(c => !existingIds.has(c.id)));
   };
 
-  const resetAddForm = () => { setSelectedCourseToAdd(""); setShortDescription(""); };
+  const resetAddForm = () => { setSelectedCourseToAdd(""); setShortDescription(""); setPriceStudent(0); setPriceOrganization(0); };
 
   const handleAddToMarketplace = async () => {
     if (!selectedCourseToAdd) { toast.error('Выберите курс'); return; }
@@ -246,7 +248,7 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
     try {
       const { error } = await supabase.from('marketplace_courses').insert({
         course_id: selectedCourseToAdd, organization_id: organizationId,
-        price_student: 0, price_organization: 0,
+        price_student: priceStudent, price_organization: priceOrganization,
         description_short: shortDescription || null, is_active: true,
       });
       if (error) throw error;
@@ -287,11 +289,14 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
     setIsOrdering(true);
     try {
       const { data: { user: currentUser } } = await supabase.auth.getUser();
+      const orderPrice = userRole === 'organization' 
+        ? selectedCourseForOrder.price_organization 
+        : selectedCourseForOrder.price_student;
       const { data: orderData, error } = await supabase.from('marketplace_orders').insert({
         marketplace_course_id: selectedCourseForOrder.id,
         buyer_user_id: currentUser?.id || userId || null,
         buyer_organization_id: userRole === 'organization' ? organizationId : null,
-        buyer_type: userRole, price: 0,
+        buyer_type: userRole, price: orderPrice,
         students_count: userRole === 'organization' ? studentsCount : 1,
         notes: orderNotes || null, 
         status: 'paid',
@@ -404,7 +409,8 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
     if (!editingCourse) return;
     try {
       const { error } = await supabase.from('marketplace_courses').update({
-        price_student: 0, price_organization: 0,
+        price_student: editingCourse.price_student,
+        price_organization: editingCourse.price_organization,
         description_short: editingCourse.description_short,
       }).eq('id', editingCourse.id);
       if (error) throw error;
@@ -467,6 +473,7 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
     // Add dialog
     showAddDialog, setShowAddDialog, selectedCourseToAdd, setSelectedCourseToAdd,
     shortDescription, setShortDescription,
+    priceStudent, setPriceStudent, priceOrganization, setPriceOrganization,
     isAdding, handleAddToMarketplace,
     // Order dialog
     showOrderDialog, setShowOrderDialog, selectedCourseForOrder, setSelectedCourseForOrder,
