@@ -1,18 +1,37 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+# Добавление второго API-ключа GigaChat для параллельных запросов
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+## Текущее ограничение
+Сейчас система использует один ключ `GIGACHAT_AUTH_KEY` с глобальным мьютексом (1 запрос + 3с пауза). Это создаёт узкое место при массовой генерации.
 
-### Changes
+## Решение
+Добавить второй ключ `GIGACHAT_AUTH_KEY_2` и реализовать пул из двух независимых «слотов», каждый со своим OAuth-токеном и мьютексом. Это удвоит пропускную способность.
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+## Техническая реализация
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+### 1. Добавить секрет `GIGACHAT_AUTH_KEY_2`
+Через инструмент `add_secret` запросить у пользователя второй ключ GigaChat.
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+### 2. Изменить `supabase/functions/_shared/gigachat-client.ts`
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+Вместо одного токена и одного мьютекса — массив из 2 слотов:
+
+```text
+Slot 0: GIGACHAT_AUTH_KEY   → свой OAuth-токен, свой lock
+Slot 1: GIGACHAT_AUTH_KEY_2 → свой OAuth-токен, свой lock
+```
+
+- Каждый слот хранит: `authKey`, `cachedToken`, `tokenExpiresAt`, `lock` (Promise)
+- Функция `acquireSlot()` выбирает первый свободный слот (или ждёт освобождения любого)
+- `callGigaChat` использует `acquireSlot()` вместо `withGigaChatLock()`
+- Если второй ключ не задан, система работает как раньше с одним слотом
+
+### 3. Без изменений в клиентском коде
+Интерфейс `callAI()` / `callGigaChat()` не меняется — ускорение прозрачно для всех вызывающих функций.
+
+## Порядок действий
+1. Запросить секрет `GIGACHAT_AUTH_KEY_2`
+2. Рефакторинг `gigachat-client.ts`: пул слотов вместо одного мьютекса
+3. Деплой edge-функций (автоматический)
 
