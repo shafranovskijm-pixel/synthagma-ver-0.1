@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo } from "react";
 import { 
   BookOpen, Users, BarChart3, Settings, LogOut, 
   Link, FileText, FileSpreadsheet, ShoppingBag, 
-  Building2, ClipboardList, HardHat, HardDrive, CreditCard, Lock, MessageCircle, Video
+  Building2, ClipboardList, HardHat, HardDrive, CreditCard, Lock, MessageCircle
 } from "lucide-react";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { HelpButton } from "@/components/onboarding/HelpButton";
@@ -35,7 +35,6 @@ export type TabType =
   | "documents-testimonials" 
   | "journals" 
   | "labor-safety"
-  | "webinars"
   | "subscription"
   | "services" 
   | "settings" 
@@ -51,7 +50,6 @@ const tabCategoryMap: Record<string, string> = {
   documents: "documents",
   journals: "journals",
   "labor-safety": "labor_safety",
-  webinars: "webinars",
   frdo: "frdo",
   services: "services",
   settings: "settings",
@@ -203,11 +201,6 @@ export function OrgSidebar() {
               {isLocked("labor_safety") && <Lock className="w-3.5 h-3.5 ml-auto text-muted-foreground/40" />}
             </button>
 
-            <button onClick={() => handleTabClick("webinars")} className={tabButtonClass("webinars", isLocked("webinars"))}>
-              <Video className="w-5 h-5" />
-              Вебинары
-              {isLocked("webinars") && <Lock className="w-3.5 h-3.5 ml-auto text-muted-foreground/40" />}
-            </button>
             
             {menuSettings.showFrdo !== false && (
               <button onClick={() => handleTabClick("frdo")} className={tabButtonClass("frdo", isLocked("frdo"))}>

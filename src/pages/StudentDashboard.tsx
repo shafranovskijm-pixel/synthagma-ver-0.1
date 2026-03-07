@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { StudentCourseStore } from "@/components/student/StudentCourseStore";
 import { StudentOrgChat } from "@/components/student/StudentOrgChat";
-import { StudentWebinars } from "@/components/student/StudentWebinars";
+
 
 export default function StudentDashboard() {
   const [chatMode, setChatMode] = useState<'select' | 'org' | 'ai'>('select');
@@ -57,7 +57,7 @@ export default function StudentDashboard() {
         {dashboardSettings.showAiChat && <button onClick={() => { setActiveTab("chat"); setChatMode("select"); onNavigate?.(); }} className={cn("w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors", activeTab === "chat" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary")}><MessageCircle className="w-5 h-5" />Чат<span className="ml-auto w-2 h-2 rounded-full bg-sigma-green animate-pulse" /></button>}
         {dashboardSettings.showLibrary && <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors"><Library className="w-5 h-5" />Библиотека</button>}
         {dashboardSettings.showAchievements && <button onClick={() => { setShowAchievements(true); onNavigate?.(); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors"><Trophy className="w-5 h-5" />Достижения</button>}
-        <button onClick={() => { setActiveTab("webinars"); onNavigate?.(); }} className={cn("w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors", activeTab === "webinars" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary")}><Video className="w-5 h-5" />Вебинары</button>
+        
         <button onClick={() => { 
           if (isFreePlan) { toast.info("Эта функция доступна на другом тарифе"); return; }
           setShowVideoIdentification(true); onNavigate?.(); 
@@ -223,9 +223,6 @@ export default function StudentDashboard() {
           </div>
         )}
 
-        {activeTab === "webinars" && user && profile?.organization_id && (
-          <StudentWebinars userId={user.id} organizationId={profile.organization_id} />
-        )}
       </main>
 
       {user && <VideoIdentification userId={user.id} userName={profile?.full_name || "Ученик"} organizationId={profile?.organization_id} isOpen={showVideoIdentification} onOpenChange={setShowVideoIdentification} onVerified={() => { setIsVideoIdentified(true); setShowVideoIdentification(false); }} />}
