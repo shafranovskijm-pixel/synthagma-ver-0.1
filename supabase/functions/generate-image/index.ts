@@ -169,7 +169,7 @@ async function generateWithGigaChat(prompt: string, keySlot?: string) {
   const accessToken = tokenData.access_token;
 
   // Step 2: Ask GigaChat to generate an image via chat completions
-  const chatRes = await fetch("https://gigachat.devices.sberbank.ru/api/v1/chat/completions", {
+  const chatFetchOpts: RequestInit & { client?: Deno.HttpClient } = {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -186,7 +186,10 @@ async function generateWithGigaChat(prompt: string, keySlot?: string) {
       ],
       function_call: "auto",
     }),
-  });
+  };
+  if (sberHttpClient) (chatFetchOpts as any).client = sberHttpClient;
+
+  const chatRes = await fetch("https://gigachat.devices.sberbank.ru/api/v1/chat/completions", chatFetchOpts);
 
   if (!chatRes.ok) {
     const text = await chatRes.text();
