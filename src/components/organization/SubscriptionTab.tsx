@@ -124,6 +124,7 @@ export function SubscriptionTab() {
   const [submitting, setSubmitting] = useState(false);
   const [pendingRequest, setPendingRequest] = useState<{ requested_plan: string; created_at: string } | null>(null);
   const [billingDocs, setBillingDocs] = useState<BillingDoc[]>([]);
+  const [orgContact, setOrgContact] = useState<{ email?: string; phone?: string; contact_name?: string }>({});
 
   const currentPlan = subscriptionLimits.plan;
   const currentPlanInfo = SUBSCRIPTION_PLANS[currentPlan];
@@ -134,12 +135,13 @@ export function SubscriptionTab() {
     
     const fetchOrgDetails = async () => {
       const [orgRes, reqRes, docsRes] = await Promise.all([
-        supabase.from("organizations").select("paid_until").eq("id", organizationId).single(),
+        supabase.from("organizations").select("paid_until, email, phone, contact_name").eq("id", organizationId).single(),
         supabase.from("subscription_requests" as any).select("requested_plan, created_at").eq("organization_id", organizationId).eq("status", "pending").order("created_at", { ascending: false }).limit(1),
         supabase.from("org_billing_documents" as any).select("*").eq("organization_id", organizationId).order("created_at", { ascending: false }),
       ]);
       
       if (orgRes.data?.paid_until) setPaidUntil(orgRes.data.paid_until);
+      setOrgContact({ email: orgRes.data?.email, phone: orgRes.data?.phone, contact_name: orgRes.data?.contact_name });
       if ((reqRes.data as any)?.[0]) setPendingRequest((reqRes.data as any)[0]);
       if (docsRes.data) setBillingDocs(docsRes.data as any[]);
     };
@@ -181,12 +183,15 @@ export function SubscriptionTab() {
 
       // Send Telegram notification
       const planInfo = SUBSCRIPTION_PLANS[selectedPlan];
-      const orgName = organizationId;
+      const orgDisplayName = d.organizationName || organizationId;
       try {
         await supabase.functions.invoke("send-telegram-notification", {
           body: {
             message: `📋 <b>Заявка на повышение тарифа</b>\n\n` +
-              `🏢 Организация: <code>${organizationId}</code>\n` +
+              `🏢 Организация: ${orgDisplayName}\n` +
+              (orgContact.contact_name ? `👤 Контакт: ${orgContact.contact_name}\n` : '') +
+              (orgContact.email ? `📧 Email: ${orgContact.email}\n` : '') +
+              (orgContact.phone ? `📞 Телефон: ${orgContact.phone}\n` : '') +
               `📊 Текущий тариф: ${SUBSCRIPTION_PLANS[currentPlan]?.name || currentPlan}\n` +
               `🆕 Запрошенный тариф: ${planInfo?.name || selectedPlan}\n` +
               `💰 Стоимость: ${planInfo?.price?.toLocaleString() || '?'} ₽/мес\n` +
