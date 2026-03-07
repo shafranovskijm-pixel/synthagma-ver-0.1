@@ -82,8 +82,8 @@ const IMAGE_PROVIDERS = [
 ];
 
 const PROVIDERS = [
-  { value: "gigachat", label: "GigaChat" },
   { value: "lovable_ai", label: "Lovable AI" },
+  { value: "gigachat", label: "GigaChat" },
 ];
 
 const PIPELINE_PROVIDERS = [
