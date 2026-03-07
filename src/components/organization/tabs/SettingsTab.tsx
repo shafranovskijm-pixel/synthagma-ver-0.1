@@ -550,10 +550,17 @@ export function SettingsTab() {
             <p className="text-sm text-muted-foreground">
               Настройте, какие разделы будут отображаться в личном кабинете учеников
             </p>
-            <Button variant="outline" size="sm" className="rounded-xl gap-2" onClick={previewStudentDashboard}>
-              <ExternalLink className="w-4 h-4" />
-              Просмотр кабинета
-            </Button>
+            <TooltipProvider delayDuration={300}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="sm" className="rounded-xl gap-2" onClick={previewStudentDashboard}>
+                    <ExternalLink className="w-4 h-4" />
+                    Просмотр кабинета
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Предпросмотр личного кабинета ученика</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
           <div className="space-y-4">
             {/* Library */}

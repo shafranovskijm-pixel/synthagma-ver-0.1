@@ -150,16 +150,23 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
         </div>
 
         {onShowBulkUploadDialog && (
-          <Button 
-            variant="outline" 
-            size="sm"
-            className="rounded-xl gap-2" 
-            onClick={onShowBulkUploadDialog}
-          >
-            <Upload className="w-4 h-4" />
-            <span className="hidden sm:inline">Массовая загрузка</span>
-            <span className="sm:hidden">Загрузка</span>
-          </Button>
+          <TooltipProvider delayDuration={300}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="rounded-xl gap-2" 
+                  onClick={onShowBulkUploadDialog}
+                >
+                  <Upload className="w-4 h-4" />
+                  <span className="hidden sm:inline">Массовая загрузка</span>
+                  <span className="sm:hidden">Загрузка</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Загрузить документы пакетно</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         )}
       </div>
 

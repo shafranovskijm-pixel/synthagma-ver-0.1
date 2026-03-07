@@ -917,15 +917,22 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
               Снять выделение
             </Button>
           </div>
-          <Button
-            variant="destructive"
-            size="sm"
-            className="rounded-xl gap-2"
-            onClick={() => setShowBulkDeleteConfirm(true)}
-          >
-            <Trash2 className="w-4 h-4" />
-            Удалить выбранные
-          </Button>
+          <TooltipProvider delayDuration={300}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="rounded-xl gap-2"
+                  onClick={() => setShowBulkDeleteConfirm(true)}
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Удалить выбранные
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Удалить выбранные курсы</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       )}
 
