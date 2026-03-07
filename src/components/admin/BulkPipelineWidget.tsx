@@ -333,7 +333,19 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
           </div>
         </div>
 
-        {/* Current status */}
+        {/* Verification toggle */}
+        <div className="flex items-center justify-between p-2.5 rounded-lg border bg-card">
+          <div>
+            <p className="text-xs font-medium">🔍 Верификация ответов</p>
+            <p className="text-[10px] text-muted-foreground">Перепроверка тестов второй моделью ИИ после решения</p>
+          </div>
+          <Switch
+            checked={enableVerification}
+            onCheckedChange={setEnableVerification}
+            disabled={isBusy}
+          />
+        </div>
+
         {isBusy && currentCourseName && (
           <div className="text-sm space-y-0.5">
             <p className="font-medium truncate">▶ {currentCourseName}</p>
