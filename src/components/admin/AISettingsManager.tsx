@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Bot, Cpu, Mic, MessageSquare, Store, Layers, Building2, Key, Save, Loader2, ImagePlus, GitCompareArrows } from "lucide-react";
+import { Bot, Cpu, Mic, MessageSquare, Store, Layers, Building2, Key, Save, Loader2, ImagePlus, GitCompareArrows, DollarSign } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AITestSandbox } from "./ai-settings/AITestSandbox";
 import { AIComparisonPanel } from "./ai-settings/AIComparisonPanel";
 
@@ -21,6 +23,36 @@ type AISetting = {
   concurrency: number;
   extra_config: Record<string, any>;
 };
+
+type CostLevel = "low" | "medium" | "high" | "premium";
+
+const COST_META: Record<CostLevel, { label: string; emoji: string; color: string }> = {
+  low: { label: "Низкая", emoji: "💰", color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300" },
+  medium: { label: "Средняя", emoji: "💰💰", color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300" },
+  high: { label: "Высокая", emoji: "💰💰💰", color: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300" },
+  premium: { label: "Премиум", emoji: "💎", color: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300" },
+};
+
+const MODEL_PRICING: { provider: string; model: string; label: string; level: string; speed: string; cost: CostLevel }[] = [
+  { provider: "Lovable AI", model: "google/gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite", level: "Базовый", speed: "⚡⚡⚡ Очень быстрая", cost: "low" },
+  { provider: "Lovable AI", model: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash", level: "Стандарт", speed: "⚡⚡ Быстрая", cost: "medium" },
+  { provider: "Lovable AI", model: "google/gemini-3-flash-preview", label: "Gemini 3 Flash", level: "Стандарт", speed: "⚡⚡ Быстрая", cost: "medium" },
+  { provider: "Lovable AI", model: "google/gemini-2.5-pro", label: "Gemini 2.5 Pro", level: "Продвинутый", speed: "⚡ Средняя", cost: "high" },
+  { provider: "Lovable AI", model: "google/gemini-3-pro-preview", label: "Gemini 3 Pro", level: "Продвинутый", speed: "⚡ Средняя", cost: "high" },
+  { provider: "Lovable AI", model: "openai/gpt-5-nano", label: "GPT-5 Nano", level: "Базовый", speed: "⚡⚡⚡ Очень быстрая", cost: "low" },
+  { provider: "Lovable AI", model: "openai/gpt-5-mini", label: "GPT-5 Mini", level: "Стандарт", speed: "⚡⚡ Быстрая", cost: "medium" },
+  { provider: "Lovable AI", model: "openai/gpt-5", label: "GPT-5", level: "Премиум", speed: "🐢 Медленная", cost: "premium" },
+  { provider: "Lovable AI", model: "openai/gpt-5.2", label: "GPT-5.2", level: "Премиум", speed: "🐢 Медленная", cost: "premium" },
+  { provider: "Lovable AI", model: "google/gemini-2.5-flash-image", label: "Gemini Flash Image", level: "Изображения", speed: "⚡⚡ Быстрая", cost: "medium" },
+  { provider: "Lovable AI", model: "google/gemini-3-pro-image-preview", label: "Gemini 3 Pro Image", level: "Изображения", speed: "⚡ Средняя", cost: "high" },
+  { provider: "GigaChat", model: "GigaChat", label: "GigaChat Lite", level: "Базовый", speed: "⚡⚡ Быстрая", cost: "low" },
+  { provider: "GigaChat", model: "GigaChat-Pro", label: "GigaChat Pro", level: "Стандарт", speed: "⚡ Средняя", cost: "medium" },
+  { provider: "GigaChat", model: "GigaChat-Max", label: "GigaChat Max", level: "Продвинутый", speed: "🐢 Медленная", cost: "high" },
+  { provider: "ElevenLabs", model: "elevenlabs", label: "ElevenLabs TTS", level: "TTS", speed: "⚡⚡ Быстрая", cost: "high" },
+];
+
+const MODEL_COST_MAP: Record<string, CostLevel> = {};
+MODEL_PRICING.forEach(m => { MODEL_COST_MAP[m.model] = m.cost; });
 
 const GIGACHAT_MODELS = [
   { value: "GigaChat-Max", label: "GigaChat Max" },
@@ -46,6 +78,7 @@ const IMAGE_MODELS = [
 
 const IMAGE_PROVIDERS = [
   { value: "lovable_ai", label: "Lovable AI" },
+  { value: "gigachat", label: "GigaChat" },
 ];
 
 const PROVIDERS = [
@@ -100,6 +133,17 @@ const CONTEXT_META: Record<string, { icon: React.ReactNode; title: string; descr
     description: "ИИ для создания и редактирования изображений в курсах",
   },
 };
+
+function CostBadge({ model }: { model: string }) {
+  const cost = MODEL_COST_MAP[model];
+  if (!cost) return null;
+  const meta = COST_META[cost];
+  return (
+    <span className={`ml-2 inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium ${meta.color}`}>
+      {meta.emoji}
+    </span>
+  );
+}
 
 export function AISettingsManager() {
   const [settings, setSettings] = useState<Record<string, AISetting>>({});
@@ -197,6 +241,30 @@ export function AISettingsManager() {
     );
   }
 
+  const renderModelSelect = (
+    models: { value: string; label: string }[],
+    value: string,
+    onChange: (v: string) => void,
+    label: string
+  ) => (
+    <div className="space-y-2">
+      <Label>{label}</Label>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger><SelectValue /></SelectTrigger>
+        <SelectContent>
+          {models.map((m) => (
+            <SelectItem key={m.value} value={m.value}>
+              <span className="flex items-center">
+                {m.label}
+                <CostBadge model={m.value} />
+              </span>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+
   const renderProviderSelect = (
     ctx: string,
     options: { value: string; label: string }[] = PROVIDERS,
@@ -220,31 +288,30 @@ export function AISettingsManager() {
           </div>
 
           {(s.provider === "gigachat" || s.provider === "round_robin") && !modelOptions && (
-            <div className="space-y-2">
-              <Label>Модель GigaChat</Label>
-              <Select value={s.gigachat_model} onValueChange={(v) => updateField(ctx, "gigachat_model", v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {GIGACHAT_MODELS.map((m) => (
-                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            renderModelSelect(
+              GIGACHAT_MODELS,
+              s.gigachat_model,
+              (v) => updateField(ctx, "gigachat_model", v),
+              "Модель GigaChat"
+            )
+          )}
+
+          {s.provider === "gigachat" && modelOptions && (
+            renderModelSelect(
+              GIGACHAT_MODELS,
+              s.gigachat_model,
+              (v) => updateField(ctx, "gigachat_model", v),
+              "Модель GigaChat"
+            )
           )}
 
           {(s.provider === "lovable_ai" || s.provider === "round_robin") && (
-            <div className="space-y-2">
-              <Label>{modelOptions ? "Модель" : "Модель Lovable AI"}</Label>
-              <Select value={s.lovable_model} onValueChange={(v) => updateField(ctx, "lovable_model", v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {(modelOptions || LOVABLE_MODELS).map((m) => (
-                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            renderModelSelect(
+              modelOptions || LOVABLE_MODELS,
+              s.lovable_model,
+              (v) => updateField(ctx, "lovable_model", v),
+              modelOptions ? "Модель" : "Модель Lovable AI"
+            )
           )}
         </div>
       </div>
@@ -267,7 +334,9 @@ export function AISettingsManager() {
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {GIGACHAT_MODELS.map((m) => (
-                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                    <SelectItem key={m.value} value={m.value}>
+                      <span className="flex items-center">{m.label}<CostBadge model={m.value} /></span>
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -278,7 +347,9 @@ export function AISettingsManager() {
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {GIGACHAT_MODELS.map((m) => (
-                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                    <SelectItem key={m.value} value={m.value}>
+                      <span className="flex items-center">{m.label}<CostBadge model={m.value} /></span>
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -289,7 +360,9 @@ export function AISettingsManager() {
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {LOVABLE_MODELS.map((m) => (
-                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                    <SelectItem key={m.value} value={m.value}>
+                      <span className="flex items-center">{m.label}<CostBadge model={m.value} /></span>
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -347,6 +420,42 @@ export function AISettingsManager() {
       <p className="text-xs text-muted-foreground mt-2">
         API-ключи управляются через секреты Lovable Cloud. Для изменения используйте панель секретов.
       </p>
+    </div>
+  );
+
+  const renderPricingTable = () => (
+    <div className="overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Провайдер</TableHead>
+            <TableHead>Модель</TableHead>
+            <TableHead>Уровень</TableHead>
+            <TableHead>Скорость</TableHead>
+            <TableHead>Стоимость</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {MODEL_PRICING.map((m) => {
+            const costMeta = COST_META[m.cost];
+            return (
+              <TableRow key={m.model}>
+                <TableCell className="font-medium text-xs">{m.provider}</TableCell>
+                <TableCell className="text-xs">{m.label}</TableCell>
+                <TableCell>
+                  <Badge variant="outline" className="text-[10px]">{m.level}</Badge>
+                </TableCell>
+                <TableCell className="text-xs">{m.speed}</TableCell>
+                <TableCell>
+                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${costMeta.color}`}>
+                    {costMeta.emoji} {costMeta.label}
+                  </span>
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
     </div>
   );
 
@@ -415,6 +524,22 @@ export function AISettingsManager() {
           </AccordionTrigger>
           <AccordionContent className="px-4 pb-4">
             <AIComparisonPanel />
+          </AccordionContent>
+        </AccordionItem>
+
+        {/* Pricing Table */}
+        <AccordionItem value="pricing" className="border rounded-xl px-1">
+          <AccordionTrigger className="px-4 py-3 hover:no-underline">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10 text-primary"><DollarSign className="w-5 h-5" /></div>
+              <div className="text-left">
+                <div className="font-semibold">Тарифы моделей</div>
+                <div className="text-xs text-muted-foreground font-normal">Справочник стоимости и скорости всех моделей</div>
+              </div>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="px-4 pb-4">
+            {renderPricingTable()}
           </AccordionContent>
         </AccordionItem>
 
