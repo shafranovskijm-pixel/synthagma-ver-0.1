@@ -1,27 +1,18 @@
 
 
-## Проблема
+## Plan: Auto-fix after "Проверить все"
 
-Старый Service Worker, зарегистрированный ранее с `registerType: "prompt"`, продолжает перехватывать запросы и отдавать кэшированные бандлы. Очистка кэшей (`caches.delete`) не помогает, потому что старый SW восстанавливает их. Нужно принудительно **разрегистрировать** старый SW перед регистрацией нового.
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-## Изменения
+### Changes
 
-### `src/main.tsx`
-- **Перед** регистрацией нового SW — принудительно разрегистрировать ВСЕ существующие Service Workers
-- Очистить все кэши **после** разрегистрации
-- Только потом регистрировать новый SW
-- Добавить `location.reload()` если был разрегистрирован старый SW (одноразовый reload через sessionStorage флаг), чтобы гарантировать загрузку свежих ресурсов без старого SW
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-```typescript
-// Pseudocode
-if ('serviceWorker' in navigator) {
-  const registrations = await navigator.serviceWorker.getRegistrations();
-  for (const reg of registrations) await reg.unregister();
-  // clear caches
-  // then register new SW
-  // reload once if old SW was found
-}
-```
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-Одно изменение в одном файле — `src/main.tsx`.
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
+
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 
