@@ -244,7 +244,7 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
 
             let retries = 0;
             let batchSuccess = false;
-            while (retries < 3 && !batchSuccess) {
+            while (retries < 3 && !batchSuccess && !stopRef.current) {
               try {
                 const { data, error } = await withTimeout(
                   supabase.functions.invoke("gigachat", {
