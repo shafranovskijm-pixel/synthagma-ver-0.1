@@ -1,41 +1,18 @@
 
 
-## Проблема
+## Plan: Auto-fix after "Проверить все"
 
-Несовпадение идентификаторов голосов между клиентом и edge-функцией:
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-- **Клиент** отправляет `voice: "Natalya_24000"` (ID из `SALUTE_VOICES`)
-- **Edge-функция** ищет по ключу `natalya` (lowercase, без `_24000`) в словаре `VOICES`, не находит — всегда fallback на `natalya`
+### Changes
 
-Словарь в edge-функции маппит `natalya` → `Nec_24000` (внутренний код SaluteSpeech API), но клиент шлёт `Natalya_24000`, которого нет в словаре.
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-## Решение
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-Привести в соответствие ID голосов. Два изменения:
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-### 1. Edge-функция `salutespeech-tts/index.ts`
-Обновить словарь `VOICES`, чтобы ключи совпадали с тем, что шлёт клиент (`Natalya_24000`, `Boris_24000` и т.д.):
-
-```ts
-const VOICES: Record<string, string> = {
-  "Natalya_24000": "Nec_24000",
-  "Boris_24000": "Bys_24000",
-  "Marfa_24000": "May_24000",
-  "Taras_24000": "Tur_24000",
-  "Alexandra_24000": "Ost_24000",
-  "Sergey_24000": "Pon_24000",
-  // backward compat — lowercase keys from admin panel
-  "natalya": "Nec_24000",
-  "boris": "Bys_24000",
-  "marfa": "May_24000",
-  "taras": "Tur_24000",
-  "alexandr": "Ost_24000",
-  "sergey": "Pon_24000",
-};
-```
-
-Это сохранит обратную совместимость с админкой, которая шлёт lowercase.
-
-### Файлы для изменения
-- `supabase/functions/salutespeech-tts/index.ts` — расширить словарь `VOICES`
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 

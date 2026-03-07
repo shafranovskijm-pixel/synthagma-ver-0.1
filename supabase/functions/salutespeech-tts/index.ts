@@ -102,6 +102,14 @@ const httpClient = createSberHttpClient();
 
 // SaluteSpeech voices (Russian)
 const VOICES: Record<string, string> = {
+  // Client IDs (from TTSSettingsDialog SALUTE_VOICES)
+  "Natalya_24000": "Nec_24000",
+  "Boris_24000": "Bys_24000",
+  "Marfa_24000": "May_24000",
+  "Taras_24000": "Tur_24000",
+  "Alexandra_24000": "Ost_24000",
+  "Sergey_24000": "Pon_24000",
+  // Backward compat — lowercase keys from admin panel
   natalya: "Nec_24000",
   boris: "Bys_24000",
   marfa: "May_24000",
