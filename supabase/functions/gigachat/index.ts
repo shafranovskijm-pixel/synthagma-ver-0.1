@@ -51,7 +51,7 @@ serve(async (req) => {
     if (!rl.allowed) return rateLimitResponse(rl, corsHeaders);
 
     const body = await req.json();
-    const { action, courseTitle, lessonTitle, questions, existingContent, customSystemPrompt } = body;
+    const { action, courseTitle, lessonTitle, questions, existingContent, customSystemPrompt, previousAnswers } = body;
 
     // Log AI usage
     const { data: profile } = await supabase
