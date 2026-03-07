@@ -250,17 +250,20 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
-            <Loader2 className={`w-4 h-4 ${pipeline.isRunning ? "animate-spin" : "hidden"}`} />
+            <Loader2 className={`w-4 h-4 ${effectiveBusy ? "animate-spin" : "hidden"}`} />
             Конвейер заполнения
+            {serverMode && <Badge variant="outline" className="text-[10px]"><Server className="w-3 h-3 mr-0.5 inline" />Сервер</Badge>}
             {totalCount > 0 && <Badge variant="secondary" className="ml-1">{totalCount} курсов</Badge>}
           </CardTitle>
           {totalCount > 0 && (
-            !isBusy ? (
+            !effectiveBusy ? (
               <div className="flex items-center gap-1.5">
-                <Button size="sm" variant="outline" onClick={handleTestRunWithQueue} className="gap-1.5">
-                  <FlaskConical className="w-3.5 h-3.5" />Тест 1
-                </Button>
-                {hasResumableProgress && (
+                {!serverMode && (
+                  <Button size="sm" variant="outline" onClick={handleTestRunWithQueue} className="gap-1.5">
+                    <FlaskConical className="w-3.5 h-3.5" />Тест 1
+                  </Button>
+                )}
+                {!serverMode && hasResumableProgress && (
                   <>
                     <Button size="sm" variant="outline" onClick={handleResumeWithQueue} className="gap-1.5">
                       <SkipForward className="w-3.5 h-3.5" />Продолжить
@@ -271,11 +274,11 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
                   </>
                 )}
                 <Button size="sm" onClick={handleStartWithQueue} className="gap-1.5">
-                  <Play className="w-3.5 h-3.5" />Запустить все
+                  <Play className="w-3.5 h-3.5" />{serverMode ? "Запустить на сервере" : "Запустить все"}
                 </Button>
               </div>
             ) : (
-              <Button size="sm" variant="destructive" onClick={pipeline.handleStop} className="gap-1.5">
+              <Button size="sm" variant="destructive" onClick={handleEffectiveStop} className="gap-1.5">
                 <Square className="w-3.5 h-3.5" />Стоп
               </Button>
             )
@@ -287,10 +290,15 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
         {totalCount > 0 && (
           <div className="space-y-1.5">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">{completedCount} / {totalCount} готово</span>
-              <span className="font-medium">{progressPercent}%</span>
+              <span className="text-muted-foreground">
+                {serverMode && serverPipeline.currentRun
+                  ? `${serverPipeline.currentRun.completed_log?.length || 0} / ${serverPipeline.currentRun.total_courses} готово`
+                  : `${completedCount} / ${totalCount} готово`
+                }
+              </span>
+              <span className="font-medium">{effectiveProgress}%</span>
             </div>
-            <Progress value={progressPercent} className="h-2" />
+            <Progress value={effectiveProgress} className="h-2" />
           </div>
         )}
 
