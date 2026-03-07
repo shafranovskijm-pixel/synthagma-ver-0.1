@@ -109,6 +109,7 @@ const VOICES: Record<string, string> = {
   "Taras_24000": "Tur_24000",
   "Alexandra_24000": "Ost_24000",
   "Sergey_24000": "Pon_24000",
+  "Kira_24000": "Kir_24000",
   // Backward compat — lowercase keys from admin panel
   natalya: "Nec_24000",
   boris: "Bys_24000",
@@ -177,6 +178,7 @@ serve(async (req) => {
     const accessToken = await getAccessToken(authKey);
 
     // Step 2: Synthesize speech
+    console.log("[SaluteSpeech] Requested voice:", voice, "-> mapped to:", VOICES[voice] || "FALLBACK natalya");
     const voiceParam = VOICES[voice] || VOICES.natalya;
     
     const contentType = format === "wav16" 
