@@ -1,6 +1,6 @@
 import { 
   BarChart3, Building2, Users, Crown, 
-  LogOut, Shield, Settings, FileText, Terminal, Store, HeadphonesIcon, Briefcase
+  LogOut, Shield, Settings, FileText, Terminal, Store, HeadphonesIcon, Briefcase, Bot
 } from "lucide-react";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { HelpButton } from "@/components/onboarding/HelpButton";
@@ -13,6 +13,7 @@ export type AdminTabType =
   | "content"
   | "marketplace"
   | "sales"
+  | "ai"
   | "support"
   | "devtools"
   | "settings";
@@ -103,6 +104,12 @@ export function AdminSidebar({
           <button onClick={() => handleTabClick("sales")} className={tabButtonClass("sales")}>
             <Briefcase className="w-5 h-5" />
             Продажи
+          </button>
+
+          {/* AI */}
+          <button onClick={() => handleTabClick("ai")} className={tabButtonClass("ai")}>
+            <Bot className="w-5 h-5" />
+            ИИ-провайдеры
           </button>
 
           {/* Analytics */}

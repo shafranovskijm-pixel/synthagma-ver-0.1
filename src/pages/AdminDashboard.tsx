@@ -15,6 +15,7 @@ import { BlogManager } from "@/components/admin/BlogManager";
 import { TariffsManager } from "@/components/admin/TariffsManager";
 import { DevToolsPanel } from "@/components/admin/DevToolsPanel";
 import { SalesManager } from "@/components/admin/SalesManager";
+import { AISettingsManager } from "@/components/admin/AISettingsManager";
 
 const AdminDashboard = () => {
   const { user, signOut } = useAuth();
@@ -35,6 +36,7 @@ const AdminDashboard = () => {
       case "tariffs": return "Тарифы";
       case "marketplace": return "Маркетплейс";
       case "sales": return "Продажи";
+      case "ai": return "ИИ-провайдеры";
       case "users": return "Пользователи";
       case "content": return "Контент";
       case "support": return "Поддержка";
@@ -94,6 +96,7 @@ const AdminDashboard = () => {
           {activeTab === "tariffs" && <TariffsManager />}
           {activeTab === "marketplace" && <AdminMarketplaceManager />}
           {activeTab === "sales" && <SalesManager />}
+          {activeTab === "ai" && <AISettingsManager />}
           {activeTab === "users" && <UsersManager />}
           {activeTab === "content" && <BlogManager />}
           {activeTab === "support" && <SupportRequestsManager />}
