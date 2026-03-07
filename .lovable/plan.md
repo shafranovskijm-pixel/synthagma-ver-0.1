@@ -1,18 +1,35 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## Проблема
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+Голос SaluteSpeech **всегда один и тот же**, потому что edge-функция передаёт `voice` и `format` как **HTTP-заголовки** (`Voice-Name`, `Audio-Encoding`), тогда как SaluteSpeech API ожидает их как **query-параметры URL**.
 
-### Changes
+Из [официальной документации](https://developers.sber.ru/docs/ru/salutespeech/rest/post-speech-synthesis):
+- `voice` — **query parameter** (по умолчанию `May_24000`, т.е. Марфа)
+- `format` — **query parameter** (по умолчанию `wav16`)
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+API просто игнорирует неизвестные заголовки и всегда использует голос по умолчанию.
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+Дополнительно: код голоса Kira в нашем маппинге неверный — `Kir_24000` вместо правильного `Kin_24000`.
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+## Решение
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+### Файл: `supabase/functions/salutespeech-tts/index.ts`
+
+1. **Перенести `voice` и `format` из заголовков в query-параметры URL**:
+
+```ts
+// Было:
+const url = "https://smartspeech.sber.ru/rest/v1/text:synthesize";
+// headers: { "Voice-Name": voiceParam, "Audio-Encoding": format }
+
+// Станет:
+const audioFormat = format === "wav16" ? "wav16" : format === "pcm16" ? "pcm16" : "opus";
+const url = `https://smartspeech.sber.ru/rest/v1/text:synthesize?voice=${voiceParam}&format=${audioFormat}`;
+// headers: только Authorization и Content-Type
+```
+
+2. **Убрать заголовки `Voice-Name` и `Audio-Encoding`** из запроса синтеза — они не нужны.
+
+3. **Исправить код голоса Kira**: `Kir_24000` → `Kin_24000` (и `kira` → `Kin_24000`).
 
