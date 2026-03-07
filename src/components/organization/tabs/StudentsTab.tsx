@@ -516,9 +516,108 @@ export const StudentsTab = React.memo(function StudentsTab({
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
       ) : filteredStudents.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">
-          <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
-          <p>Нет учеников</p>
+        <div className="py-8">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-4">
+              <GraduationCap className="w-8 h-8 text-primary" />
+            </div>
+            <h2 className="text-2xl font-bold text-foreground">Управляйте обучением эффективно</h2>
+            <p className="text-muted-foreground mt-2 max-w-lg mx-auto">
+              Добавьте учеников и начните отслеживать их прогресс, документы и результаты
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            {/* Add student card */}
+            <div className="relative overflow-hidden rounded-xl border-2 border-dashed border-primary/30 hover:border-primary/60 transition-all group">
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="relative p-6 space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                    <Plus className="w-5 h-5 text-primary" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-foreground">Добавить ученика</h3>
+                </div>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Создайте профиль ученика с автоматической генерацией логина и пароля для входа в систему.
+                </p>
+                <ul className="space-y-2.5">
+                  <li className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                    <Key className="w-4 h-4 text-primary/70 shrink-0" />
+                    <span>Автогенерация учётных данных</span>
+                  </li>
+                  <li className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                    <Mail className="w-4 h-4 text-primary/70 shrink-0" />
+                    <span>Отправка доступа на почту</span>
+                  </li>
+                  <li className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                    <GraduationCap className="w-4 h-4 text-primary/70 shrink-0" />
+                    <span>Зачисление на курсы</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Progress tracking card */}
+            <div className="relative overflow-hidden rounded-xl border-2 border-dashed border-accent/30 hover:border-accent/60 transition-all group">
+              <div className="absolute inset-0 bg-gradient-to-br from-accent/5 via-transparent to-accent/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="relative p-6 space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-accent/20 flex items-center justify-center">
+                    <BookOpen className="w-5 h-5 text-accent-foreground" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-foreground">Контроль обучения</h3>
+                </div>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Отслеживайте прогресс, результаты тестов и время обучения каждого ученика в реальном времени.
+                </p>
+                <ul className="space-y-2.5">
+                  <li className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                    <CheckCircle2 className="w-4 h-4 text-primary/70 shrink-0" />
+                    <span>Прогресс по каждому уроку</span>
+                  </li>
+                  <li className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                    <FileCheck className="w-4 h-4 text-primary/70 shrink-0" />
+                    <span>Результаты тестирования</span>
+                  </li>
+                  <li className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                    <FolderOpen className="w-4 h-4 text-primary/70 shrink-0" />
+                    <span>Группировка по группам</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Documents card */}
+            <div className="relative overflow-hidden rounded-xl border-2 border-dashed border-muted-foreground/20 hover:border-muted-foreground/40 transition-all group">
+              <div className="absolute inset-0 bg-gradient-to-br from-muted/30 via-transparent to-muted/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="relative p-6 space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center">
+                    <FileText className="w-5 h-5 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-foreground">Документооборот</h3>
+                </div>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Собирайте документы учеников, формируйте приказы, протоколы и выгружайте данные в ФРДО.
+                </p>
+                <ul className="space-y-2.5">
+                  <li className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                    <FileSpreadsheet className="w-4 h-4 text-primary/70 shrink-0" />
+                    <span>Экспорт в Excel и ФРДО</span>
+                  </li>
+                  <li className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                    <FileText className="w-4 h-4 text-primary/70 shrink-0" />
+                    <span>Приказы и протоколы</span>
+                  </li>
+                  <li className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                    <MessageCircle className="w-4 h-4 text-primary/70 shrink-0" />
+                    <span>Напоминания о документах</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
         </div>
       ) : (
         <>
