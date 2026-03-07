@@ -122,7 +122,36 @@ export function useCourseLearning() {
   const [isChatLoading, setIsChatLoading] = useState(false);
   const chatScrollRef = useRef<HTMLDivElement>(null);
 
-  const currentLesson = lessons[currentLessonIndex];
+  // Load admin TTS defaults from ai_settings (context='tts') if no localStorage override
+  useEffect(() => {
+    if (adminDefaultsLoaded.current) return;
+    adminDefaultsLoaded.current = true;
+
+    const TTS_KEY = 'tts-settings';
+    if (localStorage.getItem(TTS_KEY)) return; // user already has personal settings
+
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from('ai_settings')
+          .select('provider, extra_config')
+          .eq('context', 'tts')
+          .maybeSingle();
+
+        if (!data) return;
+        const ec = data.extra_config as Record<string, unknown> | null;
+        const adminDefaults: AdminTTSDefaults = {
+          provider: data.provider || undefined,
+          saluteVoice: (ec?.salute_voice as string) || undefined,
+        };
+        setTtsSettings(getStoredTTSSettings(adminDefaults));
+      } catch {
+        // ignore — fallback to built-in defaults
+      }
+    })();
+  }, []);
+
+
   const completedCount = lessonProgress.filter(p => p.completed).length;
   const progressPercent = lessons.length > 0 ? (completedCount / lessons.length) * 100 : 0;
 
