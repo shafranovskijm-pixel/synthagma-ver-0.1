@@ -282,6 +282,10 @@ export function AISettingsManager() {
   const [saving, setSaving] = useState(false);
   const [secretsStatus, setSecretsStatus] = useState<Record<string, boolean>>({});
   const [secretsLoading, setSecretsLoading] = useState(false);
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
+  const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [showValue, setShowValue] = useState<Record<string, boolean>>({});
 
   const API_KEYS_LIST = [
     { name: "GIGACHAT_AUTH_KEY", label: "GigaChat Key 1" },
