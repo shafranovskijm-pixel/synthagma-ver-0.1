@@ -190,13 +190,61 @@ export function useCourseLearning() {
     return textToSpeak;
   };
 
+  const stopSaluteSpeech = useCallback(() => {
+    if (saluteAbortRef.current) { saluteAbortRef.current.abort(); saluteAbortRef.current = null; }
+    if (saluteAudioRef.current) { saluteAudioRef.current.pause(); saluteAudioRef.current.src = ''; saluteAudioRef.current = null; }
+    setIsSaluteSpeaking(false);
+    setIsSaluteLoading(false);
+  }, []);
+
+  const speakSalute = useCallback(async (text: string) => {
+    if (isSaluteSpeaking || isSaluteLoading) { stopSaluteSpeech(); return; }
+    setIsSaluteLoading(true);
+    saluteAbortRef.current = new AbortController();
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/salutespeech-tts`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({ text, voice: ttsSettings.saluteVoice }),
+          signal: saluteAbortRef.current.signal,
+        }
+      );
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        toast.error(err.error || `Ошибка SaluteSpeech: ${response.status}`);
+        setIsSaluteLoading(false);
+        return;
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      saluteAudioRef.current = audio;
+      audio.onplay = () => { setIsSaluteLoading(false); setIsSaluteSpeaking(true); };
+      audio.onended = () => { setIsSaluteSpeaking(false); URL.revokeObjectURL(url); };
+      audio.onerror = () => { setIsSaluteSpeaking(false); setIsSaluteLoading(false); URL.revokeObjectURL(url); toast.error('Ошибка воспроизведения'); };
+      await audio.play();
+    } catch (error: any) {
+      if (error.name === 'AbortError') return;
+      toast.error('Ошибка озвучивания SaluteSpeech');
+      setIsSaluteLoading(false);
+    }
+  }, [ttsSettings.saluteVoice, isSaluteSpeaking, isSaluteLoading, stopSaluteSpeech]);
+
   const speakText = () => {
     if (!currentLesson) return;
     const textToSpeak = getTextToSpeak();
     if (!textToSpeak) { toast.error('Нет текста для озвучивания'); return; }
 
-    if (ttsSettings.useElevenLabs) {
+    if (ttsSettings.provider === 'elevenlabs') {
       elevenLabsTTS.speak(textToSpeak);
+    } else if (ttsSettings.provider === 'salutespeech') {
+      speakSalute(textToSpeak);
     } else {
       if (isBrowserSpeaking) { window.speechSynthesis?.cancel(); setIsBrowserSpeaking(false); return; }
       if (!('speechSynthesis' in window)) { toast.error('Озвучивание не поддерживается'); return; }
@@ -214,8 +262,8 @@ export function useCourseLearning() {
   };
 
   // Stop speaking when lesson changes
-  useEffect(() => { window.speechSynthesis?.cancel(); setIsBrowserSpeaking(false); elevenLabsTTS.stop(); }, [currentLessonIndex]);
-  useEffect(() => { return () => { window.speechSynthesis?.cancel(); elevenLabsTTS.stop(); }; }, []);
+  useEffect(() => { window.speechSynthesis?.cancel(); setIsBrowserSpeaking(false); elevenLabsTTS.stop(); stopSaluteSpeech(); }, [currentLessonIndex]);
+  useEffect(() => { return () => { window.speechSynthesis?.cancel(); elevenLabsTTS.stop(); stopSaluteSpeech(); }; }, []);
 
   // Scroll chat to bottom
   useEffect(() => {
