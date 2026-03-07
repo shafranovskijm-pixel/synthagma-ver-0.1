@@ -80,6 +80,7 @@ const App = () => (
         <QueryClientProvider client={queryClient}>
           <Router>
             <AuthProvider>
+              <ThemeInit />
               <ScrollToTop />
                 <OfflineIndicator />
               <TooltipProvider>
