@@ -197,7 +197,7 @@ export function ChatTab({ studentUserId, organizationId, currentUserId, studentN
   }
 
   return (
-    <div className="flex flex-col h-[55vh]">
+    <div className="flex flex-col h-full">
       {/* Messages area */}
       <div className="flex-1 overflow-y-auto space-y-3 mb-4 pr-1">
         {messages.length === 0 ? (
