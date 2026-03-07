@@ -1,18 +1,20 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## Спрятать секции реквизитов в аккордеоны
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+Обернуть каждую секцию формы реквизитов (`OrgRequisitesForm.tsx`) в `Accordion` — «Основные реквизиты», «Адреса», «Руководитель», «Банковские реквизиты». Блок «Автозаполнение по ИНН» и кнопка «Сохранить» остаются вне аккордеонов.
 
-### Changes
+### Изменения
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+**`src/components/organization/OrgRequisitesForm.tsx`**
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
-
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
-
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+- Импортировать `Accordion, AccordionContent, AccordionItem, AccordionTrigger`
+- Заменить 4 секции (`bg-card border`) на `<Accordion type="multiple" defaultValue={[]}>`  с 4 `AccordionItem`:
+  - `"main"` — Основные реквизиты (Building2)
+  - `"address"` — Адреса (MapPin)
+  - `"director"` — Руководитель (User)
+  - `"bank"` — Банковские реквизиты (Landmark)
+- Триггер каждого — текущий заголовок с иконкой
+- Контент — текущие поля формы
+- Все свёрнуты по умолчанию (`defaultValue={[]}`)
 
