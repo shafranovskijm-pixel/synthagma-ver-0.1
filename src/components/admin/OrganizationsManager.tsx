@@ -194,16 +194,8 @@ export function OrganizationsManager() {
     }
   };
 
-  const toggleAiProvider = async (org: Organization) => {
-    const newProvider = org.ai_provider === 'lovable_ai' ? 'gigachat' : 'lovable_ai';
-    const { error } = await supabase.from("organizations").update({ ai_provider: newProvider } as any).eq("id", org.id);
-    if (error) {
-      toast({ title: "Ошибка", description: "Не удалось сменить провайдера", variant: "destructive" });
-      return;
-    }
-    setOrganizations(prev => prev.map(o => o.id === org.id ? { ...o, ai_provider: newProvider } : o));
-    toast({ title: "ИИ-провайдер изменён", description: `${org.name}: ${newProvider === 'lovable_ai' ? 'Lovable AI' : 'GigaChat'}` });
-  };
+
+
 
   const handleCreate = async () => {
     if (!formData.name || !formData.email) {
