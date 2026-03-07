@@ -163,21 +163,39 @@ export function SortableLessonItem({
                   <Button variant={isPreviewMode ? "outline" : "default"} size="sm" className="rounded-lg text-xs" onClick={() => setIsPreviewMode(false)}>Редактор</Button>
                   <Button variant={isPreviewMode ? "default" : "outline"} size="sm" className="rounded-lg text-xs gap-1" onClick={() => setIsPreviewMode(true)}><Eye className="w-3 h-3" />Предпросмотр</Button>
                 </div>
-                <Button variant="outline" size="sm" className="rounded-lg text-xs gap-1 border-primary text-primary hover:bg-primary/10" onClick={onGenerate} disabled={media.isGeneratingContent}>
-                  {media.isGeneratingContent ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                  {media.isGeneratingContent ? "Генерация..." : "Написать с AI"}
-                </Button>
+                <div className="flex items-center gap-1">
+                  <Button variant="outline" size="sm" className="rounded-lg text-xs gap-1" onClick={() => handleSaluteTTS(lesson.blocks || [])} disabled={isSaluteLoading}>
+                    {isSaluteLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : isSaluteSpeaking ? <Square className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
+                    {isSaluteLoading ? '...' : isSaluteSpeaking ? 'Стоп' : 'Озвучить'}
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" className="rounded-lg text-xs gap-1 px-2">
+                        <span className="max-w-[70px] truncate">{SALUTE_VOICES.find(v => v.id === saluteVoice)?.name.split(' ')[0] || 'Голос'}</span>
+                        <ChevronDown className="w-3 h-3" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56">
+                      {SALUTE_VOICES.map(voice => (
+                        <DropdownMenuItem key={voice.id} onClick={() => handleVoiceChange(voice.id)} className={saluteVoice === voice.id ? "bg-primary/10 font-medium" : ""}>
+                          <Volume2 className="w-3.5 h-3.5 mr-2 text-muted-foreground" />
+                          {voice.name}
+                          {saluteVoice === voice.id && <CheckCircle2 className="w-3.5 h-3.5 ml-auto text-primary" />}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <DropdownMenuSeparator className="hidden" />
+                  <Button variant="outline" size="sm" className="rounded-lg text-xs gap-1 border-primary text-primary hover:bg-primary/10" onClick={onGenerate} disabled={media.isGeneratingContent}>
+                    {media.isGeneratingContent ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                    {media.isGeneratingContent ? "Генерация..." : "Написать с AI"}
+                  </Button>
+                </div>
               </div>
               {isPreviewMode ? (
                 <div className="relative">
                   <div className="bg-secondary/30 rounded-xl p-6 prose prose-sm dark:prose-invert max-w-none min-h-[200px]">
                     <BlockEditor blocks={lesson.blocks || []} onChange={() => {}} readOnly />
-                  </div>
-                  <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2">
-                    <Button onClick={() => media.handlePlayAudio(lesson.blocks || [])} variant="default" size="icon" className="w-12 h-12 rounded-full shadow-lg">
-                      {media.isSpeaking ? (media.isSpeechPaused ? <Play className="w-5 h-5" /> : <Pause className="w-5 h-5" />) : <Volume2 className="w-5 h-5" />}
-                    </Button>
-                    {media.isSpeaking && <Button onClick={media.handleStopSpeech} variant="destructive" size="icon" className="w-12 h-12 rounded-full shadow-lg"><Square className="w-5 h-5" /></Button>}
                   </div>
                 </div>
               ) : (
