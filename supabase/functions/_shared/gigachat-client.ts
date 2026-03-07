@@ -494,9 +494,17 @@ function buildChannels(): Array<{
     msgs: Array<{ role: string; content: string }>,
     mt: number,
   ): Promise<string> => {
-    // Wait until slot is free
+    // Wait until slot is free, with 30s timeout
+    const deadline = Date.now() + 30_000;
     while (slots[slotIdx].busy) {
-      await slots[slotIdx].lock;
+      const remaining = deadline - Date.now();
+      if (remaining <= 0) {
+        throw new Error(`Slot ${slotIdx} busy timeout (30s)`);
+      }
+      await Promise.race([
+        slots[slotIdx].lock,
+        new Promise((_, reject) => setTimeout(() => reject(new Error(`Slot ${slotIdx} busy timeout (30s)`)), remaining)),
+      ]);
     }
     // Claim it
     slots[slotIdx].busy = true;
@@ -554,6 +562,8 @@ export async function callAIRoundRobin(
   const startIdx = rrCounter++ % rrChannels.length;
 
   // Try assigned channel first, then fallback to others
+  let count402 = 0;
+  let lastError: Error | null = null;
   for (let attempt = 0; attempt < rrChannels.length; attempt++) {
     const chIdx = (startIdx + attempt) % rrChannels.length;
     const channel = rrChannels[chIdx];
@@ -563,11 +573,15 @@ export async function callAIRoundRobin(
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.warn(`[AI-RR] ${channel.name} failed: ${msg}`);
-      if (msg.includes("402")) throw err; // payment error — don't fallback
-      // try next channel
+      lastError = err instanceof Error ? err : new Error(msg);
+      if (msg.includes("402")) count402++;
+      // always try next channel
     }
   }
-  throw new Error("All AI channels exhausted (round-robin)");
+  if (count402 === rrChannels.length) {
+    throw new Error("402: All AI channels exhausted — tokens depleted on all providers");
+  }
+  throw lastError || new Error("All AI channels exhausted (round-robin)");
 }
 
 export async function callAI(
