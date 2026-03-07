@@ -17,6 +17,22 @@ interface UseOrganizationDataLoaderProps {
   onCategoriesLoaded?: (categories: CourseCategory[]) => void;
 }
 
+/** Helper: run a Supabase query with up to 3 retries */
+async function retryQuery<T>(fn: () => PromiseLike<{ data: T | null; error: any }>, label = "query"): Promise<T | null> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) {
+      const delay = attempt * 1500;
+      console.log(`[retryQuery] ${label} attempt ${attempt + 1}/3, waiting ${delay}ms`);
+      await new Promise(r => setTimeout(r, delay));
+    }
+    const { data, error } = await fn();
+    if (!error) return data;
+    console.warn(`[retryQuery] ${label} attempt ${attempt + 1} failed:`, error);
+    if (attempt === 2) throw error;
+  }
+  return null;
+}
+
 export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrganizationDataLoaderProps) {
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [organizationName, setOrganizationName] = useState("Организация");
@@ -106,15 +122,16 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
         if (cancelled) return;
         setOrganizationId(orgId);
 
-        // ===== GROUP 1: Parallel independent queries =====
-        const [coursesResult, allProfilesResult, decryptedPasswordsResult, categoriesResult, companiesResult] = await Promise.all([
-          // Courses
-          supabase
-            .from("courses")
-            .select(`*, lessons(count)`)
-            .eq("organization_id", orgId)
-            .order("created_at", { ascending: false }),
-          // Profiles (paginated)
+        // ===== GROUP 1: Parallel independent queries with retry =====
+        const [coursesData, allProfilesData, decryptedPasswords, categoriesData, companiesData] = await Promise.all([
+          retryQuery(
+            () => supabase
+              .from("courses")
+              .select(`*, lessons(count)`)
+              .eq("organization_id", orgId!)
+              .order("created_at", { ascending: false }),
+            "courses"
+          ),
           fetchAllRows(({ from, to }) =>
             supabase
               .from("profiles")
@@ -122,57 +139,60 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
               .eq("organization_id", orgId!)
               .range(from, to)
           ),
-          // Decrypted passwords
-          supabase.rpc("get_decrypted_student_passwords", { p_organization_id: orgId }),
-          // Categories
-          supabase
-            .from("course_categories")
-            .select("*")
-            .eq("organization_id", orgId!)
-            .order("name"),
-          // Companies
-          supabase
-            .from("companies")
-            .select("id, name, inn")
-            .eq("organization_id", orgId!)
-            .order("name"),
+          retryQuery(
+            () => supabase.rpc("get_decrypted_student_passwords", { p_organization_id: orgId }),
+            "passwords"
+          ).catch(() => [] as any[]),
+          retryQuery(
+            () => supabase
+              .from("course_categories")
+              .select("*")
+              .eq("organization_id", orgId!)
+              .order("name"),
+            "categories"
+          ),
+          retryQuery(
+            () => supabase
+              .from("companies")
+              .select("id, name, inn")
+              .eq("organization_id", orgId!)
+              .order("name"),
+            "companies"
+          ),
         ]);
 
         if (cancelled) return;
 
-        if (coursesResult.error) throw coursesResult.error;
-        const coursesData = coursesResult.data || [];
-        const allProfilesData = allProfilesResult; // fetchAllRows returns T[]
-        const decryptedPasswords = decryptedPasswordsResult.data;
-
         // Set categories & companies early
-        if (onCategoriesLoaded) onCategoriesLoaded(categoriesResult.data || []);
-        setCompanies(companiesResult.data || []);
+        if (onCategoriesLoaded) onCategoriesLoaded((categoriesData || []) as CourseCategory[]);
+        setCompanies((companiesData || []) as Company[]);
 
         // Password map
         const passwordMap = new Map<string, string>();
-        (decryptedPasswords || []).forEach((row: any) => {
+        ((decryptedPasswords || []) as any[]).forEach((row: any) => {
           if (row.decrypted_password) passwordMap.set(row.user_id, row.decrypted_password);
         });
 
         // ===== Enrollments =====
-        const courseIds = coursesData.map((c: any) => c.id);
+        const courseIds = (coursesData || []).map((c: any) => c.id);
         let allEnrollments: any[] = [];
         if (courseIds.length > 0) {
-          const { data: enrollmentsData } = await supabase
-            .from("enrollments")
-            .select("*")
-            .in("course_id", courseIds);
-          allEnrollments = enrollmentsData || [];
+          const enrollmentsData = await retryQuery(
+            () => supabase
+              .from("enrollments")
+              .select("*")
+              .in("course_id", courseIds),
+            "enrollments"
+          );
+          allEnrollments = (enrollmentsData || []) as any[];
         }
 
         if (cancelled) return;
 
-        // ===== GROUP 2: Parallel queries needing profileUserIds =====
-        const profileUserIds = uniq(allProfilesData.map((p: any) => p.user_id));
+        // ===== GROUP 2: Parallel queries needing profileUserIds with retry =====
+        const profileUserIds = uniq((allProfilesData || []).map((p: any) => p.user_id));
 
-        const [rolesResult, identityDocsResult, frdoDataResult] = await Promise.all([
-          // Roles (paginated)
+        const [rolesData, identityDocsData, frdoDataResult] = await Promise.all([
           profileUserIds.length > 0
             ? fetchAllRows(({ from, to }) =>
                 supabase
@@ -182,26 +202,30 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
                   .in("role", ["organization", "admin"])
                   .range(from, to)
               )
-            : Promise.resolve([]),
-          // Identity documents
-          supabase
-            .from("student_identity_documents")
-            .select("user_id, type")
-            .eq("organization_id", orgId!),
-          // FRDO data
+            : Promise.resolve([] as any[]),
+          retryQuery(
+            () => supabase
+              .from("student_identity_documents")
+              .select("user_id, type")
+              .eq("organization_id", orgId!),
+            "identity-docs"
+          ),
           profileUserIds.length > 0
-            ? supabase
-                .from("student_frdo_data")
-                .select("user_id, last_name, first_name, middle_name, birth_date, gender, snils, education_level")
-                .eq("organization_id", orgId!)
-                .in("user_id", profileUserIds)
-            : Promise.resolve({ data: [] as any[], error: null }),
+            ? retryQuery(
+                () => supabase
+                  .from("student_frdo_data")
+                  .select("user_id, last_name, first_name, middle_name, birth_date, gender, snils, education_level")
+                  .eq("organization_id", orgId!)
+                  .in("user_id", profileUserIds),
+                "frdo-data"
+              )
+            : Promise.resolve([] as any[]),
         ]);
 
         if (cancelled) return;
 
-        const orgAdminUserIds = new Set((rolesResult as any[]).map((r: any) => r.user_id));
-        const studentProfilesData = allProfilesData.filter(
+        const orgAdminUserIds = new Set(((rolesData || []) as any[]).map((r: any) => r.user_id));
+        const studentProfilesData = (allProfilesData || []).filter(
           (p: any) => !orgAdminUserIds.has(p.user_id)
         );
           
@@ -236,7 +260,7 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
             });
           } else {
             for (const enrollment of userEnrollments) {
-              const course = coursesData.find((c: any) => c.id === enrollment.course_id);
+              const course = (coursesData || []).find((c: any) => c.id === enrollment.course_id);
               studentsList.push({
                 id: profile.id,
                 user_id: profile.user_id,
@@ -264,7 +288,7 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
         // Calculate stats
         const studentUserIdsSet = new Set(studentProfilesData.map((p: any) => p.user_id));
         const totalStudents = studentProfilesData.length;
-        const totalCourses = coursesData.length;
+        const totalCourses = (coursesData || []).length;
         const studentEnrollments = allEnrollments.filter(e => studentUserIdsSet.has(e.user_id));
         const completedCount = studentEnrollments.filter(e => e.status === 'completed').length;
         const averageProgress = studentEnrollments.length > 0 
@@ -274,7 +298,7 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
         setStats({ totalStudents, totalCourses, completedCount, averageProgress });
 
         // Documents stats
-        const identityDocs = identityDocsResult.data;
+        const identityDocs = (identityDocsData || []) as any[];
         if (identityDocs && studentProfilesData) {
           const docsByUser = new Map<string, string[]>();
           identityDocs.forEach(doc => {
@@ -302,7 +326,7 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
         }
 
         // FRDO status
-        const frdoData = frdoDataResult.data;
+        const frdoData = ((frdoDataResult || []) as any[]);
         if (studentProfilesData.length > 0) {
           const frdoStatusMap = new Map<string, FrdoStatus>();
           const requiredFields = [
@@ -314,7 +338,7 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
           ];
 
           for (const profile of studentProfilesData) {
-            const data = frdoData?.find(f => f.user_id === profile.user_id);
+            const data = frdoData.find(f => f.user_id === profile.user_id);
             const missing: string[] = [];
             
             if (data) {
@@ -333,7 +357,7 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
         }
 
         // Process courses with stats
-        const coursesWithStats = coursesData.map((course: any) => {
+        const coursesWithStats = ((coursesData || []) as any[]).map((course: any) => {
           const courseEnrollments = studentEnrollments.filter(e => e.course_id === course.id);
           const uniqueStudentIds = new Set(courseEnrollments.map(e => e.user_id));
           return {

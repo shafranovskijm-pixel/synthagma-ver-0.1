@@ -6,7 +6,7 @@
 const RETRY_DELAYS = [0, 1000, 3000]; // immediate, 1s, 3s
 
 export async function withRetry<T>(
-  fn: () => Promise<T>,
+  fn: () => PromiseLike<T> | Promise<T>,
   maxRetries = 3,
   label = "query"
 ): Promise<T> {
@@ -34,7 +34,7 @@ export async function withRetry<T>(
  * Retries on error and throws the Supabase error object.
  */
 export async function withSupabaseRetry<T>(
-  fn: () => Promise<{ data: T; error: any }>,
+  fn: () => PromiseLike<{ data: T; error: any }>,
   maxRetries = 3,
   label = "supabase-query"
 ): Promise<T> {
