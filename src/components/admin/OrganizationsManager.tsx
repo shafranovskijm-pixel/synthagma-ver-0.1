@@ -27,13 +27,6 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Building2, Loader2, Users, BookOpen, Key, Eye, EyeOff, Copy, Check, Download, ExternalLink, Search, X, FolderOpen, DollarSign, Calendar, RefreshCw, Mail, Phone, MoreHorizontal, Crown, LayoutGrid, List } from "lucide-react";
 import { getPlanInfo, type SubscriptionPlan } from "@/constants/subscriptionPlans";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { getXLSX } from "@/utils/xlsxHelper";
