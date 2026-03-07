@@ -3,15 +3,16 @@ import { useWebinarsManager, Webinar } from "@/hooks/useWebinarsManager";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Video, Plus, Play, Square, Trash2, Users, Calendar, Clock, Radio, ExternalLink, Loader2, X } from "lucide-react";
+import { Video, Plus, Play, Square, Trash2, Users, Calendar, Clock, Radio, ExternalLink, Loader2, Link2 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
+import { toast } from "sonner";
 
 interface WebinarsManagerProps {
   organizationId: string;
@@ -31,13 +32,13 @@ const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secon
 };
 
 export function WebinarsManager({ organizationId }: WebinarsManagerProps) {
-  const { webinars, loading, creating, createWebinar, updateWebinarStatus, deleteWebinar, getMeetingToken } = useWebinarsManager(organizationId);
+  const { webinars, loading, creating, createWebinar, updateWebinarStatus, deleteWebinar } = useWebinarsManager(organizationId);
   const d = useOrgDashboard();
   const courses = d.courses || [];
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [activeWebinar, setActiveWebinar] = useState<Webinar | null>(null);
-  const [meetingToken, setMeetingToken] = useState<string | null>(null);
+  const [recordingDialog, setRecordingDialog] = useState<string | null>(null);
+  const [recordingUrl, setRecordingUrl] = useState("");
 
   // Form state
   const [title, setTitle] = useState("");
@@ -47,6 +48,7 @@ export function WebinarsManager({ organizationId }: WebinarsManagerProps) {
   const [accessType, setAccessType] = useState("org_all");
   const [courseId, setCourseId] = useState("");
   const [maxParticipants, setMaxParticipants] = useState("100");
+  const [streamUrl, setStreamUrl] = useState("");
 
   const resetForm = () => {
     setTitle("");
@@ -56,10 +58,14 @@ export function WebinarsManager({ organizationId }: WebinarsManagerProps) {
     setAccessType("org_all");
     setCourseId("");
     setMaxParticipants("100");
+    setStreamUrl("");
   };
 
   const handleCreate = async () => {
-    if (!title || !scheduledAt) return;
+    if (!title || !scheduledAt || !streamUrl) {
+      toast.error("Заполните все обязательные поля");
+      return;
+    }
     await createWebinar({
       title,
       description: description || undefined,
@@ -68,67 +74,40 @@ export function WebinarsManager({ organizationId }: WebinarsManagerProps) {
       access_type: accessType,
       course_id: accessType === "course" ? courseId || undefined : undefined,
       max_participants: parseInt(maxParticipants) || 100,
+      stream_url: streamUrl,
+      stream_platform: "telemost",
     });
     resetForm();
     setShowCreateDialog(false);
   };
 
-  const handleStartStream = async (webinar: Webinar) => {
-    if (!webinar.room_name) return;
-    const token = await getMeetingToken(webinar.room_name, true);
-    if (!token) return;
-    setMeetingToken(token);
-    setActiveWebinar(webinar);
+  const handleStart = async (webinar: Webinar) => {
     await updateWebinarStatus(webinar.id, "live");
+    toast.success("Вебинар запущен — студенты могут подключиться");
   };
 
-  const handleEndStream = async () => {
-    if (activeWebinar) {
-      await updateWebinarStatus(activeWebinar.id, "ended");
+  const handleEnd = async (webinarId: string) => {
+    setRecordingDialog(webinarId);
+  };
+
+  const handleEndConfirm = async () => {
+    if (!recordingDialog) return;
+    await updateWebinarStatus(recordingDialog, "ended", recordingUrl ? { recording_url: recordingUrl } : undefined);
+    setRecordingDialog(null);
+    setRecordingUrl("");
+    toast.success("Вебинар завершён");
+  };
+
+  const handleOpenStream = (webinar: Webinar) => {
+    const url = webinar.stream_url;
+    if (url) {
+      window.open(url, "_blank", "noopener,noreferrer");
     }
-    setActiveWebinar(null);
-    setMeetingToken(null);
-  };
-
-  const handleJoinStream = async (webinar: Webinar) => {
-    if (!webinar.room_name) return;
-    const token = await getMeetingToken(webinar.room_name, false);
-    if (!token) return;
-    setMeetingToken(token);
-    setActiveWebinar(webinar);
   };
 
   const upcoming = webinars.filter(w => w.status === "scheduled");
   const live = webinars.filter(w => w.status === "live");
   const ended = webinars.filter(w => w.status === "ended");
-
-  // Active stream view
-  if (activeWebinar && meetingToken) {
-    const iframeUrl = `${activeWebinar.room_url}?t=${meetingToken}`;
-    return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Radio className="w-5 h-5 text-destructive animate-pulse" />
-            <h2 className="text-lg font-semibold">{activeWebinar.title}</h2>
-            <Badge variant="destructive">В эфире</Badge>
-          </div>
-          <Button variant="destructive" onClick={handleEndStream} className="gap-2">
-            <Square className="w-4 h-4" />
-            Завершить трансляцию
-          </Button>
-        </div>
-        <div className="rounded-xl overflow-hidden border border-border bg-black aspect-video">
-          <iframe
-            src={iframeUrl}
-            allow="camera; microphone; fullscreen; display-capture; autoplay"
-            className="w-full h-full"
-            style={{ border: "none" }}
-          />
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
@@ -152,6 +131,21 @@ export function WebinarsManager({ organizationId }: WebinarsManagerProps) {
               <div>
                 <label className="text-sm font-medium mb-1 block">Название *</label>
                 <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="Введите название вебинара" />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Ссылка на Яндекс Телемост *</label>
+                <Input
+                  value={streamUrl}
+                  onChange={e => setStreamUrl(e.target.value)}
+                  placeholder="https://telemost.yandex.ru/j/..."
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Создайте встречу на{" "}
+                  <a href="https://telemost.yandex.ru" target="_blank" rel="noopener noreferrer" className="text-primary underline">
+                    telemost.yandex.ru
+                  </a>{" "}
+                  и вставьте ссылку
+                </p>
               </div>
               <div>
                 <label className="text-sm font-medium mb-1 block">Описание</label>
@@ -199,7 +193,7 @@ export function WebinarsManager({ organizationId }: WebinarsManagerProps) {
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowCreateDialog(false)}>Отмена</Button>
-              <Button onClick={handleCreate} disabled={!title || !scheduledAt || creating} className="gap-2">
+              <Button onClick={handleCreate} disabled={!title || !scheduledAt || !streamUrl || creating} className="gap-2">
                 {creating && <Loader2 className="w-4 h-4 animate-spin" />}
                 Создать
               </Button>
@@ -208,6 +202,27 @@ export function WebinarsManager({ organizationId }: WebinarsManagerProps) {
         </Dialog>
       </div>
 
+      {/* End webinar dialog — ask for recording URL */}
+      <Dialog open={!!recordingDialog} onOpenChange={open => { if (!open) { setRecordingDialog(null); setRecordingUrl(""); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Завершить вебинар</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">Вы можете добавить ссылку на запись вебинара (необязательно):</p>
+            <Input
+              value={recordingUrl}
+              onChange={e => setRecordingUrl(e.target.value)}
+              placeholder="https://... ссылка на запись"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setRecordingDialog(null); setRecordingUrl(""); }}>Отмена</Button>
+            <Button onClick={handleEndConfirm}>Завершить</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {loading ? (
         <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
       ) : webinars.length === 0 ? (
@@ -215,7 +230,7 @@ export function WebinarsManager({ organizationId }: WebinarsManagerProps) {
           <CardContent className="py-12 text-center">
             <Video className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">Нет вебинаров</h3>
-            <p className="text-muted-foreground mb-4">Создайте первый вебинар для проведения онлайн-трансляции</p>
+            <p className="text-muted-foreground mb-4">Создайте встречу в Яндекс Телемосте и добавьте ссылку</p>
             <Button onClick={() => setShowCreateDialog(true)} className="gap-2">
               <Plus className="w-4 h-4" />
               Создать вебинар
@@ -224,7 +239,6 @@ export function WebinarsManager({ organizationId }: WebinarsManagerProps) {
         </Card>
       ) : (
         <>
-          {/* Live webinars */}
           {live.length > 0 && (
             <div className="space-y-3">
               <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
@@ -232,22 +246,20 @@ export function WebinarsManager({ organizationId }: WebinarsManagerProps) {
                 В эфире ({live.length})
               </h3>
               {live.map(w => (
-                <WebinarCard key={w.id} webinar={w} onJoin={handleJoinStream} onDelete={deleteWebinar} onEnd={handleEndStream} isLive />
+                <WebinarCard key={w.id} webinar={w} onEnd={handleEnd} onOpen={handleOpenStream} onDelete={deleteWebinar} isLive />
               ))}
             </div>
           )}
 
-          {/* Upcoming */}
           {upcoming.length > 0 && (
             <div className="space-y-3">
               <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Предстоящие ({upcoming.length})</h3>
               {upcoming.map(w => (
-                <WebinarCard key={w.id} webinar={w} onStart={handleStartStream} onDelete={deleteWebinar} />
+                <WebinarCard key={w.id} webinar={w} onStart={handleStart} onOpen={handleOpenStream} onDelete={deleteWebinar} />
               ))}
             </div>
           )}
 
-          {/* Ended */}
           {ended.length > 0 && (
             <div className="space-y-3">
               <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Завершённые ({ended.length})</h3>
@@ -262,11 +274,11 @@ export function WebinarsManager({ organizationId }: WebinarsManagerProps) {
   );
 }
 
-function WebinarCard({ webinar, onStart, onJoin, onEnd, onDelete, isLive }: {
+function WebinarCard({ webinar, onStart, onEnd, onOpen, onDelete, isLive }: {
   webinar: Webinar;
   onStart?: (w: Webinar) => void;
-  onJoin?: (w: Webinar) => void;
-  onEnd?: () => void;
+  onEnd?: (id: string) => void;
+  onOpen?: (w: Webinar) => void;
   onDelete: (id: string) => void;
   isLive?: boolean;
 }) {
@@ -283,6 +295,12 @@ function WebinarCard({ webinar, onStart, onJoin, onEnd, onDelete, isLive }: {
             </div>
             {webinar.description && (
               <p className="text-sm text-muted-foreground line-clamp-2 mb-2">{webinar.description}</p>
+            )}
+            {webinar.stream_url && (
+              <div className="flex items-center gap-1.5 text-xs text-primary mb-2">
+                <Link2 className="w-3.5 h-3.5" />
+                <span className="truncate max-w-[300px]">{webinar.stream_url}</span>
+              </div>
             )}
             <div className="flex items-center gap-4 text-xs text-muted-foreground">
               <span className="flex items-center gap-1">
@@ -311,10 +329,16 @@ function WebinarCard({ webinar, onStart, onJoin, onEnd, onDelete, isLive }: {
                 Начать
               </Button>
             )}
-            {isLive && onJoin && (
-              <Button size="sm" variant="destructive" onClick={() => onJoin(webinar)} className="gap-1.5">
+            {isLive && onOpen && (
+              <Button size="sm" variant="outline" onClick={() => onOpen(webinar)} className="gap-1.5">
                 <ExternalLink className="w-4 h-4" />
-                Подключиться
+                Открыть Телемост
+              </Button>
+            )}
+            {isLive && onEnd && (
+              <Button size="sm" variant="destructive" onClick={() => onEnd(webinar.id)} className="gap-1.5">
+                <Square className="w-4 h-4" />
+                Завершить
               </Button>
             )}
             {webinar.recording_url && (
@@ -334,7 +358,7 @@ function WebinarCard({ webinar, onStart, onJoin, onEnd, onDelete, isLive }: {
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>Удалить вебинар?</AlertDialogTitle>
-                  <AlertDialogDescription>Это действие нельзя отменить. Комната трансляции будет также удалена.</AlertDialogDescription>
+                  <AlertDialogDescription>Это действие нельзя отменить.</AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Отмена</AlertDialogCancel>

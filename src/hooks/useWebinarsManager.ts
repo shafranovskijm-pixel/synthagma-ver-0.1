@@ -19,6 +19,8 @@ export interface Webinar {
   recording_size_bytes: number;
   host_user_id: string;
   max_participants: number;
+  stream_url: string | null;
+  stream_platform: string;
   created_at: string;
   updated_at: string;
 }
@@ -72,12 +74,14 @@ export function useWebinarsManager(organizationId: string | null) {
     company_id?: string;
     access_type?: string;
     max_participants?: number;
+    stream_url?: string;
+    stream_platform?: string;
   }) => {
     if (!organizationId) return null;
     setCreating(true);
     try {
       const { data: session } = await supabase.auth.getSession();
-      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-webinar?action=create`;
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-webinar`;
       const response = await fetch(url, {
         method: "POST",
         headers: {
@@ -104,7 +108,7 @@ export function useWebinarsManager(organizationId: string | null) {
     }
   }, [organizationId, fetchWebinars]);
 
-  const updateWebinarStatus = useCallback(async (webinarId: string, status: string) => {
+  const updateWebinarStatus = useCallback(async (webinarId: string, status: string, extra?: { recording_url?: string; stream_url?: string }) => {
     try {
       const { data: session } = await supabase.auth.getSession();
       const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-webinar`;
@@ -115,7 +119,7 @@ export function useWebinarsManager(organizationId: string | null) {
           "Content-Type": "application/json",
           apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
         },
-        body: JSON.stringify({ webinar_id: webinarId, status }),
+        body: JSON.stringify({ webinar_id: webinarId, status, ...extra }),
       });
       if (!response.ok) throw new Error("Failed to update");
       await fetchWebinars();
@@ -145,28 +149,6 @@ export function useWebinarsManager(organizationId: string | null) {
     }
   }, [fetchWebinars]);
 
-  const getMeetingToken = useCallback(async (roomName: string, isOwner: boolean) => {
-    try {
-      const { data: session } = await supabase.auth.getSession();
-      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-webinar?action=token`;
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${session?.session?.access_token}`,
-          "Content-Type": "application/json",
-          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-        },
-        body: JSON.stringify({ room_name: roomName, is_owner: isOwner }),
-      });
-      if (!response.ok) throw new Error("Failed to get token");
-      const data = await response.json();
-      return data.token as string;
-    } catch (e: any) {
-      toast.error("Ошибка получения токена трансляции");
-      return null;
-    }
-  }, []);
-
   return {
     webinars,
     loading,
@@ -174,7 +156,6 @@ export function useWebinarsManager(organizationId: string | null) {
     createWebinar,
     updateWebinarStatus,
     deleteWebinar,
-    getMeetingToken,
     refresh: fetchWebinars,
   };
 }
