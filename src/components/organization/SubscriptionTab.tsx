@@ -134,7 +134,7 @@ export function SubscriptionTab() {
     
     const fetchOrgDetails = async () => {
       const [orgRes, reqRes, docsRes] = await Promise.all([
-        supabase.from("organizations").select("paid_until").eq("id", organizationId).single(),
+        supabase.from("organizations").select("paid_until, email, phone, contact_name").eq("id", organizationId).single(),
         supabase.from("subscription_requests" as any).select("requested_plan, created_at").eq("organization_id", organizationId).eq("status", "pending").order("created_at", { ascending: false }).limit(1),
         supabase.from("org_billing_documents" as any).select("*").eq("organization_id", organizationId).order("created_at", { ascending: false }),
       ]);
