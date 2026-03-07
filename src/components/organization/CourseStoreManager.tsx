@@ -116,14 +116,30 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
                 </Card>
               )}
 
+              {/* Benefits block */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {[
+                  { icon: Zap, text: "Доступ сразу после получения" },
+                  { icon: BookOpen, text: "Все материалы и тесты включены" },
+                  { icon: Award, text: "Удостоверение по завершении" },
+                ].map((b, i) => (
+                  <div key={i} className="flex items-center gap-2.5 p-3 rounded-xl bg-muted/50 border border-border">
+                    <b.icon className="w-4 h-4 text-green-600 shrink-0" />
+                    <span className="text-sm">{b.text}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Price block */}
               {(() => {
                 const price = h.userRole === 'organization' ? selectedCourseDetail.price_organization : selectedCourseDetail.price_student;
                 return (
                   <Card className={`text-center ${price > 0 ? 'border-primary/20 bg-primary/5' : 'border-green-500/20 bg-green-500/5'}`}>
-                    <CardContent className="pt-6">
-                      <div className={`text-lg font-semibold ${price > 0 ? 'text-primary' : 'text-green-600'}`}>
-                        {price > 0 ? `${price.toLocaleString()} ₽` : 'Бесплатно'}
+                    <CardContent className="pt-6 pb-4 space-y-1">
+                      <div className={`text-2xl font-bold ${price > 0 ? 'text-primary' : 'text-green-600'}`}>
+                        {price > 0 ? `${price.toLocaleString()} ₽` : 'БЕСПЛАТНО'}
                       </div>
+                      <p className="text-xs text-muted-foreground">{price > 0 ? 'Ограниченное предложение' : 'Доступно всем организациям'}</p>
                     </CardContent>
                   </Card>
                 );
@@ -136,8 +152,8 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
                 {(() => {
                   const price = h.userRole === 'organization' ? selectedCourseDetail.price_organization : selectedCourseDetail.price_student;
                   return (
-                    <Button className={`flex-1 rounded-xl gap-2 ${price > 0 ? 'bg-primary hover:bg-primary/90' : 'bg-green-600 hover:bg-green-700'} text-white`} onClick={() => { const item = selectedCourseDetail; setSelectedCourseDetail(null); h.setSelectedCourseForOrder(item); h.setShowOrderDialog(true); }}>
-                      {price > 0 ? <><ShoppingCart className="w-4 h-4" />Купить курс</> : <><Plus className="w-4 h-4" />Добавить курс</>}
+                    <Button className={`flex-1 rounded-xl gap-2 text-base py-5 ${price > 0 ? 'bg-primary hover:bg-primary/90' : 'bg-green-600 hover:bg-green-700'} text-white`} onClick={() => { const item = selectedCourseDetail; setSelectedCourseDetail(null); h.setSelectedCourseForOrder(item); h.setShowOrderDialog(true); }}>
+                      {price > 0 ? <><ShoppingCart className="w-4 h-4" />Купить за {price.toLocaleString()} ₽</> : <><Gift className="w-4 h-4" />Получить бесплатно</>}
                     </Button>
                   );
                 })()}
