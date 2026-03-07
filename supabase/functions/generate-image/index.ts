@@ -135,7 +135,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { prompt, imageUrl, provider, model } = await req.json();
+    const { prompt, imageUrl, provider, model, gigachat_key } = await req.json();
     if (!prompt) throw new Error("Prompt is required");
 
     const selectedProvider = provider || "lovable_ai";
@@ -144,7 +144,7 @@ serve(async (req) => {
     let generatedImageUrl: string;
 
     if (selectedProvider === "gigachat") {
-      generatedImageUrl = await generateWithGigaChat(prompt);
+      generatedImageUrl = await generateWithGigaChat(prompt, gigachat_key);
     } else {
       generatedImageUrl = await generateWithLovableAI(prompt, imageUrl, model);
     }

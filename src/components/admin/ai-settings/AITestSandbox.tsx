@@ -47,14 +47,14 @@ export function AITestSandbox({ context, provider, gigachatModel, lovableModel }
     try {
       if (context === "image_generation") {
         const { data, error } = await supabase.functions.invoke("generate-image", {
-          body: { prompt },
+          body: { prompt, provider, model: provider === "gigachat" ? gigachatModel : lovableModel },
         });
         const elapsed = Math.round(performance.now() - start);
         if (error) throw error;
         setResult({
           response: "Изображение сгенерировано",
           timeMs: elapsed,
-          model: lovableModel || "google/gemini-2.5-flash-image",
+          model: provider === "gigachat" ? "GigaChat" : (lovableModel || "google/gemini-2.5-flash-image"),
           imageUrl: data?.url,
         });
       } else if (context === "tts") {

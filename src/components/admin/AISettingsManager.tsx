@@ -509,7 +509,26 @@ export function AISettingsManager() {
                 : ctx === "org_default"
                 ? renderOrgDefault()
                 : ctx === "tts"
-                ? renderProviderSelect(ctx, TTS_PROVIDERS)
+                ? (
+                  <div className="space-y-4">
+                    {renderProviderSelect(ctx, TTS_PROVIDERS)}
+                    {settings[ctx]?.provider === "elevenlabs" && (
+                      <div className="space-y-2 mt-4 p-4 rounded-lg bg-muted/50">
+                        <Label className="text-sm">Свой API-ключ ElevenLabs (опционально)</Label>
+                        <Input
+                          type="password"
+                          placeholder="sk-... (оставьте пустым для ключа по умолчанию)"
+                          value={settings[ctx]?.extra_config?.custom_api_key || ""}
+                          onChange={(e) => updateExtra(ctx, "custom_api_key", e.target.value)}
+                          className="max-w-md font-mono text-xs"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Если указан, будет использоваться вместо системного ключа ElevenLabs
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )
                 : ctx === "image_generation"
                 ? renderProviderSelect(ctx, IMAGE_PROVIDERS, IMAGE_MODELS)
                 : renderProviderSelect(ctx)}
