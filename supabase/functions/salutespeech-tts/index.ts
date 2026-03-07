@@ -178,6 +178,7 @@ serve(async (req) => {
     const accessToken = await getAccessToken(authKey);
 
     // Step 2: Synthesize speech
+    console.log("[SaluteSpeech] Requested voice:", voice, "-> mapped to:", VOICES[voice] || "FALLBACK natalya");
     const voiceParam = VOICES[voice] || VOICES.natalya;
     
     const contentType = format === "wav16" 
