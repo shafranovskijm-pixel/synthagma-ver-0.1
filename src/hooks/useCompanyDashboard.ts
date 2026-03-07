@@ -137,7 +137,7 @@ export function useCompanyDashboard(viewAsUserId?: string) {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [targetUserId]);
 
   useEffect(() => {
     loadData();
