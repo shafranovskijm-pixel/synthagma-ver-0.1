@@ -234,7 +234,7 @@ async function processCourse(
         return { solved: localSolved, skipped: localSkipped, stopped: false };
       };
 
-      const lessonResults = await processInParallel(lessonEntries, 2, solveLesson, shouldStop, 2000);
+      const lessonResults = await processInParallel(lessonEntries, 3, solveLesson, shouldStop, 1500);
       for (const r of lessonResults) {
         testsSolved += r.solved;
         skippedBatches += r.skipped;
