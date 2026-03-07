@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Student, Course, Company, CourseCategory, Stats, DocumentsStats } from "@/types/shared";
+import { fetchAllRows } from "@/utils/retryFetch";
 
 const uniq = <T,>(arr: T[]) => Array.from(new Set(arr));
 
@@ -58,6 +59,8 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
 
   // Main data fetch
   useEffect(() => {
+    let cancelled = false;
+
     const fetchData = async () => {
       if (!userId) return;
       
@@ -69,9 +72,11 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
         if (adminViewData) {
           const adminView = JSON.parse(adminViewData);
           orgId = adminView.id;
-          setAdminViewOrgId(adminView.id);
-          setOrganizationName(adminView.name);
-          setIsAdminView(true);
+          if (!cancelled) {
+            setAdminViewOrgId(adminView.id);
+            setOrganizationName(adminView.name);
+            setIsAdminView(true);
+          }
         } else {
           const { data: profile } = await supabase
             .from("profiles")
@@ -80,7 +85,7 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
             .single();
             
           if (!profile?.organization_id) {
-            setIsLoadingCourses(false);
+            if (!cancelled) setIsLoadingCourses(false);
             return;
           }
           
@@ -92,26 +97,66 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
             .eq("id", orgId)
             .single();
             
-          if (orgData) {
+          if (orgData && !cancelled) {
             setOrganizationName(orgData.name);
             setIsFrdoEnabled(orgData.frdo_enabled || false);
           }
         }
         
+        if (cancelled) return;
         setOrganizationId(orgId);
 
-        // Fetch courses
-        const { data: coursesData, error } = await supabase
-          .from("courses")
-          .select(`*, lessons(count)`)
-          .eq("organization_id", orgId)
-          .order("created_at", { ascending: false });
-          
-        if (error) throw error;
-        
-        const courseIds = (coursesData || []).map((c: any) => c.id);
+        // ===== GROUP 1: Parallel independent queries =====
+        const [coursesResult, allProfilesResult, decryptedPasswordsResult, categoriesResult, companiesResult] = await Promise.all([
+          // Courses
+          supabase
+            .from("courses")
+            .select(`*, lessons(count)`)
+            .eq("organization_id", orgId)
+            .order("created_at", { ascending: false }),
+          // Profiles (paginated)
+          fetchAllRows(({ from, to }) =>
+            supabase
+              .from("profiles")
+              .select("id, user_id, full_name, email, login")
+              .eq("organization_id", orgId!)
+              .range(from, to)
+          ),
+          // Decrypted passwords
+          supabase.rpc("get_decrypted_student_passwords", { p_organization_id: orgId }),
+          // Categories
+          supabase
+            .from("course_categories")
+            .select("*")
+            .eq("organization_id", orgId!)
+            .order("name"),
+          // Companies
+          supabase
+            .from("companies")
+            .select("id, name, inn")
+            .eq("organization_id", orgId!)
+            .order("name"),
+        ]);
 
-        // Get enrollments
+        if (cancelled) return;
+
+        if (coursesResult.error) throw coursesResult.error;
+        const coursesData = coursesResult.data || [];
+        const allProfilesData = allProfilesResult; // fetchAllRows returns T[]
+        const decryptedPasswords = decryptedPasswordsResult.data;
+
+        // Set categories & companies early
+        if (onCategoriesLoaded) onCategoriesLoaded(categoriesResult.data || []);
+        setCompanies(companiesResult.data || []);
+
+        // Password map
+        const passwordMap = new Map<string, string>();
+        (decryptedPasswords || []).forEach((row: any) => {
+          if (row.decrypted_password) passwordMap.set(row.user_id, row.decrypted_password);
+        });
+
+        // ===== Enrollments =====
+        const courseIds = coursesData.map((c: any) => c.id);
         let allEnrollments: any[] = [];
         if (courseIds.length > 0) {
           const { data: enrollmentsData } = await supabase
@@ -121,35 +166,42 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
           allEnrollments = enrollmentsData || [];
         }
 
-        // Fetch students
-        const { data: allProfilesData } = await supabase
-          .from("profiles")
-          .select("id, user_id, full_name, email, login")
-          .eq("organization_id", orgId)
-          .limit(10000);
+        if (cancelled) return;
 
-        // Fetch decrypted passwords via secure RPC
-        const { data: decryptedPasswords } = await supabase
-          .rpc("get_decrypted_student_passwords", { p_organization_id: orgId });
-        const passwordMap = new Map<string, string>();
-        (decryptedPasswords || []).forEach((row: any) => {
-          if (row.decrypted_password) passwordMap.set(row.user_id, row.decrypted_password);
-        });
+        // ===== GROUP 2: Parallel queries needing profileUserIds =====
+        const profileUserIds = uniq(allProfilesData.map((p: any) => p.user_id));
 
-        // IMPORTANT: exclude organization/admin accounts from all student-related UI & stats
-        const profileUserIds = uniq((allProfilesData || []).map((p: any) => p.user_id));
-        let orgAdminUserIds = new Set<string>();
-        if (profileUserIds.length > 0) {
-          const { data: rolesData } = await supabase
-            .from("user_roles")
-            .select("user_id, role")
-            .in("user_id", profileUserIds)
-            .in("role", ["organization", "admin"])
-            .limit(10000);
-          orgAdminUserIds = new Set((rolesData || []).map((r: any) => r.user_id));
-        }
+        const [rolesResult, identityDocsResult, frdoDataResult] = await Promise.all([
+          // Roles (paginated)
+          profileUserIds.length > 0
+            ? fetchAllRows(({ from, to }) =>
+                supabase
+                  .from("user_roles")
+                  .select("user_id, role")
+                  .in("user_id", profileUserIds)
+                  .in("role", ["organization", "admin"])
+                  .range(from, to)
+              )
+            : Promise.resolve([]),
+          // Identity documents
+          supabase
+            .from("student_identity_documents")
+            .select("user_id, type")
+            .eq("organization_id", orgId!),
+          // FRDO data
+          profileUserIds.length > 0
+            ? supabase
+                .from("student_frdo_data")
+                .select("user_id, last_name, first_name, middle_name, birth_date, gender, snils, education_level")
+                .eq("organization_id", orgId!)
+                .in("user_id", profileUserIds)
+            : Promise.resolve({ data: [] as any[], error: null }),
+        ]);
 
-        const studentProfilesData = (allProfilesData || []).filter(
+        if (cancelled) return;
+
+        const orgAdminUserIds = new Set((rolesResult as any[]).map((r: any) => r.user_id));
+        const studentProfilesData = allProfilesData.filter(
           (p: any) => !orgAdminUserIds.has(p.user_id)
         );
           
@@ -184,7 +236,7 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
             });
           } else {
             for (const enrollment of userEnrollments) {
-              const course = coursesData?.find((c: any) => c.id === enrollment.course_id);
+              const course = coursesData.find((c: any) => c.id === enrollment.course_id);
               studentsList.push({
                 id: profile.id,
                 user_id: profile.user_id,
@@ -203,6 +255,8 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
           }
         }
         
+        if (cancelled) return;
+
         setStudents([...studentsList, ...profilesWithoutEnrollments]);
         setAllProfiles(profilesWithoutEnrollments);
         setIsLoadingStudents(false);
@@ -210,26 +264,17 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
         // Calculate stats
         const studentUserIdsSet = new Set(studentProfilesData.map((p: any) => p.user_id));
         const totalStudents = studentProfilesData.length;
-        const totalCourses = coursesData?.length || 0;
+        const totalCourses = coursesData.length;
         const studentEnrollments = allEnrollments.filter(e => studentUserIdsSet.has(e.user_id));
         const completedCount = studentEnrollments.filter(e => e.status === 'completed').length;
         const averageProgress = studentEnrollments.length > 0 
           ? Math.round(studentEnrollments.reduce((sum, e) => sum + (e.progress || 0), 0) / studentEnrollments.length) 
           : 0;
           
-        setStats({
-          totalStudents,
-          totalCourses,
-          completedCount,
-          averageProgress
-        });
+        setStats({ totalStudents, totalCourses, completedCount, averageProgress });
 
-        // Fetch documents stats
-        const { data: identityDocs } = await supabase
-          .from("student_identity_documents")
-          .select("user_id, type")
-          .eq("organization_id", orgId);
-
+        // Documents stats
+        const identityDocs = identityDocsResult.data;
         if (identityDocs && studentProfilesData) {
           const docsByUser = new Map<string, string[]>();
           identityDocs.forEach(doc => {
@@ -238,10 +283,7 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
             docsByUser.set(doc.user_id, existing);
           });
 
-          let withPassport = 0;
-          let withSnils = 0;
-          let withEducation = 0;
-          let complete = 0;
+          let withPassport = 0, withSnils = 0, withEducation = 0, complete = 0;
 
           for (const profile of studentProfilesData) {
             const userDocs = docsByUser.get(profile.user_id) || [];
@@ -256,26 +298,13 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
           }
 
           setStudentDocsByUser(docsByUser);
-          setDocumentsStats({
-            total: studentProfilesData.length,
-            withPassport,
-            withSnils,
-            withEducation,
-            complete
-          });
+          setDocumentsStats({ total: studentProfilesData.length, withPassport, withSnils, withEducation, complete });
         }
 
-        // Fetch FRDO data status for all students
-        const userIds = studentProfilesData.map((p: any) => p.user_id);
-        if (userIds.length > 0) {
-          const { data: frdoData } = await supabase
-            .from("student_frdo_data")
-            .select("user_id, last_name, first_name, middle_name, birth_date, gender, snils, education_level")
-            .eq("organization_id", orgId)
-            .in("user_id", userIds);
-
+        // FRDO status
+        const frdoData = frdoDataResult.data;
+        if (studentProfilesData.length > 0) {
           const frdoStatusMap = new Map<string, FrdoStatus>();
-          
           const requiredFields = [
             { key: "last_name", label: "Фамилия" },
             { key: "first_name", label: "Имя" },
@@ -294,45 +323,17 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
                   missing.push(field.label);
                 }
               }
-              frdoStatusMap.set(profile.user_id, {
-                hasData: true,
-                isComplete: missing.length === 0,
-                missingFields: missing,
-              });
+              frdoStatusMap.set(profile.user_id, { hasData: true, isComplete: missing.length === 0, missingFields: missing });
             } else {
-              frdoStatusMap.set(profile.user_id, {
-                hasData: false,
-                isComplete: false,
-                missingFields: requiredFields.map(f => f.label),
-              });
+              frdoStatusMap.set(profile.user_id, { hasData: false, isComplete: false, missingFields: requiredFields.map(f => f.label) });
             }
           }
           
           setStudentFrdoStatus(frdoStatusMap);
         }
 
-        // Fetch categories
-        const { data: categoriesData } = await supabase
-          .from("course_categories")
-          .select("*")
-          .eq("organization_id", orgId)
-          .order("name");
-          
-        if (onCategoriesLoaded) {
-          onCategoriesLoaded(categoriesData || []);
-        }
-
-        // Fetch companies
-        const { data: companiesData } = await supabase
-          .from("companies")
-          .select("id, name, inn")
-          .eq("organization_id", orgId)
-          .order("name");
-          
-        setCompanies(companiesData || []);
-
         // Process courses with stats
-        const coursesWithStats = (coursesData || []).map((course: any) => {
+        const coursesWithStats = coursesData.map((course: any) => {
           const courseEnrollments = studentEnrollments.filter(e => e.course_id === course.id);
           const uniqueStudentIds = new Set(courseEnrollments.map(e => e.user_id));
           return {
@@ -345,35 +346,33 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
             studentsCount: uniqueStudentIds.size,
             duration: course.duration || "—",
             category_id: course.category_id,
-            // Course settings (IMPORTANT: keep in sync with UI toggles)
             skip_video_identification: course.skip_video_identification ?? false,
             sequential_lessons: course.sequential_lessons ?? false,
-            // DB default is true; treat NULL/undefined as true
             allow_video_seek: course.allow_video_seek ?? true,
           };
         });
         
         setCourses(coursesWithStats);
       } catch (error) {
+        if (cancelled) return;
         console.error("Error fetching data:", error);
         toast.error("Ошибка загрузки данных");
       } finally {
-        setIsLoadingCourses(false);
+        if (!cancelled) setIsLoadingCourses(false);
       }
     };
     
     fetchData();
+
+    return () => { cancelled = true; };
   }, [userId, refreshKey, onCategoriesLoaded]);
 
   return {
-    // Organization info
     organizationId,
     organizationName,
     isFrdoEnabled,
     isAdminView,
     adminViewOrgId,
-    
-    // Data
     courses,
     setCourses,
     students,
@@ -382,22 +381,14 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
     setAllProfiles,
     companies,
     setCompanies,
-    
-    // Loading states
     isLoadingCourses,
     isLoadingStudents,
-    
-    // Stats
     stats,
     setStats,
     documentsStats,
     setDocumentsStats,
-    
-    // Document tracking
     studentDocsByUser,
     studentFrdoStatus,
-    
-    // Refresh
     refreshKey,
     refreshData,
   };
