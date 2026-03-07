@@ -1,18 +1,53 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+# Как проверить готовые курсы и продолжить заполнять новые
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+## Текущая проблема
 
-### Changes
+В `AdminMarketplaceManager.tsx` (строка 549) конвейер получает **только** курсы с `is_validated = false`:
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+```typescript
+courses={h.courses.filter((c: any) => !c.is_validated)}
+```
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+Это значит, что 64 курса со статусом "Готово" полностью исключены из конвейера. Проверить их на полноту заполнения тестов и контента невозможно без ручного просмотра.
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+## Решение
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+Добавить в виджет **переключатель режима работы**:
+- **Только "В работе"** (текущее поведение, по умолчанию) — 145 курсов
+- **Только "Готово" (ревизия)** — 64 курса, для перепроверки
+- **Все курсы** — полный набор 212 курсов
+
+### Изменения
+
+**1. `AdminMarketplaceManager.tsx`** — передавать все курсы и разделённые списки:
+
+```tsx
+<BulkPipelineWidget
+  courses={h.courses.filter((c: any) => !c.is_validated)}
+  readyCourses={h.courses.filter((c: any) => c.is_validated === true)}
+  allCourses={h.courses}
+  onComplete={h.loadCourses}
+/>
+```
+
+**2. `BulkPipelineWidget.tsx`** — добавить селектор режима (3 кнопки/табы):
+
+```
+[ В работе (145) ]  [ Готово — ревизия (64) ]  [ Все (212) ]
+```
+
+Выбранный режим определяет, какой массив курсов передаётся в `useBulkPipeline` и `useServerPipeline`. При выборе "Готово" запускается тот же конвейер, но на готовых курсах — проверяет нерешённые тесты, пустые уроки и заполняет их.
+
+**3. Никаких изменений в логике конвейера** — `useBulkPipeline.ts` и `bulk-pipeline` edge function уже умеют:
+- Пропускать надёжно решённые вопросы (`isReliablySolved`)
+- Заполнять только пустые уроки
+- Верифицировать ответы
+
+Переключение режима просто меняет входной массив курсов.
+
+### UI
+
+Три компактные кнопки-табы над очередью курсов, рядом с заголовком "Конвейер заполнения". Активный режим выделен цветом. Счётчик курсов обновляется автоматически.
 
