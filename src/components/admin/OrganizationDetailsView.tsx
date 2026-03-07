@@ -606,20 +606,20 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
             </p>
           </CardHeader>
         </Card>
-        <Card className={`${cardClass} ${isTokensExceeded ? "border-destructive" : isTokensWarning ? "border-yellow-500" : ""}`}>
+        <Card className={`${cardClass} ${isAiGenExceeded ? "border-destructive" : isAiGenWarning ? "border-yellow-500" : ""}`}>
           <CardHeader className="pb-2">
             <CardDescription className="flex items-center gap-1.5">
-              <div className={`p-1 rounded-md ${isTokensExceeded ? "bg-destructive/10" : isTokensWarning ? "bg-yellow-500/10" : "bg-purple-500/10"}`}>
-                <Sparkles className={`w-3 h-3 ${isTokensExceeded ? "text-destructive" : isTokensWarning ? "text-yellow-500" : "text-purple-500"}`} />
+              <div className={`p-1 rounded-md ${isAiGenExceeded ? "bg-destructive/10" : isAiGenWarning ? "bg-yellow-500/10" : "bg-purple-500/10"}`}>
+                <Sparkles className={`w-3 h-3 ${isAiGenExceeded ? "text-destructive" : isAiGenWarning ? "text-yellow-500" : "text-purple-500"}`} />
               </div>
-              ИИ токены
-              {isTokensExceeded && <AlertTriangle className="w-3 h-3 text-destructive" />}
+              ИИ-генерации
+              {isAiGenExceeded && <AlertTriangle className="w-3 h-3 text-destructive" />}
             </CardDescription>
-            <CardTitle className={`text-2xl ${isTokensExceeded ? "text-destructive" : isTokensWarning ? "text-yellow-600" : ""}`}>
-              {formatTokens(usage.ai_tokens_used)}
+            <CardTitle className={`text-2xl ${isAiGenExceeded ? "text-destructive" : isAiGenWarning ? "text-yellow-600" : ""}`}>
+              {usage.ai_generations_count}
             </CardTitle>
             <p className="text-xs text-muted-foreground">
-              из {formatTokens(settings.ai_tokens_limit)}
+              {aiGenerationsLimit === Infinity ? "безлимит" : `из ${aiGenerationsLimit}`}
             </p>
           </CardHeader>
         </Card>
