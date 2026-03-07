@@ -1,18 +1,49 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+# Вернуть возможность продажи курсов с ценами
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+## Суть
+Текущие курсы остаются бесплатными (price=0), но организации должны иметь возможность выставлять цены при добавлении/редактировании курсов в магазине. В каталоге отображать цену, если она > 0, иначе — «Бесплатно».
 
-### Changes
+## Изменения
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+### 1. `src/components/organization/CourseStoreManager.tsx`
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+**Форма «Добавить курс в магазин» (~строка 355-358)**:
+- Добавить два поля цены: «Цена для студента» и «Цена для организации» (Input type="number", по умолчанию 0)
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+**Форма «Редактировать курс» (~строка 399-403)**:
+- Вернуть поля цен (price_student, price_organization)
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+**Детальный просмотр курса (~строка 119-123)**:
+- Показывать цену если > 0, иначе «Бесплатно» (как сейчас)
+
+**Кнопка действия (~строка 129-131)**:
+- Если цена > 0: текст «Купить курс» вместо «Добавить курс»
+- Если цена = 0: оставить «Добавить курс»
+
+**Каталог grid-вид (~строка 268-271)**:
+- Показать бейдж цены на карточке если > 0
+
+**Диалог заказа (~строка 364-381)**:
+- Показать итоговую стоимость (price × students_count для организаций)
+- Если цена = 0 — оставить текущий упрощённый вид
+
+### 2. `src/hooks/useCourseStoreManager.ts`
+
+**Добавить state для цен в форме добавления**:
+- `priceStudent`, `setPriceStudent` (default: 0)
+- `priceOrganization`, `setPriceOrganization` (default: 0)
+
+**`handleAddToMarketplace`**: использовать значения из state вместо хардкода 0
+
+**`handleEditCourse`**: сохранять price_student и price_organization из editingCourse
+
+**`handleOrder`**: передавать реальную цену курса в заказ (price = selectedCourseForOrder.price_student или price_organization в зависимости от userRole)
+
+### Файлы
+| Файл | Что |
+|------|-----|
+| `src/components/organization/CourseStoreManager.tsx` | Вернуть поля цен в формы, показать цены в каталоге |
+| `src/hooks/useCourseStoreManager.ts` | Добавить state цен, использовать реальные цены |
 
