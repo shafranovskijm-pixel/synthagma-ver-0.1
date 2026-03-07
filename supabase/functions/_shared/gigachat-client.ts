@@ -586,6 +586,7 @@ export async function callAI(
   preferredProvider?: string,
   gigachatModel?: string,
   lovableModel?: string,
+  taskIndex?: number,
 ): Promise<{ text: string; model: string }> {
   const gcModel = gigachatModel || "GigaChat-Pro";
   const lModel = lovableModel || "google/gemini-2.5-flash";
@@ -596,7 +597,7 @@ export async function callAI(
   }
 
   if (preferredProvider === "round_robin") {
-    return callAIRoundRobin(messages, maxTokens, gigachatModel, lovableModel);
+    return callAIRoundRobin(messages, maxTokens, gigachatModel, lovableModel, taskIndex);
   }
 
   try {
