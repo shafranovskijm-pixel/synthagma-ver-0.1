@@ -7,11 +7,11 @@ import { DialogsContainer } from "@/components/organization/dialogs/DialogsConta
 import { MissingCredentialsAlert } from "@/components/organization/MissingCredentialsAlert";
 import { OrgDashboardHeader } from "@/components/organization/OrgDashboardHeader";
 import { Button } from "@/components/ui/button";
-import { Eye, X, ChevronDown, AlertTriangle } from "lucide-react";
+import { Eye, X } from "lucide-react";
 import { OnboardingDialog } from "@/components/onboarding/OnboardingDialog";
 import { organizationOnboardingSteps } from "@/constants/onboardingSteps";
 import { OrgDashboardProvider, useOrgDashboard } from "@/contexts/OrgDashboardContext";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { PlatformAnnouncementsBanner } from "@/components/organization/PlatformAnnouncementsBanner";
 
 function OrganizationDashboardContent() {
   const navigate = useNavigate();
