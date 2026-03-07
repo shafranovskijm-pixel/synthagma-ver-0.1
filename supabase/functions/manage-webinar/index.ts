@@ -71,7 +71,6 @@ Deno.serve(async (req) => {
           name: roomName,
           properties: {
             exp,
-            enable_recording: "cloud",
             enable_chat: true,
             enable_screenshare: true,
             start_audio_off: true,
