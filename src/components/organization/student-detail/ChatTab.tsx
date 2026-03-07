@@ -56,7 +56,8 @@ export function ChatTab({ studentUserId, organizationId, currentUserId, studentN
         },
         (payload) => {
           const newMsg = payload.new as Message;
-          setMessages((prev) => [...prev, newMsg]);
+          if (newMsg.organization_id !== organizationId) return;
+          setMessages((prev) => prev.some(m => m.id === newMsg.id) ? prev : [...prev, newMsg]);
           if (newMsg.attachment_url) {
             loadSignedUrl(newMsg.attachment_url);
           }
