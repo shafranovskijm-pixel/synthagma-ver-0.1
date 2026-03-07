@@ -112,18 +112,21 @@ const MAX_CLIENT_RUNTIME = 2 * 60 * 60 * 1000; // 2 hours
 async function parallelMap<T, R>(
   items: T[],
   concurrency: number,
-  fn: (item: T, index: number) => Promise<R>
+  fn: (item: T, index: number) => Promise<R>,
+  abortSignal?: { current: boolean }
 ): Promise<R[]> {
   const results: R[] = new Array(items.length);
   let nextIndex = 0;
 
   async function worker() {
     while (nextIndex < items.length) {
+      if (abortSignal?.current) break;
       const i = nextIndex++;
       try {
         results[i] = await withTimeout(fn(items[i], i), PARALLEL_ITEM_TIMEOUT, `parallelMap[${i}]`);
       } catch (e) {
         if (e instanceof CreditsExhaustedError) throw e;
+        if (abortSignal?.current) break;
         console.error(`[parallelMap] Item ${i} failed/timed out:`, e instanceof Error ? e.message : String(e));
         results[i] = undefined as any;
       }
