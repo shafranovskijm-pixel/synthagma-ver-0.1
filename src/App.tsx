@@ -71,6 +71,8 @@ const LearningRedirect = () => { const { courseId } = useParams(); return <Navig
 const isNative = typeof (window as any).Capacitor !== 'undefined';
 const Router = isNative ? HashRouter : BrowserRouter;
 
+function ThemeInit() { useThemePersonalization(); return null; }
+
 const App = () => (
   <ErrorBoundary>
     <HelmetProvider>
