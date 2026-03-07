@@ -59,12 +59,13 @@ export function BulkPipelineWidget({ courses, readyCourses = [], allCourses, onC
   const [enableVerification, setEnableVerification] = useState(false);
   const [serverMode, setServerMode] = useState(false);
   const [pipelineMode, setPipelineMode] = useState<PipelineMode>("progress");
+  const [aiProvider, setAiProvider] = useState<string>(() => localStorage.getItem("pipeline_ai_provider") || "gigachat");
 
   const activeCourses = pipelineMode === "ready" ? readyCourses
     : pipelineMode === "all" ? [...courses, ...readyCourses]
     : courses;
 
-  const pipeline = useBulkPipeline({ courses: activeCourses, onComplete, enableVerification });
+  const pipeline = useBulkPipeline({ courses: activeCourses, onComplete, enableVerification, aiProvider });
   const serverPipeline = useServerPipeline({ courses: activeCourses, enableVerification, onComplete });
   const excelImport = usePipelineExcelImport({ onComplete });
 
