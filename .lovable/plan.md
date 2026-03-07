@@ -1,18 +1,22 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+# Улучшение пустого состояния вкладки «Чаты»
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+Сейчас при отсутствии сообщений отображается минималистичная заглушка — иконка и текст. Нужно сделать полноценную продающую презентацию возможностей чата, как уже реализовано для вкладок «Ученики», «Курсы» и «Компании».
 
-### Changes
+## Что делаем
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+Когда `conversations.length === 0` и нет поискового запроса — вместо двухпанельного layout показываем единую презентационную страницу:
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+1. **Заголовок** с иконкой и описанием: «Чат с учениками — общайтесь напрямую»
+2. **Сетка из 3 карточек** с возможностями:
+   - **Мгновенные уведомления** (Bell) — Realtime-обновления, счётчик непрочитанных
+   - **Обмен файлами** (Paperclip) — Вложения, документы, изображения
+   - **История переписки** (Clock) — Полный архив сообщений, поиск по диалогам
+3. **Подсказка внизу**: «Чаты появятся, когда ученики напишут вам или вы начнёте диалог из карточки ученика»
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+Если есть диалоги — оставляем текущий двухпанельный интерфейс без изменений. Пустое состояние правой панели «Выберите чат» тоже немного улучшим иконкой и подсказкой.
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+## Файл
+- `src/components/organization/OrgChatsTab.tsx`
 
