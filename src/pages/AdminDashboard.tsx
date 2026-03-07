@@ -38,6 +38,7 @@ const AdminDashboard = () => {
       case "marketplace": return "Маркетплейс";
       case "sales": return "Продажи";
       case "ai": return "ИИ-провайдеры";
+      case "broadcast": return "Рассылка";
       case "users": return "Пользователи";
       case "content": return "Контент";
       case "support": return "Поддержка";
