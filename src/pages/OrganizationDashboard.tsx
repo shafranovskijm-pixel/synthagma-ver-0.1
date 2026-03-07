@@ -16,7 +16,6 @@ import { PlatformAnnouncementsBanner } from "@/components/organization/PlatformA
 function OrganizationDashboardContent() {
   const navigate = useNavigate();
   const d = useOrgDashboard();
-  const [alertsOpen, setAlertsOpen] = useState(false);
 
   const exitAdminView = () => { localStorage.removeItem("adminViewAsOrg"); navigate("/admin"); };
 
