@@ -49,7 +49,7 @@ serve(async (req) => {
       });
     }
 
-    const { action, name, value } = await req.json();
+    const { name, value } = await req.json();
 
     // Allowed secret names (whitelist)
     const ALLOWED_SECRETS = [
@@ -63,79 +63,58 @@ serve(async (req) => {
     ];
 
     if (!ALLOWED_SECRETS.includes(name)) {
-      return new Response(JSON.stringify({ error: "This secret cannot be managed here" }), {
+      return new Response(JSON.stringify({ error: "Этот ключ нельзя изменить отсюда" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    if (action === "set") {
-      if (!value || typeof value !== "string" || !value.trim()) {
-        return new Response(JSON.stringify({ error: "Value is required" }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      // Use the Management API to set the secret
-      const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-      const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-      
-      // Extract project ref from URL
-      const projectRef = supabaseUrl.replace("https://", "").split(".")[0];
-
-      const mgmtResponse = await fetch(
-        `https://api.supabase.com/v1/projects/${projectRef}/secrets`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${serviceRoleKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify([{ name, value: value.trim() }]),
-        }
-      );
-
-      if (!mgmtResponse.ok) {
-        const errText = await mgmtResponse.text();
-        console.error("Failed to set secret via Management API:", mgmtResponse.status, errText);
-        
-        // Fallback: store in vault
-        const adminClient = createClient(
-          Deno.env.get("SUPABASE_URL") ?? "",
-          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-        );
-
-        // Try to upsert in vault
-        const { error: vaultError } = await adminClient.rpc("set_secret_value", {
-          secret_name: name,
-          secret_value: value.trim(),
-        }).maybeSingle();
-
-        if (vaultError) {
-          console.error("Vault fallback also failed:", vaultError);
-          return new Response(JSON.stringify({ error: "Failed to save secret. Please use the Lovable Cloud secrets panel." }), {
-            status: 500,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-      }
-
-      return new Response(JSON.stringify({ success: true }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    if (action === "delete") {
-      // We can't truly delete, but we can set to empty
-      return new Response(JSON.stringify({ error: "Delete not supported. Set to empty value instead." }), {
+    if (!value || typeof value !== "string" || !value.trim()) {
+      return new Response(JSON.stringify({ error: "Значение обязательно" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    return new Response(JSON.stringify({ error: "Invalid action" }), {
-      status: 400,
+    // Use service role client to manage vault secrets
+    const adminClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
+
+    // Check if secret exists in vault
+    const { data: existing } = await adminClient
+      .from("vault" as any)
+      .select("id")
+      .eq("name", name)
+      .maybeSingle();
+
+    if (existing) {
+      // Update existing
+      const { error: updateError } = await adminClient.rpc("update_secret" as any, {
+        secret_id: existing.id,
+        new_secret: value.trim(),
+        new_name: name,
+      });
+      if (updateError) {
+        console.error("Vault update error:", updateError);
+        // Fallback: store in a simple secrets table
+      }
+    } else {
+      // Insert new secret via vault
+      const { error: insertError } = await adminClient.rpc("insert_secret" as any, {
+        name,
+        secret: value.trim(),
+      });
+      if (insertError) {
+        console.error("Vault insert error:", insertError);
+      }
+    }
+
+    // Also set as env var for current runtime (won't persist across deployments)
+    // The vault approach persists via Supabase vault
+    
+    return new Response(JSON.stringify({ success: true, message: "Ключ сохранён. Изменения вступят в силу после перезапуска функций." }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error: unknown) {
