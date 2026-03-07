@@ -525,7 +525,7 @@ serve(async (req) => {
 
         try {
           const result = await processCourse(
-            db, entry.course_id, name, prompts, enableVerification, runId, updatePhase, shouldStop, aiProvider,
+            db, entry.course_id, name, prompts, enableVerification, runId, updatePhase, shouldStop, aiProvider, gigachatModel, lovableModel,
           );
 
           if (!result.ok) {
