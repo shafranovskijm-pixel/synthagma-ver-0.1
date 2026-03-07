@@ -494,9 +494,17 @@ function buildChannels(): Array<{
     msgs: Array<{ role: string; content: string }>,
     mt: number,
   ): Promise<string> => {
-    // Wait until slot is free
+    // Wait until slot is free, with 30s timeout
+    const deadline = Date.now() + 30_000;
     while (slots[slotIdx].busy) {
-      await slots[slotIdx].lock;
+      const remaining = deadline - Date.now();
+      if (remaining <= 0) {
+        throw new Error(`Slot ${slotIdx} busy timeout (30s)`);
+      }
+      await Promise.race([
+        slots[slotIdx].lock,
+        new Promise((_, reject) => setTimeout(() => reject(new Error(`Slot ${slotIdx} busy timeout (30s)`)), remaining)),
+      ]);
     }
     // Claim it
     slots[slotIdx].busy = true;
