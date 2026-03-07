@@ -4054,6 +4054,8 @@ export type Database = {
           room_url: string | null
           scheduled_at: string
           status: string
+          stream_platform: string | null
+          stream_url: string | null
           title: string
           updated_at: string
         }
@@ -4074,6 +4076,8 @@ export type Database = {
           room_url?: string | null
           scheduled_at: string
           status?: string
+          stream_platform?: string | null
+          stream_url?: string | null
           title: string
           updated_at?: string
         }
@@ -4094,6 +4098,8 @@ export type Database = {
           room_url?: string | null
           scheduled_at?: string
           status?: string
+          stream_platform?: string | null
+          stream_url?: string | null
           title?: string
           updated_at?: string
         }
