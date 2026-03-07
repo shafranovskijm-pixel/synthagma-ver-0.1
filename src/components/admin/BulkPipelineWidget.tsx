@@ -202,10 +202,20 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
 
   const { isBusy, totalCount, completedCount, progressPercent, currentIndex, currentPhase, completedLog, summary, aiSessionCalls, hasResumableProgress } = pipeline;
 
+  // Determine effective busy state (either local or server)
+  const effectiveBusy = isBusy || serverPipeline.isRunning;
+  const effectiveProgress = serverMode && serverPipeline.currentRun
+    ? serverPipeline.progressPercent
+    : progressPercent;
+
   const handleStartWithQueue = useCallback(() => {
     setQueueOpen(true);
-    pipeline.handleStart(false);
-  }, [pipeline.handleStart]);
+    if (serverMode) {
+      serverPipeline.handleStart();
+    } else {
+      pipeline.handleStart(false);
+    }
+  }, [serverMode, pipeline.handleStart, serverPipeline.handleStart]);
 
   const handleResumeWithQueue = useCallback(() => {
     setQueueOpen(true);
@@ -216,6 +226,14 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
     setQueueOpen(true);
     pipeline.handleTestRun();
   }, [pipeline.handleTestRun]);
+
+  const handleEffectiveStop = useCallback(() => {
+    if (serverMode) {
+      serverPipeline.handleStop();
+    } else {
+      pipeline.handleStop();
+    }
+  }, [serverMode, pipeline.handleStop, serverPipeline.handleStop]);
 
   if (totalCount === 0 && excelImport.parsedCourses.length === 0) return null;
 
