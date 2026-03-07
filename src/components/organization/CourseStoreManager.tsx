@@ -116,11 +116,18 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
                 </Card>
               )}
 
-              <Card className="text-center border-green-500/20 bg-green-500/5">
-                <CardContent className="pt-6">
-                  <div className="text-lg font-semibold text-green-600">Бесплатно</div>
-                </CardContent>
-              </Card>
+              {(() => {
+                const price = h.userRole === 'organization' ? selectedCourseDetail.price_organization : selectedCourseDetail.price_student;
+                return (
+                  <Card className={`text-center ${price > 0 ? 'border-primary/20 bg-primary/5' : 'border-green-500/20 bg-green-500/5'}`}>
+                    <CardContent className="pt-6">
+                      <div className={`text-lg font-semibold ${price > 0 ? 'text-primary' : 'text-green-600'}`}>
+                        {price > 0 ? `${price.toLocaleString()} ₽` : 'Бесплатно'}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })()}
 
               <div className="flex flex-col sm:flex-row gap-3 pt-2">
                 <Button variant="outline" className="flex-1 rounded-xl gap-2" onClick={() => { const id = selectedCourseDetail.course_id; setSelectedCourseDetail(null); navigate(`/course-preview/${id}?from=store`); }}>
