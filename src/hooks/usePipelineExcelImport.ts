@@ -65,8 +65,8 @@ export function usePipelineExcelImport({ onComplete }: UsePipelineExcelImportPro
     setImportProgress(0);
     setImportTotal(parsedCourses.length);
     const settings = getMarketplaceSettings();
-    const priceOrg = settings.freeForOrgs ? 0 : settings.defaultPriceOrg;
-    const priceStudent = settings.defaultPriceStudent;
+    const priceOrg = 0;
+    const priceStudent = 0;
     let created = 0;
     for (const course of parsedCourses) {
       try {

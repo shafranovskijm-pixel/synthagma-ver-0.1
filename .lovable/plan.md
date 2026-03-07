@@ -1,48 +1,18 @@
 
 
-# Бесплатный маркетплейс — убрать цены, упростить получение курсов
+## Plan: Auto-fix after "Проверить все"
 
-## Задача
-1. Все курсы в маркетплейсе бесплатны — убрать отображение цен из UI
-2. Упростить процесс получения курса: вместо «Купить» → «Добавить курс» (сразу клонирует без оплаты)
-3. Проверить логику клонирования (курс + уроки + вопросы) — сохранить, она корректна
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-## Изменения
+### Changes
 
-### 1. `src/components/organization/CourseStoreManager.tsx`
-- **Убрать блок баланса** из хедера (строки 95-106: Wallet, пополнение)
-- **Убрать цены** из детального просмотра курса (строки 154-163: Card с ценой)
-- **Убрать цены** из list-режима каталога (строки 281-283, 300-302: TableCell с ценой)
-- **Убрать цены** из grid-режима каталога (строки 325-332: блок с ценой)
-- **Упростить кнопки действий**: вместо «Купить» + «Оставить заявку» → одна кнопка «Добавить курс» (строки 165-175)
-- **Убрать цены** из вкладки «Мои курсы» (строки 358-361)
-- **Убрать диалог заказа** с балансом/оплатой — заменить на прямое клонирование курса при нажатии «Добавить курс»
-- **Убрать диалог пополнения баланса** (строки 559-582)
-- **Убрать цены** из «Добавить курс в магазин» (строки 424-428) и из «Редактировать курс» (строки 484-487)
-- В деталях заказов убрать строку «Сумма» (строка 505)
-- В таблице заявок убрать колонку с суммой (строки 388, 409)
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-### 2. `src/hooks/useCourseStoreManager.ts`
-- **`handleOrder`**: убрать логику оплаты, проверку баланса — сразу создавать заказ со status='paid', price=0 и клонировать курс
-- **`handleAddToMarketplace`**: убрать обязательность цен, ставить price_student=0, price_organization=0
-- Убрать состояния `payFromBalance`, `purchasedFromBalance` (или оставить, не критично)
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-### 3. `src/hooks/usePipelineExcelImport.ts`
-- При создании курсов в маркетплейсе ставить price_student=0, price_organization=0 всегда
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-### Логика клонирования (уже корректна, трогать не нужно)
-Текущий flow в `handleOrder`:
-1. Копирует course → новый course с `source_order_id`, `source_course_id`
-2. Копирует все lessons с правильным `course_id`
-3. Копирует test_questions с ремаппингом `lesson_id`
-4. Оригинал в маркетплейсе не удаляется
-
-Это корректно — курс клонируется полностью и остаётся в маркетплейсе.
-
-### Файлы
-| Файл | Что |
-|------|-----|
-| `src/components/organization/CourseStoreManager.tsx` | Убрать все цены, баланс, упростить кнопки |
-| `src/hooks/useCourseStoreManager.ts` | Убрать логику оплаты, price=0 |
-| `src/hooks/usePipelineExcelImport.ts` | price=0 при создании |
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 
