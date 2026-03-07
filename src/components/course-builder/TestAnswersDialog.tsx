@@ -95,6 +95,8 @@ export function TestAnswersDialog({ questions, courseTitle, lessonTitle, onApply
           courseTitle,
           lessonTitle: lessonTitle || courseTitle,
           questions: questionsForAI,
+          ai_provider: "lovable_ai",
+          lovable_model: "google/gemini-2.5-pro",
         },
       });
 
