@@ -325,7 +325,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
     
     const { data, error } = await supabase
       .from("organization_usage")
-      .select("storage_bytes, ai_tokens_used")
+      .select("storage_bytes, ai_generations_count")
       .eq("organization_id", organization.id)
       .eq("month_start", currentMonth)
       .maybeSingle();
@@ -335,19 +335,26 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
     }
 
     if (data) {
-      setUsage(data);
+      setUsage({
+        storage_bytes: (data as any).storage_bytes || 0,
+        ai_generations_count: (data as any).ai_generations_count || 0,
+      });
     } else {
-      const { data: docsData } = await supabase
-        .from("org_documents")
-        .select("file_url")
-        .eq("organization_id", organization.id);
-
-      const totalDocs = docsData?.length || 0;
-      const estimatedBytes = totalDocs * 500 * 1024;
+      // Calculate real storage from buckets
+      let totalBytes = 0;
+      const buckets = ['course-files', 'org-documents', 'student-documents', 'library-files', 'org-branding', 'program-files', 'company-documents'];
+      for (const bucket of buckets) {
+        try {
+          const { data: files } = await supabase.storage.from(bucket).list(organization.id, { limit: 1000 });
+          if (files) {
+            totalBytes += files.reduce((sum, f) => sum + ((f.metadata as any)?.size || 0), 0);
+          }
+        } catch {}
+      }
 
       setUsage({
-        storage_bytes: estimatedBytes,
-        ai_tokens_used: 0,
+        storage_bytes: totalBytes,
+        ai_generations_count: 0,
       });
     }
   };
