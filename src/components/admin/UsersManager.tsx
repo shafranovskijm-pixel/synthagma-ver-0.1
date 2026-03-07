@@ -38,7 +38,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, Search, Loader2, Users, Shield, Building2, GraduationCap, Copy, Eye, EyeOff, BookOpen, FileText, Clock, Mail, Phone, MapPin, KeyRound, Save, Plus, Pencil } from "lucide-react";
+import { Trash2, Search, Loader2, Users, Shield, Building2, GraduationCap, Copy, Eye, EyeOff, BookOpen, FileText, Clock, Mail, Phone, MapPin, KeyRound, Save, Plus, Pencil, ExternalLink } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
