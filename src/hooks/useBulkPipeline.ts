@@ -239,14 +239,17 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
             let batchSuccess = false;
             while (retries < 3 && !batchSuccess) {
               try {
-                const { data, error } = await supabase.functions.invoke("gigachat", {
-                  body: {
-                    action: "generate_answers", courseTitle,
-                    lessonTitle: lessonInfo?.title || "Тест",
-                    questions: batch.map(q => ({ question: q.question, options: q.options || [] })),
-                    customSystemPrompt: currentPrompts.answers || undefined,
-                  },
-                });
+                const { data, error } = await withTimeout(
+                  supabase.functions.invoke("gigachat", {
+                    body: {
+                      action: "generate_answers", courseTitle,
+                      lessonTitle: lessonInfo?.title || "Тест",
+                      questions: batch.map(q => ({ question: q.question, options: q.options || [] })),
+                      customSystemPrompt: currentPrompts.answers || undefined,
+                    },
+                  }),
+                  AI_CALL_TIMEOUT, "generate_answers"
+                );
                 if (error) { checkFor402(error); throw error; }
                 if (data?.error) { checkFor402(data); throw new Error(data.error); }
                 detectProvider(data);
