@@ -109,7 +109,7 @@ const VOICES: Record<string, string> = {
   "Taras_24000": "Tur_24000",
   "Alexandra_24000": "Ost_24000",
   "Sergey_24000": "Pon_24000",
-  "Kira_24000": "Kir_24000",
+  "Kira_24000": "Kin_24000",
   // Backward compat — lowercase keys from admin panel
   natalya: "Nec_24000",
   boris: "Bys_24000",
@@ -117,7 +117,7 @@ const VOICES: Record<string, string> = {
   taras: "Tur_24000",
   alexandr: "Ost_24000",
   sergey: "Pon_24000",
-  kira: "Kir_24000",
+  kira: "Kin_24000",
 };
 
 async function getAccessToken(authKey: string): Promise<string> {
@@ -187,20 +187,20 @@ serve(async (req) => {
         ? "audio/x-pcm;bit=16;rate=24000" 
         : "audio/ogg;codecs=opus";
 
+    const audioFormat = format === "wav16" ? "wav16" : format === "pcm16" ? "pcm16" : "opus";
+
     const synthFetchOpts: RequestInit & { client?: Deno.HttpClient } = {
       method: "POST",
       headers: {
         Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/text",
-        "Audio-Encoding": format === "wav16" ? "wav16" : format === "pcm16" ? "pcm16" : "opus",
-        "Voice-Name": voiceParam,
       },
       body: text,
     };
     if (httpClient) (synthFetchOpts as any).client = httpClient;
 
     const synthesisResponse = await fetch(
-      "https://smartspeech.sber.ru/rest/v1/text:synthesize",
+      `https://smartspeech.sber.ru/rest/v1/text:synthesize?voice=${encodeURIComponent(voiceParam)}&format=${encodeURIComponent(audioFormat)}`,
       synthFetchOpts
     );
 
