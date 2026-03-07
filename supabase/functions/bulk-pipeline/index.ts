@@ -126,6 +126,8 @@ async function processCourse(
   updatePhase: (phase: string) => Promise<void>,
   shouldStop: () => Promise<boolean>,
   aiProvider?: string,
+  gigachatModel?: string,
+  lovableModel?: string,
 ): Promise<{ ok: boolean; testsSolved: number; lessonsFilled: number; skippedBatches: number; totalQuestions: number }> {
   let testsSolved = 0;
   let lessonsFilled = 0;
