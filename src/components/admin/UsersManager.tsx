@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,7 +38,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, Search, Loader2, Users, Shield, Building2, GraduationCap, Copy, Eye, EyeOff, BookOpen, FileText, Clock, Mail, Phone, MapPin, KeyRound, Save, Plus, Pencil } from "lucide-react";
+import { Trash2, Search, Loader2, Users, Shield, Building2, GraduationCap, Copy, Eye, EyeOff, BookOpen, FileText, Clock, Mail, Phone, MapPin, KeyRound, Save, Plus, Pencil, ExternalLink } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -81,6 +82,16 @@ export function UsersManager() {
   });
   const [credPasswordVisible, setCredPasswordVisible] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
+
+  const viewAsStudent = (user: UserWithRole) => {
+    localStorage.setItem('adminViewAsStudent', JSON.stringify({
+      odoo_user_id: user.user_id,
+      studentName: user.full_name || user.email || 'Ученик',
+      orgName: user.organization_name || '',
+    }));
+    navigate('/student');
+  };
 
   const togglePasswordVisibility = (userId: string) => {
     setVisiblePasswords(prev => {
@@ -531,14 +542,26 @@ export function UsersManager() {
                       {format(new Date(user.created_at), "d MMM yyyy", { locale: ru })}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive hover:text-destructive"
-                        onClick={(e) => { e.stopPropagation(); setDeleteUser(user); }}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      <div className="flex items-center justify-end gap-1">
+                        {user.role === 'student' && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Войти как ученик"
+                            onClick={(e) => { e.stopPropagation(); viewAsStudent(user); }}
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive hover:text-destructive"
+                          onClick={(e) => { e.stopPropagation(); setDeleteUser(user); }}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -556,7 +579,13 @@ export function UsersManager() {
               <Avatar>
                 <AvatarFallback>{selectedUser?.full_name?.[0]?.toUpperCase() || "?"}</AvatarFallback>
               </Avatar>
-              {selectedUser?.full_name || "Пользователь"}
+              <span className="flex-1">{selectedUser?.full_name || "Пользователь"}</span>
+              {selectedUser?.role === 'student' && (
+                <Button variant="outline" size="sm" className="text-xs" onClick={() => selectedUser && viewAsStudent(selectedUser)}>
+                  <ExternalLink className="w-3.5 h-3.5 mr-1" />
+                  Войти как ученик
+                </Button>
+              )}
             </DialogTitle>
           </DialogHeader>
 

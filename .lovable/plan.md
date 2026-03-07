@@ -1,24 +1,18 @@
 
 
-## План
+## Plan: Auto-fix after "Проверить все"
 
-### 1. UsersManager — добавить кнопку «Войти как» для слушателей
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-**Файл:** `src/components/admin/UsersManager.tsx`
+### Changes
 
-- В колонке «Действия» (строка 533-542) рядом с кнопкой удаления добавить кнопку «Войти как» (иконка `ExternalLink`) — только для пользователей с ролью `student`
-- По клику: `localStorage.setItem('adminViewAsStudent', JSON.stringify({ userId, name, orgName }))` и `navigate('/student')` — аналогично `OrganizationDetailsView`
-- В диалоге детальной карточки пользователя (строка 552+) добавить кнопку «Войти как ученик» в шапку диалога — тоже только для `student`
-- Добавить импорт `useNavigate` и `ExternalLink`
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-### 2. OrganizationsManager — убрать кнопку «ИИ»
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-**Файл:** `src/components/admin/OrganizationsManager.tsx`
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-- Удалить `DropdownMenuItem` с «ИИ:» в обоих дропдаунах (строки 857-860 и 1056-1059)
-- Удалить функцию `toggleAiProvider` и связанный импорт `Sparkles`, если больше нигде не используется
-
-### Файлы для изменения:
-1. `src/components/admin/UsersManager.tsx` — кнопка «Войти как» в таблице и диалоге
-2. `src/components/admin/OrganizationsManager.tsx` — удаление пункта «ИИ» из дропдаунов
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 
