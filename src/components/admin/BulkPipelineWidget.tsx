@@ -236,8 +236,18 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
             !isBusy ? (
               <div className="flex items-center gap-1.5">
                 <Button size="sm" variant="outline" onClick={handleTestRunWithQueue} className="gap-1.5">
-                  <FlaskConical className="w-3.5 h-3.5" />Тест 1 курса
+                  <FlaskConical className="w-3.5 h-3.5" />Тест 1
                 </Button>
+                {hasResumableProgress && (
+                  <>
+                    <Button size="sm" variant="outline" onClick={handleResumeWithQueue} className="gap-1.5">
+                      <SkipForward className="w-3.5 h-3.5" />Продолжить
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={pipeline.handleResetProgress} className="gap-1 px-2" title="Сбросить прогресс">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </>
+                )}
                 <Button size="sm" onClick={handleStartWithQueue} className="gap-1.5">
                   <Play className="w-3.5 h-3.5" />Запустить все
                 </Button>
