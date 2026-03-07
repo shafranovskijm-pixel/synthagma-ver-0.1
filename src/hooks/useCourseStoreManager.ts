@@ -248,7 +248,7 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
     try {
       const { error } = await supabase.from('marketplace_courses').insert({
         course_id: selectedCourseToAdd, organization_id: organizationId,
-        price_student: 0, price_organization: 0,
+        price_student: priceStudent, price_organization: priceOrganization,
         description_short: shortDescription || null, is_active: true,
       });
       if (error) throw error;
