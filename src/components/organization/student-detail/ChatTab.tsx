@@ -10,6 +10,7 @@ import { getSignedStorageUrl } from "@/utils/storageHelpers";
 
 interface Message {
   id: string;
+  organization_id?: string;
   sender_user_id: string;
   content: string | null;
   attachment_url: string | null;
