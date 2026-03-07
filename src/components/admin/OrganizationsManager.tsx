@@ -47,6 +47,7 @@ interface Organization {
   inn: string | null;
   contact_name: string | null;
   ai_enabled: boolean;
+  ai_provider?: string;
   created_at: string;
   subscription_plan?: string;
   promo_code?: string | null;
