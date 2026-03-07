@@ -331,8 +331,8 @@ export function AISettingsManager() {
           id: row.id,
           context: row.context,
           provider: row.provider,
-          gigachat_model: row.gigachat_model || "GigaChat-Pro",
-          lovable_model: row.lovable_model || "google/gemini-2.5-flash",
+          gigachat_model: row.gigachat_model || "GigaChat-Max",
+          lovable_model: row.lovable_model || "google/gemini-2.5-pro",
           concurrency: row.concurrency || 3,
           extra_config: (row.extra_config as Record<string, any>) || {},
         };
