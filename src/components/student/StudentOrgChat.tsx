@@ -50,7 +50,8 @@ export function StudentOrgChat({ studentUserId, organizationId, organizationName
         filter: `student_user_id=eq.${studentUserId}`,
       }, (payload) => {
         const newMsg = payload.new as Message;
-        setMessages((prev) => [...prev, newMsg]);
+        if ((newMsg as any).organization_id !== organizationId) return;
+        setMessages((prev) => prev.some(m => m.id === newMsg.id) ? prev : [...prev, newMsg]);
         if (newMsg.attachment_url) loadSignedUrl(newMsg.attachment_url);
         setTimeout(scrollToBottom, 100);
       })
