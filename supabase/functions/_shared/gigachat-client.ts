@@ -516,6 +516,7 @@ export async function callAIRoundRobin(
   maxTokens = 4096,
   gigachatModel?: string,
   lovableModel?: string,
+  taskIndex?: number,
 ): Promise<{ text: string; model: string }> {
   const gcModel = gigachatModel || "GigaChat-Pro";
   const lModel = lovableModel || "google/gemini-2.5-flash";
@@ -552,15 +553,19 @@ export async function callAIRoundRobin(
     },
   });
 
-  const startIdx = rrCounter++ % channels.length;
+  // Deterministic routing: use taskIndex if provided, otherwise global counter
+  const startIdx = taskIndex !== undefined ? (taskIndex % channels.length) : (rrCounter++ % channels.length);
+  const taskLabel = taskIndex !== undefined ? `task#${taskIndex}` : `rr#${rrCounter - 1}`;
   let count402 = 0;
   let lastError: Error | null = null;
+
+  console.log(`[AI-RR] ${taskLabel} → startChannel=${startIdx}/${channels.length} (${channels[startIdx].name})`);
 
   for (let attempt = 0; attempt < channels.length; attempt++) {
     const chIdx = (startIdx + attempt) % channels.length;
     const channel = channels[chIdx];
     try {
-      console.log(`[AI-RR] Task #${rrCounter - 1} → ${channel.name}${attempt > 0 ? " (fallback)" : ""}`);
+      console.log(`[AI-RR] ${taskLabel} → ${channel.name}${attempt > 0 ? " (fallback)" : ""}`);
       return await channel.call(messages, maxTokens);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
