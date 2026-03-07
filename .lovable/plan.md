@@ -1,18 +1,30 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## Переместить кнопку «Предпросмотр кабинета» в пустое состояние + тултипы на кнопки
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+### Изменения в `src/components/organization/tabs/StudentsTab.tsx`
 
-### Changes
+1. **Удалить** кнопку «Предпросмотр кабинета» из заголовка (строки 282-293).
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+2. **Добавить карточку предпросмотра** в пустое состояние (после текста «Добавьте учеников...», перед grid с 3 карточками, ~строка 540):
+```tsx
+<Button
+  variant="outline"
+  className="rounded-xl gap-2 mt-4"
+  onClick={() => {
+    localStorage.setItem('previewStudentDashboard', 'true');
+    window.open('/student', '_blank');
+  }}
+>
+  <Eye className="w-4 h-4" />
+  Посмотрите, как выглядит кабинет ученика
+</Button>
+```
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+3. **Добавить тултипы** на кнопки в панели фильтров (Напомнить, Экспорт, Группы) — обернуть каждую в `<Tooltip>` с пояснением:
+   - Напомнить → «Отправить напоминание о документах»
+   - Экспорт → «Экспорт данных учеников»
+   - Группы → «Управление группами учеников»
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
-
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+4. Импортировать `Tooltip, TooltipContent, TooltipTrigger, TooltipProvider` из `@/components/ui/tooltip`.
 
