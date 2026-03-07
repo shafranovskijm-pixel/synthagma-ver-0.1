@@ -1,18 +1,27 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## План
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+### 1. Рекомендация в баннере Ростехнадзора
+В `CourseStoreManager.tsx` — добавить строку-совет в баннер после основного текста:
 
-### Changes
+> 💡 После добавления курса проверьте правильность ответов в тестах с помощью ИИ — кнопка «Решить ИИ» в редакторе курса.
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+Стиль: `text-xs text-muted-foreground` с иконкой `Lightbulb`.
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+### 2. Самая мощная модель для проверки тестов
+В `TestAnswersDialog.tsx` — при вызове `gigachat` добавить параметры:
+```
+ai_provider: "lovable_ai",
+lovable_model: "google/gemini-2.5-pro"
+```
+Это переключит проверку тестов на самую мощную доступную модель (Gemini 2.5 Pro) вместо дефолтного GigaChat-Pro/Gemini Flash.
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+### 3. Дефолт в `callAI` для `generate_answers`
+В `gigachat/index.ts` — для action `generate_answers`, если `ai_provider` не указан, принудительно использовать `lovable_ai` + `google/gemini-2.5-pro`. Это обеспечит мощную модель и для bulk-операций (AdminMarketplace, BulkPipeline).
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+### Файлы
+- `src/components/organization/CourseStoreManager.tsx` — совет в баннере
+- `src/components/course-builder/TestAnswersDialog.tsx` — передать мощную модель
+- `supabase/functions/gigachat/index.ts` — дефолт для generate_answers
 
