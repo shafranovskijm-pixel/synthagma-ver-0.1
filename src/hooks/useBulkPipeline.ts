@@ -227,12 +227,13 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
           arr.push(q);
           byLesson.set(q.lesson_id, arr);
         }
-        for (const [lessonId, qs] of byLesson) {
-          if (stopRef.current) return { ok: false, lessonsFilled, testsSolved, skippedBatches, totalQuestions };
+        const lessonEntries = Array.from(byLesson.entries());
+        await parallelMap(lessonEntries, 3, async ([lessonId, qs]) => {
+          if (stopRef.current) return;
           const lessonInfo = currentLessons.find(l => l.id === lessonId);
-          const batchSize = 40; // Increased from 20
+          const batchSize = 40;
           for (let i = 0; i < qs.length; i += batchSize) {
-            if (stopRef.current) return { ok: false, lessonsFilled, testsSolved, skippedBatches, totalQuestions };
+            if (stopRef.current) return;
             const batch = qs.slice(i, i + batchSize);
             updatePhase(`Решаю тесты: ${testsSolved}/${unanswered.length} — «${lessonInfo?.title || "Тест"}»`);
 
@@ -281,12 +282,9 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
                 }
               }
             }
-            // Adaptive delay between batches
             await new Promise(r => setTimeout(r, getDelay("batch")));
           }
-          // Adaptive delay between lessons
-          await new Promise(r => setTimeout(r, getDelay("lesson")));
-      }
+        });
     }
 
     // 2b. Verification pass — re-check answers with a second model
@@ -312,12 +310,13 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
           byLesson.set(q.lesson_id, arr);
         }
 
-        for (const [lessonId, qs] of byLesson) {
-          if (stopRef.current) break;
+        const verifyEntries = Array.from(byLesson.entries());
+        await parallelMap(verifyEntries, 3, async ([lessonId, qs]) => {
+          if (stopRef.current) return;
           const lessonInfo = currentLessons.find(l => l.id === lessonId);
           const batchSize = 40;
           for (let i = 0; i < qs.length; i += batchSize) {
-            if (stopRef.current) break;
+            if (stopRef.current) return;
             const batch = qs.slice(i, i + batchSize);
             updatePhase(`Верификация: ${verified}/${toVerify.length} — «${lessonInfo?.title || "Тест"}»`);
 
@@ -366,8 +365,7 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
             }
             await new Promise(r => setTimeout(r, getDelay("batch")));
           }
-          await new Promise(r => setTimeout(r, getDelay("lesson")));
-        }
+        });
 
         if (corrected > 0) {
           console.log(`[Verification] Corrected ${corrected}/${verified} answers for course "${courseTitle}"`);
@@ -426,7 +424,7 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
 
     if (emptyLessons.length > 0) {
       let filledSoFar = 0;
-      await parallelMap(emptyLessons, 2, async (lesson, i) => {
+      await parallelMap(emptyLessons, 3, async (lesson, i) => {
         if (stopRef.current) return;
         updatePhase(`Контент: «${lesson.title}» (${filledSoFar + 1}/${emptyLessons.length})`);
         try {
