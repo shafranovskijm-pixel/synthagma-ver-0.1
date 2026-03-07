@@ -96,6 +96,8 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [selectedCourseToAdd, setSelectedCourseToAdd] = useState("");
   const [shortDescription, setShortDescription] = useState("");
+  const [priceStudent, setPriceStudent] = useState(0);
+  const [priceOrganization, setPriceOrganization] = useState(0);
   const [isAdding, setIsAdding] = useState(false);
 
   // Order dialog
