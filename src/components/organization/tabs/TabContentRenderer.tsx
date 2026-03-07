@@ -14,6 +14,7 @@ import { JournalsManager } from "@/components/organization/JournalsManager";
 import { LaborSafetyManager } from "@/components/organization/LaborSafetyManager";
 import { OrgChatsTab } from "@/components/organization/OrgChatsTab";
 import { SubscriptionTab } from "@/components/organization/SubscriptionTab";
+import { WebinarsManager } from "@/components/organization/WebinarsManager";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 
 export function TabContentRenderer() {
