@@ -143,6 +143,32 @@ serve(async (req) => {
         result = { questions: [], raw: response, parseError: true, model };
       }
 
+    } else if (action === "generate_structure") {
+      const existingLessonsText = body.existingLessons?.length
+        ? `\n\nУже существующие уроки (НЕ дублируй):\n${body.existingLessons.map((l: any, i: number) => `${i + 1}. ${l.title} (${l.type})`).join("\n")}`
+        : "";
+
+      const structurePrompt = customSystemPrompt || `Ты эксперт по созданию образовательных программ ДПО. Создай структуру курса.
+Отвечай СТРОГО в формате JSON-объекта с полем "lessons" — массив объектов:
+- "title": название урока
+- "type": тип урока ("text", "test", "practice")
+
+Создай 5-8 уроков. Чередуй лекции и тесты. Отвечай ТОЛЬКО JSON, без markdown-обертки.${existingLessonsText}`;
+
+      const { text: response, model } = await callAI([
+        { role: "system", content: structurePrompt },
+        { role: "user", content: `Создай структуру курса "${courseTitle}"` },
+      ], 4096, ai_provider);
+
+      try {
+        const cleaned = response.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+        const parsed = JSON.parse(cleaned);
+        result = { lessons: parsed.lessons || parsed, model };
+      } catch {
+        console.error("Failed to parse structure response:", response);
+        result = { lessons: [], raw: response, parseError: true, model };
+      }
+
     } else if (action === "verify_answers") {
       // Verification: re-check answers with a different model or prompt
       const questionsText = questions.map((q: any, i: number) => {
