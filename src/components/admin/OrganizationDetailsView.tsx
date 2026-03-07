@@ -1097,7 +1097,34 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                   />
                 </div>
 
-                {/* FRDO Toggle */}
+                {/* AI Provider Select */}
+                {settings.ai_enabled && (
+                  <div className="flex items-center justify-between p-4 bg-muted/50 rounded-xl">
+                    <div className="space-y-0.5">
+                      <Label className="text-base flex items-center gap-2">
+                        <Sparkles className="w-4 h-4" />
+                        ИИ-провайдер
+                      </Label>
+                      <p className="text-sm text-muted-foreground">
+                        Модель ИИ для генерации контента и решения тестов
+                      </p>
+                    </div>
+                    <Select
+                      value={settings.ai_provider}
+                      onValueChange={(v) => setSettings({ ...settings, ai_provider: v })}
+                    >
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="gigachat">GigaChat</SelectItem>
+                        <SelectItem value="lovable_ai">Lovable AI</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+
                 <div className="flex items-center justify-between p-4 bg-muted/50 rounded-xl">
                   <div className="space-y-0.5">
                     <Label className="text-base flex items-center gap-2">
