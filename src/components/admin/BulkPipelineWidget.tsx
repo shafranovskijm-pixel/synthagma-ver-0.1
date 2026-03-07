@@ -326,7 +326,7 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
         if (courseErr) throw courseErr;
         await supabase.from("marketplace_courses").insert({
           course_id: courseData.id,
-          organization_id: "00000000-0000-0000-0000-000000000000",
+          organization_id: MARKETPLACE_ORG_ID,
           price_student: priceStudent,
           price_organization: priceOrg,
           is_active: true,
