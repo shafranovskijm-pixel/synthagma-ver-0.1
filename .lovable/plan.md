@@ -1,22 +1,18 @@
 
 
-# Исправление навигации в магазин курсов
+## Plan: Auto-fix after "Проверить все"
 
-## Проблема
-Кнопка «Перейти в магазин» из пустого состояния вкладки курсов переключает таб на `"store"`, но магазин зарегистрирован под именем `"services"`. В результате ни один `TabContentRenderer` блок не рендерится — пустая страница.
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-## Решение
+### Changes
 
-### Файл: `src/components/organization/tabs/CoursesTab.tsx` (строка ~115)
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-Заменить:
-```typescript
-onClick={() => dashboard?.tabNavigation.setActiveTab("store" as any)}
-```
-На:
-```typescript
-onClick={() => dashboard?.tabNavigation.setActiveTab("services" as any)}
-```
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-Одна строка — одно изменение. Кнопка «Перейти в магазин» будет корректно открывать вкладку магазина курсов.
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
+
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 
