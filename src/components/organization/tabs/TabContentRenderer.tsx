@@ -126,8 +126,10 @@ export function TabContentRenderer() {
       {/* Documents Tab */}
       {activeTab === "documents" && organizationId && (
         <DocumentsTab 
-          organizationId={organizationId} 
+          organizationId={organizationId}
+          organizationName={d.organizationName}
           onShowBulkUploadDialog={() => d.setShowBulkUploadDialog(true)}
+          onNavigateToSubscription={() => d.tabNavigation.setActiveTab('subscription')}
         />
       )}
 
