@@ -1,13 +1,32 @@
 import { useState } from "react";
-import { MessageCircle, Search, ArrowLeft, Loader2 } from "lucide-react";
+import { MessageCircle, Search, ArrowLeft, Loader2, Bell, Paperclip, Clock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { ChatTab } from "@/components/organization/student-detail/ChatTab";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { format, isToday, isYesterday } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useIsMobile } from "@/hooks/use-mobile";
+
+const chatFeatures = [
+  {
+    icon: Bell,
+    title: "Мгновенные уведомления",
+    description: "Realtime-обновления и счётчик непрочитанных сообщений — вы не пропустите ни одного обращения",
+  },
+  {
+    icon: Paperclip,
+    title: "Обмен файлами",
+    description: "Отправляйте и получайте вложения: документы, изображения, справки и любые файлы",
+  },
+  {
+    icon: Clock,
+    title: "История переписки",
+    description: "Полный архив всех диалогов с поиском — найдите нужное сообщение за секунды",
+  },
+];
 
 export function OrgChatsTab() {
   const d = useOrgDashboard();
@@ -42,6 +61,45 @@ export function OrgChatsTab() {
     return (
       <div className="flex justify-center py-12">
         <Loader2 className="w-6 h-6 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Empty state — feature showcase
+  if (conversations.length === 0 && !searchQuery) {
+    return (
+      <div className="max-w-3xl mx-auto py-8 px-2">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-4">
+            <MessageCircle className="w-8 h-8 text-primary" />
+          </div>
+          <h2 className="text-2xl font-bold text-foreground mb-2">Чат с учениками</h2>
+          <p className="text-muted-foreground text-base max-w-md mx-auto">
+            Общайтесь напрямую с учениками — отвечайте на вопросы, отправляйте файлы и следите за обращениями в одном месте
+          </p>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-3 mb-8">
+          {chatFeatures.map((f) => (
+            <Card key={f.title} className="border-border/60 bg-card/80">
+              <CardContent className="pt-6 pb-5 px-5 flex flex-col items-center text-center gap-3">
+                <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                  <f.icon className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-sm text-foreground mb-1">{f.title}</h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed">{f.description}</p>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        <p className="text-center text-sm text-muted-foreground">
+          Чаты появятся автоматически, когда ученики напишут вам
+          <br className="hidden sm:block" />
+          {" "}или вы начнёте диалог из карточки ученика
+        </p>
       </div>
     );
   }
@@ -150,8 +208,11 @@ export function OrgChatsTab() {
           ) : (
             <div className="flex-1 flex items-center justify-center text-muted-foreground">
               <div className="text-center">
-                <MessageCircle className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                <p className="text-sm">Выберите чат</p>
+                <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-muted/50 mb-4">
+                  <MessageCircle className="w-7 h-7 opacity-40" />
+                </div>
+                <p className="text-sm font-medium mb-1">Выберите чат</p>
+                <p className="text-xs text-muted-foreground/70">Нажмите на диалог слева, чтобы открыть переписку</p>
               </div>
             </div>
           )}
