@@ -184,7 +184,99 @@ function CostBadge({ model }: { model: string }) {
   );
 }
 
-export function AISettingsManager() {
+function SaluteSpeechTestPanel({ voice, onVoiceChange }: { voice: string; onVoiceChange: (v: string) => void }) {
+  const [testText, setTestText] = useState("Привет! Это тестовый синтез речи через SaluteSpeech.");
+  const [testing, setTesting] = useState(false);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const handleTest = async () => {
+    setTesting(true);
+    setAudioUrl(null);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/salutespeech-tts`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({ text: testText, voice, format: "opus" }),
+        }
+      );
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({ error: "Неизвестная ошибка" }));
+        throw new Error(err.error || `HTTP ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      setAudioUrl(url);
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      await audio.play();
+      toast.success("SaluteSpeech: синтез выполнен");
+    } catch (e: any) {
+      toast.error("Ошибка SaluteSpeech: " + e.message);
+      console.error(e);
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  const handleStop = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+  };
+
+  return (
+    <div className="space-y-3 mt-4 p-4 rounded-lg bg-muted/50">
+      <div className="space-y-2">
+        <Label className="text-sm">Голос SaluteSpeech</Label>
+        <Select value={voice} onValueChange={onVoiceChange}>
+          <SelectTrigger className="max-w-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {SALUTE_VOICES.map((v) => (
+              <SelectItem key={v.value} value={v.value}>{v.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-2">
+        <Label className="text-sm">Текст для теста</Label>
+        <Input
+          value={testText}
+          onChange={(e) => setTestText(e.target.value)}
+          placeholder="Введите текст..."
+          className="max-w-md text-sm"
+        />
+      </div>
+      <div className="flex items-center gap-2">
+        <Button size="sm" variant="outline" onClick={handleTest} disabled={testing || !testText.trim()} className="gap-2">
+          {testing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
+          Тестировать
+        </Button>
+        {audioUrl && (
+          <Button size="sm" variant="ghost" onClick={handleStop} className="gap-2">
+            <Square className="w-3 h-3" /> Стоп
+          </Button>
+        )}
+      </div>
+      {audioUrl && (
+        <audio controls src={audioUrl} className="w-full max-w-md mt-2" />
+      )}
+    </div>
+  );
+}
+
+
   const [settings, setSettings] = useState<Record<string, AISetting>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
