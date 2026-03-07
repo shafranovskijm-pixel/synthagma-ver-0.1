@@ -411,7 +411,6 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
           ai_provider: settings.ai_provider,
           frdo_enabled: settings.frdo_enabled,
           storage_limit_bytes: settings.storage_limit_bytes,
-          ai_tokens_limit: settings.ai_tokens_limit,
           notify_on_limit_80: settings.notify_on_limit_80,
           notify_on_limit_exceeded: settings.notify_on_limit_exceeded,
         } as any)
