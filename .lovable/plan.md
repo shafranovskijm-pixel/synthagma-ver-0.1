@@ -1,18 +1,27 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## Улучшение витрины магазина курсов
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+### Что сделаем
 
-### Changes
+**1. Описание-баннер для группы «Курсы Ростехнадзора»**
+Под заголовком группы (перед списком подкатегорий) добавить компактный информационный блок с градиентным фоном:
+- Иконка Shield/ShieldCheck + заголовок «Подготовка к аттестации Ростехнадзора»
+- Текст: «Курсы разработаны для подготовки к официальной аттестации. Все материалы актуальны на 2026 год. Тесты соответствуют требованиям Единого портала тестирования.»
+- Стиль: мягкий градиент (как у шапки магазина), border, скруглённые углы
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+**2. Упорядочить группы — Ростехнадзор всегда первым**
+Сейчас это уже так работает в `groupedCatalog` (сначала rtnSubGroups, потом standalone). Убедимся, что порядок стабилен.
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+**3. Улучшить шапку магазина**
+Заменить текст «Все курсы доступны бесплатно» на более продающий:
+- «Готовые курсы для обучения и аттестации — добавьте в свою организацию бесплатно»
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+### Изменения
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+**Файл: `src/components/organization/CourseStoreManager.tsx`**
+
+1. **Шапка (строки 63-73)**: обновить подзаголовок на продающий текст
+2. **Grouped list view (строки 230-286)**: внутри `CollapsibleContent` для группы «Курсы Ростехнадзора» добавить описательный баннер перед subGroups. Определяем по `group.category === "Курсы Ростехнадзора"` и рендерим блок с описанием, включая иконку `ShieldCheck`, 2-3 строки текста и бейджи «Актуально 2026», «Бесплатно»
+3. Добавить `ShieldCheck` в импорты из lucide-react
 
