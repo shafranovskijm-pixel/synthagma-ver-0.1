@@ -4,8 +4,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Save, Loader2, Award, GraduationCap } from "lucide-react";
+import { Save, Loader2, Award, GraduationCap, Eye } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { DocumentPreview } from "./DocumentPreview";
 
 interface DocumentSettings {
   series: string;
@@ -157,6 +159,8 @@ export function CertificateTemplateEditor({ organizationId }: CertificateTemplat
     );
   };
 
+  const currentSettings = activeTab === "certificate" ? certificateSettings : diplomaSettings;
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-32">
@@ -197,6 +201,28 @@ export function CertificateTemplateEditor({ organizationId }: CertificateTemplat
           {renderSettingsForm(diplomaSettings, setDiplomaSettings, "diploma")}
         </TabsContent>
       </Tabs>
+
+      <Accordion type="single" collapsible>
+        <AccordionItem value="preview" className="border rounded-xl px-4">
+          <AccordionTrigger className="text-sm hover:no-underline gap-2">
+            <span className="flex items-center gap-2">
+              <Eye className="w-4 h-4" />
+              Предпросмотр документа
+            </span>
+          </AccordionTrigger>
+          <AccordionContent>
+            <DocumentPreview
+              type={activeTab === "certificate" ? "certificate" : "diploma"}
+              data={{
+                series: currentSettings.series || (activeTab === "certificate" ? "ПК" : "ДПП"),
+                number: currentSettings.startNumber,
+                city: currentSettings.city || "г. Москва",
+                regNumberFormat: currentSettings.regNumberFormat,
+              }}
+            />
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
 
       <Button onClick={handleSave} disabled={isSaving} className="rounded-xl gap-2">
         {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
