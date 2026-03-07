@@ -279,6 +279,18 @@ export const StudentsTab = React.memo(function StudentsTab({
               </Button>
             )}
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-xl gap-2"
+            onClick={() => {
+              localStorage.setItem('previewStudentDashboard', 'true');
+              window.open('/student', '_blank');
+            }}
+          >
+            <Eye className="w-4 h-4" />
+            <span className="hidden sm:inline">Предпросмотр кабинета</span>
+          </Button>
         </div>
         
         {/* Mobile: Search first */}
