@@ -68,6 +68,40 @@ function parseJsonResponse(text: string): any[] {
   return JSON.parse(cleaned);
 }
 
+// Parallel execution with concurrency limit
+async function processInParallel<T, R>(
+  items: T[],
+  concurrency: number,
+  handler: (item: T, index: number) => Promise<R>,
+  shouldStop?: () => Promise<boolean>,
+  delayMs = 1500,
+): Promise<R[]> {
+  const results: R[] = [];
+  let i = 0;
+  while (i < items.length) {
+    if (shouldStop && await shouldStop()) break;
+    const chunk = items.slice(i, i + concurrency);
+    const promises = chunk.map((item, ci) => {
+      const delay = ci * delayMs; // stagger starts
+      return new Promise<R>((resolve, reject) => {
+        setTimeout(() => handler(item, i + ci).then(resolve, reject), delay);
+      });
+    });
+    const chunkResults = await Promise.allSettled(promises);
+    for (const r of chunkResults) {
+      if (r.status === "fulfilled") results.push(r.value);
+      else {
+        const msg = (r.reason as any)?.message || "";
+        if (msg.includes("402")) throw r.reason;
+        console.error("[bulk-pipeline] Parallel task failed:", msg);
+      }
+    }
+    i += concurrency;
+    if (i < items.length) await new Promise(r => setTimeout(r, delayMs));
+  }
+  return results;
+}
+
 // Timeout wrapper for AI calls
 const AI_CALL_TIMEOUT = 120_000; // 120s
 
