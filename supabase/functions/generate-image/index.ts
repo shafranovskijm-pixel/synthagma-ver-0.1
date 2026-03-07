@@ -210,12 +210,15 @@ async function generateWithGigaChat(prompt: string, keySlot?: string) {
   const fileId = fileIdMatch[1];
 
   // Step 3: Download the image by file_id
-  const imageRes = await fetch(`https://gigachat.devices.sberbank.ru/api/v1/files/${fileId}/content`, {
+  const imgFetchOpts: RequestInit & { client?: Deno.HttpClient } = {
     headers: {
       Accept: "application/jpg",
       Authorization: `Bearer ${accessToken}`,
     },
-  });
+  };
+  if (sberHttpClient) (imgFetchOpts as any).client = sberHttpClient;
+
+  const imageRes = await fetch(`https://gigachat.devices.sberbank.ru/api/v1/files/${fileId}/content`, imgFetchOpts);
 
   if (!imageRes.ok) {
     throw new Error(`GigaChat image download error: ${imageRes.status}`);
