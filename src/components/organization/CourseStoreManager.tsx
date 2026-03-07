@@ -67,7 +67,7 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
               <Store className="w-6 h-6 text-primary" />
               <h2 className="text-xl font-semibold">Магазин курсов</h2>
             </div>
-            <p className="text-muted-foreground">Все курсы доступны бесплатно</p>
+            <p className="text-muted-foreground">Готовые курсы для обучения и аттестации — добавьте в свою организацию бесплатно</p>
           </div>
         </div>
       </div>
