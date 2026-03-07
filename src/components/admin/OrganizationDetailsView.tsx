@@ -165,15 +165,15 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
 
   // Calculate limit warnings
   const storageLimitPercent = (usage.storage_bytes / settings.storage_limit_bytes) * 100;
-  const tokensLimitPercent = (usage.ai_tokens_used / settings.ai_tokens_limit) * 100;
+  const aiGenerationsLimit = planKey === 'free' ? 3 : Infinity;
+  const aiGenerationsPercent = aiGenerationsLimit === Infinity ? 0 : (usage.ai_generations_count / aiGenerationsLimit) * 100;
   const isStorageWarning = storageLimitPercent >= 80;
   const isStorageExceeded = storageLimitPercent >= 100;
-  const isTokensWarning = tokensLimitPercent >= 80;
-  const isTokensExceeded = tokensLimitPercent >= 100;
+  const isAiGenWarning = aiGenerationsLimit !== Infinity && aiGenerationsPercent >= 80;
+  const isAiGenExceeded = aiGenerationsLimit !== Infinity && aiGenerationsPercent >= 100;
 
-  // AI should be auto-blocked when tokens exceeded
-  const isAIBlocked = isTokensExceeded && !settings.ai_enabled;
-  const shouldBlockAI = isTokensExceeded;
+  // AI should be auto-blocked when generations exceeded on free plan
+  const shouldBlockAI = isAiGenExceeded;
 
   // Stats
   const [stats, setStats] = useState({
