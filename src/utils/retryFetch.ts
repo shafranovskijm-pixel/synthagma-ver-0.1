@@ -34,7 +34,7 @@ export async function withRetry<T>(
  * Retries on error and throws the Supabase error object.
  */
 export async function withSupabaseRetry<T>(
-  fn: () => Promise<{ data: T; error: any }>,
+  fn: () => PromiseLike<{ data: T; error: any }>,
   maxRetries = 3,
   label = "supabase-query"
 ): Promise<T> {
