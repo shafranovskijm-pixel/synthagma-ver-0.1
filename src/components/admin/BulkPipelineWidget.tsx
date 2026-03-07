@@ -262,8 +262,27 @@ export function BulkPipelineWidget({ courses, readyCourses = [], allCourses, onC
             <Loader2 className={`w-4 h-4 ${effectiveBusy ? "animate-spin" : "hidden"}`} />
             Конвейер заполнения
             {serverMode && <Badge variant="outline" className="text-[10px]"><Server className="w-3 h-3 mr-0.5 inline" />Сервер</Badge>}
-            {totalCount > 0 && <Badge variant="secondary" className="ml-1">{totalCount} курсов</Badge>}
           </CardTitle>
+          <div className="flex items-center gap-1 bg-muted rounded-md p-0.5">
+            {([
+              ["progress", "В работе", courses.length],
+              ["ready", "Готово", readyCourses.length],
+              ["all", "Все", courses.length + readyCourses.length],
+            ] as [PipelineMode, string, number][]).map(([mode, label, count]) => (
+              <button
+                key={mode}
+                onClick={() => !effectiveBusy && setPipelineMode(mode)}
+                disabled={effectiveBusy}
+                className={`px-2 py-1 text-xs rounded font-medium transition-colors ${
+                  pipelineMode === mode
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                } disabled:opacity-50`}
+              >
+                {label} ({count})
+              </button>
+            ))}
+          </div>
           {totalCount > 0 && (
             !effectiveBusy ? (
               <div className="flex items-center gap-1.5">
