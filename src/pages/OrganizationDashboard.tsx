@@ -19,11 +19,6 @@ function OrganizationDashboardContent() {
 
   const exitAdminView = () => { localStorage.removeItem("adminViewAsOrg"); navigate("/admin"); };
 
-  const hasAlerts = d.students.some(s => {
-    const p = (s as any);
-    return !p.login || !p.generated_password;
-  });
-
   return (
     <div className="min-h-screen bg-background flex">
       {/* Admin View Banner */}
