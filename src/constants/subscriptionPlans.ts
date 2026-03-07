@@ -88,7 +88,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, PlanInfo> = {
       frdoEnabled: false,
       reportsEnabled: false,
     },
-    enabledCategories: ['courses', 'students', 'companies', 'links', 'services', 'settings', 'student_cabinet'],
+    enabledCategories: ['courses', 'students', 'companies', 'links', 'services', 'settings', 'student_cabinet', 'webinars'],
   },
   professional: {
     id: 'professional',
