@@ -1,30 +1,18 @@
 
 
-## Добавить кнопку «Предпросмотр кабинета ученика» на вкладку «Ученики»
+## Plan: Auto-fix after "Проверить все"
 
-Добавить кнопку рядом с заголовком «Все ученики» (строка ~266-281 в `StudentsTab.tsx`), которая откроет кабинет ученика в режиме предпросмотра. Механизм уже реализован — `localStorage.setItem('previewStudentDashboard', 'true')` + `window.open('/student', '_blank')`.
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-### Изменения
+### Changes
 
-**`src/components/organization/tabs/StudentsTab.tsx`**
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-- Импортировать `Eye` из `lucide-react`
-- В блоке `<div className="flex items-center justify-between">` (строка ~265), после `</div>` с заголовком (строка ~281), добавить кнопку:
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-```tsx
-<Button
-  variant="outline"
-  size="sm"
-  className="rounded-xl gap-2"
-  onClick={() => {
-    localStorage.setItem('previewStudentDashboard', 'true');
-    window.open('/student', '_blank');
-  }}
->
-  <Eye className="w-4 h-4" />
-  <span className="hidden sm:inline">Предпросмотр кабинета</span>
-</Button>
-```
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-Кнопка будет в правой части заголовка, на мобильных — только иконка.
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 
