@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -7,11 +7,16 @@ import {
   GripVertical, FileText, Video, Image, FileQuestion,
   Trash2, Eye, Sparkles, Upload, ChevronDown, ChevronUp,
   Loader2, Headphones, Volume2, Pause, Play, Square,
-  Presentation, FileSpreadsheet, FolderOpen, Bot,
+  Presentation, FileSpreadsheet, FolderOpen, Bot, CheckCircle2,
 } from "lucide-react";
-import { MediaLibraryDialog } from "@/components/course-builder/MediaLibraryDialog";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import { SALUTE_VOICES, getStoredTTSSettings, saveTTSSettings } from "@/components/student/TTSSettingsDialog";
+
 import { toast } from "sonner";
-import { BlockEditor, blocksToJson } from "@/components/course-builder/BlockEditor";
+import { MediaLibraryDialog } from "@/components/course-builder/MediaLibraryDialog";
+import { BlockEditor, blocksToJson, ContentBlock } from "@/components/course-builder/BlockEditor";
 import { TestQuestionEditor } from "@/components/course-builder/TestQuestionEditor";
 import { TestImportDialog } from "@/components/course-builder/TestImportDialog";
 import { useSortable } from "@dnd-kit/sortable";
@@ -50,6 +55,73 @@ export function SortableLessonItem({
   const [showMediaLibrary, setShowMediaLibrary] = useState(false);
   const [skipCompression, setSkipCompression] = useState(false);
   const media = useLessonMedia(lesson.id, courseId, onUpdate);
+
+  // SaluteSpeech TTS for course builder preview
+  const [saluteVoice, setSaluteVoice] = useState(() => getStoredTTSSettings().saluteVoice);
+  const [isSaluteSpeaking, setIsSaluteSpeaking] = useState(false);
+  const [isSaluteLoading, setIsSaluteLoading] = useState(false);
+  const saluteAudioRef = useRef<HTMLAudioElement | null>(null);
+  const saluteCacheRef = useRef<Map<string, string>>(new Map());
+
+  const extractTextFromBlocks = useCallback((blocks: ContentBlock[]): string => {
+    return blocks
+      .filter(b => ["heading1", "heading2", "quote", "bulletList", "numberedList", "paragraph"].includes(b.type))
+      .map(b => (b.content || "").replace(/<[^>]+>/g, ""))
+      .filter(t => t.trim())
+      .join(". ");
+  }, []);
+
+  const stopSaluteTTS = useCallback(() => {
+    if (saluteAudioRef.current) { saluteAudioRef.current.pause(); saluteAudioRef.current.src = ''; saluteAudioRef.current = null; }
+    setIsSaluteSpeaking(false); setIsSaluteLoading(false);
+  }, []);
+
+  const handleSaluteTTS = useCallback(async (blocks: ContentBlock[]) => {
+    if (isSaluteSpeaking || isSaluteLoading) { stopSaluteTTS(); return; }
+    const text = extractTextFromBlocks(blocks);
+    if (!text.trim()) { toast.error("Нет текста для озвучивания"); return; }
+
+    const hashText = (s: string) => { let h = 0; for (let i = 0; i < s.length; i++) { h = ((h << 5) - h + s.charCodeAt(i)) | 0; } return h.toString(36); };
+    const cacheKey = `${saluteVoice}:${hashText(text)}`;
+    const cached = saluteCacheRef.current.get(cacheKey);
+
+    const playAudio = async (url: string, fromCache = false) => {
+      const audio = new Audio(url);
+      saluteAudioRef.current = audio;
+      audio.onplay = () => { setIsSaluteLoading(false); setIsSaluteSpeaking(true); };
+      audio.onended = () => { setIsSaluteSpeaking(false); };
+      audio.onerror = () => { setIsSaluteSpeaking(false); setIsSaluteLoading(false); toast.error('Ошибка воспроизведения'); };
+      setIsSaluteLoading(true);
+      await audio.play();
+    };
+
+    if (cached) { await playAudio(cached, true); return; }
+
+    setIsSaluteLoading(true);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/salutespeech-tts`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY, 'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
+          body: JSON.stringify({ text, voice: saluteVoice }),
+        }
+      );
+      if (!response.ok) { const err = await response.json().catch(() => ({})); toast.error(err.error || `Ошибка: ${response.status}`); setIsSaluteLoading(false); return; }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      saluteCacheRef.current.set(cacheKey, url);
+      await playAudio(url);
+    } catch { toast.error('Ошибка озвучивания'); setIsSaluteLoading(false); }
+  }, [saluteVoice, isSaluteSpeaking, isSaluteLoading, stopSaluteTTS, extractTextFromBlocks]);
+
+  const handleVoiceChange = (voiceId: string) => {
+    setSaluteVoice(voiceId);
+    const settings = getStoredTTSSettings();
+    saveTTSSettings({ ...settings, saluteVoice: voiceId, provider: 'salutespeech' });
+  };
+
+  useEffect(() => { return () => { stopSaluteTTS(); }; }, []);
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: lesson.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, zIndex: isDragging ? 1000 : 'auto' as const };
@@ -91,21 +163,39 @@ export function SortableLessonItem({
                   <Button variant={isPreviewMode ? "outline" : "default"} size="sm" className="rounded-lg text-xs" onClick={() => setIsPreviewMode(false)}>Редактор</Button>
                   <Button variant={isPreviewMode ? "default" : "outline"} size="sm" className="rounded-lg text-xs gap-1" onClick={() => setIsPreviewMode(true)}><Eye className="w-3 h-3" />Предпросмотр</Button>
                 </div>
-                <Button variant="outline" size="sm" className="rounded-lg text-xs gap-1 border-primary text-primary hover:bg-primary/10" onClick={onGenerate} disabled={media.isGeneratingContent}>
-                  {media.isGeneratingContent ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                  {media.isGeneratingContent ? "Генерация..." : "Написать с AI"}
-                </Button>
+                <div className="flex items-center gap-1">
+                  <Button variant="outline" size="sm" className="rounded-lg text-xs gap-1" onClick={() => handleSaluteTTS(lesson.blocks || [])} disabled={isSaluteLoading}>
+                    {isSaluteLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : isSaluteSpeaking ? <Square className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
+                    {isSaluteLoading ? '...' : isSaluteSpeaking ? 'Стоп' : 'Озвучить'}
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" className="rounded-lg text-xs gap-1 px-2">
+                        <span className="max-w-[70px] truncate">{SALUTE_VOICES.find(v => v.id === saluteVoice)?.name.split(' ')[0] || 'Голос'}</span>
+                        <ChevronDown className="w-3 h-3" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56">
+                      {SALUTE_VOICES.map(voice => (
+                        <DropdownMenuItem key={voice.id} onClick={() => handleVoiceChange(voice.id)} className={saluteVoice === voice.id ? "bg-primary/10 font-medium" : ""}>
+                          <Volume2 className="w-3.5 h-3.5 mr-2 text-muted-foreground" />
+                          {voice.name}
+                          {saluteVoice === voice.id && <CheckCircle2 className="w-3.5 h-3.5 ml-auto text-primary" />}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <DropdownMenuSeparator className="hidden" />
+                  <Button variant="outline" size="sm" className="rounded-lg text-xs gap-1 border-primary text-primary hover:bg-primary/10" onClick={onGenerate} disabled={media.isGeneratingContent}>
+                    {media.isGeneratingContent ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                    {media.isGeneratingContent ? "Генерация..." : "Написать с AI"}
+                  </Button>
+                </div>
               </div>
               {isPreviewMode ? (
                 <div className="relative">
                   <div className="bg-secondary/30 rounded-xl p-6 prose prose-sm dark:prose-invert max-w-none min-h-[200px]">
                     <BlockEditor blocks={lesson.blocks || []} onChange={() => {}} readOnly />
-                  </div>
-                  <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2">
-                    <Button onClick={() => media.handlePlayAudio(lesson.blocks || [])} variant="default" size="icon" className="w-12 h-12 rounded-full shadow-lg">
-                      {media.isSpeaking ? (media.isSpeechPaused ? <Play className="w-5 h-5" /> : <Pause className="w-5 h-5" />) : <Volume2 className="w-5 h-5" />}
-                    </Button>
-                    {media.isSpeaking && <Button onClick={media.handleStopSpeech} variant="destructive" size="icon" className="w-12 h-12 rounded-full shadow-lg"><Square className="w-5 h-5" /></Button>}
                   </div>
                 </div>
               ) : (

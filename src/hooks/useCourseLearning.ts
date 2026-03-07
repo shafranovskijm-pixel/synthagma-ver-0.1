@@ -109,6 +109,7 @@ export function useCourseLearning() {
   const [isSaluteLoading, setIsSaluteLoading] = useState(false);
   const saluteAudioRef = useRef<HTMLAudioElement | null>(null);
   const saluteAbortRef = useRef<AbortController | null>(null);
+  const saluteCacheRef = useRef<Map<string, string>>(new Map());
 
   const elevenLabsTTS = useElevenLabsTTS({ voiceId: ttsSettings.voiceId });
 
@@ -230,6 +231,24 @@ export function useCourseLearning() {
 
   const speakSalute = useCallback(async (text: string) => {
     if (isSaluteSpeaking || isSaluteLoading) { stopSaluteSpeech(); return; }
+
+    // Simple hash for cache key
+    const hashText = (s: string) => { let h = 0; for (let i = 0; i < s.length; i++) { h = ((h << 5) - h + s.charCodeAt(i)) | 0; } return h.toString(36); };
+    const cacheKey = `${ttsSettings.saluteVoice}:${hashText(text)}`;
+    const cached = saluteCacheRef.current.get(cacheKey);
+
+    if (cached) {
+      // Play from cache
+      const audio = new Audio(cached);
+      saluteAudioRef.current = audio;
+      audio.onplay = () => { setIsSaluteLoading(false); setIsSaluteSpeaking(true); };
+      audio.onended = () => { setIsSaluteSpeaking(false); };
+      audio.onerror = () => { setIsSaluteSpeaking(false); toast.error('Ошибка воспроизведения'); };
+      setIsSaluteLoading(true);
+      await audio.play();
+      return;
+    }
+
     setIsSaluteLoading(true);
     saluteAbortRef.current = new AbortController();
     try {
@@ -254,11 +273,13 @@ export function useCourseLearning() {
       }
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
+      // Save to cache
+      saluteCacheRef.current.set(cacheKey, url);
       const audio = new Audio(url);
       saluteAudioRef.current = audio;
       audio.onplay = () => { setIsSaluteLoading(false); setIsSaluteSpeaking(true); };
-      audio.onended = () => { setIsSaluteSpeaking(false); URL.revokeObjectURL(url); };
-      audio.onerror = () => { setIsSaluteSpeaking(false); setIsSaluteLoading(false); URL.revokeObjectURL(url); toast.error('Ошибка воспроизведения'); };
+      audio.onended = () => { setIsSaluteSpeaking(false); };
+      audio.onerror = () => { setIsSaluteSpeaking(false); setIsSaluteLoading(false); toast.error('Ошибка воспроизведения'); };
       await audio.play();
     } catch (error: any) {
       if (error.name === 'AbortError') return;
@@ -294,7 +315,7 @@ export function useCourseLearning() {
 
   // Stop speaking when lesson changes
   useEffect(() => { window.speechSynthesis?.cancel(); setIsBrowserSpeaking(false); elevenLabsTTS.stop(); stopSaluteSpeech(); }, [currentLessonIndex]);
-  useEffect(() => { return () => { window.speechSynthesis?.cancel(); elevenLabsTTS.stop(); stopSaluteSpeech(); }; }, []);
+  useEffect(() => { return () => { window.speechSynthesis?.cancel(); elevenLabsTTS.stop(); stopSaluteSpeech(); saluteCacheRef.current.forEach(url => URL.revokeObjectURL(url)); saluteCacheRef.current.clear(); }; }, []);
 
   // Scroll chat to bottom
   useEffect(() => {

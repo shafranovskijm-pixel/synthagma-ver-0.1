@@ -11,16 +11,19 @@ import {
   ChevronLeft, ChevronRight, Trophy, Sparkles, Clock, Loader2, 
   Volume2, Square, MessageCircle, X, Send, List, Presentation, 
   Lock, RotateCcw, Settings2, Headphones, Download, FileText as FileTextIcon,
-  FileSpreadsheet, Presentation as PresentationIcon, File, Eye
+  FileSpreadsheet, Presentation as PresentationIcon, File, Eye, ChevronDown
 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, 
   AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel,
+} from "@/components/ui/dropdown-menu";
 import { BlockRenderer } from "@/components/course-builder/BlockEditor";
 import { cn } from "@/lib/utils";
-import { TTSSettingsDialog } from "@/components/student/TTSSettingsDialog";
+import { TTSSettingsDialog, SALUTE_VOICES, saveTTSSettings } from "@/components/student/TTSSettingsDialog";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { VideoPlayerInline } from "@/components/course-learning/VideoPlayerInline";
 import { SliderLessonViewer } from "@/components/course-learning/SliderLessonViewer";
@@ -145,7 +148,33 @@ const CourseLearning = () => {
                   {elevenLabsTTS.isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : isSpeaking ? <Square className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
                   {!isMobile && <span className="ml-1">{elevenLabsTTS.isLoading ? '...' : isSpeaking ? 'Стоп' : 'Озвучить'}</span>}
                 </Button>
-                <Button variant="ghost" size="sm" onClick={() => setTtsSettingsOpen(true)} className={cn("rounded-lg", isMobile && "h-8 w-8 p-0")} title="Настройки"><Settings2 className="w-4 h-4" /></Button>
+                {ttsSettings.provider === 'salutespeech' ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" className={cn("rounded-lg gap-1", isMobile && "h-8 px-2")} title="Выбор голоса">
+                        <Settings2 className="w-4 h-4" />
+                        {!isMobile && <><span className="text-xs max-w-[80px] truncate">{SALUTE_VOICES.find(v => v.id === ttsSettings.saluteVoice)?.name.split(' ')[0] || 'Голос'}</span><ChevronDown className="w-3 h-3" /></>}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56">
+                      <DropdownMenuLabel className="text-xs text-muted-foreground">SaluteSpeech — голос</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      {SALUTE_VOICES.map(voice => (
+                        <DropdownMenuItem key={voice.id} onClick={() => { const updated = { ...ttsSettings, saluteVoice: voice.id }; setTtsSettings(updated); saveTTSSettings(updated); }} className={cn(ttsSettings.saluteVoice === voice.id && "bg-primary/10 font-medium")}>
+                          <Volume2 className="w-3.5 h-3.5 mr-2 text-muted-foreground" />
+                          {voice.name}
+                          {ttsSettings.saluteVoice === voice.id && <CheckCircle2 className="w-3.5 h-3.5 ml-auto text-primary" />}
+                        </DropdownMenuItem>
+                      ))}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => setTtsSettingsOpen(true)}>
+                        <Settings2 className="w-3.5 h-3.5 mr-2" />Все настройки
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : (
+                  <Button variant="ghost" size="sm" onClick={() => setTtsSettingsOpen(true)} className={cn("rounded-lg", isMobile && "h-8 w-8 p-0")} title="Настройки"><Settings2 className="w-4 h-4" /></Button>
+                )}
               </>
             )}
             <Button variant="outline" size="sm" disabled={currentLessonIndex === 0} onClick={goToPrevLesson} className={cn("rounded-lg", isMobile && "h-8 w-8 p-0")}><ChevronLeft className="w-4 h-4" /></Button>
