@@ -83,7 +83,7 @@ export function getStoredTTSSettings(adminDefaults?: AdminTTSDefaults): TTSSetti
   }
 
   // No user override — use admin defaults if available
-  const defaultProvider = (adminDefaults?.provider as TTSProvider) || 'elevenlabs';
+  const defaultProvider = (adminDefaults?.provider as TTSProvider) || 'salutespeech';
   const adminVoiceRaw = adminDefaults?.saluteVoice || '';
   const defaultSaluteVoice = ADMIN_TO_CLIENT_VOICE[adminVoiceRaw] || adminVoiceRaw || DEFAULT_SALUTE_VOICE;
 

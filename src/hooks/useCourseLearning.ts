@@ -315,7 +315,7 @@ export function useCourseLearning() {
 
   // Stop speaking when lesson changes
   useEffect(() => { window.speechSynthesis?.cancel(); setIsBrowserSpeaking(false); elevenLabsTTS.stop(); stopSaluteSpeech(); }, [currentLessonIndex]);
-  useEffect(() => { return () => { window.speechSynthesis?.cancel(); elevenLabsTTS.stop(); stopSaluteSpeech(); }; }, []);
+  useEffect(() => { return () => { window.speechSynthesis?.cancel(); elevenLabsTTS.stop(); stopSaluteSpeech(); saluteCacheRef.current.forEach(url => URL.revokeObjectURL(url)); saluteCacheRef.current.clear(); }; }, []);
 
   // Scroll chat to bottom
   useEffect(() => {
