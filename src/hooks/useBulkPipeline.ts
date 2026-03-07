@@ -112,18 +112,21 @@ const MAX_CLIENT_RUNTIME = 2 * 60 * 60 * 1000; // 2 hours
 async function parallelMap<T, R>(
   items: T[],
   concurrency: number,
-  fn: (item: T, index: number) => Promise<R>
+  fn: (item: T, index: number) => Promise<R>,
+  abortSignal?: { current: boolean }
 ): Promise<R[]> {
   const results: R[] = new Array(items.length);
   let nextIndex = 0;
 
   async function worker() {
     while (nextIndex < items.length) {
+      if (abortSignal?.current) break;
       const i = nextIndex++;
       try {
         results[i] = await withTimeout(fn(items[i], i), PARALLEL_ITEM_TIMEOUT, `parallelMap[${i}]`);
       } catch (e) {
         if (e instanceof CreditsExhaustedError) throw e;
+        if (abortSignal?.current) break;
         console.error(`[parallelMap] Item ${i} failed/timed out:`, e instanceof Error ? e.message : String(e));
         results[i] = undefined as any;
       }
@@ -232,7 +235,7 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
         const lessonEntries = Array.from(byLesson.entries());
         await parallelMap(lessonEntries, 3, async ([lessonId, qs]) => {
           if (stopRef.current) return;
-          const lessonInfo = currentLessons.find(l => l.id === lessonId);
+          const lessonInfo = currentLessons.find((l: any) => l.id === lessonId);
           const batchSize = 40;
           for (let i = 0; i < qs.length; i += batchSize) {
             if (stopRef.current) return;
@@ -241,7 +244,7 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
 
             let retries = 0;
             let batchSuccess = false;
-            while (retries < 3 && !batchSuccess) {
+            while (retries < 3 && !batchSuccess && !stopRef.current) {
               try {
                 const { data, error } = await withTimeout(
                   supabase.functions.invoke("gigachat", {
@@ -568,7 +571,10 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
 
   const handleStop = useCallback(() => {
     stopRef.current = true;
-    updatePhase("Остановка...");
+    setIsRunning(false);
+    setIsTestRunning(false);
+    updatePhase("Остановлено");
+    import("sonner").then(({ toast }) => toast.info("Конвейер остановлен"));
   }, [updatePhase]);
 
   const handleResetProgress = useCallback(() => {
