@@ -102,6 +102,7 @@ export function useCourseLearning() {
   // TTS state
   const [ttsSettingsOpen, setTtsSettingsOpen] = useState(false);
   const [ttsSettings, setTtsSettings] = useState<TTSSettings>(() => getStoredTTSSettings());
+  const adminDefaultsLoaded = useRef(false);
   const speechSynthesisRef = useRef<SpeechSynthesisUtterance | null>(null);
   const [isBrowserSpeaking, setIsBrowserSpeaking] = useState(false);
   const [isSaluteSpeaking, setIsSaluteSpeaking] = useState(false);
