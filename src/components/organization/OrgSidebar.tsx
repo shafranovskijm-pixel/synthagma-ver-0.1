@@ -202,6 +202,12 @@ export function OrgSidebar() {
               Охрана труда
               {isLocked("labor_safety") && <Lock className="w-3.5 h-3.5 ml-auto text-muted-foreground/40" />}
             </button>
+
+            <button onClick={() => handleTabClick("webinars")} className={tabButtonClass("webinars", isLocked("webinars"))}>
+              <Video className="w-5 h-5" />
+              Вебинары
+              {isLocked("webinars") && <Lock className="w-3.5 h-3.5 ml-auto text-muted-foreground/40" />}
+            </button>
             
             {menuSettings.showFrdo !== false && (
               <button onClick={() => handleTabClick("frdo")} className={tabButtonClass("frdo", isLocked("frdo"))}>

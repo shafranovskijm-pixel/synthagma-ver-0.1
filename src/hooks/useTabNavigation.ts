@@ -49,6 +49,7 @@ export function useTabNavigation({
     if (menuSettings.showDocuments && isEnabled("documents")) baseTabs.push("documents");
     if (isEnabled("journals")) baseTabs.push("journals");
     if (isEnabled("labor_safety")) baseTabs.push("labor-safety");
+    if (isEnabled("webinars")) baseTabs.push("webinars");
     if (isFrdoEnabled && isEnabled("frdo")) baseTabs.push("frdo");
     baseTabs.push("subscription");
     baseTabs.push("chats");

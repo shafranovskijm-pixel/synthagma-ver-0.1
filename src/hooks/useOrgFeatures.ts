@@ -280,7 +280,7 @@ export function useOrgFeatures(organizationId: string | null) {
       // Subscription plan is the FINAL authority on categories
       const subscriptionPlan = (orgPlanResult.data?.subscription_plan || 'free') as SubscriptionPlan;
       const planInfo = getPlanInfo(subscriptionPlan);
-      const allCategories = ['courses', 'students', 'companies', 'documents', 'journals', 'frdo', 'links', 'library', 'services', 'settings', 'student_cabinet', 'labor_safety'];
+      const allCategories = ['courses', 'students', 'companies', 'documents', 'journals', 'frdo', 'links', 'library', 'services', 'settings', 'student_cabinet', 'labor_safety', 'webinars'];
       
       for (const cat of allCategories) {
         if (planInfo.enabledCategories.includes(cat)) {
