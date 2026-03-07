@@ -1,18 +1,52 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+# План: Визуальное улучшение меню ИИ-провайдеров
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+## Текущие проблемы
+- Все секции выглядят одинаково — плоские белые карточки без визуальной иерархии
+- Иконки однотонные, нет цветовой дифференциации по контекстам
+- Нет статус-индикаторов — непонятно, что настроено, а что нет
+- Аккордеоны сливаются друг с другом
+- Тест-песочница незаметна
 
-### Changes
+## Что улучшаем
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+### 1. Цветовые акценты для каждого контекста
+Каждая секция получает свой цвет иконки и фона:
+- Генерация курсов → синий
+- TTS → фиолетовый
+- Консультант → зелёный
+- Маркетплейс → оранжевый
+- Конвейер → индиго
+- Организации → серый
+- Картинки → розовый
+- Сравнение → циан
+- Тарифы → жёлтый
+- API-ключи → красный
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+### 2. Статус-бейджи в заголовках
+Рядом с названием каждого контекста — маленький бейдж с текущим провайдером/моделью (`GigaChat Pro`, `Gemini Flash`), чтобы видеть конфигурацию не открывая секцию.
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+### 3. Заголовок страницы — с градиентом и статистикой
+Добавить мини-статистику: «7 контекстов • 3 ключа подключены» и градиентный акцент на заголовке.
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+### 4. Карточки вместо плоских аккордеонов
+Обернуть аккордеон-секции в карточки с лёгкой тенью и hover-эффектом. Добавить `transition` и `hover:shadow-md`.
+
+### 5. Разделение на группы
+Визуально разделить секции на две группы:
+- **Настройки моделей** (курсы, TTS, консультант, маркетплейс, конвейер, организации, картинки)
+- **Инструменты** (сравнение, тарифы, API-ключи)
+
+С подзаголовками-разделителями между ними.
+
+## Файлы
+
+### `src/components/admin/AISettingsManager.tsx`
+- Расширить `CONTEXT_META` — добавить поле `color` (tailwind-класс) к каждому контексту
+- Заменить `bg-primary/10 text-primary` на уникальный цвет из meta
+- Добавить бейдж текущего провайдера/модели в `AccordionTrigger`
+- Добавить подзаголовки-разделители «Модели» и «Инструменты»
+- Заголовок: добавить строку со статистикой
+- Карточки: `border rounded-xl` → добавить `shadow-sm hover:shadow-md transition-shadow`
 
