@@ -82,6 +82,16 @@ export function UsersManager() {
   });
   const [credPasswordVisible, setCredPasswordVisible] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
+
+  const viewAsStudent = (user: UserWithRole) => {
+    localStorage.setItem('adminViewAsStudent', JSON.stringify({
+      odoo_user_id: user.user_id,
+      studentName: user.full_name || user.email || 'Ученик',
+      orgName: user.organization_name || '',
+    }));
+    navigate('/student');
+  };
 
   const togglePasswordVisibility = (userId: string) => {
     setVisiblePasswords(prev => {
