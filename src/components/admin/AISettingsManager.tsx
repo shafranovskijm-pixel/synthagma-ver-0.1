@@ -327,7 +327,7 @@ export function AISettingsManager() {
         {renderProviderSelect("pipeline", PIPELINE_PROVIDERS)}
 
         {s.provider === "round_robin" && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4 p-4 rounded-lg bg-muted/50">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4 p-4 rounded-lg bg-muted/50">
             <div className="space-y-2">
               <Label className="text-xs">Slot-0 (GigaChat Key 1)</Label>
               <Select value={extra.slot0_model || "GigaChat-Max"} onValueChange={(v) => updateExtra("pipeline", "slot0_model", v)}>
@@ -355,7 +355,20 @@ export function AISettingsManager() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label className="text-xs">Slot-2 (Gemini)</Label>
+              <Label className="text-xs">Slot-2 (GigaChat Key 3)</Label>
+              <Select value={extra.slot2_model || "GigaChat-Pro"} onValueChange={(v) => updateExtra("pipeline", "slot2_model", v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {GIGACHAT_MODELS.map((m) => (
+                    <SelectItem key={m.value} value={m.value}>
+                      <span className="flex items-center">{m.label}<CostBadge model={m.value} /></span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs">Slot-3 (Gemini)</Label>
               <Select value={extra.gemini_model || "google/gemini-2.5-flash"} onValueChange={(v) => updateExtra("pipeline", "gemini_model", v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -408,6 +421,7 @@ export function AISettingsManager() {
       {[
         { name: "GIGACHAT_AUTH_KEY", label: "GigaChat Key 1" },
         { name: "GIGACHAT_AUTH_KEY_2", label: "GigaChat Key 2" },
+        { name: "GIGACHAT_AUTH_KEY_3", label: "GigaChat Key 3" },
         { name: "ELEVENLABS_API_KEY", label: "ElevenLabs" },
         { name: "LOVABLE_API_KEY", label: "Lovable AI" },
       ].map((k) => (
@@ -495,7 +509,26 @@ export function AISettingsManager() {
                 : ctx === "org_default"
                 ? renderOrgDefault()
                 : ctx === "tts"
-                ? renderProviderSelect(ctx, TTS_PROVIDERS)
+                ? (
+                  <div className="space-y-4">
+                    {renderProviderSelect(ctx, TTS_PROVIDERS)}
+                    {settings[ctx]?.provider === "elevenlabs" && (
+                      <div className="space-y-2 mt-4 p-4 rounded-lg bg-muted/50">
+                        <Label className="text-sm">Свой API-ключ ElevenLabs (опционально)</Label>
+                        <Input
+                          type="password"
+                          placeholder="sk-... (оставьте пустым для ключа по умолчанию)"
+                          value={settings[ctx]?.extra_config?.custom_api_key || ""}
+                          onChange={(e) => updateExtra(ctx, "custom_api_key", e.target.value)}
+                          className="max-w-md font-mono text-xs"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Если указан, будет использоваться вместо системного ключа ElevenLabs
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )
                 : ctx === "image_generation"
                 ? renderProviderSelect(ctx, IMAGE_PROVIDERS, IMAGE_MODELS)
                 : renderProviderSelect(ctx)}

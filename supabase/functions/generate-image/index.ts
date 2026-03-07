@@ -44,10 +44,11 @@ async function generateWithLovableAI(prompt: string, imageUrl: string | undefine
   return generatedImageUrl;
 }
 
-async function generateWithGigaChat(prompt: string) {
+async function generateWithGigaChat(prompt: string, keySlot?: string) {
   // GigaChat uses its own auth flow to get an access token, then calls the image generation endpoint
-  const authKey = Deno.env.get("GIGACHAT_AUTH_KEY");
-  if (!authKey) throw new Error("GIGACHAT_AUTH_KEY is not configured");
+  const envKey = keySlot === "KEY_2" ? "GIGACHAT_AUTH_KEY_2" : keySlot === "KEY_3" ? "GIGACHAT_AUTH_KEY_3" : "GIGACHAT_AUTH_KEY";
+  const authKey = Deno.env.get(envKey);
+  if (!authKey) throw new Error(`${envKey} is not configured`);
 
   // Step 1: Get access token
   const tokenRes = await fetch("https://ngw.devices.sberbank.ru:9443/api/v2/oauth", {
@@ -121,8 +122,12 @@ async function generateWithGigaChat(prompt: string) {
   }
 
   const imageBytes = new Uint8Array(await imageRes.arrayBuffer());
-  // Return as base64 data URL
-  const base64 = btoa(String.fromCharCode(...imageBytes));
+  // Return as base64 data URL — use chunked encoding to avoid stack overflow on large images
+  let binary = "";
+  for (let i = 0; i < imageBytes.length; i++) {
+    binary += String.fromCharCode(imageBytes[i]);
+  }
+  const base64 = btoa(binary);
   return `data:image/jpeg;base64,${base64}`;
 }
 
@@ -130,7 +135,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { prompt, imageUrl, provider, model } = await req.json();
+    const { prompt, imageUrl, provider, model, gigachat_key } = await req.json();
     if (!prompt) throw new Error("Prompt is required");
 
     const selectedProvider = provider || "lovable_ai";
@@ -139,7 +144,7 @@ serve(async (req) => {
     let generatedImageUrl: string;
 
     if (selectedProvider === "gigachat") {
-      generatedImageUrl = await generateWithGigaChat(prompt);
+      generatedImageUrl = await generateWithGigaChat(prompt, gigachat_key);
     } else {
       generatedImageUrl = await generateWithLovableAI(prompt, imageUrl, model);
     }
