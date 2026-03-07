@@ -515,7 +515,7 @@ export function AISettingsManager() {
   const getStatusBadge = (ctx: string) => {
     const s = settings[ctx];
     if (!s) return null;
-    const providerLabel = s.provider === "gigachat" ? "GigaChat" : s.provider === "lovable_ai" ? "Lovable AI" : s.provider === "round_robin" ? "Round-Robin" : s.provider === "elevenlabs" ? "ElevenLabs" : s.provider;
+    const providerLabel = s.provider === "gigachat" ? "GigaChat" : s.provider === "lovable_ai" ? "Lovable AI" : s.provider === "round_robin" ? "Round-Robin" : s.provider === "elevenlabs" ? "ElevenLabs" : s.provider === "salutespeech" ? "SaluteSpeech" : s.provider;
     const modelLabel = s.provider === "gigachat" || s.provider === "round_robin"
       ? GIGACHAT_MODELS.find(m => m.value === s.gigachat_model)?.label || s.gigachat_model
       : LOVABLE_MODELS.find(m => m.value === s.lovable_model)?.label || IMAGE_MODELS.find(m => m.value === s.lovable_model)?.label || s.lovable_model;
