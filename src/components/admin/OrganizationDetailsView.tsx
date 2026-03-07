@@ -438,14 +438,6 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
 
-  const formatTokens = (tokens: number): string => {
-    if (tokens >= 1000000) {
-      return (tokens / 1000000).toFixed(2) + "M";
-    } else if (tokens >= 1000) {
-      return (tokens / 1000).toFixed(1) + "K";
-    }
-    return tokens.toString();
-  };
 
   const filteredStudents = students.filter(s => {
     if (!searchQuery) return true;
