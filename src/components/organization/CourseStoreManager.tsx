@@ -424,6 +424,11 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
           {h.editingCourse && (
             <div className="space-y-4 py-4">
               <div className="space-y-2"><Label>Краткое описание</Label><Textarea value={h.editingCourse.description_short || ''} onChange={(e) => h.setEditingCourse({ ...h.editingCourse!, description_short: e.target.value })} className="rounded-xl" /></div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2"><Label>Цена для студента (₽)</Label><Input type="number" min={0} value={h.editingCourse.price_student} onChange={(e) => h.setEditingCourse({ ...h.editingCourse!, price_student: Number(e.target.value) || 0 })} className="rounded-xl" /></div>
+                <div className="space-y-2"><Label>Цена для организации (₽)</Label><Input type="number" min={0} value={h.editingCourse.price_organization} onChange={(e) => h.setEditingCourse({ ...h.editingCourse!, price_organization: Number(e.target.value) || 0 })} className="rounded-xl" /></div>
+              </div>
+              <p className="text-xs text-muted-foreground">Оставьте 0 для бесплатного доступа</p>
             </div>
           )}
           <DialogFooter><Button className="w-full btn-gradient rounded-xl" onClick={h.handleEditCourse}>Сохранить</Button></DialogFooter>
