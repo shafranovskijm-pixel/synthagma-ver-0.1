@@ -150,9 +150,11 @@ interface UseBulkPipelineProps {
   onComplete: () => void;
   enableVerification?: boolean;
   aiProvider?: string;
+  gigachatModel?: string;
+  lovableModel?: string;
 }
 
-export function useBulkPipeline({ courses, onComplete, enableVerification = false, aiProvider }: UseBulkPipelineProps) {
+export function useBulkPipeline({ courses, onComplete, enableVerification = false, aiProvider, gigachatModel, lovableModel }: UseBulkPipelineProps) {
   const [isRunning, setIsRunning] = useState(false);
   const [isTestRunning, setIsTestRunning] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
