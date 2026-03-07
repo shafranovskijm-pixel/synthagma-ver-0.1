@@ -68,6 +68,10 @@ serve(async (req) => {
     let result: any;
 
     if (action === "generate_answers") {
+      // Default to the most powerful model for answer generation
+      const effectiveProvider = ai_provider || "lovable_ai";
+      const effectiveLovableModel = lovable_model || (effectiveProvider === "lovable_ai" ? "google/gemini-2.5-pro" : undefined);
+
       const questionsText = questions.map((q: any, i: number) => {
         const opts = q.options.map((o: any, j: number) => {
           const text = typeof o === 'string' ? o : (o?.text || o?.label || String(o));
@@ -91,7 +95,7 @@ serve(async (req) => {
       const { text: response, model } = await callAI([
         { role: "system", content: systemPrompt },
         { role: "user", content: prompt },
-      ], 16384, ai_provider, gigachat_model, lovable_model);
+      ], 16384, effectiveProvider, gigachat_model, effectiveLovableModel);
 
       try {
         const cleaned = response.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();

@@ -5,7 +5,7 @@ import {
   Eye, Edit, Trash2, Plus, Users, Building2, Search,
   Tag, Package, MessageSquarePlus, Megaphone, Send,
   Clock, ChevronDown, ArrowLeft, Info,
-  List, LayoutGrid, Gift, Award, Zap, BookOpen, ShieldCheck,
+  List, LayoutGrid, Gift, Award, Zap, BookOpen, ShieldCheck, Lightbulb,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -251,6 +251,12 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
                                   <div className="flex gap-2 mt-2">
                                     <Badge variant="secondary" className="text-xs">Актуально 2026</Badge>
                                     <Badge variant="secondary" className="text-xs">Бесплатно</Badge>
+                                  </div>
+                                  <div className="flex items-start gap-1.5 mt-3 pt-3 border-t border-border/50">
+                                    <Lightbulb className="w-3.5 h-3.5 text-amber-500 mt-0.5 shrink-0" />
+                                    <p className="text-xs text-muted-foreground">
+                                      После добавления курса проверьте правильность ответов в тестах с помощью ИИ — кнопка «Решить ИИ» в редакторе курса.
+                                    </p>
                                   </div>
                                 </div>
                               </div>
