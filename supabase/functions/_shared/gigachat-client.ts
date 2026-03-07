@@ -635,32 +635,50 @@ export async function callAIWithTools(
   lovableModel = "google/gemini-3-flash-preview",
   preferredProvider?: string,
 ): Promise<any> {
-  if (preferredProvider === "lovable_ai") {
-    return await callLovableAIWithTools(messages, tool, lovableModel);
+  if (preferredProvider === "gigachat") {
+    try {
+      const systemMsg = messages.find((m) => m.role === "system");
+      const userMsg = messages.find((m) => m.role === "user");
+      const jsonHint = tool
+        ? `\n\nОтветь СТРОГО в формате JSON, соответствующем следующей структуре: ${JSON.stringify(tool.function.parameters)}. Без markdown-обёртки, только JSON.`
+        : "";
+      const gcMessages = [
+        { role: "system", content: (systemMsg?.content || "") + jsonHint },
+        { role: "user", content: userMsg?.content || "" },
+      ];
+      const text = await callGigaChat(gcMessages, gigachatModel, 8192);
+      const cleaned = text.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+      const parsed = JSON.parse(cleaned);
+      return tool ? parsed : { content: text };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn("[callAIWithTools] GigaChat failed, falling back to Lovable AI:", msg);
+      return await callLovableAIWithTools(messages, tool, lovableModel);
+    }
   }
 
+  // Default: Lovable AI first, GigaChat as fallback
   try {
-    const systemMsg = messages.find((m) => m.role === "system");
-    const userMsg = messages.find((m) => m.role === "user");
-
-    const jsonHint = tool
-      ? `\n\nОтветь СТРОГО в формате JSON, соответствующем следующей структуре: ${JSON.stringify(tool.function.parameters)}. Без markdown-обёртки, только JSON.`
-      : "";
-
-    const gcMessages = [
-      { role: "system", content: (systemMsg?.content || "") + jsonHint },
-      { role: "user", content: userMsg?.content || "" },
-    ];
-
-    const text = await callGigaChat(gcMessages, gigachatModel, 8192);
-
-    const cleaned = text.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
-    const parsed = JSON.parse(cleaned);
-    console.log("[callAIWithTools] GigaChat succeeded");
-    return tool ? parsed : { content: text };
+    return await callLovableAIWithTools(messages, tool, lovableModel);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.warn("[callAIWithTools] GigaChat failed, falling back to Lovable AI:", msg);
-    return await callLovableAIWithTools(messages, tool, lovableModel);
+    console.warn("[callAIWithTools] Lovable AI failed, falling back to GigaChat:", msg);
+    try {
+      const systemMsg = messages.find((m) => m.role === "system");
+      const userMsg = messages.find((m) => m.role === "user");
+      const jsonHint = tool
+        ? `\n\nОтветь СТРОГО в формате JSON, соответствующем следующей структуре: ${JSON.stringify(tool.function.parameters)}. Без markdown-обёртки, только JSON.`
+        : "";
+      const gcMessages = [
+        { role: "system", content: (systemMsg?.content || "") + jsonHint },
+        { role: "user", content: userMsg?.content || "" },
+      ];
+      const text = await callGigaChat(gcMessages, gigachatModel, 8192);
+      const cleaned = text.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+      const parsed = JSON.parse(cleaned);
+      return tool ? parsed : { content: text };
+    } catch (gcErr) {
+      throw gcErr;
+    }
   }
 }
