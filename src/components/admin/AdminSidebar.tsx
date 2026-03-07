@@ -106,6 +106,12 @@ export function AdminSidebar({
             Продажи
           </button>
 
+          {/* AI */}
+          <button onClick={() => handleTabClick("ai")} className={tabButtonClass("ai")}>
+            <Bot className="w-5 h-5" />
+            ИИ-провайдеры
+          </button>
+
           {/* Analytics */}
           <button onClick={() => handleTabClick("analytics")} className={tabButtonClass("analytics")}>
             <BarChart3 className="w-5 h-5" />

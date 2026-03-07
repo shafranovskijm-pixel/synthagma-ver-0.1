@@ -96,6 +96,7 @@ const AdminDashboard = () => {
           {activeTab === "tariffs" && <TariffsManager />}
           {activeTab === "marketplace" && <AdminMarketplaceManager />}
           {activeTab === "sales" && <SalesManager />}
+          {activeTab === "ai" && <AISettingsManager />}
           {activeTab === "users" && <UsersManager />}
           {activeTab === "content" && <BlogManager />}
           {activeTab === "support" && <SupportRequestsManager />}
