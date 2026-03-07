@@ -149,9 +149,10 @@ interface UseBulkPipelineProps {
   courses: PipelineCourse[];
   onComplete: () => void;
   enableVerification?: boolean;
+  aiProvider?: string;
 }
 
-export function useBulkPipeline({ courses, onComplete, enableVerification = false }: UseBulkPipelineProps) {
+export function useBulkPipeline({ courses, onComplete, enableVerification = false, aiProvider }: UseBulkPipelineProps) {
   const [isRunning, setIsRunning] = useState(false);
   const [isTestRunning, setIsTestRunning] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
