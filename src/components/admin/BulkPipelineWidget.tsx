@@ -444,6 +444,7 @@ export function BulkPipelineWidget({ courses, readyCourses = [], allCourses, onC
               </SelectItem>
             </SelectContent>
           </Select>
+        </div>
 
         {/* Server pipeline status */}
         {serverMode && serverPipeline.currentRun && (
