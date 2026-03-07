@@ -1,18 +1,29 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## Проблема
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+PWA использует `registerType: "prompt"` — это значит Service Worker обнаруживает обновление, но ждёт подтверждения пользователя. Однако в `main.tsx` вызывается `updateSW(true)` в `onNeedRefresh`, что должно автоматически обновлять. Проблема в том, что:
 
-### Changes
+1. Старый SW может кэшировать JS-бандлы через `CacheFirst` стратегию (`static-cache`), и даже после обновления SW старые бандлы возвращаются из кэша
+2. Принудительная очистка кэшей в `main.tsx` удаляет кэши, но SW может их пересоздать из устаревших данных
+3. `skipWaiting: true` + `clientsClaim: true` уже есть, но `CacheFirst` для JS/CSS означает что после активации нового SW он всё равно отдаёт старые файлы из кэша
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+## План изменений
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+### 1. `vite.config.ts` — сменить стратегию кэширования JS/CSS
+- Изменить стратегию для `\.(?:js|css|woff2?)$` с `CacheFirst` на `StaleWhileRevalidate` — это позволит всегда загружать актуальную версию при наличии сети, показывая кэш только офлайн
+- Альтернативно (лучше): оставить `CacheFirst` но Vite уже использует content hash в именах файлов, поэтому новые бандлы будут иметь новые URL. Реальная проблема — навигационные запросы и index.html
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+### 2. `vite.config.ts` — добавить `navigateFallbackDenylist`
+- Добавить `navigateFallbackDenylist: [/^\/~oauth/]` (требование PWA)
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+### 3. `main.tsx` — улучшить логику обновления
+- Сменить `registerType` на `"autoUpdate"` вместо `"prompt"` — это автоматически активирует новый SW без ожидания
+- Упростить код в `main.tsx` — убрать ручной `registerSW` с `onNeedRefresh`, т.к. autoUpdate делает это сам
+- Добавить более агрессивную очистку: при загрузке удалять ВСЕ кэши кроме текущих workbox-кэшей
+
+### 4. `index.html` — обновить cache-bust
+- Обновить мета-тег `cache-bust` на новую версию для инвалидации
+
+Эти изменения гарантируют что при каждом деплое пользователи автоматически получат актуальный интерфейс без необходимости ручной очистки кэша.
 
