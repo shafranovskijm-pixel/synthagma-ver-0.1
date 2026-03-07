@@ -419,7 +419,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
       if (error) throw error;
       
       if (shouldBlockAI && settings.ai_enabled) {
-        toast.success("Настройки сохранены. ИИ-помощник заблокирован из-за превышения лимита токенов.");
+        toast.success("Настройки сохранены. ИИ-помощник заблокирован из-за превышения лимита генераций.");
       } else {
         toast.success("Настройки сохранены");
       }
