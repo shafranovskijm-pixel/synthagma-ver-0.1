@@ -832,50 +832,71 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
                   ))}
                 </SelectContent>
               </Select>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="rounded-lg gap-1 text-xs shrink-0" 
-                onClick={() => {
-                  setEditingCategory(null);
-                  setNewCategoryName("");
-                  setNewCategoryColor("#6366f1");
-                  setShowCategoryDialog(true);
-                }}
-              >
-                <FolderPlus className="w-4 h-4" />
-                <span className="hidden sm:inline">Категория</span>
-              </Button>
+              <TooltipProvider delayDuration={300}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="rounded-lg gap-1 text-xs shrink-0" 
+                      onClick={() => {
+                        setEditingCategory(null);
+                        setNewCategoryName("");
+                        setNewCategoryColor("#6366f1");
+                        setShowCategoryDialog(true);
+                      }}
+                    >
+                      <FolderPlus className="w-4 h-4" />
+                      <span className="hidden sm:inline">Категория</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Создать новую категорию курсов</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           </div>
           <div className="flex items-center gap-2 self-end lg:self-auto">
-            <Button 
-              variant={folderViewMode === "folders" ? "secondary" : "ghost"} 
-              size="icon" 
-              className="h-8 w-8" 
-              onClick={() => setFolderViewMode("folders")}
-              title="Папки"
-            >
-              <Folder className="w-4 h-4" />
-            </Button>
-            <Button 
-              variant={folderViewMode === "flat" && viewMode === "grid" ? "secondary" : "ghost"} 
-              size="icon" 
-              className="h-8 w-8" 
-              onClick={() => { setFolderViewMode("flat"); setViewMode("grid"); }}
-              title="Сетка"
-            >
-              <LayoutGrid className="w-4 h-4" />
-            </Button>
-            <Button 
-              variant={folderViewMode === "flat" && viewMode === "list" ? "secondary" : "ghost"} 
-              size="icon" 
-              className="h-8 w-8" 
-              onClick={() => { setFolderViewMode("flat"); setViewMode("list"); }}
-              title="Список"
-            >
-              <List className="w-4 h-4" />
-            </Button>
+            <TooltipProvider delayDuration={300}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant={folderViewMode === "folders" ? "secondary" : "ghost"} 
+                    size="icon" 
+                    className="h-8 w-8" 
+                    onClick={() => setFolderViewMode("folders")}
+                  >
+                    <Folder className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Вид папками</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant={folderViewMode === "flat" && viewMode === "grid" ? "secondary" : "ghost"} 
+                    size="icon" 
+                    className="h-8 w-8" 
+                    onClick={() => { setFolderViewMode("flat"); setViewMode("grid"); }}
+                  >
+                    <LayoutGrid className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Вид сеткой</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant={folderViewMode === "flat" && viewMode === "list" ? "secondary" : "ghost"} 
+                    size="icon" 
+                    className="h-8 w-8" 
+                    onClick={() => { setFolderViewMode("flat"); setViewMode("list"); }}
+                  >
+                    <List className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Вид списком</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         </div>
       </div>
