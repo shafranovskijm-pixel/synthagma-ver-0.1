@@ -1,18 +1,22 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+# Параллельная обработка в «Проверить все» и авто-исправлении
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+## Текущее состояние
 
-### Changes
+- `handleBulkValidate` (строка 210): проверяет курсы последовательно в `for` — но это запросы к БД, они быстрые, параллелизм тут **не нужен**
+- `handleBulkAutoFix` (строка 285): курсы последовательно — логично, т.к. каждый курс = несколько AI-вызовов
+- `autoFixCourse` (строки 393+): **генерация контента и решение тестов** — последовательно по одному уроку/батчу. Вот тут параллелизм даст ускорение
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+## Что сделаем
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+В `autoFixCourse` внутри `AdminMarketplaceManager.tsx`:
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+1. **Генерация контента для пустых лекций** — обрабатывать по 2 параллельно (как в `bulk-pipeline`)
+2. **Решение тестов** — отправлять батчи по 2 урока параллельно
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+Реализация: простая утилита `processParallel(items, 2, handler)` с `Promise.allSettled`, аналогично тому, что уже добавлено в `bulk-pipeline/index.ts`.
+
+## Файл
+- `src/components/admin/AdminMarketplaceManager.tsx` — параллелизм в `autoFixCourse`
 
