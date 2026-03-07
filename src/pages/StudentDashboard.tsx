@@ -222,6 +222,10 @@ export default function StudentDashboard() {
             />
           </div>
         )}
+
+        {activeTab === "webinars" && user && profile?.organization_id && (
+          <StudentWebinars userId={user.id} organizationId={profile.organization_id} />
+        )}
       </main>
 
       {user && <VideoIdentification userId={user.id} userName={profile?.full_name || "Ученик"} organizationId={profile?.organization_id} isOpen={showVideoIdentification} onOpenChange={setShowVideoIdentification} onVerified={() => { setIsVideoIdentified(true); setShowVideoIdentification(false); }} />}
