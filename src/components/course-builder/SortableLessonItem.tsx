@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -7,8 +7,14 @@ import {
   GripVertical, FileText, Video, Image, FileQuestion,
   Trash2, Eye, Sparkles, Upload, ChevronDown, ChevronUp,
   Loader2, Headphones, Volume2, Pause, Play, Square,
-  Presentation, FileSpreadsheet, FolderOpen, Bot,
+  Presentation, FileSpreadsheet, FolderOpen, Bot, CheckCircle2,
 } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import { SALUTE_VOICES, getStoredTTSSettings, saveTTSSettings } from "@/components/student/TTSSettingsDialog";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { MediaLibraryDialog } from "@/components/course-builder/MediaLibraryDialog";
 import { toast } from "sonner";
 import { BlockEditor, blocksToJson } from "@/components/course-builder/BlockEditor";
