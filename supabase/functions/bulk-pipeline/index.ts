@@ -68,6 +68,40 @@ function parseJsonResponse(text: string): any[] {
   return JSON.parse(cleaned);
 }
 
+// Parallel execution with concurrency limit
+async function processInParallel<T, R>(
+  items: T[],
+  concurrency: number,
+  handler: (item: T, index: number) => Promise<R>,
+  shouldStop?: () => Promise<boolean>,
+  delayMs = 1500,
+): Promise<R[]> {
+  const results: R[] = [];
+  let i = 0;
+  while (i < items.length) {
+    if (shouldStop && await shouldStop()) break;
+    const chunk = items.slice(i, i + concurrency);
+    const promises = chunk.map((item, ci) => {
+      const delay = ci * delayMs; // stagger starts
+      return new Promise<R>((resolve, reject) => {
+        setTimeout(() => handler(item, i + ci).then(resolve, reject), delay);
+      });
+    });
+    const chunkResults = await Promise.allSettled(promises);
+    for (const r of chunkResults) {
+      if (r.status === "fulfilled") results.push(r.value);
+      else {
+        const msg = (r.reason as any)?.message || "";
+        if (msg.includes("402")) throw r.reason;
+        console.error("[bulk-pipeline] Parallel task failed:", msg);
+      }
+    }
+    i += concurrency;
+    if (i < items.length) await new Promise(r => setTimeout(r, delayMs));
+  }
+  return results;
+}
+
 // Timeout wrapper for AI calls
 const AI_CALL_TIMEOUT = 120_000; // 120s
 
@@ -142,15 +176,19 @@ async function processCourse(
         byLesson.set(q.lesson_id, arr);
       }
 
-      for (const [lessonId, qs] of byLesson) {
-        if (await shouldStop()) return { ok: false, testsSolved, lessonsFilled, skippedBatches, totalQuestions };
+      // Process lessons in parallel (concurrency=2)
+      const lessonEntries = Array.from(byLesson.entries());
+      
+      const solveLesson = async ([lessonId, qs]: [string, any[]]) => {
         const lessonInfo = currentLessons.find(l => l.id === lessonId);
         const batchSize = 40;
+        let localSolved = 0;
+        let localSkipped = 0;
 
         for (let i = 0; i < qs.length; i += batchSize) {
-          if (await shouldStop()) return { ok: false, testsSolved, lessonsFilled, skippedBatches, totalQuestions };
+          if (await shouldStop()) return { solved: localSolved, skipped: localSkipped, stopped: true };
           const batch = qs.slice(i, i + batchSize);
-          await updatePhase(`Тесты: ${testsSolved}/${unanswered.length} — «${lessonInfo?.title || "Тест"}»`);
+          await updatePhase(`Тесты: ${testsSolved + localSolved}/${unanswered.length} — «${lessonInfo?.title || "Тест"}»`);
 
           let retries = 0;
           let success = false;
@@ -179,7 +217,7 @@ async function processCourse(
                   await db.from("test_questions")
                     .update({ correct_answer: ans.correctAnswer, explanation: ans.explanation || null })
                     .eq("id", q.id);
-                  testsSolved++;
+                  localSolved++;
                 }
               }
               success = true;
@@ -188,12 +226,19 @@ async function processCourse(
               retries++;
               console.error(`[bulk-pipeline] Test batch attempt ${retries}/3:`, e?.message);
               if (retries < 3) await new Promise(r => setTimeout(r, retries * 5000));
-              else skippedBatches++;
+              else localSkipped++;
             }
           }
           await new Promise(r => setTimeout(r, 3000));
         }
-        await new Promise(r => setTimeout(r, 2000));
+        return { solved: localSolved, skipped: localSkipped, stopped: false };
+      };
+
+      const lessonResults = await processInParallel(lessonEntries, 2, solveLesson, shouldStop, 2000);
+      for (const r of lessonResults) {
+        testsSolved += r.solved;
+        skippedBatches += r.skipped;
+        if (r.stopped) return { ok: false, testsSolved, lessonsFilled, skippedBatches, totalQuestions };
       }
     }
 
@@ -298,10 +343,9 @@ async function processCourse(
     (l.type === "text" || l.type === "practice") && (!l.content || l.content === "[]" || l.content === "" || (l.content?.length || 0) < 50)
   );
 
-  for (let i = 0; i < emptyLessons.length; i++) {
-    if (await shouldStop()) return { ok: false, testsSolved, lessonsFilled, skippedBatches, totalQuestions };
-    const lesson = emptyLessons[i];
-    await updatePhase(`Контент: «${lesson.title}» (${i + 1}/${emptyLessons.length})`);
+  // Process empty lessons in parallel (concurrency=2)
+  const fillLesson = async (lesson: any, idx: number) => {
+    await updatePhase(`Контент: «${lesson.title}» (${idx + 1}/${emptyLessons.length})`);
     try {
       const { text: content } = await withTimeout(
         callAI([
@@ -312,14 +356,17 @@ async function processCourse(
       );
       if (content && content.length > 50) {
         await db.from("lessons").update({ content }).eq("id", lesson.id);
-        lessonsFilled++;
+        return true;
       }
     } catch (e: any) {
       if (e?.message?.includes("402")) throw e;
       console.error(`[bulk-pipeline] Content gen failed:`, e?.message);
     }
-    await new Promise(r => setTimeout(r, 2000));
-  }
+    return false;
+  };
+
+  const contentResults = await processInParallel(emptyLessons, 2, fillLesson, shouldStop, 2000);
+  lessonsFilled += contentResults.filter(Boolean).length;
 
   // 5. Fix duplicate titles
   const titleCounts = new Map<string, Array<{ id: string; title: string }>>();
