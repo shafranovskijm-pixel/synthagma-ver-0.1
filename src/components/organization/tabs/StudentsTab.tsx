@@ -540,6 +540,17 @@ export const StudentsTab = React.memo(function StudentsTab({
             <p className="text-muted-foreground mt-2 max-w-lg mx-auto">
               Добавьте учеников и начните отслеживать их прогресс, документы и результаты
             </p>
+            <Button
+              variant="outline"
+              className="rounded-xl gap-2 mt-4"
+              onClick={() => {
+                localStorage.setItem('previewStudentDashboard', 'true');
+                window.open('/student', '_blank');
+              }}
+            >
+              <Eye className="w-4 h-4" />
+              Посмотрите, как выглядит кабинет ученика
+            </Button>
           </div>
 
           <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
