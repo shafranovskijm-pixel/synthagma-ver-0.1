@@ -59,14 +59,39 @@ export function BulkPipelineWidget({ courses, readyCourses = [], allCourses, onC
   const [enableVerification, setEnableVerification] = useState(false);
   const [serverMode, setServerMode] = useState(false);
   const [pipelineMode, setPipelineMode] = useState<PipelineMode>("progress");
-  const [aiProvider, setAiProvider] = useState<string>(() => localStorage.getItem("pipeline_ai_provider") || "gigachat");
+  const [aiProvider, setAiProvider] = useState<string>("gigachat");
+  const [gigachatModel, setGigachatModel] = useState<string | undefined>();
+  const [lovableModel, setLovableModel] = useState<string | undefined>();
+  const [aiSettingsLoaded, setAiSettingsLoaded] = useState(false);
+
+  // Load AI settings from database on mount
+  useEffect(() => {
+    const loadAiSettings = async () => {
+      try {
+        const { data } = await supabase
+          .from("ai_settings")
+          .select("provider, gigachat_model, lovable_model, extra_config")
+          .eq("context", "pipeline")
+          .single();
+        if (data) {
+          setAiProvider(data.provider || "gigachat");
+          setGigachatModel(data.gigachat_model || undefined);
+          setLovableModel(data.lovable_model || undefined);
+        }
+      } catch (e) {
+        console.warn("Failed to load AI settings, using defaults:", e);
+      }
+      setAiSettingsLoaded(true);
+    };
+    loadAiSettings();
+  }, []);
 
   const activeCourses = pipelineMode === "ready" ? readyCourses
     : pipelineMode === "all" ? [...courses, ...readyCourses]
     : courses;
 
-  const pipeline = useBulkPipeline({ courses: activeCourses, onComplete, enableVerification, aiProvider });
-  const serverPipeline = useServerPipeline({ courses: activeCourses, enableVerification, onComplete, aiProvider });
+  const pipeline = useBulkPipeline({ courses: activeCourses, onComplete, enableVerification, aiProvider, gigachatModel, lovableModel });
+  const serverPipeline = useServerPipeline({ courses: activeCourses, enableVerification, onComplete, aiProvider, gigachatModel, lovableModel });
   const excelImport = usePipelineExcelImport({ onComplete });
 
   // Collapsible sections
@@ -428,7 +453,6 @@ export function BulkPipelineWidget({ courses, readyCourses = [], allCourses, onC
             value={aiProvider}
             onValueChange={(v) => {
               setAiProvider(v);
-              localStorage.setItem("pipeline_ai_provider", v);
             }}
             disabled={false}
           >
@@ -441,6 +465,9 @@ export function BulkPipelineWidget({ courses, readyCourses = [], allCourses, onC
               </SelectItem>
               <SelectItem value="lovable_ai">
                 <span className="flex items-center gap-1.5"><Brain className="w-3.5 h-3.5" />Lovable AI</span>
+              </SelectItem>
+              <SelectItem value="round_robin">
+                <span className="flex items-center gap-1.5"><RefreshCw className="w-3.5 h-3.5" />Round-Robin</span>
               </SelectItem>
             </SelectContent>
           </Select>

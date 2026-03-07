@@ -482,91 +482,83 @@ export async function callLovableAIWithTools(
 // ═══════════════════════════════════════════════════════════
 let rrCounter = 0;
 
-function buildChannels(): Array<{
-  name: string;
-  call: (msgs: Array<{ role: string; content: string }>, maxTokens: number) => Promise<{ text: string; model: string }>;
-}> {
-  const channels: ReturnType<typeof buildChannels> = [];
-
-  // Helper: wait for a specific slot to become free, then use it directly
-  const useSlot = async (
-    slotIdx: number,
-    msgs: Array<{ role: string; content: string }>,
-    mt: number,
-  ): Promise<string> => {
-    // Wait until slot is free, with 30s timeout
-    const deadline = Date.now() + 30_000;
-    while (slots[slotIdx].busy) {
-      const remaining = deadline - Date.now();
-      if (remaining <= 0) {
-        throw new Error(`Slot ${slotIdx} busy timeout (30s)`);
-      }
-      await Promise.race([
-        slots[slotIdx].lock,
-        new Promise((_, reject) => setTimeout(() => reject(new Error(`Slot ${slotIdx} busy timeout (30s)`)), remaining)),
-      ]);
-    }
-    // Claim it
-    slots[slotIdx].busy = true;
-    const prev = slots[slotIdx].lock;
-    slots[slotIdx].lock = new Promise<void>((resolve) => {
-      slots[slotIdx].releaseLock = resolve;
-    });
-    await prev;
-    try {
-      return await callGigaChatOnSlot(slotIdx, msgs, "GigaChat-Pro", mt);
-    } finally {
-      releaseSlot(slotIdx);
-    }
-  };
-
-  // GigaChat slot-0
-  channels.push({
-    name: "GigaChat slot-0",
-    call: async (msgs, mt) => {
-      const text = await useSlot(0, msgs, mt);
-      return { text, model: "GigaChat-Pro (slot-0)" };
-    },
-  });
-
-  // GigaChat slot-1 (if configured)
-  if (slots.length > 1) {
-    channels.push({
-      name: "GigaChat slot-1",
-      call: async (msgs, mt) => {
-        const text = await useSlot(1, msgs, mt);
-        return { text, model: "GigaChat-Pro (slot-1)" };
-      },
-    });
+// Helper: wait for a specific slot to become free, then use it directly
+async function useSlotDirect(
+  slotIdx: number,
+  msgs: Array<{ role: string; content: string }>,
+  model: string,
+  maxTokens: number,
+): Promise<string> {
+  const deadline = Date.now() + 30_000;
+  while (slots[slotIdx].busy) {
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) throw new Error(`Slot ${slotIdx} busy timeout (30s)`);
+    await Promise.race([
+      slots[slotIdx].lock,
+      new Promise((_, reject) => setTimeout(() => reject(new Error(`Slot ${slotIdx} busy timeout (30s)`)), remaining)),
+    ]);
   }
-
-  // Lovable AI (Gemini)
-  channels.push({
-    name: "Lovable AI (Gemini)",
-    call: async (msgs, mt) => {
-      const text = await callLovableAI(msgs, mt);
-      return { text, model: "Gemini 2.5 Flash" };
-    },
+  slots[slotIdx].busy = true;
+  const prev = slots[slotIdx].lock;
+  slots[slotIdx].lock = new Promise<void>((resolve) => {
+    slots[slotIdx].releaseLock = resolve;
   });
-
-  return channels;
+  await prev;
+  try {
+    return await callGigaChatOnSlot(slotIdx, msgs, model, maxTokens);
+  } finally {
+    releaseSlot(slotIdx);
+  }
 }
-
-const rrChannels = buildChannels();
-console.log(`[AI] Round-Robin initialized with ${rrChannels.length} channels: ${rrChannels.map(c => c.name).join(", ")}`);
 
 export async function callAIRoundRobin(
   messages: Array<{ role: string; content: string }>,
   maxTokens = 4096,
+  gigachatModel?: string,
+  lovableModel?: string,
 ): Promise<{ text: string; model: string }> {
-  const startIdx = rrCounter++ % rrChannels.length;
+  const gcModel = gigachatModel || "GigaChat-Pro";
+  const lModel = lovableModel || "google/gemini-2.5-flash";
 
-  // Try assigned channel first, then fallback to others
+  // Build channels dynamically with requested models
+  const channels: Array<{
+    name: string;
+    call: (msgs: Array<{ role: string; content: string }>, mt: number) => Promise<{ text: string; model: string }>;
+  }> = [];
+
+  channels.push({
+    name: `GigaChat slot-0 (${gcModel})`,
+    call: async (msgs, mt) => {
+      const text = await useSlotDirect(0, msgs, gcModel, mt);
+      return { text, model: `${gcModel} (slot-0)` };
+    },
+  });
+
+  if (slots.length > 1) {
+    channels.push({
+      name: `GigaChat slot-1 (${gcModel})`,
+      call: async (msgs, mt) => {
+        const text = await useSlotDirect(1, msgs, gcModel, mt);
+        return { text, model: `${gcModel} (slot-1)` };
+      },
+    });
+  }
+
+  channels.push({
+    name: `Lovable AI (${lModel})`,
+    call: async (msgs, mt) => {
+      const text = await callLovableAI(msgs, mt, lModel);
+      return { text, model: lModel };
+    },
+  });
+
+  const startIdx = rrCounter++ % channels.length;
   let count402 = 0;
   let lastError: Error | null = null;
-  for (let attempt = 0; attempt < rrChannels.length; attempt++) {
-    const chIdx = (startIdx + attempt) % rrChannels.length;
-    const channel = rrChannels[chIdx];
+
+  for (let attempt = 0; attempt < channels.length; attempt++) {
+    const chIdx = (startIdx + attempt) % channels.length;
+    const channel = channels[chIdx];
     try {
       console.log(`[AI-RR] Task #${rrCounter - 1} → ${channel.name}${attempt > 0 ? " (fallback)" : ""}`);
       return await channel.call(messages, maxTokens);
@@ -575,10 +567,9 @@ export async function callAIRoundRobin(
       console.warn(`[AI-RR] ${channel.name} failed: ${msg}`);
       lastError = err instanceof Error ? err : new Error(msg);
       if (msg.includes("402")) count402++;
-      // always try next channel
     }
   }
-  if (count402 === rrChannels.length) {
+  if (count402 === channels.length) {
     throw new Error("402: All AI channels exhausted — tokens depleted on all providers");
   }
   throw lastError || new Error("All AI channels exhausted (round-robin)");
@@ -588,24 +579,29 @@ export async function callAI(
   messages: Array<{ role: string; content: string }>,
   maxTokens = 4096,
   preferredProvider?: string,
+  gigachatModel?: string,
+  lovableModel?: string,
 ): Promise<{ text: string; model: string }> {
+  const gcModel = gigachatModel || "GigaChat-Pro";
+  const lModel = lovableModel || "google/gemini-2.5-flash";
+
   if (preferredProvider === "lovable_ai") {
-    const text = await callLovableAI(messages, maxTokens);
-    return { text, model: "Lovable AI (Gemini)" };
+    const text = await callLovableAI(messages, maxTokens, lModel);
+    return { text, model: lModel };
   }
 
   if (preferredProvider === "round_robin") {
-    return callAIRoundRobin(messages, maxTokens);
+    return callAIRoundRobin(messages, maxTokens, gigachatModel, lovableModel);
   }
 
   try {
-    const text = await callGigaChat(messages, "GigaChat-Pro", maxTokens);
-    return { text, model: "GigaChat-Pro" };
+    const text = await callGigaChat(messages, gcModel, maxTokens);
+    return { text, model: gcModel };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.warn("[callAI] GigaChat unavailable, falling back to Lovable AI:", msg);
-    const text = await callLovableAI(messages, maxTokens);
-    return { text, model: "Gemini 2.5 Flash" };
+    const text = await callLovableAI(messages, maxTokens, lModel);
+    return { text, model: lModel };
   }
 }
 

@@ -23,9 +23,11 @@ interface UseServerPipelineProps {
   enableVerification: boolean;
   onComplete: () => void;
   aiProvider?: string;
+  gigachatModel?: string;
+  lovableModel?: string;
 }
 
-export function useServerPipeline({ courses, enableVerification, onComplete, aiProvider }: UseServerPipelineProps) {
+export function useServerPipeline({ courses, enableVerification, onComplete, aiProvider, gigachatModel, lovableModel }: UseServerPipelineProps) {
   const [isRunning, setIsRunning] = useState(false);
   const [currentRun, setCurrentRun] = useState<PipelineRun | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -160,6 +162,8 @@ export function useServerPipeline({ courses, enableVerification, onComplete, aiP
           enableVerification,
           prompts,
           ai_provider: aiProvider,
+          gigachat_model: gigachatModel,
+          lovable_model: lovableModel,
         },
       });
 
@@ -187,7 +191,7 @@ export function useServerPipeline({ courses, enableVerification, onComplete, aiP
     try {
       const prompts = getMarketplacePrompts();
       const { data, error } = await supabase.functions.invoke("bulk-pipeline", {
-        body: { action: "resume", runId, prompts, enableVerification },
+        body: { action: "resume", runId, prompts, enableVerification, gigachat_model: gigachatModel, lovable_model: lovableModel },
       });
 
       if (error) throw error;

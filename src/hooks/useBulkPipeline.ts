@@ -150,9 +150,11 @@ interface UseBulkPipelineProps {
   onComplete: () => void;
   enableVerification?: boolean;
   aiProvider?: string;
+  gigachatModel?: string;
+  lovableModel?: string;
 }
 
-export function useBulkPipeline({ courses, onComplete, enableVerification = false, aiProvider }: UseBulkPipelineProps) {
+export function useBulkPipeline({ courses, onComplete, enableVerification = false, aiProvider, gigachatModel, lovableModel }: UseBulkPipelineProps) {
   const [isRunning, setIsRunning] = useState(false);
   const [isTestRunning, setIsTestRunning] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -249,6 +251,8 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
                       questions: batch.map(q => ({ question: q.question, options: q.options || [] })),
                       customSystemPrompt: currentPrompts.answers || undefined,
                       ai_provider: aiProvider,
+                      gigachat_model: gigachatModel,
+                      lovable_model: lovableModel,
                     },
                   }),
                   AI_CALL_TIMEOUT, "generate_answers"
@@ -333,6 +337,8 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
                       explanation: q.explanation || "",
                     })),
                     ai_provider: aiProvider,
+                    gigachat_model: gigachatModel,
+                    lovable_model: lovableModel,
                   },
                 }),
                 AI_CALL_TIMEOUT, "verify_answers"
@@ -385,6 +391,8 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
               existingLessons: currentLessons.map(l => ({ title: l.title, type: l.type })),
               customSystemPrompt: currentPrompts.structure || undefined,
               ai_provider: aiProvider,
+              gigachat_model: gigachatModel,
+              lovable_model: lovableModel,
             },
           }),
           AI_CALL_TIMEOUT, "generate_structure"
@@ -430,7 +438,7 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
         try {
           const { data, error } = await withTimeout(
             supabase.functions.invoke("gigachat", {
-              body: { action: "generate_content", courseTitle, lessonTitle: lesson.title, existingContent: null, customSystemPrompt: currentPrompts.content || undefined, ai_provider: aiProvider },
+              body: { action: "generate_content", courseTitle, lessonTitle: lesson.title, existingContent: null, customSystemPrompt: currentPrompts.content || undefined, ai_provider: aiProvider, gigachat_model: gigachatModel, lovable_model: lovableModel },
             }),
             AI_CALL_TIMEOUT, "generate_content"
           );
