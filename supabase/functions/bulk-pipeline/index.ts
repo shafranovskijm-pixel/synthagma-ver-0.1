@@ -353,11 +353,12 @@ async function processCourse(
   const fillLesson = async (lesson: any, idx: number) => {
     await updatePhase(`Контент: «${lesson.title}» (${idx + 1}/${emptyLessons.length})`);
     try {
+      const contentTaskIdx = taskCounter ? taskCounter.value++ : undefined;
       const { text: content } = await withTimeout(
         callAI([
           { role: "system", content: prompts.content || DEFAULT_CONTENT_PROMPT },
           { role: "user", content: `Напиши учебный материал для урока "${lesson.title}" курса "${courseTitle}"` },
-        ], 4096, aiProvider, gigachatModel, lovableModel),
+        ], 4096, aiProvider, gigachatModel, lovableModel, contentTaskIdx),
         AI_CALL_TIMEOUT, "callAI:content"
       );
       if (content && content.length > 50) {
