@@ -68,6 +68,18 @@ function parseJsonResponse(text: string): any[] {
   return JSON.parse(cleaned);
 }
 
+// Timeout wrapper for AI calls
+const AI_CALL_TIMEOUT = 120_000; // 120s
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`Timeout: ${label} (${ms / 1000}s)`)), ms)
+    ),
+  ]);
+}
+
 // ── Process a single course ──
 
 async function processCourse(
