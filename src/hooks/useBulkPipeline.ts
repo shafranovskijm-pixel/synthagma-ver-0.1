@@ -235,7 +235,7 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
         const lessonEntries = Array.from(byLesson.entries());
         await parallelMap(lessonEntries, 3, async ([lessonId, qs]) => {
           if (stopRef.current) return;
-          const lessonInfo = currentLessons.find(l => l.id === lessonId);
+          const lessonInfo = currentLessons.find((l: any) => l.id === lessonId);
           const batchSize = 40;
           for (let i = 0; i < qs.length; i += batchSize) {
             if (stopRef.current) return;
