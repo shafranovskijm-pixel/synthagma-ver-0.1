@@ -109,7 +109,7 @@ const VOICES: Record<string, string> = {
   "Taras_24000": "Tur_24000",
   "Alexandra_24000": "Ost_24000",
   "Sergey_24000": "Pon_24000",
-  "Kira_24000": "Kir_24000",
+  "Kira_24000": "Kin_24000",
   // Backward compat — lowercase keys from admin panel
   natalya: "Nec_24000",
   boris: "Bys_24000",
@@ -117,7 +117,7 @@ const VOICES: Record<string, string> = {
   taras: "Tur_24000",
   alexandr: "Ost_24000",
   sergey: "Pon_24000",
-  kira: "Kir_24000",
+  kira: "Kin_24000",
 };
 
 async function getAccessToken(authKey: string): Promise<string> {
