@@ -1,40 +1,18 @@
 
 
-## Анализ: Графики "ИИ токенов" и "Хранилища" в обзоре организации
+## Plan: Auto-fix after "Проверить все"
 
-### Найденные проблемы
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-**1. График "Использование ИИ токенов" -- не работает**
-- Отображает поле `ai_tokens_used` из таблицы `organization_usage`
-- Однако система отслеживания ИИ (`useAiGenerationLimit.ts`) записывает только `ai_generations_count`, а `ai_tokens_used` всегда остается `0`
-- Результат: график пустой, данные никогда не появятся
+### Changes
 
-**2. График "Использование хранилища" -- не работает корректно**
-- Отображает `storage_bytes` из `organization_usage`, но ничто не записывает реальные данные в это поле
-- Fallback: при отсутствии записи считает `totalDocs * 500KB` -- грубая оценка, не историческая
-- Результат: график показывает нули или неточные данные
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-**3. Лимиты токенов в настройках -- некорректны**
-- Progress-бар и предупреждения считают процент от `ai_tokens_used / ai_tokens_limit`, но `ai_tokens_used` = 0 всегда
-- Автоблокировка ИИ по превышению токенов никогда не сработает
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-### План исправлений
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-**Задача 1: Переключить график ИИ на `ai_generations_count`**
-- Переименовать "Использование ИИ токенов" -> "ИИ-генерации"
-- Заменить `ai_tokens_used` на `ai_generations_count` во всех запросах и графиках в `OrganizationDetailsView.tsx`
-- Обновить форматирование: вместо `formatTokens()` показывать простое число генераций
-- Progress-бар лимитов: считать от `ai_generations_count` (для free = 3/мес)
-
-**Задача 2: Исправить отслеживание хранилища**
-- При загрузке обзора организации -- считать реальный размер из бакетов хранилища через `supabase.storage.from(bucket).list()`, суммируя `metadata.size`
-- Записывать актуальное значение в `organization_usage.storage_bytes` для текущего месяца при каждом просмотре
-- Это обеспечит корректные данные для графика и progress-бара
-
-**Задача 3: Синхронизировать интерфейс настроек**
-- В секции "Настройки" заменить "ИИ токены" на "ИИ-генерации" с корректным лимитом
-- Убрать `ai_tokens_limit` Input (он бесполезен), заменить на отображение лимита по тарифу
-
-### Файлы для изменения
-- `src/components/admin/OrganizationDetailsView.tsx` -- основной файл с графиками, запросами и настройками
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 

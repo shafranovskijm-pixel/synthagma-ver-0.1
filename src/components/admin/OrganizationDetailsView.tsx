@@ -72,7 +72,6 @@ interface Organization {
   frdo_enabled?: boolean;
   created_at: string;
   storage_limit_bytes?: number;
-  ai_tokens_limit?: number;
   notify_on_limit_80?: boolean;
   notify_on_limit_exceeded?: boolean;
   subscription_plan?: string;
@@ -110,13 +109,13 @@ interface OrgDocument {
 
 interface UsageData {
   storage_bytes: number;
-  ai_tokens_used: number;
+  ai_generations_count: number;
 }
 
 interface UsageHistoryItem {
   month: string;
   month_label: string;
-  ai_tokens_used: number;
+  ai_generations_count: number;
   storage_bytes: number;
 }
 
@@ -142,7 +141,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
   const [students, setStudents] = useState<Student[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [documents, setDocuments] = useState<OrgDocument[]>([]);
-  const [usage, setUsage] = useState<UsageData>({ storage_bytes: 0, ai_tokens_used: 0 });
+  const [usage, setUsage] = useState<UsageData>({ storage_bytes: 0, ai_generations_count: 0 });
   const [usageHistory, setUsageHistory] = useState<UsageHistoryItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [settings, setSettings] = useState({
@@ -155,7 +154,6 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
     inn: organization.inn || "",
     contact_name: organization.contact_name || "",
     storage_limit_bytes: organization.storage_limit_bytes || getPlanInfo((organization.subscription_plan as SubscriptionPlan) || 'free').limits.storageBytes,
-    ai_tokens_limit: organization.ai_tokens_limit || 100000,
     notify_on_limit_80: organization.notify_on_limit_80 ?? true,
     notify_on_limit_exceeded: organization.notify_on_limit_exceeded ?? true,
   });
@@ -166,15 +164,15 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
 
   // Calculate limit warnings
   const storageLimitPercent = (usage.storage_bytes / settings.storage_limit_bytes) * 100;
-  const tokensLimitPercent = (usage.ai_tokens_used / settings.ai_tokens_limit) * 100;
+  const aiGenerationsLimit = planKey === 'free' ? 3 : Infinity;
+  const aiGenerationsPercent = aiGenerationsLimit === Infinity ? 0 : (usage.ai_generations_count / aiGenerationsLimit) * 100;
   const isStorageWarning = storageLimitPercent >= 80;
   const isStorageExceeded = storageLimitPercent >= 100;
-  const isTokensWarning = tokensLimitPercent >= 80;
-  const isTokensExceeded = tokensLimitPercent >= 100;
+  const isAiGenWarning = aiGenerationsLimit !== Infinity && aiGenerationsPercent >= 80;
+  const isAiGenExceeded = aiGenerationsLimit !== Infinity && aiGenerationsPercent >= 100;
 
-  // AI should be auto-blocked when tokens exceeded
-  const isAIBlocked = isTokensExceeded && !settings.ai_enabled;
-  const shouldBlockAI = isTokensExceeded;
+  // AI should be auto-blocked when generations exceeded on free plan
+  const shouldBlockAI = isAiGenExceeded;
 
   // Stats
   const [stats, setStats] = useState({
@@ -326,7 +324,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
     
     const { data, error } = await supabase
       .from("organization_usage")
-      .select("storage_bytes, ai_tokens_used")
+      .select("storage_bytes, ai_generations_count")
       .eq("organization_id", organization.id)
       .eq("month_start", currentMonth)
       .maybeSingle();
@@ -336,19 +334,26 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
     }
 
     if (data) {
-      setUsage(data);
+      setUsage({
+        storage_bytes: (data as any).storage_bytes || 0,
+        ai_generations_count: (data as any).ai_generations_count || 0,
+      });
     } else {
-      const { data: docsData } = await supabase
-        .from("org_documents")
-        .select("file_url")
-        .eq("organization_id", organization.id);
-
-      const totalDocs = docsData?.length || 0;
-      const estimatedBytes = totalDocs * 500 * 1024;
+      // Calculate real storage from buckets
+      let totalBytes = 0;
+      const buckets = ['course-files', 'org-documents', 'student-documents', 'library-files', 'org-branding', 'program-files', 'company-documents'];
+      for (const bucket of buckets) {
+        try {
+          const { data: files } = await supabase.storage.from(bucket).list(organization.id, { limit: 1000 });
+          if (files) {
+            totalBytes += files.reduce((sum, f) => sum + ((f.metadata as any)?.size || 0), 0);
+          }
+        } catch {}
+      }
 
       setUsage({
-        storage_bytes: estimatedBytes,
-        ai_tokens_used: 0,
+        storage_bytes: totalBytes,
+        ai_generations_count: 0,
       });
     }
   };
@@ -360,7 +365,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
 
     const { data, error } = await supabase
       .from("organization_usage")
-      .select("month_start, ai_tokens_used, storage_bytes")
+      .select("month_start, ai_generations_count, storage_bytes")
       .eq("organization_id", organization.id)
       .gte("month_start", startDate)
       .order("month_start", { ascending: true });
@@ -380,7 +385,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
       months.push({
         month: monthStr,
         month_label: format(date, "MMM yy", { locale: ru }),
-        ai_tokens_used: existingData?.ai_tokens_used || 0,
+        ai_generations_count: (existingData as any)?.ai_generations_count || 0,
         storage_bytes: existingData?.storage_bytes || 0,
       });
     }
@@ -405,7 +410,6 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
           ai_provider: settings.ai_provider,
           frdo_enabled: settings.frdo_enabled,
           storage_limit_bytes: settings.storage_limit_bytes,
-          ai_tokens_limit: settings.ai_tokens_limit,
           notify_on_limit_80: settings.notify_on_limit_80,
           notify_on_limit_exceeded: settings.notify_on_limit_exceeded,
         } as any)
@@ -414,7 +418,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
       if (error) throw error;
       
       if (shouldBlockAI && settings.ai_enabled) {
-        toast.success("Настройки сохранены. ИИ-помощник заблокирован из-за превышения лимита токенов.");
+        toast.success("Настройки сохранены. ИИ-помощник заблокирован из-за превышения лимита генераций.");
       } else {
         toast.success("Настройки сохранены");
       }
@@ -434,14 +438,6 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
 
-  const formatTokens = (tokens: number): string => {
-    if (tokens >= 1000000) {
-      return (tokens / 1000000).toFixed(2) + "M";
-    } else if (tokens >= 1000) {
-      return (tokens / 1000).toFixed(1) + "K";
-    }
-    return tokens.toString();
-  };
 
   const filteredStudents = students.filter(s => {
     if (!searchQuery) return true;
@@ -515,25 +511,25 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
       </div>
 
       {/* Limit Warnings */}
-      {(isStorageExceeded || isTokensExceeded) && (
+      {(isStorageExceeded || isAiGenExceeded) && (
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Лимит превышен!</AlertTitle>
           <AlertDescription>
             {isStorageExceeded && "Лимит хранилища превышен. "}
-            {isTokensExceeded && "Лимит ИИ токенов превышен. ИИ-помощник автоматически заблокирован. "}
+            {isAiGenExceeded && "Лимит ИИ-генераций превышен. ИИ-помощник автоматически заблокирован. "}
             Увеличьте лимиты в настройках организации.
           </AlertDescription>
         </Alert>
       )}
 
-      {!isStorageExceeded && !isTokensExceeded && (isStorageWarning || isTokensWarning) && (
+      {!isStorageExceeded && !isAiGenExceeded && (isStorageWarning || isAiGenWarning) && (
         <Alert className="border-yellow-500 bg-yellow-500/10">
           <AlertTriangle className="h-4 w-4 text-yellow-500" />
           <AlertTitle className="text-yellow-600">Приближение к лимиту</AlertTitle>
           <AlertDescription className="text-yellow-600">
             {isStorageWarning && `Хранилище: ${storageLimitPercent.toFixed(0)}% использовано. `}
-            {isTokensWarning && `ИИ токены: ${tokensLimitPercent.toFixed(0)}% использовано. `}
+            {isAiGenWarning && `ИИ-генерации: ${aiGenerationsPercent.toFixed(0)}% использовано. `}
           </AlertDescription>
         </Alert>
       )}
@@ -601,20 +597,20 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
             </p>
           </CardHeader>
         </Card>
-        <Card className={`${cardClass} ${isTokensExceeded ? "border-destructive" : isTokensWarning ? "border-yellow-500" : ""}`}>
+        <Card className={`${cardClass} ${isAiGenExceeded ? "border-destructive" : isAiGenWarning ? "border-yellow-500" : ""}`}>
           <CardHeader className="pb-2">
             <CardDescription className="flex items-center gap-1.5">
-              <div className={`p-1 rounded-md ${isTokensExceeded ? "bg-destructive/10" : isTokensWarning ? "bg-yellow-500/10" : "bg-purple-500/10"}`}>
-                <Sparkles className={`w-3 h-3 ${isTokensExceeded ? "text-destructive" : isTokensWarning ? "text-yellow-500" : "text-purple-500"}`} />
+              <div className={`p-1 rounded-md ${isAiGenExceeded ? "bg-destructive/10" : isAiGenWarning ? "bg-yellow-500/10" : "bg-purple-500/10"}`}>
+                <Sparkles className={`w-3 h-3 ${isAiGenExceeded ? "text-destructive" : isAiGenWarning ? "text-yellow-500" : "text-purple-500"}`} />
               </div>
-              ИИ токены
-              {isTokensExceeded && <AlertTriangle className="w-3 h-3 text-destructive" />}
+              ИИ-генерации
+              {isAiGenExceeded && <AlertTriangle className="w-3 h-3 text-destructive" />}
             </CardDescription>
-            <CardTitle className={`text-2xl ${isTokensExceeded ? "text-destructive" : isTokensWarning ? "text-yellow-600" : ""}`}>
-              {formatTokens(usage.ai_tokens_used)}
+            <CardTitle className={`text-2xl ${isAiGenExceeded ? "text-destructive" : isAiGenWarning ? "text-yellow-600" : ""}`}>
+              {usage.ai_generations_count}
             </CardTitle>
             <p className="text-xs text-muted-foreground">
-              из {formatTokens(settings.ai_tokens_limit)}
+              {aiGenerationsLimit === Infinity ? "безлимит" : `из ${aiGenerationsLimit}`}
             </p>
           </CardHeader>
         </Card>
@@ -678,7 +674,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                   <div className="p-1.5 rounded-lg bg-violet-500/10">
                     <Sparkles className="w-5 h-5 text-violet-500" />
                   </div>
-                  Использование ИИ токенов
+                  ИИ-генерации
                 </CardTitle>
                 <CardDescription>Последние 6 месяцев</CardDescription>
               </CardHeader>
@@ -694,11 +690,11 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                       />
                       <YAxis 
                         tick={{ fontSize: 12 }}
-                        tickFormatter={(value) => formatTokens(value)}
                         className="text-muted-foreground"
+                        allowDecimals={false}
                       />
                       <Tooltip 
-                        formatter={(value: number) => [formatTokens(value), "Токены"]}
+                        formatter={(value: number) => [value, "Генерации"]}
                         labelClassName="text-foreground"
                         contentStyle={{ 
                           backgroundColor: 'hsl(var(--card))', 
@@ -707,7 +703,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                         }}
                       />
                       <Bar 
-                        dataKey="ai_tokens_used" 
+                        dataKey="ai_generations_count" 
                         fill="hsl(var(--primary))" 
                         radius={[4, 4, 0, 0]}
                       />
@@ -832,10 +828,12 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                 </div>
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-muted-foreground">ИИ токены (месяц)</span>
-                    <span className="text-sm font-medium">{formatTokens(usage.ai_tokens_used)} / {formatTokens(settings.ai_tokens_limit)}</span>
+                    <span className="text-sm text-muted-foreground">ИИ-генерации (месяц)</span>
+                    <span className="text-sm font-medium">
+                      {usage.ai_generations_count} / {aiGenerationsLimit === Infinity ? "∞" : aiGenerationsLimit}
+                    </span>
                   </div>
-                  <Progress value={Math.min(tokensLimitPercent, 100)} className="h-2" />
+                  <Progress value={aiGenerationsLimit === Infinity ? 0 : Math.min(aiGenerationsPercent, 100)} className="h-2" />
                 </div>
               </div>
             </CardContent>
@@ -1134,7 +1132,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                     </Label>
                     <p className="text-sm text-muted-foreground">
                       {shouldBlockAI 
-                        ? "ИИ-помощник заблокирован из-за превышения лимита токенов"
+                        ? "ИИ-помощник заблокирован из-за превышения лимита генераций"
                         : "Разрешить использование ИИ-помощника для учеников"
                       }
                     </p>
@@ -1220,20 +1218,18 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
 
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label>Лимит ИИ токенов (в месяц)</Label>
-                    <Input
-                      type="number"
-                      min="1000"
-                      step="1000"
-                      value={settings.ai_tokens_limit}
-                      onChange={(e) => setSettings({ 
-                        ...settings, 
-                        ai_tokens_limit: parseInt(e.target.value || "100000")
-                      })}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Текущее использование: {formatTokens(usage.ai_tokens_used)} ({tokensLimitPercent.toFixed(1)}%)
-                    </p>
+                    <Label>ИИ-генерации (лимит по тарифу)</Label>
+                    <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg border">
+                      <Sparkles className="w-4 h-4 text-purple-500" />
+                      <div>
+                        <p className="text-sm font-medium">
+                          {aiGenerationsLimit === Infinity ? "Безлимит" : `${aiGenerationsLimit} генераций / мес`}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Использовано: {usage.ai_generations_count} {aiGenerationsLimit !== Infinity ? `(${aiGenerationsPercent.toFixed(1)}%)` : ""}
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
