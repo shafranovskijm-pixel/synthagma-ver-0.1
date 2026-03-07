@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
 import { SUBSCRIPTION_PLANS } from "@/constants/subscriptionPlans";
 import { 
-  Palette, Sun, Moon, FileText, Building2, LayoutGrid, 
+  Palette, FileText, Building2, LayoutGrid, 
   Library, BarChart3, Link, ShoppingBag, Save, Settings, HardDrive,
   Trophy, MessageCircle, ChevronRight, Loader2, Upload,
   X, ExternalLink, Image, Eye, AlertCircle, LogIn, KeyRound,
