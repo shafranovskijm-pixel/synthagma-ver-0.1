@@ -38,7 +38,8 @@ Deno.serve(async (req) => {
   }
   const userId = user.id;
 
-  try {
+    const db = getServiceSupabase();
+
     // CREATE WEBINAR
     if (req.method === "POST") {
       const body = await req.json();
@@ -48,7 +49,7 @@ Deno.serve(async (req) => {
         organization_id, stream_url, stream_platform,
       } = body;
 
-      const { data, error } = await supabase.from("webinars").insert({
+      const { data, error } = await db.from("webinars").insert({
         organization_id,
         title,
         description,
@@ -76,7 +77,7 @@ Deno.serve(async (req) => {
       if (recording_size_bytes) updateData.recording_size_bytes = recording_size_bytes;
       if (stream_url !== undefined) updateData.stream_url = stream_url;
 
-      const { data, error } = await supabase.from("webinars").update(updateData).eq("id", webinar_id).select().single();
+      const { data, error } = await db.from("webinars").update(updateData).eq("id", webinar_id).select().single();
       if (error) throw error;
       return new Response(JSON.stringify(data), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
@@ -84,7 +85,7 @@ Deno.serve(async (req) => {
     // DELETE WEBINAR
     if (req.method === "DELETE") {
       const { webinar_id } = await req.json();
-      const { error } = await supabase.from("webinars").delete().eq("id", webinar_id);
+      const { error } = await db.from("webinars").delete().eq("id", webinar_id);
       if (error) throw error;
       return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
