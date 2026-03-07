@@ -1,57 +1,18 @@
 
 
-# План: Улучшение OrganizationDetailsView
+## Plan: Auto-fix after "Проверить все"
 
-## Анализ текущих проблем
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-### Функциональные
-1. **Тариф нигде не отображается** — организация имеет `subscription_plan`, но оно не показывается в шапке или карточках
-2. **Дата регистрации** не видна в хедере
-3. **Дублирование кнопки «Сохранить»** — в настройках и в лимитах две отдельные кнопки, обе вызывают одну `saveSettings()`
-4. **Пустой ИИ-провайдер Select** — поле `ai_provider` есть в настройках, но нет UI для его выбора (удалён или никогда не было)
+### Changes
 
-### Визуальные
-1. **Стат-карточки** — все одного цвета, нет визуальной дифференциации (как было на скриншоте)
-2. **Шапка** — плоская, без акцентов; нет тарифа, даты создания
-3. **Табы** — 10 табов в одну строку, на узких экранах обрезаются; все одного цвета
-4. **Графики** — карточки без теней, сливаются с фоном
-5. **Таблицы учеников/курсов** — нет hover-эффектов, карточки плоские
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-## Что улучшаем
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-### 1. Шапка организации — информативнее
-- Показать **бейдж тарифа** (`subscription_plan`) с цветовым акцентом
-- Добавить **дату создания** под email
-- Иконка организации — с градиентным фоном вместо плоского `bg-primary/10`
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-### 2. Стат-карточки — цветовые акценты
-Каждая карточка получает свой цвет иконки и лёгкий фоновый акцент:
-- Ученики → синий
-- Курсы → фиолетовый
-- Завершено → зелёный
-- Прогресс → оранжевый
-- Хранилище/Токены — сохранить предупреждающие цвета
-
-### 3. Карточки с тенями и hover
-Все `Card` получают `shadow-sm hover:shadow-md transition-shadow duration-200` для объёмности.
-
-### 4. Табы — скроллируемые с иконками
-- Обернуть `TabsList` в `ScrollArea` горизонтальную для мобильных
-- Убрать жёсткий `grid 10 колонок`, заменить на `flex` с `overflow-x-auto`
-
-### 5. Секция настроек — добавить выбор ИИ-провайдера
-Вернуть `Select` для `ai_provider` (gigachat/openai/gemini) рядом с переключателем ИИ-помощника.
-
-### 6. Убрать дублирование кнопки сохранения
-Оставить одну кнопку «Сохранить все настройки» внизу страницы настроек.
-
-## Файл
-
-### `src/components/admin/OrganizationDetailsView.tsx`
-- Шапка: добавить бейдж тарифа и дату создания
-- Стат-карточки: добавить цветные иконки с фоном (`bg-blue-500/10 text-blue-500` и т.д.)
-- Все Card: `shadow-sm hover:shadow-md transition-shadow`
-- TabsList: заменить grid на flex с горизонтальным скроллом
-- Настройки: добавить Select для ai_provider, убрать дублирующую кнопку сохранения
-- Графики: добавить цветные иконки заголовков (фиолетовая для токенов, синяя для хранилища)
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 

@@ -19,7 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -47,6 +47,7 @@ import {
   Wallet,
   Eye,
   ExternalLink,
+  Calendar,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -124,6 +125,16 @@ interface OrganizationDetailsViewProps {
   onBack: () => void;
 }
 
+const PLAN_BADGE_COLORS: Record<string, string> = {
+  free: "bg-slate-500/10 text-slate-600 border-slate-500/20",
+  start: "bg-blue-500/10 text-blue-600 border-blue-500/20",
+  standard: "bg-violet-500/10 text-violet-600 border-violet-500/20",
+  professional: "bg-amber-500/10 text-amber-600 border-amber-500/20",
+  maximum: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
+};
+
+const cardClass = "shadow-sm hover:shadow-md transition-shadow duration-200";
+
 export function OrganizationDetailsView({ organization, onBack }: OrganizationDetailsViewProps) {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("overview");
@@ -149,6 +160,9 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
     notify_on_limit_exceeded: organization.notify_on_limit_exceeded ?? true,
   });
   const [isSaving, setIsSaving] = useState(false);
+
+  const planKey = (organization.subscription_plan as SubscriptionPlan) || 'free';
+  const planInfo = getPlanInfo(planKey);
 
   // Calculate limit warnings
   const storageLimitPercent = (usage.storage_bytes / settings.storage_limit_bytes) * 100;
@@ -377,7 +391,6 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
   const saveSettings = async () => {
     setIsSaving(true);
     try {
-      // Auto-block AI if tokens exceeded
       const aiEnabled = shouldBlockAI ? false : settings.ai_enabled;
 
       const { error } = await supabase
@@ -451,26 +464,38 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={onBack}>
+      <div className="flex items-start gap-4">
+        <Button variant="ghost" size="icon" onClick={onBack} className="mt-1">
           <ArrowLeft className="w-5 h-5" />
         </Button>
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-            <Building2 className="w-6 h-6 text-primary" />
+        <div className="flex items-center gap-4 flex-1 min-w-0">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/10 shrink-0">
+            <Building2 className="w-7 h-7 text-primary" />
           </div>
-          <div>
-            <h2 className="text-2xl font-display font-bold">{organization.name}</h2>
-            <p className="text-muted-foreground">{organization.email}</p>
+          <div className="min-w-0">
+            <div className="flex items-center gap-3 flex-wrap">
+              <h2 className="text-2xl font-display font-bold truncate">{organization.name}</h2>
+              <Badge className={`text-xs font-medium border ${PLAN_BADGE_COLORS[planKey] || PLAN_BADGE_COLORS.free}`}>
+                {planInfo.name}
+              </Badge>
+              {shouldBlockAI && (
+                <Badge variant="destructive" className="flex items-center gap-1">
+                  <ShieldOff className="w-3 h-3" />
+                  ИИ заблокирован
+                </Badge>
+              )}
+            </div>
+            <div className="flex items-center gap-3 text-sm text-muted-foreground mt-0.5">
+              <span>{organization.email}</span>
+              <span className="text-border">•</span>
+              <span className="flex items-center gap-1">
+                <Calendar className="w-3.5 h-3.5" />
+                {format(new Date(organization.created_at), "d MMM yyyy", { locale: ru })}
+              </span>
+            </div>
           </div>
         </div>
-        <div className="ml-auto flex items-center gap-2">
-          {shouldBlockAI && (
-            <Badge variant="destructive" className="flex items-center gap-1">
-              <ShieldOff className="w-3 h-3" />
-              ИИ заблокирован
-            </Badge>
-          )}
+        <div className="flex items-center gap-2 shrink-0">
           <Button
             variant="outline"
             size="sm"
@@ -515,42 +540,56 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-        <Card>
+        <Card className={cardClass}>
           <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-1">
-              <Users className="w-3 h-3" /> Учеников
+            <CardDescription className="flex items-center gap-1.5">
+              <div className="p-1 rounded-md bg-blue-500/10">
+                <Users className="w-3 h-3 text-blue-500" />
+              </div>
+              Учеников
             </CardDescription>
             <CardTitle className="text-2xl">{stats.totalStudents}</CardTitle>
           </CardHeader>
         </Card>
-        <Card>
+        <Card className={cardClass}>
           <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-1">
-              <BookOpen className="w-3 h-3" /> Курсов
+            <CardDescription className="flex items-center gap-1.5">
+              <div className="p-1 rounded-md bg-violet-500/10">
+                <BookOpen className="w-3 h-3 text-violet-500" />
+              </div>
+              Курсов
             </CardDescription>
             <CardTitle className="text-2xl">{stats.totalCourses}</CardTitle>
           </CardHeader>
         </Card>
-        <Card>
+        <Card className={cardClass}>
           <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-1">
-              <CheckCircle2 className="w-3 h-3" /> Завершено
+            <CardDescription className="flex items-center gap-1.5">
+              <div className="p-1 rounded-md bg-emerald-500/10">
+                <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+              </div>
+              Завершено
             </CardDescription>
             <CardTitle className="text-2xl">{stats.completedEnrollments}</CardTitle>
           </CardHeader>
         </Card>
-        <Card>
+        <Card className={cardClass}>
           <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-1">
-              <TrendingUp className="w-3 h-3" /> Средний прогресс
+            <CardDescription className="flex items-center gap-1.5">
+              <div className="p-1 rounded-md bg-orange-500/10">
+                <TrendingUp className="w-3 h-3 text-orange-500" />
+              </div>
+              Средний прогресс
             </CardDescription>
             <CardTitle className="text-2xl">{stats.averageProgress}%</CardTitle>
           </CardHeader>
         </Card>
-        <Card className={isStorageExceeded ? "border-destructive" : isStorageWarning ? "border-yellow-500" : ""}>
+        <Card className={`${cardClass} ${isStorageExceeded ? "border-destructive" : isStorageWarning ? "border-yellow-500" : ""}`}>
           <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-1">
-              <HardDrive className={`w-3 h-3 ${isStorageExceeded ? "text-destructive" : isStorageWarning ? "text-yellow-500" : ""}`} /> 
+            <CardDescription className="flex items-center gap-1.5">
+              <div className={`p-1 rounded-md ${isStorageExceeded ? "bg-destructive/10" : isStorageWarning ? "bg-yellow-500/10" : "bg-cyan-500/10"}`}>
+                <HardDrive className={`w-3 h-3 ${isStorageExceeded ? "text-destructive" : isStorageWarning ? "text-yellow-500" : "text-cyan-500"}`} />
+              </div>
               Хранилище
               {isStorageExceeded && <AlertTriangle className="w-3 h-3 text-destructive" />}
             </CardDescription>
@@ -562,10 +601,12 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
             </p>
           </CardHeader>
         </Card>
-        <Card className={isTokensExceeded ? "border-destructive" : isTokensWarning ? "border-yellow-500" : ""}>
+        <Card className={`${cardClass} ${isTokensExceeded ? "border-destructive" : isTokensWarning ? "border-yellow-500" : ""}`}>
           <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-1">
-              <Sparkles className={`w-3 h-3 ${isTokensExceeded ? "text-destructive" : isTokensWarning ? "text-yellow-500" : ""}`} /> 
+            <CardDescription className="flex items-center gap-1.5">
+              <div className={`p-1 rounded-md ${isTokensExceeded ? "bg-destructive/10" : isTokensWarning ? "bg-yellow-500/10" : "bg-purple-500/10"}`}>
+                <Sparkles className={`w-3 h-3 ${isTokensExceeded ? "text-destructive" : isTokensWarning ? "text-yellow-500" : "text-purple-500"}`} />
+              </div>
               ИИ токены
               {isTokensExceeded && <AlertTriangle className="w-3 h-3 text-destructive" />}
             </CardDescription>
@@ -581,57 +622,62 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full max-w-5xl" style={{ gridTemplateColumns: 'repeat(10, 1fr)' }}>
-          <TabsTrigger value="overview" className="flex items-center gap-1">
-            <BarChart3 className="w-4 h-4" />
-            <span className="hidden sm:inline">Обзор</span>
-          </TabsTrigger>
-          <TabsTrigger value="students" className="flex items-center gap-1">
-            <Users className="w-4 h-4" />
-            <span className="hidden sm:inline">Ученики</span>
-          </TabsTrigger>
-          <TabsTrigger value="courses" className="flex items-center gap-1">
-            <BookOpen className="w-4 h-4" />
-            <span className="hidden sm:inline">Курсы</span>
-          </TabsTrigger>
-          <TabsTrigger value="balance" className="flex items-center gap-1">
-            <Wallet className="w-4 h-4" />
-            <span className="hidden sm:inline">Баланс</span>
-          </TabsTrigger>
-          <TabsTrigger value="documents" className="flex items-center gap-1">
-            <FileText className="w-4 h-4" />
-            <span className="hidden sm:inline">Документы</span>
-          </TabsTrigger>
-          <TabsTrigger value="features" className="flex items-center gap-1">
-            <Puzzle className="w-4 h-4" />
-            <span className="hidden sm:inline">Функции</span>
-          </TabsTrigger>
-          <TabsTrigger value="history" className="flex items-center gap-1">
-            <History className="w-4 h-4" />
-            <span className="hidden sm:inline">История</span>
-          </TabsTrigger>
-          <TabsTrigger value="comments" className="flex items-center gap-1">
-            <MessageSquare className="w-4 h-4" />
-            <span className="hidden sm:inline">Заметки</span>
-          </TabsTrigger>
-          <TabsTrigger value="reminders" className="flex items-center gap-1">
-            <Bell className="w-4 h-4" />
-            <span className="hidden sm:inline">Напоминания</span>
-          </TabsTrigger>
-          <TabsTrigger value="settings" className="flex items-center gap-1">
-            <Settings className="w-4 h-4" />
-            <span className="hidden sm:inline">Настройки</span>
-          </TabsTrigger>
-        </TabsList>
+        <ScrollArea className="w-full">
+          <TabsList className="inline-flex w-auto min-w-full gap-1 p-1">
+            <TabsTrigger value="overview" className="flex items-center gap-1.5 shrink-0">
+              <BarChart3 className="w-4 h-4" />
+              <span className="hidden sm:inline">Обзор</span>
+            </TabsTrigger>
+            <TabsTrigger value="students" className="flex items-center gap-1.5 shrink-0">
+              <Users className="w-4 h-4" />
+              <span className="hidden sm:inline">Ученики</span>
+            </TabsTrigger>
+            <TabsTrigger value="courses" className="flex items-center gap-1.5 shrink-0">
+              <BookOpen className="w-4 h-4" />
+              <span className="hidden sm:inline">Курсы</span>
+            </TabsTrigger>
+            <TabsTrigger value="balance" className="flex items-center gap-1.5 shrink-0">
+              <Wallet className="w-4 h-4" />
+              <span className="hidden sm:inline">Баланс</span>
+            </TabsTrigger>
+            <TabsTrigger value="documents" className="flex items-center gap-1.5 shrink-0">
+              <FileText className="w-4 h-4" />
+              <span className="hidden sm:inline">Документы</span>
+            </TabsTrigger>
+            <TabsTrigger value="features" className="flex items-center gap-1.5 shrink-0">
+              <Puzzle className="w-4 h-4" />
+              <span className="hidden sm:inline">Функции</span>
+            </TabsTrigger>
+            <TabsTrigger value="history" className="flex items-center gap-1.5 shrink-0">
+              <History className="w-4 h-4" />
+              <span className="hidden sm:inline">История</span>
+            </TabsTrigger>
+            <TabsTrigger value="comments" className="flex items-center gap-1.5 shrink-0">
+              <MessageSquare className="w-4 h-4" />
+              <span className="hidden sm:inline">Заметки</span>
+            </TabsTrigger>
+            <TabsTrigger value="reminders" className="flex items-center gap-1.5 shrink-0">
+              <Bell className="w-4 h-4" />
+              <span className="hidden sm:inline">Напоминания</span>
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="flex items-center gap-1.5 shrink-0">
+              <Settings className="w-4 h-4" />
+              <span className="hidden sm:inline">Настройки</span>
+            </TabsTrigger>
+          </TabsList>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
 
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-6">
           {/* Usage Charts */}
           <div className="grid md:grid-cols-2 gap-6">
-            <Card>
+            <Card className={cardClass}>
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-primary" />
+                  <div className="p-1.5 rounded-lg bg-violet-500/10">
+                    <Sparkles className="w-5 h-5 text-violet-500" />
+                  </div>
                   Использование ИИ токенов
                 </CardTitle>
                 <CardDescription>Последние 6 месяцев</CardDescription>
@@ -671,10 +717,12 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className={cardClass}>
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
-                  <HardDrive className="w-5 h-5 text-primary" />
+                  <div className="p-1.5 rounded-lg bg-cyan-500/10">
+                    <HardDrive className="w-5 h-5 text-cyan-500" />
+                  </div>
                   Использование хранилища
                 </CardTitle>
                 <CardDescription>Последние 6 месяцев</CardDescription>
@@ -719,13 +767,13 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
 
           <div className="grid md:grid-cols-2 gap-6">
             {/* Recent Students */}
-            <Card>
+            <Card className={cardClass}>
               <CardHeader>
                 <CardTitle className="text-lg">Недавние ученики</CardTitle>
               </CardHeader>
               <CardContent>
                 {students.slice(0, 5).map((student) => (
-                  <div key={student.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                  <div key={student.id} className="flex items-center justify-between py-2.5 border-b last:border-0 hover:bg-muted/30 -mx-2 px-2 rounded-lg transition-colors">
                     <div>
                       <p className="font-medium">{student.full_name || "Без имени"}</p>
                       <p className="text-sm text-muted-foreground">{student.email}</p>
@@ -742,13 +790,13 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
             </Card>
 
             {/* Recent Courses */}
-            <Card>
+            <Card className={cardClass}>
               <CardHeader>
                 <CardTitle className="text-lg">Курсы</CardTitle>
               </CardHeader>
               <CardContent>
                 {courses.slice(0, 5).map((course) => (
-                  <div key={course.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                  <div key={course.id} className="flex items-center justify-between py-2.5 border-b last:border-0 hover:bg-muted/30 -mx-2 px-2 rounded-lg transition-colors">
                     <div className="flex items-center gap-2">
                       <BookOpen className="w-4 h-4 text-muted-foreground" />
                       <p className="font-medium">{course.title}</p>
@@ -769,7 +817,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
           </div>
 
           {/* Usage Limits */}
-          <Card>
+          <Card className={cardClass}>
             <CardHeader>
               <CardTitle className="text-lg">Использование ресурсов (текущий месяц)</CardTitle>
             </CardHeader>
@@ -823,7 +871,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
             </Button>
           </div>
 
-          <Card>
+          <Card className={cardClass}>
             <CardContent className="p-0">
               <ScrollArea className="h-[500px]">
                 <Table>
@@ -839,7 +887,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                   </TableHeader>
                   <TableBody>
                     {filteredStudents.map((student) => (
-                      <TableRow key={student.id}>
+                      <TableRow key={student.id} className="hover:bg-muted/40">
                         <TableCell>
                           <div>
                             <p className="font-medium">{student.full_name || "Без имени"}</p>
@@ -941,7 +989,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
 
         {/* Courses Tab */}
         <TabsContent value="courses" className="space-y-4">
-          <Card>
+          <Card className={cardClass}>
             <CardContent className="p-0">
               <Table>
                 <TableHeader>
@@ -954,7 +1002,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                 </TableHeader>
                 <TableBody>
                   {courses.map((course) => (
-                    <TableRow key={course.id}>
+                    <TableRow key={course.id} className="hover:bg-muted/40">
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <BookOpen className="w-4 h-4 text-primary" />
@@ -1026,7 +1074,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
 
         {/* Settings Tab */}
         <TabsContent value="settings" className="space-y-6">
-          <Card>
+          <Card className={cardClass}>
             <CardHeader>
               <CardTitle>Настройки организации</CardTitle>
               <CardDescription>Управление параметрами организации</CardDescription>
@@ -1071,10 +1119,11 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                 </div>
               </div>
 
-              <div className="border-t pt-6">
-                <div className="flex items-center justify-between">
+              <div className="border-t pt-6 space-y-4">
+                <div className="flex items-center justify-between p-4 bg-muted/50 rounded-xl">
                   <div className="space-y-1">
-                    <Label className="flex items-center gap-2">
+                    <Label className="text-base flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-violet-500" />
                       ИИ-помощник
                       {shouldBlockAI && (
                         <Badge variant="destructive" className="text-xs">
@@ -1097,12 +1146,31 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                   />
                 </div>
 
-
+                {settings.ai_enabled && (
+                  <div className="flex items-center justify-between p-4 bg-muted/30 rounded-xl ml-4 border border-border/60">
+                    <div className="space-y-1">
+                      <Label className="text-sm">ИИ-провайдер</Label>
+                      <p className="text-xs text-muted-foreground">Выберите провайдера для генерации контента</p>
+                    </div>
+                    <Select
+                      value={settings.ai_provider}
+                      onValueChange={(value) => setSettings({ ...settings, ai_provider: value })}
+                    >
+                      <SelectTrigger className="w-48">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="gigachat">GigaChat</SelectItem>
+                        <SelectItem value="lovable_ai">Lovable AI (Gemini)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
                 <div className="flex items-center justify-between p-4 bg-muted/50 rounded-xl">
                   <div className="space-y-0.5">
                     <Label className="text-base flex items-center gap-2">
-                      <FileText className="w-4 h-4" />
+                      <FileText className="w-4 h-4 text-emerald-500" />
                       ФИС ФРДО
                     </Label>
                     <p className="text-sm text-muted-foreground">
@@ -1115,19 +1183,16 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                   />
                 </div>
               </div>
-
-              <Button onClick={saveSettings} disabled={isSaving} className="w-full md:w-auto">
-                {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-                Сохранить настройки
-              </Button>
             </CardContent>
           </Card>
 
           {/* Limits Settings Card */}
-          <Card>
+          <Card className={cardClass}>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <HardDrive className="w-5 h-5" />
+                <div className="p-1.5 rounded-lg bg-cyan-500/10">
+                  <HardDrive className="w-5 h-5 text-cyan-500" />
+                </div>
                 Лимиты ресурсов
               </CardTitle>
               <CardDescription>Установите ограничения на использование ресурсов организацией</CardDescription>
@@ -1175,7 +1240,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
 
               <div className="border-t pt-6 space-y-4">
                 <h4 className="font-medium flex items-center gap-2">
-                  <Bell className="w-4 h-4" />
+                  <Bell className="w-4 h-4 text-amber-500" />
                   Уведомления
                 </h4>
                 
@@ -1205,13 +1270,14 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                   />
                 </div>
               </div>
-
-              <Button onClick={saveSettings} disabled={isSaving} className="w-full md:w-auto">
-                {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-                Сохранить лимиты
-              </Button>
             </CardContent>
           </Card>
+
+          {/* Single Save Button */}
+          <Button onClick={saveSettings} disabled={isSaving} className="w-full md:w-auto" size="lg">
+            {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+            Сохранить все настройки
+          </Button>
         </TabsContent>
       </Tabs>
     </div>
