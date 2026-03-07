@@ -271,7 +271,43 @@ async function _rawCallGigaChat(
 // ═══════════════════════════════════════════════════════════
 // GigaChat with slot pool + 429 retry + model fallback chain
 // ═══════════════════════════════════════════════════════════
-const GIGACHAT_MODEL_CHAIN = ["GigaChat-Pro", "GigaChat"];
+const GIGACHAT_MODEL_CHAIN = ["GigaChat-Max", "GigaChat-Pro", "GigaChat"];
+
+export async function callGigaChatOnSlot(
+  slotIdx: number,
+  messages: Array<{ role: string; content: string }>,
+  model = "GigaChat-Pro",
+  maxTokens = 4096,
+): Promise<string> {
+  const slot = slots[slotIdx];
+  const modelsToTry = [model, ...GIGACHAT_MODEL_CHAIN.filter((m) => m !== model)];
+
+  for (const m of modelsToTry) {
+    try {
+      console.log(`[GigaChat][${slot.name}] Trying model: ${m}`);
+      const result = await _rawCallGigaChat(slot, messages, m, maxTokens);
+      console.log(`[GigaChat][${slot.name}] Success with model: ${m}`);
+      return result;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(`[GigaChat][${slot.name}] Model ${m} failed: ${msg}`);
+
+      if (msg.includes("402")) {
+        console.log(`[GigaChat][${slot.name}] Model ${m} has no tokens (402), trying next model...`);
+        continue;
+      }
+
+      if (msg.includes("429")) {
+        console.log(`[GigaChat][${slot.name}] Rate limited on ${m}, waiting 10s...`);
+        await new Promise((r) => setTimeout(r, 10000));
+        continue;
+      }
+      continue;
+    }
+  }
+
+  throw new Error(`All GigaChat models exhausted on ${slot.name}`);
+}
 
 export async function callGigaChat(
   messages: Array<{ role: string; content: string }>,
@@ -279,34 +315,35 @@ export async function callGigaChat(
   maxTokens = 4096,
 ): Promise<string> {
   const slotIdx = await acquireSlot();
-  const slot = slots[slotIdx];
-  console.log(`[GigaChat] Acquired ${slot.name}`);
+  console.log(`[GigaChat] Acquired ${slots[slotIdx].name}`);
 
   try {
-    const modelsToTry = [model, ...GIGACHAT_MODEL_CHAIN.filter((m) => m !== model)];
+    return await callGigaChatOnSlot(slotIdx, messages, model, maxTokens);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
 
-    for (const m of modelsToTry) {
+    // If all models on this slot are exhausted, try the other slot
+    if (msg.includes("exhausted") && slots.length > 1) {
+      releaseSlot(slotIdx, 0);
+      const otherIdx = slotIdx === 0 ? 1 : 0;
+      console.log(`[GigaChat] Slot ${slots[slotIdx].name} exhausted, trying ${slots[otherIdx].name}...`);
+
+      // Acquire the other slot properly
+      const retryIdx = await acquireSlot();
+      if (retryIdx === slotIdx) {
+        // Got same slot again, release and fail
+        releaseSlot(retryIdx);
+        throw err;
+      }
+      console.log(`[GigaChat] Acquired ${slots[retryIdx].name} for retry`);
       try {
-        console.log(`[GigaChat][${slot.name}] Trying model: ${m}`);
-        const result = await _rawCallGigaChat(slot, messages, m, maxTokens);
-        console.log(`[GigaChat][${slot.name}] Success with model: ${m}`);
-        return result;
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.warn(`[GigaChat][${slot.name}] Model ${m} failed: ${msg}`);
-
-        if (msg.includes("402")) throw err;
-
-        if (msg.includes("429")) {
-          console.log(`[GigaChat][${slot.name}] Rate limited on ${m}, waiting 10s...`);
-          await new Promise((r) => setTimeout(r, 10000));
-          continue;
-        }
-        continue;
+        return await callGigaChatOnSlot(retryIdx, messages, model, maxTokens);
+      } finally {
+        releaseSlot(retryIdx);
       }
     }
 
-    throw new Error("All GigaChat models exhausted");
+    throw err;
   } finally {
     releaseSlot(slotIdx);
   }
