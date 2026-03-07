@@ -205,11 +205,12 @@ async function processCourse(
                 return `Вопрос ${idx + 1}: ${q.question}\n${opts}`;
               }).join("\n\n");
 
+              const currentTaskIdx = taskCounter ? taskCounter.value++ : undefined;
               const { text: response } = await withTimeout(
                 callAI([
                   { role: "system", content: prompts.answers || DEFAULT_ANSWERS_PROMPT },
                   { role: "user", content: `Курс: "${courseTitle}"\nУрок: "${lessonInfo?.title || "Тест"}"\n\n${questionsText}` },
-                ], 16384, aiProvider, gigachatModel, lovableModel),
+                ], 16384, aiProvider, gigachatModel, lovableModel, currentTaskIdx),
                 AI_CALL_TIMEOUT, "callAI:answers"
               );
 
