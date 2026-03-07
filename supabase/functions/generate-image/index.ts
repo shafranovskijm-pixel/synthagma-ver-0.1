@@ -44,10 +44,11 @@ async function generateWithLovableAI(prompt: string, imageUrl: string | undefine
   return generatedImageUrl;
 }
 
-async function generateWithGigaChat(prompt: string) {
+async function generateWithGigaChat(prompt: string, keySlot?: string) {
   // GigaChat uses its own auth flow to get an access token, then calls the image generation endpoint
-  const authKey = Deno.env.get("GIGACHAT_AUTH_KEY");
-  if (!authKey) throw new Error("GIGACHAT_AUTH_KEY is not configured");
+  const envKey = keySlot === "KEY_2" ? "GIGACHAT_AUTH_KEY_2" : keySlot === "KEY_3" ? "GIGACHAT_AUTH_KEY_3" : "GIGACHAT_AUTH_KEY";
+  const authKey = Deno.env.get(envKey);
+  if (!authKey) throw new Error(`${envKey} is not configured`);
 
   // Step 1: Get access token
   const tokenRes = await fetch("https://ngw.devices.sberbank.ru:9443/api/v2/oauth", {
