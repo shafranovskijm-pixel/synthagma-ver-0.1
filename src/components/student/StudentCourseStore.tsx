@@ -522,9 +522,9 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
       <Dialog open={!!selectedCourse} onOpenChange={(open) => !open && setSelectedCourse(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Оставить заявку</DialogTitle>
+            <DialogTitle>{selectedCourse?.price_student ? 'Купить курс' : 'Получить курс бесплатно'}</DialogTitle>
             <DialogDescription>
-              Заявка будет отправлена организации-продавцу для рассмотрения
+              {selectedCourse?.price_student ? 'Заявка будет отправлена организации-продавцу' : 'Курс будет добавлен в ваш личный кабинет'}
             </DialogDescription>
           </DialogHeader>
           {selectedCourse && (
@@ -534,9 +534,11 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {selectedCourse.organization?.name}
                 </p>
-                <p className="text-primary font-bold mt-2">
-                  {formatPrice(selectedCourse.price_student)}
-                </p>
+                {selectedCourse.price_student > 0 ? (
+                  <p className="text-primary font-bold mt-2">{formatPrice(selectedCourse.price_student)}</p>
+                ) : (
+                  <Badge className="bg-green-500/10 text-green-600 border-green-500/20 mt-2">Бесплатно</Badge>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Комментарий (необязательно)</Label>
