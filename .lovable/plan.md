@@ -1,18 +1,42 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## План: Убрать «Уведомления и предупреждения» + Добавить рассылку в чат из админки
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+### Что делаем
 
-### Changes
+1. **Убрать блок «Уведомления и предупреждения»** из `OrganizationDashboard.tsx` — удалить `Collapsible` с `MissingCredentialsAlert`. Важную информацию (например, о логинах) можно будет доносить через чат.
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+2. **Добавить в админку вкладку/кнопку «Рассылка»** — возможность отправить сообщение всем организациям (или выбранным) через существующую систему `org_student_messages`, но от имени платформы. 
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+### Детали реализации
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+**`src/pages/OrganizationDashboard.tsx`**
+- Удалить импорты: `AlertTriangle`, `ChevronDown`, `Collapsible`, `CollapsibleContent`, `CollapsibleTrigger`, `MissingCredentialsAlert`
+- Удалить состояние `alertsOpen`
+- Удалить весь блок `<Collapsible>` (строки 76-91)
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+**Новая таблица `platform_announcements`**
+- `id`, `content` (text), `created_at`, `created_by` (uuid)
+- Это позволит хранить рассылки отдельно от чатов студент-организация
+
+**Новый компонент `src/components/admin/BroadcastManager.tsx`**
+- Текстовое поле для написания сообщения
+- Кнопка «Отправить всем организациям»
+- При отправке — создаёт запись в `platform_announcements` и вставляет сообщение в `org_student_messages` для каждой организации (от имени платформы / специального system user)
+- Список ранее отправленных рассылок
+
+**`src/pages/AdminDashboard.tsx`**
+- Добавить новую вкладку `"broadcast"` в `AdminTabType`
+- Рендерить `<BroadcastManager />` при `activeTab === "broadcast"`
+
+**`src/components/admin/AdminSidebar.tsx`**
+- Добавить кнопку «Рассылка» с иконкой `Megaphone`
+
+### Как организации увидят сообщения
+Сообщения от платформы будут появляться в существующем чате организации (вкладка «Чаты») как специальный системный диалог — с пометкой «СИНТАГМА» вместо имени ученика. Организация сможет видеть эти сообщения, но не отвечать на них.
+
+### Альтернативный подход (проще)
+Вместо вставки в `org_student_messages` — создать отдельную таблицу `platform_announcements` и показывать объявления как баннер/уведомление внутри кабинета организации (вместо старого блока «Уведомления»). Это проще, не смешивает сущности.
+
+Какой подход предпочтительнее — решать вам. Я склоняюсь ко второму (отдельная таблица + баннер в кабинете), так как чат организация-студент — это другая сущность.
 
