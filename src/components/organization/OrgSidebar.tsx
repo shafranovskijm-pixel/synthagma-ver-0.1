@@ -35,7 +35,6 @@ export type TabType =
   | "documents-testimonials" 
   | "journals" 
   | "labor-safety"
-  | "webinars"
   | "subscription"
   | "services" 
   | "settings" 
