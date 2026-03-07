@@ -254,7 +254,7 @@ export function BulkPipelineWidget({ courses, allCourses, onComplete }: Props) {
       const { error } = await supabase
         .from("marketplace_courses")
         .update({ price_organization: 0 } as any)
-        .gte("id", "00000000-0000-0000-0000-000000000000");
+        .gte("id", MARKETPLACE_ORG_ID);
       if (error) throw error;
       toast.success("Все курсы стали бесплатными для организаций");
       onComplete();
