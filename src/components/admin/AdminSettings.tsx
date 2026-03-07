@@ -16,8 +16,6 @@ import { SigmaLogo } from "@/components/ui/SigmaLogo";
 interface SystemSettings {
   maintenanceMode: boolean;
   registrationEnabled: boolean;
-  defaultTokensLimit: number;
-  defaultStorageLimit: number;
 }
 
 export function AdminSettings() {
@@ -31,8 +29,6 @@ export function AdminSettings() {
   const [systemSettings, setSystemSettings] = useState<SystemSettings>({
     maintenanceMode: false,
     registrationEnabled: true,
-    defaultTokensLimit: 100000,
-    defaultStorageLimit: 1073741824,
   });
 
   const [isSaving, setIsSaving] = useState(false);
@@ -254,29 +250,6 @@ export function AdminSettings() {
             </button>
           </div>
 
-          <div className="space-y-3 py-3">
-            <div>
-              <Label className="text-sm">Лимит AI-токенов по умолчанию</Label>
-              <Input
-                type="number"
-                value={systemSettings.defaultTokensLimit}
-                onChange={(e) => setSystemSettings(prev => ({ ...prev, defaultTokensLimit: parseInt(e.target.value) || 0 }))}
-                className="mt-1 rounded-xl"
-              />
-            </div>
-            <div>
-              <Label className="text-sm">Лимит хранилища по умолчанию (байт)</Label>
-              <Input
-                type="number"
-                value={systemSettings.defaultStorageLimit}
-                onChange={(e) => setSystemSettings(prev => ({ ...prev, defaultStorageLimit: parseInt(e.target.value) || 0 }))}
-                className="mt-1 rounded-xl"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Текущее значение: {(systemSettings.defaultStorageLimit / 1073741824).toFixed(1)} ГБ
-              </p>
-            </div>
-          </div>
 
           <Button 
             className="btn-gradient rounded-xl gap-2" 
