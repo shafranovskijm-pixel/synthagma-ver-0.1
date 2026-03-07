@@ -389,28 +389,34 @@ export function AdminMarketplaceManager() {
 
       let completed = 0;
 
-      // 2. Generate content for empty lessons
-      for (const lesson of emptyLessons) {
-        completed++;
-        toast.loading(`Генерирую контент: "${lesson.title}" (${completed}/${totalTasks})`, { id: toastId });
-        try {
-          const { data, error } = await supabase.functions.invoke("gigachat", {
-            body: {
-              action: "generate_content",
-              courseTitle,
-              lessonTitle: lesson.title,
-              existingContent: null,
-            },
-          });
-          if (error) throw error;
-          if (data?.content) {
-            await supabase.from("lessons").update({ content: data.content }).eq("id", lesson.id);
+      // 2. Generate content for empty lessons (parallel, concurrency=2)
+      const CONCURRENCY = 2;
+      for (let i = 0; i < emptyLessons.length; i += CONCURRENCY) {
+        const chunk = emptyLessons.slice(i, i + CONCURRENCY);
+        const promises = chunk.map(async (lesson) => {
+          completed++;
+          toast.loading(`Генерирую контент: "${lesson.title}" (${completed}/${totalTasks})`, { id: toastId });
+          try {
+            const { data, error } = await supabase.functions.invoke("gigachat", {
+              body: {
+                action: "generate_content",
+                courseTitle,
+                lessonTitle: lesson.title,
+                existingContent: null,
+              },
+            });
+            if (error) throw error;
+            if (data?.content) {
+              await supabase.from("lessons").update({ content: data.content }).eq("id", lesson.id);
+            }
+          } catch (e) {
+            console.error(`Failed to generate content for lesson ${lesson.id}:`, e);
           }
-        } catch (e) {
-          console.error(`Failed to generate content for lesson ${lesson.id}:`, e);
-        }
+        });
+        await Promise.allSettled(promises);
       }
-      // 3. Solve existing unanswered test questions
+
+      // 3. Solve existing unanswered test questions (parallel, concurrency=2)
       if (unansweredQuestions.length > 0) {
         completed++;
         toast.loading(`Решаю тесты: ${unansweredQuestions.length} вопросов (${completed}/${totalTasks})`, { id: toastId });
@@ -422,38 +428,43 @@ export function AdminMarketplaceManager() {
           byLesson.set(q.lesson_id, arr);
         }
 
-        for (const [lessonId, questions] of byLesson) {
-          const lessonInfo = lessons?.find(l => l.id === lessonId);
-          const batchSize = 20;
-          for (let i = 0; i < questions.length; i += batchSize) {
-            const batch = questions.slice(i, i + batchSize);
-            try {
-              const { data, error } = await supabase.functions.invoke("gigachat", {
-                body: {
-                  action: "generate_answers",
-                  courseTitle,
-                  lessonTitle: lessonInfo?.title || "Тест",
-                  questions: batch.map(q => ({
-                    question: q.question,
-                    options: q.options || [],
-                  })),
-                },
-              });
-              if (error) throw error;
-              if (data?.answers && !data.parseError) {
-                for (const ans of data.answers) {
-                  const q = batch[ans.questionIndex];
-                  if (q && ans.correctAnswer !== undefined) {
-                    await supabase.from("test_questions")
-                      .update({ correct_answer: ans.correctAnswer, explanation: ans.explanation || null })
-                      .eq("id", q.id);
+        const lessonEntries = Array.from(byLesson.entries());
+        for (let i = 0; i < lessonEntries.length; i += CONCURRENCY) {
+          const chunk = lessonEntries.slice(i, i + CONCURRENCY);
+          const promises = chunk.map(async ([lessonId, questions]) => {
+            const lessonInfo = lessons?.find(l => l.id === lessonId);
+            const batchSize = 20;
+            for (let j = 0; j < questions.length; j += batchSize) {
+              const batch = questions.slice(j, j + batchSize);
+              try {
+                const { data, error } = await supabase.functions.invoke("gigachat", {
+                  body: {
+                    action: "generate_answers",
+                    courseTitle,
+                    lessonTitle: lessonInfo?.title || "Тест",
+                    questions: batch.map(q => ({
+                      question: q.question,
+                      options: q.options || [],
+                    })),
+                  },
+                });
+                if (error) throw error;
+                if (data?.answers && !data.parseError) {
+                  for (const ans of data.answers) {
+                    const q = batch[ans.questionIndex];
+                    if (q && ans.correctAnswer !== undefined) {
+                      await supabase.from("test_questions")
+                        .update({ correct_answer: ans.correctAnswer, explanation: ans.explanation || null })
+                        .eq("id", q.id);
+                    }
                   }
                 }
+              } catch (e) {
+                console.error(`Failed to solve test batch for lesson ${lessonId}:`, e);
               }
-            } catch (e) {
-              console.error(`Failed to solve test batch for lesson ${lessonId}:`, e);
             }
-          }
+          });
+          await Promise.allSettled(promises);
         }
       }
 
