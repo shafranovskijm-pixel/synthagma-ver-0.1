@@ -667,11 +667,7 @@ export function SettingsTab() {
       </details>
 
       {/* Login Page Branding */}
-      <details className="bg-card rounded-2xl border border-border group relative">
-        {!hasBranding && <LockedOverlay requiredPlan="Стандарт" features={[
-          "Уникальная ссылка для входа учеников",
-          "Логотип и цвета на странице авторизации",
-        ]} />}
+      <details className="bg-card rounded-2xl border border-border group">
         <summary className="p-6 cursor-pointer list-none flex items-center justify-between">
           <h3 className="font-display font-semibold text-lg flex items-center gap-2">
             <LogIn className="w-5 h-5" />
@@ -679,7 +675,11 @@ export function SettingsTab() {
           </h3>
           <ChevronRight className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90" />
         </summary>
-        <div className="px-6 pb-6">
+        <div className="px-6 pb-6 relative">
+          {!hasBranding && <LockedOverlay requiredPlan="Стандарт" features={[
+            "Уникальная ссылка для входа учеников",
+            "Логотип и цвета на странице авторизации",
+          ]} />}
           <p className="text-sm text-muted-foreground mb-4">
             Создайте индивидуальную страницу входа с вашим брендом и уникальной ссылкой
           </p>
