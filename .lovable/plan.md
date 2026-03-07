@@ -1,18 +1,83 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+# План: Генерация картинок + Тест-песочница + Сравнение провайдеров
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+## Что добавляем в AISettingsManager
 
-### Changes
+### 1. Новый контекст «Генерация картинок» (`image_generation`)
+- Добавить в `CONTEXT_META` с иконкой `ImagePlus`
+- Провайдер: только `lovable_ai` (GigaChat не умеет картинки)
+- Модели: `google/gemini-2.5-flash-image` (быстрая) и `google/gemini-3-pro-image-preview` (качественная)
+- Добавить строку в БД через миграцию
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+### 2. Тест-песочница (встроенная в каждую секцию)
+- Кнопка «Тест» в каждом контексте
+- При нажатии — поле ввода промпта + кнопка «Отправить»
+- Для текстовых контекстов: отправляет тестовый промпт на `gigachat` edge function, показывает ответ + время + модель
+- Для картинок: отправляет на `generate-image`, показывает превью
+- Для TTS: отправляет на `elevenlabs-tts`, воспроизводит аудио
+- Результат: текст ответа, время выполнения (мс), использованная модель
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+### 3. Сравнение провайдеров (A/B тест)
+- Новая секция «Сравнение» в аккордеоне с иконкой `GitCompare`
+- Поле ввода промпта
+- Выбор 2-3 моделей для сравнения (чекбоксы)
+- Кнопка «Сравнить» — отправляет один промпт параллельно на выбранные модели
+- Результаты в колонках: модель, ответ, время, длина ответа
+- Использует edge function `gigachat` с разными `ai_provider` параметрами
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+## Изменения в БД
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+Миграция: добавить строку `image_generation` в `ai_settings`:
+
+```sql
+INSERT INTO public.ai_settings (context, provider, lovable_model)
+VALUES ('image_generation', 'lovable_ai', 'google/gemini-2.5-flash-image')
+ON CONFLICT (context) DO NOTHING;
+```
+
+## Файлы
+
+1. **`src/components/admin/AISettingsManager.tsx`** — расширить:
+   - Добавить `image_generation` в `CONTEXT_META`
+   - Добавить массив `IMAGE_MODELS`
+   - Добавить состояния для тестирования (`testPrompt`, `testResult`, `testLoading` по контексту)
+   - Кнопка «Тест» в каждой секции с инлайн-результатом
+   - Секция «Сравнение» — параллельный запуск и колоночное отображение
+
+2. **Без изменений в edge functions** — используем существующие `gigachat` и `generate-image`
+
+## UI тест-песочницы (внутри каждой секции)
+
+```text
+┌─────────────────────────────────────────┐
+│  ▼ Генерация курсов                     │
+│    Провайдер: [GigaChat ▼]              │
+│    Модель: [Pro ▼]                      │
+│                                         │
+│    ── Тест ──                           │
+│    [Введите промпт...          ] [▶]    │
+│    ┌─ Результат ──────────────────┐     │
+│    │ Ответ: "..."                 │     │
+│    │ ⏱ 1.2 сек | 📊 GigaChat-Pro │     │
+│    └──────────────────────────────┘     │
+└─────────────────────────────────────────┘
+```
+
+## UI сравнения
+
+```text
+┌─────────────────────────────────────────────┐
+│  ▼ Сравнение провайдеров                     │
+│    [Введите промпт для сравнения...    ]     │
+│    ☑ GigaChat Max  ☑ Gemini Flash  ☐ GPT-5  │
+│    [Сравнить]                                │
+│                                              │
+│    ┌──────────┬──────────┬──────────┐        │
+│    │ GC Max   │ Gemini   │          │        │
+│    │ 1.8 сек  │ 0.9 сек  │          │        │
+│    │ "Ответ.."│ "Ответ.."│          │        │
+│    └──────────┴──────────┴──────────┘        │
+└─────────────────────────────────────────────┘
+```
 
