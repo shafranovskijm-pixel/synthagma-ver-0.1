@@ -59,6 +59,42 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_settings: {
+        Row: {
+          concurrency: number | null
+          context: string
+          extra_config: Json | null
+          gigachat_model: string | null
+          id: string
+          lovable_model: string | null
+          provider: string
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          concurrency?: number | null
+          context: string
+          extra_config?: Json | null
+          gigachat_model?: string | null
+          id?: string
+          lovable_model?: string | null
+          provider?: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          concurrency?: number | null
+          context?: string
+          extra_config?: Json | null
+          gigachat_model?: string | null
+          id?: string
+          lovable_model?: string | null
+          provider?: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       ai_usage_log: {
         Row: {
           created_at: string
