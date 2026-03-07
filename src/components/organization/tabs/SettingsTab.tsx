@@ -7,20 +7,13 @@ import {
   Library, BarChart3, Link, ShoppingBag, Save, Settings, HardDrive,
   Trophy, MessageCircle, ChevronRight, Loader2, Upload,
   X, ExternalLink, Image, Eye, AlertCircle, LogIn, KeyRound,
-  Stamp, Award, GraduationCap, UserCheck, ScrollText, Lock, ArrowUpRight
+  Lock, ArrowUpRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { OrgRequisitesForm } from "@/components/organization/OrgRequisitesForm";
-import { ContractTemplateEditor } from "@/components/organization/ContractTemplateEditor";
-import { ConsentGenerator } from "@/components/organization/ConsentGenerator";
-import { ProtocolTemplateEditor } from "@/components/organization/ProtocolTemplateEditor";
-import { CertificateTemplateEditor } from "@/components/organization/CertificateTemplateEditor";
-import { StampSignatureUploader } from "@/components/organization/StampSignatureUploader";
 import { SystemFeaturesReport } from "@/components/organization/SystemFeaturesReport";
 import { SystemDiagnostics } from "@/components/organization/SystemDiagnostics";
 import { LoginBrandingSettings } from "@/components/organization/LoginBrandingSettings";
@@ -34,45 +27,6 @@ export function SettingsTab() {
   const organizationId = d.organizationId;
   const organizationName = d.organizationName;
   const userId = d.user?.id;
-  const [docTab, setDocTab] = useState("requisites");
-  const [stampUrl, setStampUrl] = useState<string | null>(null);
-  const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
-
-  // Load stamp/signature from org data
-  useState(() => {
-    if (!organizationId) return;
-    supabase
-      .from('organizations')
-      .select('stamp_url, signature_url')
-      .eq('id', organizationId)
-      .single()
-      .then(({ data }) => {
-        if (data) {
-          setStampUrl(data.stamp_url);
-          setSignatureUrl(data.signature_url);
-        }
-      });
-  });
-
-  const handleStampUpload = async (url: string) => {
-    setStampUrl(url);
-    await supabase.from('organizations').update({ stamp_url: url }).eq('id', organizationId);
-  };
-
-  const handleSignatureUpload = async (url: string) => {
-    setSignatureUrl(url);
-    await supabase.from('organizations').update({ signature_url: url }).eq('id', organizationId);
-  };
-
-  const handleStampRemove = async () => {
-    setStampUrl(null);
-    await supabase.from('organizations').update({ stamp_url: null }).eq('id', organizationId);
-  };
-
-  const handleSignatureRemove = async () => {
-    setSignatureUrl(null);
-    await supabase.from('organizations').update({ signature_url: null }).eq('id', organizationId);
-  };
   const {
     isDarkMode, setIsDarkMode,
     menuSettings, setMenuSettings,
@@ -176,129 +130,6 @@ export function SettingsTab() {
               }
             }}
           />
-        </div>
-      </details>
-
-      {/* Document Center */}
-      <details className="bg-card rounded-xl lg:rounded-2xl border border-border group" open={!isFreePlan ? undefined : undefined}>
-        <summary className="p-4 lg:p-6 cursor-pointer list-none flex items-center justify-between">
-          <h3 className="font-display font-semibold text-base lg:text-lg flex items-center gap-2">
-            <FileText className="w-4 h-4 lg:w-5 lg:h-5" />
-            Центр документов
-          </h3>
-          <ChevronRight className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90" />
-        </summary>
-        <div className="px-4 lg:px-6 pb-4 lg:pb-6 relative">
-          {isFreePlan && <LockedOverlay features={[
-            "Шаблоны договоров с автозаполнением реквизитов",
-            "Протоколы аттестационной комиссии (Word)",
-            "Согласия на обработку персональных данных",
-            "Печать и подпись — автовставка во все документы",
-          ]} />}
-          <Tabs value={docTab} onValueChange={setDocTab}>
-            <TabsList className="flex flex-wrap h-auto gap-1 bg-muted/50 p-1 rounded-xl">
-              <TabsTrigger value="requisites" className="rounded-lg text-xs gap-1.5 px-2.5 py-1.5">
-                <Building2 className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Реквизиты</span>
-              </TabsTrigger>
-              <TabsTrigger value="contract" className="rounded-lg text-xs gap-1.5 px-2.5 py-1.5">
-                <FileText className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Договор</span>
-              </TabsTrigger>
-              <TabsTrigger value="protocol" className="rounded-lg text-xs gap-1.5 px-2.5 py-1.5">
-                <ScrollText className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Протокол АК</span>
-              </TabsTrigger>
-              <TabsTrigger value="documents" className="rounded-lg text-xs gap-1.5 px-2.5 py-1.5">
-                <Award className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Удост./Диплом</span>
-              </TabsTrigger>
-              <TabsTrigger value="consent" className="rounded-lg text-xs gap-1.5 px-2.5 py-1.5">
-                <UserCheck className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Согласие ПД</span>
-              </TabsTrigger>
-              <TabsTrigger value="stamp" className="rounded-lg text-xs gap-1.5 px-2.5 py-1.5">
-                <Stamp className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Печать</span>
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="requisites" className="mt-4 space-y-4">
-              <div>
-                <h4 className="font-medium mb-2 flex items-center gap-2 text-sm">
-                  <Building2 className="w-4 h-4" />
-                  Реквизиты организации
-                </h4>
-                <p className="text-xs text-muted-foreground mb-3">
-                  Введите ИНН для автозаполнения данных. Реквизиты используются во всех генерируемых документах.
-                </p>
-                {organizationId && <OrgRequisitesForm organizationId={organizationId} />}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="contract" className="mt-4">
-              <div className="flex flex-col items-center justify-center py-8 gap-4 text-center">
-                <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
-                  <FileText className="w-7 h-7 text-primary" />
-                </div>
-                <div>
-                  <h4 className="font-semibold text-sm mb-1">Конструктор шаблона договора</h4>
-                  <p className="text-xs text-muted-foreground max-w-sm">
-                    Полноэкранный редактор с подсветкой переменных, панелью вставки и предпросмотром
-                  </p>
-                </div>
-                <Button className="rounded-xl gap-2" onClick={() => navigate("/contract-editor")}>
-                  <ExternalLink className="w-4 h-4" />
-                  Открыть конструктор
-                </Button>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="protocol" className="mt-4">
-              <p className="text-xs text-muted-foreground mb-3">
-                Настройте шаблон протокола аттестационной комиссии и состав комиссии
-              </p>
-              {organizationId && <ProtocolTemplateEditor organizationId={organizationId} />}
-            </TabsContent>
-
-            <TabsContent value="documents" className="mt-4">
-              <p className="text-xs text-muted-foreground mb-3">
-                Настройте серии, нумерацию и формат регистрационных номеров документов об образовании
-              </p>
-              {organizationId && <CertificateTemplateEditor organizationId={organizationId} />}
-            </TabsContent>
-
-            <TabsContent value="consent" className="mt-4">
-              <p className="text-xs text-muted-foreground mb-3">
-                Генератор согласия на обработку персональных данных
-              </p>
-              {organizationId && <ConsentGenerator organizationId={organizationId} organizationName={organizationName} />}
-            </TabsContent>
-
-            <TabsContent value="stamp" className="mt-4">
-              <p className="text-xs text-muted-foreground mb-3">
-                Загруженные печать и подпись используются во всех генерируемых документах (протоколы, договоры, приказы)
-              </p>
-              {organizationId && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <StampSignatureUploader
-                    type="stamp"
-                    currentUrl={stampUrl}
-                    onUpload={handleStampUpload}
-                    onRemove={handleStampRemove}
-                    organizationId={organizationId}
-                  />
-                  <StampSignatureUploader
-                    type="signature"
-                    currentUrl={signatureUrl}
-                    onUpload={handleSignatureUpload}
-                    onRemove={handleSignatureRemove}
-                    organizationId={organizationId}
-                  />
-                </div>
-              )}
-            </TabsContent>
-          </Tabs>
         </div>
       </details>
 
