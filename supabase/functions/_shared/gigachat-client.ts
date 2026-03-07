@@ -1,6 +1,6 @@
 /**
  * Shared GigaChat client with OAuth token caching, Russian CA certs,
- * sequential request queue (mutex), and Lovable AI fallback.
+ * slot-based parallel request pool, and Lovable AI fallback.
  */
 
 // === Russian Trusted Root CA (Минцифры России) ===
@@ -82,32 +82,6 @@ ZHuNM/m0TXt2wTTPL7JH2YC0gPz/BvvSzjksgzU5rLbRyUKQkgU=
 -----END CERTIFICATE-----`;
 
 // ═══════════════════════════════════════════════════════════
-// Cached OAuth token
-// ═══════════════════════════════════════════════════════════
-let cachedToken: string | null = null;
-let tokenExpiresAt = 0;
-
-// ═══════════════════════════════════════════════════════════
-// Sequential request queue (mutex) — only 1 GigaChat request at a time
-// ═══════════════════════════════════════════════════════════
-let requestLock: Promise<void> = Promise.resolve();
-
-async function withGigaChatLock<T>(fn: () => Promise<T>, postDelayMs = 3000): Promise<T> {
-  const prev = requestLock;
-  let releaseLock!: () => void;
-  requestLock = new Promise<void>((resolve) => { releaseLock = resolve; });
-  await prev; // wait for previous request to finish
-  try {
-    const result = await fn();
-    // mandatory cooldown after successful request
-    await new Promise((r) => setTimeout(r, postDelayMs));
-    return result;
-  } finally {
-    releaseLock();
-  }
-}
-
-// ═══════════════════════════════════════════════════════════
 // HTTP client with Russian CA certs
 // ═══════════════════════════════════════════════════════════
 function createSberHttpClient(): Deno.HttpClient | undefined {
@@ -128,16 +102,96 @@ function createSberHttpClient(): Deno.HttpClient | undefined {
 const httpClient = createSberHttpClient();
 
 // ═══════════════════════════════════════════════════════════
-// OAuth token
+// Slot-based parallel request pool
 // ═══════════════════════════════════════════════════════════
-async function getGigaChatToken(): Promise<string> {
-  const now = Math.floor(Date.now() / 1000);
-  if (cachedToken && tokenExpiresAt > now + 300) {
-    return cachedToken;
+
+interface GigaChatSlot {
+  name: string;
+  authKeyEnv: string;
+  cachedToken: string | null;
+  tokenExpiresAt: number;
+  lock: Promise<void>;
+  releaseLock: (() => void) | null;
+  busy: boolean;
+}
+
+function createSlots(): GigaChatSlot[] {
+  const slots: GigaChatSlot[] = [
+    {
+      name: "slot-0",
+      authKeyEnv: "GIGACHAT_AUTH_KEY",
+      cachedToken: null,
+      tokenExpiresAt: 0,
+      lock: Promise.resolve(),
+      releaseLock: null,
+      busy: false,
+    },
+  ];
+
+  // Add second slot only if the key is configured
+  const key2 = Deno.env.get("GIGACHAT_AUTH_KEY_2");
+  if (key2) {
+    slots.push({
+      name: "slot-1",
+      authKeyEnv: "GIGACHAT_AUTH_KEY_2",
+      cachedToken: null,
+      tokenExpiresAt: 0,
+      lock: Promise.resolve(),
+      releaseLock: null,
+      busy: false,
+    });
+    console.log("[GigaChat] Pool initialized with 2 slots (parallel mode)");
+  } else {
+    console.log("[GigaChat] Pool initialized with 1 slot (single key mode)");
   }
 
-  const authKey = Deno.env.get("GIGACHAT_AUTH_KEY");
-  if (!authKey) throw new Error("GIGACHAT_AUTH_KEY is not configured");
+  return slots;
+}
+
+const slots = createSlots();
+
+/**
+ * Acquire the first free slot, or wait for any to become free.
+ * Returns the slot index.
+ */
+async function acquireSlot(): Promise<number> {
+  // Fast path: find a free slot
+  for (let i = 0; i < slots.length; i++) {
+    if (!slots[i].busy) {
+      slots[i].busy = true;
+      const prev = slots[i].lock;
+      slots[i].lock = new Promise<void>((resolve) => {
+        slots[i].releaseLock = resolve;
+      });
+      await prev;
+      return i;
+    }
+  }
+
+  // All busy: race on all locks, then retry
+  await Promise.race(slots.map((s) => s.lock));
+  return acquireSlot();
+}
+
+function releaseSlot(idx: number, postDelayMs = 3000): void {
+  // Cooldown then release
+  setTimeout(() => {
+    slots[idx].busy = false;
+    slots[idx].releaseLock?.();
+  }, postDelayMs);
+}
+
+// ═══════════════════════════════════════════════════════════
+// OAuth token (per-slot)
+// ═══════════════════════════════════════════════════════════
+async function getSlotToken(slot: GigaChatSlot): Promise<string> {
+  const now = Math.floor(Date.now() / 1000);
+  if (slot.cachedToken && slot.tokenExpiresAt > now + 300) {
+    return slot.cachedToken;
+  }
+
+  const authKey = Deno.env.get(slot.authKeyEnv);
+  if (!authKey) throw new Error(`${slot.authKeyEnv} is not configured`);
 
   const rquid = crypto.randomUUID();
 
@@ -160,26 +214,27 @@ async function getGigaChatToken(): Promise<string> {
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error("GigaChat OAuth error:", response.status, errorText);
+    console.error(`[GigaChat][${slot.name}] OAuth error:`, response.status, errorText);
     throw new Error(`GigaChat OAuth failed: ${response.status}`);
   }
 
   const data = await response.json();
-  cachedToken = data.access_token;
-  tokenExpiresAt = Math.floor(data.expires_at / 1000);
-  console.log(`[GigaChat] OAuth token obtained, expires in ${tokenExpiresAt - now}s`);
-  return cachedToken!;
+  slot.cachedToken = data.access_token;
+  slot.tokenExpiresAt = Math.floor(data.expires_at / 1000);
+  console.log(`[GigaChat][${slot.name}] OAuth token obtained, expires in ${slot.tokenExpiresAt - now}s`);
+  return slot.cachedToken!;
 }
 
 // ═══════════════════════════════════════════════════════════
-// Raw GigaChat API call (no mutex — internal use only)
+// Raw GigaChat API call (uses a specific slot)
 // ═══════════════════════════════════════════════════════════
 async function _rawCallGigaChat(
+  slot: GigaChatSlot,
   messages: Array<{ role: string; content: string }>,
   model: string,
   maxTokens: number,
 ): Promise<string> {
-  const token = await getGigaChatToken();
+  const token = await getSlotToken(slot);
 
   const fetchOpts: RequestInit & { client?: Deno.HttpClient } = {
     method: "POST",
@@ -199,7 +254,7 @@ async function _rawCallGigaChat(
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error("GigaChat API error:", response.status, errorText);
+    console.error(`[GigaChat][${slot.name}] API error:`, response.status, errorText);
     if (response.status === 402) {
       throw new Error("GigaChat 402: Payment required — tokens exhausted");
     }
@@ -214,8 +269,7 @@ async function _rawCallGigaChat(
 }
 
 // ═══════════════════════════════════════════════════════════
-// GigaChat with mutex + 429 retry + model fallback chain
-// Models: GigaChat-Pro (928K package) → GigaChat (Lite 891K) → fallback to Lovable AI
+// GigaChat with slot pool + 429 retry + model fallback chain
 // ═══════════════════════════════════════════════════════════
 const GIGACHAT_MODEL_CHAIN = ["GigaChat-Pro", "GigaChat"];
 
@@ -224,38 +278,38 @@ export async function callGigaChat(
   model = "GigaChat-Pro",
   maxTokens = 4096,
 ): Promise<string> {
-  return withGigaChatLock(async () => {
-    // Try requested model first, then fallback chain
+  const slotIdx = await acquireSlot();
+  const slot = slots[slotIdx];
+  console.log(`[GigaChat] Acquired ${slot.name}`);
+
+  try {
     const modelsToTry = [model, ...GIGACHAT_MODEL_CHAIN.filter((m) => m !== model)];
 
     for (const m of modelsToTry) {
       try {
-        console.log(`[GigaChat] Trying model: ${m}`);
-        const result = await _rawCallGigaChat(messages, m, maxTokens);
-        console.log(`[GigaChat] Success with model: ${m}`);
+        console.log(`[GigaChat][${slot.name}] Trying model: ${m}`);
+        const result = await _rawCallGigaChat(slot, messages, m, maxTokens);
+        console.log(`[GigaChat][${slot.name}] Success with model: ${m}`);
         return result;
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        console.warn(`[GigaChat] Model ${m} failed: ${msg}`);
+        console.warn(`[GigaChat][${slot.name}] Model ${m} failed: ${msg}`);
 
-        // On 402, stop immediately — all models share the same balance
-        if (msg.includes("402")) {
-          throw err;
-        }
+        if (msg.includes("402")) throw err;
 
-        // On 429, wait 10s then try next model
         if (msg.includes("429")) {
-          console.log(`[GigaChat] Rate limited on ${m}, waiting 10s before next model...`);
+          console.log(`[GigaChat][${slot.name}] Rate limited on ${m}, waiting 10s...`);
           await new Promise((r) => setTimeout(r, 10000));
           continue;
         }
-        // On other errors, try next model immediately
         continue;
       }
     }
 
     throw new Error("All GigaChat models exhausted");
-  });
+  } finally {
+    releaseSlot(slotIdx);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -391,13 +445,11 @@ export async function callAI(
   maxTokens = 4096,
   preferredProvider?: string,
 ): Promise<{ text: string; model: string }> {
-  // If preferred provider is lovable_ai, skip GigaChat entirely
   if (preferredProvider === "lovable_ai") {
     const text = await callLovableAI(messages, maxTokens);
     return { text, model: "Lovable AI (Gemini)" };
   }
 
-  // Default: GigaChat first → Lovable AI fallback
   try {
     const text = await callGigaChat(messages, "GigaChat-Pro", maxTokens);
     return { text, model: "GigaChat-Pro" };
@@ -419,7 +471,6 @@ export async function callAIWithTools(
   lovableModel = "google/gemini-3-flash-preview",
   preferredProvider?: string,
 ): Promise<any> {
-  // If preferred provider is lovable_ai, skip GigaChat entirely
   if (preferredProvider === "lovable_ai") {
     return await callLovableAIWithTools(messages, tool, lovableModel);
   }
