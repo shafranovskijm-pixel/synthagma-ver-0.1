@@ -494,15 +494,21 @@ export const StudentsTab = React.memo(function StudentsTab({
               ))}
             </SelectContent>
           </Select>
-          <Button
-            variant="outline"
-            size="sm"
-            className="rounded-xl gap-1 shrink-0 text-xs lg:text-sm"
-            onClick={() => setShowGroupDialog(true)}
-          >
-            <FolderOpen className="w-4 h-4" />
-            <span className="hidden sm:inline">Группы</span>
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-xl gap-1 shrink-0 text-xs lg:text-sm"
+                onClick={() => setShowGroupDialog(true)}
+              >
+                <FolderOpen className="w-4 h-4" />
+                <span className="hidden sm:inline">Группы</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Управление группами учеников</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
           {/* Desktop search */}
           <div className="relative hidden lg:block">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
