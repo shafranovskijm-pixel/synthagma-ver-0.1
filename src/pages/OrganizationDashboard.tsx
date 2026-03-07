@@ -7,23 +7,17 @@ import { DialogsContainer } from "@/components/organization/dialogs/DialogsConta
 import { MissingCredentialsAlert } from "@/components/organization/MissingCredentialsAlert";
 import { OrgDashboardHeader } from "@/components/organization/OrgDashboardHeader";
 import { Button } from "@/components/ui/button";
-import { Eye, X, ChevronDown, AlertTriangle } from "lucide-react";
+import { Eye, X } from "lucide-react";
 import { OnboardingDialog } from "@/components/onboarding/OnboardingDialog";
 import { organizationOnboardingSteps } from "@/constants/onboardingSteps";
 import { OrgDashboardProvider, useOrgDashboard } from "@/contexts/OrgDashboardContext";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { PlatformAnnouncementsBanner } from "@/components/organization/PlatformAnnouncementsBanner";
 
 function OrganizationDashboardContent() {
   const navigate = useNavigate();
   const d = useOrgDashboard();
-  const [alertsOpen, setAlertsOpen] = useState(false);
 
   const exitAdminView = () => { localStorage.removeItem("adminViewAsOrg"); navigate("/admin"); };
-
-  const hasAlerts = d.students.some(s => {
-    const p = (s as any);
-    return !p.login || !p.generated_password;
-  });
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -73,22 +67,7 @@ function OrganizationDashboardContent() {
         <OrgDashboardHeader />
 
         <div className="p-4 lg:p-8 overflow-hidden">
-          <Collapsible open={alertsOpen} onOpenChange={setAlertsOpen}>
-            <CollapsibleTrigger asChild>
-              <button className="w-full flex items-center gap-2 p-3 rounded-lg border border-border bg-muted/30 hover:bg-muted/50 transition-colors text-sm text-muted-foreground mb-2">
-                <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
-                <span>Уведомления и предупреждения</span>
-                <ChevronDown className={`w-4 h-4 ml-auto transition-transform ${alertsOpen ? "rotate-180" : ""}`} />
-              </button>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <MissingCredentialsAlert 
-                students={d.students}
-                isCreating={d.studentActions.isCreatingBulkCredentials}
-                onCreateCredentials={d.handleBulkCreateCredentials}
-              />
-            </CollapsibleContent>
-          </Collapsible>
+          <PlatformAnnouncementsBanner />
           
           <AnimatedTabContent tabKey={d.tabNavigation.activeTab} direction={d.tabNavigation.swipeDirection} isMobile={d.isMobile}>
             <TabContentRenderer />
