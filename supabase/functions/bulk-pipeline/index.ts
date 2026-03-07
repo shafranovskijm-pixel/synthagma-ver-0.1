@@ -343,10 +343,9 @@ async function processCourse(
     (l.type === "text" || l.type === "practice") && (!l.content || l.content === "[]" || l.content === "" || (l.content?.length || 0) < 50)
   );
 
-  for (let i = 0; i < emptyLessons.length; i++) {
-    if (await shouldStop()) return { ok: false, testsSolved, lessonsFilled, skippedBatches, totalQuestions };
-    const lesson = emptyLessons[i];
-    await updatePhase(`Контент: «${lesson.title}» (${i + 1}/${emptyLessons.length})`);
+  // Process empty lessons in parallel (concurrency=2)
+  const fillLesson = async (lesson: any, idx: number) => {
+    await updatePhase(`Контент: «${lesson.title}» (${idx + 1}/${emptyLessons.length})`);
     try {
       const { text: content } = await withTimeout(
         callAI([
@@ -357,14 +356,17 @@ async function processCourse(
       );
       if (content && content.length > 50) {
         await db.from("lessons").update({ content }).eq("id", lesson.id);
-        lessonsFilled++;
+        return true;
       }
     } catch (e: any) {
       if (e?.message?.includes("402")) throw e;
       console.error(`[bulk-pipeline] Content gen failed:`, e?.message);
     }
-    await new Promise(r => setTimeout(r, 2000));
-  }
+    return false;
+  };
+
+  const contentResults = await processInParallel(emptyLessons, 2, fillLesson, shouldStop, 2000);
+  lessonsFilled += contentResults.filter(Boolean).length;
 
   // 5. Fix duplicate titles
   const titleCounts = new Map<string, Array<{ id: string; title: string }>>();
