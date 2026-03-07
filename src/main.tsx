@@ -2,14 +2,10 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 
-// Force clear old caches on load
+// Aggressively clear all old caches on load to ensure fresh content
 if ('caches' in window) {
   caches.keys().then(names => {
-    names.forEach(name => {
-      if (name.includes('workbox') || name.includes('pages-cache') || name.includes('static-cache')) {
-        caches.delete(name);
-      }
-    });
+    names.forEach(name => caches.delete(name));
   });
 }
 
@@ -17,14 +13,8 @@ if ('caches' in window) {
 const isNative = typeof (window as any).Capacitor !== 'undefined';
 if (!isNative) {
   import('virtual:pwa-register').then(({ registerSW }) => {
-    const updateSW = registerSW({
+    registerSW({
       immediate: true,
-      onNeedRefresh() {
-        updateSW(true);
-      },
-      onOfflineReady() {
-        console.log('App ready for offline use');
-      },
       onRegistered(registration) {
         if (registration) {
           setInterval(() => registration.update(), 30 * 1000);
