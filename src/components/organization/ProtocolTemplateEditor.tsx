@@ -1,12 +1,14 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Save, Loader2, RotateCcw, Plus, Trash2, Users } from "lucide-react";
+import { Save, Loader2, RotateCcw, Plus, Trash2, Users, Eye } from "lucide-react";
 import { HighlightedTemplateEditor } from "./HighlightedTemplateEditor";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { DocumentPreview } from "./DocumentPreview";
 
 interface CommissionMember {
   name: string;
@@ -135,12 +137,6 @@ export function ProtocolTemplateEditor({ organizationId }: ProtocolTemplateEdito
     setCommissionMembers(prev => prev.map((m, i) => i === index ? { ...m, [field]: value } : m));
   };
 
-  const roleLabels: Record<string, string> = {
-    chairman: "Председатель",
-    member: "Член комиссии",
-    secretary: "Секретарь",
-  };
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-32">
@@ -230,6 +226,26 @@ export function ProtocolTemplateEditor({ organizationId }: ProtocolTemplateEdito
           ))}
         </div>
       </div>
+
+      {/* Preview Accordion */}
+      <Accordion type="single" collapsible>
+        <AccordionItem value="preview" className="border rounded-xl px-4">
+          <AccordionTrigger className="text-sm hover:no-underline gap-2">
+            <span className="flex items-center gap-2">
+              <Eye className="w-4 h-4" />
+              Предпросмотр протокола
+            </span>
+          </AccordionTrigger>
+          <AccordionContent>
+            <DocumentPreview
+              type="protocol"
+              data={{
+                commissionMembers: commissionMembers.filter(m => m.name),
+              }}
+            />
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
 
       {/* Save */}
       <div className="flex gap-3">
