@@ -417,7 +417,13 @@ export async function callAIWithTools(
   tool?: any,
   gigachatModel = "GigaChat-Pro",
   lovableModel = "google/gemini-3-flash-preview",
+  preferredProvider?: string,
 ): Promise<any> {
+  // If preferred provider is lovable_ai, skip GigaChat entirely
+  if (preferredProvider === "lovable_ai") {
+    return await callLovableAIWithTools(messages, tool, lovableModel);
+  }
+
   try {
     const systemMsg = messages.find((m) => m.role === "system");
     const userMsg = messages.find((m) => m.role === "user");
