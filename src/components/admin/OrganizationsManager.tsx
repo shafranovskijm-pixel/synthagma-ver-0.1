@@ -205,7 +205,7 @@ export function OrganizationsManager() {
     toast({ title: "ИИ-провайдер изменён", description: `${org.name}: ${newProvider === 'lovable_ai' ? 'Lovable AI' : 'GigaChat'}` });
   };
 
-
+  const handleCreate = async () => {
     if (!formData.name || !formData.email) {
       toast({
         title: "Ошибка",
