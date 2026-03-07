@@ -140,6 +140,7 @@ export function SubscriptionTab() {
       ]);
       
       if (orgRes.data?.paid_until) setPaidUntil(orgRes.data.paid_until);
+      setOrgContact({ email: orgRes.data?.email, phone: orgRes.data?.phone, contact_name: orgRes.data?.contact_name });
       if ((reqRes.data as any)?.[0]) setPendingRequest((reqRes.data as any)[0]);
       if (docsRes.data) setBillingDocs(docsRes.data as any[]);
     };
