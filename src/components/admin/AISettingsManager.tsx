@@ -563,17 +563,9 @@ export function AISettingsManager() {
   const renderOrgDefault = () => {
     const s = settings["org_default"];
     if (!s) return null;
-    const allowOverride = s.extra_config?.allow_org_override ?? true;
     return (
       <div className="space-y-4">
         {renderProviderSelect("org_default")}
-        <div className="flex items-center gap-3 mt-2">
-          <Switch
-            checked={allowOverride}
-            onCheckedChange={(v) => updateExtra("org_default", "allow_org_override", v)}
-          />
-          <Label>Разрешить организациям менять провайдера</Label>
-        </div>
       </div>
     );
   };

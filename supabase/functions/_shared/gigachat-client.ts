@@ -631,8 +631,8 @@ export async function callAI(
 export async function callAIWithTools(
   messages: Array<{ role: string; content: string }>,
   tool?: any,
-  gigachatModel = "GigaChat-Pro",
-  lovableModel = "google/gemini-3-flash-preview",
+  gigachatModel = "GigaChat-Max",
+  lovableModel = "google/gemini-2.5-pro",
   preferredProvider?: string,
 ): Promise<any> {
   if (preferredProvider === "gigachat") {
