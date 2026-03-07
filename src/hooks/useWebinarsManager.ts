@@ -108,7 +108,7 @@ export function useWebinarsManager(organizationId: string | null) {
     }
   }, [organizationId, fetchWebinars]);
 
-  const updateWebinarStatus = useCallback(async (webinarId: string, status: string, extra?: { recording_url?: string; stream_url?: string }) => {
+  const updateWebinarStatus = useCallback(async (webinarId: string, status: string, extra?: { recording_url?: string; stream_url?: string }): Promise<boolean> => {
     try {
       const { data: session } = await supabase.auth.getSession();
       const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-webinar`;
@@ -123,8 +123,10 @@ export function useWebinarsManager(organizationId: string | null) {
       });
       if (!response.ok) throw new Error("Failed to update");
       await fetchWebinars();
+      return true;
     } catch (e: any) {
       toast.error("Ошибка обновления статуса");
+      return false;
     }
   }, [fetchWebinars]);
 
