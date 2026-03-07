@@ -326,9 +326,13 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
                 )}
               </CardContent>
               <CardFooter className="flex items-center justify-between border-t border-border pt-4">
-                <span className="text-lg font-bold text-primary">
-                  {formatPrice(item.price_student)}
-                </span>
+                {item.price_student > 0 ? (
+                  <span className="text-lg font-bold text-primary">
+                    {formatPrice(item.price_student)}
+                  </span>
+                ) : (
+                  <Badge className="bg-green-500/10 text-green-600 border-green-500/20 text-sm px-3 py-1">Бесплатно</Badge>
+                )}
                 <div className="flex gap-2">
                   <Button
                     size="sm"
@@ -341,11 +345,10 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
                   </Button>
                   <Button
                     size="sm"
-                    className="rounded-xl gap-1.5"
+                    className={`rounded-xl gap-1.5 ${item.price_student === 0 ? 'bg-green-600 hover:bg-green-700 text-white' : ''}`}
                     onClick={(e) => { e.stopPropagation(); setSelectedCourse(item); }}
                   >
-                    <ShoppingCart className="w-4 h-4" />
-                    Заявка
+                    {item.price_student > 0 ? <><ShoppingCart className="w-4 h-4" />Купить</> : <><Gift className="w-4 h-4" />Получить</>}
                   </Button>
                 </div>
               </CardFooter>
