@@ -477,6 +477,96 @@ export async function callLovableAIWithTools(
 // ═══════════════════════════════════════════════════════════
 // Universal AI caller: GigaChat first → Lovable AI fallback
 // ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+// Round-Robin distribution across all providers
+// ═══════════════════════════════════════════════════════════
+let rrCounter = 0;
+
+function buildChannels(): Array<{
+  name: string;
+  call: (msgs: Array<{ role: string; content: string }>, maxTokens: number) => Promise<{ text: string; model: string }>;
+}> {
+  const channels: ReturnType<typeof buildChannels> = [];
+
+  // GigaChat slot-0
+  channels.push({
+    name: "GigaChat slot-0",
+    call: async (msgs, mt) => {
+      const idx = await acquireSlot();
+      // If we got slot-0, use it; otherwise release and force slot-0
+      if (idx !== 0) { releaseSlot(idx, 0); }
+      const useIdx = 0;
+      slots[useIdx].busy = true;
+      const prev = slots[useIdx].lock;
+      slots[useIdx].lock = new Promise<void>((resolve) => { slots[useIdx].releaseLock = resolve; });
+      await prev;
+      try {
+        const text = await callGigaChatOnSlot(useIdx, msgs, "GigaChat-Pro", mt);
+        return { text, model: "GigaChat-Pro (slot-0)" };
+      } finally {
+        releaseSlot(useIdx);
+      }
+    },
+  });
+
+  // GigaChat slot-1 (if configured)
+  if (slots.length > 1) {
+    channels.push({
+      name: "GigaChat slot-1",
+      call: async (msgs, mt) => {
+        const useIdx = 1;
+        slots[useIdx].busy = true;
+        const prev = slots[useIdx].lock;
+        slots[useIdx].lock = new Promise<void>((resolve) => { slots[useIdx].releaseLock = resolve; });
+        await prev;
+        try {
+          const text = await callGigaChatOnSlot(useIdx, msgs, "GigaChat-Pro", mt);
+          return { text, model: "GigaChat-Pro (slot-1)" };
+        } finally {
+          releaseSlot(useIdx);
+        }
+      },
+    });
+  }
+
+  // Lovable AI (Gemini)
+  channels.push({
+    name: "Lovable AI (Gemini)",
+    call: async (msgs, mt) => {
+      const text = await callLovableAI(msgs, mt);
+      return { text, model: "Gemini 2.5 Flash" };
+    },
+  });
+
+  return channels;
+}
+
+const rrChannels = buildChannels();
+console.log(`[AI] Round-Robin initialized with ${rrChannels.length} channels: ${rrChannels.map(c => c.name).join(", ")}`);
+
+export async function callAIRoundRobin(
+  messages: Array<{ role: string; content: string }>,
+  maxTokens = 4096,
+): Promise<{ text: string; model: string }> {
+  const startIdx = rrCounter++ % rrChannels.length;
+
+  // Try assigned channel first, then fallback to others
+  for (let attempt = 0; attempt < rrChannels.length; attempt++) {
+    const chIdx = (startIdx + attempt) % rrChannels.length;
+    const channel = rrChannels[chIdx];
+    try {
+      console.log(`[AI-RR] Task #${rrCounter - 1} → ${channel.name}${attempt > 0 ? " (fallback)" : ""}`);
+      return await channel.call(messages, maxTokens);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(`[AI-RR] ${channel.name} failed: ${msg}`);
+      if (msg.includes("402")) throw err; // payment error — don't fallback
+      // try next channel
+    }
+  }
+  throw new Error("All AI channels exhausted (round-robin)");
+}
+
 export async function callAI(
   messages: Array<{ role: string; content: string }>,
   maxTokens = 4096,
@@ -485,6 +575,10 @@ export async function callAI(
   if (preferredProvider === "lovable_ai") {
     const text = await callLovableAI(messages, maxTokens);
     return { text, model: "Lovable AI (Gemini)" };
+  }
+
+  if (preferredProvider === "round_robin") {
+    return callAIRoundRobin(messages, maxTokens);
   }
 
   try {
