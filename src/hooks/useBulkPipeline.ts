@@ -251,6 +251,8 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
                       questions: batch.map(q => ({ question: q.question, options: q.options || [] })),
                       customSystemPrompt: currentPrompts.answers || undefined,
                       ai_provider: aiProvider,
+                      gigachat_model: gigachatModel,
+                      lovable_model: lovableModel,
                     },
                   }),
                   AI_CALL_TIMEOUT, "generate_answers"
