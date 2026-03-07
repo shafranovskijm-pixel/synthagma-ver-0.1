@@ -527,6 +527,15 @@ export async function callAIRoundRobin(
     call: (msgs: Array<{ role: string; content: string }>, mt: number) => Promise<{ text: string; model: string }>;
   }> = [];
 
+  // Lovable AI first to consume cloud balance
+  channels.push({
+    name: `Lovable AI (${lModel})`,
+    call: async (msgs, mt) => {
+      const text = await callLovableAI(msgs, mt, lModel);
+      return { text, model: lModel };
+    },
+  });
+
   channels.push({
     name: `GigaChat slot-0 (${gcModel})`,
     call: async (msgs, mt) => {
@@ -544,14 +553,6 @@ export async function callAIRoundRobin(
       },
     });
   }
-
-  channels.push({
-    name: `Lovable AI (${lModel})`,
-    call: async (msgs, mt) => {
-      const text = await callLovableAI(msgs, mt, lModel);
-      return { text, model: lModel };
-    },
-  });
 
   // Deterministic routing: use taskIndex if provided, otherwise global counter
   const startIdx = taskIndex !== undefined ? (taskIndex % channels.length) : (rrCounter++ % channels.length);
