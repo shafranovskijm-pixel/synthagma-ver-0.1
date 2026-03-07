@@ -618,6 +618,29 @@ export function ConsentGenerator({
         </TabsContent>
       </Tabs>
 
+      <Accordion type="single" collapsible>
+        <AccordionItem value="preview" className="border rounded-xl px-4">
+          <AccordionTrigger className="text-sm hover:no-underline gap-2">
+            <span className="flex items-center gap-2">
+              <Eye className="w-4 h-4" />
+              Предпросмотр согласия
+            </span>
+          </AccordionTrigger>
+          <AccordionContent>
+            <DocumentPreview
+              type="consent"
+              data={{
+                studentName: consentType === "individual" ? (fullName || undefined) : (companyDirector || undefined),
+                orgName: organization?.name || undefined,
+                inn: organization?.inn || undefined,
+                ogrn: organization?.ogrn || undefined,
+                address: organization?.legal_address || undefined,
+              }}
+            />
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+
       <div className="flex gap-2 flex-wrap">
         <Button
           variant="outline"
