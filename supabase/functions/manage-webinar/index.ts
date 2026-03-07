@@ -38,6 +38,7 @@ Deno.serve(async (req) => {
   }
   const userId = user.id;
 
+  try {
     const db = getServiceSupabase();
 
     // CREATE WEBINAR
