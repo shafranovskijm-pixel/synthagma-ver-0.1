@@ -96,41 +96,69 @@ const TTS_PROVIDERS = [
   { value: "lovable_ai", label: "Lovable AI" },
 ];
 
-const CONTEXT_META: Record<string, { icon: React.ReactNode; title: string; description: string }> = {
+const CONTEXT_META: Record<string, { icon: React.ReactNode; title: string; description: string; color: string }> = {
   course_generation: {
     icon: <Cpu className="w-5 h-5" />,
     title: "Генерация курсов",
     description: "ИИ для создания структуры и контента курсов организаций",
+    color: "bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400",
   },
   tts: {
     icon: <Mic className="w-5 h-5" />,
     title: "Озвучка (TTS)",
     description: "Провайдер для синтеза речи в лекциях",
+    color: "bg-purple-100 text-purple-600 dark:bg-purple-900/40 dark:text-purple-400",
   },
   consultant: {
     icon: <MessageSquare className="w-5 h-5" />,
     title: "ИИ-консультант",
     description: "Чат-бот для помощи студентам",
+    color: "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400",
   },
   marketplace: {
     icon: <Store className="w-5 h-5" />,
     title: "Маркетплейс",
     description: "Генерация описаний, SEO-текстов для витрины",
+    color: "bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400",
   },
   pipeline: {
     icon: <Layers className="w-5 h-5" />,
     title: "Конвейер (Bulk Pipeline)",
     description: "Массовая генерация вопросов и ответов",
+    color: "bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-400",
   },
   org_default: {
     icon: <Building2 className="w-5 h-5" />,
     title: "Дефолт для организаций",
     description: "Провайдер по умолчанию для новых организаций",
+    color: "bg-slate-100 text-slate-600 dark:bg-slate-900/40 dark:text-slate-400",
   },
   image_generation: {
     icon: <ImagePlus className="w-5 h-5" />,
     title: "Генерация картинок",
     description: "ИИ для создания и редактирования изображений в курсах",
+    color: "bg-pink-100 text-pink-600 dark:bg-pink-900/40 dark:text-pink-400",
+  },
+};
+
+const TOOLS_META: Record<string, { icon: React.ReactNode; title: string; description: string; color: string }> = {
+  comparison: {
+    icon: <GitCompareArrows className="w-5 h-5" />,
+    title: "Сравнение провайдеров",
+    description: "A/B тест моделей — один промпт, несколько ИИ",
+    color: "bg-cyan-100 text-cyan-600 dark:bg-cyan-900/40 dark:text-cyan-400",
+  },
+  pricing: {
+    icon: <DollarSign className="w-5 h-5" />,
+    title: "Тарифы моделей",
+    description: "Справочник стоимости и скорости всех моделей",
+    color: "bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400",
+  },
+  api_keys: {
+    icon: <Key className="w-5 h-5" />,
+    title: "API-ключи",
+    description: "Статус подключенных ключей",
+    color: "bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400",
   },
 };
 
