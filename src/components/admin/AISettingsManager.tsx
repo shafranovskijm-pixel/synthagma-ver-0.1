@@ -283,8 +283,37 @@ export function AISettingsManager() {
   const [secretsStatus, setSecretsStatus] = useState<Record<string, boolean>>({});
   const [secretsLoading, setSecretsLoading] = useState(false);
 
+  const API_KEYS_LIST = [
+    { name: "GIGACHAT_AUTH_KEY", label: "GigaChat Key 1" },
+    { name: "GIGACHAT_AUTH_KEY_2", label: "GigaChat Key 2" },
+    { name: "GIGACHAT_AUTH_KEY_3", label: "GigaChat Key 3" },
+    { name: "SALUTESPEECH_AUTH_KEY", label: "SaluteSpeech Key 1" },
+    { name: "SALUTESPEECH_AUTH_KEY_2", label: "SaluteSpeech Key 2" },
+    { name: "ELEVENLABS_API_KEY", label: "ElevenLabs" },
+    { name: "LOVABLE_API_KEY", label: "Lovable AI" },
+  ];
+
   useEffect(() => {
     loadSettings();
+  }, []);
+
+  useEffect(() => {
+    const checkSecrets = async () => {
+      setSecretsLoading(true);
+      try {
+        const { data, error } = await supabase.functions.invoke("check-secrets-status", {
+          body: { names: API_KEYS_LIST.map((k) => k.name) },
+        });
+        if (!error && data) {
+          setSecretsStatus(data);
+        }
+      } catch (e) {
+        console.error("Failed to check secrets status:", e);
+      } finally {
+        setSecretsLoading(false);
+      }
+    };
+    checkSecrets();
   }, []);
 
   const loadSettings = async () => {
