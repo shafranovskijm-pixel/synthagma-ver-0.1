@@ -187,20 +187,20 @@ serve(async (req) => {
         ? "audio/x-pcm;bit=16;rate=24000" 
         : "audio/ogg;codecs=opus";
 
+    const audioFormat = format === "wav16" ? "wav16" : format === "pcm16" ? "pcm16" : "opus";
+
     const synthFetchOpts: RequestInit & { client?: Deno.HttpClient } = {
       method: "POST",
       headers: {
         Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/text",
-        "Audio-Encoding": format === "wav16" ? "wav16" : format === "pcm16" ? "pcm16" : "opus",
-        "Voice-Name": voiceParam,
       },
       body: text,
     };
     if (httpClient) (synthFetchOpts as any).client = httpClient;
 
     const synthesisResponse = await fetch(
-      "https://smartspeech.sber.ru/rest/v1/text:synthesize",
+      `https://smartspeech.sber.ru/rest/v1/text:synthesize?voice=${encodeURIComponent(voiceParam)}&format=${encodeURIComponent(audioFormat)}`,
       synthFetchOpts
     );
 
