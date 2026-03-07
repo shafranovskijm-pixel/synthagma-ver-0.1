@@ -1049,10 +1049,6 @@ export function OrganizationsManager() {
                         <Pencil className="w-4 h-4 mr-2" />
                         Редактировать
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => toggleAiProvider(org)}>
-                        <Sparkles className="w-4 h-4 mr-2" />
-                        ИИ: {org.ai_provider === 'lovable_ai' ? 'Lovable AI → GigaChat' : 'GigaChat → Lovable AI'}
-                      </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem className="text-destructive" onClick={() => setDeleteOrg(org)}>
                         <Trash2 className="w-4 h-4 mr-2" />

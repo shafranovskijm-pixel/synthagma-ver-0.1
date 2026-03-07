@@ -569,7 +569,13 @@ export function UsersManager() {
               <Avatar>
                 <AvatarFallback>{selectedUser?.full_name?.[0]?.toUpperCase() || "?"}</AvatarFallback>
               </Avatar>
-              {selectedUser?.full_name || "Пользователь"}
+              <span className="flex-1">{selectedUser?.full_name || "Пользователь"}</span>
+              {selectedUser?.role === 'student' && (
+                <Button variant="outline" size="sm" className="text-xs" onClick={() => selectedUser && viewAsStudent(selectedUser)}>
+                  <ExternalLink className="w-3.5 h-3.5 mr-1" />
+                  Войти как ученик
+                </Button>
+              )}
             </DialogTitle>
           </DialogHeader>
 
