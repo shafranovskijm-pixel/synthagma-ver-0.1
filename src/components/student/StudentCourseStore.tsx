@@ -503,12 +503,15 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
           {/* Sticky footer */}
           {previewCourse && (
             <div className="border-t p-4 flex items-center justify-between bg-background">
-              <span className="text-lg font-bold text-primary">
-                {formatPrice(previewCourse.price_student)}
-              </span>
-              <Button className="rounded-xl gap-2" onClick={handleOrderFromPreview}>
-                <ShoppingCart className="w-4 h-4" />
-                Оставить заявку
+              {previewCourse.price_student > 0 ? (
+                <span className="text-lg font-bold text-primary">
+                  {formatPrice(previewCourse.price_student)}
+                </span>
+              ) : (
+                <Badge className="bg-green-500/10 text-green-600 border-green-500/20 text-sm px-3 py-1">Бесплатно</Badge>
+              )}
+              <Button className={`rounded-xl gap-2 ${previewCourse.price_student === 0 ? 'bg-green-600 hover:bg-green-700 text-white' : ''}`} onClick={handleOrderFromPreview}>
+                {previewCourse.price_student > 0 ? <><ShoppingCart className="w-4 h-4" />Купить за {formatPrice(previewCourse.price_student)}</> : <><Gift className="w-4 h-4" />Получить бесплатно</>}
               </Button>
             </div>
           )}
