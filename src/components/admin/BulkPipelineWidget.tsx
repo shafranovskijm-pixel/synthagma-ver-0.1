@@ -246,7 +246,7 @@ export function BulkPipelineWidget({ courses, readyCourses = [], allCourses, onC
 
   if (activeCourses.length === 0 && excelImport.parsedCourses.length === 0 && pipelineMode === "progress") return null;
 
-  const currentCourseName = isBusy ? (courses[currentIndex]?.course?.title || "") : "";
+  const currentCourseName = isBusy ? (activeCourses[currentIndex]?.course?.title || "") : "";
 
   const promptSections: Array<{ key: keyof MarketplacePrompts; label: string; desc: string }> = [
     { key: "structure", label: "Генерация структуры", desc: "Промт для создания списка уроков курса" },
