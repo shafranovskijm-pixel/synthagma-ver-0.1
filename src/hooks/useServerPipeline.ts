@@ -162,6 +162,8 @@ export function useServerPipeline({ courses, enableVerification, onComplete, aiP
           enableVerification,
           prompts,
           ai_provider: aiProvider,
+          gigachat_model: gigachatModel,
+          lovable_model: lovableModel,
         },
       });
 
