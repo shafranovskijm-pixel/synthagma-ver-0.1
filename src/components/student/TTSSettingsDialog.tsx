@@ -42,6 +42,7 @@ export const SALUTE_VOICES = [
   { id: 'Taras_24000', name: 'Тарас (мужской, РУ)' },
   { id: 'Alexandra_24000', name: 'Александра (женский, РУ)' },
   { id: 'Sergey_24000', name: 'Сергей (мужской, РУ)' },
+  { id: 'Kira_24000', name: 'Кира (женский, РУ)' },
 ] as const;
 
 const DEFAULT_SALUTE_VOICE = 'Natalya_24000';
