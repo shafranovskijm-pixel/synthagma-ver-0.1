@@ -16,8 +16,6 @@ import { SigmaLogo } from "@/components/ui/SigmaLogo";
 interface SystemSettings {
   maintenanceMode: boolean;
   registrationEnabled: boolean;
-  defaultTokensLimit: number;
-  defaultStorageLimit: number;
 }
 
 export function AdminSettings() {
