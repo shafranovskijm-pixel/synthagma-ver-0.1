@@ -51,7 +51,7 @@ serve(async (req) => {
     if (!rl.allowed) return rateLimitResponse(rl, corsHeaders);
 
     const body = await req.json();
-    const { action, courseTitle, lessonTitle, questions, existingContent, customSystemPrompt, previousAnswers, ai_provider } = body;
+    const { action, courseTitle, lessonTitle, questions, existingContent, customSystemPrompt, previousAnswers, ai_provider, gigachat_model, lovable_model } = body;
 
     // Log AI usage
     const { data: profile } = await supabase
