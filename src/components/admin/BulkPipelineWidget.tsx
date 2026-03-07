@@ -430,7 +430,7 @@ export function BulkPipelineWidget({ courses, readyCourses = [], allCourses, onC
               setAiProvider(v);
               localStorage.setItem("pipeline_ai_provider", v);
             }}
-            disabled={effectiveBusy}
+            disabled={false}
           >
             <SelectTrigger className="w-[160px] h-8 text-xs">
               <SelectValue />

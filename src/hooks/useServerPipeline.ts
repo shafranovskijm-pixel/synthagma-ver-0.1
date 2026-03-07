@@ -198,7 +198,11 @@ export function useServerPipeline({ courses, enableVerification, onComplete, aiP
   }, [enableVerification, startPolling]);
 
   const handleStop = useCallback(async () => {
-    if (!currentRun) return;
+    if (!currentRun) {
+      // No current run but stuck — force reset
+      setIsRunning(false);
+      return;
+    }
     try {
       await supabase.functions.invoke("bulk-pipeline", {
         body: { action: "stop", runId: currentRun.id },
@@ -206,6 +210,12 @@ export function useServerPipeline({ courses, enableVerification, onComplete, aiP
     } catch (e: any) {
       console.error("Stop error:", e);
     }
+    // Always stop polling and reset state
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+    setIsRunning(false);
   }, [currentRun]);
 
   const progressPercent = currentRun
