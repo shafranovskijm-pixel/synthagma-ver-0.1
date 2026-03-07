@@ -146,10 +146,6 @@ export function TabContentRenderer() {
         <FRDOManager organizationId={organizationId} />
       )}
 
-      {/* Webinars Tab */}
-      {activeTab === "webinars" && organizationId && (
-        <WebinarsManager organizationId={organizationId} />
-      )}
 
       {/* Course Store Tab */}
       {activeTab === "services" && organizationId && (
