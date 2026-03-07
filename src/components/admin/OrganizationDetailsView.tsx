@@ -142,7 +142,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
   const [students, setStudents] = useState<Student[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [documents, setDocuments] = useState<OrgDocument[]>([]);
-  const [usage, setUsage] = useState<UsageData>({ storage_bytes: 0, ai_tokens_used: 0 });
+  const [usage, setUsage] = useState<UsageData>({ storage_bytes: 0, ai_generations_count: 0 });
   const [usageHistory, setUsageHistory] = useState<UsageHistoryItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [settings, setSettings] = useState({
