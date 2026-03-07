@@ -555,9 +555,9 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
             <Button variant="outline" onClick={() => setSelectedCourse(null)}>
               Отмена
             </Button>
-            <Button onClick={handleOrder} disabled={isOrdering} className="gap-2">
-              {isOrdering ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              Отправить заявку
+            <Button onClick={handleOrder} disabled={isOrdering} className={`gap-2 ${selectedCourse?.price_student === 0 ? 'bg-green-600 hover:bg-green-700 text-white' : ''}`}>
+              {isOrdering ? <Loader2 className="w-4 h-4 animate-spin" /> : selectedCourse?.price_student ? <Send className="w-4 h-4" /> : <Gift className="w-4 h-4" />}
+              {selectedCourse?.price_student ? 'Отправить заявку' : 'Получить бесплатно'}
             </Button>
           </DialogFooter>
         </DialogContent>
