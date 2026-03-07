@@ -2433,6 +2433,7 @@ export type Database = {
         Row: {
           actual_address: string | null
           ai_enabled: boolean
+          ai_provider: string
           ai_tokens_limit: number
           balance: number
           bank_account: string | null
@@ -2476,6 +2477,7 @@ export type Database = {
         Insert: {
           actual_address?: string | null
           ai_enabled?: boolean
+          ai_provider?: string
           ai_tokens_limit?: number
           balance?: number
           bank_account?: string | null
@@ -2519,6 +2521,7 @@ export type Database = {
         Update: {
           actual_address?: string | null
           ai_enabled?: boolean
+          ai_provider?: string
           ai_tokens_limit?: number
           balance?: number
           bank_account?: string | null

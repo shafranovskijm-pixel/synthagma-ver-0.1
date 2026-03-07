@@ -51,7 +51,7 @@ serve(async (req) => {
     if (!rl.allowed) return rateLimitResponse(rl, corsHeaders);
 
     const body = await req.json();
-    const { action, courseTitle, lessonTitle, questions, existingContent, customSystemPrompt, previousAnswers } = body;
+    const { action, courseTitle, lessonTitle, questions, existingContent, customSystemPrompt, previousAnswers, ai_provider } = body;
 
     // Log AI usage
     const { data: profile } = await supabase
@@ -91,7 +91,7 @@ serve(async (req) => {
       const { text: response, model } = await callAI([
         { role: "system", content: systemPrompt },
         { role: "user", content: prompt },
-      ], 16384);
+      ], 16384, ai_provider);
 
       try {
         const cleaned = response.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
@@ -118,7 +118,7 @@ serve(async (req) => {
       const { text: content, model } = await callAI([
         { role: "system", content: systemPrompt },
         { role: "user", content: `Напиши учебный материал для урока "${lessonTitle}" курса "${courseTitle}"` },
-      ]);
+      ], 4096, ai_provider);
       result = { content, model };
 
     } else if (action === "generate_questions") {
@@ -134,7 +134,7 @@ serve(async (req) => {
       const { text: response, model } = await callAI([
         { role: "system", content: systemPrompt },
         { role: "user", content: `Создай тестовые вопросы для теста "${lessonTitle}" курса "${courseTitle}"` },
-      ]);
+      ], 4096, ai_provider);
 
       try {
         const cleaned = response.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
@@ -176,7 +176,7 @@ serve(async (req) => {
       const { text: response, model } = await callAI([
         { role: "system", content: verifyPrompt },
         { role: "user", content: prompt },
-      ], 16384);
+      ], 16384, ai_provider);
 
       try {
         const cleaned = response.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();

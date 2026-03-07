@@ -22,9 +22,10 @@ interface UseServerPipelineProps {
   courses: PipelineCourse[];
   enableVerification: boolean;
   onComplete: () => void;
+  aiProvider?: string;
 }
 
-export function useServerPipeline({ courses, enableVerification, onComplete }: UseServerPipelineProps) {
+export function useServerPipeline({ courses, enableVerification, onComplete, aiProvider }: UseServerPipelineProps) {
   const [isRunning, setIsRunning] = useState(false);
   const [currentRun, setCurrentRun] = useState<PipelineRun | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -153,6 +154,7 @@ export function useServerPipeline({ courses, enableVerification, onComplete }: U
           courses: courseEntries,
           enableVerification,
           prompts,
+          ai_provider: aiProvider,
         },
       });
 

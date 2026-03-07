@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import {
   Play, Square, CheckCircle2, Loader2, AlertTriangle, Brain, FileSpreadsheet,
-  DollarSign, RotateCcw, Upload, Clock, ListChecks, ChevronDown, FlaskConical, Eye, BarChart3, RefreshCw, Trash2, SkipForward, Server,
+  DollarSign, RotateCcw, Upload, Clock, ListChecks, ChevronDown, FlaskConical, Eye, BarChart3, RefreshCw, Trash2, SkipForward, Server, Bot,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
@@ -58,13 +59,14 @@ export function BulkPipelineWidget({ courses, readyCourses = [], allCourses, onC
   const [enableVerification, setEnableVerification] = useState(false);
   const [serverMode, setServerMode] = useState(false);
   const [pipelineMode, setPipelineMode] = useState<PipelineMode>("progress");
+  const [aiProvider, setAiProvider] = useState<string>(() => localStorage.getItem("pipeline_ai_provider") || "gigachat");
 
   const activeCourses = pipelineMode === "ready" ? readyCourses
     : pipelineMode === "all" ? [...courses, ...readyCourses]
     : courses;
 
-  const pipeline = useBulkPipeline({ courses: activeCourses, onComplete, enableVerification });
-  const serverPipeline = useServerPipeline({ courses: activeCourses, enableVerification, onComplete });
+  const pipeline = useBulkPipeline({ courses: activeCourses, onComplete, enableVerification, aiProvider });
+  const serverPipeline = useServerPipeline({ courses: activeCourses, enableVerification, onComplete, aiProvider });
   const excelImport = usePipelineExcelImport({ onComplete });
 
   // Collapsible sections
@@ -414,6 +416,34 @@ export function BulkPipelineWidget({ courses, readyCourses = [], allCourses, onC
             onCheckedChange={setServerMode}
             disabled={effectiveBusy}
           />
+        </div>
+
+        {/* AI Provider selector */}
+        <div className="flex items-center justify-between p-2.5 rounded-lg border bg-card">
+          <div>
+            <p className="text-xs font-medium">🤖 ИИ-провайдер</p>
+            <p className="text-[10px] text-muted-foreground">Выбор модели для генерации контента и решения тестов</p>
+          </div>
+          <Select
+            value={aiProvider}
+            onValueChange={(v) => {
+              setAiProvider(v);
+              localStorage.setItem("pipeline_ai_provider", v);
+            }}
+            disabled={effectiveBusy}
+          >
+            <SelectTrigger className="w-[160px] h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="gigachat">
+                <span className="flex items-center gap-1.5"><Bot className="w-3.5 h-3.5" />GigaChat</span>
+              </SelectItem>
+              <SelectItem value="lovable_ai">
+                <span className="flex items-center gap-1.5"><Brain className="w-3.5 h-3.5" />Lovable AI</span>
+              </SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Server pipeline status */}

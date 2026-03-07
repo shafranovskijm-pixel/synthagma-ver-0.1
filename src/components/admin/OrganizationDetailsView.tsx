@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -66,6 +67,7 @@ interface Organization {
   inn: string | null;
   contact_name: string | null;
   ai_enabled: boolean;
+  ai_provider?: string;
   frdo_enabled?: boolean;
   created_at: string;
   storage_limit_bytes?: number;
@@ -134,6 +136,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
   const [searchQuery, setSearchQuery] = useState("");
   const [settings, setSettings] = useState({
     ai_enabled: organization.ai_enabled,
+    ai_provider: organization.ai_provider || "gigachat",
     frdo_enabled: organization.frdo_enabled ?? false,
     name: organization.name,
     email: organization.email,
@@ -386,12 +389,13 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
           inn: settings.inn || null,
           contact_name: settings.contact_name || null,
           ai_enabled: aiEnabled,
+          ai_provider: settings.ai_provider,
           frdo_enabled: settings.frdo_enabled,
           storage_limit_bytes: settings.storage_limit_bytes,
           ai_tokens_limit: settings.ai_tokens_limit,
           notify_on_limit_80: settings.notify_on_limit_80,
           notify_on_limit_exceeded: settings.notify_on_limit_exceeded,
-        })
+        } as any)
         .eq("id", organization.id);
 
       if (error) throw error;
@@ -1093,7 +1097,34 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                   />
                 </div>
 
-                {/* FRDO Toggle */}
+                {/* AI Provider Select */}
+                {settings.ai_enabled && (
+                  <div className="flex items-center justify-between p-4 bg-muted/50 rounded-xl">
+                    <div className="space-y-0.5">
+                      <Label className="text-base flex items-center gap-2">
+                        <Sparkles className="w-4 h-4" />
+                        ИИ-провайдер
+                      </Label>
+                      <p className="text-sm text-muted-foreground">
+                        Модель ИИ для генерации контента и решения тестов
+                      </p>
+                    </div>
+                    <Select
+                      value={settings.ai_provider}
+                      onValueChange={(v) => setSettings({ ...settings, ai_provider: v })}
+                    >
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="gigachat">GigaChat</SelectItem>
+                        <SelectItem value="lovable_ai">Lovable AI</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+
                 <div className="flex items-center justify-between p-4 bg-muted/50 rounded-xl">
                   <div className="space-y-0.5">
                     <Label className="text-base flex items-center gap-2">

@@ -149,9 +149,10 @@ interface UseBulkPipelineProps {
   courses: PipelineCourse[];
   onComplete: () => void;
   enableVerification?: boolean;
+  aiProvider?: string;
 }
 
-export function useBulkPipeline({ courses, onComplete, enableVerification = false }: UseBulkPipelineProps) {
+export function useBulkPipeline({ courses, onComplete, enableVerification = false, aiProvider }: UseBulkPipelineProps) {
   const [isRunning, setIsRunning] = useState(false);
   const [isTestRunning, setIsTestRunning] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -246,6 +247,7 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
                       lessonTitle: lessonInfo?.title || "Тест",
                       questions: batch.map(q => ({ question: q.question, options: q.options || [] })),
                       customSystemPrompt: currentPrompts.answers || undefined,
+                      ai_provider: aiProvider,
                     },
                   }),
                   AI_CALL_TIMEOUT, "generate_answers"
@@ -331,6 +333,7 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
                       correctAnswer: q.correct_answer,
                       explanation: q.explanation || "",
                     })),
+                    ai_provider: aiProvider,
                   },
                 }),
                 AI_CALL_TIMEOUT, "verify_answers"
@@ -383,6 +386,7 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
               action: "generate_structure", courseTitle,
               existingLessons: currentLessons.map(l => ({ title: l.title, type: l.type })),
               customSystemPrompt: currentPrompts.structure || undefined,
+              ai_provider: aiProvider,
             },
           }),
           AI_CALL_TIMEOUT, "generate_structure"
@@ -428,7 +432,7 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
         try {
           const { data, error } = await withTimeout(
             supabase.functions.invoke("gigachat", {
-              body: { action: "generate_content", courseTitle, lessonTitle: lesson.title, existingContent: null, customSystemPrompt: currentPrompts.content || undefined },
+              body: { action: "generate_content", courseTitle, lessonTitle: lesson.title, existingContent: null, customSystemPrompt: currentPrompts.content || undefined, ai_provider: aiProvider },
             }),
             AI_CALL_TIMEOUT, "generate_content"
           );

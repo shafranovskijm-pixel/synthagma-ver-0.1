@@ -389,7 +389,15 @@ export async function callLovableAIWithTools(
 export async function callAI(
   messages: Array<{ role: string; content: string }>,
   maxTokens = 4096,
+  preferredProvider?: string,
 ): Promise<{ text: string; model: string }> {
+  // If preferred provider is lovable_ai, skip GigaChat entirely
+  if (preferredProvider === "lovable_ai") {
+    const text = await callLovableAI(messages, maxTokens);
+    return { text, model: "Lovable AI (Gemini)" };
+  }
+
+  // Default: GigaChat first → Lovable AI fallback
   try {
     const text = await callGigaChat(messages, "GigaChat-Pro", maxTokens);
     return { text, model: "GigaChat-Pro" };
@@ -409,7 +417,13 @@ export async function callAIWithTools(
   tool?: any,
   gigachatModel = "GigaChat-Pro",
   lovableModel = "google/gemini-3-flash-preview",
+  preferredProvider?: string,
 ): Promise<any> {
+  // If preferred provider is lovable_ai, skip GigaChat entirely
+  if (preferredProvider === "lovable_ai") {
+    return await callLovableAIWithTools(messages, tool, lovableModel);
+  }
+
   try {
     const systemMsg = messages.find((m) => m.role === "system");
     const userMsg = messages.find((m) => m.role === "user");

@@ -91,6 +91,7 @@ async function processCourse(
   runId: string,
   updatePhase: (phase: string) => Promise<void>,
   shouldStop: () => Promise<boolean>,
+  aiProvider?: string,
 ): Promise<{ ok: boolean; testsSolved: number; lessonsFilled: number; skippedBatches: number; totalQuestions: number }> {
   let testsSolved = 0;
   let lessonsFilled = 0;
@@ -167,7 +168,7 @@ async function processCourse(
                 callAI([
                   { role: "system", content: prompts.answers || DEFAULT_ANSWERS_PROMPT },
                   { role: "user", content: `Курс: "${courseTitle}"\nУрок: "${lessonInfo?.title || "Тест"}"\n\n${questionsText}` },
-                ], 16384),
+                ], 16384, aiProvider),
                 AI_CALL_TIMEOUT, "callAI:answers"
               );
 
@@ -233,7 +234,7 @@ async function processCourse(
                 callAI([
                   { role: "system", content: VERIFY_PROMPT },
                   { role: "user", content: `Курс: "${courseTitle}"\nУрок: "${lessonInfo?.title || "Тест"}"\n\n${questionsText}` },
-                ], 16384),
+                ], 16384, aiProvider),
                 AI_CALL_TIMEOUT, "callAI:verify"
               );
 
@@ -269,7 +270,7 @@ async function processCourse(
         callAI([
           { role: "system", content: prompts.structure || "Создай структуру курса из 8-15 уроков. Типы: text, test, practice. Последний урок — итоговый тест. Отвечай JSON-массивом [{title, type}]." },
           { role: "user", content: `Создай структуру курса "${courseTitle}"` },
-        ]),
+        ], 4096, aiProvider),
         AI_CALL_TIMEOUT, "callAI:structure"
       );
       const parsed = parseJsonResponse(response);
@@ -306,7 +307,7 @@ async function processCourse(
         callAI([
           { role: "system", content: prompts.content || DEFAULT_CONTENT_PROMPT },
           { role: "user", content: `Напиши учебный материал для урока "${lesson.title}" курса "${courseTitle}"` },
-        ]),
+        ], 4096, aiProvider),
         AI_CALL_TIMEOUT, "callAI:content"
       );
       if (content && content.length > 50) {
@@ -389,7 +390,7 @@ serve(async (req) => {
       let existingLog: any[] = [];
 
       if (action === "start") {
-        const { courses, enableVerification, prompts } = body;
+        const { courses, enableVerification, prompts, ai_provider: bodyProvider } = body;
         courseEntries = courses;
 
         const { data: run, error: insertErr } = await db.from("pipeline_runs").insert({
@@ -430,6 +431,7 @@ serve(async (req) => {
 
       const prompts: PromptSet = body.prompts || {};
       const enableVerification = body.enableVerification || false;
+      const aiProvider = body.ai_provider || undefined;
       const startTime = Date.now();
       let totalSolved = 0, totalFilled = 0, totalErrors = 0, totalSuccess = 0, totalSkipped = 0;
 
@@ -472,7 +474,7 @@ serve(async (req) => {
 
         try {
           const result = await processCourse(
-            db, entry.course_id, name, prompts, enableVerification, runId, updatePhase, shouldStop,
+            db, entry.course_id, name, prompts, enableVerification, runId, updatePhase, shouldStop, aiProvider,
           );
 
           if (!result.ok) {
