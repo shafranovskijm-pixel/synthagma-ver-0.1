@@ -271,7 +271,7 @@ async function _rawCallGigaChat(
 // ═══════════════════════════════════════════════════════════
 // GigaChat with slot pool + 429 retry + model fallback chain
 // ═══════════════════════════════════════════════════════════
-const GIGACHAT_MODEL_CHAIN = ["GigaChat-Pro", "GigaChat"];
+const GIGACHAT_MODEL_CHAIN = ["GigaChat-Max", "GigaChat-Pro", "GigaChat"];
 
 export async function callGigaChat(
   messages: Array<{ role: string; content: string }>,
