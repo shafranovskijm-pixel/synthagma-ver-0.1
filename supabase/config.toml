@@ -107,3 +107,6 @@ verify_jwt = false
 
 [functions.gigachat]
 verify_jwt = false
+
+[functions.salutespeech-tts]
+verify_jwt = false
