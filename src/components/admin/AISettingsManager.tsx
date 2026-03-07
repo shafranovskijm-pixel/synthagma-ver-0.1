@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { AITestSandbox } from "./ai-settings/AITestSandbox";
+import { AIComparisonPanel } from "./ai-settings/AIComparisonPanel";
 
 type AISetting = {
   id: string;
