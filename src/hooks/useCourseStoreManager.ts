@@ -406,7 +406,8 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
     if (!editingCourse) return;
     try {
       const { error } = await supabase.from('marketplace_courses').update({
-        price_student: 0, price_organization: 0,
+        price_student: editingCourse.price_student,
+        price_organization: editingCourse.price_organization,
         description_short: editingCourse.description_short,
       }).eq('id', editingCourse.id);
       if (error) throw error;
