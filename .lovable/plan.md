@@ -1,18 +1,70 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## Добавление предпросмотра документов в аккордеоны
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+### Суть
+В каждый конструктор (Удост./Диплом, Протокол, Согласие ПД) добавить аккордеон «Предпросмотр документа», свёрнутый по умолчанию, с визуальным макетом документа, заполненным данными по умолчанию или текущими настройками. Для вкладки «Договор» — показать мини-превью шаблона. Для «Реквизиты» — аккордеон не нужен (уже есть форма).
 
-### Changes
+### Изменения
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+**1. Новый компонент `src/components/organization/DocumentPreview.tsx`**
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+Универсальный компонент предпросмотра документа в стиле бумажного бланка A4:
+- Принимает `type`: `"certificate"` | `"diploma"` | `"protocol"` | `"consent"`
+- Принимает `data`: объект с полями (orgName, studentName, courseName, series, number, city, date, commissionMembers и т.д.)
+- Рендерит стилизованный div с `aspect-[210/297]` (пропорции A4), мелким шрифтом, рамкой, имитацией документа
+- Для каждого типа — свой макет:
+  - **Удостоверение ПК**: заголовок «УДОСТОВЕРЕНИЕ О ПОВЫШЕНИИ КВАЛИФИКАЦИИ», серия/номер, ФИО, программа, часы, дата, город, подпись/печать (placeholder)
+  - **Диплом ПП**: заголовок «ДИПЛОМ О ПРОФЕССИОНАЛЬНОЙ ПЕРЕПОДГОТОВКЕ», аналогично но с квалификацией
+  - **Протокол АК**: текст протокола из шаблона с подставленными данными комиссии
+  - **Согласие ПД**: текст согласия с подставленными реквизитами организации
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+Данные по умолчанию (примерные):
+- `orgName`: «ООО "Учебный Центр"» или из реквизитов
+- `studentName`: «Иванов Иван Иванович»
+- `courseName`: «Охрана труда для руководителей»
+- `hours`: «72»
+- `date`: текущая дата
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+**2. `src/components/organization/CertificateTemplateEditor.tsx`**
+
+- Импортировать `Accordion, AccordionContent, AccordionItem, AccordionTrigger`
+- После формы настроек (перед кнопкой «Сохранить») добавить `<Accordion type="single" collapsible>` с `<AccordionItem value="preview">`
+- Триггер: `<Eye /> Предпросмотр документа`
+- Контент: `<DocumentPreview type={activeTab === "certificate" ? "certificate" : "diploma"} data={...} />`
+- Data заполняется из текущих settings (series, startNumber, city, regNumberFormat)
+
+**3. `src/components/organization/ProtocolTemplateEditor.tsx`**
+
+- Аналогичный аккордеон после формы, перед кнопкой сохранения
+- `<DocumentPreview type="protocol" data={{ commissionMembers, template, orgName }} />`
+
+**4. `src/components/organization/ConsentGenerator.tsx`**
+
+- У ConsentGenerator уже есть встроенный предпросмотр через диалог. Добавить аккордеон «Как будет выглядеть» с inline-превью (мини-версия HTML) рядом с формой, чтобы не открывать диалог.
+
+**5. Вкладка «Договор» в `DocumentsTab.tsx`**
+
+- Добавить аккордеон с мини-превью шаблона договора (первые ~15 строк шаблона в стилизованном блоке), чтобы пользователь видел, что шаблон уже настроен.
+
+### Визуальный стиль превью
+
+```text
+┌─────────────────────────────┐
+│      УДОСТОВЕРЕНИЕ          │
+│  О ПОВЫШЕНИИ КВАЛИФИКАЦИИ   │
+│                             │
+│  Серия ПК  № 0001           │
+│  Рег. номер: 2026-0001     │
+│                             │
+│  Настоящее удостоверение    │
+│  выдано: Иванов И.И.        │
+│  ...                        │
+│                             │
+│  г. Москва   «07» марта 2026│
+│  [печать]      [подпись]    │
+└─────────────────────────────┘
+```
+
+Стилизация: `bg-white border shadow-sm rounded-lg p-6`, текст `text-[10px] leading-tight font-serif`, всё в `max-w-md mx-auto`.
 
