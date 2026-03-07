@@ -12,7 +12,11 @@ interface PipelineRun {
   current_phase: string;
   completed_log: LogEntry[];
   summary: PipelineSummary | null;
+  updated_at?: string;
 }
+
+const STALE_RUN_THRESHOLD = 5 * 60 * 1000; // 5 minutes
+const MAX_POLL_ERRORS = 5;
 
 interface UseServerPipelineProps {
   courses: PipelineCourse[];
