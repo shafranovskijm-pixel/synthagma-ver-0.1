@@ -110,3 +110,6 @@ verify_jwt = false
 
 [functions.salutespeech-tts]
 verify_jwt = false
+
+[functions.check-secrets-status]
+verify_jwt = false
