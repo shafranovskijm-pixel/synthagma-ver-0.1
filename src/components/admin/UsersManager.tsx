@@ -532,14 +532,26 @@ export function UsersManager() {
                       {format(new Date(user.created_at), "d MMM yyyy", { locale: ru })}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive hover:text-destructive"
-                        onClick={(e) => { e.stopPropagation(); setDeleteUser(user); }}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      <div className="flex items-center justify-end gap-1">
+                        {user.role === 'student' && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Войти как ученик"
+                            onClick={(e) => { e.stopPropagation(); viewAsStudent(user); }}
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive hover:text-destructive"
+                          onClick={(e) => { e.stopPropagation(); setDeleteUser(user); }}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
