@@ -112,7 +112,7 @@ function CoursesEmptyState({ onCreateCourse }: { onCreateCourse: () => void }) {
             <Button 
               variant="outline" 
               className="w-full rounded-xl gap-2 mt-2"
-              onClick={() => dashboard?.tabNavigation.setActiveTab("store" as any)}
+              onClick={() => dashboard?.tabNavigation.setActiveTab("services" as any)}
             >
               <ShoppingCart className="w-4 h-4" />
               Перейти в магазин
