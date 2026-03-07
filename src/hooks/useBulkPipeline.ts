@@ -391,6 +391,8 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
               existingLessons: currentLessons.map(l => ({ title: l.title, type: l.type })),
               customSystemPrompt: currentPrompts.structure || undefined,
               ai_provider: aiProvider,
+              gigachat_model: gigachatModel,
+              lovable_model: lovableModel,
             },
           }),
           AI_CALL_TIMEOUT, "generate_structure"
