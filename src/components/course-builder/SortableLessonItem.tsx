@@ -13,7 +13,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { SALUTE_VOICES, getStoredTTSSettings, saveTTSSettings } from "@/components/student/TTSSettingsDialog";
-import { supabase } from "@/integrations/supabase/client";
+
 import { toast } from "sonner";
 import { MediaLibraryDialog } from "@/components/course-builder/MediaLibraryDialog";
 import { BlockEditor, blocksToJson, ContentBlock } from "@/components/course-builder/BlockEditor";
