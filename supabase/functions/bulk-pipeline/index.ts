@@ -365,7 +365,7 @@ async function processCourse(
     return false;
   };
 
-  const contentResults = await processInParallel(emptyLessons, 2, fillLesson, shouldStop, 2000);
+  const contentResults = await processInParallel(emptyLessons, 3, fillLesson, shouldStop, 1500);
   lessonsFilled += contentResults.filter(Boolean).length;
 
   // 5. Fix duplicate titles
