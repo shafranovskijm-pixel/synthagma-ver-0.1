@@ -72,7 +72,6 @@ interface Organization {
   frdo_enabled?: boolean;
   created_at: string;
   storage_limit_bytes?: number;
-  storage_limit_bytes?: number;
   notify_on_limit_80?: boolean;
   notify_on_limit_exceeded?: boolean;
   subscription_plan?: string;
