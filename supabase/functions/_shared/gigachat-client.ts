@@ -282,6 +282,9 @@ export async function callGigaChatOnSlot(
   const slot = slots[slotIdx];
   const modelsToTry = [model, ...GIGACHAT_MODEL_CHAIN.filter((m) => m !== model)];
 
+  let rateLimitRetries = 0;
+  const MAX_RATE_RETRIES = 3;
+
   for (const m of modelsToTry) {
     try {
       console.log(`[GigaChat][${slot.name}] Trying model: ${m}`);
@@ -298,8 +301,14 @@ export async function callGigaChatOnSlot(
       }
 
       if (msg.includes("429")) {
-        console.log(`[GigaChat][${slot.name}] Rate limited on ${m}, waiting 10s...`);
-        await new Promise((r) => setTimeout(r, 10000));
+        rateLimitRetries++;
+        const waitTime = Math.min(15000 * rateLimitRetries, 45000);
+        console.log(`[GigaChat][${slot.name}] Rate limited on ${m}, waiting ${waitTime / 1000}s (attempt ${rateLimitRetries}/${MAX_RATE_RETRIES})...`);
+        await new Promise((r) => setTimeout(r, waitTime));
+        if (rateLimitRetries < MAX_RATE_RETRIES) {
+          // Retry same model after waiting
+          modelsToTry.splice(modelsToTry.indexOf(m), 0, m);
+        }
         continue;
       }
       continue;
