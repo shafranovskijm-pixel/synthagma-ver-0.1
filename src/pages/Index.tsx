@@ -77,6 +77,7 @@ const Index = () => {
         <EditorDemo />
         <PricingPlans />
         <Features />
+        <RostechnadzorCourses />
         
         <Testimonials />
         <Footer />
