@@ -1,63 +1,18 @@
 
 
-## Проблема: контент есть, но в неправильном формате
+## Plan: Auto-fix after "Проверить все"
 
-В этом курсе **8 уроков с контентом** (3500–4800 символов каждый), но все они хранятся в **Markdown-формате**. Редактор блоков (`BlockEditor`) ожидает JSON-массив блоков — и при попытке `JSON.parse()` Markdown получает ошибку → показывает пустой редактор.
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-### Данные в БД для этого курса
+### Changes
 
-| Урок | Символов | Формат |
-|---|---|---|
-| Общие положения и цели курса | 4199 | Markdown |
-| Нормативно-правовая база | 3483 | Markdown |
-| Основные правила ТЭ | 4367 | Markdown |
-| Организация ТО и ремонта | 4660 | Markdown |
-| ... (ещё 4 урока) | 3887–4786 | Markdown |
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-### Что нужно сделать
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-Контент конвертируется в правильный формат **одним кликом**: кнопка **«Конвертировать MD→JSON»** в админ-панели маркетплейса (раздел «Курсы Ростехнадзора»). Edge-функция `convert-lesson-content` уже создана и задеплоена — она пройдёт по всем Markdown-урокам и преобразует их в JSON-блоки.
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-Однако текущая реализация имеет проблему: функция обрабатывает уроки батчами по 200, но запрашивает **все** уроки без фильтра «только Markdown». Фильтрация происходит на стороне клиента (edge-функции), что неэффективно. Но функционально всё работает.
-
-### План: автоматическая конвертация при загрузке курса
-
-Чтобы пользователю не приходилось вручную нажимать кнопку, добавить **автоконвертацию** прямо в `useCourseBuilder.ts` при загрузке уроков:
-
-**Файл: `src/hooks/useCourseBuilder.ts`** (строка ~212)
-
-Текущий код:
-```ts
-const blocks = l.content ? jsonToBlocks(l.content) : [];
-```
-
-Заменить на:
-```ts
-let blocks: ContentBlock[] = [];
-if (l.content) {
-  blocks = jsonToBlocks(l.content);
-  // If JSON parse failed but content exists — it's Markdown, convert on the fly
-  if (blocks.length === 0 && l.content.length > 50 && !l.content.trim().startsWith('[')) {
-    blocks = markdownToBlocks(l.content);
-    // Save converted JSON back to DB (fire-and-forget)
-    if (blocks.length > 0) {
-      const json = blocksToJson(blocks);
-      supabase.from("lessons").update({ content: json }).eq("id", l.id);
-    }
-  }
-}
-```
-
-Это решает проблему:
-1. **Мгновенно** — контент появится при открытии курса
-2. **Самоисцеляющийся** — при каждом открытии Markdown конвертируется и сохраняется обратно в JSON
-3. **Не ломает** существующие JSON-уроки (проверка `startsWith('[')`)
-
-### Файлы для изменения
-
-| Файл | Что |
-|---|---|
-| `src/hooks/useCourseBuilder.ts` | Автоконвертация Markdown→JSON при загрузке (~5 строк) |
-
-Один маленький фикс, никаких новых файлов.
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 
