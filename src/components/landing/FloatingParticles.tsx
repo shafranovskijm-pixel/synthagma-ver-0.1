@@ -175,7 +175,7 @@ export function FloatingParticles({
   return (
     <div 
       ref={containerRef}
-      className={`absolute inset-0 overflow-hidden pointer-events-none ${className}`}
+      className={`absolute inset-0 overflow-hidden pointer-events-none hidden md:block ${className}`}
     >
       {particles.map((particle) => (
         <ParticleElement
