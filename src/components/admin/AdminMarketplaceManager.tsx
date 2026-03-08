@@ -358,14 +358,8 @@ export function AdminMarketplaceManager() {
       }
 
 
-      // Find unanswered questions (including suspicious: all same answer, no explanations)
-      const byLessonFix = new Map<string, any[]>();
-      for (const q of allQuestions) { const a = byLessonFix.get(q.lesson_id) || []; a.push(q); byLessonFix.set(q.lesson_id, a); }
-      const suspiciousFix = new Set<string>();
-      for (const [lid, qs] of byLessonFix) {
-        if (qs.length > 3 && qs.every((q: any) => q.correct_answer === qs[0]?.correct_answer) && qs.every((q: any) => !q.explanation)) suspiciousFix.add(lid);
-      }
-      const unansweredQuestions = allQuestions.filter(q => q.correct_answer === null || q.correct_answer === undefined || suspiciousFix.has(q.lesson_id));
+      // Find unanswered questions (deterministic: only null/undefined correct_answer)
+      const unansweredQuestions = allQuestions.filter(q => q.correct_answer === null || q.correct_answer === undefined);
 
       // Find duplicate titles
       const titleCounts = new Map<string, Array<{ id: string; title: string }>>();
