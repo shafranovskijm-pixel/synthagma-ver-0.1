@@ -27,6 +27,9 @@ export function RostechnadzorCourses() {
       }} />
 
       {/* Decorative elements */}
+      <div className="absolute top-[8%] right-[5%] w-72 h-72 bg-accent/5 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-[10%] left-[3%] w-64 h-64 bg-accent/4 rounded-full blur-3xl pointer-events-none" />
+
       <motion.div
         className="absolute top-[20%] left-0 w-px h-32 bg-gradient-to-b from-transparent via-accent/25 to-transparent"
         initial={{ scaleY: 0 }}
@@ -40,6 +43,47 @@ export function RostechnadzorCourses() {
         whileInView={{ scaleY: 1 }}
         viewport={{ once: true }}
         transition={{ duration: 1.5, delay: 0.2 }}
+      />
+
+      {/* Corners */}
+      <motion.div
+        className="absolute top-12 left-8 w-14 h-14 border-l border-t border-accent/15 rounded-tl-2xl"
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 1, delay: 0.5 }}
+      />
+      <motion.div
+        className="absolute bottom-12 right-8 w-14 h-14 border-r border-b border-accent/15 rounded-br-2xl"
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 1, delay: 0.6 }}
+      />
+
+      {/* Diamonds */}
+      <motion.div
+        className="absolute top-[35%] right-[8%] w-4 h-4 rotate-45 border border-accent/20"
+        initial={{ opacity: 0, rotate: 0 }}
+        whileInView={{ opacity: 1, rotate: 45 }}
+        viewport={{ once: true }}
+        transition={{ duration: 1, delay: 0.7 }}
+      />
+      <motion.div
+        className="absolute bottom-[25%] left-[10%] w-3 h-3 rotate-45 bg-accent/10"
+        initial={{ opacity: 0, rotate: 0 }}
+        whileInView={{ opacity: 1, rotate: 45 }}
+        viewport={{ once: true }}
+        transition={{ duration: 1, delay: 0.9 }}
+      />
+
+      {/* Circles */}
+      <motion.div
+        className="absolute top-[55%] left-[5%] w-2.5 h-2.5 rounded-full bg-accent/30"
+        initial={{ scale: 0 }}
+        whileInView={{ scale: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.8, delay: 0.8 }}
       />
 
       <div className="container mx-auto px-6 relative z-10">
