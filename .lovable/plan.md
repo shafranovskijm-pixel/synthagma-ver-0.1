@@ -1,26 +1,18 @@
 
 
-## Проблема
+## Plan: Auto-fix after "Проверить все"
 
-Сейчас для заказов от студентов в колонке «Покупатель» отображается просто **«Студент»**, без имени. Хотя в таблице `marketplace_orders` есть поле `buyer_user_id`, запрос не подтягивает профиль покупателя.
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-## Решение
+### Changes
 
-Добавить join к таблице `profiles` через `buyer_user_id`, чтобы получить ФИО студента.
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-### Изменения
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-**1. `src/hooks/useAdminMarketplace.ts`** — расширить select-запрос:
-```
-.select("*, marketplace_course:..., buyer_organization:..., buyer_profile:profiles!marketplace_orders_buyer_user_id_fkey(full_name, email)")
-```
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-**2. `src/components/admin/AdminMarketplaceManager.tsx`** — в колонке «Покупатель» вместо `"Студент"` показывать:
-```
-buyer_profile?.full_name || buyer_profile?.email || "Студент"
-```
-
-**3. `src/types/marketplace.ts`** — добавить `buyer_profile` в тип `MarketplaceOrderWithDetails`.
-
-Два файла, ~5 строк изменений. Имена появятся сразу для всех существующих заказов.
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 

@@ -49,4 +49,5 @@ export interface MarketplaceOrderWithDetails extends MarketplaceOrderRecord {
     organization?: { name: string } | null;
   };
   buyer_organization?: { name: string } | null;
+  buyer_profile?: { full_name: string | null; email: string | null } | null;
 }

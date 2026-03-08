@@ -34,6 +34,7 @@ interface MarketplaceOrder {
     organization?: { name: string } | null;
   };
   buyer_organization?: { name: string } | null;
+  buyer_profile?: { full_name: string | null; email: string | null } | null;
 }
 
 export function useAdminMarketplace() {
@@ -96,7 +97,30 @@ export function useAdminMarketplace() {
       .select("*, marketplace_course:marketplace_courses(id, course:courses(id, title), organization:organizations(name)), buyer_organization:organizations!marketplace_orders_buyer_organization_id_fkey(name)")
       .order("created_at", { ascending: false });
     if (error) { console.error("Error fetching orders:", error); return; }
-    setOrders(data || []);
+    
+    // Fetch buyer profiles for student orders
+    const studentUserIds = (data || [])
+      .filter((o) => o.buyer_type === "student" && o.buyer_user_id)
+      .map((o) => o.buyer_user_id!);
+    
+    let profilesMap: Record<string, { full_name: string | null; email: string | null }> = {};
+    if (studentUserIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, full_name, email")
+        .in("user_id", studentUserIds);
+      if (profiles) {
+        for (const p of profiles) {
+          profilesMap[p.user_id] = { full_name: p.full_name, email: p.email };
+        }
+      }
+    }
+    
+    const ordersWithProfiles = (data || []).map((o) => ({
+      ...o,
+      buyer_profile: o.buyer_user_id ? profilesMap[o.buyer_user_id] || null : null,
+    }));
+    setOrders(ordersWithProfiles as MarketplaceOrder[]);
   };
 
   const handleCreateCourse = async (): Promise<string | null> => {
