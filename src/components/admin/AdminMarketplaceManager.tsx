@@ -9,6 +9,8 @@ import {
 import { BulkCourseImporter } from "./BulkCourseImporter";
 import { BulkContentGenerator } from "./BulkContentGenerator";
 import { BulkPipelineWidget } from "./BulkPipelineWidget";
+import { ProgramListImporter } from "./ProgramListImporter";
+import { KnowledgeBankTab } from "./KnowledgeBankTab";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
