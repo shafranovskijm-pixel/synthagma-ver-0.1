@@ -913,6 +913,11 @@ export function AdminMarketplaceManager() {
           }} />
         </TabsContent>
 
+        {/* Programs */}
+        <TabsContent value="programs" className="space-y-6">
+          <ProgramsTab />
+        </TabsContent>
+
         {/* Knowledge Bank */}
         <TabsContent value="knowledge" className="space-y-6">
           <KnowledgeBankTab />
