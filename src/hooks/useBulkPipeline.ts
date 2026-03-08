@@ -318,10 +318,10 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
         }
 
         const verifyEntries = Array.from(byLesson.entries());
-        await parallelMap(verifyEntries, 3, async ([lessonId, qs]) => {
+        await parallelMap(verifyEntries, 5, async ([lessonId, qs]) => {
           if (stopRef.current) return;
           const lessonInfo = currentLessons.find(l => l.id === lessonId);
-          const batchSize = 40;
+          const batchSize = 60;
           for (let i = 0; i < qs.length; i += batchSize) {
             if (stopRef.current) return;
             const batch = qs.slice(i, i + batchSize);
