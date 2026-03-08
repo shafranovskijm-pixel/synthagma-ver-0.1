@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
+import { FloatingParticles } from "./FloatingParticles";
 
 
 const features: { icon: any; title: string; description: string; link?: string }[] = [
@@ -118,6 +119,9 @@ export function Features() {
       {/* Decor: blur spots */}
       <div className="absolute top-[5%] right-[3%] w-80 h-80 bg-accent/5 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-[8%] left-[5%] w-72 h-72 bg-accent/4 rounded-full blur-3xl pointer-events-none" />
+
+      {/* Floating particles */}
+      <FloatingParticles count={10} withIcons={true} />
       
       {/* Decorative elements */}
       <motion.div 

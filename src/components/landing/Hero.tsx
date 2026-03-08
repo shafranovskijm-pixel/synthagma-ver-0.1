@@ -3,6 +3,7 @@ import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { ArrowRight, Sparkles, Shield, FileCheck, GraduationCap, BookOpen } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
+import { FloatingParticles } from "./FloatingParticles";
 
 
 const features = [
@@ -29,7 +30,8 @@ export function Hero() {
         backgroundSize: '40px 40px'
       }} />
 
-      {/* Decorative geometric elements */}
+      {/* Floating particles that interact with cursor */}
+      <FloatingParticles count={15} withIcons={true} />
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {/* Vertical lines */}
         <motion.div 

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, Volume2, VolumeX, Heading1, AlignLeft, AlertTriangle, Loader2, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollReveal } from "@/components/ui/ScrollReveal";
+import { FloatingParticles } from "./FloatingParticles";
 
 const DEMO_AUDIO_BASE = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/demo-assets`;
 const DEMO_AUDIO_3 = `${DEMO_AUDIO_BASE}/editor-demo-3blocks.mp3`;
@@ -136,6 +137,9 @@ export function EditorDemo() {
       {/* Decor: blur spots */}
       <div className="absolute top-[5%] right-[3%] w-80 h-80 bg-accent/5 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-[5%] left-[5%] w-64 h-64 bg-accent/4 rounded-full blur-3xl pointer-events-none" />
+
+      {/* Floating particles */}
+      <FloatingParticles count={8} withIcons={false} />
       
       {/* Decorative vertical lines */}
       <motion.div 
