@@ -11,6 +11,7 @@ import { BulkContentGenerator } from "./BulkContentGenerator";
 import { BulkPipelineWidget } from "./BulkPipelineWidget";
 import { ProgramListImporter } from "./ProgramListImporter";
 import { KnowledgeBankTab } from "./KnowledgeBankTab";
+import { ProgramsTab } from "./ProgramsTab";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
