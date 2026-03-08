@@ -123,7 +123,7 @@ export function EditorDemo() {
   };
 
   return (
-    <section className="py-8 md:py-10 px-4 relative overflow-hidden">
+    <section className="py-16 md:py-20 px-4 relative overflow-hidden">
       {/* Background decoration */}
       <div className="absolute inset-0 bg-gradient-to-b from-background via-muted/20 to-background" />
       
