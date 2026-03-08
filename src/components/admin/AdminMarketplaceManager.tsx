@@ -229,15 +229,9 @@ export function AdminMarketplaceManager() {
           const testIds = testLessons.map(l => l.id);
           if (testIds.length) {
             const { data: questions } = await supabase
-              .from("test_questions").select("id, lesson_id, correct_answer, explanation").in("lesson_id", testIds);
+              .from("test_questions").select("id, lesson_id, correct_answer").in("lesson_id", testIds);
             const testsWithNoQ = testIds.filter(id => !questions?.some(q => q.lesson_id === id));
-            const byL = new Map<string, any[]>();
-            for (const q of questions || []) { const a = byL.get(q.lesson_id) || []; a.push(q); byL.set(q.lesson_id, a); }
-            const susL = new Set<string>();
-            for (const [lid, qs] of byL) {
-              if (qs.length > 3 && qs.every((q: any) => q.correct_answer === qs[0]?.correct_answer) && qs.every((q: any) => !q.explanation)) susL.add(lid);
-            }
-            const unanswered = questions?.filter(q => q.correct_answer === null || q.correct_answer === undefined || susL.has(q.lesson_id)) || [];
+            const unanswered = questions?.filter(q => q.correct_answer === null || q.correct_answer === undefined) || [];
             if (testsWithNoQ.length) issues.push(`${testsWithNoQ.length} тестов без вопросов`);
             if (unanswered.length) issues.push(`${unanswered.length} без ответа`);
           }
