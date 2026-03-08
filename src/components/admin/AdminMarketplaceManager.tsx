@@ -4,7 +4,7 @@ import {
   Store, Plus, Search, Edit, Trash2, Eye, Loader2,
   Package, ShoppingCart, Building2, Users, Tag, Sparkles, BookOpen, Upload,
   List, LayoutGrid, ChevronDown, FolderPlus, FolderInput, CheckCircle2, AlertTriangle,
-  FolderOpen, Library,
+  FolderOpen, Library, X,
 } from "lucide-react";
 import { BulkCourseImporter } from "./BulkCourseImporter";
 import { BulkContentGenerator } from "./BulkContentGenerator";
