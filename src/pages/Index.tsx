@@ -9,6 +9,7 @@ import { RostechnadzorCourses } from "@/components/landing/RostechnadzorCourses"
 import { PricingPlans } from "@/components/landing/PricingPlans";
 import { Testimonials } from "@/components/landing/Testimonials";
 
+import { MobileApp } from "@/components/landing/MobileApp";
 import { Footer } from "@/components/landing/Footer";
 import { ScrollToTop } from "@/components/ui/ScrollToTop";
 import { useAuth } from "@/hooks/useAuth";
