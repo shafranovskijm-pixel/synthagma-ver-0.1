@@ -489,7 +489,7 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
             return;
           }
 
-          // ── Step C: Fallback to AI generation ──
+          // ── Step D: Fallback to AI generation ──
           const { data, error } = await withTimeout(
             supabase.functions.invoke("gigachat", {
               body: { action: "generate_content", courseTitle, lessonTitle: lesson.title, existingContent: null, customSystemPrompt: currentPrompts.content || undefined, ai_provider: aiProvider, gigachat_model: gigachatModel, lovable_model: lovableModel },
