@@ -81,6 +81,7 @@ const Index = () => {
         <RostechnadzorCourses />
         
         <Testimonials />
+        <MobileApp />
         <Footer />
         <ScrollToTop />
       </div>
