@@ -602,8 +602,15 @@ export async function callAI(
   const lModel = lovableModel || "google/gemini-2.5-pro";
 
   if (preferredProvider === "lovable_ai") {
-    const text = await callLovableAI(messages, maxTokens, lModel);
-    return { text, model: lModel };
+    try {
+      const text = await callLovableAI(messages, maxTokens, lModel);
+      return { text, model: lModel };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn("[callAI] Lovable AI (preferred) failed, falling back to GigaChat:", msg);
+      const text = await callGigaChat(messages, gcModel, maxTokens);
+      return { text, model: gcModel };
+    }
   }
 
   if (preferredProvider === "round_robin") {
