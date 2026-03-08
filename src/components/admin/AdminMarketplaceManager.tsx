@@ -665,8 +665,16 @@ export function AdminMarketplaceManager() {
                 placeholder="Поиск курсов..."
                 value={h.searchQuery}
                 onChange={(e) => h.setSearchQuery(e.target.value)}
-                className="pl-10 rounded-xl"
+                className="pl-10 pr-8 rounded-xl"
               />
+              {h.searchQuery && (
+                <button
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  onClick={() => h.setSearchQuery("")}
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
             <div className="flex items-center gap-1 border rounded-lg p-0.5">
               <Button variant={h.viewMode === "list" ? "default" : "ghost"} size="icon" className="h-8 w-8" onClick={() => h.setViewMode("list")}>
