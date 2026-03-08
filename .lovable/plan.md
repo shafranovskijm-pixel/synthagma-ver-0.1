@@ -1,18 +1,26 @@
 
+## Рефакторинг FloatingParticles для более изящных точек
 
-## Plan: Auto-fix after "Проверить все"
+### Проблема
+Текущие точки-частицы (при `withIcons=false`) имеют размер 2-6px, что выглядит крупно и неэлегантно. Нужны более тонкие, деликатные визуальные элементы.
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+### Решение
+Переделать компонент `FloatingParticles.tsx`:
 
-### Changes
+1. **Меньше размеры**: 
+   - Точки без иконок: 0.5–1.5px (вместо 2–6px)
+   - Иконки остаются такими же (16–24px)
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+2. **Улучшенный стиль точек**:
+   - Добавить тонкую тень/свечение через `shadow-sm` и `drop-shadow`
+   - Использовать более низкую, более консистентную опацость (0.3–0.6 вместо 0.1–0.3)
+   - Вариативность: некоторые точки — заполненные (`bg-accent`), некоторые — обведённые (`border border-accent`)
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+3. **Вариант для иконок** (опционально):
+   - Позволить задать режим: иконки ИЛИ точки ИЛИ смешанные элементы
+   - Добавить параметр `mode: 'icons' | 'dots' | 'mixed'`
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+### Файлы
+- `src/components/landing/FloatingParticles.tsx` — переделать логику размеров, стилей и типов частиц
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
-
+Результат: тонкие, приятные глазу точки, которые не отвлекают, но добавляют живости.
