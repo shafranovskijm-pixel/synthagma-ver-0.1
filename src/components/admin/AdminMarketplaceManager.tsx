@@ -256,10 +256,11 @@ export function AdminMarketplaceManager() {
 
     setBulkValidatingGroup(null);
     setBulkValidateProgress("");
+    setValidationReportOk(okCount);
+    setValidationReport(errCount > 0 ? failedCourses.map(fc => ({ ...fc, issues: [] })) : null);
 
     if (errCount > 0) {
-      toast.info(`Проверено ${total}: ✅ ${okCount}, ❌ ${errCount}. Запускаем авто-исправление...`);
-      handleBulkAutoFix(failedCourses);
+      toast.info(`Проверено ${total}: ✅ ${okCount}, ❌ ${errCount}. Смотрите отчёт ниже.`);
     } else {
       toast.success(`Проверено ${total}: ✅ ${okCount} готово`);
     }
