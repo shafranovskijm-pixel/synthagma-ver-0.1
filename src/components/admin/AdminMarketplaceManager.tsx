@@ -27,6 +27,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useAdminMarketplace } from "@/hooks/useAdminMarketplace";
+import { markdownToBlocks, blocksToJson } from "@/components/course-builder/BlockEditor";
 
 const statusLabels: Record<string, { label: string; color: string }> = {
   pending: { label: "Ожидает", color: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20" },
@@ -407,7 +408,9 @@ export function AdminMarketplaceManager() {
             });
             if (error) throw error;
             if (data?.content) {
-              await supabase.from("lessons").update({ content: data.content }).eq("id", lesson.id);
+              const blocks = markdownToBlocks(data.content);
+              const jsonContent = blocks.length > 0 ? blocksToJson(blocks) : data.content;
+              await supabase.from("lessons").update({ content: jsonContent }).eq("id", lesson.id);
             }
           } catch (e) {
             console.error(`Failed to generate content for lesson ${lesson.id}:`, e);
