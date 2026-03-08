@@ -1412,6 +1412,36 @@ export type Database = {
           },
         ]
       }
+      knowledge_bank: {
+        Row: {
+          content: string | null
+          created_at: string | null
+          id: string
+          organization_id: string | null
+          source_filename: string | null
+          tags: string[] | null
+          title: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          organization_id?: string | null
+          source_filename?: string | null
+          tags?: string[] | null
+          title: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string | null
+          id?: string
+          organization_id?: string | null
+          source_filename?: string | null
+          tags?: string[] | null
+          title?: string
+        }
+        Relationships: []
+      }
       labor_safety_groups: {
         Row: {
           created_at: string
@@ -4369,6 +4399,15 @@ export type Database = {
       current_organization_id: { Args: never; Returns: string }
       decrypt_password: { Args: { p_text: string }; Returns: string }
       encrypt_password: { Args: { p_text: string }; Returns: string }
+      find_knowledge_bank_content: {
+        Args: { p_min_similarity?: number; p_title: string }
+        Returns: {
+          content: string
+          id: string
+          similarity_score: number
+          title: string
+        }[]
+      }
       find_similar_lesson_content: {
         Args: { p_min_similarity?: number; p_title: string }
         Returns: {
