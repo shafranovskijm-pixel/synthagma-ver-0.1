@@ -139,7 +139,7 @@ export function EditorDemo() {
       <div className="absolute bottom-[5%] left-[5%] w-64 h-64 bg-accent/4 rounded-full blur-3xl pointer-events-none" />
 
       {/* Floating particles */}
-      <FloatingParticles count={8} withIcons={false} />
+      <FloatingParticles count={12} mode="dots" />
       
       {/* Decorative vertical lines */}
       <motion.div 

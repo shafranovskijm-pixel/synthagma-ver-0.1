@@ -4,6 +4,8 @@ import { BookOpen, GraduationCap, FileCheck, Shield, Award, Star, Sparkles } fro
 
 const icons = [BookOpen, GraduationCap, FileCheck, Shield, Award, Star, Sparkles];
 
+type ParticleStyle = 'filled' | 'outlined' | 'glow';
+
 interface Particle {
   id: number;
   x: number;
@@ -13,28 +15,35 @@ interface Particle {
   delay: number;
   duration: number;
   opacity: number;
+  style: ParticleStyle;
 }
 
 interface FloatingParticlesProps {
   count?: number;
-  withIcons?: boolean;
+  mode?: 'icons' | 'dots' | 'mixed';
   className?: string;
 }
 
-function generateParticles(count: number, withIcons: boolean): Particle[] {
-  return Array.from({ length: count }, (_, i) => ({
-    id: i,
-    x: Math.random() * 100,
-    y: Math.random() * 100,
-    size: withIcons ? 16 + Math.random() * 8 : 2 + Math.random() * 4,
-    icon: withIcons && Math.random() > 0.5 ? icons[Math.floor(Math.random() * icons.length)] : null,
-    delay: Math.random() * 2,
-    duration: 3 + Math.random() * 4,
-    opacity: 0.1 + Math.random() * 0.2,
-  }));
+function generateParticles(count: number, mode: 'icons' | 'dots' | 'mixed'): Particle[] {
+  return Array.from({ length: count }, (_, i) => {
+    const useIcon = mode === 'icons' || (mode === 'mixed' && Math.random() > 0.6);
+    const styles: ParticleStyle[] = ['filled', 'outlined', 'glow'];
+    
+    return {
+      id: i,
+      x: Math.random() * 100,
+      y: Math.random() * 100,
+      size: useIcon ? 14 + Math.random() * 6 : 1 + Math.random() * 2,
+      icon: useIcon ? icons[Math.floor(Math.random() * icons.length)] : null,
+      delay: Math.random() * 2,
+      duration: 4 + Math.random() * 4,
+      opacity: useIcon ? 0.15 + Math.random() * 0.15 : 0.3 + Math.random() * 0.4,
+      style: styles[Math.floor(Math.random() * styles.length)],
+    };
+  });
 }
 
-const Particle = memo(function Particle({
+const ParticleElement = memo(function ParticleElement({
   particle,
   mouseX,
   mouseY,
@@ -51,18 +60,16 @@ const Particle = memo(function Particle({
     const unsubX = mouseX.on("change", (latestX) => {
       if (!containerRef.current) return;
       const rect = containerRef.current.getBoundingClientRect();
-      const centerX = rect.width / 2;
-      const centerY = rect.height / 2;
       const particleX = (particle.x / 100) * rect.width;
       const particleY = (particle.y / 100) * rect.height;
       
       const distX = latestX - rect.left - particleX;
       const distY = mouseY.get() - rect.top - particleY;
       const distance = Math.sqrt(distX * distX + distY * distY);
-      const maxDistance = 200;
+      const maxDistance = 150;
       
       if (distance < maxDistance) {
-        const force = (1 - distance / maxDistance) * 30;
+        const force = (1 - distance / maxDistance) * 25;
         setOffset({
           x: -(distX / distance) * force,
           y: -(distY / distance) * force,
@@ -77,6 +84,17 @@ const Particle = memo(function Particle({
 
   const Icon = particle.icon;
 
+  const getDotStyle = () => {
+    switch (particle.style) {
+      case 'outlined':
+        return "rounded-full border border-accent/50";
+      case 'glow':
+        return "rounded-full bg-accent shadow-[0_0_6px_hsl(var(--accent)/0.6)]";
+      default:
+        return "rounded-full bg-accent";
+    }
+  };
+
   return (
     <motion.div
       className="absolute pointer-events-none"
@@ -86,8 +104,8 @@ const Particle = memo(function Particle({
       }}
       animate={{
         x: offset.x,
-        y: [offset.y - 10, offset.y + 10, offset.y - 10],
-        rotate: particle.icon ? [0, 5, -5, 0] : 0,
+        y: [offset.y - 8, offset.y + 8, offset.y - 8],
+        rotate: particle.icon ? [0, 3, -3, 0] : 0,
       }}
       transition={{
         y: {
@@ -98,8 +116,8 @@ const Particle = memo(function Particle({
         },
         x: {
           type: "spring",
-          stiffness: 100,
-          damping: 15,
+          stiffness: 120,
+          damping: 18,
         },
         rotate: {
           duration: particle.duration * 1.5,
@@ -110,7 +128,7 @@ const Particle = memo(function Particle({
     >
       {Icon ? (
         <Icon
-          className="text-accent"
+          className="text-accent drop-shadow-sm"
           style={{
             width: particle.size,
             height: particle.size,
@@ -119,7 +137,7 @@ const Particle = memo(function Particle({
         />
       ) : (
         <div
-          className="rounded-full bg-accent"
+          className={getDotStyle()}
           style={{
             width: particle.size,
             height: particle.size,
@@ -133,11 +151,11 @@ const Particle = memo(function Particle({
 
 export function FloatingParticles({ 
   count = 12, 
-  withIcons = true,
+  mode = 'mixed',
   className = "" 
 }: FloatingParticlesProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [particles] = useState(() => generateParticles(count, withIcons));
+  const [particles] = useState(() => generateParticles(count, mode));
   
   const mouseXRaw = useMotionValue(0);
   const mouseYRaw = useMotionValue(0);
@@ -160,7 +178,7 @@ export function FloatingParticles({
       className={`absolute inset-0 overflow-hidden pointer-events-none ${className}`}
     >
       {particles.map((particle) => (
-        <Particle
+        <ParticleElement
           key={particle.id}
           particle={particle}
           mouseX={mouseX}

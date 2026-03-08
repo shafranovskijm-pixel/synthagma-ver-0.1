@@ -31,7 +31,7 @@ export function Hero() {
       }} />
 
       {/* Floating particles that interact with cursor */}
-      <FloatingParticles count={15} withIcons={true} />
+      <FloatingParticles count={15} mode="icons" />
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {/* Vertical lines */}
         <motion.div 

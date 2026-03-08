@@ -121,7 +121,7 @@ export function Features() {
       <div className="absolute bottom-[8%] left-[5%] w-72 h-72 bg-accent/4 rounded-full blur-3xl pointer-events-none" />
 
       {/* Floating particles */}
-      <FloatingParticles count={10} withIcons={true} />
+      <FloatingParticles count={10} mode="mixed" />
       
       {/* Decorative elements */}
       <motion.div 
