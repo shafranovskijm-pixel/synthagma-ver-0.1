@@ -83,6 +83,10 @@ export function PricingPlans() {
         backgroundSize: '32px 32px'
       }} />
 
+      {/* Decor: blur spots */}
+      <div className="absolute top-[8%] left-[3%] w-80 h-80 bg-accent/5 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-[10%] right-[5%] w-72 h-72 bg-accent/4 rounded-full blur-3xl pointer-events-none" />
+
       {/* Decorative elements */}
       <motion.div
         className="absolute top-[15%] right-0 w-px h-48 bg-gradient-to-b from-transparent via-accent/20 to-transparent"
