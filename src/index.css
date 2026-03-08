@@ -27,8 +27,8 @@
     --muted: 40 15% 92%;
     --muted-foreground: 0 0% 45%;
 
-    /* Accent - Refined Gold */
-    --accent: 38 75% 55%;
+    /* Accent - Teal/Cyan */
+    --accent: 174 72% 46%;
     --accent-foreground: 0 0% 8%;
 
     --destructive: 0 72% 51%;
@@ -52,7 +52,7 @@
     --luxury-graphite: 0 0% 25%;
 
     /* Gradients */
-    --gradient-luxury: linear-gradient(135deg, hsl(38 75% 55%) 0%, hsl(35 80% 40%) 100%);
+    --gradient-luxury: linear-gradient(135deg, hsl(174 72% 46%) 0%, hsl(174 65% 35%) 100%);
     --gradient-dark: linear-gradient(135deg, hsl(0 0% 12%) 0%, hsl(0 0% 20%) 100%);
     --gradient-subtle: linear-gradient(180deg, hsl(40 20% 98%) 0%, hsl(40 15% 96%) 100%);
 
@@ -104,7 +104,7 @@
     --muted: 0 0% 15%;
     --muted-foreground: 40 10% 60%;
 
-    --accent: 38 70% 50%;
+    --accent: 174 65% 40%;
     --accent-foreground: 0 0% 5%;
 
     --destructive: 0 63% 31%;
@@ -247,7 +247,7 @@
 
   /* Section spacing */
   .section-padding {
-    @apply py-24 md:py-32;
+    @apply py-16 md:py-20;
   }
 
   /* Prose styles for imported HTML content */

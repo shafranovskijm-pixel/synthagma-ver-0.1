@@ -4,6 +4,7 @@ import { Helmet } from "react-helmet-async";
 import { Hero } from "@/components/landing/Hero";
 import { Features } from "@/components/landing/Features";
 import { EditorDemo } from "@/components/landing/EditorDemo";
+import { RostechnadzorCourses } from "@/components/landing/RostechnadzorCourses";
 
 import { PricingPlans } from "@/components/landing/PricingPlans";
 import { Testimonials } from "@/components/landing/Testimonials";
@@ -76,6 +77,7 @@ const Index = () => {
         <EditorDemo />
         <PricingPlans />
         <Features />
+        <RostechnadzorCourses />
         
         <Testimonials />
         <Footer />
