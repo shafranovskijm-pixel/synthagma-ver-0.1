@@ -1,24 +1,18 @@
 
 
-## План: Telegram-уведомление о новых заявках на курс
+## Plan: Auto-fix after "Проверить все"
 
-### Проблема
-Сейчас `notify-course-order` отправляет только email. Нужно добавить Telegram-уведомление администратору при поступлении заявки.
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-### Решение
-Добавить в edge function `notify-course-order` отправку Telegram-сообщения через `TELEGRAM_BOT_TOKEN` + `TELEGRAM_SUPPORT_CHAT_ID` (уже настроены и используются в других функциях).
+### Changes
 
-### Формат сообщения
-```
-🛒 Новая заявка на курс!
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-📚 Курс: Охрана труда при работах на высоте (2 группа)
-👤 Покупатель: ИП Васин С.В.
-📋 Тип: Организация
-👥 Студентов: 1
-💰 Цена: 5 000 ₽
-```
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-### Изменения
-Один файл: `supabase/functions/notify-course-order/index.ts` — после отправки email добавить блок отправки в Telegram (аналогично `send-telegram-notification`). Если `TELEGRAM_BOT_TOKEN` или `TELEGRAM_SUPPORT_CHAT_ID` не настроены — молча пропустить.
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
+
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 
