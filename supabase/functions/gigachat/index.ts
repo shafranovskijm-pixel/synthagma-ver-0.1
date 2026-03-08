@@ -53,16 +53,16 @@ serve(async (req) => {
     const body = await req.json();
     const { action, courseTitle, lessonTitle, questions, existingContent, customSystemPrompt, previousAnswers, ai_provider, gigachat_model, lovable_model } = body;
 
-    // Log AI usage
+    // Log AI usage (fire-and-forget to reduce latency)
     const { data: profile } = await supabase
       .from("profiles").select("organization_id").eq("user_id", user.id).single();
     if (profile?.organization_id) {
-      await supabase.from("ai_usage_log").insert({
+      supabase.from("ai_usage_log").insert({
         user_id: user.id,
         organization_id: profile.organization_id,
         function_name: `gigachat_${action}`,
         tokens_used: 0,
-      });
+      }).then(() => {});
     }
 
     let result: any;
