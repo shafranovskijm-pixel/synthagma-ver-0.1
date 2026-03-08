@@ -132,6 +132,10 @@ export function EditorDemo() {
         backgroundImage: `radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)`,
         backgroundSize: '36px 36px'
       }} />
+
+      {/* Decor: blur spots */}
+      <div className="absolute top-[5%] right-[3%] w-80 h-80 bg-accent/5 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-[5%] left-[5%] w-64 h-64 bg-accent/4 rounded-full blur-3xl pointer-events-none" />
       
       {/* Decorative vertical lines */}
       <motion.div 

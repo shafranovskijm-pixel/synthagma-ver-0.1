@@ -195,6 +195,11 @@ function TestimonialsBackground() {
         backgroundImage: `radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)`,
         backgroundSize: '40px 40px'
       }} />
+
+      {/* Blur spots */}
+      <div className="absolute top-[5%] left-[5%] w-72 h-72 bg-accent/5 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-[8%] right-[3%] w-64 h-64 bg-accent/4 rounded-full blur-3xl pointer-events-none" />
+
       <motion.div 
         className="absolute top-24 left-[12%] w-px h-40 bg-gradient-to-b from-transparent via-accent/25 to-transparent"
         initial={{ scaleY: 0 }}
@@ -215,6 +220,38 @@ function TestimonialsBackground() {
         whileInView={{ opacity: 1 }}
         viewport={{ once: true }}
         transition={{ duration: 1, delay: 0.2 }}
+      />
+
+      {/* Diamonds */}
+      <motion.div
+        className="absolute top-[40%] left-[6%] w-4 h-4 rotate-45 border border-accent/20"
+        initial={{ opacity: 0, rotate: 0 }}
+        whileInView={{ opacity: 1, rotate: 45 }}
+        viewport={{ once: true }}
+        transition={{ duration: 1, delay: 0.5 }}
+      />
+      <motion.div
+        className="absolute bottom-[30%] right-[10%] w-3 h-3 rotate-45 bg-accent/10"
+        initial={{ opacity: 0, rotate: 0 }}
+        whileInView={{ opacity: 1, rotate: 45 }}
+        viewport={{ once: true }}
+        transition={{ duration: 1, delay: 0.7 }}
+      />
+
+      {/* Circles */}
+      <motion.div
+        className="absolute top-[60%] right-[15%] w-2.5 h-2.5 rounded-full bg-accent/30"
+        initial={{ scale: 0 }}
+        whileInView={{ scale: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.8, delay: 0.6 }}
+      />
+      <motion.div
+        className="absolute bottom-[45%] left-[18%] w-2 h-2 rounded-full border border-accent/25"
+        initial={{ scale: 0 }}
+        whileInView={{ scale: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.8, delay: 0.8 }}
       />
     </>
   );

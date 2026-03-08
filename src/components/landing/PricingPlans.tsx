@@ -117,6 +117,38 @@ export function PricingPlans() {
         transition={{ duration: 1, delay: 0.6 }}
       />
 
+      {/* Decor: diamonds */}
+      <motion.div
+        className="absolute top-[40%] left-[4%] w-4 h-4 rotate-45 border border-accent/20"
+        initial={{ opacity: 0, rotate: 0 }}
+        whileInView={{ opacity: 1, rotate: 45 }}
+        viewport={{ once: true }}
+        transition={{ duration: 1, delay: 0.8 }}
+      />
+      <motion.div
+        className="absolute bottom-[30%] right-[6%] w-3 h-3 rotate-45 bg-accent/10"
+        initial={{ opacity: 0, rotate: 0 }}
+        whileInView={{ opacity: 1, rotate: 45 }}
+        viewport={{ once: true }}
+        transition={{ duration: 1, delay: 1 }}
+      />
+
+      {/* Decor: circles */}
+      <motion.div
+        className="absolute top-[25%] right-[12%] w-2.5 h-2.5 rounded-full bg-accent/30"
+        initial={{ scale: 0 }}
+        whileInView={{ scale: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.8, delay: 0.9 }}
+      />
+      <motion.div
+        className="absolute bottom-[40%] left-[10%] w-2 h-2 rounded-full border border-accent/25"
+        initial={{ scale: 0 }}
+        whileInView={{ scale: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.8, delay: 1.1 }}
+      />
+
       <div className="container mx-auto px-6 relative z-10">
         {/* Header */}
         <motion.div
