@@ -554,6 +554,9 @@ export function AdminMarketplaceManager() {
           <TabsTrigger value="import" className="flex items-center gap-2">
             <Upload className="w-4 h-4" />Импорт
           </TabsTrigger>
+          <TabsTrigger value="knowledge" className="flex items-center gap-2">
+            <Library className="w-4 h-4" />Банк знаний
+          </TabsTrigger>
           <TabsTrigger value="orders" className="flex items-center gap-2">
             <ShoppingCart className="w-4 h-4" />Заявки
           </TabsTrigger>
