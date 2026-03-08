@@ -434,12 +434,43 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
       (l.type === "text" || l.type === "practice") && (!l.content || l.content === "[]" || l.content === "" || l.content.length < 50)
     );
 
+    // In-memory cache for content reuse within this pipeline run
+    const contentCache = new Map<string, string>();
+
     if (emptyLessons.length > 0) {
       let filledSoFar = 0;
       await parallelMap(emptyLessons, 5, async (lesson, i) => {
         if (stopRef.current) return;
         updatePhase(`Контент: «${lesson.title}» (${filledSoFar + 1}/${emptyLessons.length})`);
         try {
+          const normalizedTitle = lesson.title.toLowerCase().trim();
+
+          // ── Step A: Check in-memory cache ──
+          const cached = contentCache.get(normalizedTitle);
+          if (cached) {
+            await supabase.from("lessons").update({ content: cached }).eq("id", lesson.id);
+            lessonsFilled++;
+            filledSoFar++;
+            console.log(`[cache-hit] Reused content for "${lesson.title}"`);
+            return;
+          }
+
+          // ── Step B: Search DB for similar content (pg_trgm) ──
+          const { data: similar } = await supabase.rpc("find_similar_lesson_content", {
+            p_title: lesson.title,
+            p_min_similarity: 0.4,
+          });
+          if (similar && similar.length > 0 && similar[0].content) {
+            const reusedContent = similar[0].content;
+            contentCache.set(normalizedTitle, reusedContent);
+            await supabase.from("lessons").update({ content: reusedContent }).eq("id", lesson.id);
+            lessonsFilled++;
+            filledSoFar++;
+            console.log(`[db-hit] Reused from "${similar[0].title}" (score: ${similar[0].similarity_score?.toFixed(2)}) for "${lesson.title}"`);
+            return;
+          }
+
+          // ── Step C: Fallback to AI generation ──
           const { data, error } = await withTimeout(
             supabase.functions.invoke("gigachat", {
               body: { action: "generate_content", courseTitle, lessonTitle: lesson.title, existingContent: null, customSystemPrompt: currentPrompts.content || undefined, ai_provider: aiProvider, gigachat_model: gigachatModel, lovable_model: lovableModel },
@@ -452,6 +483,7 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
           if (data?.content) {
             const blocks = markdownToBlocks(data.content);
             const jsonContent = blocks.length > 0 ? blocksToJson(blocks) : data.content;
+            contentCache.set(normalizedTitle, jsonContent);
             await supabase.from("lessons").update({ content: jsonContent }).eq("id", lesson.id);
             lessonsFilled++;
             filledSoFar++;
