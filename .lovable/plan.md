@@ -1,23 +1,18 @@
 
 
-## Добавить FloatingParticles в остальные секции
+## Plan: Auto-fix after "Проверить все"
 
-### Проблема
-Сейчас `FloatingParticles` есть только в Hero, EditorDemo и Features. Секции PricingPlans, RostechnadzorCourses, Testimonials и MobileApp выглядят пустыми — нет живых интерактивных элементов.
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-### Решение
-Добавить `<FloatingParticles />` в оставшиеся 4 секции:
+### Changes
 
-| Секция | mode | count | Почему |
-|---|---|---|---|
-| `PricingPlans.tsx` | `dots` | 10 | Не отвлекать от таблицы тарифов |
-| `RostechnadzorCourses.tsx` | `mixed` | 8 | Смешанный — иконки + точки для разнообразия |
-| `Testimonials.tsx` | `dots` | 8 | Деликатные точки, не перегружать отзывы |
-| `MobileApp.tsx` | `mixed` | 10 | Полноценный набор как в Features |
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-### Файлы
-- `src/components/landing/PricingPlans.tsx` — добавить import + `<FloatingParticles mode="dots" count={10} />`
-- `src/components/landing/RostechnadzorCourses.tsx` — добавить import + `<FloatingParticles mode="mixed" count={8} />`
-- `src/components/landing/Testimonials.tsx` — добавить import + `<FloatingParticles mode="dots" count={8} />`
-- `src/components/landing/MobileApp.tsx` — добавить import + `<FloatingParticles mode="mixed" count={10} />`
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
+
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 

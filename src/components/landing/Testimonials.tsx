@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { TestimonialForm } from "./TestimonialForm";
 import { supabase } from "@/integrations/supabase/client";
 import { differenceInMonths } from "date-fns";
+import { FloatingParticles } from "./FloatingParticles";
 
 const staticTestimonials = [
   {
@@ -101,6 +102,7 @@ export function Testimonials() {
   return (
     <section className="section-padding relative overflow-hidden">
       <TestimonialsBackground />
+      <FloatingParticles mode="dots" count={8} />
 
       <div className="container mx-auto px-6 relative z-10">
         <motion.div

@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { Shield, BookOpen, CheckCircle2, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { FloatingParticles } from "./FloatingParticles";
 
 const stats = [
   { value: "200+", label: "готовых курсов" },
@@ -19,6 +20,9 @@ const highlights = [
 export function RostechnadzorCourses() {
   return (
     <section className="py-16 md:py-20 relative overflow-hidden">
+      {/* Floating particles */}
+      <FloatingParticles mode="mixed" count={8} />
+
       {/* Background */}
       <div className="absolute inset-0 bg-gradient-to-br from-accent/5 via-background to-secondary/20" />
       <div className="absolute inset-0 opacity-[0.012]" style={{

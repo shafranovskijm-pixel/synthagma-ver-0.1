@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
+import { FloatingParticles } from "./FloatingParticles";
 
 const mobileFeatures = [
   { icon: BookOpen, text: "Курсы офлайн" },
@@ -19,6 +20,9 @@ const mobileFeatures = [
 export function MobileApp() {
   return (
     <section className="section-padding relative overflow-hidden">
+      {/* Floating particles */}
+      <FloatingParticles mode="mixed" count={10} />
+
       {/* Background */}
       <div className="absolute inset-0 bg-gradient-to-b from-background via-secondary/20 to-background" />
       <div className="absolute inset-0 opacity-[0.012]" style={{

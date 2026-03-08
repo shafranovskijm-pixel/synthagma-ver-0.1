@@ -4,7 +4,7 @@ import { Check, X, Crown, Sparkles, Info } from "lucide-react";
 import { Link } from "react-router-dom";
 import { SUBSCRIPTION_PLANS, YEARLY_DISCOUNT, formatStorageSize, type SubscriptionPlan } from "@/constants/subscriptionPlans";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-
+import { FloatingParticles } from "./FloatingParticles";
 const planOrder: SubscriptionPlan[] = ['free', 'start', 'standard', 'professional', 'maximum'];
 
 const featureDescriptions: Record<string, { description: string; minPlan: string }> = {
@@ -76,6 +76,9 @@ export function PricingPlans() {
 
   return (
     <section id="pricing" className="section-padding relative overflow-hidden">
+      {/* Floating particles */}
+      <FloatingParticles mode="dots" count={10} />
+
       {/* Background */}
       <div className="absolute inset-0 bg-gradient-to-b from-background via-secondary/20 to-background" />
       <div className="absolute inset-0 opacity-[0.012]" style={{
