@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { markdownToBlocks, blocksToJson } from "@/components/course-builder/BlockEditor";
 import {
   type MarketplacePrompts,
   getMarketplacePrompts,
