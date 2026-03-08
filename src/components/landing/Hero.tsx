@@ -9,6 +9,7 @@ const features = [
   { icon: GraduationCap, label: "Дистанционное обучение" },
   { icon: FileCheck, label: "Документооборот" },
   { icon: Shield, label: "Соответствие 273-ФЗ" },
+  { icon: BookOpen, label: "200+ готовых курсов" },
 ];
 
 export function Hero() {
