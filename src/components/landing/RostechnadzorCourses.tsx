@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { Shield, BookOpen, CheckCircle2, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { FloatingParticles } from "./FloatingParticles";
 
 const stats = [
   { value: "200+", label: "готовых курсов" },
