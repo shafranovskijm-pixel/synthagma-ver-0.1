@@ -1,18 +1,23 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## Статус: всё уже реализовано
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+Оба шага **уже написаны** в предыдущем сообщении и готовы к использованию:
 
-### Changes
+### Шаг 1: Массовая конвертация MD→JSON
+- **Edge-функция** `convert-lesson-content` — уже создана и задеплоена
+- **Кнопка** «Конвертировать MD→JSON» — уже добавлена в админ-панель маркетплейса
+- Обрабатывает по 500 уроков за батч, до 20 батчей (т.е. до 10 000 уроков за клик)
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+### Шаг 2: Поиск похожего контента в конвейере
+- **RPC-функция** `find_similar_lesson_content` с `pg_trgm` — уже создана в БД
+- **In-memory кэш** + поиск по БД перед вызовом ИИ — уже встроен в `useBulkPipeline.ts`
+- Порог сходства: `0.4` (40%)
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+### Что нужно сделать сейчас
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+Никаких изменений в коде не требуется. Нужно:
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+1. **Нажать кнопку «Конвертировать MD→JSON»** в админ-панели маркетплейса — это восстановит отображение ~1381 урока
+2. После конвертации — при следующем запуске конвейера система автоматически будет искать похожий контент в базе перед вызовом ИИ
 
