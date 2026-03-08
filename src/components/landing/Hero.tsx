@@ -13,7 +13,7 @@ const features = [
 
 export function Hero() {
   return (
-    <section className="relative min-h-screen overflow-hidden bg-background">
+    <section className="relative overflow-hidden bg-background">
       {/* Rich gradient background */}
       <div className="absolute inset-0">
         <div className="absolute inset-0 bg-gradient-to-br from-accent/8 via-background to-secondary/30" />
@@ -250,7 +250,7 @@ export function Hero() {
       </nav>
 
       {/* Hero content */}
-      <div className="relative z-10 container mx-auto px-6 pt-12 pb-16 md:pt-20 md:pb-20">
+      <div className="relative z-10 container mx-auto px-6 pt-12 pb-8 md:pt-16 md:pb-10">
         <div className="max-w-4xl mx-auto text-center">
           {/* Badge */}
           <motion.div
