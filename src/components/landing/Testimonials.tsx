@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { TestimonialForm } from "./TestimonialForm";
 import { supabase } from "@/integrations/supabase/client";
 import { differenceInMonths } from "date-fns";
+import { FloatingParticles } from "./FloatingParticles";
 
 const staticTestimonials = [
   {
