@@ -679,7 +679,9 @@ export function AdminMarketplaceManager() {
                          <span className="font-semibold text-sm text-left">{group.category}</span>
                          {group.status === 'ready' && (
                            <>
-                             <Badge className="bg-green-500/10 text-green-600 border-green-500/20 text-[10px]">Готово</Badge>
+                             <Badge className="bg-green-500/10 text-green-600 border-green-500/20 text-[10px]">
+                               ✅ {group.courses.filter(c => validatedCourses[c.course_id] === 'ok').length} / ❌ {group.courses.filter(c => validatedCourses[c.course_id] === 'error').length}
+                             </Badge>
                              <Button
                                variant="ghost"
                                size="sm"
@@ -694,7 +696,20 @@ export function AdminMarketplaceManager() {
                            </>
                          )}
                          {group.status === 'progress' && (
-                           <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20 text-[10px]">В работе</Badge>
+                           <>
+                             <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20 text-[10px]">В работе</Badge>
+                             <Button
+                               variant="ghost"
+                               size="sm"
+                               className="h-6 text-xs px-2"
+                               disabled={!!bulkValidatingGroup}
+                               onClick={(e) => { e.stopPropagation(); handleBulkValidate(group); }}
+                             >
+                               {bulkValidatingGroup === group.category
+                                 ? <><Loader2 className="w-3 h-3 animate-spin mr-1" />{bulkValidateProgress}</>
+                                 : <><CheckCircle2 className="w-3 h-3 mr-1" />Проверить все</>}
+                             </Button>
+                           </>
                          )}
                        </div>
                        <Badge variant="secondary" className="shrink-0">{group.courses.length}</Badge>
