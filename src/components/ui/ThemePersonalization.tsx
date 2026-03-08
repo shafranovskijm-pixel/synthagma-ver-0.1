@@ -80,7 +80,7 @@ interface ThemePersonalizationProps {
 }
 
 export function ThemePersonalization({ isDarkMode, onToggleDark }: ThemePersonalizationProps) {
-  const [accentHsl, setAccentHsl] = useState(() => localStorage.getItem('theme-accent') || '38 75% 55%');
+  const [accentHsl, setAccentHsl] = useState(() => localStorage.getItem('theme-accent') || '174 72% 46%');
   const [density, setDensity] = useState(() => localStorage.getItem('theme-density') || 'default');
   const [radius, setRadius] = useState(() => localStorage.getItem('theme-radius') || 'default');
   const [customColor, setCustomColor] = useState('#C8943E');
