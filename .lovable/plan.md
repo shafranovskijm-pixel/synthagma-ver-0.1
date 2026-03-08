@@ -1,18 +1,54 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## План: новая вкладка «Программы» + визуальные улучшения
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+### 1. Новая вкладка «Программы ДПО/ПО» (заглушка)
 
-### Changes
+Добавить вкладку «Программы» между «Каталог» и «Создать курс». Это будет конструктор образовательных программ, где каждая программа — это набор курсов + метаданные (вид программы, часы, категория слушателей, форма обучения, выдаваемый документ).
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+**Концепция UI заглушки:**
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+```text
+┌─────────────────────────────────────────────────┐
+│  📋 Программы ДПО / ПО                         │
+│                                                 │
+│  Конструктор образовательных программ           │
+│  дополнительного и профессионального образования│
+│                                                 │
+│  ┌──────────────┐ ┌──────────────┐ ┌──────────┐│
+│  │ 📄 ДПО       │ │ 📄 ПО        │ │ 📄 ОТ    ││
+│  │ Повышение    │ │ Проф.        │ │ Охрана   ││
+│  │ квалификации │ │ переподг.    │ │ труда    ││
+│  │              │ │              │ │          ││
+│  │ 0 программ   │ │ 0 программ   │ │ 0 прогр. ││
+│  └──────────────┘ └──────────────┘ └──────────┘│
+│                                                 │
+│  [ + Создать программу ]                        │
+│                                                 │
+│  Скоро: привязка курсов, учебный план,          │
+│  шаблоны документов, расписание                 │
+└─────────────────────────────────────────────────┘
+```
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+Типы программ для карточек:
+- **Повышение квалификации** (ДПО) — удостоверение
+- **Профессиональная переподготовка** (ДПО) — диплом
+- **Охрана труда / Пожарная безопасность** — протокол
+- **Рабочие профессии** — свидетельство
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+### 2. Визуальные улучшения
+
+| Что | Как |
+|---|---|
+| **Табы** | Горизонтальный скролл вместо `grid-cols-4` (сейчас 5 табов в 4 колонки — ломается). Использовать `flex` + `overflow-x-auto` |
+| **Конвейер** | Обернуть в аккуратную Card с заголовком, убрать кнопку «Конвертировать MD→JSON» в Collapsible «Инструменты» |
+| **Панель валидации** | Улучшить стиль: использовать зелёный/красный border вместо primary |
+| **Поиск** | Добавить иконку очистки при наличии текста |
+
+### Файлы
+
+| Файл | Что |
+|---|---|
+| `src/components/admin/ProgramsTab.tsx` | **Новый** — заглушка вкладки «Программы» с карточками типов и кнопкой создания |
+| `src/components/admin/AdminMarketplaceManager.tsx` | Добавить таб «Программы», исправить TabsList на flex, визуальные правки конвейера и валидации |
 
