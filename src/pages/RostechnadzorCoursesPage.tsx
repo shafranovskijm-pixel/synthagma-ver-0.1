@@ -138,6 +138,30 @@ const advantages = [
 const RostechnadzorCoursesPage = () => {
   return (
     <div className="min-h-screen bg-background">
+      <Helmet>
+        <title>Курсы Ростехнадзора 2026 — 200+ программ с актуальными тестами | СИНТАГМА</title>
+        <meta name="description" content="Готовые курсы и актуальные тесты Ростехнадзора 2026: промышленная безопасность (А.1, Б.1–Б.12), электробезопасность (II–V группы), энергетика, экология. Быстрое подключение к вашей организации." />
+        <meta property="og:title" content="Курсы Ростехнадзора 2026 — 200+ программ | СИНТАГМА" />
+        <meta property="og:description" content="Готовые курсы и тесты Ростехнадзора для обучения сотрудников. Промышленная и электробезопасность, энергетика, экология. Актуальные вопросы 2026 года." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://synthagma-bloom.lovable.app/rostechnadzor-courses" />
+        <link rel="canonical" href="https://synthagma-bloom.lovable.app/rostechnadzor-courses" />
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "ItemList",
+          "name": "Каталог курсов Ростехнадзора",
+          "description": "200+ готовых курсов по направлениям аттестации Ростехнадзора",
+          "numberOfItems": 200,
+          "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": "Промышленная безопасность", "description": "А.1, Б.1–Б.12 и другие направления" },
+            { "@type": "ListItem", "position": 2, "name": "Электробезопасность", "description": "Группы допуска II–V" },
+            { "@type": "ListItem", "position": 3, "name": "Энергетика", "description": "Тепловые установки, электрические станции" },
+            { "@type": "ListItem", "position": 4, "name": "Экологическая безопасность", "description": "Обращение с отходами, экологический контроль" },
+            { "@type": "ListItem", "position": 5, "name": "Гидротехнические сооружения", "description": "Содержание и обслуживание ГТС" },
+            { "@type": "ListItem", "position": 6, "name": "Строительный контроль", "description": "Контроль заказчика и подрядчика" }
+          ]
+        })}</script>
+      </Helmet>
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
