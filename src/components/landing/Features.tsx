@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
+import { FloatingParticles } from "./FloatingParticles";
 
 
 const features: { icon: any; title: string; description: string; link?: string }[] = [

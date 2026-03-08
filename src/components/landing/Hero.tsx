@@ -30,7 +30,8 @@ export function Hero() {
         backgroundSize: '40px 40px'
       }} />
 
-      {/* Decorative geometric elements */}
+      {/* Floating particles that interact with cursor */}
+      <FloatingParticles count={15} withIcons={true} />
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {/* Vertical lines */}
         <motion.div 
