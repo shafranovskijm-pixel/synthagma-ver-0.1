@@ -1,18 +1,46 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## План: Исправить фоллбэк на GigaChat при 402 от Lovable AI
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+### Проблема
 
-### Changes
+В `callAI()` есть три режима:
+1. `preferredProvider === "lovable_ai"` — вызывает **только** Lovable AI, **без фоллбэка**
+2. `preferredProvider === "gigachat"` — вызывает GigaChat, фоллбэк на Lovable AI
+3. По умолчанию — Lovable AI первый, фоллбэк на GigaChat
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+Для `generate_answers` код устанавливает `effectiveProvider = ai_provider || "lovable_ai"` (строка 72 gigachat/index.ts). Это значит, что при отсутствии явного `ai_provider` запрос уходит ТОЛЬКО в Lovable AI и при 402 — сразу ошибка, GigaChat даже не пробуется.
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+### Решение
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+В `gigachat-client.ts`, в блоке `preferredProvider === "lovable_ai"` (строка 604) добавить try/catch с фоллбэком на GigaChat — аналогично тому, как это сделано в default-блоке (строки 625-634).
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+То же самое для `callAIWithTools` (строка 647+) — там аналогичная проблема, если `preferredProvider === "gigachat"` и GigaChat падает, фоллбэк есть, но для `lovable_ai` нет.
+
+### Изменения
+
+Один файл: `supabase/functions/_shared/gigachat-client.ts`
+
+```text
+// Было (строка 604-607):
+if (preferredProvider === "lovable_ai") {
+    const text = await callLovableAI(messages, maxTokens, lModel);
+    return { text, model: lModel };
+}
+
+// Станет:
+if (preferredProvider === "lovable_ai") {
+    try {
+        const text = await callLovableAI(messages, maxTokens, lModel);
+        return { text, model: lModel };
+    } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn("[callAI] Lovable AI (preferred) failed, falling back to GigaChat:", msg);
+        const text = await callGigaChat(messages, gcModel, maxTokens);
+        return { text, model: gcModel };
+    }
+}
+```
+
+После деплоя — при 402 от Lovable AI запросы будут автоматически уходить в GigaChat-Max.
 
