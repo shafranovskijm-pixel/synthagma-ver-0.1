@@ -551,57 +551,74 @@ export function AdminMarketplaceManager() {
 
         {/* Catalog */}
         <TabsContent value="catalog" className="space-y-4">
-          {/* Pipeline widget + Convert button */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <BulkPipelineWidget
-              courses={h.courses.filter((c: any) => !c.is_validated)}
-              readyCourses={h.courses.filter((c: any) => c.is_validated === true)}
-              allCourses={h.courses}
-              onComplete={() => h.fetchData()}
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-xl"
-              disabled={converting}
-              onClick={async () => {
-                setConverting(true);
-                const toastId = toast.loading("Конвертирую Markdown → JSON блоки...", { duration: Infinity });
-                try {
-                  let totalConverted = 0;
-                  let totalFailed = 0;
-                  // Run in batches until no more markdown lessons
-                  for (let batch = 0; batch < 20; batch++) {
-                    const { data, error } = await supabase.functions.invoke("convert-lesson-content", {
-                      body: { batch_size: 500 },
-                    });
-                    if (error) throw error;
-                    totalConverted += data?.converted || 0;
-                    totalFailed += data?.failed || 0;
-                    if ((data?.converted || 0) === 0) break;
-                    toast.loading(`Конвертировано: ${totalConverted}...`, { id: toastId });
-                  }
-                  toast.dismiss(toastId);
-                  toast.success(`Конвертация завершена: ✅ ${totalConverted} уроков${totalFailed > 0 ? `, ❌ ${totalFailed} ошибок` : ""}`, { duration: 10000 });
-                } catch (e: any) {
-                  toast.dismiss(toastId);
-                  toast.error(`Ошибка конвертации: ${e.message}`);
-                } finally {
-                  setConverting(false);
-                }
-              }}
-            >
-              {converting ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <BookOpen className="w-4 h-4 mr-1.5" />}
-              Конвертировать MD→JSON
-            </Button>
-          </div>
+          {/* Pipeline widget */}
+          <Card className="shadow-sm">
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                <BulkPipelineWidget
+                  courses={h.courses.filter((c: any) => !c.is_validated)}
+                  readyCourses={h.courses.filter((c: any) => c.is_validated === true)}
+                  allCourses={h.courses}
+                  onComplete={() => h.fetchData()}
+                />
+              </div>
+              <Collapsible>
+                <CollapsibleTrigger className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                  <ChevronDown className="w-3 h-3 transition-transform group-data-[state=closed]:-rotate-90" />
+                  Инструменты
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-xl"
+                    disabled={converting}
+                    onClick={async () => {
+                      setConverting(true);
+                      const toastId = toast.loading("Конвертирую Markdown → JSON блоки...", { duration: Infinity });
+                      try {
+                        let totalConverted = 0;
+                        let totalFailed = 0;
+                        for (let batch = 0; batch < 20; batch++) {
+                          const { data, error } = await supabase.functions.invoke("convert-lesson-content", {
+                            body: { batch_size: 500 },
+                          });
+                          if (error) throw error;
+                          totalConverted += data?.converted || 0;
+                          totalFailed += data?.failed || 0;
+                          if ((data?.converted || 0) === 0) break;
+                          toast.loading(`Конвертировано: ${totalConverted}...`, { id: toastId });
+                        }
+                        toast.dismiss(toastId);
+                        toast.success(`Конвертация завершена: ✅ ${totalConverted} уроков${totalFailed > 0 ? `, ❌ ${totalFailed} ошибок` : ""}`, { duration: 10000 });
+                      } catch (e: any) {
+                        toast.dismiss(toastId);
+                        toast.error(`Ошибка конвертации: ${e.message}`);
+                      } finally {
+                        setConverting(false);
+                      }
+                    }}
+                  >
+                    {converting ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <BookOpen className="w-4 h-4 mr-1.5" />}
+                    Конвертировать MD→JSON
+                  </Button>
+                </CollapsibleContent>
+              </Collapsible>
+            </CardContent>
+          </Card>
 
           {/* Validation Report Panel */}
           {validationReport && (
-            <Card className="border-primary/30 bg-primary/5">
+            <Card className={`shadow-sm ${validationReport.length > 0 ? "border-destructive/40 bg-destructive/5" : "border-green-500/40 bg-green-500/5"}`}>
               <CardHeader className="py-3 px-4">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-semibold">Результаты проверки</CardTitle>
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                    {validationReport.length > 0 ? (
+                      <><AlertTriangle className="w-4 h-4 text-destructive" />Результаты проверки</>
+                    ) : (
+                      <><CheckCircle2 className="w-4 h-4 text-green-600" />Все курсы готовы</>
+                    )}
+                  </CardTitle>
                   <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setValidationReport(null)}>
                     <X className="w-3.5 h-3.5" />
                   </Button>
@@ -613,7 +630,7 @@ export function AdminMarketplaceManager() {
                 )}
                 {validationReport.length > 0 && (
                   <>
-                    <p className="text-sm font-medium">❌ {validationReport.length} курсов с проблемами:</p>
+                    <p className="text-sm font-medium text-destructive">❌ {validationReport.length} курсов с проблемами:</p>
                     <ul className="space-y-1 max-h-48 overflow-y-auto">
                       {validationReport.map((r) => (
                         <li key={r.courseId} className="text-xs text-muted-foreground flex items-start gap-1.5">
@@ -624,7 +641,8 @@ export function AdminMarketplaceManager() {
                     </ul>
                     <Button
                       size="sm"
-                      className="mt-2"
+                      variant="destructive"
+                      className="mt-2 rounded-xl"
                       disabled={bulkFixing}
                       onClick={() => {
                         handleBulkAutoFix(validationReport.map(r => ({ courseId: r.courseId, title: r.title })));
