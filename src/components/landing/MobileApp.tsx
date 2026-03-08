@@ -20,6 +20,9 @@ const mobileFeatures = [
 export function MobileApp() {
   return (
     <section className="section-padding relative overflow-hidden">
+      {/* Floating particles */}
+      <FloatingParticles mode="mixed" count={10} />
+
       {/* Background */}
       <div className="absolute inset-0 bg-gradient-to-b from-background via-secondary/20 to-background" />
       <div className="absolute inset-0 opacity-[0.012]" style={{

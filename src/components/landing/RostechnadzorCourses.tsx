@@ -20,6 +20,9 @@ const highlights = [
 export function RostechnadzorCourses() {
   return (
     <section className="py-16 md:py-20 relative overflow-hidden">
+      {/* Floating particles */}
+      <FloatingParticles mode="mixed" count={8} />
+
       {/* Background */}
       <div className="absolute inset-0 bg-gradient-to-br from-accent/5 via-background to-secondary/20" />
       <div className="absolute inset-0 opacity-[0.012]" style={{
