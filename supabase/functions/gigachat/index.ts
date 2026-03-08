@@ -46,8 +46,8 @@ serve(async (req) => {
       });
     }
 
-    // Rate limit
-    const rl = checkRateLimit(`gigachat:${user.id}`, { maxRequests: 10, windowSeconds: 60 });
+    // Rate limit (30 req/min for pipeline throughput)
+    const rl = checkRateLimit(`gigachat:${user.id}`, { maxRequests: 30, windowSeconds: 60 });
     if (!rl.allowed) return rateLimitResponse(rl, corsHeaders);
 
     const body = await req.json();
