@@ -559,13 +559,50 @@ export function AdminMarketplaceManager() {
 
         {/* Catalog */}
         <TabsContent value="catalog" className="space-y-4">
-          {/* Pipeline widget */}
-          <BulkPipelineWidget
-            courses={h.courses.filter((c: any) => !c.is_validated)}
-            readyCourses={h.courses.filter((c: any) => c.is_validated === true)}
-            allCourses={h.courses}
-            onComplete={() => h.fetchData()}
-          />
+          {/* Pipeline widget + Convert button */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <BulkPipelineWidget
+              courses={h.courses.filter((c: any) => !c.is_validated)}
+              readyCourses={h.courses.filter((c: any) => c.is_validated === true)}
+              allCourses={h.courses}
+              onComplete={() => h.fetchData()}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-xl"
+              disabled={converting}
+              onClick={async () => {
+                setConverting(true);
+                const toastId = toast.loading("Конвертирую Markdown → JSON блоки...", { duration: Infinity });
+                try {
+                  let totalConverted = 0;
+                  let totalFailed = 0;
+                  // Run in batches until no more markdown lessons
+                  for (let batch = 0; batch < 20; batch++) {
+                    const { data, error } = await supabase.functions.invoke("convert-lesson-content", {
+                      body: { batch_size: 500 },
+                    });
+                    if (error) throw error;
+                    totalConverted += data?.converted || 0;
+                    totalFailed += data?.failed || 0;
+                    if ((data?.converted || 0) === 0) break;
+                    toast.loading(`Конвертировано: ${totalConverted}...`, { id: toastId });
+                  }
+                  toast.dismiss(toastId);
+                  toast.success(`Конвертация завершена: ✅ ${totalConverted} уроков${totalFailed > 0 ? `, ❌ ${totalFailed} ошибок` : ""}`, { duration: 10000 });
+                } catch (e: any) {
+                  toast.dismiss(toastId);
+                  toast.error(`Ошибка конвертации: ${e.message}`);
+                } finally {
+                  setConverting(false);
+                }
+              }}
+            >
+              {converting ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <BookOpen className="w-4 h-4 mr-1.5" />}
+              Конвертировать MD→JSON
+            </Button>
+          </div>
           {/* Search + view toggle */}
           <div className="flex items-center gap-4">
             <div className="relative flex-1 max-w-md">
