@@ -218,6 +218,46 @@ const handler = async (req: Request): Promise<Response> => {
 
     await client.close();
 
+    // Send Telegram notification
+    const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
+    const TELEGRAM_SUPPORT_CHAT_ID = Deno.env.get("TELEGRAM_SUPPORT_CHAT_ID");
+
+    if (TELEGRAM_BOT_TOKEN && TELEGRAM_SUPPORT_CHAT_ID) {
+      try {
+        const tgMessage = [
+          "🛒 <b>Новая заявка на курс!</b>",
+          "",
+          `📚 Курс: ${courseName}`,
+          `👤 Покупатель: ${buyerName}`,
+          `📋 Тип: ${buyerTypeLabel}`,
+          ...(buyerType === "organization" ? [`👥 Студентов: ${studentsCount}`] : []),
+          `💰 Цена: ${formattedPrice}`,
+          ...(notes ? [`\n💬 Комментарий: ${notes}`] : []),
+          "",
+          `🏢 Продавец: ${organizationName}`,
+        ].join("\n");
+
+        const tgUrl = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+        const tgResponse = await fetch(tgUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: TELEGRAM_SUPPORT_CHAT_ID,
+            text: tgMessage,
+            parse_mode: "HTML",
+          }),
+        });
+        const tgResult = await tgResponse.json();
+        if (!tgResult.ok) {
+          console.error("Telegram notification failed:", tgResult.description);
+        } else {
+          console.log("Telegram notification sent successfully");
+        }
+      } catch (tgError) {
+        console.error("Telegram notification error:", tgError);
+      }
+    }
+
     console.log("Notifications sent successfully");
 
     return new Response(
