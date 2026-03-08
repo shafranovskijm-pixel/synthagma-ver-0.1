@@ -449,7 +449,9 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
           if (data?.error) { checkFor402(data); throw new Error(data.error); }
           detectProvider(data);
           if (data?.content) {
-            await supabase.from("lessons").update({ content: data.content }).eq("id", lesson.id);
+            const blocks = markdownToBlocks(data.content);
+            const jsonContent = blocks.length > 0 ? blocksToJson(blocks) : data.content;
+            await supabase.from("lessons").update({ content: jsonContent }).eq("id", lesson.id);
             lessonsFilled++;
             filledSoFar++;
             setAiSessionCalls(prev => prev + 1);

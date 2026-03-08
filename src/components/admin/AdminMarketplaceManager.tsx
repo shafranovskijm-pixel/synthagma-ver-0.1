@@ -407,7 +407,9 @@ export function AdminMarketplaceManager() {
             });
             if (error) throw error;
             if (data?.content) {
-              await supabase.from("lessons").update({ content: data.content }).eq("id", lesson.id);
+              const blocks = markdownToBlocks(data.content);
+              const jsonContent = blocks.length > 0 ? blocksToJson(blocks) : data.content;
+              await supabase.from("lessons").update({ content: jsonContent }).eq("id", lesson.id);
             }
           } catch (e) {
             console.error(`Failed to generate content for lesson ${lesson.id}:`, e);

@@ -2396,6 +2396,98 @@ export function jsonToBlocks(json: string): ContentBlock[] {
   try { return JSON.parse(json); } catch { return []; }
 }
 
+/** Convert plain Markdown text into ContentBlock[] */
+export function markdownToBlocks(md: string): ContentBlock[] {
+  if (!md || typeof md !== "string") return [];
+
+  // If it's already valid JSON array, return as-is
+  const trimmed = md.trim();
+  if (trimmed.startsWith("[")) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) return parsed;
+    } catch { /* not JSON, proceed with markdown parsing */ }
+  }
+
+  const blocks: ContentBlock[] = [];
+  const lines = md.split("\n");
+  let i = 0;
+
+  const mkId = () => crypto.randomUUID?.() ?? `block-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    // Skip empty lines
+    if (!line.trim()) { i++; continue; }
+
+    // Headings
+    if (/^## /.test(line)) {
+      blocks.push({ id: mkId(), type: "heading2", content: line.replace(/^## /, "").trim() });
+      i++; continue;
+    }
+    if (/^# /.test(line)) {
+      blocks.push({ id: mkId(), type: "heading1", content: line.replace(/^# /, "").trim() });
+      i++; continue;
+    }
+
+    // Blockquote (collapse consecutive > lines)
+    if (/^>\s?/.test(line)) {
+      const quoteLines: string[] = [];
+      while (i < lines.length && /^>\s?/.test(lines[i])) {
+        quoteLines.push(lines[i].replace(/^>\s?/, ""));
+        i++;
+      }
+      blocks.push({ id: mkId(), type: "quote", content: quoteLines.join("\n") });
+      continue;
+    }
+
+    // Unordered list (collapse consecutive - or * lines)
+    if (/^[-*]\s/.test(line)) {
+      const items: string[] = [];
+      while (i < lines.length && /^[-*]\s/.test(lines[i])) {
+        items.push(lines[i].replace(/^[-*]\s/, ""));
+        i++;
+      }
+      blocks.push({ id: mkId(), type: "bulletList", content: items.map(t => `<li>${t}</li>`).join("") });
+      continue;
+    }
+
+    // Ordered list (collapse consecutive numbered lines)
+    if (/^\d+\.\s/.test(line)) {
+      const items: string[] = [];
+      while (i < lines.length && /^\d+\.\s/.test(lines[i])) {
+        items.push(lines[i].replace(/^\d+\.\s/, ""));
+        i++;
+      }
+      blocks.push({ id: mkId(), type: "numberedList", content: items.map(t => `<li>${t}</li>`).join("") });
+      continue;
+    }
+
+    // Horizontal rule → divider
+    if (/^[-*_]{3,}\s*$/.test(line)) {
+      blocks.push({ id: mkId(), type: "divider", content: "" });
+      i++; continue;
+    }
+
+    // Regular paragraph — collapse consecutive plain lines
+    const paraLines: string[] = [];
+    while (i < lines.length && lines[i].trim() && !/^#{1,2}\s/.test(lines[i]) && !/^>\s?/.test(lines[i]) && !/^[-*]\s/.test(lines[i]) && !/^\d+\.\s/.test(lines[i]) && !/^[-*_]{3,}\s*$/.test(lines[i])) {
+      paraLines.push(lines[i]);
+      i++;
+    }
+    if (paraLines.length) {
+      // Convert **bold** and *italic* to HTML
+      let html = paraLines.join(" ")
+        .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+        .replace(/\*(.+?)\*/g, "<em>$1</em>");
+      blocks.push({ id: mkId(), type: "paragraph", content: html });
+    }
+  }
+
+  return blocks;
+}
+
 export function htmlToBlocks(html: string): ContentBlock[] {
   const blocks: ContentBlock[] = [];
   const parser = new DOMParser();
