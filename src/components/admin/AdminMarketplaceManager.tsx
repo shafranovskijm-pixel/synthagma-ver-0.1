@@ -4,7 +4,7 @@ import {
   Store, Plus, Search, Edit, Trash2, Eye, Loader2,
   Package, ShoppingCart, Building2, Users, Tag, Sparkles, BookOpen, Upload,
   List, LayoutGrid, ChevronDown, FolderPlus, FolderInput, CheckCircle2, AlertTriangle,
-  FolderOpen, Library,
+  FolderOpen, Library, X,
 } from "lucide-react";
 import { BulkCourseImporter } from "./BulkCourseImporter";
 import { BulkContentGenerator } from "./BulkContentGenerator";
@@ -95,6 +95,8 @@ export function AdminMarketplaceManager() {
   const [bulkValidateProgress, setBulkValidateProgress] = useState("");
   const [bulkFixing, setBulkFixing] = useState(false);
   const [converting, setConverting] = useState(false);
+  const [validationReport, setValidationReport] = useState<{ courseId: string; title: string; issues: string[] }[] | null>(null);
+  const [validationReportOk, setValidationReportOk] = useState(0);
 
   // Initialize validated state from DB on courses load
   useEffect(() => {
@@ -152,17 +154,9 @@ export function AdminMarketplaceManager() {
         const testIds = testLessons.map(l => l.id);
         if (testIds.length) {
           const { data: questions } = await supabase
-            .from("test_questions").select("id, lesson_id, correct_answer, explanation, question, options").in("lesson_id", testIds);
+            .from("test_questions").select("id, lesson_id, correct_answer").in("lesson_id", testIds);
           const testsWithNoQ = testIds.filter(id => !questions?.some(q => q.lesson_id === id));
-          
-          // Detect suspicious: all same answer + no explanations in a lesson
-          const byL = new Map<string, any[]>();
-          for (const q of questions || []) { const a = byL.get(q.lesson_id) || []; a.push(q); byL.set(q.lesson_id, a); }
-          const susL = new Set<string>();
-          for (const [lid, qs] of byL) {
-            if (qs.length > 3 && qs.every((q: any) => q.correct_answer === qs[0]?.correct_answer) && qs.every((q: any) => !q.explanation)) susL.add(lid);
-          }
-          const unansweredQuestions = questions?.filter(q => q.correct_answer === null || q.correct_answer === undefined || susL.has(q.lesson_id)) || [];
+          const unansweredQuestions = questions?.filter(q => q.correct_answer === null || q.correct_answer === undefined) || [];
           
           if (testsWithNoQ.length) issues.push(`${testsWithNoQ.length} тестов без вопросов`);
           if (unansweredQuestions.length) issues.push(`${unansweredQuestions.length} вопросов без ответа`);
@@ -209,7 +203,7 @@ export function AdminMarketplaceManager() {
     let okCount = 0;
     let errCount = 0;
     const total = group.courses.length;
-    const failedCourses: { courseId: string; title: string }[] = [];
+    const failedCourses: { courseId: string; title: string; issues: string[] }[] = [];
 
     for (let i = 0; i < total; i++) {
       const item = group.courses[i];
@@ -235,15 +229,9 @@ export function AdminMarketplaceManager() {
           const testIds = testLessons.map(l => l.id);
           if (testIds.length) {
             const { data: questions } = await supabase
-              .from("test_questions").select("id, lesson_id, correct_answer, explanation").in("lesson_id", testIds);
+              .from("test_questions").select("id, lesson_id, correct_answer").in("lesson_id", testIds);
             const testsWithNoQ = testIds.filter(id => !questions?.some(q => q.lesson_id === id));
-            const byL = new Map<string, any[]>();
-            for (const q of questions || []) { const a = byL.get(q.lesson_id) || []; a.push(q); byL.set(q.lesson_id, a); }
-            const susL = new Set<string>();
-            for (const [lid, qs] of byL) {
-              if (qs.length > 3 && qs.every((q: any) => q.correct_answer === qs[0]?.correct_answer) && qs.every((q: any) => !q.explanation)) susL.add(lid);
-            }
-            const unanswered = questions?.filter(q => q.correct_answer === null || q.correct_answer === undefined || susL.has(q.lesson_id)) || [];
+            const unanswered = questions?.filter(q => q.correct_answer === null || q.correct_answer === undefined) || [];
             if (testsWithNoQ.length) issues.push(`${testsWithNoQ.length} тестов без вопросов`);
             if (unanswered.length) issues.push(`${unanswered.length} без ответа`);
           }
@@ -256,22 +244,23 @@ export function AdminMarketplaceManager() {
           okCount++;
         } else {
           errCount++;
-          failedCourses.push({ courseId: item.course_id, title: item.course?.title || "" });
+          failedCourses.push({ courseId: item.course_id, title: item.course?.title || "", issues });
         }
       } catch (e) {
         console.error("Bulk validate error for", item.course_id, e);
         setValidatedCourses(prev => ({ ...prev, [item.course_id]: 'error' }));
         errCount++;
-        failedCourses.push({ courseId: item.course_id, title: item.course?.title || "" });
+        failedCourses.push({ courseId: item.course_id, title: item.course?.title || "", issues: ["Ошибка проверки"] });
       }
     }
 
     setBulkValidatingGroup(null);
     setBulkValidateProgress("");
+    setValidationReportOk(okCount);
+    setValidationReport(errCount > 0 ? failedCourses : null);
 
     if (errCount > 0) {
-      toast.info(`Проверено ${total}: ✅ ${okCount}, ❌ ${errCount}. Запускаем авто-исправление...`);
-      handleBulkAutoFix(failedCourses);
+      toast.info(`Проверено ${total}: ✅ ${okCount}, ❌ ${errCount}. Смотрите отчёт ниже.`);
     } else {
       toast.success(`Проверено ${total}: ✅ ${okCount} готово`);
     }
@@ -369,14 +358,8 @@ export function AdminMarketplaceManager() {
       }
 
 
-      // Find unanswered questions (including suspicious: all same answer, no explanations)
-      const byLessonFix = new Map<string, any[]>();
-      for (const q of allQuestions) { const a = byLessonFix.get(q.lesson_id) || []; a.push(q); byLessonFix.set(q.lesson_id, a); }
-      const suspiciousFix = new Set<string>();
-      for (const [lid, qs] of byLessonFix) {
-        if (qs.length > 3 && qs.every((q: any) => q.correct_answer === qs[0]?.correct_answer) && qs.every((q: any) => !q.explanation)) suspiciousFix.add(lid);
-      }
-      const unansweredQuestions = allQuestions.filter(q => q.correct_answer === null || q.correct_answer === undefined || suspiciousFix.has(q.lesson_id));
+      // Find unanswered questions (deterministic: only null/undefined correct_answer)
+      const unansweredQuestions = allQuestions.filter(q => q.correct_answer === null || q.correct_answer === undefined);
 
       // Find duplicate titles
       const titleCounts = new Map<string, Array<{ id: string; title: string }>>();
@@ -608,6 +591,50 @@ export function AdminMarketplaceManager() {
               Конвертировать MD→JSON
             </Button>
           </div>
+
+          {/* Validation Report Panel */}
+          {validationReport && (
+            <Card className="border-primary/30 bg-primary/5">
+              <CardHeader className="py-3 px-4">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-semibold">Результаты проверки</CardTitle>
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setValidationReport(null)}>
+                    <X className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="px-4 pb-3 pt-0 space-y-2">
+                {validationReportOk > 0 && (
+                  <p className="text-sm text-muted-foreground">✅ {validationReportOk} курсов готово</p>
+                )}
+                {validationReport.length > 0 && (
+                  <>
+                    <p className="text-sm font-medium">❌ {validationReport.length} курсов с проблемами:</p>
+                    <ul className="space-y-1 max-h-48 overflow-y-auto">
+                      {validationReport.map((r) => (
+                        <li key={r.courseId} className="text-xs text-muted-foreground flex items-start gap-1.5">
+                          <AlertTriangle className="w-3 h-3 text-destructive shrink-0 mt-0.5" />
+                          <span>{h.extractShortTitle(r.title)}{r.issues.length > 0 ? ` — ${r.issues.join(", ")}` : ""}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <Button
+                      size="sm"
+                      className="mt-2"
+                      disabled={bulkFixing}
+                      onClick={() => {
+                        handleBulkAutoFix(validationReport.map(r => ({ courseId: r.courseId, title: r.title })));
+                        setValidationReport(null);
+                      }}
+                    >
+                      {bulkFixing ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Sparkles className="w-3.5 h-3.5 mr-1.5" />}
+                      🔧 Исправить все ({validationReport.length})
+                    </Button>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          )}
           {/* Search + view toggle */}
           <div className="flex items-center gap-4">
             <div className="relative flex-1 max-w-md">
@@ -652,7 +679,9 @@ export function AdminMarketplaceManager() {
                          <span className="font-semibold text-sm text-left">{group.category}</span>
                          {group.status === 'ready' && (
                            <>
-                             <Badge className="bg-green-500/10 text-green-600 border-green-500/20 text-[10px]">Готово</Badge>
+                             <Badge className="bg-green-500/10 text-green-600 border-green-500/20 text-[10px]">
+                               ✅ {group.courses.filter(c => validatedCourses[c.course_id] === 'ok').length} / ❌ {group.courses.filter(c => validatedCourses[c.course_id] === 'error').length}
+                             </Badge>
                              <Button
                                variant="ghost"
                                size="sm"
@@ -667,7 +696,20 @@ export function AdminMarketplaceManager() {
                            </>
                          )}
                          {group.status === 'progress' && (
-                           <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20 text-[10px]">В работе</Badge>
+                           <>
+                             <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20 text-[10px]">В работе</Badge>
+                             <Button
+                               variant="ghost"
+                               size="sm"
+                               className="h-6 text-xs px-2"
+                               disabled={!!bulkValidatingGroup}
+                               onClick={(e) => { e.stopPropagation(); handleBulkValidate(group); }}
+                             >
+                               {bulkValidatingGroup === group.category
+                                 ? <><Loader2 className="w-3 h-3 animate-spin mr-1" />{bulkValidateProgress}</>
+                                 : <><CheckCircle2 className="w-3 h-3 mr-1" />Проверить все</>}
+                             </Button>
+                           </>
                          )}
                        </div>
                        <Badge variant="secondary" className="shrink-0">{group.courses.length}</Badge>
