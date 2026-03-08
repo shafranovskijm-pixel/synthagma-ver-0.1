@@ -13,7 +13,7 @@ const features = [
 
 export function Hero() {
   return (
-    <section className="relative min-h-screen overflow-hidden bg-background">
+    <section className="relative overflow-hidden bg-background">
       {/* Rich gradient background */}
       <div className="absolute inset-0">
         <div className="absolute inset-0 bg-gradient-to-br from-accent/8 via-background to-secondary/30" />
