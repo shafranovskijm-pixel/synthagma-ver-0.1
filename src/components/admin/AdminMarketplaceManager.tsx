@@ -591,6 +591,50 @@ export function AdminMarketplaceManager() {
               Конвертировать MD→JSON
             </Button>
           </div>
+
+          {/* Validation Report Panel */}
+          {validationReport && (
+            <Card className="border-primary/30 bg-primary/5">
+              <CardHeader className="py-3 px-4">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-semibold">Результаты проверки</CardTitle>
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setValidationReport(null)}>
+                    <X className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="px-4 pb-3 pt-0 space-y-2">
+                {validationReportOk > 0 && (
+                  <p className="text-sm text-muted-foreground">✅ {validationReportOk} курсов готово</p>
+                )}
+                {validationReport.length > 0 && (
+                  <>
+                    <p className="text-sm font-medium">❌ {validationReport.length} курсов с проблемами:</p>
+                    <ul className="space-y-1 max-h-48 overflow-y-auto">
+                      {validationReport.map((r) => (
+                        <li key={r.courseId} className="text-xs text-muted-foreground flex items-start gap-1.5">
+                          <AlertTriangle className="w-3 h-3 text-destructive shrink-0 mt-0.5" />
+                          <span>{h.extractShortTitle(r.title)}{r.issues.length > 0 ? ` — ${r.issues.join(", ")}` : ""}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <Button
+                      size="sm"
+                      className="mt-2"
+                      disabled={bulkFixing}
+                      onClick={() => {
+                        handleBulkAutoFix(validationReport.map(r => ({ courseId: r.courseId, title: r.title })));
+                        setValidationReport(null);
+                      }}
+                    >
+                      {bulkFixing ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Sparkles className="w-3.5 h-3.5 mr-1.5" />}
+                      🔧 Исправить все ({validationReport.length})
+                    </Button>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          )}
           {/* Search + view toggle */}
           <div className="flex items-center gap-4">
             <div className="relative flex-1 max-w-md">
