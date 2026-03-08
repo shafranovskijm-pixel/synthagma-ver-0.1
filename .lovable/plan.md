@@ -1,18 +1,54 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## Проблема
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+Подтверждено: **контент генерируется, но не отображается**. Причина — несовпадение форматов:
 
-### Changes
+- Edge-функция `generate_content` возвращает **plain Markdown** текст
+- Поле `content` в таблице `lessons` ожидает **JSON-массив блоков** (`ContentBlock[]`)
+- Когда `jsonToBlocks()` пытается распарсить Markdown через `JSON.parse()`, получает ошибку → возвращает `[]` → пустой урок
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+Это касается и конвейера (`useBulkPipeline.ts`), и кнопки «Исправить ИИ» в маркетплейсе (`AdminMarketplaceManager.tsx`).
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+## Решение
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+Конвертировать Markdown-ответ ИИ в массив `ContentBlock[]` перед сохранением в БД.
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+### 1. Создать утилиту `markdownToBlocks()` в `src/components/course-builder/BlockEditor.tsx`
+
+Парсинг Markdown → массив блоков:
+- `# Заголовок` → `{ type: "heading1", content: "..." }`
+- `## Подзаголовок` → `{ type: "heading2", content: "..." }`
+- `> Цитата` → `{ type: "quote", content: "..." }`
+- `- Элемент` → `{ type: "bullet-list", content: "..." }`
+- `1. Элемент` → `{ type: "numbered-list", content: "..." }`
+- Обычный текст → `{ type: "paragraph", content: "..." }`
+
+Каждому блоку присваивается уникальный `id`. Результат сериализуется через `blocksToJson()`.
+
+### 2. Применить в `useBulkPipeline.ts` (строка ~452)
+
+```typescript
+// Было:
+await supabase.from("lessons").update({ content: data.content }).eq("id", lesson.id);
+
+// Станет:
+const blocks = markdownToBlocks(data.content);
+await supabase.from("lessons").update({ content: blocksToJson(blocks) }).eq("id", lesson.id);
+```
+
+### 3. Применить в `AdminMarketplaceManager.tsx` (строка ~410)
+
+Аналогичная замена при автофиксе.
+
+### Файлы для изменения
+
+| Файл | Что |
+|---|---|
+| `src/components/course-builder/BlockEditor.tsx` | Добавить и экспортировать `markdownToBlocks()` |
+| `src/hooks/useBulkPipeline.ts` | Импортировать и применить конвертацию |
+| `src/components/admin/AdminMarketplaceManager.tsx` | Импортировать и применить конвертацию |
+
+### Ожидаемый результат
+Все 193 курса, которые уже сгенерированы с пустым контентом, потребуют **повторной генерации контента** (перезапуск конвейера). Новые курсы будут сразу сохраняться в правильном формате.
 
