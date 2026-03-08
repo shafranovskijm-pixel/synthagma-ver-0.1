@@ -95,6 +95,8 @@ export function AdminMarketplaceManager() {
   const [bulkValidateProgress, setBulkValidateProgress] = useState("");
   const [bulkFixing, setBulkFixing] = useState(false);
   const [converting, setConverting] = useState(false);
+  const [validationReport, setValidationReport] = useState<{ courseId: string; title: string; issues: string[] }[] | null>(null);
+  const [validationReportOk, setValidationReportOk] = useState(0);
 
   // Initialize validated state from DB on courses load
   useEffect(() => {
