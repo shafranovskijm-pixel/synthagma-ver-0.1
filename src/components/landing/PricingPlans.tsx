@@ -4,7 +4,7 @@ import { Check, X, Crown, Sparkles, Info } from "lucide-react";
 import { Link } from "react-router-dom";
 import { SUBSCRIPTION_PLANS, YEARLY_DISCOUNT, formatStorageSize, type SubscriptionPlan } from "@/constants/subscriptionPlans";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-
+import { FloatingParticles } from "./FloatingParticles";
 const planOrder: SubscriptionPlan[] = ['free', 'start', 'standard', 'professional', 'maximum'];
 
 const featureDescriptions: Record<string, { description: string; minPlan: string }> = {
