@@ -1,35 +1,18 @@
 
 
-## Страница каталога курсов Ростехнадзора
+## Plan: Auto-fix after "Проверить все"
 
-### Что делаем
-Создаём публичную страницу `/rostechnadzor-courses` с каталогом курсов по направлениям Ростехнадзора, ориентированную на продажи. Кнопка «Подключить курсы» в секции `RostechnadzorCourses` на лендинге будет вести на эту страницу.
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-### Структура страницы
+### Changes
 
-1. **Шапка** — логотип + кнопка «Назад» (как на других feature-страницах)
-2. **Hero-секция** — заголовок «Каталог курсов Ростехнадзора», подзаголовок с продающим текстом
-3. **Категории с курсами** — статический список направлений с примерами курсов:
-   - **Промышленная безопасность** (А.1, Б.1–Б.12 и т.д.)
-   - **Электробезопасность** (группы допуска, II–V)
-   - **Энергетика** (тепловые установки, электрические станции)
-   - **Экологическая безопасность**
-   - **Гидротехнические сооружения**
-   - **Строительный контроль**
-   
-   Каждая категория — карточка с иконкой, названием, количеством курсов и списком примеров
-4. **Преимущества** — блок с акцентами: актуальность тестов 2026, официальные материалы, быстрый запуск
-5. **CTA-секция** — «Подключить курсы к своей организации» → `/register-organization`
-6. **Footer**
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-### Изменения в файлах
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-| Файл | Действие |
-|---|---|
-| `src/pages/RostechnadzorCoursesPage.tsx` | Создать — новая страница каталога |
-| `src/App.tsx` | Добавить маршрут `/rostechnadzor-courses` |
-| `src/components/landing/RostechnadzorCourses.tsx` | Изменить ссылку кнопки «Подключить курсы» на `/rostechnadzor-courses` |
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-### Стиль
-Повторяем паттерн существующих feature-страниц (`FeatureCourseStore.tsx`): шапка с лого, motion-анимации, акцентные цвета, Footer.
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 

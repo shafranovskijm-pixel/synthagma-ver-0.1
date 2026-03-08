@@ -46,6 +46,7 @@ const FeatureCourseSettings = lazy(() => import("./pages/FeatureCourseSettings")
 const FeatureBranding = lazy(() => import("./pages/FeatureBranding"));
 const FeatureAICourses = lazy(() => import("./pages/FeatureAICourses"));
 const RoadmapPage = lazy(() => import("./pages/RoadmapPage"));
+const RostechnadzorCoursesPage = lazy(() => import("./pages/RostechnadzorCoursesPage"));
 const CompanyDashboard = lazy(() => import("./pages/CompanyDashboard"));
 const PublicOffer = lazy(() => import("./pages/PublicOffer"));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
@@ -145,6 +146,7 @@ const App = () => (
                     <Route path="/feature/branding" element={<FeatureBranding />} />
                     <Route path="/feature/ai-courses" element={<FeatureAICourses />} />
                     <Route path="/roadmap" element={<RoadmapPage />} />
+                    <Route path="/rostechnadzor-courses" element={<RostechnadzorCoursesPage />} />
                     <Route path="/public-offer" element={<PublicOffer />} />
                     <Route path="/privacy" element={<PrivacyPolicy />} />
                     <Route path="/personal-data" element={<PersonalDataPolicy />} />
