@@ -203,7 +203,7 @@ export function AdminMarketplaceManager() {
     let okCount = 0;
     let errCount = 0;
     const total = group.courses.length;
-    const failedCourses: { courseId: string; title: string }[] = [];
+    const failedCourses: { courseId: string; title: string; issues: string[] }[] = [];
 
     for (let i = 0; i < total; i++) {
       const item = group.courses[i];
@@ -244,20 +244,20 @@ export function AdminMarketplaceManager() {
           okCount++;
         } else {
           errCount++;
-          failedCourses.push({ courseId: item.course_id, title: item.course?.title || "" });
+          failedCourses.push({ courseId: item.course_id, title: item.course?.title || "", issues });
         }
       } catch (e) {
         console.error("Bulk validate error for", item.course_id, e);
         setValidatedCourses(prev => ({ ...prev, [item.course_id]: 'error' }));
         errCount++;
-        failedCourses.push({ courseId: item.course_id, title: item.course?.title || "" });
+        failedCourses.push({ courseId: item.course_id, title: item.course?.title || "", issues: ["Ошибка проверки"] });
       }
     }
 
     setBulkValidatingGroup(null);
     setBulkValidateProgress("");
     setValidationReportOk(okCount);
-    setValidationReport(errCount > 0 ? failedCourses.map(fc => ({ ...fc, issues: [] })) : null);
+    setValidationReport(errCount > 0 ? failedCourses : null);
 
     if (errCount > 0) {
       toast.info(`Проверено ${total}: ✅ ${okCount}, ❌ ${errCount}. Смотрите отчёт ниже.`);
