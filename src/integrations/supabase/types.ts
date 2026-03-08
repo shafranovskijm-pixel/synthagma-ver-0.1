@@ -4369,6 +4369,15 @@ export type Database = {
       current_organization_id: { Args: never; Returns: string }
       decrypt_password: { Args: { p_text: string }; Returns: string }
       encrypt_password: { Args: { p_text: string }; Returns: string }
+      find_similar_lesson_content: {
+        Args: { p_min_similarity?: number; p_title: string }
+        Returns: {
+          content: string
+          lesson_id: string
+          similarity_score: number
+          title: string
+        }[]
+      }
       get_all_decrypted_passwords: {
         Args: never
         Returns: {
@@ -4494,6 +4503,8 @@ export type Database = {
         Args: { p_enrollment_id: string }
         Returns: undefined
       }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
       track_user_visit: { Args: { p_user_id: string }; Returns: undefined }
       upgrade_to_organization_role: {
         Args: { p_organization_id: string; p_user_id: string }
