@@ -1,18 +1,36 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## Декор для секций + перенос мобильного приложения вниз
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+### Что делаем
 
-### Changes
+1. **Перенос секции «Мобильное приложение»** — выделяем из `Features.tsx` в отдельный компонент `MobileApp.tsx` и размещаем в `Index.tsx` после `Testimonials` (перед Footer).
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+2. **Усиление декора** — текущие декоративные элементы (тонкие линии, точки) слишком незаметны. Добавляем более выразительные элементы в секции, которые выглядят пусто:
+   - **EditorDemo** — добавить accent-градиентные blur-пятна (как в Hero), плавающие ромбики, угловые рамки
+   - **PricingPlans** — добавить gradient blur-пятна, дополнительные circles и diamonds
+   - **Features** (сетка «Всё для обучения») — усилить существующий декор: крупнее blur-пятна, добавить горизонтальные accent-линии
+   - **RostechnadzorCourses** — добавить corner decorations, circles, diamonds
+   - **Testimonials** — добавить blur-пятна, diamonds, усилить угловые рамки
+   - **MobileApp** (новый компонент) — полный набор декора как в Hero
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+### Стиль декора (единый паттерн)
+Каждая секция получает комбинацию из:
+- 1–2 градиентных blur-пятна (`bg-accent/5 ... blur-3xl`) — создают «свечение»
+- Вертикальные/горизонтальные тонкие линии (уже есть, оставляем)
+- Угловые рамки (`border-l border-t ... rounded-tl-2xl`)
+- Плавающие ромбики (`rotate-45 border border-accent/20`)
+- Маленькие кружки (`rounded-full bg-accent/30`)
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+### Файлы
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+| Файл | Действие |
+|---|---|
+| `src/components/landing/MobileApp.tsx` | Создать — мобильная секция, вырезанная из Features |
+| `src/components/landing/Features.tsx` | Убрать блок Mobile App Section (строки ~346–473) |
+| `src/pages/Index.tsx` | Добавить `<MobileApp />` после `<Testimonials />` |
+| `src/components/landing/EditorDemo.tsx` | Добавить blur-пятна и diamonds |
+| `src/components/landing/PricingPlans.tsx` | Добавить blur-пятна и diamonds |
+| `src/components/landing/RostechnadzorCourses.tsx` | Добавить corner decorations, circles |
+| `src/components/landing/Testimonials.tsx` | Добавить blur-пятна, diamonds |
 
