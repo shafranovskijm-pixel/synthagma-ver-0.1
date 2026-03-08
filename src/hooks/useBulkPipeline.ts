@@ -77,9 +77,9 @@ function clearCompletedIds() {
 let lastModelProvider: "gigachat" | "lovable" | "unknown" = "unknown";
 
 function getDelay(type: "batch" | "lesson"): number {
-  if (lastModelProvider === "lovable") return type === "batch" ? 2000 : 1500;
-  if (lastModelProvider === "gigachat") return type === "batch" ? 5000 : 3000;
-  return type === "batch" ? 4000 : 2500;
+  if (lastModelProvider === "lovable") return type === "batch" ? 800 : 600;
+  if (lastModelProvider === "gigachat") return type === "batch" ? 2000 : 1500;
+  return type === "batch" ? 1500 : 1000;
 }
 
 function detectProvider(data: any) {
