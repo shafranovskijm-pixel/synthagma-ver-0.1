@@ -455,7 +455,26 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
             return;
           }
 
-          // ── Step B: Search DB for similar content (pg_trgm) ──
+          // ── Step B: Search Knowledge Bank (pg_trgm) ──
+          try {
+            const { data: kbResult } = await supabase.rpc("find_knowledge_bank_content", {
+              p_title: lesson.title,
+              p_min_similarity: 0.3,
+            });
+            if (kbResult && kbResult.length > 0 && kbResult[0].content) {
+              const kbContent = kbResult[0].content;
+              contentCache.set(normalizedTitle, kbContent);
+              await supabase.from("lessons").update({ content: kbContent }).eq("id", lesson.id);
+              lessonsFilled++;
+              filledSoFar++;
+              console.log(`[kb-hit] Reused from knowledge bank "${kbResult[0].title}" (score: ${kbResult[0].similarity_score?.toFixed(2)}) for "${lesson.title}"`);
+              return;
+            }
+          } catch (e) {
+            console.warn("[kb-search] Knowledge bank search failed, continuing:", e);
+          }
+
+          // ── Step C: Search DB for similar content (pg_trgm) ──
           const { data: similar } = await supabase.rpc("find_similar_lesson_content", {
             p_title: lesson.title,
             p_min_similarity: 0.4,
@@ -470,7 +489,7 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
             return;
           }
 
-          // ── Step C: Fallback to AI generation ──
+          // ── Step D: Fallback to AI generation ──
           const { data, error } = await withTimeout(
             supabase.functions.invoke("gigachat", {
               body: { action: "generate_content", courseTitle, lessonTitle: lesson.title, existingContent: null, customSystemPrompt: currentPrompts.content || undefined, ai_provider: aiProvider, gigachat_model: gigachatModel, lovable_model: lovableModel },

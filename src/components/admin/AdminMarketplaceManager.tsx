@@ -4,11 +4,13 @@ import {
   Store, Plus, Search, Edit, Trash2, Eye, Loader2,
   Package, ShoppingCart, Building2, Users, Tag, Sparkles, BookOpen, Upload,
   List, LayoutGrid, ChevronDown, FolderPlus, FolderInput, CheckCircle2, AlertTriangle,
-  FolderOpen,
+  FolderOpen, Library,
 } from "lucide-react";
 import { BulkCourseImporter } from "./BulkCourseImporter";
 import { BulkContentGenerator } from "./BulkContentGenerator";
 import { BulkPipelineWidget } from "./BulkPipelineWidget";
+import { ProgramListImporter } from "./ProgramListImporter";
+import { KnowledgeBankTab } from "./KnowledgeBankTab";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -552,6 +554,9 @@ export function AdminMarketplaceManager() {
           <TabsTrigger value="import" className="flex items-center gap-2">
             <Upload className="w-4 h-4" />Импорт
           </TabsTrigger>
+          <TabsTrigger value="knowledge" className="flex items-center gap-2">
+            <Library className="w-4 h-4" />Банк знаний
+          </TabsTrigger>
           <TabsTrigger value="orders" className="flex items-center gap-2">
             <ShoppingCart className="w-4 h-4" />Заявки
           </TabsTrigger>
@@ -826,13 +831,20 @@ export function AdminMarketplaceManager() {
 
         {/* Import */}
         <TabsContent value="import" className="space-y-6">
+          <ProgramListImporter onComplete={() => {
+            h.fetchData();
+            h.setActiveTab("catalog");
+          }} />
           <BulkCourseImporter onComplete={() => {
             h.fetchData();
             h.setActiveTab("catalog");
           }} />
         </TabsContent>
 
-        {/* Orders */}
+        {/* Knowledge Bank */}
+        <TabsContent value="knowledge" className="space-y-6">
+          <KnowledgeBankTab />
+        </TabsContent>
         <TabsContent value="orders" className="space-y-6">
           {h.orders.length === 0 ? (
             <Card className="border-dashed">
