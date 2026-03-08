@@ -1,18 +1,29 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## Анализ: кнопка «Проверить всё» уже работает корректно
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+Текущая реализация (строки 204–277 в `AdminMarketplaceManager.tsx`) **уже проверяет всё**, что нужно:
 
-### Changes
+### Что проверяется для каждого курса
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+| Проверка | Как |
+|---|---|
+| **Контент уроков** | Находит текстовые/практические уроки с `content` = null, `""`, `"[]"` или `< 50` символов |
+| **Тесты** | Ищет вопросы с `correct_answer = null` и «подозрительные» (все одинаковые ответы без пояснений) |
+| **Структура** | Минимум 3 урока, хотя бы 1 текстовый и 1 тест |
+| **Дубликаты** | Повторяющиеся названия уроков |
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+### Что происходит при ошибках
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+После проверки автоматически запускается `handleBulkAutoFix` (строка 272), который:
+1. Генерирует структуру если < 3 уроков
+2. Заполняет пустые уроки контентом через ИИ (с конвертацией в JSON-блоки)
+3. Решает нерешённые тесты батчами по 20 вопросов
+4. Устраняет дубликаты названий
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+### Вывод
+
+**Никаких изменений не требуется** — кнопка «Проверить всё» уже полностью функциональна. Она проверяет и контент уроков, и тесты, и при нахождении проблем автоматически исправляет их.
+
+Если при нажатии что-то не работает как ожидается — опишите конкретную проблему или покажите скриншот результата, и я разберусь.
 
