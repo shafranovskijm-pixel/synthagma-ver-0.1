@@ -209,7 +209,18 @@ export function useCourseBuilder() {
           }
 
           setLessons(lessonsData.map(l => {
-            const blocks = l.content ? jsonToBlocks(l.content) : [];
+            let blocks: ContentBlock[] = [];
+            if (l.content) {
+              blocks = jsonToBlocks(l.content);
+              // Auto-convert Markdown → JSON blocks on the fly
+              if (blocks.length === 0 && l.content.length > 50 && !l.content.trim().startsWith('[')) {
+                blocks = markdownToBlocks(l.content);
+                if (blocks.length > 0) {
+                  const json = blocksToJson(blocks);
+                  supabase.from("lessons").update({ content: json }).eq("id", l.id);
+                }
+              }
+            }
             return {
               id: l.id, type: l.type as LessonType, title: l.title, content: l.content || "",
               blocks: blocks.length > 0 ? blocks : undefined, expanded: false,
