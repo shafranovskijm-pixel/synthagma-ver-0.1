@@ -831,13 +831,20 @@ export function AdminMarketplaceManager() {
 
         {/* Import */}
         <TabsContent value="import" className="space-y-6">
+          <ProgramListImporter onComplete={() => {
+            h.fetchData();
+            h.setActiveTab("catalog");
+          }} />
           <BulkCourseImporter onComplete={() => {
             h.fetchData();
             h.setActiveTab("catalog");
           }} />
         </TabsContent>
 
-        {/* Orders */}
+        {/* Knowledge Bank */}
+        <TabsContent value="knowledge" className="space-y-6">
+          <KnowledgeBankTab />
+        </TabsContent>
         <TabsContent value="orders" className="space-y-6">
           {h.orders.length === 0 ? (
             <Card className="border-dashed">
