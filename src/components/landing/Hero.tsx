@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
-import { ArrowRight, Sparkles, Shield, FileCheck, GraduationCap } from "lucide-react";
+import { ArrowRight, Sparkles, Shield, FileCheck, GraduationCap, BookOpen } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 
@@ -9,6 +9,7 @@ const features = [
   { icon: GraduationCap, label: "Дистанционное обучение" },
   { icon: FileCheck, label: "Документооборот" },
   { icon: Shield, label: "Соответствие 273-ФЗ" },
+  { icon: BookOpen, label: "200+ готовых курсов" },
 ];
 
 export function Hero() {
@@ -318,7 +319,7 @@ export function Hero() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.8, delay: 0.7 }}
-            className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl mx-auto"
+            className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto"
           >
             {features.map((feature, index) => (
               <motion.div
