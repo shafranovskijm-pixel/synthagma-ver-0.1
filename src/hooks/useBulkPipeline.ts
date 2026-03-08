@@ -77,9 +77,9 @@ function clearCompletedIds() {
 let lastModelProvider: "gigachat" | "lovable" | "unknown" = "unknown";
 
 function getDelay(type: "batch" | "lesson"): number {
-  if (lastModelProvider === "lovable") return type === "batch" ? 2000 : 1500;
-  if (lastModelProvider === "gigachat") return type === "batch" ? 5000 : 3000;
-  return type === "batch" ? 4000 : 2500;
+  if (lastModelProvider === "lovable") return type === "batch" ? 800 : 600;
+  if (lastModelProvider === "gigachat") return type === "batch" ? 2000 : 1500;
+  return type === "batch" ? 1500 : 1000;
 }
 
 function detectProvider(data: any) {
@@ -233,10 +233,10 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
           byLesson.set(q.lesson_id, arr);
         }
         const lessonEntries = Array.from(byLesson.entries());
-        await parallelMap(lessonEntries, 3, async ([lessonId, qs]) => {
+        await parallelMap(lessonEntries, 5, async ([lessonId, qs]) => {
           if (stopRef.current) return;
           const lessonInfo = currentLessons.find((l: any) => l.id === lessonId);
-          const batchSize = 40;
+          const batchSize = 60;
           for (let i = 0; i < qs.length; i += batchSize) {
             if (stopRef.current) return;
             const batch = qs.slice(i, i + batchSize);
@@ -318,10 +318,10 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
         }
 
         const verifyEntries = Array.from(byLesson.entries());
-        await parallelMap(verifyEntries, 3, async ([lessonId, qs]) => {
+        await parallelMap(verifyEntries, 5, async ([lessonId, qs]) => {
           if (stopRef.current) return;
           const lessonInfo = currentLessons.find(l => l.id === lessonId);
-          const batchSize = 40;
+          const batchSize = 60;
           for (let i = 0; i < qs.length; i += batchSize) {
             if (stopRef.current) return;
             const batch = qs.slice(i, i + batchSize);
@@ -435,7 +435,7 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
 
     if (emptyLessons.length > 0) {
       let filledSoFar = 0;
-      await parallelMap(emptyLessons, 3, async (lesson, i) => {
+      await parallelMap(emptyLessons, 5, async (lesson, i) => {
         if (stopRef.current) return;
         updatePhase(`Контент: «${lesson.title}» (${filledSoFar + 1}/${emptyLessons.length})`);
         try {

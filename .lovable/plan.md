@@ -1,56 +1,18 @@
 
 
-## Анализ текущего конвейера
+## Plan: Auto-fix after "Проверить все"
 
-Конвейер работает, но есть несколько узких мест:
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-### Текущие параметры
-- **Задержки**: Lovable AI — 2с между батчами / 1.5с между уроками; GigaChat — 5с / 3с
-- **Параллельность**: 3 потока для тестов, 3 для контента
-- **Курсы обрабатываются последовательно** — один за другим
-- **Батч**: 40 вопросов за вызов
-- **Rate limit**: 10 запросов/мин на пользователя в edge-функции
+### Changes
 
-### Главный bottleneck
-**Rate limiter в edge-функции** — 10 запросов/мин. При 3 параллельных потоках это ~3 вызова на поток в минуту. Задержки в 2-5с между батчами дополнительно замедляют.
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
----
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-## Предложения по улучшению
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-### 1. Увеличить rate limit для конвейера (основное ускорение)
-- В `_shared/rate-limiter.ts` / вызове `checkRateLimit` в `gigachat/index.ts`: поднять лимит с 10 до **30 запросов/мин** для действий конвейера
-- Это даст ~3x ускорение сразу
-
-### 2. Уменьшить задержки между вызовами
-- Lovable AI: batch 2000→**800ms**, lesson 1500→**600ms**
-- GigaChat: batch 5000→**2000ms**, lesson 3000→**1500ms**
-- Unknown: batch 4000→**1500ms**, lesson 2500→**1000ms**
-
-### 3. Увеличить параллельность до 5 потоков
-- Тесты: 3→**5** параллельных уроков
-- Контент: 3→**5** параллельных уроков
-- Это безопасно при увеличенном rate limit
-
-### 4. Убрать лишние DB-запросы в edge-функции
-- Auth check + role check + profile fetch + AI usage log = **4 запроса к БД на каждый вызов ИИ**
-- Кэшировать role/profile проверку на клиенте, передавать `organization_id` в body — убрать 1 запрос
-- Перенести `ai_usage_log` insert в фоновый режим (не ждать ответа)
-
-### 5. Увеличить батч вопросов с 40 до 60
-- Gemini 2.5 Pro легко справляется с 60 вопросами за раз
-- Меньше вызовов = быстрее
-
----
-
-## Файлы для изменения
-
-| Файл | Что меняем |
-|---|---|
-| `src/hooks/useBulkPipeline.ts` | Задержки, параллельность (3→5), батч (40→60) |
-| `supabase/functions/gigachat/index.ts` | Rate limit 10→30, фоновый insert usage log |
-
-## Ожидаемый эффект
-- Текущая скорость: ~1 курс за 3-5 мин
-- После оптимизации: ~1 курс за 1-2 мин (ускорение в 2-3 раза)
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 
