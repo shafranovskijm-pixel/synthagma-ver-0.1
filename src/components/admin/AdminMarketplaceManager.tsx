@@ -528,9 +528,12 @@ export function AdminMarketplaceManager() {
   return (
     <div className="space-y-6">
       <Tabs value={h.activeTab} onValueChange={(v) => h.setActiveTab(v as any)} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4 max-w-2xl">
+        <TabsList className="flex w-full max-w-3xl overflow-x-auto">
           <TabsTrigger value="catalog" className="flex items-center gap-2">
             <Package className="w-4 h-4" />Каталог
+          </TabsTrigger>
+          <TabsTrigger value="programs" className="flex items-center gap-2">
+            <BookOpen className="w-4 h-4" />Программы
           </TabsTrigger>
           <TabsTrigger value="create" className="flex items-center gap-2">
             <Plus className="w-4 h-4" />Создать курс
