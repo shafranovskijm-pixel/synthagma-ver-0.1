@@ -1,18 +1,50 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## Ответ: база УЖЕ есть, новую создавать не нужно
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+В базе данных прямо сейчас **1653 урока с контентом**. Из них:
+- **272** — в правильном JSON-формате (отображаются нормально)
+- **1381** — в Markdown-формате (контент есть, но UI его не показывает из-за бага с форматом)
 
-### Changes
+### Что это значит для плана
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+Система переиспользования будет работать **с уже существующими уроками** — ничего с нуля строить не нужно. Но есть нюанс:
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+1. **Сначала** нужно сконвертировать 1381 Markdown-урок в JSON-блоки (одноразовая миграция данных, без ИИ — просто парсинг текста)
+2. **Потом** включить поиск похожих — и при генерации новых курсов система будет находить контент из этих 1653 уроков
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+### Топ повторяющихся тем (уже в базе)
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+| Тема | Сколько раз |
+|---|---|
+| Общие положения и нормативная база | 41 |
+| Основные термины и определения | 19 |
+| Требования безопасности при эксплуатации электроустановок | 17 |
+| Введение в правила охраны труда | 16 |
+
+Для всех этих тем контент уже сгенерирован — при создании новых курсов он будет **копироваться за миллисекунды** вместо вызова ИИ.
+
+### План реализации (2 шага)
+
+**Шаг 1: Массовая конвертация существующих уроков** (миграция данных)
+- Написать скрипт/edge-функцию, которая пройдёт по 1381 Markdown-уроку и сконвертирует их в JSON-блоки через `markdownToBlocks()`
+- Это восстановит отображение контента во всех существующих курсах
+
+**Шаг 2: Поиск похожего контента** (как в прошлом плане)
+- Включить `pg_trgm`, создать RPC-функцию `find_similar_lesson_content`
+- В конвейере: перед вызовом ИИ — поиск по базе → копирование если найдено
+
+### Файлы для изменения
+
+| Файл | Что |
+|---|---|
+| **Миграция SQL** | `pg_trgm` + `find_similar_lesson_content()` |
+| **Edge-функция** (новая) | `convert-lesson-content` — массовая конвертация Markdown→JSON |
+| `src/hooks/useBulkPipeline.ts` | Добавить поиск перед генерацией |
+| `src/components/admin/AdminMarketplaceManager.tsx` | Кнопка «Конвертировать контент» для запуска миграции |
+
+### Ожидаемый результат
+- Все 1381 урок станут видимыми в UI (сейчас они «пустые»)
+- Новые курсы с похожими темами будут заполняться мгновенно из базы
+- Экономия токенов: **60-70%** при генерации новых курсов
 
