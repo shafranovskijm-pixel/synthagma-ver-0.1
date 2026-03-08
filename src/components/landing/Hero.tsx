@@ -250,7 +250,7 @@ export function Hero() {
       </nav>
 
       {/* Hero content */}
-      <div className="relative z-10 container mx-auto px-6 pt-12 pb-16 md:pt-20 md:pb-20">
+      <div className="relative z-10 container mx-auto px-6 pt-12 pb-8 md:pt-16 md:pb-10">
         <div className="max-w-4xl mx-auto text-center">
           {/* Badge */}
           <motion.div
