@@ -93,7 +93,7 @@ export function useAdminMarketplace() {
   const fetchOrders = async () => {
     const { data, error } = await supabase
       .from("marketplace_orders")
-      .select("*, marketplace_course:marketplace_courses(id, course:courses(id, title), organization:organizations(name)), buyer_organization:organizations!marketplace_orders_buyer_organization_id_fkey(name)")
+      .select("*, marketplace_course:marketplace_courses(id, course:courses(id, title), organization:organizations(name)), buyer_organization:organizations!marketplace_orders_buyer_organization_id_fkey(name), buyer_profile:profiles!marketplace_orders_buyer_user_id_fkey(full_name, email)")
       .order("created_at", { ascending: false });
     if (error) { console.error("Error fetching orders:", error); return; }
     setOrders(data || []);

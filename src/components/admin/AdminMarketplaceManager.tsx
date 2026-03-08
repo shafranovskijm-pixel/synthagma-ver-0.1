@@ -950,7 +950,7 @@ export function AdminMarketplaceManager() {
                       <TableCell className="font-medium">{order.marketplace_course?.course?.title || "—"}</TableCell>
                       <TableCell className="text-muted-foreground">{order.marketplace_course?.organization?.name || "Платформа"}</TableCell>
                       <TableCell>
-                        {order.buyer_organization ? order.buyer_organization.name : order.buyer_type === "student" ? "Студент" : "—"}
+                        {order.buyer_organization ? order.buyer_organization.name : order.buyer_type === "student" ? ((order as any).buyer_profile?.full_name || (order as any).buyer_profile?.email || "Студент") : "—"}
                       </TableCell>
                       <TableCell className="font-semibold">{order.price.toLocaleString()} ₽</TableCell>
                       <TableCell>
