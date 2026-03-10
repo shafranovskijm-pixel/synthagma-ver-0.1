@@ -315,7 +315,7 @@ export const TestQuestionEditor = forwardRef<TestQuestionEditorRef, TestQuestion
     setGeneratingExplanationId(questionId);
 
     try {
-      const { data, error } = await supabase.functions.invoke("generate-explanation", {
+      const { data, error } = await safeInvoke<any>("generate-explanation", {
         body: {
           question: question.question,
           options: question.options.map(o => o.text),
