@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Plus, FileSpreadsheet, Menu, Wallet } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
+import { showLimitToast } from "@/utils/limitToast";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 
 export function OrgDashboardHeader() {
