@@ -300,7 +300,7 @@ export function useCourseBuilder() {
     if (type === "test") {
       try {
         toast.info("Генерация тестовых вопросов...");
-        const { data, error } = await safeInvoke("generate-course-content", { body: { lessonTitle: prompt, courseTitle: courseTitle || "Курс", courseDescription: courseDescription || "", contentType: "test" } });
+        const { data, error } = await safeInvoke<any>("generate-course-content", { body: { lessonTitle: prompt, courseTitle: courseTitle || "Курс", courseDescription: courseDescription || "", contentType: "test" } });
         if (error) throw error;
         if (data?.content) newLesson.content = data.content;
         toast.success("Тест сгенерирован!");
