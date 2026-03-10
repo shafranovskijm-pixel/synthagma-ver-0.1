@@ -168,7 +168,7 @@ const JoinByLink = () => {
 
     try {
       // Use edge function to register student with proper permissions
-      const { data: result, error: registerError } = await supabase.functions.invoke('register-student', {
+      const { data: result, error: registerError } = await safeInvoke<any>('register-student', {
         body: {
           email,
           password,

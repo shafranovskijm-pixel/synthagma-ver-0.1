@@ -208,7 +208,7 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
           .eq("user_id", userId)
           .single();
 
-        await supabase.functions.invoke("notify-course-order", {
+        await safeInvoke("notify-course-order", {
           body: {
             orderId: "new",
             courseName: selectedCourse.course?.title || "Курс",

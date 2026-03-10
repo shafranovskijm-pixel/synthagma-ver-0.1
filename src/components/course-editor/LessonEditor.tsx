@@ -283,7 +283,7 @@ export const LessonEditor = ({
 
     setIsGenerating(true);
     try {
-      const { data, error } = await supabase.functions.invoke("generate-lesson-content", {
+      const { data, error } = await safeInvoke<any>("generate-lesson-content", {
         body: {
           lessonTitle: title,
           lessonType: type,

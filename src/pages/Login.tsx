@@ -137,7 +137,7 @@ const Login = () => {
     
     try {
       // Use custom SMTP-based password reset
-      const response = await supabase.functions.invoke('send-password-reset', {
+      const response = await safeInvoke<any>('send-password-reset', {
         body: {
           email: resetEmail,
           redirectTo: `${window.location.origin}/reset-password`,
