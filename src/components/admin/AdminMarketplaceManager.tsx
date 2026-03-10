@@ -386,7 +386,7 @@ export function AdminMarketplaceManager() {
           completed++;
           toast.loading(`Генерирую контент: "${lesson.title}" (${completed}/${totalTasks})`, { id: toastId });
           try {
-            const { data, error } = await supabase.functions.invoke("gigachat", {
+            const { data, error } = await safeInvoke<any>("gigachat", {
               body: {
                 action: "generate_content",
                 courseTitle,
