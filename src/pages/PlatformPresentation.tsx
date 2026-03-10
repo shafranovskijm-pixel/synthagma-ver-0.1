@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ChevronLeft, ChevronRight, Maximize, Minimize, X,
+  ArrowLeft, ChevronLeft, ChevronRight, Maximize, Minimize, X,
   GraduationCap, Building2, Users, BookOpen, Brain, FileText,
   Video, Shield, ShoppingBag, Palette, Smartphone, Zap,
   CheckCircle2, BarChart3, Clock, Globe, Award, Lock,
@@ -674,6 +675,7 @@ const slides = [
 
 /* ─── Main Presentation Component ─── */
 export default function PlatformPresentation() {
+  const navigate = useNavigate();
   const [current, setCurrent] = useState(0);
   const [direction, setDirection] = useState(1);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -734,6 +736,9 @@ export default function PlatformPresentation() {
   return (
     <div ref={containerRef} className="fixed inset-0 bg-black flex items-center justify-center overflow-hidden select-none"
       onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+      <button onClick={() => navigate("/")} className="fixed top-6 left-6 z-50 p-3 rounded-full bg-black/60 backdrop-blur-md hover:bg-white/10 transition-colors text-white" title="Назад">
+        <ArrowLeft className="w-5 h-5" />
+      </button>
       {/* Scaled slide */}
       <div className="relative" style={{ width: 1920, height: 1080, transform: `scale(${scale})`, transformOrigin: "center center" }}>
         <AnimatePresence mode="wait" custom={direction}>

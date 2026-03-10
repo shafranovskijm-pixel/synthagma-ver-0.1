@@ -1,19 +1,18 @@
 
 
-## Add "Back" button to presentation
+## Plan: Auto-fix after "Проверить все"
 
-Add a back navigation button (top-left corner) to return to the main page from the presentation.
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-### Changes in `src/pages/PlatformPresentation.tsx`
+### Changes
 
-1. Import `useNavigate` from `react-router-dom` and `ArrowLeft` from `lucide-react`
-2. Add `const navigate = useNavigate()` in the component
-3. Add a fixed top-left button with `ArrowLeft` icon that calls `navigate("/")` — styled consistently with the bottom nav (semi-transparent dark pill with white icon), e.g.:
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-```tsx
-<button onClick={() => navigate("/")}
-  className="fixed top-6 left-6 z-50 p-3 rounded-full bg-black/60 backdrop-blur-md hover:bg-white/10 transition-colors text-white">
-  <ArrowLeft className="w-5 h-5" />
-</button>
-```
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
+
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 
