@@ -121,7 +121,7 @@ export function useCourseBuilder() {
         const chunk = otherFiles.slice(offset, offset + CHUNK_SIZE);
         const formData = new FormData();
         chunk.forEach((file, i) => formData.append(`file_${offset + i}`, file));
-        const { data, error } = await supabase.functions.invoke("import-course", { body: formData });
+        const { data, error } = await safeInvoke("import-course", { body: formData });
         if (error) throw new Error(error.message || "Ошибка импорта");
         if (!data.success) throw new Error(data.error || 'Ошибка импорта');
         if (!courseTitle && data.courseTitle) setCourseTitle(data.courseTitle);
