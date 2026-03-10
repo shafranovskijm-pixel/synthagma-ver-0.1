@@ -215,7 +215,7 @@ export function useStudentActions(
           if (!student.email) continue;
           
           try {
-            const { error } = await supabase.functions.invoke("send-credentials", {
+            const { error } = await safeInvoke<any>("send-credentials", {
               body: {
                 email: student.email,
                 name: student.name,
