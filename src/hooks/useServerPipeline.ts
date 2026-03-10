@@ -172,7 +172,7 @@ export function useServerPipeline({ courses, enableVerification, onComplete, aiP
     }));
 
     try {
-      const { data, error } = await supabase.functions.invoke("bulk-pipeline", {
+      const { data, error } = await safeInvoke<any>("bulk-pipeline", {
         body: {
           action: "start",
           courses: courseEntries,
