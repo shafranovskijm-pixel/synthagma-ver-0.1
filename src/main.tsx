@@ -23,8 +23,11 @@ const isNative = typeof (window as any).Capacitor !== 'undefined';
   // Register new SW after purge
   if (!isNative) {
     import('virtual:pwa-register').then(({ registerSW }) => {
-      registerSW({
+      const updateSW = registerSW({
         immediate: true,
+        onNeedRefresh() {
+          updateSW(true);
+        },
         onRegistered(registration) {
           if (registration) {
             setInterval(() => registration.update(), 30 * 1000);

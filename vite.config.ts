@@ -81,10 +81,10 @@ export default defineConfig(({ mode }) => ({
           },
           {
             urlPattern: /\.(?:js|css|woff2?)$/i,
-            handler: "StaleWhileRevalidate",
+            handler: "NetworkFirst",
             options: {
               cacheName: "static-cache",
-              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 },
             },
           },
           {
