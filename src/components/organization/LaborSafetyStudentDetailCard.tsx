@@ -10,6 +10,7 @@
  import { Checkbox } from "@/components/ui/checkbox";
  import { Progress } from "@/components/ui/progress";
  import { supabase } from "@/integrations/supabase/client";
+ import { safeInvoke } from "@/utils/safeInvoke";
  import { toast } from "sonner";
  import {
    User,
