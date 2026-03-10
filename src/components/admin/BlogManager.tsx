@@ -172,7 +172,7 @@ export function BlogManager() {
 
     setIsGenerating(true);
     try {
-      const { data, error } = await supabase.functions.invoke("generate-blog-post", {
+      const { data, error } = await safeInvoke<any>("generate-blog-post", {
         body: { topic, category },
       });
 

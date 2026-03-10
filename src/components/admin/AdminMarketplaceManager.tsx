@@ -1022,7 +1022,7 @@ export function AdminMarketplaceManager() {
                     if (!h.editingCourse?.course?.title) { toast.error("Нет названия курса"); return; }
                     setIsGeneratingShortDesc(true);
                     try {
-                      const { data, error } = await supabase.functions.invoke("generate-course-content", {
+                      const { data, error } = await safeInvoke<any>("generate-course-content", {
                         body: { contentType: "short_description", courseTitle: h.editingCourse.course.title, courseDescription: h.editingCourse.course.description },
                       });
                       if (error) throw error;
