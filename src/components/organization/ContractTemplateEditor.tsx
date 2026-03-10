@@ -346,7 +346,7 @@ export function ContractTemplateEditor({
     setTemplateBeforeAI(template);
     setIsAddingVariables(true);
     try {
-      const { data, error } = await supabase.functions.invoke("process-contract-template", {
+      const { data, error } = await safeInvoke<any>("process-contract-template", {
         body: { text: template, placeholders: PLACEHOLDERS },
       });
       if (error) throw error;

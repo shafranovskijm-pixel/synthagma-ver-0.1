@@ -232,7 +232,7 @@ export function SelfExaminationQuiz({
 
     setIsLoadingInn(true);
     try {
-      const { data: result, error } = await supabase.functions.invoke('dadata-company', {
+      const { data: result, error } = await safeInvoke<any>('dadata-company', {
         body: { inn: data.inn }
       });
 

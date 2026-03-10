@@ -93,7 +93,7 @@ export function OrgRequisitesForm({ organizationId }: OrgRequisitesFormProps) {
 
     setIsSearching(true);
     try {
-      const { data, error } = await supabase.functions.invoke('dadata-company', {
+      const { data, error } = await safeInvoke<any>('dadata-company', {
         body: { inn: requisites.inn }
       });
 
