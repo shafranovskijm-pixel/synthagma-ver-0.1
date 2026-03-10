@@ -289,7 +289,7 @@ export function useStudentDetailCardLogic({
     setIsSendingReminder(true);
     try {
       const { data: orgData } = await supabase.from("organizations").select("name").eq("id", organizationId).single();
-      const response = await supabase.functions.invoke("send-documents-reminder", { body: { email: student.email, studentName: student.name, missingDocuments: missingDocs.map(d => d.label), organizationName: orgData?.name || "", loginUrl: window.location.origin + "/login" } });
+      const response = await safeInvoke<any>("send-documents-reminder", { body: { email: student.email, studentName: student.name, missingDocuments: missingDocs.map(d => d.label), organizationName: orgData?.name || "", loginUrl: window.location.origin + "/login" } });
       if (response.error) throw response.error;
       toast.success("Уведомление отправлено на " + student.email);
     } catch (error) { console.error("Reminder error:", error); toast.error("Ошибка отправки"); }

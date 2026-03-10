@@ -312,7 +312,7 @@ export function useStudentActions(
 
       for (const student of studentsWithMissingDocs) {
         try {
-          const response = await supabase.functions.invoke("send-documents-reminder", {
+          const response = await safeInvoke<any>("send-documents-reminder", {
             body: {
               email: student.email,
               studentName: student.name,

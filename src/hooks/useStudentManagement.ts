@@ -312,7 +312,7 @@ export function useStudentManagement({
         const password = generateSimplePassword();
 
         // Use edge function to update both auth.users and profiles
-        const { data, error } = await supabase.functions.invoke("update-student-credentials", {
+        const { data, error } = await safeInvoke<any>("update-student-credentials", {
           body: {
             user_id: student.user_id,
             new_login: login,
