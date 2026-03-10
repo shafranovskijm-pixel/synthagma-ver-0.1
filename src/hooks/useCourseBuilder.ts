@@ -310,7 +310,7 @@ export function useCourseBuilder() {
     if (type === "slides") {
       try {
         toast.info("Генерация слайдов...");
-        const { data, error } = await safeInvoke("generate-course-content", { body: { lessonTitle: prompt, courseTitle: courseTitle || "Курс", courseDescription: courseDescription || "", contentType: "slides" } });
+        const { data, error } = await safeInvoke<any>("generate-course-content", { body: { lessonTitle: prompt, courseTitle: courseTitle || "Курс", courseDescription: courseDescription || "", contentType: "slides" } });
         if (error) throw error;
         if (data?.content) {
           try {
