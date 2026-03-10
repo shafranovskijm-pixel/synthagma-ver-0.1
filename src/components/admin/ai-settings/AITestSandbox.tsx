@@ -83,7 +83,7 @@ export function AITestSandbox({ context, provider, gigachatModel, lovableModel }
       } else {
         // Text-based AI test via gigachat function
         const aiProvider = provider === "lovable_ai" ? "lovable_ai" : "gigachat";
-        const { data, error } = await supabase.functions.invoke("gigachat", {
+        const { data, error } = await safeInvoke("gigachat", {
           body: {
             action: "generate_content",
             courseTitle: "Тест ИИ",

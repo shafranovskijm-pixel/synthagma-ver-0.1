@@ -52,7 +52,7 @@ export function AIComparisonPanel() {
     const promises = models.map(async (m) => {
       const start = performance.now();
       try {
-        const { data, error } = await supabase.functions.invoke("gigachat", {
+        const { data, error } = await safeInvoke("gigachat", {
           body: {
             action: "generate_content",
             courseTitle: "A/B Тест",
