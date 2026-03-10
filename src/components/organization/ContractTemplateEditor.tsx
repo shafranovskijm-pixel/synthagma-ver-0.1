@@ -319,7 +319,7 @@ export function ContractTemplateEditor({
       if (text.trim()) {
         setTemplateBeforeAI(template);
         toast.info("Загружаем и обрабатываем документ...");
-        const { data, error } = await supabase.functions.invoke("process-contract-template", {
+        const { data, error } = await safeInvoke<any>("process-contract-template", {
           body: { text: text.trim(), placeholders: PLACEHOLDERS },
         });
         if (error) throw error;
