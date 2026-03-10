@@ -363,7 +363,7 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
           const { data: org } = await supabase.from('organizations').select('name').eq('id', organizationId).single();
           buyerName = org?.name || 'Организация';
         }
-        await supabase.functions.invoke('notify-course-order', {
+        await safeInvoke('notify-course-order', {
           body: {
             orderId: orderData?.id || 'new', courseName: selectedCourseForOrder.course?.title || 'Курс',
             buyerName, buyerType: userRole,
