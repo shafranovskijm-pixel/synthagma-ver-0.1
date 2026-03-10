@@ -13,6 +13,7 @@ import { ProgramListImporter } from "./ProgramListImporter";
 import { KnowledgeBankTab } from "./KnowledgeBankTab";
 import { ProgramsTab } from "./ProgramsTab";
 import { supabase } from "@/integrations/supabase/client";
+import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
