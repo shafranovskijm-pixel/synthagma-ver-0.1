@@ -375,7 +375,7 @@
  
      setIsUpdatingCredentials(true);
      try {
-       const { data, error } = await supabase.functions.invoke('update-student-credentials', {
+       const { data, error } = await safeInvoke<any>('update-student-credentials', {
          body: {
            user_id: profile.user_id,
            new_login: newLogin || undefined,
