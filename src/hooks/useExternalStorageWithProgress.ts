@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { initExternalSupabase, getExternalSupabase } from '@/integrations/external-supabase/client';
 import { supabase } from '@/integrations/supabase/client';
+import { safeInvoke } from '@/utils/safeInvoke';
 import { useToast } from '@/hooks/use-toast';
 
 interface UploadResult {
