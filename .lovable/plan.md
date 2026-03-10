@@ -1,18 +1,42 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## Проблема
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+PWA-кэширование JS/CSS использует стратегию `StaleWhileRevalidate` — это значит, что при обновлении сайта пользователю сначала показывается **старая** закэшированная версия, а новая скачивается в фоне. Пользователь видит актуальную версию только после следующей перезагрузки.
 
-### Changes
+Также в `registerSW` нет обработчика `onNeedRefresh` — когда новый Service Worker готов, приложение не перезагружается автоматически.
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+## Решение
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+### 1. `vite.config.ts` — сменить стратегию кэширования JS/CSS
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+Заменить `StaleWhileRevalidate` на `NetworkFirst` для статических ресурсов (JS, CSS), чтобы всегда загружалась актуальная версия:
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+```
+handler: "NetworkFirst",
+expiration: { maxAgeSeconds: 60 * 60 * 24 }  // 1 день вместо 30
+```
+
+### 2. `src/main.tsx` — автоматическая перезагрузка при обновлении
+
+Добавить обработчик `onNeedRefresh` в `registerSW`, который сразу вызывает `updateSW()` для активации нового Service Worker и перезагрузки страницы:
+
+```typescript
+registerSW({
+  immediate: true,
+  onNeedRefresh() {
+    // Автоматически применяем обновление
+    updateSW(true);
+  },
+  onRegistered(registration) {
+    if (registration) {
+      setInterval(() => registration.update(), 30 * 1000);
+    }
+  },
+});
+```
+
+### Файлы
+- `vite.config.ts` — смена стратегии кэширования JS/CSS
+- `src/main.tsx` — авто-перезагрузка при новом SW
 
