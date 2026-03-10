@@ -460,12 +460,12 @@ function SlideFRDO() {
 
 function SlideLaborSafety() {
   return (
-    <div className="flex flex-col h-full bg-[hsl(38_92%_50%/0.05)] px-24 py-20">
+    <div className="flex flex-col h-full bg-[hsl(0_0%_8%)] px-24 py-20">
       <div className="flex items-center gap-4 mb-4">
         <HardHat className="w-10 h-10 text-[hsl(38_92%_50%)]" />
-        <h2 className="text-[48px] font-bold text-[hsl(0_0%_8%)]">Охрана труда</h2>
+        <h2 className="text-[48px] font-bold text-white">Охрана труда</h2>
       </div>
-      <p className="text-[24px] text-[hsl(0_0%_45%)] mb-12">Полный модуль для обучения по охране труда</p>
+      <p className="text-[24px] text-white/60 mb-12">Полный модуль для обучения по охране труда</p>
       <div className="grid grid-cols-2 gap-8 flex-1">
         {[
           { icon: Users, title: "Группы обучения", desc: "Формирование групп, назначение программ" },
@@ -473,13 +473,13 @@ function SlideLaborSafety() {
           { icon: FileText, title: "Журналы", desc: "Электронные журналы всех видов инструктажей" },
           { icon: Award, title: "Удостоверения", desc: "Автоматическая генерация удостоверений" },
         ].map((item, i) => (
-          <div key={i} className="bg-white rounded-2xl border border-[hsl(40_15%_90%)] p-8 shadow-sm flex items-start gap-6">
-            <div className="w-14 h-14 rounded-2xl bg-[hsl(38_92%_50%/0.1)] flex items-center justify-center flex-shrink-0">
+          <div key={i} className="bg-white/10 rounded-2xl border border-white/10 p-8 flex items-start gap-6">
+            <div className="w-14 h-14 rounded-2xl bg-[hsl(38_92%_50%/0.2)] flex items-center justify-center flex-shrink-0">
               <item.icon className="w-7 h-7 text-[hsl(38_92%_50%)]" />
             </div>
             <div>
-              <h3 className="text-[24px] font-semibold text-[hsl(0_0%_8%)] mb-2">{item.title}</h3>
-              <p className="text-[20px] text-[hsl(0_0%_45%)]">{item.desc}</p>
+              <h3 className="text-[24px] font-semibold text-white mb-2">{item.title}</h3>
+              <p className="text-[20px] text-white/60">{item.desc}</p>
             </div>
           </div>
         ))}
@@ -565,33 +565,34 @@ function SlideReadyCourses() {
 
 function SlidePricing() {
   const plans = [
-    { name: "Старт", price: "990", students: "до 50", courses: "5", features: ["Все функции", "Email поддержка"] },
-    { name: "Бизнес", price: "2 990", students: "до 300", courses: "30", features: ["Все функции", "Приоритетная поддержка", "Брендирование"], popular: true },
-    { name: "Про", price: "5 990", students: "до 1000", courses: "∞", features: ["Все функции", "Персональный менеджер", "API доступ"] },
+    { name: "Бесплатный", price: "0", students: "10", courses: "3", storage: "100 МБ" },
+    { name: "Старт", price: "3 490", students: "100", courses: "15", storage: "3 ГБ" },
+    { name: "Стандарт", price: "6 990", students: "200", courses: "30", storage: "10 ГБ", popular: true },
+    { name: "Профессиональный", price: "16 990", students: "1 000", courses: "50", storage: "50 ГБ" },
+    { name: "Максимальный", price: "24 990", students: "∞", courses: "∞", storage: "100 ГБ" },
   ];
   return (
-    <div className="flex flex-col h-full bg-[hsl(40_20%_98%)] px-24 py-16">
+    <div className="flex flex-col h-full bg-[hsl(40_20%_98%)] px-16 py-14">
       <h2 className="text-[48px] font-bold text-[hsl(0_0%_8%)] mb-2 text-center">Тарифы</h2>
-      <p className="text-[24px] text-[hsl(0_0%_45%)] mb-12 text-center">Все функции доступны на каждом тарифе</p>
-      <div className="flex gap-8 justify-center flex-1 items-center">
+      <p className="text-[22px] text-[hsl(0_0%_45%)] mb-10 text-center">Все функции доступны на каждом тарифе. Разница только в лимитах.</p>
+      <div className="flex gap-5 justify-center flex-1 items-center">
         {plans.map((p, i) => (
-          <motion.div key={i} initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: i * 0.15 }}
-            className={`w-[360px] rounded-2xl p-8 border ${p.popular ? "bg-[hsl(0_0%_8%)] text-white border-[hsl(174_72%_46%)] shadow-2xl scale-105" : "bg-white border-[hsl(40_15%_90%)] shadow-md"}`}>
-            {p.popular && <span className="inline-block px-4 py-1 rounded-full bg-[hsl(174_72%_46%)] text-[14px] font-medium text-white mb-4">Популярный</span>}
-            <h3 className="text-[28px] font-bold mb-2">{p.name}</h3>
-            <div className="mb-6">
-              <span className="text-[44px] font-bold">{p.price}</span>
-              <span className={`text-[18px] ${p.popular ? "text-white/60" : "text-[hsl(0_0%_45%)]"}`}> ₽/мес</span>
+          <motion.div key={i} initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: i * 0.1 }}
+            className={`w-[320px] rounded-2xl p-6 border flex flex-col ${p.popular ? "bg-[hsl(0_0%_8%)] text-white border-[hsl(174_72%_46%)] shadow-2xl scale-105 relative" : "bg-white border-[hsl(40_15%_90%)] shadow-md"}`}>
+            {p.popular && <span className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-[hsl(174_72%_46%)] text-[14px] font-medium text-white">Популярный</span>}
+            <h3 className="text-[22px] font-bold mb-2">{p.name}</h3>
+            <div className="mb-4">
+              <span className="text-[36px] font-bold">{p.price}</span>
+              <span className={`text-[16px] ${p.popular ? "text-white/60" : "text-[hsl(0_0%_45%)]"}`}>{p.price === "0" ? " ₽" : " ₽/мес"}</span>
             </div>
-            <div className={`text-[18px] mb-1 ${p.popular ? "text-white/80" : "text-[hsl(0_0%_45%)]"}`}>👥 {p.students} учеников</div>
-            <div className={`text-[18px] mb-6 ${p.popular ? "text-white/80" : "text-[hsl(0_0%_45%)]"}`}>📚 {p.courses} курсов</div>
-            <div className="space-y-3">
-              {p.features.map((f, j) => (
-                <div key={j} className="flex items-center gap-3">
-                  <CheckCircle2 className={`w-5 h-5 ${p.popular ? "text-[hsl(174_72%_46%)]" : "text-[hsl(142_70%_45%)]"}`} />
-                  <span className="text-[16px]">{f}</span>
-                </div>
-              ))}
+            <div className="space-y-2 flex-1">
+              <div className={`text-[16px] ${p.popular ? "text-white/80" : "text-[hsl(0_0%_45%)]"}`}>👥 до {p.students} учеников</div>
+              <div className={`text-[16px] ${p.popular ? "text-white/80" : "text-[hsl(0_0%_45%)]"}`}>📚 {p.courses} курсов</div>
+              <div className={`text-[16px] ${p.popular ? "text-white/80" : "text-[hsl(0_0%_45%)]"}`}>💾 {p.storage}</div>
+            </div>
+            <div className="flex items-center gap-2 mt-4 pt-4 border-t border-white/10">
+              <CheckCircle2 className={`w-5 h-5 ${p.popular ? "text-[hsl(174_72%_46%)]" : "text-[hsl(142_70%_45%)]"}`} />
+              <span className="text-[14px]">Все функции включены</span>
             </div>
           </motion.div>
         ))}
@@ -649,9 +650,9 @@ function SlideCTA() {
         </div>
       </motion.div>
       <h2 className="text-[64px] font-bold mb-6 text-center">Начните уже сегодня</h2>
-      <p className="text-[28px] text-white/60 mb-12 text-center max-w-[800px]">14 дней бесплатного пробного периода. Все функции доступны.</p>
+      <p className="text-[28px] text-white/60 mb-12 text-center max-w-[800px]">Бесплатный тариф — навсегда. Все функции доступны.</p>
       <div className="flex gap-6 mb-16">
-        <div className="px-10 py-5 rounded-2xl bg-[hsl(174_72%_46%)] text-[24px] font-semibold cursor-pointer hover:opacity-90 transition-opacity">Попробовать бесплатно</div>
+        <div className="px-10 py-5 rounded-2xl bg-[hsl(174_72%_46%)] text-[24px] font-semibold cursor-pointer hover:opacity-90 transition-opacity">Начать бесплатно</div>
         <div className="px-10 py-5 rounded-2xl border border-white/30 text-[24px] font-semibold cursor-pointer hover:bg-white/10 transition-colors">Запросить демо</div>
       </div>
       <div className="flex gap-12 text-white/40 text-[20px]">
