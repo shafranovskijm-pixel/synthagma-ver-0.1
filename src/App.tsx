@@ -54,6 +54,7 @@ const PersonalDataPolicy = lazy(() => import("./pages/PersonalDataPolicy"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const ProposalPublic = lazy(() => import("./pages/ProposalPublic"));
 const ContractEditor = lazy(() => import("./pages/ContractEditor"));
+const PlatformPresentation = lazy(() => import("./pages/PlatformPresentation"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
