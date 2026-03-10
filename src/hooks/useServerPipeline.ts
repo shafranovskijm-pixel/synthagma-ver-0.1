@@ -207,7 +207,7 @@ export function useServerPipeline({ courses, enableVerification, onComplete, aiP
   const handleResume = useCallback(async (runId: string) => {
     try {
       const prompts = getMarketplacePrompts();
-      const { data, error } = await supabase.functions.invoke("bulk-pipeline", {
+      const { data, error } = await safeInvoke<any>("bulk-pipeline", {
         body: { action: "resume", runId, prompts, enableVerification, gigachat_model: gigachatModel, lovable_model: lovableModel },
       });
 
