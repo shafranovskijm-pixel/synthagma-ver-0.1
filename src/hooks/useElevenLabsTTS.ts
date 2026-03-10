@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 import { toast } from 'sonner';
+import { safeFetch } from '@/utils/safeInvoke';
 
 interface UseElevenLabsTTSOptions {
   voiceId?: string;
@@ -65,7 +66,7 @@ export function useElevenLabsTTS(options: UseElevenLabsTTSOptions = {}) {
     abortControllerRef.current = new AbortController();
 
     try {
-      const response = await fetch(
+      const response = await safeFetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
         {
           method: 'POST',

@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useAiGenerationLimit, setAiLimitContext } from "@/hooks/useAiGenerationLimit";
 import { toast } from "sonner";
+import { safeInvoke, safeFetch } from "@/utils/safeInvoke";
 import { ContentBlock, htmlToBlocks, blocksToJson, jsonToBlocks, markdownToBlocks } from "@/components/course-builder/BlockEditor";
 import {
   closestCenter, KeyboardSensor, PointerSensor,
@@ -120,7 +121,7 @@ export function useCourseBuilder() {
         const chunk = otherFiles.slice(offset, offset + CHUNK_SIZE);
         const formData = new FormData();
         chunk.forEach((file, i) => formData.append(`file_${offset + i}`, file));
-        const { data, error } = await supabase.functions.invoke("import-course", { body: formData });
+        const { data, error } = await safeInvoke<any>("import-course", { body: formData });
         if (error) throw new Error(error.message || "Ошибка импорта");
         if (!data.success) throw new Error(data.error || 'Ошибка импорта');
         if (!courseTitle && data.courseTitle) setCourseTitle(data.courseTitle);
@@ -250,7 +251,7 @@ export function useCourseBuilder() {
     setIsGenerating(true);
     try {
       await aiLimit.increment();
-      const { data, error } = await supabase.functions.invoke("generate-course-structure", { body: { title: courseTitle, description: courseDescription } });
+      const { data, error } = await safeInvoke<any>("generate-course-structure", { body: { title: courseTitle, description: courseDescription } });
       if (error) throw new Error(error.message || "Ошибка генерации");
       if (!data.success) throw new Error(data.error || "Ошибка генерации структуры");
       const generatedLessons: Lesson[] = (data.lessons || []).map((l: any) => ({
@@ -279,7 +280,7 @@ export function useCourseBuilder() {
         toast.info("Генерация аудио... Длинные тексты могут занять до 2 минут.");
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 min timeout
-        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`, {
+        const response = await safeFetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`, {
           method: "POST", headers: { "Content-Type": "application/json", apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
           body: JSON.stringify({ text: prompt, voiceId: "JBFqnCBsd6RMkjVDRZzb" }),
           signal: controller.signal,
@@ -299,7 +300,7 @@ export function useCourseBuilder() {
     if (type === "test") {
       try {
         toast.info("Генерация тестовых вопросов...");
-        const { data, error } = await supabase.functions.invoke("generate-course-content", { body: { lessonTitle: prompt, courseTitle: courseTitle || "Курс", courseDescription: courseDescription || "", contentType: "test" } });
+        const { data, error } = await safeInvoke<any>("generate-course-content", { body: { lessonTitle: prompt, courseTitle: courseTitle || "Курс", courseDescription: courseDescription || "", contentType: "test" } });
         if (error) throw error;
         if (data?.content) newLesson.content = data.content;
         toast.success("Тест сгенерирован!");
@@ -309,7 +310,7 @@ export function useCourseBuilder() {
     if (type === "slides") {
       try {
         toast.info("Генерация слайдов...");
-        const { data, error } = await supabase.functions.invoke("generate-course-content", { body: { lessonTitle: prompt, courseTitle: courseTitle || "Курс", courseDescription: courseDescription || "", contentType: "slides" } });
+        const { data, error } = await safeInvoke<any>("generate-course-content", { body: { lessonTitle: prompt, courseTitle: courseTitle || "Курс", courseDescription: courseDescription || "", contentType: "slides" } });
         if (error) throw error;
         if (data?.content) {
           try {
@@ -327,7 +328,7 @@ export function useCourseBuilder() {
     if (type === "image") {
       try {
         toast.info("Генерация изображения...");
-        const { data } = await supabase.functions.invoke("generate-course-content", { body: { lessonTitle: prompt, courseTitle: courseTitle || "Курс", courseDescription: courseDescription || "", contentType: "image" } });
+        const { data } = await safeInvoke<any>("generate-course-content", { body: { lessonTitle: prompt, courseTitle: courseTitle || "Курс", courseDescription: courseDescription || "", contentType: "image" } });
         if (data?.imageUrl) { newLesson.blocks = [{ id: crypto.randomUUID(), type: "image" as const, content: "", imageSrc: data.imageUrl, imageAlt: prompt }]; newLesson.content = data.imageUrl; toast.success("Изображение сгенерировано!"); }
         else toast.info("Добавьте изображение вручную");
       } catch { toast.info("Добавьте изображение вручную"); }
@@ -336,8 +337,8 @@ export function useCourseBuilder() {
     if (type === "video") {
       try {
         toast.info("Генерация превью...");
-        const { data: imageData } = await supabase.functions.invoke("generate-course-content", { body: { lessonTitle: `Video thumbnail: ${prompt}`, courseTitle: courseTitle || "Курс", courseDescription: courseDescription || "", contentType: "image" } });
-        const { data: scriptData } = await supabase.functions.invoke("generate-course-content", { body: { lessonTitle: prompt, courseTitle: courseTitle || "Курс", courseDescription: courseDescription || "", contentType: "video_script" } });
+        const { data: imageData } = await safeInvoke<any>("generate-course-content", { body: { lessonTitle: `Video thumbnail: ${prompt}`, courseTitle: courseTitle || "Курс", courseDescription: courseDescription || "", contentType: "image" } });
+        const { data: scriptData } = await safeInvoke<any>("generate-course-content", { body: { lessonTitle: prompt, courseTitle: courseTitle || "Курс", courseDescription: courseDescription || "", contentType: "video_script" } });
         newLesson.thumbnailUrl = imageData?.imageUrl || "";
         newLesson.videoScript = scriptData?.content || "";
         newLesson.content = "";

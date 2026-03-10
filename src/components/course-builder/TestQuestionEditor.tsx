@@ -14,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { Json } from "@/integrations/supabase/types";
@@ -314,7 +315,7 @@ export const TestQuestionEditor = forwardRef<TestQuestionEditorRef, TestQuestion
     setGeneratingExplanationId(questionId);
 
     try {
-      const { data, error } = await supabase.functions.invoke("generate-explanation", {
+      const { data, error } = await safeInvoke<any>("generate-explanation", {
         body: {
           question: question.question,
           options: question.options.map(o => o.text),
