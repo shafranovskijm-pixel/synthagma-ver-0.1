@@ -736,6 +736,9 @@ export default function PlatformPresentation() {
   return (
     <div ref={containerRef} className="fixed inset-0 bg-black flex items-center justify-center overflow-hidden select-none"
       onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+      <button onClick={() => navigate("/")} className="fixed top-6 left-6 z-50 p-3 rounded-full bg-black/60 backdrop-blur-md hover:bg-white/10 transition-colors text-white" title="Назад">
+        <ArrowLeft className="w-5 h-5" />
+      </button>
       {/* Scaled slide */}
       <div className="relative" style={{ width: 1920, height: 1080, transform: `scale(${scale})`, transformOrigin: "center center" }}>
         <AnimatePresence mode="wait" custom={direction}>
