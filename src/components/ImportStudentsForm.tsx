@@ -133,11 +133,7 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
         const count = Number(currentCount) || 0;
 
         if (maxStudents !== -1 && count + students.length > maxStudents) {
-          toast({
-            title: "Превышен лимит учеников",
-            description: `Текущий тариф позволяет ${maxStudents} учеников. Сейчас: ${count}, импорт: ${students.length}. Перейдите на следующий тариф.`,
-            variant: "destructive",
-          });
+          showLimitToast(`Превышен лимит учеников. Текущий тариф позволяет ${maxStudents} учеников. Сейчас: ${count}, импорт: ${students.length}.`);
           setIsImporting(false);
           return;
         }

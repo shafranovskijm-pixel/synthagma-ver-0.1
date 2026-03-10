@@ -16,7 +16,7 @@ export function OrgDashboardHeader() {
   const handleStudentAction = (action: () => void) => {
     const result = d.checkLimit('student');
     if (!result.allowed) {
-      toast.error(result.message);
+      showLimitToast(result.message);
       return;
     }
     action();

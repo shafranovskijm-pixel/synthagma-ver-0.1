@@ -383,7 +383,7 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
   const handleToggleCourseSetting = async (course: Course, setting: 'skip_video_identification' | 'sequential_lessons' | 'allow_video_seek', e: React.MouseEvent) => {
     e.stopPropagation();
     if (!hasCourseSettings) {
-      toast.error('Настройки курсов доступны начиная с тарифа «Старт». Перейдите на следующий тариф.');
+      showLimitToast('Настройки курсов доступны начиная с тарифа «Старт». Перейдите на следующий тариф.');
       return;
     }
     const currentValue = course[setting] ?? (setting === 'allow_video_seek' ? true : false);
