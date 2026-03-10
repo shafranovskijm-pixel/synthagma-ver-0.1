@@ -20,7 +20,7 @@ function OrganizationDashboardContent() {
   const exitAdminView = () => { localStorage.removeItem("adminViewAsOrg"); navigate("/admin"); };
 
   useEffect(() => {
-    const handler = () => d.tabNavigation.setActiveTab('settings' as any);
+    const handler = () => d.tabNavigation.setActiveTab('subscription' as any);
     window.addEventListener('navigate-to-subscription', handler);
     return () => window.removeEventListener('navigate-to-subscription', handler);
   }, [d.tabNavigation]);
