@@ -62,7 +62,7 @@ export function useLessonMedia(
 
   const getStorageConfig = useCallback(async () => {
     let externalConfig: { configured: boolean; url: string | null; key: string | null } | null = null;
-    try { const { data } = await supabase.functions.invoke('get-external-storage-config'); externalConfig = data; } catch {}
+    try { const { data } = await safeInvoke<any>('get-external-storage-config'); externalConfig = data; } catch {}
 
     const useExternal = externalConfig?.configured && externalConfig?.url && externalConfig?.key;
     const baseUrl = useExternal ? externalConfig!.url! : import.meta.env.VITE_SUPABASE_URL;
