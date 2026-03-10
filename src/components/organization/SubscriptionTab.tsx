@@ -220,6 +220,8 @@ export function SubscriptionTab() {
     Math.round((subscriptionLimits.usage.coursesCount / currentPlanInfo.limits.maxCourses) * 100);
   const studentsPercent = currentPlanInfo.limits.maxStudents === -1 ? 0 :
     Math.round((subscriptionLimits.usage.studentsCount / currentPlanInfo.limits.maxStudents) * 100);
+  const trainedPercent = currentPlanInfo.limits.maxTrainedPerMonth === -1 ? 0 :
+    Math.round(((subscriptionLimits.usage.trainedThisMonth || 0) / currentPlanInfo.limits.maxTrainedPerMonth) * 100);
 
   return (
     <div className="space-y-6">
@@ -280,7 +282,7 @@ export function SubscriptionTab() {
       )}
 
       {/* Usage Meters */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4 space-y-2">
             <div className="flex items-center justify-between">
@@ -307,6 +309,20 @@ export function SubscriptionTab() {
               </span>
             </div>
             <Progress value={currentPlanInfo.limits.maxStudents === -1 ? 0 : studentsPercent} className="h-2" />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <Sparkles className="w-4 h-4 text-primary" />
+                Обучено в этом месяце
+              </div>
+              <span className="text-sm text-muted-foreground">
+                {subscriptionLimits.usage.trainedThisMonth || 0} / {currentPlanInfo.limits.maxTrainedPerMonth === -1 ? "∞" : currentPlanInfo.limits.maxTrainedPerMonth}
+              </span>
+            </div>
+            <Progress value={currentPlanInfo.limits.maxTrainedPerMonth === -1 ? 0 : trainedPercent} className="h-2" />
           </CardContent>
         </Card>
         <Card>

@@ -1,52 +1,18 @@
 
 
-## Лимит обученных в месяц (maxTrainedPerMonth)
+## Plan: Auto-fix after "Проверить все"
 
-### Суть
-Значение `maxTrainedPerMonth` задано в каждом тарифе, но нигде не проверяется. Нужно:
-1. Считать количество завершений курсов за текущий месяц для организации
-2. Блокировать завершение курса при превышении лимита
-3. Показывать использование в интерфейсе
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-### Где происходит завершение курса
-Единственная точка — `src/hooks/useCourseLearning.ts`, функция `handleCourseCompletion` (строка 487). Там делается `enrollments.update({ status: 'completed' })`.
+### Changes
 
-### План изменений
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-**1. Создать RPC-функцию `count_org_completions_this_month`**
-SQL-миграция: функция считает `enrollments` со `status = 'completed'` и `completed_at` в текущем месяце для курсов данной организации.
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-```sql
-CREATE OR REPLACE FUNCTION count_org_completions_this_month(org_id uuid)
-RETURNS bigint
-LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO 'public'
-AS $$
-  SELECT COUNT(*)
-  FROM enrollments e
-  JOIN courses c ON c.id = e.course_id
-  WHERE c.organization_id = org_id
-    AND e.status = 'completed'
-    AND e.completed_at >= date_trunc('month', now())
-    AND e.completed_at < date_trunc('month', now()) + interval '1 month';
-$$;
-```
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-**2. Расширить `useSubscriptionLimits`**
-- Добавить `trainedThisMonth` в state
-- Добавить запрос `count_org_completions_this_month` в `fetchData`
-- Добавить `canCompleteCourse` (computed)
-- Расширить `checkLimit` для типа `'trained'`
-- Добавить `trainedThisMonth` в `usage`
-
-**3. Проверка перед завершением в `useCourseLearning.ts`**
-В `handleCourseCompletion` — перед `enrollments.update` вызвать RPC `count_org_completions_this_month`, сравнить с лимитом плана организации. Если превышен — показать toast с ошибкой и не завершать курс.
-
-**4. Отображение в UI (`SubscriptionTab.tsx`)**
-Добавить строку использования «Обучено в этом месяце: X / Y» рядом с существующими показателями курсов и учеников (аналогично тому, как уже отображаются `coursesCount` и `studentsCount`).
-
-### Файлы для изменения
-- **Миграция**: новая RPC-функция `count_org_completions_this_month`
-- `src/hooks/useSubscriptionLimits.ts` — добавить подсчёт и проверку
-- `src/hooks/useCourseLearning.ts` — проверка лимита перед завершением
-- `src/components/organization/tabs/SubscriptionTab.tsx` — отображение использования
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 
