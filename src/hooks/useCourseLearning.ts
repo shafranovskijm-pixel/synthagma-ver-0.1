@@ -341,7 +341,7 @@ export function useCourseLearning() {
     }
 
     try {
-      const { data, error } = await supabase.functions.invoke('student-chat', {
+      const { data, error } = await safeInvoke<any>('student-chat', {
         body: {
           messages: [...chatMessages, { role: 'user', content: userMessage }],
           context: { courseTitle: course?.title || '', lessonTitle: currentLesson?.title || '', lessonType: currentLesson?.type || '', lessonContent }
