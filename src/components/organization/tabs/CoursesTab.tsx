@@ -24,6 +24,7 @@ import { useCourses } from "@/hooks/useCourses";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { showLimitToast } from "@/utils/limitToast";
 import type { Course, CourseCategory, CourseFilter, CourseViewMode } from "@/types";
 
 interface CoursesTabProps {
