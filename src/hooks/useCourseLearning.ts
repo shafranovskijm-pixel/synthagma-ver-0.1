@@ -499,7 +499,7 @@ export function useCourseLearning() {
         const { data: countData } = await supabase.rpc('count_org_completions_this_month' as any, { org_id: profile.organization_id });
         const trainedCount = Number(countData) || 0;
         if (trainedCount >= planInfo.limits.maxTrainedPerMonth) {
-          toast.error(`Лимит тарифа "${planInfo.name}": ${planInfo.limits.maxTrainedPerMonth} обученных в месяц. Перейдите на следующий тариф.`);
+          showLimitToast(`Лимит тарифа "${planInfo.name}": ${planInfo.limits.maxTrainedPerMonth} обученных в месяц. Перейдите на следующий тариф.`);
           return;
         }
       }
