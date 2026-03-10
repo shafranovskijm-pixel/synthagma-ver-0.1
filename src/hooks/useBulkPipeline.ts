@@ -249,7 +249,7 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
             while (retries < 3 && !batchSuccess && !stopRef.current) {
               try {
                 const { data, error } = await withTimeout(
-                  supabase.functions.invoke("gigachat", {
+                  safeInvoke<any>("gigachat", {
                     body: {
                       action: "generate_answers", courseTitle,
                       lessonTitle: lessonInfo?.title || "Тест",
