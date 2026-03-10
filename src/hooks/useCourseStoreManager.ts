@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
 
@@ -362,7 +363,7 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
           const { data: org } = await supabase.from('organizations').select('name').eq('id', organizationId).single();
           buyerName = org?.name || 'Организация';
         }
-        await supabase.functions.invoke('notify-course-order', {
+        await safeInvoke('notify-course-order', {
           body: {
             orderId: orderData?.id || 'new', courseName: selectedCourseForOrder.course?.title || 'Курс',
             buyerName, buyerType: userRole,
@@ -388,7 +389,7 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
 
       if (selectedOrder && ['approved', 'paid', 'completed', 'cancelled'].includes(newStatus)) {
         try {
-          await supabase.functions.invoke('notify-order-status', {
+          await safeInvoke('notify-order-status', {
             body: {
               orderId, newStatus,
               courseName: selectedOrder.marketplace_course?.course?.title || 'Курс',

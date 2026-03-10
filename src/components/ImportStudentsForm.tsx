@@ -9,6 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
+import { safeInvoke } from "@/utils/safeInvoke";
 import { useToast } from "@/hooks/use-toast";
 import { Upload, FileSpreadsheet, Loader2, Download, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 
@@ -123,7 +124,7 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
       for (const student of students) {
         try {
           // Use no_login mode to allow duplicate emails - students get unique logins
-          const { data, error } = await supabase.functions.invoke("register-student", {
+          const { data, error } = await safeInvoke<any>("register-student", {
             body: {
               email: student.email,
               full_name: student.name,

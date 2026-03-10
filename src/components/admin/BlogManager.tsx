@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { safeInvoke } from "@/utils/safeInvoke";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -171,7 +172,7 @@ export function BlogManager() {
 
     setIsGenerating(true);
     try {
-      const { data, error } = await supabase.functions.invoke("generate-blog-post", {
+      const { data, error } = await safeInvoke<any>("generate-blog-post", {
         body: { topic, category },
       });
 

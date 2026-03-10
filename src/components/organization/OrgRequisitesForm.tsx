@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Loader2, Search, Save, Building2, CheckCircle2, MapPin, User, Landmark } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 
 interface OrgRequisitesFormProps {
@@ -92,7 +93,7 @@ export function OrgRequisitesForm({ organizationId }: OrgRequisitesFormProps) {
 
     setIsSearching(true);
     try {
-      const { data, error } = await supabase.functions.invoke('dadata-company', {
+      const { data, error } = await safeInvoke<any>('dadata-company', {
         body: { inn: requisites.inn }
       });
 

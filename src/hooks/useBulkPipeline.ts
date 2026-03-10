@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { safeInvoke } from "@/utils/safeInvoke";
 import { markdownToBlocks, blocksToJson } from "@/components/course-builder/BlockEditor";
 import {
   type MarketplacePrompts,
@@ -248,7 +249,7 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
             while (retries < 3 && !batchSuccess && !stopRef.current) {
               try {
                 const { data, error } = await withTimeout(
-                  supabase.functions.invoke("gigachat", {
+                  safeInvoke<any>("gigachat", {
                     body: {
                       action: "generate_answers", courseTitle,
                       lessonTitle: lessonInfo?.title || "Тест",
@@ -330,7 +331,7 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
 
             try {
               const { data, error } = await withTimeout(
-                supabase.functions.invoke("gigachat", {
+                safeInvoke<any>("gigachat", {
                   body: {
                     action: "verify_answers",
                     courseTitle,
@@ -389,7 +390,7 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
       updatePhase("Генерация структуры...");
       try {
         const { data, error } = await withTimeout(
-          supabase.functions.invoke("gigachat", {
+            safeInvoke<any>("gigachat", {
             body: {
               action: "generate_structure", courseTitle,
               existingLessons: currentLessons.map(l => ({ title: l.title, type: l.type })),
@@ -491,7 +492,7 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
 
           // ── Step D: Fallback to AI generation ──
           const { data, error } = await withTimeout(
-            supabase.functions.invoke("gigachat", {
+            safeInvoke<any>("gigachat", {
               body: { action: "generate_content", courseTitle, lessonTitle: lesson.title, existingContent: null, customSystemPrompt: currentPrompts.content || undefined, ai_provider: aiProvider, gigachat_model: gigachatModel, lovable_model: lovableModel },
             }),
             AI_CALL_TIMEOUT, "generate_content"

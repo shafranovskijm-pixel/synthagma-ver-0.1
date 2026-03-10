@@ -8,6 +8,7 @@ import { ArrowLeft, Mail, Lock, User, Building, Phone, Loader2, Search, CheckCir
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { safeInvoke } from "@/utils/safeInvoke";
 import { SUBSCRIPTION_PLANS, YEARLY_DISCOUNT, type SubscriptionPlan } from "@/constants/subscriptionPlans";
 
 const planKeys: SubscriptionPlan[] = ['free', 'start', 'standard', 'professional', 'maximum'];
@@ -56,7 +57,7 @@ const RegisterOrganization = () => {
 
     setIsLoadingInn(true);
     try {
-      const { data, error } = await supabase.functions.invoke('dadata-company', {
+      const { data, error } = await safeInvoke<any>('dadata-company', {
         body: { inn }
       });
 
@@ -261,7 +262,7 @@ const RegisterOrganization = () => {
 <b>ИНН:</b> ${inn || "—"}
 <b>Тариф:</b> ${planLabel}${promoCode ? `\n<b>Промокод:</b> ${promoCode}` : ""}`;
 
-          await supabase.functions.invoke("send-telegram-notification", {
+          await safeInvoke("send-telegram-notification", {
             body: { message: telegramMessage },
           });
         } catch (tgErr) {

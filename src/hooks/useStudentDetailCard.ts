@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 import { getSignedStorageUrl, extractStoragePath } from "@/utils/storageHelpers";
 import { format } from "date-fns";
@@ -210,7 +211,7 @@ export function useStudentDetailCardLogic({
     if (!newLogin && !newPassword) { toast.error("Укажите новый логин или пароль"); return; }
     setIsUpdatingCredentials(true);
     try {
-      const { data, error } = await supabase.functions.invoke('update-student-credentials', { body: { user_id: student.user_id, new_login: newLogin || undefined, new_password: newPassword || undefined } });
+      const { data, error } = await safeInvoke<any>('update-student-credentials', { body: { user_id: student.user_id, new_login: newLogin || undefined, new_password: newPassword || undefined } });
       if (error) throw error; if (data?.error) throw new Error(data.error);
       toast.success("Учетные данные обновлены"); setIsEditingCredentials(false); setNewLogin(""); setNewPassword(""); onStudentUpdated?.();
     } catch (error: unknown) { toast.error(error instanceof Error ? error.message : "Ошибка обновления"); }
@@ -288,7 +289,7 @@ export function useStudentDetailCardLogic({
     setIsSendingReminder(true);
     try {
       const { data: orgData } = await supabase.from("organizations").select("name").eq("id", organizationId).single();
-      const response = await supabase.functions.invoke("send-documents-reminder", { body: { email: student.email, studentName: student.name, missingDocuments: missingDocs.map(d => d.label), organizationName: orgData?.name || "", loginUrl: window.location.origin + "/login" } });
+      const response = await safeInvoke<any>("send-documents-reminder", { body: { email: student.email, studentName: student.name, missingDocuments: missingDocs.map(d => d.label), organizationName: orgData?.name || "", loginUrl: window.location.origin + "/login" } });
       if (response.error) throw response.error;
       toast.success("Уведомление отправлено на " + student.email);
     } catch (error) { console.error("Reminder error:", error); toast.error("Ошибка отправки"); }

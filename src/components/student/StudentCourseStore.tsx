@@ -27,6 +27,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
+import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -207,7 +208,7 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
           .eq("user_id", userId)
           .single();
 
-        await supabase.functions.invoke("notify-course-order", {
+        await safeInvoke("notify-course-order", {
           body: {
             orderId: "new",
             courseName: selectedCourse.course?.title || "Курс",

@@ -37,6 +37,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 
 interface CommissionMember {
@@ -231,7 +232,7 @@ export function SelfExaminationQuiz({
 
     setIsLoadingInn(true);
     try {
-      const { data: result, error } = await supabase.functions.invoke('dadata-company', {
+      const { data: result, error } = await safeInvoke<any>('dadata-company', {
         body: { inn: data.inn }
       });
 

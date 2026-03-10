@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { safeInvoke } from '@/utils/safeInvoke';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 
@@ -255,7 +256,7 @@ export function useSalesManager() {
   const createManager = async (email: string, password: string, fullName: string, phone?: string) => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('create-sales-manager', {
+      const { data, error } = await safeInvoke<any>('create-sales-manager', {
         body: { email, password, full_name: fullName, phone }
       });
       if (error) throw error;

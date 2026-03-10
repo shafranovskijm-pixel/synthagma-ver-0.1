@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 import { ContentBlock } from "@/components/course-builder/BlockEditor";
 
@@ -61,7 +62,7 @@ export function useLessonMedia(
 
   const getStorageConfig = useCallback(async () => {
     let externalConfig: { configured: boolean; url: string | null; key: string | null } | null = null;
-    try { const { data } = await supabase.functions.invoke('get-external-storage-config'); externalConfig = data; } catch {}
+    try { const { data } = await safeInvoke<any>('get-external-storage-config'); externalConfig = data; } catch {}
 
     const useExternal = externalConfig?.configured && externalConfig?.url && externalConfig?.key;
     const baseUrl = useExternal ? externalConfig!.url! : import.meta.env.VITE_SUPABASE_URL;
@@ -219,7 +220,7 @@ export function useLessonMedia(
   const handleGenerateContent = useCallback(async (lessonTitle: string, lessonType: string, courseTitle: string, courseDescription: string, blocks?: ContentBlock[]) => {
     setIsGeneratingContent(true);
     try {
-      const { data, error } = await supabase.functions.invoke("generate-lesson-content", {
+      const { data, error } = await safeInvoke<any>("generate-lesson-content", {
         body: { lessonTitle, lessonType, courseTitle, courseDescription }
       });
       if (error) throw new Error(error.message || "Ошибка генерации");

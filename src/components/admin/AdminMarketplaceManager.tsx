@@ -13,6 +13,7 @@ import { ProgramListImporter } from "./ProgramListImporter";
 import { KnowledgeBankTab } from "./KnowledgeBankTab";
 import { ProgramsTab } from "./ProgramsTab";
 import { supabase } from "@/integrations/supabase/client";
+import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -311,7 +312,7 @@ export function AdminMarketplaceManager() {
       if (needsStructure) {
         toast.loading("Генерирую структуру курса...", { id: toastId });
         try {
-          const { data: structData, error: structErr } = await supabase.functions.invoke("generate-course-structure", {
+          const { data: structData, error: structErr } = await safeInvoke<any>("generate-course-structure", {
             body: { title: courseTitle, description: "" },
           });
           if (structErr) throw structErr;
@@ -385,7 +386,7 @@ export function AdminMarketplaceManager() {
           completed++;
           toast.loading(`Генерирую контент: "${lesson.title}" (${completed}/${totalTasks})`, { id: toastId });
           try {
-            const { data, error } = await supabase.functions.invoke("gigachat", {
+            const { data, error } = await safeInvoke<any>("gigachat", {
               body: {
                 action: "generate_content",
                 courseTitle,
@@ -427,7 +428,7 @@ export function AdminMarketplaceManager() {
             for (let j = 0; j < questions.length; j += batchSize) {
               const batch = questions.slice(j, j + batchSize);
               try {
-                const { data, error } = await supabase.functions.invoke("gigachat", {
+                const { data, error } = await safeInvoke<any>("gigachat", {
                   body: {
                     action: "generate_answers",
                     courseTitle,
@@ -487,7 +488,7 @@ export function AdminMarketplaceManager() {
     if (!h.newTitle.trim()) { toast.error("Сначала введите название курса"); return; }
     setIsGeneratingDesc(true);
     try {
-      const { data, error } = await supabase.functions.invoke("generate-course-content", {
+      const { data, error } = await safeInvoke<any>("generate-course-content", {
         body: { contentType: "description", courseTitle: h.newTitle },
       });
       if (error) throw error;
@@ -504,7 +505,7 @@ export function AdminMarketplaceManager() {
     if (!h.newTitle.trim()) { toast.error("Сначала введите название курса"); return; }
     setIsGeneratingShortDesc(true);
     try {
-      const { data, error } = await supabase.functions.invoke("generate-course-content", {
+      const { data, error } = await safeInvoke<any>("generate-course-content", {
         body: { contentType: "short_description", courseTitle: h.newTitle, courseDescription: h.newDescription },
       });
       if (error) throw error;
@@ -580,7 +581,7 @@ export function AdminMarketplaceManager() {
                         let totalConverted = 0;
                         let totalFailed = 0;
                         for (let batch = 0; batch < 20; batch++) {
-                          const { data, error } = await supabase.functions.invoke("convert-lesson-content", {
+                          const { data, error } = await safeInvoke<any>("convert-lesson-content", {
                             body: { batch_size: 500 },
                           });
                           if (error) throw error;
@@ -1021,7 +1022,7 @@ export function AdminMarketplaceManager() {
                     if (!h.editingCourse?.course?.title) { toast.error("Нет названия курса"); return; }
                     setIsGeneratingShortDesc(true);
                     try {
-                      const { data, error } = await supabase.functions.invoke("generate-course-content", {
+                      const { data, error } = await safeInvoke<any>("generate-course-content", {
                         body: { contentType: "short_description", courseTitle: h.editingCourse.course.title, courseDescription: h.editingCourse.course.description },
                       });
                       if (error) throw error;

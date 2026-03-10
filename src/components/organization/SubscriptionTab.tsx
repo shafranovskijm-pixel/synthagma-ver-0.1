@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { safeInvoke } from "@/utils/safeInvoke";
 import { SUBSCRIPTION_PLANS, type SubscriptionPlan, type PlanInfo, formatStorageSize, YEARLY_DISCOUNT } from "@/constants/subscriptionPlans";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { toast } from "@/hooks/use-toast";
@@ -185,7 +186,7 @@ export function SubscriptionTab() {
       const planInfo = SUBSCRIPTION_PLANS[selectedPlan];
       const orgDisplayName = d.organizationName || organizationId;
       try {
-        await supabase.functions.invoke("send-telegram-notification", {
+        await safeInvoke("send-telegram-notification", {
           body: {
             message: `📋 <b>Заявка на повышение тарифа</b>\n\n` +
               `🏢 Организация: ${orgDisplayName}\n` +

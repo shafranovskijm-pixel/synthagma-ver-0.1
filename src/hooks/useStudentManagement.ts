@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 import { Student, Course } from "@/types/shared";
 import { generateLogin, generateSimplePassword, generateStrongPassword, isValidEmail } from "@/utils/credentials";
@@ -73,7 +74,7 @@ export function useStudentManagement({
     try {
       const firstCourseId = effectiveCourseIds[0] || null;
       const password = customPassword || generateStrongPassword();
-      const { data, error } = await supabase.functions.invoke("register-student", {
+      const { data, error } = await safeInvoke<any>("register-student", {
         body: {
           token: null,
           email: effectiveEmail || null,
@@ -242,7 +243,7 @@ export function useStudentManagement({
       const password = generateSimplePassword();
 
       // Use edge function to update both auth.users and profiles
-      const { data, error } = await supabase.functions.invoke("update-student-credentials", {
+      const { data, error } = await safeInvoke<any>("update-student-credentials", {
         body: {
           user_id: student.user_id,
           new_login: login,
@@ -311,7 +312,7 @@ export function useStudentManagement({
         const password = generateSimplePassword();
 
         // Use edge function to update both auth.users and profiles
-        const { data, error } = await supabase.functions.invoke("update-student-credentials", {
+        const { data, error } = await safeInvoke<any>("update-student-credentials", {
           body: {
             user_id: student.user_id,
             new_login: login,

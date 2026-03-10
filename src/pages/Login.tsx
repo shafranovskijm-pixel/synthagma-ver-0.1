@@ -8,6 +8,7 @@ import { ArrowLeft, Mail, Lock, Loader2, Shield, Building2, GraduationCap, User,
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { safeInvoke } from "@/utils/safeInvoke";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
@@ -136,7 +137,7 @@ const Login = () => {
     
     try {
       // Use custom SMTP-based password reset
-      const response = await supabase.functions.invoke('send-password-reset', {
+      const response = await safeInvoke<any>('send-password-reset', {
         body: {
           email: resetEmail,
           redirectTo: `${window.location.origin}/reset-password`,

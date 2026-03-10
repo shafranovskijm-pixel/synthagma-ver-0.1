@@ -21,6 +21,7 @@ import { FileText, Video, HelpCircle, Plus, Trash2, Sparkles, Loader2, Settings,
 import { BlockEditor, ContentBlock } from "@/components/course-builder/BlockEditor";
 import { TestImportDialog } from "@/components/course-builder/TestImportDialog";
 import { supabase } from "@/integrations/supabase/client";
+import { safeInvoke } from "@/utils/safeInvoke";
 import { useToast } from "@/hooks/use-toast";
 import { useExternalStorage } from "@/hooks/useExternalStorage";
 import { Badge } from "@/components/ui/badge";
@@ -282,7 +283,7 @@ export const LessonEditor = ({
 
     setIsGenerating(true);
     try {
-      const { data, error } = await supabase.functions.invoke("generate-lesson-content", {
+      const { data, error } = await safeInvoke<any>("generate-lesson-content", {
         body: {
           lessonTitle: title,
           lessonType: type,

@@ -6,6 +6,7 @@ import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 import { useVideoProgress } from "@/hooks/useVideoProgress";
 import { useElevenLabsTTS } from "@/hooks/useElevenLabsTTS";
 import { supabase } from "@/integrations/supabase/client";
+import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 import { ContentBlock, jsonToBlocks } from "@/components/course-builder/BlockEditor";
 import { generateAttestationProtocol } from "@/utils/generateAttestationProtocol";
@@ -340,7 +341,7 @@ export function useCourseLearning() {
     }
 
     try {
-      const { data, error } = await supabase.functions.invoke('student-chat', {
+      const { data, error } = await safeInvoke<any>('student-chat', {
         body: {
           messages: [...chatMessages, { role: 'user', content: userMessage }],
           context: { courseTitle: course?.title || '', lessonTitle: currentLesson?.title || '', lessonType: currentLesson?.type || '', lessonContent }
@@ -457,7 +458,7 @@ export function useCourseLearning() {
     setAllBankQuestions(allQuestions);
 
     try {
-      const { data: resultsData, error: resultsError } = await supabase.functions.invoke('get-test-results', { body: { lesson_id: lessonId } });
+      const { data: resultsData, error: resultsError } = await safeInvoke<any>('get-test-results', { body: { lesson_id: lessonId } });
       if (resultsError) { selectRandomQuestions(allQuestions, questionsToShow, []); setUsedQuestionIds([]); setAnswers({}); return; }
 
       if (resultsData?.hasAttempt) {
@@ -500,7 +501,7 @@ export function useCourseLearning() {
       if (protocolName) toast.success('Курс завершён! Протокол аттестационной комиссии создан.');
 
       if ((course as any).notify_on_completion) {
-        try { await supabase.functions.invoke('notify-course-completion', { body: { enrollment_id: enrollmentId, course_id: courseId, user_id: user.id } }); } catch (e) { console.error('Notification error:', e); }
+        try { await safeInvoke('notify-course-completion', { body: { enrollment_id: enrollmentId, course_id: courseId, user_id: user.id } }); } catch (e) { console.error('Notification error:', e); }
       }
     } catch (error) { console.error('Error handling course completion:', error); }
   };
@@ -638,7 +639,7 @@ export function useCourseLearning() {
     await saveLessonTime();
     const shownIds = testQuestions.map(q => q.id);
     try {
-      const { data: gradeResult, error: gradeError } = await supabase.functions.invoke('grade-test', {
+      const { data: gradeResult, error: gradeError } = await safeInvoke<any>('grade-test', {
         body: { lesson_id: currentLesson.id, answers, shown_question_ids: shownIds }
       });
       if (gradeError || !gradeResult) { toast.error('Ошибка проверки теста'); return; }

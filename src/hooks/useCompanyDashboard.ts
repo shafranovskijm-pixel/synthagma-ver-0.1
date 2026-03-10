@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { safeInvoke } from '@/utils/safeInvoke';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 
@@ -148,7 +149,7 @@ export function useCompanyDashboard(viewAsUserId?: string) {
     setAddingEmployee(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('register-student', {
+      const { data, error } = await safeInvoke<any>('register-student', {
         body: {
           full_name: fullName,
           email: email || undefined,

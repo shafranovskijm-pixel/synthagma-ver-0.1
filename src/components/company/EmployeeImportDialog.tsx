@@ -9,6 +9,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
+import { safeInvoke } from "@/utils/safeInvoke";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
 
@@ -69,7 +70,7 @@ export function EmployeeImportDialog({ open, onOpenChange, companyId, organizati
 
     for (let i = 0; i < updated.length; i++) {
       try {
-        const { error } = await supabase.functions.invoke("register-student", {
+        const { error } = await safeInvoke<any>("register-student", {
           body: {
             full_name: updated[i].full_name,
             email: updated[i].email || undefined,

@@ -10,6 +10,7 @@
  import { Checkbox } from "@/components/ui/checkbox";
  import { Progress } from "@/components/ui/progress";
  import { supabase } from "@/integrations/supabase/client";
+ import { safeInvoke } from "@/utils/safeInvoke";
  import { toast } from "sonner";
  import {
    User,
@@ -290,7 +291,7 @@
      
      setIsCreatingProfile(true);
      try {
-       const { data, error } = await supabase.functions.invoke("register-student", {
+       const { data, error } = await safeInvoke<any>("register-student", {
          body: {
            organization_id: organizationId,
            full_name: record.full_name,
@@ -336,7 +337,7 @@
 
      setIsSendingCredentials(true);
      try {
-       const { error } = await supabase.functions.invoke("send-credentials", {
+       const { error } = await safeInvoke<any>("send-credentials", {
          body: {
            user_id: profile.user_id,
            organization_id: organizationId,
@@ -374,7 +375,7 @@
  
      setIsUpdatingCredentials(true);
      try {
-       const { data, error } = await supabase.functions.invoke('update-student-credentials', {
+       const { data, error } = await safeInvoke<any>('update-student-credentials', {
          body: {
            user_id: profile.user_id,
            new_login: newLogin || undefined,
@@ -929,7 +930,7 @@
                                if (!profile) return;
                                setIsSendingReminder(true);
                                try {
-                                 const { error } = await supabase.functions.invoke("send-documents-reminder", {
+                                 const { error } = await safeInvoke<any>("send-documents-reminder", {
                                    body: { user_id: profile.user_id, organization_id: organizationId }
                                  });
                                  if (error) throw error;

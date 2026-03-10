@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,7 +38,7 @@ export function ProgramListImporter({ onComplete }: ProgramListImporterProps) {
       formData.append("file", file);
 
       // Use import-course edge function to parse DOCX
-      const { data, error } = await supabase.functions.invoke("import-course", {
+      const { data, error } = await safeInvoke<any>("import-course", {
         body: formData,
       });
 

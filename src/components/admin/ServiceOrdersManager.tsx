@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -100,7 +101,7 @@ export function ServiceOrdersManager() {
         toast.info('Генерация отчёта началась. Это может занять несколько минут...');
         
         try {
-          const { data, error } = await supabase.functions.invoke('generate-self-examination-report', {
+          const { data, error } = await safeInvoke<any>('generate-self-examination-report', {
             body: { 
               organizationId: targetOrder.organization_id,
               orderId: targetOrder.id
@@ -166,7 +167,7 @@ export function ServiceOrdersManager() {
     toast.info('Генерация отчёта началась. Это может занять несколько минут...');
     
     try {
-      const { data, error } = await supabase.functions.invoke('generate-self-examination-report', {
+      const { data, error } = await safeInvoke<any>('generate-self-examination-report', {
         body: { 
           organizationId: order.organization_id,
           orderId: order.id

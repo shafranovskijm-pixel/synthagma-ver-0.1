@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 import { Student } from "@/types/shared";
 import { generateLogin, generateSimplePassword } from "@/utils/credentials";
@@ -56,7 +57,7 @@ export function useStudentActions(
     }
     setIsSendingCredentialsEmail(true);
     try {
-      const { error } = await supabase.functions.invoke("send-credentials", {
+      const { error } = await safeInvoke<any>("send-credentials", {
         body: {
           email: student.email,
           name: student.name,
@@ -87,7 +88,7 @@ export function useStudentActions(
       const password = generateSimplePassword();
 
       // Use edge function to update both auth.users and profiles
-      const { data, error } = await supabase.functions.invoke("update-student-credentials", {
+      const { data, error } = await safeInvoke<any>("update-student-credentials", {
         body: {
           user_id: student.user_id,
           new_login: login,
@@ -139,7 +140,7 @@ export function useStudentActions(
     try {
       for (const student of studentsToSend) {
         try {
-          const { error } = await supabase.functions.invoke("send-credentials", {
+          const { error } = await safeInvoke<any>("send-credentials", {
             body: {
               email: student.email,
               name: student.name,
@@ -188,7 +189,7 @@ export function useStudentActions(
           const password = generateSimplePassword();
           
           // Use edge function to update both auth.users and profiles
-          const { data, error } = await supabase.functions.invoke("update-student-credentials", {
+          const { data, error } = await safeInvoke<any>("update-student-credentials", {
             body: {
               user_id: student.user_id,
               new_login: login,
@@ -214,7 +215,7 @@ export function useStudentActions(
           if (!student.email) continue;
           
           try {
-            const { error } = await supabase.functions.invoke("send-credentials", {
+            const { error } = await safeInvoke<any>("send-credentials", {
               body: {
                 email: student.email,
                 name: student.name,
@@ -311,7 +312,7 @@ export function useStudentActions(
 
       for (const student of studentsWithMissingDocs) {
         try {
-          const response = await supabase.functions.invoke("send-documents-reminder", {
+          const response = await safeInvoke<any>("send-documents-reminder", {
             body: {
               email: student.email,
               studentName: student.name,

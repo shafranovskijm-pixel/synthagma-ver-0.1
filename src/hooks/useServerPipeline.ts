@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 import type { LogEntry, PipelineSummary, PipelineCourse } from "./useBulkPipeline";
 import { getMarketplacePrompts } from "@/components/admin/MarketplaceSettings";
@@ -171,7 +172,7 @@ export function useServerPipeline({ courses, enableVerification, onComplete, aiP
     }));
 
     try {
-      const { data, error } = await supabase.functions.invoke("bulk-pipeline", {
+      const { data, error } = await safeInvoke<any>("bulk-pipeline", {
         body: {
           action: "start",
           courses: courseEntries,
@@ -206,7 +207,7 @@ export function useServerPipeline({ courses, enableVerification, onComplete, aiP
   const handleResume = useCallback(async (runId: string) => {
     try {
       const prompts = getMarketplacePrompts();
-      const { data, error } = await supabase.functions.invoke("bulk-pipeline", {
+      const { data, error } = await safeInvoke<any>("bulk-pipeline", {
         body: { action: "resume", runId, prompts, enableVerification, gigachat_model: gigachatModel, lovable_model: lovableModel },
       });
 
@@ -234,7 +235,7 @@ export function useServerPipeline({ courses, enableVerification, onComplete, aiP
 
     // Try edge function stop, but don't depend on it
     try {
-      await supabase.functions.invoke("bulk-pipeline", {
+      await safeInvoke("bulk-pipeline", {
         body: { action: "stop", runId: currentRun.id },
       });
     } catch (e: any) {

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 import { GitCompareArrows, Loader2, Play, Clock, Cpu, Hash } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -52,7 +52,7 @@ export function AIComparisonPanel() {
     const promises = models.map(async (m) => {
       const start = performance.now();
       try {
-        const { data, error } = await supabase.functions.invoke("gigachat", {
+        const { data, error } = await safeInvoke<any>("gigachat", {
           body: {
             action: "generate_content",
             courseTitle: "A/B Тест",

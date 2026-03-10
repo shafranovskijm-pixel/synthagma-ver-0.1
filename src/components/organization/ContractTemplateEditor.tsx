@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
+import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 import {
   FileText,
@@ -318,7 +319,7 @@ export function ContractTemplateEditor({
       if (text.trim()) {
         setTemplateBeforeAI(template);
         toast.info("Загружаем и обрабатываем документ...");
-        const { data, error } = await supabase.functions.invoke("process-contract-template", {
+        const { data, error } = await safeInvoke<any>("process-contract-template", {
           body: { text: text.trim(), placeholders: PLACEHOLDERS },
         });
         if (error) throw error;
@@ -345,7 +346,7 @@ export function ContractTemplateEditor({
     setTemplateBeforeAI(template);
     setIsAddingVariables(true);
     try {
-      const { data, error } = await supabase.functions.invoke("process-contract-template", {
+      const { data, error } = await safeInvoke<any>("process-contract-template", {
         body: { text: template, placeholders: PLACEHOLDERS },
       });
       if (error) throw error;

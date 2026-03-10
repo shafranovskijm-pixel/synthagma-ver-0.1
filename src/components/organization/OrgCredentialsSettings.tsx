@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { safeInvoke } from "@/utils/safeInvoke";
 
 interface OrgCredentialsSettingsProps {
   organizationId: string;
@@ -85,7 +86,7 @@ export function OrgCredentialsSettings({ organizationId }: OrgCredentialsSetting
         payload.new_password = newPassword;
       }
 
-      const { data, error } = await supabase.functions.invoke('update-org-credentials', {
+      const { data, error } = await safeInvoke<any>('update-org-credentials', {
         body: payload
       });
 

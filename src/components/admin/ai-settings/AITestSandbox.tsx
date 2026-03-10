@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { safeInvoke, safeFetch } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 import { Play, Loader2, Clock, Cpu, ImageIcon, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -46,7 +46,7 @@ export function AITestSandbox({ context, provider, gigachatModel, lovableModel }
 
     try {
       if (context === "image_generation") {
-        const { data, error } = await supabase.functions.invoke("generate-image", {
+        const { data, error } = await safeInvoke<any>("generate-image", {
           body: { prompt, provider, model: provider === "gigachat" ? gigachatModel : lovableModel },
         });
         const elapsed = Math.round(performance.now() - start);
@@ -58,7 +58,7 @@ export function AITestSandbox({ context, provider, gigachatModel, lovableModel }
           imageUrl: data?.url,
         });
       } else if (context === "tts") {
-        const response = await fetch(
+        const response = await safeFetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
           {
             method: "POST",
@@ -83,7 +83,7 @@ export function AITestSandbox({ context, provider, gigachatModel, lovableModel }
       } else {
         // Text-based AI test via gigachat function
         const aiProvider = provider === "lovable_ai" ? "lovable_ai" : "gigachat";
-        const { data, error } = await supabase.functions.invoke("gigachat", {
+        const { data, error } = await safeInvoke<any>("gigachat", {
           body: {
             action: "generate_content",
             courseTitle: "Тест ИИ",

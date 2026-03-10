@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
+import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 import { FileCheck, Eye, Download, Loader2, User, Building2, Search, CheckCircle2, Save, History, Trash2, FileText, UserCheck } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -220,7 +221,7 @@ export function ConsentGenerator({
 
     setIsSearchingDadata(true);
     try {
-      const { data, error } = await supabase.functions.invoke('dadata-company', {
+      const { data, error } = await safeInvoke<any>('dadata-company', {
         body: { inn: companyInn }
       });
 

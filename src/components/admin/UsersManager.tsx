@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { safeInvoke } from "@/utils/safeInvoke";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -148,7 +149,7 @@ export function UsersManager() {
     if (!selectedUser) return;
     setCredEdit(prev => ({ ...prev, saving: true }));
     try {
-      const { error } = await supabase.functions.invoke("update-student-credentials", {
+      const { error } = await safeInvoke<any>("update-student-credentials", {
         body: {
           userId: selectedUser.user_id,
           login: credEdit.login.trim(),
