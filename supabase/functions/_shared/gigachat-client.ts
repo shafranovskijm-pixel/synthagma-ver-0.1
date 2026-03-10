@@ -140,10 +140,23 @@ function createSlots(): GigaChatSlot[] {
       releaseLock: null,
       busy: false,
     });
-    console.log("[GigaChat] Pool initialized with 2 slots (parallel mode)");
-  } else {
-    console.log("[GigaChat] Pool initialized with 1 slot (single key mode)");
   }
+
+  // Add third slot only if the key is configured
+  const key3 = Deno.env.get("GIGACHAT_AUTH_KEY_3");
+  if (key3) {
+    slots.push({
+      name: "slot-2",
+      authKeyEnv: "GIGACHAT_AUTH_KEY_3",
+      cachedToken: null,
+      tokenExpiresAt: 0,
+      lock: Promise.resolve(),
+      releaseLock: null,
+      busy: false,
+    });
+  }
+
+  console.log(`[GigaChat] Pool initialized with ${slots.length} slot(s)`);
 
   return slots;
 }
