@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, ChevronLeft, ChevronRight, Maximize, Minimize, X,
@@ -653,8 +653,8 @@ function SlideCTA() {
       <h2 className="text-[64px] font-bold mb-6 text-center">Начните уже сегодня</h2>
       <p className="text-[28px] text-white/60 mb-12 text-center max-w-[800px]">Бесплатный тариф — навсегда. Все функции доступны.</p>
       <div className="flex gap-6 mb-16">
-        <div className="px-10 py-5 rounded-2xl bg-[hsl(174_72%_46%)] text-[24px] font-semibold cursor-pointer hover:opacity-90 transition-opacity">Начать бесплатно</div>
-        <div className="px-10 py-5 rounded-2xl border border-white/30 text-[24px] font-semibold cursor-pointer hover:bg-white/10 transition-colors">Запросить демо</div>
+        <Link to="/register-organization" className="px-10 py-5 rounded-2xl bg-[hsl(174_72%_46%)] text-[24px] font-semibold cursor-pointer hover:opacity-90 transition-opacity">Начать бесплатно</Link>
+        <Link to="/register-organization" className="px-10 py-5 rounded-2xl border border-white/30 text-[24px] font-semibold cursor-pointer hover:bg-white/10 transition-colors">Запросить демо</Link>
       </div>
       <div className="flex gap-12 text-white/40 text-[20px]">
         <span>support@sintagma.com.ru</span>

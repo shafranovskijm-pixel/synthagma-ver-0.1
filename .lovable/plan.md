@@ -1,14 +1,18 @@
 
 
-## Fix "Начать бесплатно" button in presentation
+## Plan: Auto-fix after "Проверить все"
 
-The button on the final slide of the presentation (line 656 in `PlatformPresentation.tsx`) is a plain `div` with no navigation — just `cursor-pointer`. Same for "Запросить демо".
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-### Changes in `src/pages/PlatformPresentation.tsx`
+### Changes
 
-1. Wrap "Начать бесплатно" in a `<Link to="/register-organization">` (matching the main landing page behavior)
-2. Wrap "Запросить демо" in a `<Link to="/register-organization">` or an anchor/contact action (depending on existing pattern)
-3. Import `Link` from `react-router-dom` if not already imported
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-Both buttons keep their existing styling; we just add navigation.
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
+
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 
