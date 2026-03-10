@@ -74,7 +74,7 @@ export function useStudentManagement({
     try {
       const firstCourseId = effectiveCourseIds[0] || null;
       const password = customPassword || generateStrongPassword();
-      const { data, error } = await supabase.functions.invoke("register-student", {
+      const { data, error } = await safeInvoke<any>("register-student", {
         body: {
           token: null,
           email: effectiveEmail || null,
