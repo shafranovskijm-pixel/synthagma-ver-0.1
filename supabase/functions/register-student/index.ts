@@ -111,6 +111,35 @@ serve(async (req) => {
       );
     }
 
+    // ── Student limit check ──
+    const planLimits: Record<string, number> = {
+      free: 10, start: 100, standard: 200, professional: 1000, maximum: -1
+    };
+
+    const { data: orgData } = await supabaseAdmin
+      .from('organizations')
+      .select('subscription_plan')
+      .eq('id', effectiveOrgId)
+      .single();
+
+    const plan = orgData?.subscription_plan || 'free';
+    const maxStudents = planLimits[plan] ?? 10;
+
+    if (maxStudents !== -1) {
+      const { data: countResult } = await supabaseAdmin.rpc('count_org_students', { org_id: effectiveOrgId });
+      const currentCount = Number(countResult) || 0;
+
+      if (currentCount >= maxStudents) {
+        return new Response(
+          JSON.stringify({
+            error: `Лимит тарифа: максимум ${maxStudents} учеников. Перейдите на следующий тариф.`,
+            code: "STUDENT_LIMIT_EXCEEDED"
+          }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     if (email) {
       const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
       if (!emailRegex.test(email)) {

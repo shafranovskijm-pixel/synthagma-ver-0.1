@@ -167,6 +167,28 @@ const JoinByLink = () => {
     setIsSubmitting(true);
 
     try {
+      // Pre-check student limit
+      const { data: currentCount } = await supabase.rpc('count_org_students', { org_id: linkData.organization_id });
+      const { data: orgData } = await supabase
+        .from('organizations')
+        .select('subscription_plan')
+        .eq('id', linkData.organization_id)
+        .single();
+
+      const planLimits: Record<string, number> = { free: 10, start: 100, standard: 200, professional: 1000, maximum: -1 };
+      const maxStudents = planLimits[orgData?.subscription_plan || 'free'] ?? 10;
+      const count = Number(currentCount) || 0;
+
+      if (maxStudents !== -1 && count >= maxStudents) {
+        toast({
+          title: "Регистрация невозможна",
+          description: "Организация достигла лимита учеников. Обратитесь к администратору.",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
       // Use edge function to register student with proper permissions
       const { data: result, error: registerError } = await safeInvoke<any>('register-student', {
         body: {
