@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useAiGenerationLimit, setAiLimitContext } from "@/hooks/useAiGenerationLimit";
 import { toast } from "sonner";
+import { safeInvoke, safeFetch } from "@/utils/safeInvoke";
 import { ContentBlock, htmlToBlocks, blocksToJson, jsonToBlocks, markdownToBlocks } from "@/components/course-builder/BlockEditor";
 import {
   closestCenter, KeyboardSensor, PointerSensor,
