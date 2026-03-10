@@ -205,7 +205,7 @@ export function useCompaniesManager(organizationId: string) {
     
     setIsSearchingDadata(true);
     try {
-      const { data, error } = await supabase.functions.invoke("dadata-company", {
+      const { data, error } = await safeInvoke<any>("dadata-company", {
         body: { inn }
       });
 

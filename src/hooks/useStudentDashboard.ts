@@ -258,7 +258,7 @@ export function useStudentDashboard() {
     setInputValue("");
     setIsAiLoading(true);
     try {
-      const response = await supabase.functions.invoke("student-chat", { body: { messages: [...messages, userMessage].map(m => ({ role: m.role, content: m.content })) } });
+      const response = await safeInvoke<any>("student-chat", { body: { messages: [...messages, userMessage].map(m => ({ role: m.role, content: m.content })) } });
       if (response.error) throw new Error(response.error.message || "Ошибка ИИ");
       const data = response.data;
       if (data.error) throw new Error(data.error);

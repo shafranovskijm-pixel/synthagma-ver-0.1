@@ -149,7 +149,7 @@ export function useCompanyDashboard(viewAsUserId?: string) {
     setAddingEmployee(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('register-student', {
+      const { data, error } = await safeInvoke<any>('register-student', {
         body: {
           full_name: fullName,
           email: email || undefined,

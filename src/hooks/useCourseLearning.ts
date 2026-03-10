@@ -639,7 +639,7 @@ export function useCourseLearning() {
     await saveLessonTime();
     const shownIds = testQuestions.map(q => q.id);
     try {
-      const { data: gradeResult, error: gradeError } = await supabase.functions.invoke('grade-test', {
+      const { data: gradeResult, error: gradeError } = await safeInvoke<any>('grade-test', {
         body: { lesson_id: currentLesson.id, answers, shown_question_ids: shownIds }
       });
       if (gradeError || !gradeResult) { toast.error('Ошибка проверки теста'); return; }

@@ -23,7 +23,7 @@ const getExternalConfig = async (): Promise<ExternalStorageConfig> => {
   if (cachedConfig) return cachedConfig;
   
   try {
-    const { data, error } = await supabase.functions.invoke('get-external-storage-config');
+    const { data, error } = await safeInvoke<any>('get-external-storage-config');
     if (error) throw error;
     cachedConfig = data as ExternalStorageConfig;
     return cachedConfig;
