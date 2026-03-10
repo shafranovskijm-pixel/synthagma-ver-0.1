@@ -270,12 +270,23 @@ serve(async (req) => {
     try {
       audioBuffer = await synthesizeWithSlot(primarySlot, text, voiceParam, audioFormat);
     } catch (primaryError) {
-      // If only one slot or same slot — rethrow
-      if (slots.length < 2) throw primaryError;
+      // Try remaining slots as fallback
+      const fallbackSlots = slots.filter(s => s.slotIndex !== primarySlot.slotIndex);
+      if (fallbackSlots.length === 0) throw primaryError;
 
-      const fallbackSlot = slots.find(s => s.slotIndex !== primarySlot.slotIndex)!;
-      console.warn(`[SaluteSpeech] Slot ${primarySlot.slotIndex} failed, trying slot ${fallbackSlot.slotIndex}`);
-      audioBuffer = await synthesizeWithSlot(fallbackSlot, text, voiceParam, audioFormat);
+      let lastError = primaryError;
+      let success = false;
+      for (const fallbackSlot of fallbackSlots) {
+        try {
+          console.warn(`[SaluteSpeech] Slot ${primarySlot.slotIndex} failed, trying slot ${fallbackSlot.slotIndex}`);
+          audioBuffer = await synthesizeWithSlot(fallbackSlot, text, voiceParam, audioFormat);
+          success = true;
+          break;
+        } catch (fbErr) {
+          lastError = fbErr;
+        }
+      }
+      if (!success) throw lastError;
     }
 
     return new Response(audioBuffer, {
