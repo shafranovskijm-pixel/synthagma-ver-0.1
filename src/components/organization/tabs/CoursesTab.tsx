@@ -248,7 +248,7 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
   const handleOpenCreateCourseDialog = () => {
     const result = checkLimit('course');
     if (!result.allowed) {
-      toast.error(result.message);
+      showLimitToast(result.message);
       return;
     }
     setShowCreateCourseDialog(true);
