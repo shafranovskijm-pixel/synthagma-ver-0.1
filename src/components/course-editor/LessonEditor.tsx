@@ -21,6 +21,7 @@ import { FileText, Video, HelpCircle, Plus, Trash2, Sparkles, Loader2, Settings,
 import { BlockEditor, ContentBlock } from "@/components/course-builder/BlockEditor";
 import { TestImportDialog } from "@/components/course-builder/TestImportDialog";
 import { supabase } from "@/integrations/supabase/client";
+import { safeInvoke } from "@/utils/safeInvoke";
 import { useToast } from "@/hooks/use-toast";
 import { useExternalStorage } from "@/hooks/useExternalStorage";
 import { Badge } from "@/components/ui/badge";
