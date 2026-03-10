@@ -211,7 +211,7 @@ export function useStudentDetailCardLogic({
     if (!newLogin && !newPassword) { toast.error("Укажите новый логин или пароль"); return; }
     setIsUpdatingCredentials(true);
     try {
-      const { data, error } = await supabase.functions.invoke('update-student-credentials', { body: { user_id: student.user_id, new_login: newLogin || undefined, new_password: newPassword || undefined } });
+      const { data, error } = await safeInvoke<any>('update-student-credentials', { body: { user_id: student.user_id, new_login: newLogin || undefined, new_password: newPassword || undefined } });
       if (error) throw error; if (data?.error) throw new Error(data.error);
       toast.success("Учетные данные обновлены"); setIsEditingCredentials(false); setNewLogin(""); setNewPassword(""); onStudentUpdated?.();
     } catch (error: unknown) { toast.error(error instanceof Error ? error.message : "Ошибка обновления"); }
