@@ -656,8 +656,8 @@ function SlideCTA() {
         <div className="px-10 py-5 rounded-2xl border border-white/30 text-[24px] font-semibold cursor-pointer hover:bg-white/10 transition-colors">Запросить демо</div>
       </div>
       <div className="flex gap-12 text-white/40 text-[20px]">
-        <span>info@synthagma.ru</span>
-        <span>synthagma.ru</span>
+        <span>support@sintagma.com.ru</span>
+        <span>sintagma.com.ru</span>
       </div>
     </div>
   );
