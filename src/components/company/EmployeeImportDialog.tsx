@@ -66,6 +66,29 @@ export function EmployeeImportDialog({ open, onOpenChange, companyId, organizati
 
   const handleImport = async () => {
     setImporting(true);
+
+    // Pre-check student limit
+    const { data: currentCount } = await supabase.rpc('count_org_students', { org_id: organizationId });
+    const { data: orgData } = await supabase
+      .from('organizations')
+      .select('subscription_plan')
+      .eq('id', organizationId)
+      .single();
+
+    const planLimits: Record<string, number> = { free: 10, start: 100, standard: 200, professional: 1000, maximum: -1 };
+    const maxStudents = planLimits[orgData?.subscription_plan || 'free'] ?? 10;
+    const count = Number(currentCount) || 0;
+
+    if (maxStudents !== -1 && count + rows.length > maxStudents) {
+      toast({
+        title: "Превышен лимит учеников",
+        description: `Текущий тариф позволяет ${maxStudents} учеников. Сейчас: ${count}, импорт: ${rows.length}. Перейдите на следующий тариф.`,
+        variant: "destructive",
+      });
+      setImporting(false);
+      return;
+    }
+
     const updated = [...rows];
 
     for (let i = 0; i < updated.length; i++) {
