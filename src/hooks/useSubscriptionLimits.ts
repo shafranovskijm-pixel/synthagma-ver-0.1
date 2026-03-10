@@ -29,6 +29,7 @@ export function useSubscriptionLimits(organizationId: string | null): Subscripti
   const [plan, setPlan] = useState<SubscriptionPlan>('free');
   const [coursesCount, setCoursesCount] = useState(0);
   const [studentsCount, setStudentsCount] = useState(0);
+  const [trainedThisMonth, setTrainedThisMonth] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
