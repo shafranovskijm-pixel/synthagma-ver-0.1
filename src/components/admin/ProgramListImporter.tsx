@@ -38,7 +38,7 @@ export function ProgramListImporter({ onComplete }: ProgramListImporterProps) {
       formData.append("file", file);
 
       // Use import-course edge function to parse DOCX
-      const { data, error } = await supabase.functions.invoke("import-course", {
+      const { data, error } = await safeInvoke<any>("import-course", {
         body: formData,
       });
 

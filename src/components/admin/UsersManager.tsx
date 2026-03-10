@@ -149,7 +149,7 @@ export function UsersManager() {
     if (!selectedUser) return;
     setCredEdit(prev => ({ ...prev, saving: true }));
     try {
-      const { error } = await supabase.functions.invoke("update-student-credentials", {
+      const { error } = await safeInvoke<any>("update-student-credentials", {
         body: {
           userId: selectedUser.user_id,
           login: credEdit.login.trim(),

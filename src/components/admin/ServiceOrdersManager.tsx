@@ -167,7 +167,7 @@ export function ServiceOrdersManager() {
     toast.info('Генерация отчёта началась. Это может занять несколько минут...');
     
     try {
-      const { data, error } = await supabase.functions.invoke('generate-self-examination-report', {
+      const { data, error } = await safeInvoke<any>('generate-self-examination-report', {
         body: { 
           organizationId: order.organization_id,
           orderId: order.id
