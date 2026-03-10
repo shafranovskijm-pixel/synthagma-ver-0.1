@@ -1,18 +1,22 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## Исправления в презентации
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+### 1. Слайд «Охрана труда» (SlideLaborSafety, ~строка 461)
+- Фон слишком светлый (`hsl(38_92%_50%/0.05)`) — текст плохо читается
+- Заменить на более контрастный фон: тёмный (`hsl(0_0%_8%)`) с белым текстом, как на скриншоте пользователя
 
-### Changes
+### 2. Слайд «Тарифы» (SlidePricing, ~строка 566)
+Текущие данные не соответствуют реальным тарифам. Заменить на актуальные из `subscriptionPlans.ts`:
+- **Бесплатный** — 0 ₽, 3 курса, 10 учеников, все функции
+- **Старт** — 3 490 ₽/мес, 15 курсов, 100 учеников
+- **Стандарт** — 6 990 ₽/мес, 30 курсов, 200 учеников (пометить «Популярный»)
+- **Профессиональный** — 16 990 ₽/мес, 50 курсов, 1000 учеников
+- **Максимальный** — 24 990 ₽/мес, ∞ курсов, ∞ учеников
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+Показать 3-4 карточки (Бесплатный + Старт + Стандарт-популярный + Про), с пометкой «ещё тарифы на сайте» или вместить все 5 компактнее.
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
-
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
-
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+### 3. Слайд CTA (SlideCTA, ~строка 643)
+- Заменить «14 дней бесплатного пробного периода» на «Бесплатный тариф — навсегда. Все функции доступны.»
+- Кнопка: «Начать бесплатно» вместо «Попробовать бесплатно»
 
