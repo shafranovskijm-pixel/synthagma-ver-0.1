@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
 
