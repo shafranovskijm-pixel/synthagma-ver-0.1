@@ -8,6 +8,7 @@ import { ArrowLeft, Mail, Lock, User, Building, Phone, Loader2, Search, CheckCir
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { safeInvoke } from "@/utils/safeInvoke";
 import { SUBSCRIPTION_PLANS, YEARLY_DISCOUNT, type SubscriptionPlan } from "@/constants/subscriptionPlans";
 
 const planKeys: SubscriptionPlan[] = ['free', 'start', 'standard', 'professional', 'maximum'];
