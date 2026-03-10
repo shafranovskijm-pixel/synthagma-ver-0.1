@@ -234,6 +234,9 @@ export function Hero() {
             <Link to="/blog" className="text-muted-foreground hover:text-foreground transition-colors text-sm tracking-wide">
               Блог
             </Link>
+            <Link to="/presentation" className="text-muted-foreground hover:text-foreground transition-colors text-sm tracking-wide">
+              Презентация
+            </Link>
           </div>
           
           <div className="flex items-center gap-4">
