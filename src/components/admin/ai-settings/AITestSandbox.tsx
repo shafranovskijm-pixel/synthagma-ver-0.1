@@ -46,7 +46,7 @@ export function AITestSandbox({ context, provider, gigachatModel, lovableModel }
 
     try {
       if (context === "image_generation") {
-        const { data, error } = await safeInvoke("generate-image", {
+        const { data, error } = await safeInvoke<any>("generate-image", {
           body: { prompt, provider, model: provider === "gigachat" ? gigachatModel : lovableModel },
         });
         const elapsed = Math.round(performance.now() - start);
