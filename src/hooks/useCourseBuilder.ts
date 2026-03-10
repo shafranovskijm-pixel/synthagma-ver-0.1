@@ -328,7 +328,7 @@ export function useCourseBuilder() {
     if (type === "image") {
       try {
         toast.info("Генерация изображения...");
-        const { data } = await safeInvoke("generate-course-content", { body: { lessonTitle: prompt, courseTitle: courseTitle || "Курс", courseDescription: courseDescription || "", contentType: "image" } });
+        const { data } = await safeInvoke<any>("generate-course-content", { body: { lessonTitle: prompt, courseTitle: courseTitle || "Курс", courseDescription: courseDescription || "", contentType: "image" } });
         if (data?.imageUrl) { newLesson.blocks = [{ id: crypto.randomUUID(), type: "image" as const, content: "", imageSrc: data.imageUrl, imageAlt: prompt }]; newLesson.content = data.imageUrl; toast.success("Изображение сгенерировано!"); }
         else toast.info("Добавьте изображение вручную");
       } catch { toast.info("Добавьте изображение вручную"); }
