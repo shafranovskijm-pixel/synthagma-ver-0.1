@@ -428,7 +428,7 @@ export function AdminMarketplaceManager() {
             for (let j = 0; j < questions.length; j += batchSize) {
               const batch = questions.slice(j, j + batchSize);
               try {
-                const { data, error } = await supabase.functions.invoke("gigachat", {
+                const { data, error } = await safeInvoke<any>("gigachat", {
                   body: {
                     action: "generate_answers",
                     courseTitle,
