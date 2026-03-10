@@ -675,6 +675,7 @@ const slides = [
 
 /* ─── Main Presentation Component ─── */
 export default function PlatformPresentation() {
+  const navigate = useNavigate();
   const [current, setCurrent] = useState(0);
   const [direction, setDirection] = useState(1);
   const [isFullscreen, setIsFullscreen] = useState(false);
