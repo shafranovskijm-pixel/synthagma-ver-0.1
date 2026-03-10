@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 import { GitCompareArrows, Loader2, Play, Clock, Cpu, Hash } from "lucide-react";
 import { Button } from "@/components/ui/button";
