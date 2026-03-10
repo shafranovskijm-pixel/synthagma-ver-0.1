@@ -312,7 +312,7 @@ export function AdminMarketplaceManager() {
       if (needsStructure) {
         toast.loading("Генерирую структуру курса...", { id: toastId });
         try {
-          const { data: structData, error: structErr } = await supabase.functions.invoke("generate-course-structure", {
+          const { data: structData, error: structErr } = await safeInvoke<any>("generate-course-structure", {
             body: { title: courseTitle, description: "" },
           });
           if (structErr) throw structErr;
