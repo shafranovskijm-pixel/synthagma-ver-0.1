@@ -337,8 +337,8 @@ export function useCourseBuilder() {
     if (type === "video") {
       try {
         toast.info("Генерация превью...");
-        const { data: imageData } = await safeInvoke("generate-course-content", { body: { lessonTitle: `Video thumbnail: ${prompt}`, courseTitle: courseTitle || "Курс", courseDescription: courseDescription || "", contentType: "image" } });
-        const { data: scriptData } = await safeInvoke("generate-course-content", { body: { lessonTitle: prompt, courseTitle: courseTitle || "Курс", courseDescription: courseDescription || "", contentType: "video_script" } });
+        const { data: imageData } = await safeInvoke<any>("generate-course-content", { body: { lessonTitle: `Video thumbnail: ${prompt}`, courseTitle: courseTitle || "Курс", courseDescription: courseDescription || "", contentType: "image" } });
+        const { data: scriptData } = await safeInvoke<any>("generate-course-content", { body: { lessonTitle: prompt, courseTitle: courseTitle || "Курс", courseDescription: courseDescription || "", contentType: "video_script" } });
         newLesson.thumbnailUrl = imageData?.imageUrl || "";
         newLesson.videoScript = scriptData?.content || "";
         newLesson.content = "";
