@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ChevronLeft, ChevronRight, Maximize, Minimize, X,
+  ArrowLeft, ChevronLeft, ChevronRight, Maximize, Minimize, X,
   GraduationCap, Building2, Users, BookOpen, Brain, FileText,
   Video, Shield, ShoppingBag, Palette, Smartphone, Zap,
   CheckCircle2, BarChart3, Clock, Globe, Award, Lock,
