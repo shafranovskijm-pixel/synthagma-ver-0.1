@@ -128,9 +128,10 @@ export function useSubscriptionLimits(organizationId: string | null): Subscripti
   return {
     plan,
     limits,
-    usage: { coursesCount, studentsCount },
+    usage: { coursesCount, studentsCount, trainedThisMonth },
     canCreateCourse,
     canAddStudent,
+    canCompleteCourse,
     isAiEnabled: limits.aiEnabled,
     isAiAudioEnabled: limits.aiAudioEnabled,
     hasCourseSettings: limits.courseSettings,
