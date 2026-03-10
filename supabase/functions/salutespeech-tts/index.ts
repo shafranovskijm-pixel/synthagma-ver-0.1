@@ -134,8 +134,10 @@ function buildSlots(): TokenSlot[] {
   const slots: TokenSlot[] = [];
   const key1 = Deno.env.get("SALUTESPEECH_AUTH_KEY");
   const key2 = Deno.env.get("SALUTESPEECH_AUTH_KEY_2");
+  const key3 = Deno.env.get("SALUTESPEECH_AUTH_KEY_3");
   if (key1) slots.push({ authKey: key1, cachedToken: null, tokenExpiresAt: 0, busy: false, slotIndex: 0 });
   if (key2) slots.push({ authKey: key2, cachedToken: null, tokenExpiresAt: 0, busy: false, slotIndex: 1 });
+  if (key3) slots.push({ authKey: key3, cachedToken: null, tokenExpiresAt: 0, busy: false, slotIndex: 2 });
   return slots;
 }
 
@@ -143,8 +145,8 @@ const slots = buildSlots();
 function pickSlot(): TokenSlot | null {
   if (slots.length === 0) return null;
   if (slots.length === 1) return slots[0];
-  // Random distribution (stateless — no shared state between invocations)
-  const idx = Math.random() < 0.5 ? 0 : 1;
+  // Random distribution across all available slots
+  const idx = Math.floor(Math.random() * slots.length);
   return slots[idx];
 }
 
@@ -268,12 +270,23 @@ serve(async (req) => {
     try {
       audioBuffer = await synthesizeWithSlot(primarySlot, text, voiceParam, audioFormat);
     } catch (primaryError) {
-      // If only one slot or same slot — rethrow
-      if (slots.length < 2) throw primaryError;
+      // Try remaining slots as fallback
+      const fallbackSlots = slots.filter(s => s.slotIndex !== primarySlot.slotIndex);
+      if (fallbackSlots.length === 0) throw primaryError;
 
-      const fallbackSlot = slots.find(s => s.slotIndex !== primarySlot.slotIndex)!;
-      console.warn(`[SaluteSpeech] Slot ${primarySlot.slotIndex} failed, trying slot ${fallbackSlot.slotIndex}`);
-      audioBuffer = await synthesizeWithSlot(fallbackSlot, text, voiceParam, audioFormat);
+      let lastError = primaryError;
+      let success = false;
+      for (const fallbackSlot of fallbackSlots) {
+        try {
+          console.warn(`[SaluteSpeech] Slot ${primarySlot.slotIndex} failed, trying slot ${fallbackSlot.slotIndex}`);
+          audioBuffer = await synthesizeWithSlot(fallbackSlot, text, voiceParam, audioFormat);
+          success = true;
+          break;
+        } catch (fbErr) {
+          lastError = fbErr;
+        }
+      }
+      if (!success) throw lastError;
     }
 
     return new Response(audioBuffer, {

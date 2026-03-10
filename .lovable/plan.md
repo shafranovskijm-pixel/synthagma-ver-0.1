@@ -1,24 +1,18 @@
 
-## Поддержка 3 потоков для GigaChat и SaluteSpeech
 
-### Текущее состояние
+## Plan: Auto-fix after "Проверить все"
 
-**GigaChat:** `_shared/gigachat-client.ts` создает пул слотов, но поддерживает только 2 ключа (`GIGACHAT_AUTH_KEY` и `GIGACHAT_AUTH_KEY_2`). Третий ключ `GIGACHAT_AUTH_KEY_3` уже есть в whitelist (`manage-secret`) и UI (`AISettingsManager`), но не используется в пуле.
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-**SaluteSpeech:** `salutespeech-tts/index.ts` поддерживает только 2 слота. Третий ключ `SALUTESPEECH_AUTH_KEY_3` нигде не упоминается.
+### Changes
 
-### Изменения
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-**1. `supabase/functions/_shared/gigachat-client.ts`** — добавить третий слот:
-- В `createSlots()` после проверки `GIGACHAT_AUTH_KEY_2` добавить аналогичную проверку `GIGACHAT_AUTH_KEY_3` и создание `slot-2`
-- Лог: "Pool initialized with N slots"
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-**2. `supabase/functions/salutespeech-tts/index.ts`** — добавить третий слот:
-- В `buildSlots()` добавить чтение `SALUTESPEECH_AUTH_KEY_3` и создание слота с `slotIndex: 2`
-- В `pickSlot()` обновить логику выбора для 3 слотов (random из доступных вместо бинарного выбора)
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-**3. `supabase/functions/manage-secret/index.ts`** — добавить `SALUTESPEECH_AUTH_KEY_3` в whitelist `ALLOWED_SECRETS`
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 
-**4. `src/components/admin/AISettingsManager.tsx`** — добавить `{ name: "SALUTESPEECH_AUTH_KEY_3", label: "SaluteSpeech Key 3" }` в `API_KEYS_LIST`
-
-Все 4 изменения минимальны и механически повторяют существующий паттерн для KEY_2.

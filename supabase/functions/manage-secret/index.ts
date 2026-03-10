@@ -58,6 +58,7 @@ serve(async (req) => {
       "GIGACHAT_AUTH_KEY_3",
       "SALUTESPEECH_AUTH_KEY",
       "SALUTESPEECH_AUTH_KEY_2",
+      "SALUTESPEECH_AUTH_KEY_3",
       "ELEVENLABS_API_KEY",
       "DADATA_API_KEY",
     ];
