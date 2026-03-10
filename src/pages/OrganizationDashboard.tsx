@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatedTabContent } from "@/components/ui/AnimatedTabContent";
 import { OrgSidebar } from "@/components/organization/OrgSidebar";
