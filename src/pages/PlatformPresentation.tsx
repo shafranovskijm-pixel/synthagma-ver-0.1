@@ -460,12 +460,12 @@ function SlideFRDO() {
 
 function SlideLaborSafety() {
   return (
-    <div className="flex flex-col h-full bg-[hsl(38_92%_50%/0.05)] px-24 py-20">
+    <div className="flex flex-col h-full bg-[hsl(0_0%_8%)] px-24 py-20">
       <div className="flex items-center gap-4 mb-4">
         <HardHat className="w-10 h-10 text-[hsl(38_92%_50%)]" />
-        <h2 className="text-[48px] font-bold text-[hsl(0_0%_8%)]">Охрана труда</h2>
+        <h2 className="text-[48px] font-bold text-white">Охрана труда</h2>
       </div>
-      <p className="text-[24px] text-[hsl(0_0%_45%)] mb-12">Полный модуль для обучения по охране труда</p>
+      <p className="text-[24px] text-white/60 mb-12">Полный модуль для обучения по охране труда</p>
       <div className="grid grid-cols-2 gap-8 flex-1">
         {[
           { icon: Users, title: "Группы обучения", desc: "Формирование групп, назначение программ" },
@@ -473,13 +473,13 @@ function SlideLaborSafety() {
           { icon: FileText, title: "Журналы", desc: "Электронные журналы всех видов инструктажей" },
           { icon: Award, title: "Удостоверения", desc: "Автоматическая генерация удостоверений" },
         ].map((item, i) => (
-          <div key={i} className="bg-white rounded-2xl border border-[hsl(40_15%_90%)] p-8 shadow-sm flex items-start gap-6">
-            <div className="w-14 h-14 rounded-2xl bg-[hsl(38_92%_50%/0.1)] flex items-center justify-center flex-shrink-0">
+          <div key={i} className="bg-white/10 rounded-2xl border border-white/10 p-8 flex items-start gap-6">
+            <div className="w-14 h-14 rounded-2xl bg-[hsl(38_92%_50%/0.2)] flex items-center justify-center flex-shrink-0">
               <item.icon className="w-7 h-7 text-[hsl(38_92%_50%)]" />
             </div>
             <div>
-              <h3 className="text-[24px] font-semibold text-[hsl(0_0%_8%)] mb-2">{item.title}</h3>
-              <p className="text-[20px] text-[hsl(0_0%_45%)]">{item.desc}</p>
+              <h3 className="text-[24px] font-semibold text-white mb-2">{item.title}</h3>
+              <p className="text-[20px] text-white/60">{item.desc}</p>
             </div>
           </div>
         ))}
