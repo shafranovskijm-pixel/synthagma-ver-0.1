@@ -29,6 +29,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
+import { safeInvoke } from "@/utils/safeInvoke";
 import {
   Search, Trash2, Loader2, Upload, Video, FileText,
   Image as ImageIcon, Music, HardDrive, FolderOpen, RefreshCw, File,
