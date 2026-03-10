@@ -650,9 +650,9 @@ function SlideCTA() {
         </div>
       </motion.div>
       <h2 className="text-[64px] font-bold mb-6 text-center">Начните уже сегодня</h2>
-      <p className="text-[28px] text-white/60 mb-12 text-center max-w-[800px]">14 дней бесплатного пробного периода. Все функции доступны.</p>
+      <p className="text-[28px] text-white/60 mb-12 text-center max-w-[800px]">Бесплатный тариф — навсегда. Все функции доступны.</p>
       <div className="flex gap-6 mb-16">
-        <div className="px-10 py-5 rounded-2xl bg-[hsl(174_72%_46%)] text-[24px] font-semibold cursor-pointer hover:opacity-90 transition-opacity">Попробовать бесплатно</div>
+        <div className="px-10 py-5 rounded-2xl bg-[hsl(174_72%_46%)] text-[24px] font-semibold cursor-pointer hover:opacity-90 transition-opacity">Начать бесплатно</div>
         <div className="px-10 py-5 rounded-2xl border border-white/30 text-[24px] font-semibold cursor-pointer hover:bg-white/10 transition-colors">Запросить демо</div>
       </div>
       <div className="flex gap-12 text-white/40 text-[20px]">
