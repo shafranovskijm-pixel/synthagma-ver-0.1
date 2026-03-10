@@ -1,18 +1,26 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## Все функции доступны на всех тарифах
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+### Что меняется
+Разница между тарифами — только в числовых лимитах (курсы, ученики, обученных/мес, хранилище). Все boolean-функции включены на всех планах.
 
-### Changes
+### Файлы
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+**1. `src/constants/subscriptionPlans.ts`**
+- Во всех планах (free, start, standard, professional, maximum) установить все boolean-поля в `true`: `aiEnabled`, `aiAudioEnabled`, `courseSettings`, `documentChecklist`, `videoIdentification`, `branding`, `frdoEnabled`, `reportsEnabled`
+- Все планы получают полный список `enabledCategories` (включая `documents`, `journals`, `frdo`, `library`, `labor_safety`, `webinars`)
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+**2. `src/components/landing/PricingPlans.tsx`**
+- Все `featureRows` с boolean-значениями всегда возвращают `true`
+- В `featureDescriptions` обновить `minPlan` на `"Бесплатный"` для всех функций
+- Убрать хардкод-проверки типа `p === 'professional' || p === 'maximum'` — всё `true`
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
-
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+### Числовые лимиты остаются как есть
+| | Free | Старт | Стандарт | Проф | Макс |
+|---|---|---|---|---|---|
+| Курсы | 3 | 15 | 30 | 50 | ∞ |
+| Ученики | 10 | 100 | 200 | 1000 | ∞ |
+| Обуч/мес | 10 | 60 | 100 | 500 | ∞ |
+| Хранилище | 100 МБ | 3 ГБ | 10 ГБ | 50 ГБ | 100 ГБ |
 
