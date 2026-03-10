@@ -140,7 +140,7 @@ export function useStudentActions(
     try {
       for (const student of studentsToSend) {
         try {
-          const { error } = await supabase.functions.invoke("send-credentials", {
+          const { error } = await safeInvoke<any>("send-credentials", {
             body: {
               email: student.email,
               name: student.name,
