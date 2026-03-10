@@ -101,8 +101,9 @@ export function useSubscriptionLimits(organizationId: string | null): Subscripti
 
   const canCreateCourse = limits.maxCourses === -1 || coursesCount < limits.maxCourses;
   const canAddStudent = limits.maxStudents === -1 || studentsCount < limits.maxStudents;
+  const canCompleteCourse = limits.maxTrainedPerMonth === -1 || trainedThisMonth < limits.maxTrainedPerMonth;
 
-  const checkLimit = useCallback((type: 'course' | 'student') => {
+  const checkLimit = useCallback((type: 'course' | 'student' | 'trained') => {
     if (type === 'course') {
       if (canCreateCourse) return { allowed: true, message: '' };
       return {
@@ -110,12 +111,19 @@ export function useSubscriptionLimits(organizationId: string | null): Subscripti
         message: `Лимит тарифа "${planInfo.name}": ${limits.maxCourses} ${limits.maxCourses === 1 ? 'курс' : 'курсов'}. Перейдите на следующий тариф.`,
       };
     }
+    if (type === 'trained') {
+      if (canCompleteCourse) return { allowed: true, message: '' };
+      return {
+        allowed: false,
+        message: `Лимит тарифа "${planInfo.name}": ${limits.maxTrainedPerMonth} обученных в месяц. Перейдите на следующий тариф.`,
+      };
+    }
     if (canAddStudent) return { allowed: true, message: '' };
     return {
       allowed: false,
       message: `Лимит тарифа "${planInfo.name}": ${limits.maxStudents} учеников. Перейдите на следующий тариф.`,
     };
-  }, [canCreateCourse, canAddStudent, planInfo.name, limits]);
+  }, [canCreateCourse, canAddStudent, canCompleteCourse, planInfo.name, limits]);
 
   return {
     plan,
