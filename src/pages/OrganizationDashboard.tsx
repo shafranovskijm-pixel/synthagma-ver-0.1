@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatedTabContent } from "@/components/ui/AnimatedTabContent";
 import { OrgSidebar } from "@/components/organization/OrgSidebar";
@@ -18,6 +18,12 @@ function OrganizationDashboardContent() {
   const d = useOrgDashboard();
 
   const exitAdminView = () => { localStorage.removeItem("adminViewAsOrg"); navigate("/admin"); };
+
+  useEffect(() => {
+    const handler = () => d.tabNavigation.setActiveTab('subscription' as any);
+    window.addEventListener('navigate-to-subscription', handler);
+    return () => window.removeEventListener('navigate-to-subscription', handler);
+  }, [d.tabNavigation]);
 
   return (
     <div className="min-h-screen bg-background flex">

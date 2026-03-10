@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Plus, FileSpreadsheet, Menu, Wallet } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
+import { showLimitToast } from "@/utils/limitToast";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 
 export function OrgDashboardHeader() {
@@ -16,7 +16,7 @@ export function OrgDashboardHeader() {
   const handleStudentAction = (action: () => void) => {
     const result = d.checkLimit('student');
     if (!result.allowed) {
-      toast.error(result.message);
+      showLimitToast(result.message);
       return;
     }
     action();

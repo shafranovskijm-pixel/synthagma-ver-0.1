@@ -24,6 +24,7 @@ import { useCourses } from "@/hooks/useCourses";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { showLimitToast } from "@/utils/limitToast";
 import type { Course, CourseCategory, CourseFilter, CourseViewMode } from "@/types";
 
 interface CoursesTabProps {
@@ -248,7 +249,7 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
   const handleOpenCreateCourseDialog = () => {
     const result = checkLimit('course');
     if (!result.allowed) {
-      toast.error(result.message);
+      showLimitToast(result.message);
       return;
     }
     setShowCreateCourseDialog(true);
@@ -260,7 +261,7 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
     // Double-check limit at creation time (not just dialog open)
     const result = checkLimit('course');
     if (!result.allowed) {
-      toast.error(result.message);
+      showLimitToast(result.message);
       setShowCreateCourseDialog(false);
       return;
     }
@@ -383,7 +384,7 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
   const handleToggleCourseSetting = async (course: Course, setting: 'skip_video_identification' | 'sequential_lessons' | 'allow_video_seek', e: React.MouseEvent) => {
     e.stopPropagation();
     if (!hasCourseSettings) {
-      toast.error('Настройки курсов доступны начиная с тарифа «Старт». Перейдите на следующий тариф.');
+      showLimitToast('Настройки курсов доступны начиная с тарифа «Старт». Перейдите на следующий тариф.');
       return;
     }
     const currentValue = course[setting] ?? (setting === 'allow_video_seek' ? true : false);

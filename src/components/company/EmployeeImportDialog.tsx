@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
+import { showLimitToast } from "@/utils/limitToast";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
 
@@ -80,11 +81,7 @@ export function EmployeeImportDialog({ open, onOpenChange, companyId, organizati
     const count = Number(currentCount) || 0;
 
     if (maxStudents !== -1 && count + rows.length > maxStudents) {
-      toast({
-        title: "Превышен лимит учеников",
-        description: `Текущий тариф позволяет ${maxStudents} учеников. Сейчас: ${count}, импорт: ${rows.length}. Перейдите на следующий тариф.`,
-        variant: "destructive",
-      });
+      showLimitToast(`Превышен лимит учеников. Текущий тариф позволяет ${maxStudents} учеников. Сейчас: ${count}, импорт: ${rows.length}.`);
       setImporting(false);
       return;
     }
