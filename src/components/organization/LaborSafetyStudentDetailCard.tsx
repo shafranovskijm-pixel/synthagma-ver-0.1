@@ -291,7 +291,7 @@
      
      setIsCreatingProfile(true);
      try {
-       const { data, error } = await supabase.functions.invoke("register-student", {
+       const { data, error } = await safeInvoke<any>("register-student", {
          body: {
            organization_id: organizationId,
            full_name: record.full_name,
