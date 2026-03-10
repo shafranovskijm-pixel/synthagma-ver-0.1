@@ -186,7 +186,7 @@ export function SubscriptionTab() {
       const planInfo = SUBSCRIPTION_PLANS[selectedPlan];
       const orgDisplayName = d.organizationName || organizationId;
       try {
-        await supabase.functions.invoke("send-telegram-notification", {
+        await safeInvoke("send-telegram-notification", {
           body: {
             message: `📋 <b>Заявка на повышение тарифа</b>\n\n` +
               `🏢 Организация: ${orgDisplayName}\n` +

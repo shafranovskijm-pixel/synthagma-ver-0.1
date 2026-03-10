@@ -665,7 +665,7 @@ function CompanyAccessTab({ company }: { company: Company }) {
     }
     setCreating(true);
     try {
-      const { data, error } = await supabase.functions.invoke("create-company-user", {
+      const { data, error } = await safeInvoke<any>("create-company-user", {
         body: { company_id: company.id, email, password },
       });
       if (error) throw error;

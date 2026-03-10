@@ -86,7 +86,7 @@ export function OrgCredentialsSettings({ organizationId }: OrgCredentialsSetting
         payload.new_password = newPassword;
       }
 
-      const { data, error } = await supabase.functions.invoke('update-org-credentials', {
+      const { data, error } = await safeInvoke<any>('update-org-credentials', {
         body: payload
       });
 

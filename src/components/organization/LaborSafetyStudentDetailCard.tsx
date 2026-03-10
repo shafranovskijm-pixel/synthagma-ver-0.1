@@ -930,7 +930,7 @@
                                if (!profile) return;
                                setIsSendingReminder(true);
                                try {
-                                 const { error } = await supabase.functions.invoke("send-documents-reminder", {
+                                 const { error } = await safeInvoke<any>("send-documents-reminder", {
                                    body: { user_id: profile.user_id, organization_id: organizationId }
                                  });
                                  if (error) throw error;
