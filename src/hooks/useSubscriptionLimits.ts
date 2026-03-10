@@ -8,9 +8,11 @@ interface SubscriptionLimitsState {
   usage: {
     coursesCount: number;
     studentsCount: number;
+    trainedThisMonth: number;
   };
   canCreateCourse: boolean;
   canAddStudent: boolean;
+  canCompleteCourse: boolean;
   isAiEnabled: boolean;
   isAiAudioEnabled: boolean;
   hasCourseSettings: boolean;
@@ -19,7 +21,7 @@ interface SubscriptionLimitsState {
   storageLimit: number;
   loading: boolean;
   planName: string;
-  checkLimit: (type: 'course' | 'student') => { allowed: boolean; message: string };
+  checkLimit: (type: 'course' | 'student' | 'trained') => { allowed: boolean; message: string };
   refetch: () => Promise<void>;
 }
 
