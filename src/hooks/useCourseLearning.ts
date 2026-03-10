@@ -489,8 +489,20 @@ export function useCourseLearning() {
     try {
       const { data: profile } = await supabase.from('profiles').select('full_name, organization_id').eq('user_id', user.id).maybeSingle();
       if (!profile?.organization_id) return;
-      const { data: org } = await supabase.from('organizations').select('id, name, director_name, director_position').eq('id', profile.organization_id).single();
+
+      // Check trained-per-month limit
+      const { data: org } = await supabase.from('organizations').select('id, name, director_name, director_position, subscription_plan').eq('id', profile.organization_id).single();
       if (!org) return;
+
+      const planInfo = (await import('@/constants/subscriptionPlans')).getPlanInfo(org.subscription_plan as any);
+      if (planInfo.limits.maxTrainedPerMonth !== -1) {
+        const { data: countData } = await supabase.rpc('count_org_completions_this_month' as any, { org_id: profile.organization_id });
+        const trainedCount = Number(countData) || 0;
+        if (trainedCount >= planInfo.limits.maxTrainedPerMonth) {
+          toast.error(`Лимит тарифа "${planInfo.name}": ${planInfo.limits.maxTrainedPerMonth} обученных в месяц. Перейдите на следующий тариф.`);
+          return;
+        }
+      }
 
       await supabase.from('enrollments').update({ status: 'completed', completed_at: new Date().toISOString() }).eq('id', enrollmentId);
       const protocolName = await generateAttestationProtocol({

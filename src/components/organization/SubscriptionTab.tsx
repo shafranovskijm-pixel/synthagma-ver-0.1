@@ -220,6 +220,8 @@ export function SubscriptionTab() {
     Math.round((subscriptionLimits.usage.coursesCount / currentPlanInfo.limits.maxCourses) * 100);
   const studentsPercent = currentPlanInfo.limits.maxStudents === -1 ? 0 :
     Math.round((subscriptionLimits.usage.studentsCount / currentPlanInfo.limits.maxStudents) * 100);
+  const trainedPercent = currentPlanInfo.limits.maxTrainedPerMonth === -1 ? 0 :
+    Math.round(((subscriptionLimits.usage.trainedThisMonth || 0) / currentPlanInfo.limits.maxTrainedPerMonth) * 100);
 
   return (
     <div className="space-y-6">
