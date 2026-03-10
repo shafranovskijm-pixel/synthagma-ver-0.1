@@ -6,6 +6,7 @@ import { useSwipeGesture } from "@/hooks/useSwipeGesture";
 import { useVideoProgress } from "@/hooks/useVideoProgress";
 import { useElevenLabsTTS } from "@/hooks/useElevenLabsTTS";
 import { supabase } from "@/integrations/supabase/client";
+import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 import { ContentBlock, jsonToBlocks } from "@/components/course-builder/BlockEditor";
 import { generateAttestationProtocol } from "@/utils/generateAttestationProtocol";
