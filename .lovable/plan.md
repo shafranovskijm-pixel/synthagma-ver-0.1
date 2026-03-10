@@ -1,18 +1,48 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## Улучшенная обработка сетевых ошибок (блокировка антивирусом)
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+Проблема: когда антивирус блокирует запросы к Edge-функциям, пользователь получает непонятные ошибки (`TypeError: Failed to fetch`, `ERR_BLOCKED_BY_CLIENT`). После отключения антивируса кэш DNS/соединений может продолжать блокировать запросы.
 
-### Changes
+### Что будет сделано
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+**1. Утилита детекции сетевых блокировок** — `src/utils/networkErrorDetector.ts`
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+Функция `isBlockedBySecuritySoftware(error)` анализирует тип ошибки:
+- `TypeError: Failed to fetch` (без HTTP-статуса) → вероятная блокировка
+- `ERR_BLOCKED_BY_CLIENT`, `net::ERR_CONNECTION_REFUSED` → блокировка
+- Возвращает объект `{ blocked: boolean, userMessage: string }` с понятной инструкцией на русском
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+**2. Обёртка для вызовов Edge-функций с retry** — `src/utils/safeInvoke.ts`
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+```text
+safeInvoke(functionName, body, options?)
+  → попытка 1
+  → если blocked-ошибка → ждёт 2с → попытка 2
+  → если blocked-ошибка → ждёт 5с → попытка 3
+  → если все попытки неуспешны → показывает toast с инструкцией
+```
+
+Обёртка над `supabase.functions.invoke` с:
+- 3 retry при сетевых ошибках (не при 4xx/5xx — только при блокировке)
+- Понятным toast-сообщением: «Запрос заблокирован антивирусом или VPN. Добавьте сайт в исключения и перезагрузите страницу»
+- Возвратом стандартного `{ data, error }` формата
+
+**3. Применение в критических местах**
+
+Заменить прямые `supabase.functions.invoke` на `safeInvoke` в ключевых AI-функциях:
+- `src/hooks/useCourseBuilder.ts` — генерация структуры, контента, тестов, слайдов, изображений (~8 вызовов)
+- `src/components/course-builder/TestQuestionEditor.tsx` — генерация пояснений
+- Прямые `fetch()` вызовы (например, `elevenlabs-tts`) — обернуть в try/catch с детекцией блокировки
+
+**4. Баннер-предупреждение при обнаружении блокировки** — компонент `NetworkBlockBanner`
+
+При первом обнаружении блокировки показать persistent toast / баннер вверху экрана с инструкцией:
+- «Обнаружена блокировка сетевых запросов. Добавьте *.supabase.co и *.lovable.app в исключения антивируса/VPN, затем перезагрузите страницу»
+
+### Технические детали
+
+- `safeInvoke` будет экспортировать ту же сигнатуру что `supabase.functions.invoke`, чтобы замена была минимальной
+- Retry применяется только к ошибкам типа `TypeError` (сетевые), а не к HTTP-ошибкам (402, 429, 500)
+- Состояние «была обнаружена блокировка» хранится в `sessionStorage` чтобы не спамить баннером
 
