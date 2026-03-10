@@ -270,7 +270,7 @@ export function StorageManager({ organizationId }: StorageManagerProps) {
 
       // External storage (course-videos)
       try {
-        const { data: config } = await supabase.functions.invoke("get-external-storage-config");
+        const { data: config } = await safeInvoke<any>("get-external-storage-config");
         if (config?.configured && config?.url && config?.key) {
           const { createClient } = await import("@supabase/supabase-js");
           const extClient = createClient(config.url, config.key);
