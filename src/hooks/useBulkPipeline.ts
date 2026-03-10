@@ -331,7 +331,7 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
 
             try {
               const { data, error } = await withTimeout(
-                supabase.functions.invoke("gigachat", {
+                safeInvoke<any>("gigachat", {
                   body: {
                     action: "verify_answers",
                     courseTitle,
