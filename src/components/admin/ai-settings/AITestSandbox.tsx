@@ -58,7 +58,7 @@ export function AITestSandbox({ context, provider, gigachatModel, lovableModel }
           imageUrl: data?.url,
         });
       } else if (context === "tts") {
-        const response = await fetch(
+        const response = await safeFetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
           {
             method: "POST",
