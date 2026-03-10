@@ -337,7 +337,7 @@
 
      setIsSendingCredentials(true);
      try {
-       const { error } = await supabase.functions.invoke("send-credentials", {
+       const { error } = await safeInvoke<any>("send-credentials", {
          body: {
            user_id: profile.user_id,
            organization_id: organizationId,
