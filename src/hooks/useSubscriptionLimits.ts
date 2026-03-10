@@ -39,7 +39,7 @@ export function useSubscriptionLimits(organizationId: string | null): Subscripti
     }
 
     try {
-      const [orgResult, coursesResult, studentsResult] = await Promise.all([
+      const [orgResult, coursesResult, studentsResult, trainedResult] = await Promise.all([
         supabase
           .from("organizations")
           .select("subscription_plan")
@@ -50,6 +50,7 @@ export function useSubscriptionLimits(organizationId: string | null): Subscripti
           .select("id", { count: "exact", head: true })
           .eq("organization_id", organizationId),
         supabase.rpc("count_org_students" as any, { org_id: organizationId }),
+        supabase.rpc("count_org_completions_this_month" as any, { org_id: organizationId }),
       ]);
 
       if (orgResult.data?.subscription_plan) {
@@ -57,6 +58,7 @@ export function useSubscriptionLimits(organizationId: string | null): Subscripti
       }
       setCoursesCount(coursesResult.count || 0);
       setStudentsCount(Number(studentsResult.data) || 0);
+      setTrainedThisMonth(Number(trainedResult.data) || 0);
     } catch (error) {
       console.error("Error fetching subscription limits:", error);
     } finally {
