@@ -99,13 +99,12 @@ serve(async (req) => {
       });
       if (updateError) {
         console.error("Vault update error:", updateError);
-        // Fallback: store in a simple secrets table
       }
     } else {
-      // Insert new secret via vault
-      const { error: insertError } = await adminClient.rpc("insert_secret" as any, {
-        name,
-        secret: value.trim(),
+      // Insert new secret via vault.create_secret
+      const { error: insertError } = await adminClient.rpc("create_secret" as any, {
+        new_secret: value.trim(),
+        new_name: name,
       });
       if (insertError) {
         console.error("Vault insert error:", insertError);

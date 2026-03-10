@@ -344,24 +344,35 @@ export async function callGigaChat(
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
 
-    // If all models on this slot are exhausted, try other slots
+    // If all models on this slot are exhausted, try remaining slots
     if (msg.includes("exhausted") && slots.length > 1) {
       releaseSlot(slotIdx, 0);
-      console.log(`[GigaChat] Slot ${slots[slotIdx].name} exhausted, trying other slots...`);
+      const triedIndices = new Set<number>([slotIdx]);
+      console.log(`[GigaChat] Slot ${slots[slotIdx].name} exhausted, trying remaining ${slots.length - 1} slots...`);
 
-      // Acquire the other slot properly
-      const retryIdx = await acquireSlot();
-      if (retryIdx === slotIdx) {
-        // Got same slot again, release and fail
-        releaseSlot(retryIdx);
-        throw err;
+      while (triedIndices.size < slots.length) {
+        const retryIdx = await acquireSlot();
+        if (triedIndices.has(retryIdx)) {
+          releaseSlot(retryIdx);
+          // All slots tried
+          break;
+        }
+        triedIndices.add(retryIdx);
+        console.log(`[GigaChat] Retry on ${slots[retryIdx].name} (${triedIndices.size}/${slots.length})`);
+        try {
+          const result = await callGigaChatOnSlot(retryIdx, messages, model, maxTokens);
+          releaseSlot(retryIdx);
+          return result;
+        } catch (retryErr) {
+          const retryMsg = retryErr instanceof Error ? retryErr.message : String(retryErr);
+          releaseSlot(retryIdx, 0);
+          if (!retryMsg.includes("exhausted")) {
+            throw retryErr;
+          }
+          console.log(`[GigaChat] Slot ${slots[retryIdx].name} also exhausted`);
+        }
       }
-      console.log(`[GigaChat] Acquired ${slots[retryIdx].name} for retry`);
-      try {
-        return await callGigaChatOnSlot(retryIdx, messages, model, maxTokens);
-      } finally {
-        releaseSlot(retryIdx);
-      }
+      throw err;
     }
 
     throw err;
