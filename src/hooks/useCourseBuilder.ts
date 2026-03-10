@@ -251,7 +251,7 @@ export function useCourseBuilder() {
     setIsGenerating(true);
     try {
       await aiLimit.increment();
-      const { data, error } = await supabase.functions.invoke("generate-course-structure", { body: { title: courseTitle, description: courseDescription } });
+      const { data, error } = await safeInvoke("generate-course-structure", { body: { title: courseTitle, description: courseDescription } });
       if (error) throw new Error(error.message || "Ошибка генерации");
       if (!data.success) throw new Error(data.error || "Ошибка генерации структуры");
       const generatedLessons: Lesson[] = (data.lessons || []).map((l: any) => ({
