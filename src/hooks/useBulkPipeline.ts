@@ -390,7 +390,7 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
       updatePhase("Генерация структуры...");
       try {
         const { data, error } = await withTimeout(
-          supabase.functions.invoke("gigachat", {
+            safeInvoke<any>("gigachat", {
             body: {
               action: "generate_structure", courseTitle,
               existingLessons: currentLessons.map(l => ({ title: l.title, type: l.type })),
