@@ -145,8 +145,8 @@ const slots = buildSlots();
 function pickSlot(): TokenSlot | null {
   if (slots.length === 0) return null;
   if (slots.length === 1) return slots[0];
-  // Random distribution (stateless — no shared state between invocations)
-  const idx = Math.random() < 0.5 ? 0 : 1;
+  // Random distribution across all available slots
+  const idx = Math.floor(Math.random() * slots.length);
   return slots[idx];
 }
 

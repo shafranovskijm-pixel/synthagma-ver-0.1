@@ -344,11 +344,10 @@ export async function callGigaChat(
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
 
-    // If all models on this slot are exhausted, try the other slot
+    // If all models on this slot are exhausted, try other slots
     if (msg.includes("exhausted") && slots.length > 1) {
       releaseSlot(slotIdx, 0);
-      const otherIdx = slotIdx === 0 ? 1 : 0;
-      console.log(`[GigaChat] Slot ${slots[slotIdx].name} exhausted, trying ${slots[otherIdx].name}...`);
+      console.log(`[GigaChat] Slot ${slots[slotIdx].name} exhausted, trying other slots...`);
 
       // Acquire the other slot properly
       const retryIdx = await acquireSlot();
