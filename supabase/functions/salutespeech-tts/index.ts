@@ -134,8 +134,10 @@ function buildSlots(): TokenSlot[] {
   const slots: TokenSlot[] = [];
   const key1 = Deno.env.get("SALUTESPEECH_AUTH_KEY");
   const key2 = Deno.env.get("SALUTESPEECH_AUTH_KEY_2");
+  const key3 = Deno.env.get("SALUTESPEECH_AUTH_KEY_3");
   if (key1) slots.push({ authKey: key1, cachedToken: null, tokenExpiresAt: 0, busy: false, slotIndex: 0 });
   if (key2) slots.push({ authKey: key2, cachedToken: null, tokenExpiresAt: 0, busy: false, slotIndex: 1 });
+  if (key3) slots.push({ authKey: key3, cachedToken: null, tokenExpiresAt: 0, busy: false, slotIndex: 2 });
   return slots;
 }
 
