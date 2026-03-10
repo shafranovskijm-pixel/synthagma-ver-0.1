@@ -235,7 +235,7 @@ export function useServerPipeline({ courses, enableVerification, onComplete, aiP
 
     // Try edge function stop, but don't depend on it
     try {
-      await supabase.functions.invoke("bulk-pipeline", {
+      await safeInvoke("bulk-pipeline", {
         body: { action: "stop", runId: currentRun.id },
       });
     } catch (e: any) {

@@ -220,7 +220,7 @@ export function useLessonMedia(
   const handleGenerateContent = useCallback(async (lessonTitle: string, lessonType: string, courseTitle: string, courseDescription: string, blocks?: ContentBlock[]) => {
     setIsGeneratingContent(true);
     try {
-      const { data, error } = await supabase.functions.invoke("generate-lesson-content", {
+      const { data, error } = await safeInvoke<any>("generate-lesson-content", {
         body: { lessonTitle, lessonType, courseTitle, courseDescription }
       });
       if (error) throw new Error(error.message || "Ошибка генерации");

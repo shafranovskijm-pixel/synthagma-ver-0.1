@@ -389,7 +389,7 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
 
       if (selectedOrder && ['approved', 'paid', 'completed', 'cancelled'].includes(newStatus)) {
         try {
-          await supabase.functions.invoke('notify-order-status', {
+          await safeInvoke('notify-order-status', {
             body: {
               orderId, newStatus,
               courseName: selectedOrder.marketplace_course?.course?.title || 'Курс',
