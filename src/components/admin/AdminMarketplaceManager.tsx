@@ -581,7 +581,7 @@ export function AdminMarketplaceManager() {
                         let totalConverted = 0;
                         let totalFailed = 0;
                         for (let batch = 0; batch < 20; batch++) {
-                          const { data, error } = await supabase.functions.invoke("convert-lesson-content", {
+                          const { data, error } = await safeInvoke<any>("convert-lesson-content", {
                             body: { batch_size: 500 },
                           });
                           if (error) throw error;
