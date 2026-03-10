@@ -505,7 +505,7 @@ export function AdminMarketplaceManager() {
     if (!h.newTitle.trim()) { toast.error("Сначала введите название курса"); return; }
     setIsGeneratingShortDesc(true);
     try {
-      const { data, error } = await supabase.functions.invoke("generate-course-content", {
+      const { data, error } = await safeInvoke<any>("generate-course-content", {
         body: { contentType: "short_description", courseTitle: h.newTitle, courseDescription: h.newDescription },
       });
       if (error) throw error;
