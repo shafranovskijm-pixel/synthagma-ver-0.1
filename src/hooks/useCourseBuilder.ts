@@ -280,7 +280,7 @@ export function useCourseBuilder() {
         toast.info("Генерация аудио... Длинные тексты могут занять до 2 минут.");
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 min timeout
-        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`, {
+        const response = await safeFetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`, {
           method: "POST", headers: { "Content-Type": "application/json", apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
           body: JSON.stringify({ text: prompt, voiceId: "JBFqnCBsd6RMkjVDRZzb" }),
           signal: controller.signal,
