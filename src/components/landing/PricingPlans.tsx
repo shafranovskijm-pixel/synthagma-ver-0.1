@@ -8,18 +8,18 @@ import { FloatingParticles } from "./FloatingParticles";
 const planOrder: SubscriptionPlan[] = ['free', 'start', 'standard', 'professional', 'maximum'];
 
 const featureDescriptions: Record<string, { description: string; minPlan: string }> = {
-  "Настройки курсов": { description: "Запрет перемотки видео, последовательное прохождение уроков, ограничение по времени. Контролируйте процесс обучения.", minPlan: "Старт" },
+  "Настройки курсов": { description: "Запрет перемотки видео, последовательное прохождение уроков, ограничение по времени. Контролируйте процесс обучения.", minPlan: "Бесплатный" },
   "Магазин курсов": { description: "Витрина курсов для самостоятельной записи учеников. Настройте цены и описания.", minPlan: "Бесплатный" },
-  "Чек-лист документов": { description: "Автоматический сбор документов от учеников. Настройте список необходимых документов для каждого курса.", minPlan: "Стандарт" },
-  "Видеоидентификация": { description: "Верификация личности ученика через видеозвонок. Соответствие требованиям 273-ФЗ.", minPlan: "Стандарт" },
-  "Брендирование": { description: "Логотип, цвета и домен вашей организации. Ученики видят вашу платформу, а не нашу.", minPlan: "Стандарт" },
-  "Документы для ЛОО": { description: "Автоматическая генерация приказов, протоколов, журналов и договоров для лицензированных образовательных организаций.", minPlan: "Профессионал" },
-  "Охрана труда": { description: "Модуль для организации обучения по охране труда с журналами и протоколами.", minPlan: "Профессионал" },
-  "ФИС ФРДО": { description: "Выгрузка данных в Федеральный реестр документов об образовании. Автоматическое формирование XML.", minPlan: "Профессионал" },
-  "Отчеты 1-ПК / 1-ПО": { description: "Формирование статистических отчетов для Минобрнауки.", minPlan: "Профессионал" },
-  "API для CRM": { description: "Интеграция с внешними CRM-системами через REST API.", minPlan: "Максимум" },
-  "ИИ-генерация": { description: "Автоматическое создание курсов, уроков и тестов с помощью искусственного интеллекта.", minPlan: "Старт" },
-  "ИИ-озвучка": { description: "Озвучивание текстовых уроков реалистичным голосом с помощью ИИ.", minPlan: "Стандарт" },
+  "Чек-лист документов": { description: "Автоматический сбор документов от учеников. Настройте список необходимых документов для каждого курса.", minPlan: "Бесплатный" },
+  "Видеоидентификация": { description: "Верификация личности ученика через видеозвонок. Соответствие требованиям 273-ФЗ.", minPlan: "Бесплатный" },
+  "Брендирование": { description: "Логотип, цвета и домен вашей организации. Ученики видят вашу платформу, а не нашу.", minPlan: "Бесплатный" },
+  "Документы для ЛОО": { description: "Автоматическая генерация приказов, протоколов, журналов и договоров для лицензированных образовательных организаций.", minPlan: "Бесплатный" },
+  "Охрана труда": { description: "Модуль для организации обучения по охране труда с журналами и протоколами.", minPlan: "Бесплатный" },
+  "ФИС ФРДО": { description: "Выгрузка данных в Федеральный реестр документов об образовании. Автоматическое формирование XML.", minPlan: "Бесплатный" },
+  "Отчеты 1-ПК / 1-ПО": { description: "Формирование статистических отчетов для Минобрнауки.", minPlan: "Бесплатный" },
+  "API для CRM": { description: "Интеграция с внешними CRM-системами через REST API.", minPlan: "Бесплатный" },
+  "ИИ-генерация": { description: "Автоматическое создание курсов, уроков и тестов с помощью искусственного интеллекта.", minPlan: "Бесплатный" },
+  "ИИ-озвучка": { description: "Озвучивание текстовых уроков реалистичным голосом с помощью ИИ.", minPlan: "Бесплатный" },
 };
 
 const featureRows: { label: string; link?: string; getValue: (p: SubscriptionPlan) => string | boolean }[] = [
@@ -36,18 +36,18 @@ const featureRows: { label: string; link?: string; getValue: (p: SubscriptionPla
     return l.maxTrainedPerMonth === -1 ? "Безлимит" : String(l.maxTrainedPerMonth);
   }},
   { label: "Хранилище", getValue: (p: SubscriptionPlan) => formatStorageSize(SUBSCRIPTION_PLANS[p].limits.storageBytes) },
-  { label: "Настройки курсов", link: "/feature/course-settings", getValue: (p: SubscriptionPlan) => SUBSCRIPTION_PLANS[p].limits.courseSettings ? true : false },
+  { label: "Настройки курсов", link: "/feature/course-settings", getValue: () => true },
   { label: "Магазин курсов", link: "/feature/course-store", getValue: () => true },
-  { label: "Чек-лист документов", link: "/feature/document-checklist", getValue: (p: SubscriptionPlan) => SUBSCRIPTION_PLANS[p].limits.documentChecklist ? true : false },
-  { label: "Видеоидентификация", link: "/feature/video-id", getValue: (p: SubscriptionPlan) => SUBSCRIPTION_PLANS[p].limits.videoIdentification ? true : false },
-  { label: "Брендирование", link: "/feature/branding", getValue: (p: SubscriptionPlan) => SUBSCRIPTION_PLANS[p].limits.branding ? true : false },
-  { label: "Документы для ЛОО", link: "/feature/documents", getValue: (p: SubscriptionPlan) => (p === 'professional' || p === 'maximum') ? true : false },
-  { label: "Охрана труда", link: "/feature/labor-safety", getValue: (p: SubscriptionPlan) => (p === 'professional' || p === 'maximum') ? true : false },
-  { label: "ФИС ФРДО", link: "/feature/frdo", getValue: (p: SubscriptionPlan) => p === 'professional' || p === 'maximum' },
-  { label: "Отчеты 1-ПК / 1-ПО", getValue: (p: SubscriptionPlan) => p === 'professional' || p === 'maximum' },
-  { label: "API для CRM", getValue: (p: SubscriptionPlan) => p === 'maximum' },
-  { label: "ИИ-генерация", link: "/feature/ai-courses", getValue: (p: SubscriptionPlan) => SUBSCRIPTION_PLANS[p].limits.aiEnabled ? true : false },
-  { label: "ИИ-озвучка", link: "/feature/ai-courses", getValue: (p: SubscriptionPlan) => SUBSCRIPTION_PLANS[p].limits.aiAudioEnabled ? true : false },
+  { label: "Чек-лист документов", link: "/feature/document-checklist", getValue: () => true },
+  { label: "Видеоидентификация", link: "/feature/video-id", getValue: () => true },
+  { label: "Брендирование", link: "/feature/branding", getValue: () => true },
+  { label: "Документы для ЛОО", link: "/feature/documents", getValue: () => true },
+  { label: "Охрана труда", link: "/feature/labor-safety", getValue: () => true },
+  { label: "ФИС ФРДО", link: "/feature/frdo", getValue: () => true },
+  { label: "Отчеты 1-ПК / 1-ПО", getValue: () => true },
+  { label: "API для CRM", getValue: () => true },
+  { label: "ИИ-генерация", link: "/feature/ai-courses", getValue: () => true },
+  { label: "ИИ-озвучка", link: "/feature/ai-courses", getValue: () => true },
 ];
 
 function formatPrice(price: number): string {
