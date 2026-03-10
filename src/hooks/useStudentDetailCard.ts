@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 import { getSignedStorageUrl, extractStoragePath } from "@/utils/storageHelpers";
 import { format } from "date-fns";
