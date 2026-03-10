@@ -100,8 +100,8 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlan, PlanInfo> = {
       maxStudents: 1000,
       maxTrainedPerMonth: 500,
       storageBytes: 53687091200, // 50 GB
-      aiEnabled: false,
-      aiAudioEnabled: false,
+      aiEnabled: true,
+      aiAudioEnabled: true,
       courseSettings: true,
       documentChecklist: true,
       videoIdentification: true,
