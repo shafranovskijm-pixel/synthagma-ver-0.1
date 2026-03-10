@@ -119,6 +119,30 @@ export default function ImportStudentsForm({ organizationId, courses, companies,
         return;
       }
 
+      // Pre-check student limit before starting import
+      if (organizationId) {
+        const { data: currentCount } = await supabase.rpc('count_org_students', { org_id: organizationId });
+        const { data: orgData } = await supabase
+          .from('organizations')
+          .select('subscription_plan')
+          .eq('id', organizationId)
+          .single();
+
+        const planLimits: Record<string, number> = { free: 10, start: 100, standard: 200, professional: 1000, maximum: -1 };
+        const maxStudents = planLimits[orgData?.subscription_plan || 'free'] ?? 10;
+        const count = Number(currentCount) || 0;
+
+        if (maxStudents !== -1 && count + students.length > maxStudents) {
+          toast({
+            title: "Превышен лимит учеников",
+            description: `Текущий тариф позволяет ${maxStudents} учеников. Сейчас: ${count}, импорт: ${students.length}. Перейдите на следующий тариф.`,
+            variant: "destructive",
+          });
+          setIsImporting(false);
+          return;
+        }
+      }
+
       const importResults: ImportResult[] = [];
 
       for (const student of students) {

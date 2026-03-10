@@ -149,6 +149,28 @@ export function useCompanyDashboard(viewAsUserId?: string) {
     setAddingEmployee(true);
 
     try {
+      // Pre-check student limit
+      const { data: currentCount } = await supabase.rpc('count_org_students', { org_id: company.organization_id });
+      const { data: orgData } = await supabase
+        .from('organizations')
+        .select('subscription_plan')
+        .eq('id', company.organization_id)
+        .single();
+
+      const planLimits: Record<string, number> = { free: 10, start: 100, standard: 200, professional: 1000, maximum: -1 };
+      const maxStudents = planLimits[orgData?.subscription_plan || 'free'] ?? 10;
+      const count = Number(currentCount) || 0;
+
+      if (maxStudents !== -1 && count >= maxStudents) {
+        toast({
+          title: 'Лимит учеников',
+          description: `Максимум ${maxStudents} учеников на текущем тарифе. Обратитесь к организации.`,
+          variant: 'destructive',
+        });
+        setAddingEmployee(false);
+        return;
+      }
+
       const { data, error } = await safeInvoke<any>('register-student', {
         body: {
           full_name: fullName,
