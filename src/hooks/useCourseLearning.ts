@@ -458,7 +458,7 @@ export function useCourseLearning() {
     setAllBankQuestions(allQuestions);
 
     try {
-      const { data: resultsData, error: resultsError } = await supabase.functions.invoke('get-test-results', { body: { lesson_id: lessonId } });
+      const { data: resultsData, error: resultsError } = await safeInvoke<any>('get-test-results', { body: { lesson_id: lessonId } });
       if (resultsError) { selectRandomQuestions(allQuestions, questionsToShow, []); setUsedQuestionIds([]); setAnswers({}); return; }
 
       if (resultsData?.hasAttempt) {
