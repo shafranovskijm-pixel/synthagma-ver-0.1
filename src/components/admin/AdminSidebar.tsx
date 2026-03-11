@@ -132,6 +132,12 @@ export function AdminSidebar({
             Рассылка
           </button>
 
+          {/* Chats */}
+          <button onClick={() => handleTabClick("chats")} className={tabButtonClass("chats")}>
+            <MessageSquare className="w-5 h-5" />
+            Чаты
+          </button>
+
           {/* Dev Tools */}
           <button onClick={() => handleTabClick("devtools")} className={tabButtonClass("devtools")}>
             <Terminal className="w-5 h-5" />
