@@ -162,6 +162,8 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
     notify_on_limit_exceeded: organization.notify_on_limit_exceeded ?? true,
   });
   const [isSaving, setIsSaving] = useState(false);
+  const [credentials, setCredentials] = useState<{ login_email: string; login_password: string } | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const planKey = (organization.subscription_plan as SubscriptionPlan) || 'free';
   const planInfo = getPlanInfo(planKey);
