@@ -34,11 +34,40 @@ export function OrgChatsTab() {
   const d = useOrgDashboard();
   const isMobile = useIsMobile();
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+  const [selectedAdminChat, setSelectedAdminChat] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [adminUnreadCount, setAdminUnreadCount] = useState(0);
 
   const { conversations, isLoading } = d.orgChats;
   const organizationId = d.organizationId;
   const currentUserId = d.user?.id;
+
+  // Load admin unread count
+  useEffect(() => {
+    if (!organizationId) return;
+    const loadAdminUnread = async () => {
+      const { count } = await supabase
+        .from("admin_org_messages")
+        .select("*", { count: "exact", head: true })
+        .eq("organization_id", organizationId)
+        .eq("sender_role", "admin")
+        .eq("is_read", false);
+      setAdminUnreadCount(count || 0);
+    };
+    loadAdminUnread();
+
+    const channel = supabase
+      .channel(`org-admin-unread-${organizationId}`)
+      .on("postgres_changes", {
+        event: "*",
+        schema: "public",
+        table: "admin_org_messages",
+        filter: `organization_id=eq.${organizationId}`,
+      }, () => { loadAdminUnread(); })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [organizationId]);
 
   const filtered = searchQuery
     ? conversations.filter((c) =>
