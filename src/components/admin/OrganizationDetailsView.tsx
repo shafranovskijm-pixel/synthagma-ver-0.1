@@ -199,6 +199,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
         fetchDocuments(),
         fetchUsage(),
         fetchUsageHistory(),
+        fetchCredentials(),
       ]);
     } finally {
       setLoading(false);
