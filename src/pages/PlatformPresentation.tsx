@@ -11,7 +11,7 @@ import {
   Target, TrendingUp, Landmark, HardHat, Factory, Flame, Waves,
   Download, Loader2
 } from "lucide-react";
-import { createRoot } from "react-dom/client";
+
 import { toast } from "sonner";
 
 const TOTAL_SLIDES = 19;
