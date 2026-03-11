@@ -1,24 +1,18 @@
 
 
-## Исправление экспорта PDF: скриншоты видимых слайдов
+## Plan: Auto-fix after "Проверить все"
 
-### Проблема
-Текущий подход рендерит каждый слайд в скрытый off-screen контейнер и снимает его через `html2canvas`. Но слайды используют сложные CSS (градиенты, backdrop-blur, transform scale, анимации framer-motion), которые `html2canvas` не может корректно отрисовать в изолированном контейнере — отсюда пустые/битые страницы.
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-### Решение
-Вместо off-screen рендеринга — последовательно показывать каждый слайд **в основном контейнере** (как при обычном просмотре), делать скриншот видимого DOM-элемента, и собирать в PDF.
+### Changes
 
-### Изменения в `src/pages/PlatformPresentation.tsx`
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-**`handleDownloadPDF`** — новая логика:
-1. Сохранить текущий номер слайда
-2. В цикле `i = 0..18`:
-   - Установить `setCurrent(i)`, подождать ~500ms для рендера
-   - Найти DOM-элемент слайда (div 1920×1080 внутри контейнера)
-   - Вызвать `html2canvas` на этом реальном элементе
-   - Добавить в PDF
-3. Вернуть слайд на сохранённый номер
-4. Сохранить PDF
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-Ключевое отличие: снимаем **реально отрисованный** слайд со всеми стилями, а не изолированный React-компонент в скрытом div.
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
+
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 
