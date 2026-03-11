@@ -46,9 +46,13 @@ import {
   History,
   Wallet,
   Eye,
+  EyeOff,
   ExternalLink,
   Calendar,
+  Copy,
+  KeyRound,
 } from "lucide-react";
+import { safeInvoke } from "@/utils/safeInvoke";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
@@ -158,6 +162,8 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
     notify_on_limit_exceeded: organization.notify_on_limit_exceeded ?? true,
   });
   const [isSaving, setIsSaving] = useState(false);
+  const [credentials, setCredentials] = useState<{ login_email: string; login_password: string } | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const planKey = (organization.subscription_plan as SubscriptionPlan) || 'free';
   const planInfo = getPlanInfo(planKey);
@@ -195,6 +201,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
         fetchDocuments(),
         fetchUsage(),
         fetchUsageHistory(),
+        fetchCredentials(),
       ]);
     } finally {
       setLoading(false);
@@ -319,43 +326,95 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
     setDocuments(data || []);
   };
 
+  const fetchCredentials = async () => {
+    try {
+      const { data, error } = await supabase.rpc("get_decrypted_org_credentials", {
+        p_organization_id: organization.id,
+      });
+      if (!error && data && data.length > 0) {
+        setCredentials(data[0]);
+      }
+    } catch (err) {
+      console.error("Error fetching credentials:", err);
+    }
+  };
+
   const fetchUsage = async () => {
+    // Get AI generations from organization_usage
     const currentMonth = new Date().toISOString().slice(0, 7) + "-01";
-    
-    const { data, error } = await supabase
+    const { data: usageRow } = await supabase
       .from("organization_usage")
-      .select("storage_bytes, ai_generations_count")
+      .select("ai_generations_count")
       .eq("organization_id", organization.id)
       .eq("month_start", currentMonth)
       .maybeSingle();
 
-    if (error) {
-      console.error("Error fetching usage:", error);
-    }
+    const aiCount = (usageRow as any)?.ai_generations_count || 0;
 
-    if (data) {
-      setUsage({
-        storage_bytes: (data as any).storage_bytes || 0,
-        ai_generations_count: (data as any).ai_generations_count || 0,
-      });
-    } else {
-      // Calculate real storage from buckets
-      let totalBytes = 0;
-      const buckets = ['course-files', 'org-documents', 'student-documents', 'library-files', 'org-branding', 'program-files', 'company-documents'];
-      for (const bucket of buckets) {
-        try {
-          const { data: files } = await supabase.storage.from(bucket).list(organization.id, { limit: 1000 });
-          if (files) {
-            totalBytes += files.reduce((sum, f) => sum + ((f.metadata as any)?.size || 0), 0);
+    // Always calculate real storage by scanning buckets (like StorageManager)
+    let totalBytes = 0;
+    const baseUrl = import.meta.env.VITE_SUPABASE_URL;
+
+    const scanPath = async (
+      client: any,
+      bucket: string,
+      prefix: string,
+      depth = 0,
+    ) => {
+      try {
+        const { data: items } = await client.storage.from(bucket).list(prefix, { limit: 500 });
+        if (!items) return;
+        for (const f of items) {
+          if (f.id === null && depth < 2) {
+            await scanPath(client, bucket, `${prefix}/${f.name}`, depth + 1);
+          } else if (f.id !== null) {
+            totalBytes += (f.metadata as any)?.size || 0;
           }
-        } catch {}
-      }
+        }
+      } catch { /* bucket/path doesn't exist */ }
+    };
 
-      setUsage({
-        storage_bytes: totalBytes,
-        ai_generations_count: 0,
-      });
-    }
+    // Get course IDs for this org
+    const { data: courses } = await supabase
+      .from("courses")
+      .select("id")
+      .eq("organization_id", organization.id);
+    const courseIds = courses?.map(c => c.id) || [];
+
+    // Scan course-level buckets
+    const courseScans = courseIds.flatMap(courseId => [
+      scanPath(supabase, "course-files", courseId),
+      scanPath(supabase, "presentations", courseId),
+    ]);
+
+    // Scan org-level buckets
+    const orgScans = [
+      scanPath(supabase, "org-documents", organization.id),
+      scanPath(supabase, "company-documents", organization.id),
+      scanPath(supabase, "org-branding", organization.id),
+      scanPath(supabase, "library-files", `library/${organization.id}`),
+      scanPath(supabase, "billing-documents", organization.id),
+      scanPath(supabase, "student-documents", organization.id),
+    ];
+
+    await Promise.all([...courseScans, ...orgScans]);
+
+    // External storage (course-videos)
+    try {
+      const { data: config } = await safeInvoke<any>("get-external-storage-config");
+      if (config?.configured && config?.url && config?.key) {
+        const { createClient } = await import("@supabase/supabase-js");
+        const extClient = createClient(config.url, config.key);
+        await Promise.all(
+          courseIds.map(courseId => scanPath(extClient, "course-videos", courseId))
+        );
+      }
+    } catch { /* external not configured */ }
+
+    setUsage({
+      storage_bytes: totalBytes,
+      ai_generations_count: aiCount,
+    });
   };
 
   const fetchUsageHistory = async () => {
@@ -510,7 +569,48 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
         </div>
       </div>
 
-      {/* Limit Warnings */}
+      {/* Credentials */}
+      {credentials && (
+        <Card className={`${cardClass} border-primary/20`}>
+          <CardHeader className="pb-3">
+            <CardDescription className="flex items-center gap-1.5">
+              <div className="p-1 rounded-md bg-primary/10">
+                <KeyRound className="w-3 h-3 text-primary" />
+              </div>
+              Учётные данные организации
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Логин:</span>
+                <code className="text-sm font-mono bg-muted px-2 py-0.5 rounded">{credentials.login_email}</code>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
+                  navigator.clipboard.writeText(credentials.login_email);
+                  toast.success("Логин скопирован");
+                }}>
+                  <Copy className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Пароль:</span>
+                <code className="text-sm font-mono bg-muted px-2 py-0.5 rounded">
+                  {showPassword ? credentials.login_password : "••••••••"}
+                </code>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowPassword(!showPassword)}>
+                  {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                </Button>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
+                  navigator.clipboard.writeText(credentials.login_password);
+                  toast.success("Пароль скопирован");
+                }}>
+                  <Copy className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
       {(isStorageExceeded || isAiGenExceeded) && (
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />

@@ -1,36 +1,18 @@
 
 
-## Две проблемы
+## Plan: Auto-fix after "Проверить все"
 
-### 1. Хранилище показывает 0
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-**Причина:** В `OrganizationDetailsView.tsx` (строки 322–358) метод `fetchUsage` работает так:
-- Сначала ищет запись в таблице `organization_usage` за текущий месяц
-- Если запись **есть** (даже с `storage_bytes = 0`) — берёт значение оттуда и **не считает реально**
-- Если записи **нет** — пытается посчитать из бакетов, но:
-  - Не включает **внешнее хранилище** (`course-videos` на внешнем Supabase)
-  - Использует `supabase.storage.from(bucket).list(organization.id)` — это **не рекурсивный** обход, считает только файлы в корне папки организации
-  - Не сканирует файлы по `courseId` (в отличие от `StorageManager`, который правильно сканирует `course-files/{courseId}`)
+### Changes
 
-**Решение:** Переписать `fetchUsage`, взяв логику из `StorageManager`:
-- Получить все `courseId` организации
-- Сканировать `course-files`, `presentations` по каждому курсу
-- Сканировать `org-documents`, `company-documents`, `org-branding`, `library-files`, `student-documents` по `organizationId`
-- Добавить внешнее хранилище (`course-videos`) через `get-external-storage-config`
-- Рекурсивно обходить папки (как `scanPath` в StorageManager)
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-### 2. Логин и пароль организации не отображаются в карточке
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-**Причина:** `OrganizationDetailsView.tsx` **не содержит** никакого отображения учётных данных (`credentials`, `login_email`, `login_password`). Эти данные видны только в списке организаций (`OrganizationsManager.tsx`), но при открытии детальной карточки — теряются.
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-**Решение:** Добавить секцию «Учётные данные» в шапку/обзор `OrganizationDetailsView`:
-- Вызвать RPC `get_decrypted_org_credentials` для текущей организации
-- Показать логин и пароль с кнопками «Показать/Скрыть» (Eye) и «Копировать»
-
-### Файлы для изменения
-
-- **`src/components/admin/OrganizationDetailsView.tsx`**:
-  - Переписать `fetchUsage` — добавить рекурсивный обход бакетов + внешнее хранилище
-  - Добавить состояние `credentials` и запрос `get_decrypted_org_credentials`
-  - Добавить UI-блок с логином/паролем в шапке (рядом со статистикой или в отдельной секции)
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 
