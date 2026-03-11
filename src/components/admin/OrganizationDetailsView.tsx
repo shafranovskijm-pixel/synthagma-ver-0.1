@@ -46,9 +46,13 @@ import {
   History,
   Wallet,
   Eye,
+  EyeOff,
   ExternalLink,
   Calendar,
+  Copy,
+  KeyRound,
 } from "lucide-react";
+import { safeInvoke } from "@/utils/safeInvoke";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
