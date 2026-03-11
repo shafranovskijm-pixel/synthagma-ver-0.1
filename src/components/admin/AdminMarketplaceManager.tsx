@@ -100,13 +100,15 @@ export function AdminMarketplaceManager() {
   const [validationReport, setValidationReport] = useState<{ courseId: string; title: string; issues: string[] }[] | null>(null);
   const [validationReportOk, setValidationReportOk] = useState(0);
 
-  // Initialize validated state from DB on courses load
+  // Initialize validated state from DB on courses load (preserve existing error statuses)
   useEffect(() => {
-    const init: Record<string, 'ok' | 'error'> = {};
-    h.courses.forEach((c: any) => {
-      if (c.is_validated) init[c.course_id] = 'ok';
+    setValidatedCourses(prev => {
+      const init = { ...prev };
+      h.courses.forEach((c: any) => {
+        if (c.is_validated && !init[c.course_id]) init[c.course_id] = 'ok';
+      });
+      return init;
     });
-    setValidatedCourses(init);
   }, [h.courses]);
 
   const handleValidateCourse = async (courseId: string) => {
