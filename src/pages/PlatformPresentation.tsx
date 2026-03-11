@@ -824,6 +824,11 @@ export default function PlatformPresentation() {
           <ChevronRight className="w-5 h-5" />
         </button>
         <div className="w-px h-5 bg-white/20" />
+        <button onClick={handleDownloadPDF} disabled={isExporting}
+          className="p-2 rounded-full hover:bg-white/10 disabled:opacity-50 transition-colors text-white" title="Скачать PDF">
+          {isExporting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
+        </button>
+        <div className="w-px h-5 bg-white/20" />
         <button onClick={toggleFullscreen} className="p-2 rounded-full hover:bg-white/10 transition-colors text-white">
           {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
         </button>
