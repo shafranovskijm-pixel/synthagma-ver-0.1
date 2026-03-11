@@ -703,10 +703,11 @@ export default function PlatformPresentation() {
       for (let i = 0; i < slides.length; i++) {
         if (i > 0) pdf.addPage([1920, 1080], "landscape");
 
-        // Navigate to slide and wait for render + animation
+        // Navigate to slide and wait for full render
         setDirection(i > (i === 0 ? 0 : i - 1) ? 1 : -1);
         setCurrent(i);
-        await new Promise(r => setTimeout(r, 600));
+        toast.info(`Слайд ${i + 1} из ${slides.length}...`, { id: 'pdf-progress' });
+        await new Promise(r => setTimeout(r, 2000));
 
         const slideEl = document.getElementById("slide-capture-target");
         if (!slideEl) continue;

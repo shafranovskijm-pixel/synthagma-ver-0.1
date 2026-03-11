@@ -1,26 +1,18 @@
 
 
-## Исправление: увеличить задержку перед скриншотом слайда
+## Plan: Auto-fix after "Проверить все"
 
-### Проблема
-Задержка 600мс недостаточна — слайды с изображениями и сложными стилями не успевают отрисоваться.
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-### Решение
-В `src/pages/PlatformPresentation.tsx`, строка 709:
-- Увеличить задержку с 600мс до 2000мс (2 секунды)
-- Обновить toast-сообщение, чтобы показывать прогресс (номер текущего слайда)
+### Changes
 
-### Изменение
-```typescript
-// Строка 709: было
-await new Promise(r => setTimeout(r, 600));
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-// Станет
-await new Promise(r => setTimeout(r, 2000));
-```
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-Также добавить toast с прогрессом перед каждым слайдом:
-```typescript
-toast.info(`Слайд ${i + 1} из ${slides.length}...`, { id: 'pdf-progress' });
-```
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
+
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 
