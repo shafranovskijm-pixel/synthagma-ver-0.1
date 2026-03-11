@@ -1,18 +1,34 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## Проблема: превью показывает устаревшую версию
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+Service Worker кэширует все ресурсы (HTML, JS, CSS) и при каждом обновлении кода старый кэш продолжает обслуживать запросы до тех пор, пока SW не обновится. Даже с `skipWaiting` + `clientsClaim` есть гонка: страница может загрузиться из старого кэша до того, как новый SW активируется.
 
-### Changes
+### Решение: отключить PWA в preview-окружении
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+PWA нужен только на продакшене (`synthagma-bloom.lovable.app`). В preview-среде Lovable он только мешает — вызывает показ устаревших версий.
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+### Изменения
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+**1. `vite.config.ts`** — отключить VitePWA, если это не продакшн-билд:
+```ts
+// Обернуть VitePWA в условие:
+mode === "production" && VitePWA({ ... })
+```
+Это полностью уберёт регистрацию SW в dev/preview.
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+**2. `src/main.tsx`** — добавить проверку на preview-домен перед регистрацией SW:
+```ts
+const isPreview = window.location.hostname.includes('preview--') 
+  || window.location.hostname === 'localhost';
+
+if (!isNative && !isPreview) {
+  // register SW only on production
+}
+```
+Это гарантирует, что даже если SW-файл каким-то образом попал в кэш, он не будет перерегистрирован в preview.
+
+**3. `src/main.tsx`** — усилить очистку: при обнаружении preview-домена принудительно удалять все SW и кэши (один раз).
+
+Итого: в preview всегда будет загружаться свежая версия напрямую с сервера, PWA будет работать только на продакшене.
 
