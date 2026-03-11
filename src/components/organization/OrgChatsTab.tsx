@@ -142,7 +142,22 @@ export function OrgChatsTab() {
     );
   }
 
-  // Mobile: show detail if selected
+  // Mobile: show admin chat if selected
+  if (isMobile && selectedAdminChat && organizationId && currentUserId) {
+    return (
+      <div className="space-y-3">
+        <Button variant="ghost" size="sm" onClick={() => setSelectedAdminChat(false)} className="gap-2">
+          <ArrowLeft className="w-4 h-4" /> Назад к чатам
+        </Button>
+        <h3 className="font-semibold text-lg px-1 flex items-center gap-2">
+          <Shield className="w-5 h-5 text-primary" /> Администрация платформы
+        </h3>
+        <AdminChatDialog organizationId={organizationId} currentUserId={currentUserId} />
+      </div>
+    );
+  }
+
+  // Mobile: show student detail if selected
   if (isMobile && selectedStudentId && organizationId && currentUserId) {
     return (
       <div className="space-y-3">
