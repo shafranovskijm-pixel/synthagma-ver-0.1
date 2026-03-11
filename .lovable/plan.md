@@ -1,18 +1,48 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## Чат администратора с организациями
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+### Суть
+Добавить в админ-панель раздел «Чаты», где администратор может выбрать организацию и написать ей сообщение. Сообщения от администратора будут появляться в существующем чате организации (вкладка «Чаты» в OrgChatsTab) — в специальном «системном» диалоге от платформы.
 
-### Changes
+### Подход
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+Вместо создания отдельной таблицы, переиспользуем существующую `org_student_messages` с системным маркером. Администратор пишет от имени «Администрация платформы», и эти сообщения появляются у организации как отдельный диалог в списке чатов.
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+### База данных
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+**Новая таблица `admin_org_messages`** — отдельная таблица для сообщений админ → организация:
+- `id` uuid PK
+- `organization_id` uuid (FK → organizations)
+- `sender_user_id` uuid (админ)
+- `content` text
+- `attachment_url`, `attachment_name`, `attachment_type` — для вложений
+- `is_read` boolean default false
+- `created_at` timestamptz
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+RLS: админы — полный доступ; организации — SELECT/UPDATE только своих сообщений. Realtime включён.
+
+### Админ-панель (новый раздел)
+
+1. **Новый таб «Чаты»** в `AdminSidebar` (между «Рассылка» и «Dev Tools»)
+2. **Компонент `AdminChatsManager`**:
+   - Слева: список организаций с поиском + счётчик непрочитанных ответов
+   - Справа: чат с выбранной организацией (по аналогии с `ChatTab`)
+   - Админ может отправлять текст и файлы
+
+### Сторона организации
+
+3. **Модификация `OrgChatsTab`**: в списке диалогов добавить «Администрация платформы» — специальный диалог, который загружает сообщения из `admin_org_messages`
+4. **Компонент `AdminChatDialog`** — интерфейс чата для организации (аналог `ChatTab`, но работает с `admin_org_messages` и позволяет организации отвечать)
+
+### Файлы для создания/изменения
+
+| Файл | Действие |
+|---|---|
+| Миграция: `admin_org_messages` таблица + RLS + realtime | Создать |
+| `src/components/admin/AdminChatsManager.tsx` | Создать |
+| `src/components/admin/AdminSidebar.tsx` | Добавить таб «Чаты» |
+| `src/pages/AdminDashboard.tsx` | Подключить `AdminChatsManager` |
+| `src/components/organization/OrgChatsTab.tsx` | Добавить диалог «Платформа» |
+| `src/components/organization/AdminChatDialog.tsx` | Создать (чат орг↔админ) |
 
