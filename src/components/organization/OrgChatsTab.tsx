@@ -1,11 +1,13 @@
-import { useState } from "react";
-import { MessageCircle, Search, ArrowLeft, Loader2, Bell, Paperclip, Clock } from "lucide-react";
+import { useState, useEffect } from "react";
+import { MessageCircle, Search, ArrowLeft, Loader2, Bell, Paperclip, Clock, Shield } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { ChatTab } from "@/components/organization/student-detail/ChatTab";
+import { AdminChatDialog } from "@/components/organization/AdminChatDialog";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
+import { supabase } from "@/integrations/supabase/client";
 import { format, isToday, isYesterday } from "date-fns";
 import { ru } from "date-fns/locale";
 import { useIsMobile } from "@/hooks/use-mobile";
