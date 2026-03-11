@@ -41,7 +41,7 @@ const isPreview = window.location.hostname.includes('preview--') || window.locat
   }
 
   // Register new SW only on production
-  if (!isNative && !isPreview) {
+  if (!isNative && !isPreview && import.meta.env.PROD) {
     import('virtual:pwa-register').then(({ registerSW }) => {
       const updateSW = registerSW({
         immediate: true,

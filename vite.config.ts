@@ -17,6 +17,7 @@ export default defineConfig(({ mode }) => ({
     mode === "development" && componentTagger(),
     VitePWA({
       registerType: "autoUpdate",
+      devOptions: { enabled: true, type: 'module' },
       includeAssets: ["favicon.ico", "robots.txt"],
       manifest: {
         name: "СИНТАГМА — Система дистанционного обучения",
