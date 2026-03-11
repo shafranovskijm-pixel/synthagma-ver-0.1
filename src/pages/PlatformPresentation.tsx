@@ -8,8 +8,11 @@ import {
   CheckCircle2, BarChart3, Clock, Globe, Award, Lock,
   Settings, MessageSquare, ClipboardList, AlertTriangle,
   Layers, Database, RefreshCw, ChevronDown, Play, Star,
-  Target, TrendingUp, Landmark, HardHat, Factory, Flame, Waves
+  Target, TrendingUp, Landmark, HardHat, Factory, Flame, Waves,
+  Download, Loader2
 } from "lucide-react";
+import { createRoot } from "react-dom/client";
+import { toast } from "sonner";
 
 const TOTAL_SLIDES = 19;
 
