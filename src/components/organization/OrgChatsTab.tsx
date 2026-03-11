@@ -103,44 +103,7 @@ export function OrgChatsTab() {
     );
   }
 
-  // Empty state — feature showcase
-  if (conversations.length === 0 && !searchQuery) {
-    return (
-      <div className="max-w-3xl mx-auto py-8 px-2">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-4">
-            <MessageCircle className="w-8 h-8 text-primary" />
-          </div>
-          <h2 className="text-2xl font-bold text-foreground mb-2">Чат с учениками</h2>
-          <p className="text-muted-foreground text-base max-w-md mx-auto">
-            Общайтесь напрямую с учениками — отвечайте на вопросы, отправляйте файлы и следите за обращениями в одном месте
-          </p>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-3 mb-8">
-          {chatFeatures.map((f) => (
-            <Card key={f.title} className="border-border/60 bg-card/80">
-              <CardContent className="pt-6 pb-5 px-5 flex flex-col items-center text-center gap-3">
-                <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                  <f.icon className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-sm text-foreground mb-1">{f.title}</h3>
-                  <p className="text-xs text-muted-foreground leading-relaxed">{f.description}</p>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        <p className="text-center text-sm text-muted-foreground">
-          Чаты появятся автоматически, когда ученики напишут вам
-          <br className="hidden sm:block" />
-          {" "}или вы начнёте диалог из карточки ученика
-        </p>
-      </div>
-    );
-  }
+  // No longer early-return on empty — admin chat is always available
 
   // Mobile: show admin chat if selected
   if (isMobile && selectedAdminChat && organizationId && currentUserId) {
