@@ -1,40 +1,18 @@
 
 
-## Проблемы с «Проверить все»
+## Plan: Auto-fix after "Проверить все"
 
-### Выявленные баги
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-1. **Сброс результатов после завершения**: В конце `handleBulkValidate` вызывается `h.fetchData()`, что обновляет `h.courses` → срабатывает `useEffect` на строке 104 → `validatedCourses` перезаписывается, при этом ошибочные курсы (`'error'`) теряются (в useEffect сохраняются только `is_validated=true` как `'ok'`).
+### Changes
 
-2. **Курсы перемещаются между группами**: После валидации курс получает `is_validated=true` в БД. При `fetchData()` группы пересчитываются — курсы уходят из «В работе» в «Курсы Ростехнадзора», а счётчики ✅/❌ сбрасываются.
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-3. **Очень медленно для 205 курсов**: Последовательные запросы (по 1-2 на курс) — ~200+ запросов к БД, что занимает минуты.
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-### Исправления
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-**`src/components/admin/AdminMarketplaceManager.tsx`**:
-
-1. **Убрать `h.fetchData()` из `handleBulkValidate`** — данные уже обновлены в state и в БД, перезагрузка только ломает результаты
-2. **Исправить `useEffect` инициализации** — сохранять `'error'` статусы при обновлении, не перезатирать их:
-   ```typescript
-   useEffect(() => {
-     setValidatedCourses(prev => {
-       const init = { ...prev };
-       h.courses.forEach((c: any) => {
-         if (c.is_validated && !init[c.course_id]) init[c.course_id] = 'ok';
-       });
-       return init;
-     });
-   }, [h.courses]);
-   ```
-3. **Параллельная валидация** — обрабатывать по 5 курсов одновременно (`Promise.all` с чанками), ускорение в ~5 раз
-
-**`src/hooks/useAdminMarketplace.ts`**:
-
-4. **Не перемещать курсы между группами во время валидации** — группировка должна использовать текущий `is_validated` из DB, а не из локального state (это уже так, просто не нужно делать `fetchData` после валидации)
-
-### Итого: 3 правки в одном файле
-- Убрать `h.fetchData()` в конце `handleBulkValidate`
-- Исправить `useEffect` инициализации (не затирать ошибки)
-- Добавить параллельность (чанки по 5)
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 

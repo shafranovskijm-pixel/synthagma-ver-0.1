@@ -100,13 +100,15 @@ export function AdminMarketplaceManager() {
   const [validationReport, setValidationReport] = useState<{ courseId: string; title: string; issues: string[] }[] | null>(null);
   const [validationReportOk, setValidationReportOk] = useState(0);
 
-  // Initialize validated state from DB on courses load
+  // Initialize validated state from DB on courses load (preserve existing error statuses)
   useEffect(() => {
-    const init: Record<string, 'ok' | 'error'> = {};
-    h.courses.forEach((c: any) => {
-      if (c.is_validated) init[c.course_id] = 'ok';
+    setValidatedCourses(prev => {
+      const init = { ...prev };
+      h.courses.forEach((c: any) => {
+        if (c.is_validated && !init[c.course_id]) init[c.course_id] = 'ok';
+      });
+      return init;
     });
-    setValidatedCourses(init);
   }, [h.courses]);
 
   const handleValidateCourse = async (courseId: string) => {
@@ -207,9 +209,7 @@ export function AdminMarketplaceManager() {
     const total = group.courses.length;
     const failedCourses: { courseId: string; title: string; issues: string[] }[] = [];
 
-    for (let i = 0; i < total; i++) {
-      const item = group.courses[i];
-      setBulkValidateProgress(`${i + 1}/${total}...`);
+    const validateOne = async (item: any) => {
       try {
         const { data: lessons } = await supabase
           .from("lessons").select("id, title, type, content").eq("course_id", item.course_id);
@@ -242,17 +242,27 @@ export function AdminMarketplaceManager() {
         const isOk = issues.length === 0;
         setValidatedCourses(prev => ({ ...prev, [item.course_id]: isOk ? 'ok' : 'error' }));
         await supabase.from("marketplace_courses").update({ is_validated: isOk } as any).eq("id", item.id);
-        if (isOk) {
-          okCount++;
-        } else {
-          errCount++;
-          failedCourses.push({ courseId: item.course_id, title: item.course?.title || "", issues });
-        }
+        return { ok: isOk, courseId: item.course_id, title: item.course?.title || "", issues };
       } catch (e) {
         console.error("Bulk validate error for", item.course_id, e);
         setValidatedCourses(prev => ({ ...prev, [item.course_id]: 'error' }));
-        errCount++;
-        failedCourses.push({ courseId: item.course_id, title: item.course?.title || "", issues: ["Ошибка проверки"] });
+        return { ok: false, courseId: item.course_id, title: item.course?.title || "", issues: ["Ошибка проверки"] };
+      }
+    };
+
+    // Process in parallel chunks of 5
+    const CHUNK_SIZE = 5;
+    for (let i = 0; i < total; i += CHUNK_SIZE) {
+      const chunk = group.courses.slice(i, i + CHUNK_SIZE);
+      setBulkValidateProgress(`${Math.min(i + CHUNK_SIZE, total)}/${total}...`);
+      const results = await Promise.all(chunk.map(validateOne));
+      for (const r of results) {
+        if (r.ok) {
+          okCount++;
+        } else {
+          errCount++;
+          failedCourses.push({ courseId: r.courseId, title: r.title, issues: r.issues });
+        }
       }
     }
 
@@ -266,7 +276,6 @@ export function AdminMarketplaceManager() {
     } else {
       toast.success(`Проверено ${total}: ✅ ${okCount} готово`);
     }
-    h.fetchData();
   };
 
 
