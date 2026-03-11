@@ -198,12 +198,39 @@ export function OrgChatsTab() {
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          {filtered.length === 0 ? (
+          {/* Admin platform chat — always first */}
+          <button
+            onClick={handleSelectAdminChat}
+            className={`w-full text-left px-4 py-3 border-b border-border/50 hover:bg-secondary/50 transition-colors ${
+              selectedAdminChat ? "bg-primary/5" : ""
+            }`}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-primary shrink-0" />
+                  <span className={`font-medium text-sm truncate ${adminUnreadCount > 0 ? "text-foreground" : "text-muted-foreground"}`}>
+                    Администрация платформы
+                  </span>
+                </div>
+                <p className="text-xs truncate mt-0.5 text-muted-foreground">
+                  Чат с поддержкой платформы
+                </p>
+              </div>
+              <div className="flex flex-col items-end gap-1 shrink-0">
+                {adminUnreadCount > 0 && (
+                  <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4 min-w-[16px] flex items-center justify-center">
+                    {adminUnreadCount}
+                  </Badge>
+                )}
+              </div>
+            </div>
+          </button>
+
+          {filtered.length === 0 && searchQuery ? (
             <div className="text-center py-12 text-muted-foreground">
               <MessageCircle className="w-10 h-10 mx-auto mb-3 opacity-50" />
-              <p className="text-sm">
-                {searchQuery ? "Ничего не найдено" : "Нет сообщений от учеников"}
-              </p>
+              <p className="text-sm">Ничего не найдено</p>
             </div>
           ) : (
             filtered.map((convo) => (
