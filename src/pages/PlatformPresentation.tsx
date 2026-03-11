@@ -791,7 +791,7 @@ export default function PlatformPresentation() {
         <ArrowLeft className="w-5 h-5" />
       </button>
       {/* Scaled slide */}
-      <div className="relative" style={{ width: 1920, height: 1080, transform: `scale(${scale})`, transformOrigin: "center center" }}>
+      <div id="slide-capture-target" className="relative" style={{ width: 1920, height: 1080, transform: `scale(${scale})`, transformOrigin: "center center" }}>
         <AnimatePresence mode="wait" custom={direction}>
           <motion.div key={current} custom={direction} variants={slideVariants}
             initial="enter" animate="center" exit="exit"
