@@ -569,48 +569,6 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
         </div>
       </div>
 
-      {/* Credentials */}
-      {credentials && (
-        <Card className={`${cardClass} border-primary/20`}>
-          <CardHeader className="pb-3">
-            <CardDescription className="flex items-center gap-1.5">
-              <div className="p-1 rounded-md bg-primary/10">
-                <KeyRound className="w-3 h-3 text-primary" />
-              </div>
-              Учётные данные организации
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="flex flex-wrap items-center gap-4">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Логин:</span>
-                <code className="text-sm font-mono bg-muted px-2 py-0.5 rounded">{credentials.login_email}</code>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
-                  navigator.clipboard.writeText(credentials.login_email);
-                  toast.success("Логин скопирован");
-                }}>
-                  <Copy className="w-3.5 h-3.5" />
-                </Button>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Пароль:</span>
-                <code className="text-sm font-mono bg-muted px-2 py-0.5 rounded">
-                  {showPassword ? credentials.login_password : "••••••••"}
-                </code>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowPassword(!showPassword)}>
-                  {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                </Button>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
-                  navigator.clipboard.writeText(credentials.login_password);
-                  toast.success("Пароль скопирован");
-                }}>
-                  <Copy className="w-3.5 h-3.5" />
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
       {(isStorageExceeded || isAiGenExceeded) && (
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
