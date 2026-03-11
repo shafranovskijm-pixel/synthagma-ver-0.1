@@ -1,18 +1,15 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## Перенос учётных данных в настройки организации (админ-панель)
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+### Что нужно сделать
+Убрать карточку «Учётные данные организации» из шапки `OrganizationDetailsView` и добавить её во вкладку «Настройки» — перед формой настроек организации.
 
-### Changes
+### Изменения в `src/components/admin/OrganizationDetailsView.tsx`
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+1. **Удалить** блок `{credentials && (...)}` (строки 572–613) — карточку с логином/паролем из шапки.
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+2. **Добавить** секцию «Учётные данные» внутрь вкладки Settings (`TabsContent value="settings"`, строка 1174), перед карточкой «Настройки организации». Блок будет аналогичный удалённому: логин с кнопкой копирования, пароль с Eye/Copy. Можно обернуть в `<Card>` с тем же стилем.
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
-
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+Состояние `credentials`, `showPassword`, `fetchCredentials` — остаются без изменений, просто UI перемещается.
 
