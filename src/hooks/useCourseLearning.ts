@@ -28,6 +28,7 @@ export interface Course {
   duration: string | null;
   sequential_lessons?: boolean;
   allow_video_seek?: boolean;
+  skip_video_identification?: boolean;
 }
 
 export interface LessonProgress {
