@@ -689,6 +689,7 @@ export default function PlatformPresentation() {
   const handleDownloadPDF = useCallback(async () => {
     setIsExporting(true);
     toast.info("Генерация PDF... Это может занять несколько секунд");
+    const originalSlide = current;
     try {
       const [html2canvasModule, jsPDFModule] = await Promise.all([
         import("html2canvas"),
@@ -699,26 +700,18 @@ export default function PlatformPresentation() {
 
       const pdf = new jsPDF({ orientation: "landscape", unit: "px", format: [1920, 1080] });
 
-      // Create off-screen container
-      const offscreen = document.createElement("div");
-      offscreen.style.cssText = "position:fixed;left:-10000px;top:0;width:1920px;height:1080px;overflow:hidden;z-index:-1;";
-      document.body.appendChild(offscreen);
-
       for (let i = 0; i < slides.length; i++) {
         if (i > 0) pdf.addPage([1920, 1080], "landscape");
 
-        const SlideComp = slides[i];
-        const slideDiv = document.createElement("div");
-        slideDiv.style.cssText = "width:1920px;height:1080px;position:relative;";
-        offscreen.appendChild(slideDiv);
+        // Navigate to slide and wait for render + animation
+        setDirection(i > (i === 0 ? 0 : i - 1) ? 1 : -1);
+        setCurrent(i);
+        await new Promise(r => setTimeout(r, 600));
 
-        // Render slide synchronously via React
-        const root = createRoot(slideDiv);
-        root.render(<SlideComp />);
-        // Wait for render
-        await new Promise(r => setTimeout(r, 200));
+        const slideEl = document.getElementById("slide-capture-target");
+        if (!slideEl) continue;
 
-        const canvas = await html2canvas(slideDiv, {
+        const canvas = await html2canvas(slideEl, {
           width: 1920,
           height: 1080,
           scale: 1,
@@ -727,21 +720,18 @@ export default function PlatformPresentation() {
         });
 
         pdf.addImage(canvas.toDataURL("image/jpeg", 0.92), "JPEG", 0, 0, 1920, 1080);
-
-        root.unmount();
-        offscreen.removeChild(slideDiv);
       }
 
-      document.body.removeChild(offscreen);
       pdf.save("СИНТАГМА_Презентация.pdf");
       toast.success("PDF успешно скачан!");
     } catch (err) {
       console.error("PDF export error:", err);
       toast.error("Ошибка при создании PDF");
     } finally {
+      setCurrent(originalSlide);
       setIsExporting(false);
     }
-  }, []);
+  }, [current]);
 
   const go = useCallback((next: number) => {
     if (next < 0 || next >= TOTAL_SLIDES) return;
