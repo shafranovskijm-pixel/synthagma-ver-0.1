@@ -271,7 +271,17 @@ export function OrgChatsTab() {
       {/* Chat detail - desktop only */}
       {!isMobile && (
         <div className="flex-1 border border-border rounded-xl bg-card overflow-hidden flex flex-col">
-          {selectedStudentId && organizationId && currentUserId ? (
+          {selectedAdminChat && organizationId && currentUserId ? (
+            <div className="flex flex-col h-full">
+              <div className="px-4 py-3 border-b border-border flex items-center gap-2">
+                <Shield className="w-5 h-5 text-primary" />
+                <h3 className="font-semibold">Администрация платформы</h3>
+              </div>
+              <div className="flex-1 p-4 overflow-hidden">
+                <AdminChatDialog organizationId={organizationId} currentUserId={currentUserId} />
+              </div>
+            </div>
+          ) : selectedStudentId && organizationId && currentUserId ? (
             <div className="flex flex-col h-full">
               <div className="px-4 py-3 border-b border-border">
                 <h3 className="font-semibold">{selectedConvo?.studentName}</h3>
