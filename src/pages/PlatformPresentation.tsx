@@ -8,8 +8,11 @@ import {
   CheckCircle2, BarChart3, Clock, Globe, Award, Lock,
   Settings, MessageSquare, ClipboardList, AlertTriangle,
   Layers, Database, RefreshCw, ChevronDown, Play, Star,
-  Target, TrendingUp, Landmark, HardHat, Factory, Flame, Waves
+  Target, TrendingUp, Landmark, HardHat, Factory, Flame, Waves,
+  Download, Loader2
 } from "lucide-react";
+import { createRoot } from "react-dom/client";
+import { toast } from "sonner";
 
 const TOTAL_SLIDES = 19;
 
@@ -679,8 +682,66 @@ export default function PlatformPresentation() {
   const [current, setCurrent] = useState(0);
   const [direction, setDirection] = useState(1);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
+
+  const handleDownloadPDF = useCallback(async () => {
+    setIsExporting(true);
+    toast.info("Генерация PDF... Это может занять несколько секунд");
+    try {
+      const [html2canvasModule, jsPDFModule] = await Promise.all([
+        import("html2canvas"),
+        import("jspdf"),
+      ]);
+      const html2canvas = html2canvasModule.default;
+      const jsPDF = jsPDFModule.jsPDF;
+
+      const pdf = new jsPDF({ orientation: "landscape", unit: "px", format: [1920, 1080] });
+
+      // Create off-screen container
+      const offscreen = document.createElement("div");
+      offscreen.style.cssText = "position:fixed;left:-10000px;top:0;width:1920px;height:1080px;overflow:hidden;z-index:-1;";
+      document.body.appendChild(offscreen);
+
+      for (let i = 0; i < slides.length; i++) {
+        if (i > 0) pdf.addPage([1920, 1080], "landscape");
+
+        const SlideComp = slides[i];
+        const slideDiv = document.createElement("div");
+        slideDiv.style.cssText = "width:1920px;height:1080px;position:relative;";
+        offscreen.appendChild(slideDiv);
+
+        // Render slide synchronously via React
+        const root = createRoot(slideDiv);
+        root.render(<SlideComp />);
+        // Wait for render
+        await new Promise(r => setTimeout(r, 200));
+
+        const canvas = await html2canvas(slideDiv, {
+          width: 1920,
+          height: 1080,
+          scale: 1,
+          useCORS: true,
+          backgroundColor: "#000",
+        });
+
+        pdf.addImage(canvas.toDataURL("image/jpeg", 0.92), "JPEG", 0, 0, 1920, 1080);
+
+        root.unmount();
+        offscreen.removeChild(slideDiv);
+      }
+
+      document.body.removeChild(offscreen);
+      pdf.save("СИНТАГМА_Презентация.pdf");
+      toast.success("PDF успешно скачан!");
+    } catch (err) {
+      console.error("PDF export error:", err);
+      toast.error("Ошибка при создании PDF");
+    } finally {
+      setIsExporting(false);
+    }
+  }, []);
 
   const go = useCallback((next: number) => {
     if (next < 0 || next >= TOTAL_SLIDES) return;
@@ -761,6 +822,11 @@ export default function PlatformPresentation() {
         <button onClick={() => go(current + 1)} disabled={current === TOTAL_SLIDES - 1}
           className="p-2 rounded-full hover:bg-white/10 disabled:opacity-30 transition-colors text-white">
           <ChevronRight className="w-5 h-5" />
+        </button>
+        <div className="w-px h-5 bg-white/20" />
+        <button onClick={handleDownloadPDF} disabled={isExporting}
+          className="p-2 rounded-full hover:bg-white/10 disabled:opacity-50 transition-colors text-white" title="Скачать PDF">
+          {isExporting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
         </button>
         <div className="w-px h-5 bg-white/20" />
         <button onClick={toggleFullscreen} className="p-2 rounded-full hover:bg-white/10 transition-colors text-white">
