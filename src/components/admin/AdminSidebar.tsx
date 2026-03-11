@@ -15,6 +15,7 @@ export type AdminTabType =
   | "sales"
   | "ai"
   | "broadcast"
+  | "chats"
   | "support"
   | "devtools"
   | "settings";
