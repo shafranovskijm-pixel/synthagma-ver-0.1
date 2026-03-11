@@ -85,9 +85,14 @@ export function OrgChatsTab() {
   };
 
   const handleSelectStudent = (studentId: string) => {
+    setSelectedAdminChat(false);
     setSelectedStudentId(studentId);
-    // Refresh unread counts after opening a chat (messages get marked as read)
     setTimeout(() => d.orgChats.refresh(), 1500);
+  };
+
+  const handleSelectAdminChat = () => {
+    setSelectedStudentId(null);
+    setSelectedAdminChat(true);
   };
 
   if (isLoading) {
