@@ -1,42 +1,18 @@
 
 
-## Проблема: видеоидентификация не блокирует доступ к курсу
+## Plan: Auto-fix after "Проверить все"
 
-### Анализ
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-Поле `skip_video_identification` хранится в таблице `courses` и загружается в студентском дашборде (`useStudentDashboard.ts`), но **нигде не проверяется для блокировки доступа к курсу**.
+### Changes
 
-Когда `skip_video_identification = false` (т.е. видеоидентификация **включена**), студент всё равно может:
-1. Кликнуть на карточку курса в дашборде
-2. Перейти на `/course/:courseId/learn`
-3. Проходить уроки без ограничений
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-Страница `CourseLearning.tsx` и хук `useCourseLearning` **не содержат ни одной проверки** на видеоидентификацию.
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-### План исправления
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-**1. `src/pages/StudentDashboard.tsx` — блокировка карточки курса**
-- При клике на курс, если `skip_video_identification === false` и `isVideoIdentified === false` — не переходить на `/course/:id/learn`, а показать тост с предложением пройти идентификацию и открыть диалог `VideoIdentification`
-- Добавить визуальный индикатор (иконка замка / бейдж) на карточку курса, требующего идентификации
-
-**2. `src/hooks/useCourseLearning.ts` — защита на уровне страницы обучения**
-- После загрузки курса проверить `skip_video_identification`
-- Если `false` — запросить `video_identifications` для текущего пользователя с `status = 'verified'`
-- Если верификации нет — показать блокирующий экран / редирект на дашборд с уведомлением
-
-**3. `src/pages/StudentDashboard.tsx` — привязка идентификации к enrollment**
-- Сейчас `isVideoIdentified` — одно глобальное значение на всего студента. Но `skip_video_identification` — свойство курса, поэтому нужно проверять **per-enrollment**: был ли студент верифицирован для конкретного enrollment. Однако текущая таблица `video_identifications` имеет опциональный `enrollment_id` — нужно проверить, привязываются ли записи к конкретным enrollment.
-
-### Упрощённый подход (рекомендуемый)
-Видеоидентификация — **одноразовая на организацию** (не на курс). Если студент прошёл идентификацию один раз, она действует для всех курсов. Поэтому:
-
-- Проверка: если **хотя бы один** курс студента требует идентификации (`skip_video_identification = false`) и студент **не идентифицирован** → блокировать доступ именно к этим курсам
-- В карточке курса: показать замок + текст «Требуется видеоидентификация»
-- В `CourseLearning`: если курс требует идентификации и студент не прошёл → редирект
-
-### Файлы для изменения
-
-1. **`src/pages/StudentDashboard.tsx`** — добавить проверку `skip_video_identification` + `isVideoIdentified` при клике на курс, визуальный индикатор замка
-2. **`src/hooks/useCourseLearning.ts`** — добавить проверку идентификации при загрузке курса, редирект если не пройдена
-3. **`src/hooks/useStudentDashboard.ts`** — убедиться, что `isVideoIdentified` корректно загружается (уже работает)
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 
