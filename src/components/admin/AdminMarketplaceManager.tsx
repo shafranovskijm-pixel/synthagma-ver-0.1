@@ -276,7 +276,6 @@ export function AdminMarketplaceManager() {
     } else {
       toast.success(`Проверено ${total}: ✅ ${okCount} готово`);
     }
-    h.fetchData();
   };
 
 
