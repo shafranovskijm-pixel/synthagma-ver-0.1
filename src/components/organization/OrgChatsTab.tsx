@@ -184,7 +184,7 @@ export function OrgChatsTab() {
   return (
     <div className="flex gap-4 h-[calc(100vh-220px)] min-h-[400px]">
       {/* Conversations list */}
-      <div className={`flex flex-col ${selectedStudentId && !isMobile ? "w-80 shrink-0" : "flex-1"} border border-border rounded-xl bg-card overflow-hidden`}>
+      <div className={`flex flex-col ${(selectedStudentId || selectedAdminChat) && !isMobile ? "w-80 shrink-0" : "flex-1"} border border-border rounded-xl bg-card overflow-hidden`}>
         <div className="p-3 border-b border-border">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
