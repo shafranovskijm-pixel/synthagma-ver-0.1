@@ -17,6 +17,7 @@ import { DevToolsPanel } from "@/components/admin/DevToolsPanel";
 import { SalesManager } from "@/components/admin/SalesManager";
 import { AISettingsManager } from "@/components/admin/AISettingsManager";
 import { BroadcastManager } from "@/components/admin/BroadcastManager";
+import { AdminChatsManager } from "@/components/admin/AdminChatsManager";
 
 const AdminDashboard = () => {
   const { user, signOut } = useAuth();
