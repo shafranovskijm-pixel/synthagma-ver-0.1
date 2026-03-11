@@ -8,19 +8,15 @@ const isPreview = window.location.hostname.includes('preview--') || window.locat
 // In preview/dev: purge any leftover SW and caches, never re-register
 // In production: register PWA service worker normally
 (async () => {
-  if (!isNative && 'serviceWorker' in navigator && isPreview) {
-    const regs = await navigator.serviceWorker.getRegistrations();
-    if (regs.length > 0) {
+  if (!isNative && isPreview) {
+    // Always clear all caches and unregister SW in preview
+    if ('caches' in window) {
+      const names = await caches.keys();
+      await Promise.all(names.map(n => caches.delete(n)));
+    }
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
       for (const reg of regs) await reg.unregister();
-      if ('caches' in window) {
-        const names = await caches.keys();
-        await Promise.all(names.map(n => caches.delete(n)));
-      }
-      if (!sessionStorage.getItem('sw-purged-preview')) {
-        sessionStorage.setItem('sw-purged-preview', '1');
-        window.location.reload();
-        return;
-      }
     }
     // Never register SW in preview
     return;
