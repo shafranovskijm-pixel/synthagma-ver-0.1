@@ -384,7 +384,21 @@ export function useCourseLearning() {
         supabase.from('enrollments').select('*').eq('course_id', courseId).eq('user_id', user!.id).maybeSingle(),
       ]);
       if (courseResult.error) throw courseResult.error;
-      setCourse(courseResult.data);
+      const courseData = courseResult.data;
+      setCourse(courseData);
+
+      // Check video identification requirement
+      if (courseData.skip_video_identification === false && user) {
+        const { data: profileData } = await supabase.from('profiles').select('organization_id').eq('user_id', user.id).maybeSingle();
+        if (profileData?.organization_id) {
+          const { data: videoId } = await supabase.from('video_identifications').select('status').eq('user_id', user.id).eq('organization_id', profileData.organization_id).in('status', ['approved', 'verified']).limit(1).maybeSingle();
+          if (!videoId) {
+            toast.error('Требуется видеоидентификация', { description: 'Пройдите видеоидентификацию перед началом курса' });
+            navigate('/student');
+            return;
+          }
+        }
+      }
       if (lessonsResult.error) throw lessonsResult.error;
       const lessonsData = lessonsResult.data || [];
       setLessons(lessonsData);
