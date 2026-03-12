@@ -1,18 +1,27 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## Исправление двух багов в тестовом редакторе
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+### Проблема 1: Кнопка «Ответы через AI» — текст не видно
+Кнопка использует `text-accent-foreground` (почти чёрный цвет `hsl(0, 0%, 5%)`) на тёмном фоне. Текст сливается с фоном.
 
-### Changes
+**Исправление**: Заменить классы кнопки на `border-primary/50 text-primary hover:bg-primary/10` — аналогично соседней кнопке «Сгенерировать вопросы с AI».
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+**Файл**: `src/components/course-builder/SortableLessonItem.tsx`, строка 384.
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+### Проблема 2: «Сгенерировать ИИ» для пояснений — ошибка Edge Function
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+Edge-функция `generate-explanation` получает `correctAnswer`, который может быть `null` (ответ не выбран). Тогда `options[null]` = `undefined`, промпт ломается и AI возвращает ошибку.
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+**Исправления**:
+1. **`generate-explanation/index.ts`**: Добавить проверку `correctAnswer` — если `null`/`undefined`, вернуть 400 с понятным сообщением «Сначала отметьте правильный ответ».
+2. **`TestQuestionEditor.tsx`** (`generateExplanation`): Перед вызовом проверять, что `correct_answer !== null && correct_answer !== undefined`. Если нет — показать toast «Сначала отметьте правильный ответ».
+
+### Файлы для изменения
+
+| Файл | Изменение |
+|---|---|
+| `src/components/course-builder/SortableLessonItem.tsx` | Исправить классы кнопки «Ответы через AI» |
+| `src/components/course-builder/TestQuestionEditor.tsx` | Проверка `correct_answer` перед вызовом генерации |
+| `supabase/functions/generate-explanation/index.ts` | Валидация `correctAnswer` на бэкенде |
 
