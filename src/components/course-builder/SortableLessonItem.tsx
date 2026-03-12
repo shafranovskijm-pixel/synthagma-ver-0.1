@@ -381,7 +381,7 @@ export function SortableLessonItem({
                     onUpdate({ questions: updated as TestQuestionLocal[] });
                   }}
                 >
-                  <Button variant="outline" size="sm" className="rounded-lg text-xs gap-1 border-accent text-accent-foreground hover:bg-accent/10">
+                  <Button variant="outline" size="sm" className="rounded-lg text-xs gap-1 border-primary/50 text-primary hover:bg-primary/10">
                     <Bot className="w-3 h-3" />Ответы через AI
                   </Button>
                 </TestAnswersDialog>

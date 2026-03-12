@@ -312,6 +312,11 @@ export const TestQuestionEditor = forwardRef<TestQuestionEditorRef, TestQuestion
       return;
     }
 
+    if (question.correct_answer === null || question.correct_answer === undefined) {
+      toast.error("Сначала отметьте правильный ответ");
+      return;
+    }
+
     setGeneratingExplanationId(questionId);
 
     try {
