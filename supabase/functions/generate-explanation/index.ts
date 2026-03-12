@@ -38,6 +38,13 @@ serve(async (req) => {
     }
 
     const { question, options, correctAnswer } = await req.json();
+
+    if (correctAnswer === null || correctAnswer === undefined) {
+      return new Response(
+        JSON.stringify({ error: "Сначала отметьте правильный ответ" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
