@@ -1,24 +1,48 @@
 
 
-## План: Назначить курсы по ОТ, ПБ и медицине в соответствующие категории
+## План: Распределить курсы по типам программ на основе `parent_type`
 
 ### Проблема
-У маркетплейс-организации нет категорий под вкладкой «Охрана труда / Пожарная безопасность». 27 курсов (первая помощь, охрана труда, пожарная безопасность, техника безопасности) остаются без категории.
+В магазине организации и студента все подкатегории и курсы попадают в «Повышение квалификации», потому что `parent_type` не запрашивается из БД и не используется при группировке.
 
-### Решение — SQL миграция
+### Решение
 
-Одна миграция, которая:
+Одинаковое исправление в двух файлах: **`src/hooks/useCourseStoreManager.ts`** и **`src/components/student/StudentCourseStore.tsx`**:
 
-1. **Создаст 3 категории** для маркетплейс-организации с `parent_type = 'Охрана труда / Пожарная безопасность'`:
-   - «Охрана труда» (order_index 0)
-   - «Пожарная безопасность» (order_index 1)
-   - «Медицина» (order_index 2)
+1. **Добавить `parent_type` в select и state**:
+   - `select("id, name, order_index, parent_type")` вместо `select("id, name, order_index")`
+   - Обновить тип state: добавить `parent_type: string | null`
 
-2. **Назначит category_id** всем курсам маркетплейса, у которых `category_id IS NULL`:
-   - Курсы с `охрана труда`, `безопасные условия`, `техники безопасности` в названии → «Охрана труда»
-   - Курсы с `пожарн`, `противопожарн` → «Пожарная безопасность»
-   - Курсы с `первая помощь`, `оказани% помощ`, `медицин`, `санитарн` → «Медицина»
+2. **Переписать `groupedCatalog`** — распределить subGroups по `parent_type`:
+   ```typescript
+   const programTypes = [
+     { category: "Повышение квалификации", badge: "ДПО" },
+     { category: "Профессиональная переподготовка", badge: "ДПО" },
+     { category: "Охрана труда / Пожарная безопасность", badge: "ОТ / ПБ" },
+     { category: "Рабочие профессии", badge: "ПО" },
+   ];
+
+   return programTypes.map(pt => {
+     const ptCategories = dbCategories.filter(
+       cat => (cat.parent_type || "Повышение квалификации") === pt.category
+     );
+     const subGroups = ptCategories.map(cat => ({
+       category: cat.name,
+       courses: byCatId.get(cat.id) || [],
+     }));
+     const courses = subGroups.flatMap(g => g.courses);
+     // Некатегоризированные — в «Повышение квалификации»
+     if (pt.category === "Повышение квалификации") {
+       courses.push(...uncategorized);
+     }
+     return { ...pt, courses, subGroups };
+   });
+   ```
 
 ### Файлы
-Изменений в коде не требуется — ключевые слова уже настроены в `useAdminMarketplace.ts`. Нужна только SQL миграция для создания категорий и назначения курсов.
+
+| Файл | Изменение |
+|---|---|
+| `src/hooks/useCourseStoreManager.ts` | Добавить `parent_type` в fetch и group по parent_type |
+| `src/components/student/StudentCourseStore.tsx` | То же самое |
 
