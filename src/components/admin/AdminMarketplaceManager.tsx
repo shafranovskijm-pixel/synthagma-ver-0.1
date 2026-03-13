@@ -689,6 +689,7 @@ export function AdminMarketplaceManager() {
       }
 
       if (lessonsNeedingMedia.length > 0) {
+        let enrichedLessons = 0;
         toast.loading(`Обогащаю медиа: 0/${lessonsNeedingMedia.length}...`, { id: toastId });
         let enrichedCount = 0;
         for (let ei = 0; ei < lessonsNeedingMedia.length; ei += CONCURRENCY) {
