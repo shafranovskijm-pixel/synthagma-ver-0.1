@@ -1,38 +1,18 @@
 
 
-## Проблема
+## Plan: Auto-fix after "Проверить все"
 
-Текущий round-robin в `callAIWithTools` (строки 714-751) строит 4 канала: **[Lovable AI, GigaChat-0, GigaChat-1, GigaChat-2]**. При `taskIndex % 4`:
-- task 0 → Lovable AI
-- task 1 → GigaChat-0  
-- task 2 → GigaChat-1
-- task 3 → GigaChat-2
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-Это значит, что GigaChat-2 (3-й ключ) получает только каждый 4-й запрос, а Lovable AI забирает 25% нагрузки. Пользователь хочет **только 3 потока GigaChat**, без Lovable AI.
+### Changes
 
-## План
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-### 1. `_shared/gigachat-client.ts` — убрать Lovable AI из round-robin
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-Строки 714-733: убрать Lovable AI из массива `channels`. Каналы будут **только** GigaChat slot-0, slot-1, slot-2. `taskIndex % 3` обеспечит равномерное распределение.
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-```text
-channels = [
-  GigaChat slot-0,  ← taskIndex 0, 3, 6, ...
-  GigaChat slot-1,  ← taskIndex 1, 4, 7, ...
-  GigaChat slot-2,  ← taskIndex 2, 5, 8, ...
-]
-```
-
-Lovable AI останется как fallback — если все 3 слота GigaChat упадут, тогда попробовать Lovable AI последним.
-
-### 2. `BulkContentGenerator.tsx` — батч строго по 3
-
-Убедиться что `PARALLEL_BATCH_SIZE = 3` (уже так) и что `taskIndex` передаётся корректно для каждого урока в батче.
-
-### Файлы для изменения
-
-| Файл | Изменение |
-|---|---|
-| `supabase/functions/_shared/gigachat-client.ts` | Убрать Lovable AI из основных каналов, оставить только 3 слота GigaChat. Lovable AI — последний fallback |
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 
