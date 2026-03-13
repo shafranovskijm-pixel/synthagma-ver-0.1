@@ -38,10 +38,13 @@ serve(async (req) => {
     }
 
     // Role check
-    const { data: roleData } = await supabase
-      .from("user_roles").select("role").eq("user_id", user.id).single();
-    if (!roleData || (roleData.role !== "organization" && roleData.role !== "admin")) {
-      return new Response(JSON.stringify({ error: "Insufficient permissions" }), {
+    const { data: roleData, error: roleError } = await supabase
+      .from("user_roles").select("role").eq("user_id", user.id).maybeSingle();
+    
+    console.log("Role check for user", user.id, ":", JSON.stringify(roleData), "error:", roleError?.message);
+    
+    if (roleError || !roleData || (roleData.role !== "organization" && roleData.role !== "admin")) {
+      return new Response(JSON.stringify({ error: "Insufficient permissions", detail: roleError?.message || "no matching role" }), {
         status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
