@@ -601,6 +601,7 @@ export function AdminMarketplaceManager() {
                 courseTitle,
                 lessonTitle: lesson.title,
                 existingContent: null,
+                ...(aiPrompts.content ? { customSystemPrompt: aiPrompts.content } : {}),
               },
             });
             if (error) throw error;
