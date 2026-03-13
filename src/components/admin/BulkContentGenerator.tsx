@@ -275,6 +275,8 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
               previousLessons: previousLessonTitles,
               taskIndex,
               lessonIndex: lesson.order_index,
+              ai_provider: aiProvider,
+              ...(aiProvider === "gigachat" && gigachatModel ? { gigachat_model: gigachatModel } : {}),
             },
           });
           if (textError) throw new Error(textError.message || "Ошибка генерации текста");
