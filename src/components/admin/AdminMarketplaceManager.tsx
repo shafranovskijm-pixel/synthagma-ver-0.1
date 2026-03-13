@@ -736,6 +736,9 @@ export function AdminMarketplaceManager() {
           <TabsTrigger value="create" className="flex items-center gap-2">
             <Plus className="w-4 h-4" />Создать курс
           </TabsTrigger>
+          <TabsTrigger value="pipeline" className="flex items-center gap-2">
+            <Zap className="w-4 h-4" />Конвейер
+          </TabsTrigger>
           <TabsTrigger value="import" className="flex items-center gap-2">
             <Upload className="w-4 h-4" />Импорт
           </TabsTrigger>
