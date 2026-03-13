@@ -221,6 +221,38 @@ export function useCourseBuilder() {
                   supabase.from("lessons").update({ content: json }).eq("id", l.id);
                 }
               }
+              // Self-healing: detect raw :::markers inside paragraph blocks and convert them
+              if (blocks.length > 0) {
+                let healed = false;
+                blocks = blocks.flatMap((b): ContentBlock[] => {
+                  if (b.type !== "paragraph") return [b];
+                  const markerMatch = b.content.match(/^:::(info|warning|tip|danger|highlight|accordion)\s*(.*?)(?::::\s*)?$/i);
+                  if (markerMatch) {
+                    healed = true;
+                    const markerType = markerMatch[1].toLowerCase();
+                    const content = (markerMatch[2] || "").replace(/:::?\s*$/, "").trim();
+                    const blockType = markerType === "highlight" ? "highlight"
+                      : markerType === "accordion" ? "accordion"
+                      : `callout-${markerType}`;
+                    return [{ ...b, type: blockType as ContentBlock['type'], content }];
+                  }
+                  // Check if paragraph contains embedded ::: markers mid-text
+                  if (/:::(info|warning|tip|danger|highlight|accordion)/i.test(b.content)) {
+                    healed = true;
+                    // Strip raw markers from the text
+                    const cleaned = b.content
+                      .replace(/:::(info|warning|tip|danger|highlight|accordion)\s*/gi, "")
+                      .replace(/:::\s*/g, "").trim();
+                    if (!cleaned) return [];
+                    return [{ ...b, content: cleaned }];
+                  }
+                  return [b];
+                });
+                if (healed) {
+                  const json = blocksToJson(blocks);
+                  supabase.from("lessons").update({ content: json }).eq("id", l.id);
+                }
+              }
             }
             return {
               id: l.id, type: l.type as LessonType, title: l.title, content: l.content || "",

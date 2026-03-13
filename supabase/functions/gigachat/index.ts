@@ -154,7 +154,14 @@ serve(async (req) => {
 9. ЗАПРЕЩЕНО использовать LaTeX формулы ($...$, $$...$$). Пиши формулы и расчёты простым текстом: «V = 100 м³», «F = m × a».
 10. Используй ## для заголовков разделов и ### для подзаголовков. Они будут корректно отображены.${contextNote}`;
       }
-      const systemPrompt = customSystemPrompt ? (customSystemPrompt + contextNote) : defaultContentPrompt;
+      const formatGuardrails = `\n\nОБЯЗАТЕЛЬНЫЕ ПРАВИЛА ФОРМАТИРОВАНИЯ (не игнорировать):
+- ЗАПРЕЩЕНО использовать LaTeX ($...$, $$...$$). Формулы пиши текстом: «V = 100 м³».
+- Маркеры :::warning, :::info, :::tip, :::danger — КАЖДЫЙ на ОТДЕЛЬНОЙ строке. НЕ пиши «:::warning текст :::» в одну строку.
+- Используй ## и ### для заголовков.
+- НЕ начинай с мета-фраз («Отлично!», «Конечно!», «Подготовлю...»).`;
+      const systemPrompt = customSystemPrompt
+        ? (customSystemPrompt + formatGuardrails + contextNote)
+        : defaultContentPrompt;
 
       const userPrompt = lessonType === "practice"
         ? `Создай практическое задание (кейс) для урока "${lessonTitle}" курса "${courseTitle}"`
