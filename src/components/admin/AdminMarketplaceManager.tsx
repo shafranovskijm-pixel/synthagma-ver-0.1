@@ -750,19 +750,21 @@ export function AdminMarketplaceManager() {
           </TabsTrigger>
         </TabsList>
 
+        {/* Pipeline */}
+        <TabsContent value="pipeline" className="space-y-4">
+          <BulkPipelineWidget
+            courses={h.courses.filter((c: any) => !c.is_validated)}
+            readyCourses={h.courses.filter((c: any) => c.is_validated === true)}
+            allCourses={h.courses}
+            onComplete={() => h.fetchData()}
+          />
+        </TabsContent>
+
         {/* Catalog */}
         <TabsContent value="catalog" className="space-y-4">
-          {/* Pipeline widget */}
+          {/* Tools */}
           <Card className="shadow-sm">
-            <CardContent className="p-4 space-y-3">
-              <div className="flex items-center gap-2 flex-wrap">
-                <BulkPipelineWidget
-                  courses={h.courses.filter((c: any) => !c.is_validated)}
-                  readyCourses={h.courses.filter((c: any) => c.is_validated === true)}
-                  allCourses={h.courses}
-                  onComplete={() => h.fetchData()}
-                />
-              </div>
+            <CardContent className="p-4">
               <Collapsible>
                 <CollapsibleTrigger className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
                   <ChevronDown className="w-3 h-3 transition-transform group-data-[state=closed]:-rotate-90" />
