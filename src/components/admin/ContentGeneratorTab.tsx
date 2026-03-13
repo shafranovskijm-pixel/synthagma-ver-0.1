@@ -290,9 +290,10 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
     courseId: string,
     courseTitle: string,
     onProgress: () => void,
+    streamIndex: number,
   ) => {
     for (const lesson of lessons) {
-      await processLesson(lesson, courseId, courseTitle, onProgress);
+      await processLesson(lesson, courseId, courseTitle, onProgress, streamIndex);
     }
   };
 
