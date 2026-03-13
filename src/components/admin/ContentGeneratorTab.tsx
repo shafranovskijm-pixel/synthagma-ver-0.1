@@ -198,8 +198,8 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
           course_id: courseId, course_title: courseTitle,
           action: "content", details: `Поток ${streamIndex}: контент «${lesson.title}»`, items_count: 1,
           stream_index: streamIndex, duration_ms: contentDuration,
-        } as any);
-        if (histErr) console.error("History insert error (content):", histErr);
+        });
+        if (histErr) console.warn("⚠️ History insert error (content):", histErr, { courseId, courseTitle, streamIndex });
       }
       await delay(500);
     }
