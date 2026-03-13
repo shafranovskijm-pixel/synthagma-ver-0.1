@@ -36,7 +36,23 @@ function markdownToBlocks(md: string): ContentBlock[] {
     const line = lines[i];
     if (!line.trim()) { i++; continue; }
 
-    // ::: callout / highlight / accordion markers
+    // ::: inline format: :::type text :::
+    const inlineMarkerMatch = line.match(/^:::(info|warning|tip|danger|highlight|accordion)\s+(.+?)\s*:::?\s*$/i);
+    if (inlineMarkerMatch) {
+      const markerType = inlineMarkerMatch[1].toLowerCase();
+      const content = inlineMarkerMatch[2].trim();
+      const blockType = markerType === "highlight" ? "highlight"
+        : markerType === "accordion" ? "accordion"
+        : `callout-${markerType}`;
+      const block: any = { id: mkId(), type: blockType, content };
+      if (markerType === "accordion" && content) {
+        block.accordionTitle = content.split("\n")[0];
+      }
+      blocks.push(block);
+      i++; continue;
+    }
+
+    // ::: multiline format
     const markerMatch = line.match(/^:::(info|warning|tip|danger|highlight|accordion)\s*(.*)?$/i);
     if (markerMatch) {
       const markerType = markerMatch[1].toLowerCase();
@@ -47,7 +63,7 @@ function markdownToBlocks(md: string): ContentBlock[] {
         bodyLines.push(lines[i]);
         i++;
       }
-      if (i < lines.length) i++; // skip closing :::
+      if (i < lines.length) i++;
       const blockType = markerType === "highlight" ? "highlight"
         : markerType === "accordion" ? "accordion"
         : `callout-${markerType}`;
@@ -59,6 +75,10 @@ function markdownToBlocks(md: string): ContentBlock[] {
       continue;
     }
 
+    if (/^###+ /.test(line)) {
+      blocks.push({ id: mkId(), type: "heading2", content: line.replace(/^#{3,}\s+/, "").trim() });
+      i++; continue;
+    }
     if (/^## /.test(line)) {
       blocks.push({ id: mkId(), type: "heading2", content: line.replace(/^## /, "").trim() });
       i++; continue;
@@ -103,7 +123,7 @@ function markdownToBlocks(md: string): ContentBlock[] {
     const paraLines: string[] = [];
     while (
       i < lines.length && lines[i].trim() &&
-      !/^#{1,2}\s/.test(lines[i]) && !/^>\s?/.test(lines[i]) &&
+      !/^#{1,6}\s/.test(lines[i]) && !/^>\s?/.test(lines[i]) &&
       !/^[-*]\s/.test(lines[i]) && !/^\d+\.\s/.test(lines[i]) &&
       !/^[-*_]{3,}\s*$/.test(lines[i]) &&
       !/^:::(info|warning|tip|danger|highlight|accordion)/i.test(lines[i]) &&
@@ -114,6 +134,8 @@ function markdownToBlocks(md: string): ContentBlock[] {
     }
     if (paraLines.length) {
       let html = paraLines.join(" ")
+        .replace(/\$\$(.+?)\$\$/g, "$1")
+        .replace(/\$([^$]+?)\$/g, "$1")
         .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
         .replace(/\*(.+?)\*/g, "<em>$1</em>");
       blocks.push({ id: mkId(), type: "paragraph", content: html });

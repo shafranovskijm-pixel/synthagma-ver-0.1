@@ -1,73 +1,18 @@
 
 
-## Проблема: три критических бага в генерации контента
+## Plan: Auto-fix after "Проверить все"
 
-### Диагностика
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-На основе скриншотов и анализа кода обнаружены три проблемы:
+### Changes
 
-**1. Нет изображений/слайдшоу** — edge-функция `analyze_visuals` существует в `gigachat/index.ts` (строка 219), но `generate-image` не вызывается. Скорее всего, `analyze_visuals` возвращает пустой `visuals` массив или `parseError: true`, и код на строке 568 выходит: `if (analysisErr || !analysisData?.visuals || analysisData.visuals.length === 0) return;`. Также `generateHeroImage` (строка 180) вызывает `generate-image` с `provider: "gigachat"`, но судя по отсутствию логов в edge function `generate-image` — вызов не доходит или молча падает.
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-**2. `### ` заголовки не парсятся** — `markdownToBlocks` (строка 2502-2509) обрабатывает `## ` и `# `, но **не `### `**. Три решетки `###` не совпадают ни с `^## `, ни с `^# ` (после `###` идет пробел, не после первого/второго `#`). В результате `### Heading` становится частью параграфа → текст идет сплошным блоком.
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-**3. Сырые маркеры в тексте** — AI генерирует `:::warning **Внимание:**` и `:::info **Справочная информация:**` **inline** (на одной строке с содержимым), а `markdownToBlocks` ожидает формат:
-```
-:::warning
-текст
-:::
-```
-Также AI вставляет LaTeX формулы (`$V = 100$`, `$$...$$`) и `---` горизонтальные разделители внутри текста, которые парсер не обрабатывает.
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-### План исправлений
-
-#### 1. `markdownToBlocks` — поддержка `### ` заголовков
-
-**Файл**: `src/components/course-builder/BlockEditor.tsx` (строки 2501-2509)
-
-Добавить обработку `### ` перед `## `:
-```
-if (/^### /.test(line)) → heading2
-if (/^## /.test(line)) → heading2
-if (/^# /.test(line)) → heading1
-```
-
-#### 2. `markdownToBlocks` — обработка inline-маркеров `:::`
-
-**Файл**: `src/components/course-builder/BlockEditor.tsx` (строки 2478-2498)
-
-Сейчас regex: `^:::(type)\s*(.*)?$` — находит маркер и собирает тело до `^:::\s*$`. Но AI часто пишет всё на одной строке: `:::warning **Внимание:** текст. :::`. Добавить:
-- Обработку **inline** формата: `:::type текст :::` (открытие и закрытие на одной строке)
-- Обработку формата `:::type текст` (маркер + содержимое без закрывающего `:::` — берем текст после маркера как content)
-
-#### 3. `markdownToBlocks` — удаление LaTeX и `---` артефактов
-
-**Файл**: `src/components/course-builder/BlockEditor.tsx`
-
-- Очистка `$...$` и `$$...$$` — извлечь текст внутри или убрать формулу
-- `---` на отдельной строке уже обрабатывается как divider (строка 2545), но `---` внутри текста вместе с `### ` (как `--- ### Заголовок`) — нет. Добавить предварительную нормализацию: разделять `---` + заголовок на отдельные строки.
-
-#### 4. Промпт — запретить LaTeX и inline `:::`
-
-**Файл**: `supabase/functions/gigachat/index.ts` (строки 133-149)
-
-В системный промпт `generate_content` добавить правила:
-- «ЗАПРЕЩЕНО использовать LaTeX формулы ($...$, $$...$$). Пиши формулы простым текстом.»
-- «Каждый маркер `:::type` должен быть на ОТДЕЛЬНОЙ строке. Открывающий `:::type` и закрывающий `:::` — каждый на своей строке. НЕ пиши `:::type текст :::` в одну строку.»
-- «Используй `### ` для подзаголовков — это будет корректно отображено.»
-
-#### 5. Отладка enrichment — добавить логирование
-
-**Файл**: `src/components/admin/ContentGeneratorTab.tsx` (строки 555-568)
-
-Добавить `console.log` перед `return` на строке 568 чтобы видеть причину пропуска enrichment:
-- Логировать `analysisErr`, `analysisData` для диагностики
-
-### Файлы для изменения
-
-| Файл | Что меняется |
-|---|---|
-| `src/components/course-builder/BlockEditor.tsx` | `markdownToBlocks`: поддержка `###`, inline `:::`, очистка LaTeX |
-| `supabase/functions/gigachat/index.ts` | Промпт: запрет LaTeX, правила форматирования `:::` маркеров |
-| `supabase/functions/convert-lesson-content/index.ts` | Аналогичные правки парсера (серверная копия) |
-| `src/components/admin/ContentGeneratorTab.tsx` | Диагностическое логирование enrichment |
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 

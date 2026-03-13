@@ -565,7 +565,10 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
               },
             });
 
-            if (analysisErr || !analysisData?.visuals || analysisData.visuals.length === 0) return;
+            if (analysisErr || !analysisData?.visuals || analysisData.visuals.length === 0) {
+              console.warn(`[Enrichment] Skip "${lesson.title}": err=${analysisErr?.message || "none"}, visuals=${JSON.stringify(analysisData?.visuals || null)}, raw=${analysisData?.raw?.slice(0, 200) || "none"}, parseError=${analysisData?.parseError}`);
+              return;
+            }
 
             const visuals = analysisData.visuals as Array<{
               prompt: string;
