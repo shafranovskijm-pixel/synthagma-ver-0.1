@@ -258,6 +258,7 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
                       ai_provider: aiProvider,
                       gigachat_model: gigachatModel,
                       lovable_model: lovableModel,
+                      stream_index: i % 3,
                     },
                   }),
                   AI_CALL_TIMEOUT, "generate_answers"
@@ -344,6 +345,7 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
                     ai_provider: aiProvider,
                     gigachat_model: gigachatModel,
                     lovable_model: lovableModel,
+                    stream_index: i % 3,
                   },
                 }),
                 AI_CALL_TIMEOUT, "verify_answers"
@@ -398,6 +400,7 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
               ai_provider: aiProvider,
               gigachat_model: gigachatModel,
               lovable_model: lovableModel,
+              stream_index: 0,
             },
           }),
           AI_CALL_TIMEOUT, "generate_structure"
@@ -493,7 +496,7 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
           // ── Step D: Fallback to AI generation ──
           const { data, error } = await withTimeout(
             safeInvoke<any>("gigachat", {
-              body: { action: "generate_content", courseTitle, lessonTitle: lesson.title, existingContent: null, customSystemPrompt: currentPrompts.content || undefined, ai_provider: aiProvider, gigachat_model: gigachatModel, lovable_model: lovableModel },
+              body: { action: "generate_content", courseTitle, lessonTitle: lesson.title, existingContent: null, customSystemPrompt: currentPrompts.content || undefined, ai_provider: aiProvider, gigachat_model: gigachatModel, lovable_model: lovableModel, stream_index: i % 3 },
             }),
             AI_CALL_TIMEOUT, "generate_content"
           );
