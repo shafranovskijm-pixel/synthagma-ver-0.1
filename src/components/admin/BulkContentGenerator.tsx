@@ -327,14 +327,16 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
       if (!hasImage) {
         updateLesson(lesson.id, { status: "generating_image" });
         try {
-          const { data: imgData } = await supabase.functions.invoke("generate-image", {
+          const { data: imgData, error: imgError } = await supabase.functions.invoke("generate-image", {
             body: {
               prompt: `Образовательная иллюстрация для урока "${lesson.title}". Профессиональная, чистая, подходящая для онлайн-курса.`,
               provider: "gigachat",
               slotIndex: taskIndex,
             },
           });
-          if (imgData?.url) {
+          if (imgError) {
+            console.error(`Image generation error for "${lesson.title}":`, imgError);
+          } else if (imgData?.url) {
             blocks.unshift({
               id: crypto.randomUUID(),
               type: "image",
@@ -342,9 +344,11 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
               imageSrc: imgData.url,
             });
             changed = true;
+          } else {
+            console.error(`Image generation returned no URL for "${lesson.title}":`, JSON.stringify(imgData));
           }
         } catch (e) {
-          console.warn("Image generation failed for", lesson.title, e);
+          console.error(`Image generation exception for "${lesson.title}":`, e);
         }
       }
 
