@@ -1379,6 +1379,44 @@ export type Database = {
           },
         ]
       }
+      generation_history: {
+        Row: {
+          action: string
+          course_id: string | null
+          course_title: string
+          created_at: string | null
+          details: string | null
+          id: string
+          items_count: number | null
+        }
+        Insert: {
+          action: string
+          course_id?: string | null
+          course_title: string
+          created_at?: string | null
+          details?: string | null
+          id?: string
+          items_count?: number | null
+        }
+        Update: {
+          action?: string
+          course_id?: string | null
+          course_title?: string
+          created_at?: string | null
+          details?: string | null
+          id?: string
+          items_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generation_history_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       journal_entries: {
         Row: {
           created_at: string
