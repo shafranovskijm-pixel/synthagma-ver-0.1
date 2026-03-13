@@ -330,11 +330,20 @@ export function useAdminMarketplace() {
     ...customCategories.filter(c => !dbCategories.some(d => d.name === c)),
   ];
 
-  // Group courses by DB category_id, ordered by dbCategories order_index
-  const EXCLUDED_FROM_RTN = ["Охрана труда при работах на высоте"];
+  const filteredCourses = courses.filter(c => {
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      if (!c.course?.title.toLowerCase().includes(q) && !c.organization?.name?.toLowerCase().includes(q)) return false;
+    }
+    if (selectedCategory !== "all") {
+      const catName = getCategoryName(c);
+      if (catName !== selectedCategory) return false;
+    }
+    return true;
+  });
 
+  // Group courses by DB category_id, ordered by dbCategories order_index
   const groupedCourses: { category: string; categoryId?: string; courses: MarketplaceCourseWithDetails[]; status?: 'ready' | 'progress'; subGroups?: { category: string; courses: MarketplaceCourseWithDetails[] }[] }[] = (() => {
-    // Group by category_id
     const byCatId = new Map<string, MarketplaceCourseWithDetails[]>();
     const uncategorized: MarketplaceCourseWithDetails[] = [];
 
@@ -350,26 +359,17 @@ export function useAdminMarketplace() {
 
     const result: typeof groupedCourses = [];
 
-    // Add categories in order_index order
     for (const dbCat of dbCategories) {
-      const catCourses = byCatId.get(dbCat.id);
-      if (!catCourses || catCourses.length === 0) {
-        // Still show empty categories
-        result.push({ category: dbCat.name, categoryId: dbCat.id, courses: [], status: 'ready' });
-        continue;
-      }
-      
+      const catCourses = byCatId.get(dbCat.id) || [];
       const ready = catCourses.filter(c => (c as any).is_validated === true);
       const progress = catCourses.filter(c => (c as any).is_validated !== true);
 
-      if (ready.length > 0 || progress.length > 0) {
-        result.push({
-          category: dbCat.name,
-          categoryId: dbCat.id,
-          courses: catCourses,
-          status: ready.length > 0 ? 'ready' : 'progress',
-        });
-      }
+      result.push({
+        category: dbCat.name,
+        categoryId: dbCat.id,
+        courses: catCourses,
+        status: ready.length > 0 ? 'ready' : 'progress',
+      });
     }
 
     if (uncategorized.length > 0) {
@@ -378,18 +378,6 @@ export function useAdminMarketplace() {
 
     return result;
   })();
-
-  const filteredCourses = courses.filter(c => {
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      if (!c.course?.title.toLowerCase().includes(q) && !c.organization?.name?.toLowerCase().includes(q)) return false;
-    }
-    if (selectedCategory !== "all") {
-      const catName = getCategoryName(c);
-      if (catName !== selectedCategory) return false;
-    }
-    return true;
-  });
 
   const handleCreateCategory = (name: string) => {
     const trimmed = name.trim();
