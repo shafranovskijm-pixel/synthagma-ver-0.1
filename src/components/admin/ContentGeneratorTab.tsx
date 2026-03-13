@@ -218,6 +218,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
             lessonTitle: lesson.title,
             questionsCount: 10,
             ai_provider: aiProvider,
+            stream_index: streamIndex,
             ...(aiProvider === "gigachat" ? { gigachat_model: gigachatModel } : { lovable_model: lovableModel }),
           },
         });
