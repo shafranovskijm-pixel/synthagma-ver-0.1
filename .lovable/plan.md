@@ -1,49 +1,18 @@
 
 
-## Диагностика проблемы
+## Plan: Auto-fix after "Проверить все"
 
-Найдены три корневые проблемы:
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-### 1. Категория «Рабочие профессии» не была создана
-В БД **нет** категории с `parent_type = "Рабочие профессии"`. Импортёр пытался создать её, но, вероятно, столкнулся с ошибкой (отсутствие нужного `parent_type` в constraints или дупликация). В результате — 53 курса без категории (`category_id = NULL`), включая все рабочие профессии.
+### Changes
 
-### 2. Дупликаты категорий «Охрана труда» (×4) и «Пожарная безопасность» (×2)
-В БД 4 записи «Охрана труда» и 2 «Пожарная безопасность». Импортёр при поиске через `catMap.set(name.toLowerCase(), id)` перезаписывает на последнюю — остальные «теряются», курсы привязываются к разным id хаотично.
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-### 3. Неправильная классификация: «Маляр строительный» и «Слесарь строительный»
-Эти курсы были отнесены к категории «Строительный контроль» (видимо, fuzzy-match по слову «строительный»). По факту это рабочие профессии.
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-### 4. Ошибки отображались без деталей
-Три ошибки при импорте не показали конкретную причину — нет вывода `reason` в UI для каждой.
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
----
-
-## План исправления
-
-### 1. Исправить `ProgramListImporter.tsx`
-
-**Классификация**: заменить деdup по `catMap.set(name.toLowerCase())` на поиск по `name + parent_type` — чтобы корректно работать с дупликатами категорий.
-
-**Создание категории «Рабочие профессии»**: убедиться, что при отсутствии — создаётся с `parent_type: "Рабочие профессии"`.
-
-**Маляр/Слесарь строительный**: в `knownPrograms` они уже помечены `category: "Рабочие профессии"` — проблема в том, что при повторном запуске (когда курс уже существовал) `category_id` обновлялся на `catMap.get("рабочие профессии")` = null (т.к. категория не создалась). Исправление: создавать категорию **до** привязки.
-
-**Ошибки**: в блоке отчёта — показывать `reason` текстом.
-
-### 2. Фикс 53 осиротевших курсов
-
-Добавить в `handleCreateAll` шаг «назначить category_id для курсов без категории»: пройтись по `knownPrograms`, найти совпадения и проставить.
-
-### 3. Удалить дупликаты категорий
-
-Для «Охрана труда»: оставить одну, перенести курсы, удалить остальные.  
-Для «Пожарная безопасность»: аналогично.
-
-Это лучше сделать через миграцию или отдельную кнопку «Дедупликация категорий» в импортёре.
-
-### Файлы
-
-| Файл | Действие |
-|---|---|
-| `src/components/admin/ProgramListImporter.tsx` | Исправить логику: category lookup по name+parent_type, создание «Рабочие профессии», назначение осиротевших курсов, деdup категорий, показ ошибок |
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 

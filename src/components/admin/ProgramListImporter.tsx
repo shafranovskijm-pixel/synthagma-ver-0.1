@@ -194,7 +194,7 @@ export function ProgramListImporter({ onComplete }: ProgramListImporterProps) {
     const result: ImportResult = { created: 0, skipped: 0, errors: [] };
 
     try {
-      // 1. Fetch existing categories
+      // 1. Fetch existing categories — use name+parent_type composite key to avoid overwrites
       const { data: dbCats, error: catFetchErr } = await supabase
         .from("course_categories")
         .select("id, name, parent_type")
@@ -204,9 +204,13 @@ export function ProgramListImporter({ onComplete }: ProgramListImporterProps) {
         throw new Error(`Не удалось загрузить категории: ${catFetchErr.message}`);
       }
 
+      // Map by lowercase name → first matching ID (skip duplicates)
       const catMap = new Map<string, string>();
       for (const c of dbCats || []) {
-        catMap.set(c.name.toLowerCase(), c.id);
+        const key = c.name.toLowerCase();
+        if (!catMap.has(key)) {
+          catMap.set(key, c.id);
+        }
       }
 
       // 2. Auto-create missing categories with correct parent_type
@@ -215,6 +219,8 @@ export function ProgramListImporter({ onComplete }: ProgramListImporterProps) {
         if (!catMap.has(catName.toLowerCase())) {
           const hours = Math.max(...programs.filter(p => p.category === catName).map(p => parseInt(p.hours) || 0));
           const parentType = getParentType(catName, hours);
+
+          console.log(`Creating category "${catName}" with parent_type="${parentType}"`);
 
           const { data: newCat, error: catErr } = await supabase
             .from("course_categories")
@@ -234,7 +240,33 @@ export function ProgramListImporter({ onComplete }: ProgramListImporterProps) {
           }
           if (newCat) {
             catMap.set(newCat.name.toLowerCase(), newCat.id);
+            console.log(`Category "${catName}" created with id=${newCat.id}`);
           }
+        }
+      }
+
+      // 2b. Orphan fix: assign category_id to existing courses that match knownPrograms but have null category
+      const { data: orphanCourses } = await supabase
+        .from("courses")
+        .select("id, title")
+        .eq("organization_id", MARKETPLACE_ORG_ID)
+        .is("category_id", null);
+
+      if (orphanCourses && orphanCourses.length > 0) {
+        let orphansFixed = 0;
+        for (const orphan of orphanCourses) {
+          const normOrphan = normalizeTitle(orphan.title);
+          const matchedProg = knownPrograms.find(p => normalizeTitle(p.title) === normOrphan);
+          if (matchedProg) {
+            const catId = catMap.get(matchedProg.category.toLowerCase());
+            if (catId) {
+              await supabase.from("courses").update({ category_id: catId }).eq("id", orphan.id);
+              orphansFixed++;
+            }
+          }
+        }
+        if (orphansFixed > 0) {
+          console.log(`Fixed ${orphansFixed} orphaned courses`);
         }
       }
 
