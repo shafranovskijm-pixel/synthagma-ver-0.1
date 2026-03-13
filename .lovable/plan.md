@@ -1,46 +1,18 @@
 
 
-## План: Маркетплейс-каталог = визуальная копия магазина курсов
+## Plan: Auto-fix after "Проверить все"
 
-### Проблема
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-Сейчас два разных UI:
-- **Магазин курсов** (`CourseStoreManager`): вложенные аккордеоны с иконками в цветных кругах, бейджами «ДПО», «ОТ/ПБ», счётчиками курсов, информационным баннером
-- **Админ-маркетплейс** (`AdminMarketplaceManager`): плоский список категорий с DnD-сортировкой и таблицами
+### Changes
 
-Пользователь хочет видеть в маркетплейсе **ту же структуру**, что и в магазине, чтобы то, что он настроит — было тем, что увидит покупатель.
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-### Решение
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-Переделать каталог в `AdminMarketplaceManager` так, чтобы он визуально совпадал с магазином курсов, но сохранил админские функции (DnD, валидация, кнопки редактирования).
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-### Изменения
-
-**`src/components/admin/AdminMarketplaceManager.tsx`** (основные изменения в секции catalog, ~750-795 строки):
-
-1. Заменить текущий плоский DnD-список на **вложенную структуру аккордеонов**, идентичную магазину:
-   - Верхний уровень: «Повышение квалификации», «Профессиональная переподготовка», «ОТ/ПБ», «Рабочие профессии» — с иконками в цветных кругах и бейджами типа программы
-   - Внутри «Повышение квалификации»: вложенные аккордеоны по DB-категориям (Промышленная безопасность, Электробезопасность и т.д.) — с DnD-сортировкой
-   - Внутри каждой подкатегории: список курсов с админскими кнопками (валидация, редактирование, удаление)
-
-2. Использовать те же `programTypeMeta` и `subCategoryMeta` что и в магазине (иконки, цвета)
-
-3. Добавить **информационный баннер** как в магазине (блок «Курсы ДПО и профессионального обучения»)
-
-4. Сохранить DnD-сортировку для подкатегорий внутри «Повышение квалификации»
-
-5. Сохранить все админские инструменты: валидация ✅/❌, кнопки Eye/Edit/Trash, Switch active, перемещение курса
-
-**`src/hooks/useAdminMarketplace.ts`**:
-
-6. Изменить `groupedCourses` — вернуть ту же иерархию что и в магазине: программный тип → подкатегории из DB. Добавить поле `badge` и `subGroups` в структуру `groupedCourses`
-
-### Итог
-
-Админ видит в маркетплейсе ровно тот же визуал, что и покупатель в магазине: те же иконки, тот же порядок категорий, та же вложенность. Перемещение категорий через DnD сразу отображается в магазине.
-
-| Файл | Изменение |
-|---|---|
-| `src/hooks/useAdminMarketplace.ts` | Добавить иерархию programType → subGroups в groupedCourses |
-| `src/components/admin/AdminMarketplaceManager.tsx` | Переделать catalog view на вложенные аккордеоны как в магазине |
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 

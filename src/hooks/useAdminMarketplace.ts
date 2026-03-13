@@ -343,7 +343,7 @@ export function useAdminMarketplace() {
   });
 
   // Group courses by DB category_id, ordered by dbCategories order_index
-  const groupedCourses: { category: string; categoryId?: string; courses: MarketplaceCourseWithDetails[]; status?: 'ready' | 'progress'; subGroups?: { category: string; courses: MarketplaceCourseWithDetails[] }[] }[] = (() => {
+  const groupedCourses: { category: string; badge: string; courses: MarketplaceCourseWithDetails[]; subGroups?: { category: string; categoryId?: string; courses: MarketplaceCourseWithDetails[] }[] }[] = (() => {
     const byCatId = new Map<string, MarketplaceCourseWithDetails[]>();
     const uncategorized: MarketplaceCourseWithDetails[] = [];
 
@@ -357,26 +357,21 @@ export function useAdminMarketplace() {
       }
     }
 
-    const result: typeof groupedCourses = [];
+    // Build sub-groups from DB categories (respecting order_index)
+    const subGroups: { category: string; categoryId: string; courses: MarketplaceCourseWithDetails[] }[] = dbCategories.map(cat => ({
+      category: cat.name,
+      categoryId: cat.id,
+      courses: byCatId.get(cat.id) || [],
+    }));
 
-    for (const dbCat of dbCategories) {
-      const catCourses = byCatId.get(dbCat.id) || [];
-      const ready = catCourses.filter(c => (c as any).is_validated === true);
-      const progress = catCourses.filter(c => (c as any).is_validated !== true);
+    const allCategorizedCourses = subGroups.flatMap(g => g.courses);
 
-      result.push({
-        category: dbCat.name,
-        categoryId: dbCat.id,
-        courses: catCourses,
-        status: ready.length > 0 ? 'ready' : 'progress',
-      });
-    }
-
-    if (uncategorized.length > 0) {
-      result.push({ category: "Без категории", courses: uncategorized });
-    }
-
-    return result;
+    return [
+      { category: "Повышение квалификации", badge: "ДПО", courses: [...allCategorizedCourses, ...uncategorized], subGroups },
+      { category: "Профессиональная переподготовка", badge: "ДПО", courses: [] },
+      { category: "Охрана труда / Пожарная безопасность", badge: "ОТ / ПБ", courses: [] },
+      { category: "Рабочие профессии", badge: "ПО", courses: [] },
+    ];
   })();
 
   const handleCreateCategory = (name: string) => {

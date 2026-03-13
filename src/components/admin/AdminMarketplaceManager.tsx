@@ -4,7 +4,8 @@ import {
   Store, Plus, Search, Edit, Trash2, Eye, Loader2,
   Package, ShoppingCart, Building2, Users, Tag, Sparkles, BookOpen, Upload,
   List, LayoutGrid, ChevronDown, FolderPlus, FolderInput, CheckCircle2, AlertTriangle,
-  FolderOpen, Library, X, GripVertical,
+  FolderOpen, Library, X, GripVertical, GraduationCap, Award, ShieldCheck,
+  Factory, Flame, Droplets, HardHat, Leaf, Zap, Lightbulb,
 } from "lucide-react";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
@@ -43,6 +44,22 @@ const statusLabels: Record<string, { label: string; color: string }> = {
   paid: { label: "Оплачена", color: "bg-green-500/10 text-green-600 border-green-500/20" },
   completed: { label: "Завершена", color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" },
   cancelled: { label: "Отменена", color: "bg-red-500/10 text-red-600 border-red-500/20" },
+};
+
+const programTypeMetaAdmin: Record<string, { icon: React.ElementType; color: string; bgColor: string }> = {
+  "Повышение квалификации": { icon: GraduationCap, color: "text-blue-600", bgColor: "bg-blue-500/10" },
+  "Профессиональная переподготовка": { icon: Award, color: "text-violet-600", bgColor: "bg-violet-500/10" },
+  "Охрана труда / Пожарная безопасность": { icon: ShieldCheck, color: "text-amber-600", bgColor: "bg-amber-500/10" },
+  "Рабочие профессии": { icon: Store, color: "text-emerald-600", bgColor: "bg-emerald-500/10" },
+};
+
+const subCategoryMetaAdmin: Record<string, { icon: React.ElementType; color: string; bgColor: string }> = {
+  "Промышленная безопасность": { icon: Factory, color: "text-orange-500", bgColor: "bg-orange-500/10" },
+  "Электробезопасность": { icon: Zap, color: "text-yellow-500", bgColor: "bg-yellow-500/10" },
+  "Энергетика": { icon: Flame, color: "text-red-500", bgColor: "bg-red-500/10" },
+  "Экологическая безопасность": { icon: Leaf, color: "text-green-500", bgColor: "bg-green-500/10" },
+  "Гидротехнические сооружения": { icon: Droplets, color: "text-blue-500", bgColor: "bg-blue-500/10" },
+  "Строительный контроль": { icon: HardHat, color: "text-accent", bgColor: "bg-accent/10" },
 };
 
 function renderCourseRow(
@@ -733,65 +750,162 @@ export function AdminMarketplaceManager() {
               </CardContent>
             </Card>
           ) : h.viewMode === "list" ? (
-            /* Grouped accordion list view with DnD */
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={(event: DragEndEvent) => {
-                const { active, over } = event;
-                if (!over || active.id === over.id) return;
-                const oldIndex = h.dbCategories.findIndex(c => (c.id || c.name) === active.id);
-                const newIndex = h.dbCategories.findIndex(c => (c.id || c.name) === over.id);
-                if (oldIndex === -1 || newIndex === -1) return;
-                const reordered = arrayMove(h.dbCategories, oldIndex, newIndex).map((c, i) => ({ ...c, order_index: i }));
-                h.handleReorderCategories(reordered);
-              }}
-            >
-              <SortableContext items={h.groupedCourses.map(g => g.categoryId || g.category)} strategy={verticalListSortingStrategy}>
-                <div className="space-y-2">
-                  {h.groupedCourses.map((group) => (
-                    <SortableCategoryItem key={group.categoryId || group.category} group={group}>
-                      <Collapsible>
-                        <Card>
-                          <CollapsibleTrigger className="flex items-center justify-between w-full px-4 py-3 hover:bg-secondary/30 transition-colors rounded-t-xl group">
-                            <div className="flex items-center gap-3">
-                              <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
-                              <span className="font-semibold text-sm text-left">{group.category}</span>
-                              {group.courses.length > 0 && (
-                                <>
-                                  <Badge className="bg-green-500/10 text-green-600 border-green-500/20 text-[10px]">
-                                    ✅ {group.courses.filter(c => validatedCourses[c.course_id] === 'ok').length} / ❌ {group.courses.filter(c => validatedCourses[c.course_id] === 'error').length}
-                                  </Badge>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-6 text-xs px-2"
-                                    disabled={!!bulkValidatingGroup}
-                                    onClick={(e) => { e.stopPropagation(); handleBulkValidate(group); }}
-                                  >
-                                    {bulkValidatingGroup === group.category
-                                      ? <><Loader2 className="w-3 h-3 animate-spin mr-1" />{bulkValidateProgress}</>
-                                      : <><CheckCircle2 className="w-3 h-3 mr-1" />Проверить все</>}
-                                  </Button>
-                                </>
-                              )}
-                            </div>
-                            <Badge variant="secondary" className="shrink-0">{group.courses.length}</Badge>
-                          </CollapsibleTrigger>
-                          <CollapsibleContent>
-                            <Table>
-                              <TableBody>
-                                {group.courses.map((item) => renderCourseRow(item, h, navigate, handleBulkGenerate, validatedCourses, handleValidateCourse, validatingId))}
-                              </TableBody>
-                            </Table>
-                          </CollapsibleContent>
-                        </Card>
-                      </Collapsible>
-                    </SortableCategoryItem>
-                  ))}
+            <div className="space-y-4">
+              {/* Info banner — same as store */}
+              <div className="bg-gradient-to-r from-primary/5 via-accent/5 to-primary/3 border border-border rounded-lg p-4">
+                <div className="flex gap-3 items-start">
+                  <ShieldCheck className="w-5 h-5 text-primary mt-0.5 shrink-0" />
+                  <div>
+                    <h4 className="font-semibold text-sm text-foreground mb-1">Курсы ДПО и профессионального обучения</h4>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      Повышение квалификации, профпереподготовка, охрана труда и рабочие профессии. Тесты соответствуют требованиям аттестации.
+                    </p>
+                    <div className="flex gap-2 mt-2">
+                      <Badge variant="secondary" className="text-xs">ДПО</Badge>
+                      <Badge variant="secondary" className="text-xs">ОТ / ПБ</Badge>
+                      <Badge variant="secondary" className="text-xs">Бесплатно</Badge>
+                    </div>
+                    <div className="flex items-start gap-1.5 mt-3 pt-3 border-t border-border/50">
+                      <Lightbulb className="w-3.5 h-3.5 text-amber-500 mt-0.5 shrink-0" />
+                      <p className="text-xs text-muted-foreground">
+                        Порядок категорий и курсов здесь = порядок в магазине. Перетаскивайте подкатегории для изменения порядка.
+                      </p>
+                    </div>
+                  </div>
                 </div>
-              </SortableContext>
-            </DndContext>
+              </div>
+
+              {/* Nested accordions matching store structure */}
+              <div className="grid gap-6">
+                {h.groupedCourses.map((group) => {
+                  const meta = programTypeMetaAdmin[group.category];
+                  const CatIcon = meta?.icon || BookOpen;
+                  const catColor = meta?.color || "text-primary";
+                  const catBg = meta?.bgColor || "bg-primary/10";
+
+                  if (group.subGroups && group.subGroups.length > 0) {
+                    return (
+                      <Collapsible key={group.category} defaultOpen={group.courses.length > 0}>
+                        <CollapsibleTrigger className="flex items-center gap-3 w-full p-4 rounded-xl border border-border bg-card hover:bg-secondary/30 transition-colors">
+                          <div className={`w-10 h-10 rounded-lg ${catBg} flex items-center justify-center shrink-0`}>
+                            <CatIcon className={`w-5 h-5 ${catColor}`} />
+                          </div>
+                          <div className="flex-1 text-left">
+                            <h3 className="font-display text-lg font-medium">{group.category}</h3>
+                          </div>
+                          <Badge variant="outline" className="text-[10px]">{group.badge}</Badge>
+                          {group.courses.length > 0 && (
+                            <>
+                              <Badge className="bg-green-500/10 text-green-600 border-green-500/20 text-[10px]">
+                                ✅ {group.courses.filter(c => validatedCourses[c.course_id] === 'ok').length} / ❌ {group.courses.filter(c => validatedCourses[c.course_id] === 'error').length}
+                              </Badge>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 text-xs px-2"
+                                disabled={!!bulkValidatingGroup}
+                                onClick={(e) => { e.stopPropagation(); handleBulkValidate(group); }}
+                              >
+                                {bulkValidatingGroup === group.category
+                                  ? <><Loader2 className="w-3 h-3 animate-spin mr-1" />{bulkValidateProgress}</>
+                                  : <><CheckCircle2 className="w-3 h-3 mr-1" />Проверить все</>}
+                              </Button>
+                            </>
+                          )}
+                          <Badge variant="secondary">{group.courses.length} курсов</Badge>
+                          <ChevronDown className="w-5 h-5 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="space-y-3 mt-3 pl-2">
+                          {/* DnD for sub-categories */}
+                          <DndContext
+                            sensors={sensors}
+                            collisionDetection={closestCenter}
+                            onDragEnd={(event: DragEndEvent) => {
+                              const { active, over } = event;
+                              if (!over || active.id === over.id) return;
+                              const oldIndex = h.dbCategories.findIndex(c => c.id === active.id);
+                              const newIndex = h.dbCategories.findIndex(c => c.id === over.id);
+                              if (oldIndex === -1 || newIndex === -1) return;
+                              const reordered = arrayMove(h.dbCategories, oldIndex, newIndex).map((c, i) => ({ ...c, order_index: i }));
+                              h.handleReorderCategories(reordered);
+                            }}
+                          >
+                            <SortableContext items={group.subGroups.map(s => s.categoryId || s.category)} strategy={verticalListSortingStrategy}>
+                              {group.subGroups.map((sub) => {
+                                const subMeta = subCategoryMetaAdmin[sub.category];
+                                const SubIcon = subMeta?.icon || BookOpen;
+                                const subColor = subMeta?.color || "text-primary";
+                                const subBg = subMeta?.bgColor || "bg-primary/10";
+                                return (
+                                  <SortableCategoryItem key={sub.categoryId || sub.category} group={{ category: sub.category, categoryId: sub.categoryId }}>
+                                    <Collapsible>
+                                      <CollapsibleTrigger className="flex items-center gap-3 w-full p-3 rounded-lg border border-border/60 bg-card/80 hover:bg-secondary/20 transition-colors">
+                                        <div className={`w-8 h-8 rounded-lg ${subBg} flex items-center justify-center shrink-0`}>
+                                          <SubIcon className={`w-4 h-4 ${subColor}`} />
+                                        </div>
+                                        <span className="flex-1 text-left font-medium text-sm">{sub.category}</span>
+                                        {sub.courses.length > 0 && (
+                                          <Badge className="bg-green-500/10 text-green-600 border-green-500/20 text-[10px]">
+                                            ✅ {sub.courses.filter(c => validatedCourses[c.course_id] === 'ok').length} / ❌ {sub.courses.filter(c => validatedCourses[c.course_id] === 'error').length}
+                                          </Badge>
+                                        )}
+                                        <span className="text-xs text-muted-foreground">
+                                          {sub.courses.length} {sub.courses.length === 1 ? 'курс' : sub.courses.length < 5 ? 'курса' : 'курсов'}
+                                        </span>
+                                        <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
+                                      </CollapsibleTrigger>
+                                      <CollapsibleContent className="pt-2 pl-11">
+                                        {sub.courses.length === 0 ? (
+                                          <p className="text-xs text-muted-foreground py-2 italic">Курсы ещё не добавлены</p>
+                                        ) : (
+                                          <Table>
+                                            <TableBody>
+                                              {sub.courses.map((item) => renderCourseRow(item, h, navigate, handleBulkGenerate, validatedCourses, handleValidateCourse, validatingId))}
+                                            </TableBody>
+                                          </Table>
+                                        )}
+                                      </CollapsibleContent>
+                                    </Collapsible>
+                                  </SortableCategoryItem>
+                                );
+                              })}
+                            </SortableContext>
+                          </DndContext>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    );
+                  }
+
+                  // Groups without subGroups (e.g. Профпереподготовка, ОТ/ПБ, Рабочие профессии)
+                  return (
+                    <Collapsible key={group.category} defaultOpen={false}>
+                      <CollapsibleTrigger className="flex items-center gap-3 w-full p-4 rounded-xl border border-border bg-card hover:bg-secondary/30 transition-colors">
+                        <div className={`w-10 h-10 rounded-lg ${catBg} flex items-center justify-center shrink-0`}>
+                          <CatIcon className={`w-5 h-5 ${catColor}`} />
+                        </div>
+                        <span className="flex-1 text-left font-display text-lg font-medium">{group.category}</span>
+                        <Badge variant="outline" className="text-[10px]">{group.badge}</Badge>
+                        <Badge variant="secondary">
+                          {group.courses.length} {group.courses.length === 1 ? 'курс' : group.courses.length < 5 ? 'курса' : 'курсов'}
+                        </Badge>
+                        <ChevronDown className="w-5 h-5 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="pt-3 pl-13">
+                        {group.courses.length === 0 ? (
+                          <p className="text-xs text-muted-foreground py-2 italic">Курсы ещё не добавлены</p>
+                        ) : (
+                          <Table>
+                            <TableBody>
+                              {group.courses.map((item) => renderCourseRow(item, h, navigate, handleBulkGenerate, validatedCourses, handleValidateCourse, validatingId))}
+                            </TableBody>
+                          </Table>
+                        )}
+                      </CollapsibleContent>
+                    </Collapsible>
+                  );
+                })}
+              </div>
+            </div>
           ) : (
             /* Grid view */
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
