@@ -262,8 +262,8 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
               courseTitle,
               lessonTitle: test.title,
               questionsCount: 10,
-              aiProvider,
-              ...(aiProvider === "gigachat" ? { gigachatModel } : { lovableModel }),
+              ai_provider: aiProvider,
+              ...(aiProvider === "gigachat" ? { gigachat_model: gigachatModel } : { lovable_model: lovableModel }),
             },
           });
           if (!qError && qData?.questions) {
