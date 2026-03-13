@@ -183,6 +183,27 @@ export function ProgramListImporter({ onComplete }: ProgramListImporterProps) {
         .eq("organization_id", MARKETPLACE_ORG_ID);
       const catMap = new Map((dbCats || []).map(c => [c.name.toLowerCase(), c.id]));
 
+      // Auto-create missing categories used by programs
+      const neededCats = [...new Set(programs.map(p => p.category))];
+      for (const catName of neededCats) {
+        if (!catMap.has(catName.toLowerCase())) {
+          const parentType = catName === "Рабочие профессии" ? "Профессиональное обучение" : "Повышение квалификации";
+          const { data: newCat } = await supabase
+            .from("course_categories")
+            .insert({
+              organization_id: MARKETPLACE_ORG_ID,
+              name: catName,
+              parent_type: parentType,
+              order_index: catMap.size + 1,
+            })
+            .select("id, name")
+            .single();
+          if (newCat) {
+            catMap.set(newCat.name.toLowerCase(), newCat.id);
+          }
+        }
+      }
+
       for (const prog of programs) {
         // Check if course with similar title already exists
         const { data: existing } = await supabase
