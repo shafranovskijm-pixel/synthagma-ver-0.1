@@ -61,6 +61,7 @@ export const lessonIcons: Record<LessonType, any> = {
   audio: Headphones,
   lesson: FileText,
   slider: Presentation,
+  practice: ClipboardList,
 };
 
 export const lessonColors: Record<LessonType, string> = {
@@ -71,4 +72,5 @@ export const lessonColors: Record<LessonType, string> = {
   audio: "text-green-500 bg-green-500/10",
   lesson: "text-primary bg-primary/10",
   slider: "text-amber-500 bg-amber-500/10",
+  practice: "text-rose-500 bg-rose-500/10",
 };
