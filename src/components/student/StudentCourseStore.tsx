@@ -3,6 +3,7 @@ import {
   Store, Search, Clock, ShoppingCart, Loader2, CheckCircle2,
   Building2, Send, FileText, Video, ClipboardList, Presentation,
   Headphones, BookOpen, Eye, Gift, Zap, Award, ChevronDown,
+  Factory, Flame, Droplets, HardHat, Leaf,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
@@ -265,6 +266,18 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
       .sort((a, b) => a.category.localeCompare(b.category));
   }, [filteredCatalog]);
 
+  const categoryMeta: Record<string, { icon: React.ElementType; color: string; bgColor: string }> = {
+    "Промышленная безопасность": { icon: Factory, color: "text-orange-500", bgColor: "bg-orange-500/10" },
+    "Электробезопасность": { icon: Zap, color: "text-yellow-500", bgColor: "bg-yellow-500/10" },
+    "Энергетика": { icon: Flame, color: "text-red-500", bgColor: "bg-red-500/10" },
+    "Экологическая безопасность": { icon: Leaf, color: "text-green-500", bgColor: "bg-green-500/10" },
+    "Гидротехнические сооружения": { icon: Droplets, color: "text-blue-500", bgColor: "bg-blue-500/10" },
+    "Строительный контроль": { icon: HardHat, color: "text-accent", bgColor: "bg-accent/10" },
+  };
+
+  const getCategoryMeta = (category: string) =>
+    categoryMeta[category] || { icon: BookOpen, color: "text-primary", bgColor: "bg-primary/10" };
+
   const formatPrice = (price: number) =>
     new Intl.NumberFormat("ru-RU", { style: "currency", currency: "RUB", maximumFractionDigits: 0 }).format(price);
 
@@ -378,25 +391,33 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
           {filteredCatalog.map((item) => renderCourseCard(item))}
         </div>
       ) : (
-        <div className="space-y-3">
-          {groupedCatalog.map((group) => (
-            <Collapsible key={group.category}>
-              <div className="rounded-xl border bg-card">
-                <CollapsibleTrigger className="flex items-center justify-between w-full px-4 py-3 hover:bg-secondary/30 transition-colors rounded-xl group">
-                  <div className="flex items-center gap-3">
-                    <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
-                    <span className="font-semibold text-sm">{group.category}</span>
-                  </div>
-                  <Badge variant="secondary" className="shrink-0">{group.courses.length}</Badge>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4 pt-1">
-                    {group.courses.map((item) => renderCourseCard(item))}
-                  </div>
-                </CollapsibleContent>
-              </div>
-            </Collapsible>
-          ))}
+        <div className="space-y-4">
+          {groupedCatalog.map((group) => {
+            const meta = getCategoryMeta(group.category);
+            const IconComp = meta.icon;
+            return (
+              <Collapsible key={group.category}>
+                <Card className="overflow-hidden">
+                  <CollapsibleTrigger className="flex items-center gap-4 w-full px-5 py-4 hover:bg-secondary/30 transition-colors group text-left">
+                    <div className={`w-10 h-10 rounded-xl ${meta.bgColor} flex items-center justify-center shrink-0`}>
+                      <IconComp className={`w-5 h-5 ${meta.color}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="font-semibold text-sm block">{group.category}</span>
+                      <span className="text-xs text-muted-foreground">{group.courses.length} {group.courses.length === 1 ? 'курс' : group.courses.length < 5 ? 'курса' : 'курсов'}</span>
+                    </div>
+                    <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90 shrink-0" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <Separator />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+                      {group.courses.map((item) => renderCourseCard(item))}
+                    </div>
+                  </CollapsibleContent>
+                </Card>
+              </Collapsible>
+            );
+          })}
         </div>
       )}
 
