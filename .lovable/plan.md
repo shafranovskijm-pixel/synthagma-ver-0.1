@@ -1,31 +1,18 @@
 
 
-## Проблема
+## Plan: Auto-fix after "Проверить все"
 
-«Специалист по пожарной профилактике» (256ч) должен попадать в **Профессиональную переподготовку**, но сейчас `getParentType` сначала проверяет имя категории («Пожарная безопасность» → «ОТ/ПБ»), и до проверки 250+ часов дело не доходит.
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-Правило 250+ часов должно срабатывать **раньше** проверки по имени категории, но **не для** рабочих профессий (у них свой тип независимо от часов).
+### Changes
 
-## Изменения
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-**Файл: `src/components/admin/ProgramListImporter.tsx`**
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-1. В `getParentType` — переместить проверку `hours >= 250` **выше** проверки по имени, но **после** проверки на «рабочие профессии»:
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-```typescript
-function getParentType(categoryName: string, hours?: number): string {
-  const lower = categoryName.toLowerCase();
-  if (lower === "рабочие профессии") return "Рабочие профессии";
-  // 250+ hours → Профессиональная переподготовка (кроме рабочих профессий)
-  if (hours && hours >= 250) return "Профессиональная переподготовка";
-  if (lower === "охрана труда" || lower === "пожарная безопасность")
-    return "Охрана труда / Пожарная безопасность";
-  return "Повышение квалификации";
-}
-```
-
-Это обеспечит:
-- «Специалист по пожарной профилактике» (256ч) → Профессиональная переподготовка ✅
-- Рабочие профессии с любым числом часов → Рабочие профессии ✅
-- ОТ/ПБ с < 250ч → Охрана труда / Пожарная безопасность ✅
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 

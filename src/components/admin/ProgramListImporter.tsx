@@ -41,10 +41,10 @@ function normalizeTitle(t: string): string {
 function getParentType(categoryName: string, hours?: number): string {
   const lower = categoryName.toLowerCase();
   if (lower === "рабочие профессии") return "Рабочие профессии";
+  // 250+ hours → Профессиональная переподготовка (кроме рабочих профессий)
+  if (hours && hours >= 250) return "Профессиональная переподготовка";
   if (lower === "охрана труда" || lower === "пожарная безопасность")
     return "Охрана труда / Пожарная безопасность";
-  // 250+ hours → Профессиональная переподготовка
-  if (hours && hours >= 250) return "Профессиональная переподготовка";
   return "Повышение квалификации";
 }
 
