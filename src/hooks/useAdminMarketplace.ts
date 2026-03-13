@@ -407,6 +407,7 @@ export function useAdminMarketplace() {
     newTitle, setNewTitle, newDescription, setNewDescription,
     newDuration, setNewDuration, newPriceStudent, setNewPriceStudent,
     newPriceOrg, setNewPriceOrg, newShortDesc, setNewShortDesc,
+    newCategoryId, setNewCategoryId, dbCategories,
     isCreating, handleCreateCourse,
     // Edit
     showEditDialog, setShowEditDialog, editingCourse, setEditingCourse, handleEditCourse,
