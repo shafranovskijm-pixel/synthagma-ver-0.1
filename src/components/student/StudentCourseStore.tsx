@@ -300,80 +300,36 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
         </div>
       </div>
 
-      {/* Catalog Grid */}
+      {/* Catalog */}
       {filteredCatalog.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
           <Store className="w-12 h-12 mx-auto mb-3 opacity-30" />
           <p className="font-medium">Курсы пока не найдены</p>
           <p className="text-sm">Попробуйте изменить поисковый запрос</p>
         </div>
-      ) : (
+      ) : groupedCatalog.length === 1 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredCatalog.map((item) => (
-            <Card
-              key={item.id}
-              className="flex flex-col hover:shadow-md transition-shadow cursor-pointer group"
-              onClick={() => openPreview(item)}
-            >
-              {item.preview_image_url && (
-                <div className="h-36 overflow-hidden rounded-t-lg">
-                  <img
-                    src={item.preview_image_url}
-                    alt={item.course?.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                </div>
-              )}
-              <CardHeader className="pb-2">
-                <h3 className="font-semibold text-base leading-tight line-clamp-2">
-                  {item.course?.title}
-                </h3>
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
-                  <Building2 className="w-3.5 h-3.5 shrink-0" />
-                  <span className="truncate">{item.organization?.name || "Организация"}</span>
-                </div>
-              </CardHeader>
-              <CardContent className="flex-1 pb-3">
-                {(item.description_short || item.course?.description) && (
-                  <p className="text-sm text-muted-foreground line-clamp-3 mb-3">
-                    {item.description_short || item.course?.description}
-                  </p>
-                )}
-                {item.course?.duration && (
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Clock className="w-3.5 h-3.5" />
-                    {item.course.duration}
+          {filteredCatalog.map((item) => renderCourseCard(item))}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {groupedCatalog.map((group) => (
+            <Collapsible key={group.category}>
+              <div className="rounded-xl border bg-card">
+                <CollapsibleTrigger className="flex items-center justify-between w-full px-4 py-3 hover:bg-secondary/30 transition-colors rounded-xl group">
+                  <div className="flex items-center gap-3">
+                    <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
+                    <span className="font-semibold text-sm">{group.category}</span>
                   </div>
-                )}
-              </CardContent>
-              <CardFooter className="flex items-center justify-between border-t border-border pt-4">
-                {item.price_student > 0 ? (
-                  <span className="text-lg font-bold text-primary">
-                    {formatPrice(item.price_student)}
-                  </span>
-                ) : (
-                  <Badge className="bg-green-500/10 text-green-600 border-green-500/20 text-sm px-3 py-1">Бесплатно</Badge>
-                )}
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="rounded-xl gap-1.5"
-                    onClick={(e) => { e.stopPropagation(); openPreview(item); }}
-                  >
-                    <Eye className="w-4 h-4" />
-                    Подробнее
-                  </Button>
-                  <Button
-                    size="sm"
-                    className={`rounded-xl gap-1.5 ${item.price_student === 0 ? 'bg-green-600 hover:bg-green-700 text-white' : ''}`}
-                    onClick={(e) => { e.stopPropagation(); setSelectedCourse(item); }}
-                  >
-                    {item.price_student > 0 ? <><ShoppingCart className="w-4 h-4" />Купить</> : <><Gift className="w-4 h-4" />Получить</>}
-                  </Button>
-                </div>
-              </CardFooter>
-            </Card>
+                  <Badge variant="secondary" className="shrink-0">{group.courses.length}</Badge>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4 pt-1">
+                    {group.courses.map((item) => renderCourseCard(item))}
+                  </div>
+                </CollapsibleContent>
+              </div>
+            </Collapsible>
           ))}
         </div>
       )}
