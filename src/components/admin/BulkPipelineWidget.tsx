@@ -3,6 +3,7 @@ import {
   Play, Square, CheckCircle2, Loader2, AlertTriangle, Brain, FileSpreadsheet,
   DollarSign, RotateCcw, Upload, Clock, ListChecks, ChevronDown, FlaskConical, Eye, BarChart3, RefreshCw, Trash2, SkipForward, Server, Bot,
   Factory, Zap, Flame, Leaf, Droplets, HardHat, BookOpen,
+  GraduationCap, Award, ShieldCheck, Wrench,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";

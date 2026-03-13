@@ -277,15 +277,12 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
 
                   <div className="grid gap-6">
                     {h.groupedCatalog.map((group) => {
-                      const meta = group.category === "Курсы Ростехнадзора"
-                        ? { icon: Shield, color: "text-primary", bgColor: "bg-primary/10" }
-                        : getCategoryMetaOrg(group.category);
+                      const meta = getProgramTypeMeta(group.category);
                       const CatIcon = meta.icon;
 
-                      // For RTN parent group, render nested collapsibles
                       if (group.subGroups) {
                         return (
-                          <Collapsible key="rtn-root" defaultOpen={false}>
+                          <Collapsible key={group.category} defaultOpen={false}>
                             <CollapsibleTrigger className="flex items-center gap-3 w-full p-4 rounded-xl border border-border bg-card hover:bg-secondary/30 transition-colors">
                               <div className={`w-10 h-10 rounded-lg ${meta.bgColor} flex items-center justify-center shrink-0`}>
                                 <CatIcon className={`w-5 h-5 ${meta.color}`} />
@@ -293,12 +290,13 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
                               <div className="flex-1 text-left">
                                 <h3 className="font-display text-lg font-medium">{group.category}</h3>
                               </div>
+                              <Badge variant="outline" className="text-[10px]">{group.badge}</Badge>
                               <Badge variant="secondary">{group.courses.length} курсов</Badge>
                               <ChevronDown className="w-5 h-5 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
                             </CollapsibleTrigger>
                             <CollapsibleContent className="space-y-3 mt-3 pl-2">
                               {group.subGroups.map((sub) => {
-                                const subMeta = getCategoryMetaOrg(sub.category);
+                                const subMeta = getSubCategoryMeta(sub.category);
                                 const SubIcon = subMeta.icon;
                                 return (
                                   <Collapsible key={sub.category} defaultOpen={false}>
@@ -338,7 +336,6 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
                         );
                       }
 
-                      // Standalone category
                       return (
                         <Collapsible key={group.category} defaultOpen={false}>
                           <CollapsibleTrigger className="flex items-center gap-3 w-full p-4 rounded-xl border border-border bg-card hover:bg-secondary/30 transition-colors">
@@ -346,6 +343,7 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
                               <CatIcon className={`w-5 h-5 ${meta.color}`} />
                             </div>
                             <span className="flex-1 text-left font-display text-lg font-medium">{group.category}</span>
+                            <Badge variant="outline" className="text-[10px]">{group.badge}</Badge>
                             <Badge variant="secondary">
                               {group.courses.length} {group.courses.length === 1 ? 'курс' : group.courses.length < 5 ? 'курса' : 'курсов'}
                             </Badge>
@@ -364,6 +362,14 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
                                   >
                                     <CheckCircle className="w-4 h-4 text-accent shrink-0 mt-0.5" />
                                     <span className="text-sm text-foreground/75 group-hover/item:text-accent">{h.extractShortTitle(item.course?.title)}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </CollapsibleContent>
+                        </Collapsible>
+                      );
+                    })}
                                   </button>
                                 ))}
                               </div>
