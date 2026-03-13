@@ -205,6 +205,7 @@ export function useAdminMarketplace() {
   const resetCreateForm = () => {
     setNewTitle(""); setNewDescription(""); setNewDuration("");
     setNewPriceStudent(""); setNewPriceOrg(""); setNewShortDesc("");
+    setNewCategoryId("");
   };
 
   const handleToggleActive = async (course: MarketplaceCourseWithDetails) => {
