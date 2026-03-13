@@ -1197,11 +1197,7 @@ function renderGroupedCourses(
                         {group.courses.length === 0 ? (
                           <p className="text-xs text-muted-foreground py-2 italic">Курсы ещё не добавлены</p>
                         ) : (
-                          <Table>
-                            <TableBody>
-                              {group.courses.map((item) => renderCourseRow(item, h, navigate, handleBulkGenerate, validatedCourses, handleValidateCourse, validatingId))}
-                            </TableBody>
-                          </Table>
+                        {renderGroupedCourses(group.courses, h, navigate, handleBulkGenerate, validatedCourses, handleValidateCourse, validatingId)}
                         )}
                         <Button
                           variant="ghost"
