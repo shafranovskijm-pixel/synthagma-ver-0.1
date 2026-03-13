@@ -4,7 +4,7 @@ import {
   Store, Plus, Search, Edit, Trash2, Eye, Loader2,
   Package, ShoppingCart, Building2, Users, Tag, Sparkles, BookOpen, Upload,
   List, LayoutGrid, ChevronDown, FolderPlus, FolderInput, CheckCircle2, AlertTriangle,
-  FolderOpen, Library, X, GripVertical, GraduationCap, Award, ShieldCheck,
+  FolderOpen, Library, X, GripVertical, GraduationCap, Award, ShieldCheck, Wand2,
   Factory, Flame, Droplets, HardHat, Leaf, Zap, Lightbulb,
 } from "lucide-react";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
