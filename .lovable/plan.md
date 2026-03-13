@@ -1,18 +1,46 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## Параллельные потоки генерации
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+### Текущая схема
+```text
+Структура → [Контент ALL] → [Вопросы ALL] → [Ответы ALL]
+                ↓                 ↓               ↓
+           batch по 3         batch по 3      batch по 60
+```
+Каждый этап ждёт завершения предыдущего для ВСЕХ уроков. Если 12 уроков — контент генерируется 4 батчами по 3, потом вопросы 4 батчами, потом ответы.
 
-### Changes
+### Новая схема — 3 независимых потока
+```text
+Структура (1 запрос)
+    ↓ split на 3 группы
+    ├─ Поток 1: уроки 1-4  → контент → вопросы → ответы
+    ├─ Поток 2: уроки 5-8  → контент → вопросы → ответы
+    └─ Поток 3: уроки 9-12 → контент → вопросы → ответы
+    ↓ Promise.all
+Готово
+```
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+Каждый поток обрабатывает свою порцию уроков от начала до конца: генерирует контент, затем вопросы для тестов, затем ответы — и всё это параллельно с другими потоками.
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+### Что меняется
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+**Файл: `src/components/admin/ContentGeneratorTab.tsx`**
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+1. **Новая функция `processStream`** — принимает массив уроков и выполняет для них полный цикл: контент → вопросы → ответы. Это вынесение текущей логики этапов 2-4 из `handleGenerateCourse` в отдельную функцию.
+
+2. **Разделение уроков на N потоков** — после получения структуры (или существующих уроков) массив делится на 3 равные группы с помощью `Array.slice`.
+
+3. **Запуск через `Promise.all`** — три вызова `processStream` запускаются одновременно.
+
+4. **Прогресс-бар** — использует `useRef` счётчик завершённых уроков, обновляемый из каждого потока атомарно. Процент = `completed / total * 100`.
+
+5. **Rate-limit защита** — текущий лимит 30 req/min на edge-функцию. При 3 потоках пиковая нагрузка = 3 одновременных запроса (по 1 на поток), что укладывается в лимит. Дополнительно между запросами в каждом потоке добавляется минимальная задержка 500ms.
+
+### Экономия токенов
+Количество токенов не увеличивается — каждый урок обрабатывается ровно один раз. Меняется только порядок: вместо «все контенты, потом все вопросы» — «каждый поток делает всё для своих уроков». Общее число запросов к ИИ идентично.
+
+| Файл | Действие |
+|---|---|
+| `src/components/admin/ContentGeneratorTab.tsx` | Рефакторинг: 3 параллельных потока вместо последовательных этапов |
 
