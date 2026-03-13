@@ -415,8 +415,10 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
   // Phase 4: Solve test questions using AI (with batching)
   const solveTests = async (overrideLessons?: LessonItem[]) => {
     setPhase("tests");
+    const testsStart = Date.now();
     const source = overrideLessons || lessons;
     const targets = source.filter((l) => l.selected && l.type === "test");
+    let totalAnswered = 0;
 
     for (let i = 0; i < targets.length; i++) {
       if (abortRef.current) break;
@@ -424,7 +426,6 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
 
       updateLesson(lesson.id, { status: "solving_test" });
       try {
-        // Fetch existing test questions
         const { data: questions, error: qError } = await supabase
           .from("test_questions")
           .select("id, question, options, correct_answer, order_index")
@@ -438,7 +439,6 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
           continue;
         }
 
-        // Process in batches of TEST_BATCH_SIZE
         const allAnswers: Array<{ questionIndex: number; correctAnswer: number; explanation?: string }> = [];
 
         for (let batchStart = 0; batchStart < questions.length; batchStart += TEST_BATCH_SIZE) {
@@ -462,7 +462,6 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
           if (aiError) throw new Error(aiError.message || "Ошибка AI");
           if (aiData.parseError) throw new Error("ИИ вернул ответ в неожиданном формате");
 
-          // Adjust questionIndex to global index
           const batchAnswers = (aiData.answers || []).map((a: any) => ({
             ...a,
             questionIndex: a.questionIndex + batchStart,
@@ -474,7 +473,6 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
           }
         }
 
-        // Update each question with AI answer
         for (const answer of allAnswers) {
           const questionIdx = answer.questionIndex;
           if (questionIdx >= 0 && questionIdx < questions.length) {
@@ -489,6 +487,7 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
           }
         }
 
+        totalAnswered += allAnswers.length;
         updateLesson(lesson.id, { status: "done" });
         setDoneCount((prev) => prev + 1);
       } catch (e: any) {
@@ -499,6 +498,10 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
       if (i < targets.length - 1 && !abortRef.current) {
         await new Promise((r) => setTimeout(r, 2000));
       }
+    }
+
+    if (totalAnswered > 0) {
+      await logHistory(courseId, courseTitle, "answers", `Решено ${totalAnswered} вопросов в ${targets.length} тестах`, totalAnswered, Date.now() - testsStart);
     }
   };
 
