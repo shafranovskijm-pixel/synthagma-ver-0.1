@@ -682,6 +682,7 @@ export function AdminMarketplaceManager() {
             completed++;
             const streamIndex = i + idxInChunk;
             toast.loading(`Генерирую вопросы: "${test.title}" (${completed}/${totalTasks})`, { id: toastId });
+            const startMs = Date.now();
             try {
               const { data, error } = await safeInvoke<any>("gigachat", {
                 body: {
@@ -695,7 +696,9 @@ export function AdminMarketplaceManager() {
                 },
               });
               if (error) throw error;
+              let itemsCount = 0;
               if (data?.questions && !data.parseError && data.questions.length > 0) {
+                itemsCount = data.questions.length;
                 const toInsert = data.questions.map((q: any, idx: number) => ({
                   lesson_id: test.id,
                   question: q.question,
@@ -706,6 +709,15 @@ export function AdminMarketplaceManager() {
                 }));
                 await supabase.from("test_questions").insert(toInsert);
               }
+              await supabase.from("generation_history").insert({
+                course_id: courseId,
+                course_title: courseTitle,
+                action: "questions",
+                details: `Auto-fix: "${test.title}"`,
+                items_count: itemsCount,
+                stream_index: streamIndex,
+                duration_ms: Date.now() - startMs,
+              });
             } catch (e) {
               console.error(`Failed to generate questions for test ${test.id}:`, e);
             }
