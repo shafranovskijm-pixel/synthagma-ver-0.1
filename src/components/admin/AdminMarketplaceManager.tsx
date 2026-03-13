@@ -628,12 +628,13 @@ export function AdminMarketplaceManager() {
 
       let completed = 0;
 
-      // 2. Generate content for empty lessons (parallel, concurrency=2)
-      const CONCURRENCY = 2;
+      // 2. Generate content for empty lessons (parallel, concurrency=3)
+      const CONCURRENCY = 3;
       for (let i = 0; i < emptyLessons.length; i += CONCURRENCY) {
         const chunk = emptyLessons.slice(i, i + CONCURRENCY);
-        const promises = chunk.map(async (lesson) => {
+        const promises = chunk.map(async (lesson, idxInChunk) => {
           completed++;
+          const streamIndex = i + idxInChunk;
           toast.loading(`Генерирую контент: "${lesson.title}" (${completed}/${totalTasks})`, { id: toastId });
           try {
             const { data, error } = await safeInvoke<any>("gigachat", {
@@ -642,6 +643,9 @@ export function AdminMarketplaceManager() {
                 courseTitle,
                 lessonTitle: lesson.title,
                 existingContent: null,
+                ai_provider: aiProvider,
+                stream_index: streamIndex,
+                ...(aiProvider === "gigachat" && gigachatModel ? { gigachat_model: gigachatModel } : {}),
                 ...(aiPrompts.content ? { customSystemPrompt: aiPrompts.content } : {}),
               },
             });
