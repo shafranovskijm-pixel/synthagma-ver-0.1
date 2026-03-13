@@ -212,6 +212,15 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
         }
         setGeneratingProgress(25);
 
+        // Log structure generation
+        await supabase.from("generation_history").insert({
+          course_id: courseId,
+          course_title: courseTitle,
+          action: "structure",
+          details: `Создано ${lessons.length} уроков`,
+          items_count: lessons.length,
+        } as any);
+
         // Re-fetch lessons
         const { data: freshLessons } = await supabase
           .from("lessons")
