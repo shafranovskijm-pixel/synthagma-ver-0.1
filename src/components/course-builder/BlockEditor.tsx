@@ -937,7 +937,7 @@ function BlockContent({ block, onUpdate, courseTitle, lessonTitle, existingConte
     case "numberedList":
       return (
         <div className={cn("space-y-1 py-2", editorStyleClasses)}>
-          <Textarea value={block.content} onChange={(e) => onUpdate({ content: e.target.value })} placeholder="Элемент списка (каждая строка — отдельный пункт)" className="min-h-[60px] border-0 bg-secondary/30 resize-none focus-visible:ring-1 rounded-lg text-sm" />
+          <Textarea value={(block.content || "").replace(/<\/?li>/gi, "")} onChange={(e) => onUpdate({ content: e.target.value })} placeholder="Элемент списка (каждая строка — отдельный пункт)" className="min-h-[60px] border-0 bg-secondary/30 resize-none focus-visible:ring-1 rounded-lg text-sm" />
         </div>
       );
 
