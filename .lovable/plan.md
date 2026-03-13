@@ -1,48 +1,18 @@
 
 
-## Анализ: почему обогащение медиа такое медленное
+## Plan: Auto-fix after "Проверить все"
 
-### Найденные узкие места
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-**1. Последовательная проверка уроков (строка 680-688)**
-Перед началом обогащения, каждый урок проверяется на наличие медиа **по одному** — N последовательных запросов к базе.
+### Changes
 
-**2. Избыточные ретраи в generate-image (строки 280-343)**
-Текущая логика: 3 раунда × 3 слота × 2 ретрая = до **18 попыток** с суммарным cooldown до ~25 секунд. Для 3 параллельных потоков это создаёт каскадные задержки.
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-**3. Медленная конвертация base64 (строки 248-251)**
-```typescript
-for (let i = 0; i < imageBytes.length; i++) {
-  binary += String.fromCharCode(imageBytes[i]);
-}
-```
-Конкатенация строки побайтово — O(n²) для больших изображений (300-500KB). Нужно заменить на чанковый подход.
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-### План исправления
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-| # | Что | Файл | Эффект |
-|---|---|---|---|
-| 1 | Параллельная проверка уроков на наличие медиа | `AdminMarketplaceManager.tsx` | Убрать последовательный цикл, заменить на `Promise.all` для загрузки контента всех уроков разом |
-| 2 | Уменьшить ретраи generate-image: 2 раунда × 3 слота × 1 ретрай | `generate-image/index.ts` | Сократить максимальное время ожидания с ~25с до ~5с при 429 |
-| 3 | Заменить побайтовый base64 на чанковый | `generate-image/index.ts` | В ~100x быстрее для больших изображений |
-| 4 | Уменьшить cooldown между раундами: 1500мс вместо 2500×(round+1) | `generate-image/index.ts` | Быстрее переход между раундами |
-
-### Детали изменений
-
-**`AdminMarketplaceManager.tsx`** (строки 680-688):
-- Заменить `for...of` с последовательными `supabase.from("lessons").select()` на один `Promise.all` для загрузки всех уроков параллельно
-
-**`generate-image/index.ts`**:
-- `maxRounds`: 3 → 2
-- `maxSlotRetries`: 2 → 1 (не ретраить 429 внутри слота, сразу переходить к следующему)
-- Cooldown: `2500 * (round + 1)` → `1500`
-- Base64: заменить побайтовый цикл на чанковый подход:
-```typescript
-const CHUNK = 8192;
-const parts: string[] = [];
-for (let i = 0; i < imageBytes.length; i += CHUNK) {
-  parts.push(String.fromCharCode(...imageBytes.subarray(i, i + CHUNK)));
-}
-const base64 = btoa(parts.join(""));
-```
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 

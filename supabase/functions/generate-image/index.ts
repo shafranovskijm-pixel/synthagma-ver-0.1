@@ -245,11 +245,12 @@ async function generateWithGigaChat(prompt: string, keySlot?: string) {
 
   const imageBytes = new Uint8Array(await imageRes.arrayBuffer());
   // Return as base64 data URL — use chunked encoding to avoid stack overflow on large images
-  let binary = "";
-  for (let i = 0; i < imageBytes.length; i++) {
-    binary += String.fromCharCode(imageBytes[i]);
+  const CHUNK = 8192;
+  const parts: string[] = [];
+  for (let i = 0; i < imageBytes.length; i += CHUNK) {
+    parts.push(String.fromCharCode(...imageBytes.subarray(i, i + CHUNK)));
   }
-  const base64 = btoa(binary);
+  const base64 = btoa(parts.join(""));
   return `data:image/jpeg;base64,${base64}`;
 }
 
@@ -277,7 +278,7 @@ serve(async (req) => {
       let success = false;
       let lastRoundFailures: Array<{ slot: string; status: number; message: string }> = [];
 
-      const maxRounds = 3;
+      const maxRounds = 2;
       for (let round = 0; round < maxRounds && !success; round++) {
         const roundFailures: Array<{ slot: string; status: number; message: string }> = [];
 
@@ -285,7 +286,7 @@ serve(async (req) => {
           const si = (startSlot + attempt) % allSlots.length;
           const slotName = allSlots[si];
 
-          const maxSlotRetries = 2;
+          const maxSlotRetries = 1;
           for (let retry = 0; retry < maxSlotRetries; retry++) {
             try {
               console.log(`[generate-image] Trying GigaChat slot ${slotName} (round ${round + 1}/${maxRounds}, attempt ${attempt + 1}, retry ${retry + 1}/${maxSlotRetries}, startSlot=${startSlot})`);
@@ -319,7 +320,7 @@ serve(async (req) => {
         const has402 = roundFailures.some((f) => f.status === 402);
 
         if (all429 && round < maxRounds - 1) {
-          const cooldownMs = 2500 * (round + 1);
+          const cooldownMs = 1500;
           console.warn(`[generate-image] All slots returned 429 on round ${round + 1}, cooling down ${cooldownMs}ms before retry round`);
           await new Promise((resolve) => setTimeout(resolve, cooldownMs));
           continue;
