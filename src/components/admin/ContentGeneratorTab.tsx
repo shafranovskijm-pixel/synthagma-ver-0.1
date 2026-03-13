@@ -209,6 +209,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
         .from("test_questions").select("id").eq("lesson_id", lesson.id);
 
       if (!existingQ || existingQ.length === 0) {
+        const qStart = Date.now();
         const { data: qData, error: qError } = await safeInvoke<any>("gigachat", {
           body: {
             action: "generate_questions",
