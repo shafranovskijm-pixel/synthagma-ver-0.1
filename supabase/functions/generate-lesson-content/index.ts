@@ -149,10 +149,11 @@ ${practiceGreetingRule}
                   properties: {
                     type: { 
                       type: "string", 
-                      enum: ["heading1", "heading2", "paragraph", "bulletList", "numberedList", "quote"],
-                      description: "Тип блока контента"
+                      enum: ["heading1", "heading2", "paragraph", "bulletList", "numberedList", "quote", "callout-info", "callout-warning", "callout-tip", "callout-danger", "highlight", "accordion"],
+                      description: "Тип блока контента. Используй callout-warning для предупреждений, callout-info для справки, callout-danger для нарушений, highlight для ключевых выводов"
                     },
-                    content: { type: "string", description: "Содержимое блока" }
+                    content: { type: "string", description: "Содержимое блока" },
+                    accordionTitle: { type: "string", description: "Заголовок для accordion блока (только для type=accordion)" }
                   },
                   required: ["type", "content"],
                   additionalProperties: false
