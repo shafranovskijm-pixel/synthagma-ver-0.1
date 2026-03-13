@@ -52,7 +52,7 @@ serve(async (req) => {
       );
     }
 
-    const { lessonTitle, lessonType, courseTitle, courseDescription, previousLessons, ai_provider } = await req.json();
+    const { lessonTitle, lessonType, courseTitle, courseDescription, previousLessons, ai_provider, taskIndex } = await req.json();
 
     if (!lessonTitle?.trim()) {
       return new Response(
