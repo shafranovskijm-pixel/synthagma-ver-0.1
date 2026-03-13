@@ -521,6 +521,160 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
           .map((group, idx) => processStream(group, courseId, courseTitle, onProgress, idx + 1))
       );
 
+      // Step 3: Enrichment — analyze content and add images/sliders
+      setGeneratingPhase("enriching");
+      setGeneratingProgress(90);
+
+      const textLessons = allLessons.filter(l => l.type === "text" || l.type === "practice");
+      if (textLessons.length > 0) {
+        let enrichedCount = 0;
+        const enrichGroups: any[][] = Array.from({ length: STREAMS }, () => []);
+        textLessons.forEach((lesson, i) => { enrichGroups[i % STREAMS].push(lesson); });
+
+        const enrichLesson = async (lesson: any, streamIdx: number) => {
+          const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
+          try {
+            // Re-fetch lesson content (it was just generated)
+            const { data: freshLesson } = await supabase
+              .from("lessons").select("content").eq("id", lesson.id).single();
+            if (!freshLesson?.content || freshLesson.content === "[]") return;
+
+            let blocks: ContentBlock[];
+            try { blocks = JSON.parse(freshLesson.content); } catch { return; }
+            if (blocks.length < 3) return; // too short to enrich
+
+            // Extract text for analysis
+            const textContent = blocks
+              .filter((b: any) => b.type === "paragraph" || b.type === "heading")
+              .map((b: any) => b.content || "")
+              .join("\n").slice(0, 4000);
+
+            if (textContent.length < 100) return;
+
+            // 1. Analyze visuals
+            const { data: analysisData, error: analysisErr } = await safeInvoke<any>("gigachat", {
+              body: {
+                action: "analyze_visuals",
+                courseTitle,
+                lessonTitle: lesson.title,
+                lessonContent: textContent,
+                blocksCount: blocks.length,
+                ai_provider: aiProvider,
+                stream_index: streamIdx,
+                ...(aiProvider === "gigachat" ? { gigachat_model: gigachatModel } : { lovable_model: lovableModel }),
+              },
+            });
+
+            if (analysisErr || !analysisData?.visuals || analysisData.visuals.length === 0) return;
+
+            const visuals = analysisData.visuals as Array<{
+              prompt: string;
+              after_block_index: number;
+              format: "image" | "slider";
+              slides?: string[];
+            }>;
+
+            // 2. Generate images for each visual (sort by index descending to insert without shifting)
+            const sortedVisuals = [...visuals]
+              .filter(v => v.format === "image") // handle images first
+              .sort((a, b) => b.after_block_index - a.after_block_index);
+
+            let insertedCount = 0;
+            for (const visual of sortedVisuals) {
+              try {
+                const { data: imgData, error: imgErr } = await safeInvoke<any>("generate-image", {
+                  body: { prompt: visual.prompt, provider: "gigachat" },
+                });
+                if (imgErr || !imgData?.url) continue;
+
+                const insertIdx = Math.min(visual.after_block_index + 1, blocks.length);
+                blocks.splice(insertIdx, 0, {
+                  id: crypto.randomUUID(),
+                  type: "image",
+                  content: visual.prompt,
+                  imageSrc: imgData.url,
+                } as ContentBlock);
+                insertedCount++;
+                await delay(300);
+              } catch (e) {
+                console.warn(`Enrichment image failed for "${lesson.title}":`, e);
+              }
+            }
+
+            // 3. Handle slider visuals — create separate slider lessons
+            const sliderVisuals = visuals.filter(v => v.format === "slider" && v.slides && v.slides.length >= 2);
+            for (const sv of sliderVisuals) {
+              try {
+                const slides: any[] = [];
+                for (const slideTitle of (sv.slides || []).slice(0, 5)) {
+                  const slidePrompt = `${sv.prompt}: ${slideTitle}. Образовательная инфографика, чистый стиль.`;
+                  const { data: slideImg } = await safeInvoke<any>("generate-image", {
+                    body: { prompt: slidePrompt, provider: "gigachat" },
+                  });
+                  slides.push({
+                    id: crypto.randomUUID(),
+                    title: slideTitle,
+                    content: "",
+                    imageUrl: slideImg?.url || "",
+                  });
+                  await delay(300);
+                }
+
+                if (slides.length > 0) {
+                  // Insert slider as a new block in the lesson content
+                  const sliderBlock = {
+                    id: crypto.randomUUID(),
+                    type: "slider",
+                    content: JSON.stringify({ slides }),
+                  } as ContentBlock;
+
+                  const insertIdx = Math.min(sv.after_block_index + 1 + insertedCount, blocks.length);
+                  blocks.splice(insertIdx, 0, sliderBlock);
+                  insertedCount++;
+                }
+              } catch (e) {
+                console.warn(`Enrichment slider failed for "${lesson.title}":`, e);
+              }
+            }
+
+            // 4. Save updated content
+            if (insertedCount > 0) {
+              const jsonContent = blocksToJson(blocks);
+              await supabase.from("lessons").update({ content: jsonContent }).eq("id", lesson.id);
+              enrichedCount++;
+
+              await supabase.from("generation_history").insert({
+                course_id: courseId, course_title: courseTitle,
+                action: "enrichment",
+                details: `Поток ${streamIdx}: обогащение «${lesson.title}» — ${insertedCount} визуализаций`,
+                items_count: insertedCount,
+                stream_index: streamIdx,
+              }).then(({ error: h }) => h && console.warn("History insert error:", h));
+            }
+          } catch (e) {
+            console.warn(`Enrichment failed for lesson "${lesson.title}":`, e);
+          }
+        };
+
+        await Promise.all(
+          enrichGroups
+            .filter(g => g.length > 0)
+            .map((group, idx) =>
+              (async () => {
+                for (const lesson of group) {
+                  await enrichLesson(lesson, idx + 1);
+                }
+              })()
+            )
+        );
+
+        if (enrichedCount > 0) {
+          console.log(`Enrichment complete: ${enrichedCount} lessons enriched`);
+        }
+      }
+
+      setGeneratingProgress(98);
+
       // Mark as validated
       const mpCourse = courses.find(c => c.course_id === courseId);
       if (mpCourse) {
@@ -529,7 +683,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
 
       setGeneratingProgress(100);
       setGeneratingPhase("idle");
-      toast.success(`Курс «${courseTitle}» сгенерирован!`);
+      toast.success(`Курс «${courseTitle}» сгенерирован и обогащён медиа!`);
       onComplete();
       analyzeCategory();
     } catch (e: any) {
