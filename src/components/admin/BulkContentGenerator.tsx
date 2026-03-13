@@ -519,6 +519,7 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
       } catch (e: any) {
         console.error("Error solving test", lesson.title, e);
         updateLesson(lesson.id, { status: "error", error: e.message || "Ошибка решения теста" });
+        await logHistory(courseId, courseTitle, "answers", `❌ Ошибка теста «${lesson.title}» — ${e.message || "Неизвестная ошибка"}`, 0, 0);
       }
 
       if (i < targets.length - 1 && !abortRef.current) {

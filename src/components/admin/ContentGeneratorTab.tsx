@@ -379,6 +379,15 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
             ...(aiProvider === "gigachat" ? { gigachat_model: gigachatModel } : { lovable_model: lovableModel }),
           },
         });
+        if (ansError || !ansData?.answers) {
+          const errMsg = ansError?.message || ansData?.error || "Пустой ответ";
+          console.error(`Answers generation failed for "${lesson.title}" (stream ${streamIndex}):`, errMsg);
+          await supabase.from("generation_history").insert({
+            course_id: courseId, course_title: courseTitle,
+            action: "answers", details: `❌ Поток ${streamIndex}: ошибка ответов «${lesson.title}» — ${errMsg}`, items_count: 0,
+            stream_index: streamIndex, duration_ms: Date.now() - ansStart,
+          }).then(({ error: h }) => h && console.warn("History insert error:", h));
+        }
         if (!ansError && ansData?.answers) {
           let solved = 0;
           for (const ans of ansData.answers) {
