@@ -263,7 +263,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
                 lesson_id: test.id,
                 question: q.question,
                 options: q.options,
-                correct_answer: q.correct_answer ?? null,
+                correct_answer: q.correctAnswer ?? q.correct_answer ?? null,
               });
             }
           }
