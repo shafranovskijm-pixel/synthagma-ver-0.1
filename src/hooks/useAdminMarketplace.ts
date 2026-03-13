@@ -350,7 +350,7 @@ export function useAdminMarketplace() {
   });
 
   // Group courses by DB category_id, ordered by dbCategories order_index
-  const groupedCourses: { category: string; badge: string; courses: MarketplaceCourseWithDetails[]; subGroups?: { category: string; categoryId?: string; courses: MarketplaceCourseWithDetails[] }[] }[] = (() => {
+  const groupedCourses: { category: string; badge: string; courses: MarketplaceCourseWithDetails[]; uncategorized: MarketplaceCourseWithDetails[]; subGroups?: { category: string; categoryId?: string; icon?: string | null; courses: MarketplaceCourseWithDetails[] }[] }[] = (() => {
     const byCatId = new Map<string, MarketplaceCourseWithDetails[]>();
     const uncategorized: MarketplaceCourseWithDetails[] = [];
 
@@ -383,11 +383,10 @@ export function useAdminMarketplace() {
 
       const subCourses = subGroups.flatMap(g => g.courses);
       // Uncategorized courses go to first program type
-      const courses = pt.category === "Повышение квалификации"
-        ? [...subCourses, ...uncategorized]
-        : subCourses;
+      const groupUncategorized = pt.category === "Повышение квалификации" ? uncategorized : [];
+      const courses = [...subCourses, ...groupUncategorized];
 
-      return { category: pt.category, badge: pt.badge, courses, subGroups };
+      return { category: pt.category, badge: pt.badge, courses, uncategorized: groupUncategorized, subGroups };
     });
   })();
 
@@ -477,6 +476,78 @@ export function useAdminMarketplace() {
     }
   };
 
+  // Auto-categorize courses by keyword matching
+  const handleAutoCategorize = async () => {
+    const keywordMappings: { keywords: string[]; categoryName: string; parentType: string; icon: string }[] = [
+      { keywords: ["первая помощь", "медицин", "оказание помощи"], categoryName: "Медицина и первая помощь", parentType: "Охрана труда / Пожарная безопасность", icon: "Lightbulb" },
+      { keywords: ["охрана труда", "безопасные условия"], categoryName: "Охрана труда", parentType: "Охрана труда / Пожарная безопасность", icon: "ShieldCheck" },
+      { keywords: ["пожарная безопасность", "пожарно-технический", "пожарн"], categoryName: "Пожарная безопасность", parentType: "Охрана труда / Пожарная безопасность", icon: "Flame" },
+      { keywords: ["промышленная безопасность", "ростехнадзор"], categoryName: "Промышленная безопасность", parentType: "Повышение квалификации", icon: "Factory" },
+      { keywords: ["электробезопасность", "электроустановк"], categoryName: "Электробезопасность", parentType: "Повышение квалификации", icon: "Zap" },
+      { keywords: ["энергетик", "теплоснабж", "котельн"], categoryName: "Энергетика", parentType: "Повышение квалификации", icon: "Flame" },
+      { keywords: ["экологич", "отходы"], categoryName: "Экологическая безопасность", parentType: "Повышение квалификации", icon: "Leaf" },
+      { keywords: ["гидротехнич", "ГТС"], categoryName: "Гидротехнические сооружения", parentType: "Повышение квалификации", icon: "Droplets" },
+      { keywords: ["строительный контроль", "строительн"], categoryName: "Строительный контроль", parentType: "Повышение квалификации", icon: "HardHat" },
+    ];
+
+    try {
+      // 1. Ensure all target categories exist
+      const catMap = new Map<string, string>(); // name -> id
+      for (const cat of dbCategories) {
+        catMap.set(cat.name, cat.id);
+      }
+
+      for (const mapping of keywordMappings) {
+        if (!catMap.has(mapping.categoryName)) {
+          const maxOrder = dbCategories
+            .filter(c => (c.parent_type || "Повышение квалификации") === mapping.parentType)
+            .reduce((max, c) => Math.max(max, c.order_index), -1);
+
+          const { data, error } = await supabase.from("course_categories").insert({
+            name: mapping.categoryName,
+            organization_id: MARKETPLACE_ORG_ID,
+            order_index: maxOrder + 1,
+            parent_type: mapping.parentType,
+            icon: mapping.icon,
+          } as any).select("id").single();
+          if (error) { console.error("Error creating category:", error); continue; }
+          catMap.set(mapping.categoryName, data.id);
+        }
+      }
+
+      // 2. Find uncategorized courses and match by keywords
+      const uncategorized = courses.filter(c => !c.course?.category_id);
+      let matched = 0;
+
+      for (const course of uncategorized) {
+        const title = (course.course?.title || "").toLowerCase();
+        let targetCatId: string | null = null;
+
+        for (const mapping of keywordMappings) {
+          if (mapping.keywords.some(kw => title.includes(kw.toLowerCase()))) {
+            targetCatId = catMap.get(mapping.categoryName) || null;
+            break;
+          }
+        }
+
+        if (targetCatId && course.course?.id) {
+          const { error } = await supabase
+            .from("courses")
+            .update({ category_id: targetCatId })
+            .eq("id", course.course.id);
+          if (!error) matched++;
+        }
+      }
+
+      toast.success(`Распределено ${matched} из ${uncategorized.length} курсов`);
+      await fetchDbCategories();
+      await fetchCourses();
+    } catch (error) {
+      console.error("Auto-categorize error:", error);
+      toast.error("Ошибка авто-распределения");
+    }
+  };
+
   return {
     activeTab, setActiveTab, isLoading, searchQuery, setSearchQuery,
     selectedCategory, setSelectedCategory, viewMode, setViewMode,
@@ -507,5 +578,6 @@ export function useAdminMarketplace() {
     handleMoveToCategory,
     handleReorderCategories,
     fetchDbCategories,
+    handleAutoCategorize,
   };
 }
