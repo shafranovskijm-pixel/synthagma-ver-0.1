@@ -752,7 +752,7 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
                     className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
                       lesson.status === "done" ? "bg-green-500/5" :
                       lesson.status === "error" ? "bg-destructive/5" :
-                      ["generating_text", "generating_image", "solving_test"].includes(lesson.status) ? "bg-primary/5" :
+                      ["generating_text", "generating_image", "generating_audio", "solving_test"].includes(lesson.status) ? "bg-primary/5" :
                       "hover:bg-secondary/50"
                     }`}
                   >
