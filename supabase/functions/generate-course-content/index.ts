@@ -269,10 +269,11 @@ function createImageHttpClient(): Deno.HttpClient | undefined {
 
 const imageHttpClient = createImageHttpClient();
 
-// GigaChat image generation keys (2 slots)
+// GigaChat image generation keys (3 slots)
 const GIGACHAT_IMAGE_KEYS = [
   Deno.env.get("GIGACHAT_AUTH_KEY"),
   Deno.env.get("GIGACHAT_AUTH_KEY_2"),
+  Deno.env.get("GIGACHAT_AUTH_KEY_3"),
 ].filter(Boolean) as string[];
 
 async function generateImageWithGigaChat(prompt: string, keyIndex: number): Promise<string | null> {
