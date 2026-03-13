@@ -636,6 +636,7 @@ export function AdminMarketplaceManager() {
           completed++;
           const streamIndex = i + idxInChunk;
           toast.loading(`Генерирую контент: "${lesson.title}" (${completed}/${totalTasks})`, { id: toastId });
+          const startMs = Date.now();
           try {
             const { data, error } = await safeInvoke<any>("gigachat", {
               body: {
@@ -650,11 +651,22 @@ export function AdminMarketplaceManager() {
               },
             });
             if (error) throw error;
+            let itemsCount = 0;
             if (data?.content) {
               const blocks = markdownToBlocks(data.content);
+              itemsCount = blocks.length;
               const jsonContent = blocks.length > 0 ? blocksToJson(blocks) : data.content;
               await supabase.from("lessons").update({ content: jsonContent }).eq("id", lesson.id);
             }
+            await supabase.from("generation_history").insert({
+              course_id: courseId,
+              course_title: courseTitle,
+              action: "content",
+              details: `Auto-fix: "${lesson.title}"`,
+              items_count: itemsCount,
+              stream_index: streamIndex,
+              duration_ms: Date.now() - startMs,
+            });
           } catch (e) {
             console.error(`Failed to generate content for lesson ${lesson.id}:`, e);
           }
