@@ -557,7 +557,7 @@ export function AdminMarketplaceManager() {
 
       const allLessons = lessons || [];
       const emptyLessons = allLessons.filter(l =>
-        (l.type === "text" || l.type === "practice") && (!l.content || l.content === "[]" || l.content === "" || l.content.length < 50)
+        (l.type === "text" || l.type === "practice") && (!l.content || l.content === "[]" || l.content === "" || l.content.length < valRules.minContentLength)
       );
 
       const testIds = allLessons.filter(l => l.type === "test").map(l => l.id);
