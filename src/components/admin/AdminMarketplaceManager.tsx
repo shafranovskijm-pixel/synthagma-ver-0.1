@@ -638,7 +638,43 @@ export function AdminMarketplaceManager() {
         await Promise.allSettled(promises);
       }
 
-      // 3. Solve existing unanswered test questions (parallel, concurrency=2)
+      // 3. Generate questions for empty tests
+      if (emptyTests.length > 0) {
+        for (let i = 0; i < emptyTests.length; i += CONCURRENCY) {
+          const chunk = emptyTests.slice(i, i + CONCURRENCY);
+          const promises = chunk.map(async (test) => {
+            completed++;
+            toast.loading(`Генерирую вопросы: "${test.title}" (${completed}/${totalTasks})`, { id: toastId });
+            try {
+              const { data, error } = await safeInvoke<any>("gigachat", {
+                body: {
+                  action: "generate_questions",
+                  courseTitle,
+                  lessonTitle: test.title,
+                  ...(aiPrompts.questions ? { customSystemPrompt: aiPrompts.questions } : {}),
+                },
+              });
+              if (error) throw error;
+              if (data?.questions && !data.parseError && data.questions.length > 0) {
+                const toInsert = data.questions.map((q: any, idx: number) => ({
+                  lesson_id: test.id,
+                  question: q.question,
+                  options: q.options,
+                  correct_answer: q.correctAnswer ?? null,
+                  explanation: q.explanation || null,
+                  order_index: idx,
+                }));
+                await supabase.from("test_questions").insert(toInsert);
+              }
+            } catch (e) {
+              console.error(`Failed to generate questions for test ${test.id}:`, e);
+            }
+          });
+          await Promise.allSettled(promises);
+        }
+      }
+
+      // 4. Solve existing unanswered test questions (parallel, concurrency=2)
       if (unansweredQuestions.length > 0) {
         completed++;
         toast.loading(`Решаю тесты: ${unansweredQuestions.length} вопросов (${completed}/${totalTasks})`, { id: toastId });
