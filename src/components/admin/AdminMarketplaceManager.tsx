@@ -666,8 +666,9 @@ export function AdminMarketplaceManager() {
       if (emptyTests.length > 0) {
         for (let i = 0; i < emptyTests.length; i += CONCURRENCY) {
           const chunk = emptyTests.slice(i, i + CONCURRENCY);
-          const promises = chunk.map(async (test) => {
+          const promises = chunk.map(async (test, idxInChunk) => {
             completed++;
+            const streamIndex = i + idxInChunk;
             toast.loading(`Генерирую вопросы: "${test.title}" (${completed}/${totalTasks})`, { id: toastId });
             try {
               const { data, error } = await safeInvoke<any>("gigachat", {
@@ -675,6 +676,9 @@ export function AdminMarketplaceManager() {
                   action: "generate_questions",
                   courseTitle,
                   lessonTitle: test.title,
+                  ai_provider: aiProvider,
+                  stream_index: streamIndex,
+                  ...(aiProvider === "gigachat" && gigachatModel ? { gigachat_model: gigachatModel } : {}),
                   ...(aiPrompts.questions ? { customSystemPrompt: aiPrompts.questions } : {}),
                 },
               });
