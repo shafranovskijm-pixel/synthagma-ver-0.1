@@ -1,18 +1,56 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## Фаза обогащения медиа после генерации контента
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+### Идея
 
-### Changes
+Сейчас pipeline генерирует одно hero-изображение на урок прямо во время создания контента. Пользователь хочет **умную пост-обработку**: после того как весь текст создан, AI анализирует контент каждого урока, выбирает ключевые концепции для визуализации и вставляет изображения или слайд-презентации в нужные места.
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+### Алгоритм
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+**Новая фаза `enriching`** после фазы `streaming`:
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+1. **Анализ** — для каждого текстового урока (type=`text`) отправить контент в AI (edge-функция `gigachat` с новым action `analyze_visuals`) с запросом: «Какие 2-3 ключевые идеи в этом уроке лучше визуализировать? Для каждой укажи: описание для изображения, позицию (после какого блока вставить), и формат (image или slider).»
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+2. **Генерация** — по результатам анализа:
+   - **image**: вызвать `generate-image` с промптом из анализа, вставить блок `image` в указанную позицию
+   - **slider**: сгенерировать 3-5 слайдов (каждый = title + content + imageUrl), собрать в JSON формат `SliderContent`, создать отдельный урок типа `slider` сразу после текущего урока (или вставить inline-блоки)
+
+3. **Запись** — обновить `lessons.content` с новыми блоками, залогировать в `generation_history`
+
+### Изменения по файлам
+
+| Файл | Что меняется |
+|---|---|
+| `supabase/functions/gigachat/index.ts` | Новый action `analyze_visuals`: принимает контент урока, возвращает JSON с рекомендациями визуализации (prompt, position, format) |
+| `src/components/admin/ContentGeneratorTab.tsx` | Новая фаза `enriching` после `streaming`: перебирает все текстовые уроки → вызывает `analyze_visuals` → генерирует изображения/слайды → обновляет контент |
+| `src/components/admin/ContentGeneratorTab.tsx` | Обновить `PHASE_LABELS` и прогресс-бар для новой фазы |
+
+### Формат ответа `analyze_visuals`
+
+```json
+{
+  "visuals": [
+    {
+      "prompt": "Схема оценки рисков при работе в замкнутых пространствах",
+      "after_block_index": 3,
+      "format": "image"
+    },
+    {
+      "prompt": "Этапы подготовки к работе в ограниченных пространствах",
+      "after_block_index": 7,
+      "format": "slider",
+      "slides": ["Инструктаж", "Проверка оборудования", "Замер атмосферы", "Допуск к работе"]
+    }
+  ]
+}
+```
+
+### Для slider
+
+Формат уже существует в системе (`SliderSlide`: id, content, title, imageUrl). Для каждого слайда генерируется изображение через `generate-image`, собирается в `SliderContent` JSON и вставляется как отдельный урок типа `slider` после текущего текстового урока.
+
+### Параллелизация
+
+Обогащение выполняется в 3 потока (как основная генерация): каждый поток обрабатывает свою группу уроков последовательно (анализ → генерация изображений → обновление).
 
