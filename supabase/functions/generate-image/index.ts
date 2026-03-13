@@ -265,8 +265,13 @@ serve(async (req) => {
       }
       if (!success) {
         console.log("[generate-image] All GigaChat slots failed, falling back to Lovable AI");
-        generatedImageUrl = await generateWithLovableAI(prompt, imageUrl, model);
-        usedProvider = "lovable_ai";
+        try {
+          generatedImageUrl = await generateWithLovableAI(prompt, imageUrl, model);
+          usedProvider = "lovable_ai";
+        } catch (fallbackErr: any) {
+          console.error("[generate-image] Lovable AI fallback also failed:", fallbackErr?.message);
+          throw { status: fallbackErr?.status || 500, message: fallbackErr?.message || "Все провайдеры изображений недоступны" };
+        }
       }
     } else {
       generatedImageUrl = await generateWithLovableAI(prompt, imageUrl, model);
