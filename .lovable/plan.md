@@ -1,28 +1,18 @@
 
 
-## План: Группировка курсов с одинаковым базовым названием в аккордеоны
+## Plan: Auto-fix after "Проверить все"
 
-### Суть
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-Курсы вроде «Правила работы с персоналом в организациях электроэнергетики РФ — до 1000 В — Группа V/IV/III/II» отличаются только вольтажом и группой. Вместо 4+ отдельных строк — один аккордеон с базовым названием, раскрывающийся по клику.
+### Changes
 
-### Логика группировки
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-Функция `groupSimilarCourses(courses)`:
-1. Для каждого курса извлечь **базовое название** — всё до первого ` — ` (например, «Правила работы с персоналом в организациях электроэнергетики Российской Федерации»)
-2. Если 2+ курса имеют одинаковую базу — объединить в группу
-3. Одиночные курсы оставить как есть
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-### UI
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-- **Одиночный курс** — обычная строка `renderCourseRow` (как сейчас)
-- **Группа курсов** — аккордеон-строка:
-  - Закрыт: базовое название + бейдж «4 варианта»
-  - Открыт: вложенная таблица с суффиксами (« — до 1000 В — Группа V» и т.д.) и всеми кнопками управления
-
-### Файлы
-
-| Файл | Изменение |
-|---|---|
-| `src/components/admin/AdminMarketplaceManager.tsx` | 1) Добавить `groupSimilarCourses()` утилиту; 2) Заменить `courses.map(renderCourseRow)` на рендер через группы — `Collapsible` для групп, обычные строки для одиночных; 3) Применить в обоих местах вызова (subGroup курсы ~строка 891 и основные курсы ~строка 1082) |
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 
