@@ -934,6 +934,19 @@ export function AdminMarketplaceManager() {
                             </TableBody>
                           </Table>
                         )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-xs text-muted-foreground hover:text-foreground mt-2"
+                          onClick={() => {
+                            h.setNewCategoryParentType(group.category);
+                            h.setNewCategoryIcon(null);
+                            h.setNewCategoryName("");
+                            h.setShowCategoryDialog(true);
+                          }}
+                        >
+                          <FolderPlus className="w-3.5 h-3.5 mr-1" />Добавить подкатегорию
+                        </Button>
                       </CollapsibleContent>
                     </Collapsible>
                   );
