@@ -63,6 +63,31 @@ const isPracticeLesson = (lesson: LessonItem): boolean => {
 
 const TEST_BATCH_SIZE = 20;
 
+/** Helper to log generation history */
+const logHistory = async (
+  courseId: string,
+  courseTitle: string,
+  action: string,
+  details: string,
+  itemsCount: number,
+  durationMs: number,
+  streamIndex?: number
+) => {
+  try {
+    await supabase.from("generation_history").insert({
+      course_id: courseId,
+      course_title: courseTitle,
+      action,
+      details,
+      items_count: itemsCount,
+      duration_ms: durationMs,
+      stream_index: streamIndex ?? null,
+    });
+  } catch (e) {
+    console.warn("Failed to log generation history:", e);
+  }
+};
+
 export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle, courseDescription }: Props) {
   const [lessons, setLessons] = useState<LessonItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -134,6 +159,7 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
   // Phase 1: Generate structure — returns fresh lessons
   const generateStructure = async (): Promise<LessonItem[]> => {
     setPhase("structure");
+    const structureStart = Date.now();
     try {
       const { data, error } = await supabase.functions.invoke("generate-course-structure", {
         body: { title: courseTitle, description: courseDescription || "" },
@@ -186,6 +212,7 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
 
       // Return fresh lessons from DB
       const freshLessons = await loadLessons();
+      await logHistory(courseId, courseTitle, "structure", `Создано ${freshLessons.filter(l => l.type !== "test").length} уроков`, freshLessons.length, Date.now() - structureStart);
       return freshLessons;
     } catch (e: any) {
       console.error("Structure generation error:", e);
@@ -197,12 +224,14 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
   // Phase 2: Generate content for text/practice lessons
   const generateContent = async (overrideLessons?: LessonItem[]) => {
     setPhase("content");
+    const contentStart = Date.now();
     const source = overrideLessons || lessons;
     const targets = source.filter(
       (l) => l.selected && l.type !== "test" && isContentEmpty(l.content)
     );
 
     const previousLessonTitles: string[] = [];
+    let successCount = 0;
 
     for (let i = 0; i < targets.length; i++) {
       if (abortRef.current) break;
@@ -238,32 +267,38 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
         updateLesson(lesson.id, { status: "done" });
         previousLessonTitles.push(lesson.title);
         setDoneCount((prev) => prev + 1);
+        successCount++;
       } catch (e: any) {
         console.error("Error processing lesson", lesson.title, e);
         updateLesson(lesson.id, { status: "error", error: e.message || "Неизвестная ошибка" });
-        previousLessonTitles.push(lesson.title); // still track to avoid duplication
+        previousLessonTitles.push(lesson.title);
       }
 
       if (i < targets.length - 1 && !abortRef.current) {
         await new Promise((r) => setTimeout(r, 2000));
       }
     }
+
+    if (successCount > 0) {
+      await logHistory(courseId, courseTitle, "content", `Сгенерирован контент для ${successCount} уроков`, successCount, Date.now() - contentStart);
+    }
   };
 
   // Phase 3: Generate images and audio for content lessons
   const generateMedia = async (overrideLessons?: LessonItem[]) => {
     setPhase("media");
+    const mediaStart = Date.now();
     const source = overrideLessons || lessons;
-    // Only process text/practice lessons that have content (just generated)
     const targets = source.filter(
       (l) => l.selected && l.type !== "test" && !isContentEmpty(l.content)
     );
+
+    let mediaCount = 0;
 
     for (let i = 0; i < targets.length; i++) {
       if (abortRef.current) break;
       const lesson = targets[i];
 
-      // Re-read current content from DB
       const { data: freshLesson } = await supabase
         .from("lessons")
         .select("content")
@@ -278,13 +313,11 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
         if (!Array.isArray(blocks)) continue;
       } catch { continue; }
 
-      // Skip if already has image block
       const hasImage = blocks.some((b: any) => b.type === "image" && b.imageSrc);
       const hasAudio = blocks.some((b: any) => b.type === "audio" && b.audioUrl);
 
       let changed = false;
 
-      // Generate hero image
       if (!hasImage) {
         updateLesson(lesson.id, { status: "generating_image" });
         try {
@@ -308,7 +341,6 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
         }
       }
 
-      // Generate intro audio from first paragraph
       if (!hasAudio) {
         updateLesson(lesson.id, { status: "generating_audio" as LessonStatus });
         const firstPara = blocks.find(
@@ -345,7 +377,6 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
               if (!uploadErr) {
                 const { data: urlData } = supabase.storage.from("course-files").getPublicUrl(fileName);
                 if (urlData?.publicUrl) {
-                  // Insert audio after image (if present) or at start
                   const insertIdx = blocks[0]?.type === "image" ? 1 : 0;
                   blocks.splice(insertIdx, 0, {
                     id: crypto.randomUUID(),
@@ -365,6 +396,7 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
 
       if (changed) {
         await supabase.from("lessons").update({ content: JSON.stringify(blocks) }).eq("id", lesson.id);
+        mediaCount++;
       }
 
       updateLesson(lesson.id, { status: "done" });
@@ -374,13 +406,19 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
         await new Promise((r) => setTimeout(r, 1000));
       }
     }
+
+    if (mediaCount > 0) {
+      await logHistory(courseId, courseTitle, "media", `Изображения и аудио для ${mediaCount} уроков`, mediaCount, Date.now() - mediaStart);
+    }
   };
 
   // Phase 4: Solve test questions using AI (with batching)
   const solveTests = async (overrideLessons?: LessonItem[]) => {
     setPhase("tests");
+    const testsStart = Date.now();
     const source = overrideLessons || lessons;
     const targets = source.filter((l) => l.selected && l.type === "test");
+    let totalAnswered = 0;
 
     for (let i = 0; i < targets.length; i++) {
       if (abortRef.current) break;
@@ -388,7 +426,6 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
 
       updateLesson(lesson.id, { status: "solving_test" });
       try {
-        // Fetch existing test questions
         const { data: questions, error: qError } = await supabase
           .from("test_questions")
           .select("id, question, options, correct_answer, order_index")
@@ -402,7 +439,6 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
           continue;
         }
 
-        // Process in batches of TEST_BATCH_SIZE
         const allAnswers: Array<{ questionIndex: number; correctAnswer: number; explanation?: string }> = [];
 
         for (let batchStart = 0; batchStart < questions.length; batchStart += TEST_BATCH_SIZE) {
@@ -426,7 +462,6 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
           if (aiError) throw new Error(aiError.message || "Ошибка AI");
           if (aiData.parseError) throw new Error("ИИ вернул ответ в неожиданном формате");
 
-          // Adjust questionIndex to global index
           const batchAnswers = (aiData.answers || []).map((a: any) => ({
             ...a,
             questionIndex: a.questionIndex + batchStart,
@@ -438,7 +473,6 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
           }
         }
 
-        // Update each question with AI answer
         for (const answer of allAnswers) {
           const questionIdx = answer.questionIndex;
           if (questionIdx >= 0 && questionIdx < questions.length) {
@@ -453,6 +487,7 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
           }
         }
 
+        totalAnswered += allAnswers.length;
         updateLesson(lesson.id, { status: "done" });
         setDoneCount((prev) => prev + 1);
       } catch (e: any) {
@@ -463,6 +498,10 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
       if (i < targets.length - 1 && !abortRef.current) {
         await new Promise((r) => setTimeout(r, 2000));
       }
+    }
+
+    if (totalAnswered > 0) {
+      await logHistory(courseId, courseTitle, "answers", `Решено ${totalAnswered} вопросов в ${targets.length} тестах`, totalAnswered, Date.now() - testsStart);
     }
   };
 
