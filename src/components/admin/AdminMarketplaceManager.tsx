@@ -556,7 +556,24 @@ export function AdminMarketplaceManager() {
         }
       }
 
-      const allLessons = lessons || [];
+      let allLessons = lessons || [];
+
+      // If tests are required but missing, create a test lesson manually
+      if (valRules.requireTest && allLessons.filter(l => l.type === "test").length === 0) {
+        toast.loading("Создаю тестовый урок...", { id: toastId });
+        const maxOrder = allLessons.reduce((mx, l) => Math.max(mx, l.order_index ?? 0), -1);
+        await supabase.from("lessons").insert({
+          course_id: courseId,
+          title: "Итоговый тест",
+          type: "test",
+          order_index: maxOrder + 1,
+          content: null,
+        });
+        const { data: refreshed2 } = await supabase
+          .from("lessons").select("id, title, type, content, order_index").eq("course_id", courseId).order("order_index");
+        allLessons = refreshed2 || allLessons;
+      }
+
       const emptyLessons = allLessons.filter(l =>
         (l.type === "text" || l.type === "practice") && (!l.content || l.content === "[]" || l.content === "" || l.content.length < valRules.minContentLength)
       );
@@ -570,6 +587,9 @@ export function AdminMarketplaceManager() {
         allQuestions = (questions || []) as typeof allQuestions;
       }
 
+      // Find tests with no questions at all
+      const testQuestionsByLesson = new Set(allQuestions.map(q => q.lesson_id));
+      const emptyTests = allLessons.filter(l => l.type === "test" && !testQuestionsByLesson.has(l.id));
 
       const unansweredQuestions = allQuestions.filter(q => q.correct_answer === null || q.correct_answer === undefined);
 
@@ -582,7 +602,7 @@ export function AdminMarketplaceManager() {
       }
       const duplicateGroups = [...titleCounts.values()].filter(g => g.length > 1);
 
-      const totalTasks = emptyLessons.length + (unansweredQuestions.length > 0 ? 1 : 0) + (duplicateGroups.length > 0 ? 1 : 0);
+      const totalTasks = emptyLessons.length + (unansweredQuestions.length > 0 ? 1 : 0) + (duplicateGroups.length > 0 ? 1 : 0) + emptyTests.length;
       if (totalTasks === 0 && !needsStructure) { toast.info("Нечего исправлять", { id: toastId, duration: 3000 }); return; }
       if (totalTasks === 0) { toast.success("Структура создана! Повторная проверка...", { id: toastId, duration: 3000 }); setTimeout(() => handleValidateCourse(courseId), 1000); return; }
 
