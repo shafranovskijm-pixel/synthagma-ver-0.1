@@ -43,7 +43,14 @@ interface CourseStoreManagerProps {
   refreshBalance?: () => Promise<void>;
 }
 
-const categoryMetaOrg: Record<string, { icon: React.ElementType; color: string; bgColor: string }> = {
+const programTypeMeta: Record<string, { icon: React.ElementType; color: string; bgColor: string }> = {
+  "Повышение квалификации": { icon: GraduationCap, color: "text-blue-600", bgColor: "bg-blue-500/10" },
+  "Профессиональная переподготовка": { icon: Award, color: "text-violet-600", bgColor: "bg-violet-500/10" },
+  "Охрана труда / Пожарная безопасность": { icon: ShieldCheck, color: "text-amber-600", bgColor: "bg-amber-500/10" },
+  "Рабочие профессии": { icon: Store, color: "text-emerald-600", bgColor: "bg-emerald-500/10" },
+};
+
+const subCategoryMeta: Record<string, { icon: React.ElementType; color: string; bgColor: string }> = {
   "Промышленная безопасность": { icon: Factory, color: "text-orange-500", bgColor: "bg-orange-500/10" },
   "Электробезопасность": { icon: Zap, color: "text-yellow-500", bgColor: "bg-yellow-500/10" },
   "Энергетика": { icon: Flame, color: "text-red-500", bgColor: "bg-red-500/10" },
@@ -52,8 +59,11 @@ const categoryMetaOrg: Record<string, { icon: React.ElementType; color: string; 
   "Строительный контроль": { icon: HardHat, color: "text-accent", bgColor: "bg-accent/10" },
 };
 
-const getCategoryMetaOrg = (category: string) =>
-  categoryMetaOrg[category] || { icon: BookOpen, color: "text-primary", bgColor: "bg-primary/10" };
+const getProgramTypeMeta = (category: string) =>
+  programTypeMeta[category] || { icon: BookOpen, color: "text-primary", bgColor: "bg-primary/10" };
+
+const getSubCategoryMeta = (category: string) =>
+  subCategoryMeta[category] || { icon: BookOpen, color: "text-primary", bgColor: "bg-primary/10" };
 
 export function CourseStoreManager({ organizationId, userRole = 'organization', userId }: CourseStoreManagerProps) {
   const navigate = useNavigate();
