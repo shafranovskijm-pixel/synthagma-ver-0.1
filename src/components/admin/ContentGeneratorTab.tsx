@@ -582,46 +582,51 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
               .filter(v => v.format === "image") // handle images first
               .sort((a, b) => b.after_block_index - a.after_block_index);
 
-            let insertedCount = 0;
-            for (const visual of sortedVisuals) {
-              try {
-                const { data: imgData, error: imgErr } = await safeInvoke<any>("generate-image", {
+            // Parallel image generation for speed
+            const imageResults = await Promise.allSettled(
+              sortedVisuals.map(visual =>
+                safeInvoke<any>("generate-image", {
                   body: { prompt: visual.prompt, provider: "gigachat" },
-                });
-                if (imgErr || !imgData?.url) continue;
+                }).then(res => ({ ...res, visual }))
+              )
+            );
 
-                const insertIdx = Math.min(visual.after_block_index + 1, blocks.length);
-                blocks.splice(insertIdx, 0, {
-                  id: crypto.randomUUID(),
-                  type: "image",
-                  content: visual.prompt,
-                  imageSrc: imgData.url,
-                } as ContentBlock);
-                insertedCount++;
-                await delay(300);
-              } catch (e) {
-                console.warn(`Enrichment image failed for "${lesson.title}":`, e);
-              }
+            let insertedCount = 0;
+            for (const result of imageResults) {
+              if (result.status !== "fulfilled") continue;
+              const { data: imgData, error: imgErr, visual } = result.value;
+              if (imgErr || !imgData?.url) continue;
+              const insertIdx = Math.min(visual.after_block_index + 1, blocks.length);
+              blocks.splice(insertIdx, 0, {
+                id: crypto.randomUUID(),
+                type: "image",
+                content: visual.prompt,
+                imageSrc: imgData.url,
+              } as ContentBlock);
+              insertedCount++;
             }
 
             // 3. Handle slider visuals — create separate slider lessons
             const sliderVisuals = visuals.filter(v => v.format === "slider" && v.slides && v.slides.length >= 2);
             for (const sv of sliderVisuals) {
               try {
-                const slides: any[] = [];
-                for (const slideTitle of (sv.slides || []).slice(0, 5)) {
-                  const slidePrompt = `${sv.prompt}: ${slideTitle}. Образовательная инфографика, чистый стиль.`;
-                  const { data: slideImg } = await safeInvoke<any>("generate-image", {
-                    body: { prompt: slidePrompt, provider: "gigachat" },
-                  });
-                  slides.push({
+                const slideTitles = (sv.slides || []).slice(0, 5);
+                const slideResults = await Promise.allSettled(
+                  slideTitles.map(slideTitle => {
+                    const slidePrompt = `${sv.prompt}: ${slideTitle}. Образовательная инфографика, чистый стиль.`;
+                    return safeInvoke<any>("generate-image", {
+                      body: { prompt: slidePrompt, provider: "gigachat" },
+                    }).then(res => ({ ...res, slideTitle }));
+                  })
+                );
+                const slides = slideResults
+                  .filter((r): r is PromiseFulfilledResult<any> => r.status === "fulfilled")
+                  .map(r => ({
                     id: crypto.randomUUID(),
-                    title: slideTitle,
+                    title: r.value.slideTitle,
                     content: "",
-                    imageUrl: slideImg?.url || "",
-                  });
-                  await delay(300);
-                }
+                    imageUrl: r.value.data?.url || "",
+                  }));
 
                 if (slides.length > 0) {
                   // Insert slider as a new block in the lesson content

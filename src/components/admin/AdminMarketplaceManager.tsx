@@ -689,6 +689,7 @@ export function AdminMarketplaceManager() {
       }
 
       if (lessonsNeedingMedia.length > 0) {
+        let enrichedLessons = 0;
         toast.loading(`Обогащаю медиа: 0/${lessonsNeedingMedia.length}...`, { id: toastId });
         let enrichedCount = 0;
         for (let ei = 0; ei < lessonsNeedingMedia.length; ei += CONCURRENCY) {
@@ -729,27 +730,34 @@ export function AdminMarketplaceManager() {
               const imageVisuals = [...visuals].filter(v => v.format === "image")
                 .sort((a, b) => b.after_block_index - a.after_block_index);
 
-              let insertedCount = 0;
-              for (const visual of imageVisuals) {
-                try {
-                  const { data: imgData, error: imgErr } = await safeInvoke<any>("generate-image", {
+              // Parallel image generation for speed
+              const imageResults = await Promise.allSettled(
+                imageVisuals.map(visual =>
+                  safeInvoke<any>("generate-image", {
                     body: { prompt: visual.prompt, provider: "gigachat" },
-                  });
-                  if (imgErr || !imgData?.url) continue;
-                  const insertIdx = Math.min(visual.after_block_index + 1, blocks.length);
-                  blocks.splice(insertIdx, 0, {
-                    id: crypto.randomUUID(), type: "image", content: visual.prompt, imageSrc: imgData.url,
-                  });
-                  insertedCount++;
-                } catch (e) {
-                  console.warn(`Auto-fix image failed:`, e);
-                }
+                  }).then(res => ({ ...res, visual }))
+                )
+              );
+
+              let insertedCount = 0;
+              // Insert in reverse order (imageVisuals already sorted desc by after_block_index)
+              for (const result of imageResults) {
+                if (result.status !== "fulfilled") continue;
+                const { data: imgData, error: imgErr, visual } = result.value;
+                if (imgErr || !imgData?.url) continue;
+                const insertIdx = Math.min(visual.after_block_index + 1, blocks.length);
+                blocks.splice(insertIdx, 0, {
+                  id: crypto.randomUUID(), type: "image", content: visual.prompt, imageSrc: imgData.url,
+                });
+                insertedCount++;
               }
 
               if (insertedCount > 0) {
                 await supabase.from("lessons").update({ content: JSON.stringify(blocks) }).eq("id", lesson.id);
                 enrichedCount += insertedCount;
               }
+              enrichedLessons++;
+              toast.loading(`Обогащаю медиа: ${enrichedLessons}/${lessonsNeedingMedia.length}...`, { id: toastId });
 
               await supabase.from("generation_history").insert({
                 course_id: courseId, course_title: courseTitle,
@@ -763,7 +771,6 @@ export function AdminMarketplaceManager() {
             }
           });
           await Promise.allSettled(enrichPromises);
-          toast.loading(`Обогащаю медиа: ${Math.min(ei + CONCURRENCY, lessonsNeedingMedia.length)}/${lessonsNeedingMedia.length}...`, { id: toastId });
         }
         if (enrichedCount > 0) {
           console.log(`[Auto-fix] Enriched ${enrichedCount} images across ${lessonsNeedingMedia.length} lessons`);
