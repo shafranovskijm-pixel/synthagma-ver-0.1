@@ -164,28 +164,142 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
     }
   }, [selectedCategoryId]);
 
-  // Generate content for a single course
+  // Process a single lesson end-to-end: content → questions → answers
+  const processLesson = async (
+    lesson: any,
+    courseId: string,
+    courseTitle: string,
+    onProgress: () => void,
+  ) => {
+    const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+    // 1. Content (for text/practice lessons)
+    if ((lesson.type === "text" || lesson.type === "practice") &&
+        (!lesson.content || lesson.content === "[]" || lesson.content === "")) {
+      const { data: contentData, error: contentError } = await safeInvoke<any>("gigachat", {
+        body: {
+          action: "generate_content",
+          courseTitle,
+          lessonTitle: lesson.title,
+          ai_provider: aiProvider,
+          ...(aiProvider === "gigachat" ? { gigachat_model: gigachatModel } : { lovable_model: lovableModel }),
+        },
+      });
+      if (!contentError && contentData?.content) {
+        const blocks = markdownToBlocks(contentData.content);
+        const jsonContent = blocksToJson(blocks);
+        await supabase.from("lessons").update({ content: jsonContent }).eq("id", lesson.id);
+        await supabase.from("generation_history").insert({
+          course_id: courseId, course_title: courseTitle,
+          action: "content", details: `Контент: «${lesson.title}»`, items_count: 1,
+        } as any);
+      }
+      await delay(500);
+    }
+
+    // 2. Questions (for test lessons)
+    if (lesson.type === "test") {
+      const { data: existingQ } = await supabase
+        .from("test_questions").select("id").eq("lesson_id", lesson.id);
+
+      if (!existingQ || existingQ.length === 0) {
+        const { data: qData, error: qError } = await safeInvoke<any>("gigachat", {
+          body: {
+            action: "generate_questions",
+            courseTitle,
+            lessonTitle: lesson.title,
+            questionsCount: 10,
+            ai_provider: aiProvider,
+            ...(aiProvider === "gigachat" ? { gigachat_model: gigachatModel } : { lovable_model: lovableModel }),
+          },
+        });
+        if (!qError && qData?.questions) {
+          for (const q of qData.questions) {
+            await supabase.from("test_questions").insert({
+              lesson_id: lesson.id,
+              question: q.question,
+              options: q.options,
+              correct_answer: q.correctAnswer ?? q.correct_answer ?? null,
+            });
+          }
+          await supabase.from("generation_history").insert({
+            course_id: courseId, course_title: courseTitle,
+            action: "questions", details: `Вопросы для «${lesson.title}»`, items_count: qData.questions.length,
+          } as any);
+        }
+        await delay(500);
+      }
+
+      // 3. Answers for unanswered questions
+      const { data: allQ } = await supabase
+        .from("test_questions")
+        .select("id, question, options, correct_answer")
+        .eq("lesson_id", lesson.id);
+
+      const unanswered = (allQ || []).filter(q => q.correct_answer === null || q.correct_answer === undefined);
+      if (unanswered.length > 0) {
+        const { data: ansData, error: ansError } = await safeInvoke<any>("gigachat", {
+          body: {
+            action: "generate_answers",
+            courseTitle,
+            lessonTitle: lesson.title,
+            questions: unanswered.map(q => ({ id: q.id, question: q.question, options: q.options })),
+            ai_provider: aiProvider,
+            ...(aiProvider === "gigachat" ? { gigachat_model: gigachatModel } : { lovable_model: lovableModel }),
+          },
+        });
+        if (!ansError && ansData?.answers) {
+          let solved = 0;
+          for (const ans of ansData.answers) {
+            if (ans.correct_answer !== null && ans.correct_answer !== undefined) {
+              await supabase.from("test_questions").update({ correct_answer: ans.correct_answer }).eq("id", ans.id);
+              solved++;
+            }
+          }
+          if (solved > 0) {
+            await supabase.from("generation_history").insert({
+              course_id: courseId, course_title: courseTitle,
+              action: "answers", details: `Решено ${solved} вопросов (${lesson.title})`, items_count: solved,
+            } as any);
+          }
+        }
+        await delay(500);
+      }
+    }
+
+    onProgress();
+  };
+
+  // Process a stream of lessons sequentially
+  const processStream = async (
+    lessons: any[],
+    courseId: string,
+    courseTitle: string,
+    onProgress: () => void,
+  ) => {
+    for (const lesson of lessons) {
+      await processLesson(lesson, courseId, courseTitle, onProgress);
+    }
+  };
+
+  // Generate content for a single course using parallel streams
   const handleGenerateCourse = async (courseId: string, courseTitle: string) => {
     if (generatingCourseId) return;
     setGeneratingCourseId(courseId);
     setGeneratingProgress(0);
 
     try {
-      // 1. Check if course has lessons
+      // 1. Check existing lessons
       const { data: existingLessons } = await supabase
         .from("lessons")
-        .select("id, type, content, title")
-        .eq("course_id", courseId);
+        .select("id, type, content, title, order_index")
+        .eq("course_id", courseId)
+        .order("order_index");
 
-      const hasLessons = existingLessons && existingLessons.length > 0;
-      const textLessons = (existingLessons || []).filter(l => l.type === "text" || l.type === "practice");
-      const emptyTextLessons = textLessons.filter(l =>
-        !l.content || l.content === "[]" || l.content === ""
-      );
-      const testLessons = (existingLessons || []).filter(l => l.type === "test");
+      let allLessons = existingLessons || [];
 
       // Step 1: Generate structure if no lessons
-      if (!hasLessons) {
+      if (allLessons.length === 0) {
         setGeneratingPhase("structure");
         setGeneratingProgress(10);
 
@@ -208,155 +322,47 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
             order_index: i,
           });
         }
-        setGeneratingProgress(25);
 
-        // Log structure generation
         await supabase.from("generation_history").insert({
-          course_id: courseId,
-          course_title: courseTitle,
-          action: "structure",
-          details: `Создано ${lessons.length} уроков`,
-          items_count: lessons.length,
+          course_id: courseId, course_title: courseTitle,
+          action: "structure", details: `Создано ${lessons.length} уроков`, items_count: lessons.length,
         } as any);
 
-        // Re-fetch lessons
         const { data: freshLessons } = await supabase
           .from("lessons")
-          .select("id, type, content, title")
-          .eq("course_id", courseId);
+          .select("id, type, content, title, order_index")
+          .eq("course_id", courseId)
+          .order("order_index");
 
         if (!freshLessons) throw new Error("Failed to fetch lessons after structure generation");
-
-        // Step 2: Generate content
-        await generateContent(courseId, courseTitle, freshLessons);
-      } else if (emptyTextLessons.length > 0) {
-        // Has structure but missing content
-        await generateContent(courseId, courseTitle, existingLessons);
-      } else {
-        // Has content, check tests
-        setGeneratingProgress(60);
+        allLessons = freshLessons;
       }
 
-      // Step 3: Generate test questions if needed
-      const { data: freshLessons2 } = await supabase
-        .from("lessons")
-        .select("id, type, title")
-        .eq("course_id", courseId);
+      // Step 2: Split into N parallel streams and process
+      setGeneratingPhase("streaming");
+      setGeneratingProgress(15);
 
-      const freshTests = (freshLessons2 || []).filter(l => l.type === "test");
+      const STREAMS = 3;
+      let completedCount = 0;
+      const totalLessons = allLessons.length;
 
-      // Filter tests that need questions
-      const testsNeedingQuestions: typeof freshTests = [];
-      for (const test of freshTests) {
-        const { data: existingQ } = await supabase
-          .from("test_questions")
-          .select("id")
-          .eq("lesson_id", test.id);
-        if (!existingQ || existingQ.length === 0) {
-          testsNeedingQuestions.push(test);
-        }
-      }
+      const onProgress = () => {
+        completedCount++;
+        setGeneratingProgress(15 + Math.round((completedCount / totalLessons) * 80));
+      };
 
-      if (testsNeedingQuestions.length > 0) {
-        setGeneratingPhase("questions");
-        const PARALLEL = 3;
-        for (let i = 0; i < testsNeedingQuestions.length; i += PARALLEL) {
-          const chunk = testsNeedingQuestions.slice(i, i + PARALLEL);
-          setGeneratingProgress(65 + Math.round((i / testsNeedingQuestions.length) * 15));
+      // Split lessons into STREAMS groups
+      const groups: any[][] = Array.from({ length: STREAMS }, () => []);
+      allLessons.forEach((lesson, i) => {
+        groups[i % STREAMS].push(lesson);
+      });
 
-          await Promise.all(chunk.map(async (test) => {
-            const { data: qData, error: qError } = await safeInvoke<any>("gigachat", {
-              body: {
-                action: "generate_questions",
-                courseTitle,
-                lessonTitle: test.title,
-                questionsCount: 10,
-                ai_provider: aiProvider,
-                ...(aiProvider === "gigachat" ? { gigachat_model: gigachatModel } : { lovable_model: lovableModel }),
-              },
-            });
-            if (!qError && qData?.questions) {
-              for (const q of qData.questions) {
-                await supabase.from("test_questions").insert({
-                  lesson_id: test.id,
-                  question: q.question,
-                  options: q.options,
-                  correct_answer: q.correctAnswer ?? q.correct_answer ?? null,
-                });
-              }
-
-              // Log questions generation
-              await supabase.from("generation_history").insert({
-                course_id: courseId,
-                course_title: courseTitle,
-                action: "questions",
-                details: `Вопросы для «${test.title}»`,
-                items_count: qData.questions.length,
-              } as any);
-            }
-          }));
-        }
-      }
-
-      // Step 4: Solve unanswered questions
-      setGeneratingPhase("answers");
-      setGeneratingProgress(85);
-
-      const testIds2 = freshTests.map(t => t.id);
-      if (testIds2.length > 0) {
-        const { data: allQuestions } = await supabase
-          .from("test_questions")
-          .select("id, question, options, correct_answer, lesson_id")
-          .in("lesson_id", testIds2);
-
-        const unanswered = (allQuestions || []).filter(q =>
-          q.correct_answer === null || q.correct_answer === undefined
-        );
-
-        if (unanswered.length > 0) {
-          // Batch solve
-          const BATCH_SIZE = 60;
-          let solvedTotal = 0;
-          for (let i = 0; i < unanswered.length; i += BATCH_SIZE) {
-            const batch = unanswered.slice(i, i + BATCH_SIZE);
-            const { data: ansData, error: ansError } = await safeInvoke<any>("gigachat", {
-              body: {
-                action: "generate_answers",
-                questions: batch.map(q => ({
-                  id: q.id,
-                  question: q.question,
-                  options: q.options,
-                })),
-                ai_provider: aiProvider,
-                ...(aiProvider === "gigachat" ? { gigachat_model: gigachatModel } : { lovable_model: lovableModel }),
-              },
-            });
-
-            if (!ansError && ansData?.answers) {
-              for (const ans of ansData.answers) {
-                if (ans.correct_answer !== null && ans.correct_answer !== undefined) {
-                  await supabase
-                    .from("test_questions")
-                    .update({ correct_answer: ans.correct_answer })
-                    .eq("id", ans.id);
-                  solvedTotal++;
-                }
-              }
-            }
-          }
-
-          // Log answers generation
-          if (solvedTotal > 0) {
-            await supabase.from("generation_history").insert({
-              course_id: courseId,
-              course_title: courseTitle,
-              action: "answers",
-              details: `Решено ${solvedTotal} вопросов`,
-              items_count: solvedTotal,
-            } as any);
-          }
-        }
-      }
+      // Run all streams in parallel
+      await Promise.all(
+        groups
+          .filter(g => g.length > 0)
+          .map(group => processStream(group, courseId, courseTitle, onProgress))
+      );
 
       // Mark as validated
       const mpCourse = courses.find(c => c.course_id === courseId);
@@ -368,7 +374,6 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
       setGeneratingPhase("idle");
       toast.success(`Курс «${courseTitle}» сгенерирован!`);
       onComplete();
-      // Re-analyze
       analyzeCategory();
     } catch (e: any) {
       console.error("Generation error:", e);
@@ -377,50 +382,6 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
     } finally {
       setGeneratingCourseId(null);
       setGeneratingProgress(0);
-    }
-  };
-
-  const generateContent = async (courseId: string, courseTitle: string, lessons: any[]) => {
-    setGeneratingPhase("content");
-    const textLessons = lessons.filter((l: any) => (l.type === "text" || l.type === "practice"));
-    const emptyOnes = textLessons.filter((l: any) =>
-      !l.content || l.content === "[]" || l.content === ""
-    );
-
-    const PARALLEL = 3;
-    for (let i = 0; i < emptyOnes.length; i += PARALLEL) {
-      const chunk = emptyOnes.slice(i, i + PARALLEL);
-      setGeneratingProgress(25 + Math.round((i / emptyOnes.length) * 35));
-
-      await Promise.all(chunk.map(async (lesson: any) => {
-        const { data: contentData, error: contentError } = await safeInvoke<any>("gigachat", {
-          body: {
-            action: "generate_content",
-            courseTitle,
-            lessonTitle: lesson.title,
-            ai_provider: aiProvider,
-            ...(aiProvider === "gigachat" ? { gigachat_model: gigachatModel } : { lovable_model: lovableModel }),
-          },
-        });
-
-        if (!contentError && contentData?.content) {
-          const blocks = markdownToBlocks(contentData.content);
-          const jsonContent = blocksToJson(blocks);
-          await supabase
-            .from("lessons")
-            .update({ content: jsonContent })
-            .eq("id", lesson.id);
-
-          // Log content generation
-          await supabase.from("generation_history").insert({
-            course_id: courseId,
-            course_title: courseTitle,
-            action: "content",
-            details: `Контент: «${lesson.title}»`,
-            items_count: 1,
-          } as any);
-        }
-      }));
     }
   };
 
