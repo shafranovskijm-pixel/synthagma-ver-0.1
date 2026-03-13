@@ -2569,13 +2569,15 @@ export function markdownToBlocks(md: string): ContentBlock[] {
 
     // Regular paragraph — collapse consecutive plain lines
     const paraLines: string[] = [];
-    while (i < lines.length && lines[i].trim() && !/^#{1,2}\s/.test(lines[i]) && !/^>\s?/.test(lines[i]) && !/^[-*]\s/.test(lines[i]) && !/^\d+\.\s/.test(lines[i]) && !/^[-*_]{3,}\s*$/.test(lines[i]) && !/^:::(info|warning|tip|danger|highlight|accordion)/i.test(lines[i]) && !/^:::\s*$/.test(lines[i])) {
+    while (i < lines.length && lines[i].trim() && !/^#{1,6}\s/.test(lines[i]) && !/^>\s?/.test(lines[i]) && !/^[-*]\s/.test(lines[i]) && !/^\d+\.\s/.test(lines[i]) && !/^[-*_]{3,}\s*$/.test(lines[i]) && !/^:::(info|warning|tip|danger|highlight|accordion)/i.test(lines[i]) && !/^:::\s*$/.test(lines[i])) {
       paraLines.push(lines[i]);
       i++;
     }
     if (paraLines.length) {
-      // Convert **bold** and *italic* to HTML
+      // Convert **bold** and *italic* to HTML, strip LaTeX $...$ → plain text
       let html = paraLines.join(" ")
+        .replace(/\$\$(.+?)\$\$/g, "$1") // strip $$...$$ 
+        .replace(/\$([^$]+?)\$/g, "$1")   // strip $...$
         .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
         .replace(/\*(.+?)\*/g, "<em>$1</em>");
       blocks.push({ id: mkId(), type: "paragraph", content: html });

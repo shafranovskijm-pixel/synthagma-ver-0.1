@@ -123,7 +123,7 @@ function markdownToBlocks(md: string): ContentBlock[] {
     const paraLines: string[] = [];
     while (
       i < lines.length && lines[i].trim() &&
-      !/^#{1,2}\s/.test(lines[i]) && !/^>\s?/.test(lines[i]) &&
+      !/^#{1,6}\s/.test(lines[i]) && !/^>\s?/.test(lines[i]) &&
       !/^[-*]\s/.test(lines[i]) && !/^\d+\.\s/.test(lines[i]) &&
       !/^[-*_]{3,}\s*$/.test(lines[i]) &&
       !/^:::(info|warning|tip|danger|highlight|accordion)/i.test(lines[i]) &&
@@ -134,6 +134,8 @@ function markdownToBlocks(md: string): ContentBlock[] {
     }
     if (paraLines.length) {
       let html = paraLines.join(" ")
+        .replace(/\$\$(.+?)\$\$/g, "$1")
+        .replace(/\$([^$]+?)\$/g, "$1")
         .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
         .replace(/\*(.+?)\*/g, "<em>$1</em>");
       blocks.push({ id: mkId(), type: "paragraph", content: html });
