@@ -489,15 +489,21 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
     // Calculate total using fresh data if available
     const source = freshLessons || lessons;
     const cTargets = source.filter((l) => l.selected && l.type !== "test" && isContentEmpty(l.content)).length;
+    const mTargets = source.filter((l) => l.selected && l.type !== "test").length; // media for all content lessons
     const tTargets = source.filter((l) => l.selected && l.type === "test").length;
-    setTotalToProcess(cTargets + tTargets);
+    setTotalToProcess(cTargets + mTargets + tTargets);
 
     // Phase 2: Content
     if (!abortRef.current) {
       await generateContent(freshLessons);
     }
 
-    // Phase 3: Solve tests
+    // Phase 3: Media (images + audio)
+    if (!abortRef.current) {
+      await generateMedia(freshLessons);
+    }
+
+    // Phase 4: Solve tests
     if (!abortRef.current) {
       await solveTests(freshLessons);
     }
