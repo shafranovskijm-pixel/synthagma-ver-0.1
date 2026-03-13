@@ -224,12 +224,14 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
   // Phase 2: Generate content for text/practice lessons
   const generateContent = async (overrideLessons?: LessonItem[]) => {
     setPhase("content");
+    const contentStart = Date.now();
     const source = overrideLessons || lessons;
     const targets = source.filter(
       (l) => l.selected && l.type !== "test" && isContentEmpty(l.content)
     );
 
     const previousLessonTitles: string[] = [];
+    let successCount = 0;
 
     for (let i = 0; i < targets.length; i++) {
       if (abortRef.current) break;
@@ -265,15 +267,20 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
         updateLesson(lesson.id, { status: "done" });
         previousLessonTitles.push(lesson.title);
         setDoneCount((prev) => prev + 1);
+        successCount++;
       } catch (e: any) {
         console.error("Error processing lesson", lesson.title, e);
         updateLesson(lesson.id, { status: "error", error: e.message || "Неизвестная ошибка" });
-        previousLessonTitles.push(lesson.title); // still track to avoid duplication
+        previousLessonTitles.push(lesson.title);
       }
 
       if (i < targets.length - 1 && !abortRef.current) {
         await new Promise((r) => setTimeout(r, 2000));
       }
+    }
+
+    if (successCount > 0) {
+      await logHistory(courseId, courseTitle, "content", `Сгенерирован контент для ${successCount} уроков`, successCount, Date.now() - contentStart);
     }
   };
 
