@@ -586,7 +586,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
             const imageResults = await Promise.allSettled(
               sortedVisuals.map((visual, vIdx) =>
                 safeInvoke<any>("generate-image", {
-                  body: { prompt: visual.prompt, provider: "gigachat", slotIndex: lessonIndex * 10 + vIdx },
+                  body: { prompt: visual.prompt, provider: "gigachat", slotIndex: streamIdx * 10 + vIdx },
                 }).then(res => ({ ...res, visual }))
               )
             );
