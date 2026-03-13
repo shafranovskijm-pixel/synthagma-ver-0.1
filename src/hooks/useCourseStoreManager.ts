@@ -210,7 +210,7 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
   const fetchDbCategories = async () => {
     const { data, error } = await supabase
       .from('course_categories')
-      .select('id, name, order_index')
+      .select('id, name, order_index, parent_type')
       .eq('organization_id', MARKETPLACE_ORG_ID)
       .order('order_index', { ascending: true });
     if (error) { console.error('Error fetching categories:', error); return; }
