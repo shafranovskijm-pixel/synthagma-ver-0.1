@@ -99,6 +99,7 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
   const [catalog, setCatalog] = useState<MarketplaceCourse[]>([]);
   const [orders, setOrders] = useState<MarketplaceOrder[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [dbCategories, setDbCategories] = useState<{ id: string; name: string; order_index: number | null }[]>([]);
 
   // Preview
   const [previewCourse, setPreviewCourse] = useState<MarketplaceCourse | null>(null);
