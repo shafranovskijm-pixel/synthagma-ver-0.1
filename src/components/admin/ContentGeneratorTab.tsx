@@ -187,14 +187,17 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
           ...(aiProvider === "gigachat" ? { gigachat_model: gigachatModel } : { lovable_model: lovableModel }),
         },
       });
+      const contentDuration = Date.now() - contentStart;
       if (!contentError && contentData?.content) {
         const blocks = markdownToBlocks(contentData.content);
         const jsonContent = blocksToJson(blocks);
         await supabase.from("lessons").update({ content: jsonContent }).eq("id", lesson.id);
-        await supabase.from("generation_history").insert({
+        const { error: histErr } = await supabase.from("generation_history").insert({
           course_id: courseId, course_title: courseTitle,
-          action: "content", details: `Контент: «${lesson.title}»`, items_count: 1,
+          action: "content", details: `Поток ${streamIndex}: контент «${lesson.title}»`, items_count: 1,
+          stream_index: streamIndex, duration_ms: contentDuration,
         } as any);
+        if (histErr) console.error("History insert error (content):", histErr);
       }
       await delay(500);
     }
