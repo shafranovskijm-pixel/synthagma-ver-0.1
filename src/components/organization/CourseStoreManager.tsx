@@ -152,8 +152,8 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
                 {(() => {
                   const price = h.userRole === 'organization' ? selectedCourseDetail.price_organization : selectedCourseDetail.price_student;
                   return (
-                    <Button className={`flex-1 rounded-xl gap-2 text-base py-5 ${price > 0 ? 'bg-primary hover:bg-primary/90' : 'bg-green-600 hover:bg-green-700'} text-white`} onClick={() => { const item = selectedCourseDetail; setSelectedCourseDetail(null); h.setSelectedCourseForOrder(item); h.setShowOrderDialog(true); }}>
-                      {price > 0 ? <><ShoppingCart className="w-4 h-4" />Купить за {price.toLocaleString()} ₽</> : <><Gift className="w-4 h-4" />Получить бесплатно</>}
+                    <Button className="flex-1 rounded-xl gap-2 text-base py-5 bg-green-600 hover:bg-green-700 text-white" onClick={() => { const item = selectedCourseDetail; setSelectedCourseDetail(null); h.setSelectedCourseForOrder(item); h.setShowOrderDialog(true); }}>
+                      <Plus className="w-4 h-4" />Получить курс
                     </Button>
                   );
                 })()}
