@@ -245,11 +245,12 @@ async function generateWithGigaChat(prompt: string, keySlot?: string) {
 
   const imageBytes = new Uint8Array(await imageRes.arrayBuffer());
   // Return as base64 data URL — use chunked encoding to avoid stack overflow on large images
-  let binary = "";
-  for (let i = 0; i < imageBytes.length; i++) {
-    binary += String.fromCharCode(imageBytes[i]);
+  const CHUNK = 8192;
+  const parts: string[] = [];
+  for (let i = 0; i < imageBytes.length; i += CHUNK) {
+    parts.push(String.fromCharCode(...imageBytes.subarray(i, i + CHUNK)));
   }
-  const base64 = btoa(binary);
+  const base64 = btoa(parts.join(""));
   return `data:image/jpeg;base64,${base64}`;
 }
 
