@@ -180,7 +180,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
     try {
       const prompt = `Educational illustration for lesson "${lessonTitle}". ${contentSnippet.slice(0, 200)}. Professional, clean, suitable for online course.`;
       const { data, error } = await safeInvoke<any>("generate-image", {
-        body: { prompt, provider: "lovable_ai", model: "google/gemini-3.1-flash-image-preview" },
+        body: { prompt, provider: "gigachat" },
       });
       if (error || !data?.url) {
         console.warn("Hero image generation failed:", error);

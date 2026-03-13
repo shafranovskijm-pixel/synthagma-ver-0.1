@@ -1130,7 +1130,7 @@ function ImageBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updat
     try {
       const { supabase } = await import("@/integrations/supabase/client");
       const { data, error } = await supabase.functions.invoke('generate-image', {
-        body: { prompt: editPrompt.trim(), imageUrl: block.imageSrc },
+        body: { prompt: editPrompt.trim(), imageUrl: block.imageSrc, provider: "gigachat" },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);

@@ -365,11 +365,28 @@ async function generateImageWithGigaChat(prompt: string, keyIndex: number): Prom
 let gigaChatImageSlotCounter = 0;
 
 async function generateImage(prompt: string): Promise<string | null> {
-  // Try Lovable AI first
+  // Try GigaChat first with round-robin across all slots
+  if (GIGACHAT_IMAGE_KEYS.length > 0) {
+    const startSlot = gigaChatImageSlotCounter++ % GIGACHAT_IMAGE_KEYS.length;
+    for (let attempt = 0; attempt < GIGACHAT_IMAGE_KEYS.length; attempt++) {
+      const slotIdx = (startSlot + attempt) % GIGACHAT_IMAGE_KEYS.length;
+      try {
+        const result = await generateImageWithGigaChat(prompt, slotIdx);
+        if (result) {
+          console.log(`[Image] GigaChat slot-${slotIdx} success`);
+          return result;
+        }
+      } catch (e) {
+        console.warn(`[Image] GigaChat slot-${slotIdx} failed:`, e);
+      }
+    }
+  }
+
+  // Fallback: Lovable AI
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   if (LOVABLE_API_KEY) {
     try {
-      console.log("[Image] Trying Lovable AI for:", prompt);
+      console.log("[Image] Falling back to Lovable AI for:", prompt);
       const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -390,7 +407,7 @@ async function generateImage(prompt: string): Promise<string | null> {
         const result = await response.json();
         const imageUrl = result.choices?.[0]?.message?.images?.[0]?.image_url?.url;
         if (imageUrl) {
-          console.log("[Image] Lovable AI success");
+          console.log("[Image] Lovable AI fallback success");
           return imageUrl;
         }
       } else {
@@ -398,20 +415,6 @@ async function generateImage(prompt: string): Promise<string | null> {
       }
     } catch (e) {
       console.warn("[Image] Lovable AI failed:", e);
-    }
-  }
-
-  // Fallback: GigaChat with 2-slot round-robin
-  if (GIGACHAT_IMAGE_KEYS.length > 0) {
-    const startSlot = gigaChatImageSlotCounter++ % GIGACHAT_IMAGE_KEYS.length;
-    for (let attempt = 0; attempt < GIGACHAT_IMAGE_KEYS.length; attempt++) {
-      const slotIdx = (startSlot + attempt) % GIGACHAT_IMAGE_KEYS.length;
-      try {
-        const result = await generateImageWithGigaChat(prompt, slotIdx);
-        if (result) return result;
-      } catch (e) {
-        console.warn(`[Image] GigaChat slot-${slotIdx} failed:`, e);
-      }
     }
   }
 

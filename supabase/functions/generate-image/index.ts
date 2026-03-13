@@ -279,7 +279,7 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const ext = selectedProvider === "gigachat" ? "jpg" : "png";
+    const ext = usedProvider === "gigachat" ? "jpg" : "png";
     const fileName = `block-images/ai-${Date.now()}.${ext}`;
     const { error: uploadError } = await supabase.storage
       .from("course-files")
