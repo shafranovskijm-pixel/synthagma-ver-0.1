@@ -140,7 +140,7 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
       .from("marketplace_courses")
       .select(`
         *,
-        course:courses(id, title, description, duration),
+        course:courses(id, title, description, duration, category_id),
         organization:organizations(name)
       `)
       .eq("is_active", true);
