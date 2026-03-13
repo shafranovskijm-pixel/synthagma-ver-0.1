@@ -498,6 +498,8 @@ export function useAdminMarketplace() {
     fetchData,
     // Categories
     showCategoryDialog, setShowCategoryDialog, newCategoryName, setNewCategoryName,
+    newCategoryParentType, setNewCategoryParentType,
+    newCategoryIcon, setNewCategoryIcon,
     handleCreateCategory,
     showMoveCategoryDialog, setShowMoveCategoryDialog,
     movingCourse, setMovingCourse, targetCategory, setTargetCategory,

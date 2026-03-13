@@ -62,6 +62,25 @@ const subCategoryMetaAdmin: Record<string, { icon: React.ElementType; color: str
   "Строительный контроль": { icon: HardHat, color: "text-accent", bgColor: "bg-accent/10" },
 };
 
+const ICON_OPTIONS: { name: string; icon: React.ElementType; label: string }[] = [
+  { name: "Factory", icon: Factory, label: "Промышленность" },
+  { name: "Zap", icon: Zap, label: "Электричество" },
+  { name: "Flame", icon: Flame, label: "Огонь" },
+  { name: "Leaf", icon: Leaf, label: "Экология" },
+  { name: "Droplets", icon: Droplets, label: "Вода" },
+  { name: "HardHat", icon: HardHat, label: "Стройка" },
+  { name: "ShieldCheck", icon: ShieldCheck, label: "Защита" },
+  { name: "BookOpen", icon: BookOpen, label: "Книга" },
+  { name: "Award", icon: Award, label: "Награда" },
+  { name: "Lightbulb", icon: Lightbulb, label: "Идея" },
+  { name: "Building2", icon: Building2, label: "Здание" },
+  { name: "GraduationCap", icon: GraduationCap, label: "Учёба" },
+];
+
+const iconMap: Record<string, React.ElementType> = {
+  Factory, Zap, Flame, Leaf, Droplets, HardHat, ShieldCheck, BookOpen, Award, Lightbulb, Building2, GraduationCap,
+};
+
 function renderCourseRow(
   item: any, h: any, navigate: any, onBulkGenerate: (item: any) => void,
   validatedCourses: Record<string, 'ok' | 'error'>, onValidate: (courseId: string) => void, validatingId: string | null
