@@ -1386,8 +1386,10 @@ export type Database = {
           course_title: string
           created_at: string | null
           details: string | null
+          duration_ms: number | null
           id: string
           items_count: number | null
+          stream_index: number | null
         }
         Insert: {
           action: string
@@ -1395,8 +1397,10 @@ export type Database = {
           course_title: string
           created_at?: string | null
           details?: string | null
+          duration_ms?: number | null
           id?: string
           items_count?: number | null
+          stream_index?: number | null
         }
         Update: {
           action?: string
@@ -1404,8 +1408,10 @@ export type Database = {
           course_title?: string
           created_at?: string | null
           details?: string | null
+          duration_ms?: number | null
           id?: string
           items_count?: number | null
+          stream_index?: number | null
         }
         Relationships: [
           {
