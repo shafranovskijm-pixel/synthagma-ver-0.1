@@ -758,9 +758,12 @@ export function AdminMarketplaceManager() {
             <TabsTrigger value="knowledge" className="flex items-center gap-2 px-4 whitespace-nowrap">
               <Library className="w-4 h-4 shrink-0" />Банк знаний
             </TabsTrigger>
-            <TabsTrigger value="orders" className="flex items-center gap-2 px-4 whitespace-nowrap">
-              <ShoppingCart className="w-4 h-4 shrink-0" />Заявки
-            </TabsTrigger>
+             <TabsTrigger value="orders" className="flex items-center gap-2 px-4 whitespace-nowrap">
+               <ShoppingCart className="w-4 h-4 shrink-0" />Заявки
+             </TabsTrigger>
+             <TabsTrigger value="settings" className="flex items-center gap-2 px-4 whitespace-nowrap">
+               <Settings className="w-4 h-4 shrink-0" />Настройки
+             </TabsTrigger>
           </TabsList>
         </div>
 
