@@ -266,12 +266,6 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
                           <Badge variant="secondary" className="text-xs">ОТ / ПБ</Badge>
                           <Badge variant="secondary" className="text-xs">Бесплатно</Badge>
                         </div>
-                        <div className="flex items-start gap-1.5 mt-3 pt-3 border-t border-border/50">
-                          <Lightbulb className="w-3.5 h-3.5 text-amber-500 mt-0.5 shrink-0" />
-                          <p className="text-xs text-muted-foreground">
-                            После добавления курса проверьте правильность ответов в тестах с помощью ИИ — кнопка «Решить ИИ» в редакторе курса.
-                          </p>
-                        </div>
                       </div>
                     </div>
                   </div>
