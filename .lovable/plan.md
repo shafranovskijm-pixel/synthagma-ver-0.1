@@ -1,18 +1,24 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## Проблема
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+В `UsersManager.tsx` функция `viewAsStudent` записывает в localStorage ключи **`odoo_user_id`** и **`studentName`**, а `useStudentDashboard.ts` читает **`userId`** и **`name`**. Из-за этого `targetUserId` остаётся `null`, и загружаются курсы текущего (админского) пользователя — у которого их нет.
 
-### Changes
+## Решение
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+Исправить ключи в `UsersManager.tsx` (строки 89-93), чтобы они совпадали с форматом `OrganizationDetailsView.tsx`:
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+```typescript
+localStorage.setItem('adminViewAsStudent', JSON.stringify({
+  userId: user.user_id,        // было: odoo_user_id
+  name: user.full_name || user.email || 'Ученик',  // было: studentName
+  orgName: user.organization_name || '',
+}));
+```
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+### Файл для изменения
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+| Файл | Что |
+|---|---|
+| `src/components/admin/UsersManager.tsx` | Исправить ключи `odoo_user_id` → `userId`, `studentName` → `name` |
 
