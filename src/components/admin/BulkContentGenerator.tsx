@@ -62,6 +62,7 @@ const isPracticeLesson = (lesson: LessonItem): boolean => {
 };
 
 const TEST_BATCH_SIZE = 20;
+const PARALLEL_BATCH_SIZE = 3;
 
 /** Helper to log generation history */
 const logHistory = async (
