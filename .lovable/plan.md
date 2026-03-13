@@ -1,38 +1,18 @@
 
 
-## Аудит: Где используется Lovable AI для изображений вместо GigaChat
+## Plan: Auto-fix after "Проверить все"
 
-### Найденные проблемы
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-| Место | Провайдер сейчас | Проблема |
-|---|---|---|
-| **`generate-image/index.ts`** (edge-функция) | По умолчанию `lovable_ai` (строка 244) | Если клиент не передаёт `provider: "gigachat"` — используется Lovable AI |
-| **`generate-course-content/index.ts`** → `generateImage()` | Сначала Lovable AI (Gemini), GigaChat только как fallback (строки 367-419) | Lovable AI — **основной**, GigaChat — запасной. Нужно наоборот. |
-| **`ContentGeneratorTab.tsx`** → `generateHeroImage()` | Захардкожен `provider: "lovable_ai"` (строка 183) | Принудительно Lovable AI, GigaChat не используется |
-| **`BulkContentGenerator.tsx`** | Не передаёт `provider` → дефолт `lovable_ai` (строка 472) | Lovable AI по умолчанию |
-| **`BlockEditor.tsx`** → `handleAiGenerate/handleAiEdit` | Не передаёт `provider` → дефолт `lovable_ai` (строки 1107-1133) | Lovable AI по умолчанию |
+### Changes
 
-### Что нужно сделать
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-#### 1. `supabase/functions/generate-image/index.ts`
-- Изменить дефолт провайдера с `"lovable_ai"` на `"gigachat"` (строка 244)
-- Добавить round-robin по 3 ключам GigaChat (аналогично SaluteSpeech): при ошибке одного слота — пробовать следующий, fallback на Lovable AI только если все 3 слота GigaChat не сработали
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-#### 2. `supabase/functions/generate-course-content/index.ts` → `generateImage()`
-- Поменять порядок: **сначала GigaChat** (3 слота, round-robin), **потом Lovable AI** как fallback
-- Сейчас наоборот (строки 367-419)
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-#### 3. `src/components/admin/ContentGeneratorTab.tsx`
-- Строка 183: заменить `provider: "lovable_ai"` на `provider: "gigachat"`
-
-#### 4. `src/components/admin/BulkContentGenerator.tsx`
-- Строка 472: добавить `provider: "gigachat"` в body запроса
-
-#### 5. `src/components/course-builder/BlockEditor.tsx`
-- Строки 1107-1108, 1132-1133: добавить `provider: "gigachat"` в body запросов `handleAiGenerate` и `handleAiEdit`
-
-### Результат
-- Все генерации изображений (слайды, конструктор, генератор контента, конвейер) будут использовать GigaChat как основной провайдер
-- Lovable AI останется только как fallback при сбое всех 3 ключей GigaChat
-- 3 ключа GigaChat будут использоваться равномерно через round-robin
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 
