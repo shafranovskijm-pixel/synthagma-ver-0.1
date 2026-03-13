@@ -191,11 +191,13 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
         setGeneratingPhase("structure");
         setGeneratingProgress(10);
 
-        const { data: structData, error: structError } = await safeInvoke("gigachat", {
-          action: "generate_structure",
-          courseTitle,
-          aiProvider,
-          ...(aiProvider === "gigachat" ? { gigachatModel } : { lovableModel }),
+        const { data: structData, error: structError } = await safeInvoke<any>("gigachat", {
+          body: {
+            action: "generate_structure",
+            courseTitle,
+            aiProvider,
+            ...(aiProvider === "gigachat" ? { gigachatModel } : { lovableModel }),
+          },
         });
         if (structError) throw structError;
 
