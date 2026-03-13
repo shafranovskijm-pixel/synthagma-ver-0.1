@@ -1197,7 +1197,7 @@ function renderGroupedCourses(
                         {group.courses.length === 0 ? (
                           <p className="text-xs text-muted-foreground py-2 italic">Курсы ещё не добавлены</p>
                         ) : (
-                        {renderGroupedCourses(group.courses, h, navigate, handleBulkGenerate, validatedCourses, handleValidateCourse, validatingId)}
+                        renderGroupedCourses(group.courses, h, navigate, handleBulkGenerate, validatedCourses, handleValidateCourse, validatingId)
                         )}
                         <Button
                           variant="ghost"
