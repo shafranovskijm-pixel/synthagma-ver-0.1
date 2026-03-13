@@ -287,17 +287,18 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
   // Phase 3: Generate images and audio for content lessons
   const generateMedia = async (overrideLessons?: LessonItem[]) => {
     setPhase("media");
+    const mediaStart = Date.now();
     const source = overrideLessons || lessons;
-    // Only process text/practice lessons that have content (just generated)
     const targets = source.filter(
       (l) => l.selected && l.type !== "test" && !isContentEmpty(l.content)
     );
+
+    let mediaCount = 0;
 
     for (let i = 0; i < targets.length; i++) {
       if (abortRef.current) break;
       const lesson = targets[i];
 
-      // Re-read current content from DB
       const { data: freshLesson } = await supabase
         .from("lessons")
         .select("content")
@@ -312,13 +313,11 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
         if (!Array.isArray(blocks)) continue;
       } catch { continue; }
 
-      // Skip if already has image block
       const hasImage = blocks.some((b: any) => b.type === "image" && b.imageSrc);
       const hasAudio = blocks.some((b: any) => b.type === "audio" && b.audioUrl);
 
       let changed = false;
 
-      // Generate hero image
       if (!hasImage) {
         updateLesson(lesson.id, { status: "generating_image" });
         try {
@@ -342,7 +341,6 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
         }
       }
 
-      // Generate intro audio from first paragraph
       if (!hasAudio) {
         updateLesson(lesson.id, { status: "generating_audio" as LessonStatus });
         const firstPara = blocks.find(
@@ -379,7 +377,6 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
               if (!uploadErr) {
                 const { data: urlData } = supabase.storage.from("course-files").getPublicUrl(fileName);
                 if (urlData?.publicUrl) {
-                  // Insert audio after image (if present) or at start
                   const insertIdx = blocks[0]?.type === "image" ? 1 : 0;
                   blocks.splice(insertIdx, 0, {
                     id: crypto.randomUUID(),
@@ -399,6 +396,7 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
 
       if (changed) {
         await supabase.from("lessons").update({ content: JSON.stringify(blocks) }).eq("id", lesson.id);
+        mediaCount++;
       }
 
       updateLesson(lesson.id, { status: "done" });
@@ -407,6 +405,10 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
       if (i < targets.length - 1 && !abortRef.current) {
         await new Promise((r) => setTimeout(r, 1000));
       }
+    }
+
+    if (mediaCount > 0) {
+      await logHistory(courseId, courseTitle, "media", `Изображения и аудио для ${mediaCount} уроков`, mediaCount, Date.now() - mediaStart);
     }
   };
 
