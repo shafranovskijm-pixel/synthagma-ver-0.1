@@ -224,7 +224,7 @@ export function useCourseBuilder() {
               // Self-healing: detect raw :::markers inside paragraph blocks and convert them
               if (blocks.length > 0) {
                 let healed = false;
-                blocks = blocks.flatMap(b => {
+                blocks = blocks.flatMap((b): ContentBlock[] => {
                   if (b.type !== "paragraph") return [b];
                   const markerMatch = b.content.match(/^:::(info|warning|tip|danger|highlight|accordion)\s*(.*?)(?::::\s*)?$/i);
                   if (markerMatch) {
