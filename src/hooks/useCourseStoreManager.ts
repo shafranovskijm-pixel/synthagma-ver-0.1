@@ -149,6 +149,7 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
         fetchOrders(),
         fetchAvailableCourses(),
         fetchCourseRequests(),
+        fetchDbCategories(),
       ]);
     } catch (error) {
       console.error('Error fetching data:', error);
