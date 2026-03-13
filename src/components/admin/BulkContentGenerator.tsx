@@ -284,6 +284,8 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
           console.error("Error processing lesson", lesson.title, result.reason);
           updateLesson(lesson.id, { status: "error", error: errMsg });
           previousLessonTitles.push(lesson.title);
+          // Log error to history
+          await logHistory(courseId, courseTitle, "content", `❌ Ошибка «${lesson.title}» — ${errMsg}`, 0, 0);
         }
       }
     }
