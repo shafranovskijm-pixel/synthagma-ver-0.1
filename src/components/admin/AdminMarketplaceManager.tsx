@@ -891,12 +891,26 @@ export function AdminMarketplaceManager() {
                               })}
                             </SortableContext>
                           </DndContext>
+                          {/* Add subcategory button */}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-xs text-muted-foreground hover:text-foreground ml-5"
+                            onClick={() => {
+                              h.setNewCategoryParentType(group.category);
+                              h.setNewCategoryIcon(null);
+                              h.setNewCategoryName("");
+                              h.setShowCategoryDialog(true);
+                            }}
+                          >
+                            <FolderPlus className="w-3.5 h-3.5 mr-1" />Добавить подкатегорию
+                          </Button>
                         </CollapsibleContent>
                       </Collapsible>
                     );
                   }
 
-                  // Groups without subGroups (e.g. Профпереподготовка, ОТ/ПБ, Рабочие профессии)
+                  // Groups without subGroups — still show add button
                   return (
                     <Collapsible key={group.category} defaultOpen={false}>
                       <CollapsibleTrigger className="flex items-center gap-3 w-full p-4 rounded-xl border border-border bg-card hover:bg-secondary/30 transition-colors">
