@@ -207,10 +207,20 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
     } finally { setIsProposing(false); }
   };
 
+  const fetchDbCategories = async () => {
+    const { data, error } = await supabase
+      .from('course_categories')
+      .select('id, name, order_index')
+      .eq('organization_id', MARKETPLACE_ORG_ID)
+      .order('order_index', { ascending: true });
+    if (error) { console.error('Error fetching categories:', error); return; }
+    setDbCategories(data || []);
+  };
+
   const fetchCatalog = async () => {
     const { data, error } = await supabase
       .from('marketplace_courses')
-      .select(`*, course:courses(id, title, description, duration), organization:organizations(name)`)
+      .select(`*, course:courses(id, title, description, duration, category_id), organization:organizations(name)`)
       .eq('is_active', true).neq('organization_id', organizationId);
     if (error) { console.error('Error fetching catalog:', error); return; }
     setCatalogCourses(data || []);
