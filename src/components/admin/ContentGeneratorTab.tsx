@@ -236,8 +236,8 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
             course_id: courseId, course_title: courseTitle,
             action: "questions", details: `Поток ${streamIndex}: вопросы «${lesson.title}»`, items_count: qData.questions.length,
             stream_index: streamIndex, duration_ms: qDuration,
-          } as any);
-          if (histErr) console.error("History insert error (questions):", histErr);
+          });
+          if (histErr) console.warn("⚠️ History insert error (questions):", histErr, { courseId, courseTitle, streamIndex });
         }
         await delay(500);
       }
