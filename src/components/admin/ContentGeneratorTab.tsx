@@ -388,7 +388,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
       await Promise.all(
         groups
           .filter(g => g.length > 0)
-          .map(group => processStream(group, courseId, courseTitle, onProgress))
+          .map((group, idx) => processStream(group, courseId, courseTitle, onProgress, idx + 1))
       );
 
       // Mark as validated
