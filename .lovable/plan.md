@@ -1,39 +1,18 @@
 
 
-## План: Исправить пустую вкладку «Конвейер»
+## Plan: Auto-fix after "Проверить все"
 
-### Проблема
-`BulkPipelineWidget` содержит ранний `return null` (строка 276): если все курсы уже валидированы (`is_validated = true`) и режим «В работе», виджет полностью скрывается. В отдельной вкладке это выглядит как пустая страница.
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-### Решение
+### Changes
 
-**Файл: `src/components/admin/BulkPipelineWidget.tsx`**
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-Заменить `return null` на информативную заглушку с кнопками переключения режима:
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-```typescript
-if (activeCourses.length === 0 && excelImport.parsedCourses.length === 0 && pipelineMode === "progress") {
-  return (
-    <Card className="border-primary/20 bg-primary/5">
-      <CardContent className="p-8 text-center space-y-4">
-        <CheckCircle2 className="w-12 h-12 text-green-500 mx-auto" />
-        <p className="text-lg font-medium">Все курсы обработаны</p>
-        <p className="text-muted-foreground text-sm">
-          Нет курсов в работе. Переключитесь на режим «Готово» или «Все» для просмотра и повторной обработки.
-        </p>
-        <div className="flex justify-center gap-2">
-          <Button variant="outline" onClick={() => setPipelineMode("ready")}>
-            Готово ({readyCourses.length})
-          </Button>
-          <Button variant="outline" onClick={() => setPipelineMode("all")}>
-            Все ({courses.length + readyCourses.length})
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-```
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-Одно изменение, один файл — вкладка «Конвейер» больше не будет пустой.
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 

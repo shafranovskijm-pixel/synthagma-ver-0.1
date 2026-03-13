@@ -273,7 +273,27 @@ export function BulkPipelineWidget({ courses, readyCourses = [], allCourses, onC
     }
   }, [serverMode, pipeline.handleStop, serverPipeline.handleStop]);
 
-  if (activeCourses.length === 0 && excelImport.parsedCourses.length === 0 && pipelineMode === "progress") return null;
+  if (activeCourses.length === 0 && excelImport.parsedCourses.length === 0 && pipelineMode === "progress") {
+    return (
+      <Card className="border-primary/20 bg-primary/5">
+        <CardContent className="p-8 text-center space-y-4">
+          <CheckCircle2 className="w-12 h-12 text-green-500 mx-auto" />
+          <p className="text-lg font-medium">Все курсы обработаны</p>
+          <p className="text-sm text-muted-foreground">
+            Нет курсов в работе. Переключитесь на режим «Готово» или «Все» для просмотра и повторной обработки.
+          </p>
+          <div className="flex justify-center gap-2">
+            <Button variant="outline" onClick={() => setPipelineMode("ready")}>
+              Готово ({readyCourses.length})
+            </Button>
+            <Button variant="outline" onClick={() => setPipelineMode("all")}>
+              Все ({courses.length + readyCourses.length})
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   const currentCourseName = isBusy ? (activeCourses[currentIndex]?.course?.title || "") : "";
 
