@@ -59,7 +59,7 @@ function markdownToBlocks(md: string): ContentBlock[] {
         items.push(lines[i].replace(/^[-*]\s/, ""));
         i++;
       }
-      blocks.push({ id: mkId(), type: "bulletList", content: items.map(t => `<li>${t}</li>`).join("") });
+      blocks.push({ id: mkId(), type: "bulletList", content: items.join("\n") });
       continue;
     }
     if (/^\d+\.\s/.test(line)) {
