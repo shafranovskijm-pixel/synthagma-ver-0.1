@@ -773,6 +773,11 @@ export function AdminMarketplaceManager() {
           </TabsList>
         </div>
 
+        {/* History */}
+        <TabsContent value="history" className="space-y-4">
+          <GenerationHistoryTab />
+        </TabsContent>
+
         {/* Settings */}
         <TabsContent value="settings" className="space-y-4">
           <MarketplaceSettingsTab onSettingsLoaded={handleSettingsLoaded} />
