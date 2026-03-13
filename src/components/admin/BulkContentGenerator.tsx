@@ -467,6 +467,7 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
               courseTitle,
               lessonTitle: lesson.title,
               questions: questionsForAI,
+              taskIndex: i,
             },
           });
 
