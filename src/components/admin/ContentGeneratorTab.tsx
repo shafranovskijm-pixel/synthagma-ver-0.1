@@ -582,11 +582,11 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
               .filter(v => v.format === "image") // handle images first
               .sort((a, b) => b.after_block_index - a.after_block_index);
 
-            // Parallel image generation for speed
+            // Parallel image generation for speed, with slotIndex for round-robin
             const imageResults = await Promise.allSettled(
-              sortedVisuals.map(visual =>
+              sortedVisuals.map((visual, vIdx) =>
                 safeInvoke<any>("generate-image", {
-                  body: { prompt: visual.prompt, provider: "gigachat" },
+                  body: { prompt: visual.prompt, provider: "gigachat", slotIndex: streamIdx * 10 + vIdx },
                 }).then(res => ({ ...res, visual }))
               )
             );
