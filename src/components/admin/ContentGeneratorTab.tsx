@@ -582,26 +582,28 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
               .filter(v => v.format === "image") // handle images first
               .sort((a, b) => b.after_block_index - a.after_block_index);
 
-            let insertedCount = 0;
-            for (const visual of sortedVisuals) {
-              try {
-                const { data: imgData, error: imgErr } = await safeInvoke<any>("generate-image", {
+            // Parallel image generation for speed
+            const imageResults = await Promise.allSettled(
+              sortedVisuals.map(visual =>
+                safeInvoke<any>("generate-image", {
                   body: { prompt: visual.prompt, provider: "gigachat" },
-                });
-                if (imgErr || !imgData?.url) continue;
+                }).then(res => ({ ...res, visual }))
+              )
+            );
 
-                const insertIdx = Math.min(visual.after_block_index + 1, blocks.length);
-                blocks.splice(insertIdx, 0, {
-                  id: crypto.randomUUID(),
-                  type: "image",
-                  content: visual.prompt,
-                  imageSrc: imgData.url,
-                } as ContentBlock);
-                insertedCount++;
-                await delay(300);
-              } catch (e) {
-                console.warn(`Enrichment image failed for "${lesson.title}":`, e);
-              }
+            let insertedCount = 0;
+            for (const result of imageResults) {
+              if (result.status !== "fulfilled") continue;
+              const { data: imgData, error: imgErr, visual } = result.value;
+              if (imgErr || !imgData?.url) continue;
+              const insertIdx = Math.min(visual.after_block_index + 1, blocks.length);
+              blocks.splice(insertIdx, 0, {
+                id: crypto.randomUUID(),
+                type: "image",
+                content: visual.prompt,
+                imageSrc: imgData.url,
+              } as ContentBlock);
+              insertedCount++;
             }
 
             // 3. Handle slider visuals — create separate slider lessons
