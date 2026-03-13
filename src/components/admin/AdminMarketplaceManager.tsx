@@ -1173,25 +1173,16 @@ export function AdminMarketplaceManager() {
                 <SelectTrigger className="rounded-xl"><SelectValue placeholder="Выберите категорию" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">Без категории</SelectItem>
-                  {h.categories.filter(c => c !== "Без категории").map(cat => (
-                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                  {h.dbCategories.map(cat => (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      <div className="flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: cat.color || '#888' }} />
+                        {cat.name}
+                      </div>
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Или введите новую</Label>
-              <Input
-                value={h.newMoveCategoryInput}
-                placeholder="Новая категория..."
-                className="rounded-xl"
-                onChange={(e) => {
-                  h.setNewMoveCategoryInput(e.target.value);
-                  if (e.target.value.trim()) {
-                    h.setTargetCategory(e.target.value.trim());
-                  }
-                }}
-              />
             </div>
           </div>
           <DialogFooter>
