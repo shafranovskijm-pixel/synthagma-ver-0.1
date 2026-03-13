@@ -134,8 +134,9 @@ export function GenerationHistoryTab() {
                 <SelectContent>
                   <SelectItem value="all">Все действия</SelectItem>
                   <SelectItem value="structure">Структура</SelectItem>
-                  <SelectItem value="content">Контент</SelectItem>
-                  <SelectItem value="questions">Вопросы</SelectItem>
+                   <SelectItem value="content">Контент</SelectItem>
+                   <SelectItem value="media">Медиа</SelectItem>
+                   <SelectItem value="questions">Вопросы</SelectItem>
                   <SelectItem value="answers">Ответы</SelectItem>
                 </SelectContent>
               </Select>
