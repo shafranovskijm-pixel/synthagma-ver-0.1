@@ -2,8 +2,8 @@ import { useState, useEffect, useMemo } from "react";
 import {
   Store, Search, Clock, ShoppingCart, Loader2, CheckCircle2,
   Building2, Send, FileText, Video, ClipboardList, Presentation,
-  Headphones, BookOpen, Eye, Gift, Zap, Award, ChevronDown,
-  Factory, Flame, Droplets, HardHat, Leaf, Shield, ShieldCheck,
+  Headphones, BookOpen, Eye, Gift, Zap, Award,
+  Factory, Flame, Droplets, HardHat, Leaf,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
