@@ -1,36 +1,18 @@
 
 
-## Проблема
+## Plan: Auto-fix after "Проверить все"
 
-Практические занятия (`type === "practice"`) проходят через тот же промпт `generate_content`, что и текстовые лекции. Промпт говорит «напиши учебный материал» — ИИ генерирует лекцию вместо практического задания. Тип урока вообще не передаётся в edge-функцию.
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-## Решение
+### Changes
 
-### 1. `src/components/admin/ContentGeneratorTab.tsx`
-Передавать `lessonType` в запрос `generate_content`:
-```typescript
-body: {
-  action: "generate_content",
-  courseTitle,
-  lessonTitle: lesson.title,
-  lessonType: lesson.type, // ← добавить
-  ...
-}
-```
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-### 2. `supabase/functions/gigachat/index.ts`
-В блоке `generate_content` — проверять `lessonType`. Если `"practice"`, использовать специализированный промпт:
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-```
-Создай практическое задание (кейс / ситуационную задачу).
-Структура: описание ситуации → вводные данные → задание → вопросы для анализа → ожидаемый результат.
-Включи раздел «Нормативная база». Минимум 400 слов.
-```
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-Для `"text"` — оставить текущий промпт без изменений.
-
-| Файл | Изменение |
-|---|---|
-| `ContentGeneratorTab.tsx` | Добавить `lessonType` в body запроса |
-| `gigachat/index.ts` | Отдельный промпт для practice в `generate_content` |
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 

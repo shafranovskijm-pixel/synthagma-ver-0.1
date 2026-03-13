@@ -181,6 +181,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
           action: "generate_content",
           courseTitle,
           lessonTitle: lesson.title,
+          lessonType: lesson.type,
           ai_provider: aiProvider,
           ...(aiProvider === "gigachat" ? { gigachat_model: gigachatModel } : { lovable_model: lovableModel }),
         },
