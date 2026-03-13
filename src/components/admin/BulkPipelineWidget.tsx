@@ -1,7 +1,8 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import {
   Play, Square, CheckCircle2, Loader2, AlertTriangle, Brain, FileSpreadsheet,
   DollarSign, RotateCcw, Upload, Clock, ListChecks, ChevronDown, FlaskConical, Eye, BarChart3, RefreshCw, Trash2, SkipForward, Server, Bot,
+  Factory, Zap, Flame, Leaf, Droplets, HardHat, BookOpen,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -530,59 +531,99 @@ export function BulkPipelineWidget({ courses, readyCourses = [], allCourses, onC
               </div>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <ScrollArea className="max-h-60 mt-2">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-8 text-xs">#</TableHead>
-                      <TableHead className="text-xs">Название</TableHead>
-                      <TableHead className="w-16 text-xs">Статус</TableHead>
-                      <TableHead className="text-xs">Детали</TableHead>
-                      <TableHead className="w-10 text-xs"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {courses.map((c, i) => {
-                      const log = completedLog[i];
-                      const isActive = isBusy && i === currentIndex;
-                      const isPending = !log && !isActive;
+              {(() => {
+                const categoryMetaPipeline: Record<string, { icon: React.ElementType; color: string }> = {
+                  "Промышленная безопасность": { icon: Factory, color: "text-orange-500" },
+                  "Электробезопасность": { icon: Zap, color: "text-yellow-500" },
+                  "Энергетика": { icon: Flame, color: "text-red-500" },
+                  "Экологическая безопасность": { icon: Leaf, color: "text-green-500" },
+                  "Гидротехнические сооружения": { icon: Droplets, color: "text-blue-500" },
+                  "Строительный контроль": { icon: HardHat, color: "text-accent" },
+                };
+                const ALL_CATS = Object.keys(categoryMetaPipeline);
+                const extractCat = (title?: string) => {
+                  if (!title) return "Без категории";
+                  const idx = title.indexOf(" — ");
+                  return idx > 0 ? title.substring(0, idx) : "Без категории";
+                };
+                const catMap = new Map<string, { course: typeof courses[0]; origIndex: number }[]>();
+                for (const cat of ALL_CATS) catMap.set(cat, []);
+                courses.forEach((c, i) => {
+                  const cat = extractCat(c.course?.title);
+                  if (!catMap.has(cat)) catMap.set(cat, []);
+                  catMap.get(cat)!.push({ course: c, origIndex: i });
+                });
+                const sortedCats = Array.from(catMap.entries()).sort(([a], [b]) => a.localeCompare(b));
+
+                return (
+                  <div className="space-y-2 mt-2">
+                    {sortedCats.map(([cat, items]) => {
+                      const meta = categoryMetaPipeline[cat] || { icon: BookOpen, color: "text-primary" };
+                      const CatIcon = meta.icon;
                       return (
-                        <TableRow key={c.id} className={isActive ? "bg-primary/10" : ""}>
-                          <TableCell className="text-xs text-muted-foreground py-1.5">{i + 1}</TableCell>
-                          <TableCell className="text-xs py-1.5 truncate max-w-[200px]">{c.course?.title || "—"}</TableCell>
-                          <TableCell className="py-1.5">
-                            {isActive && <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />}
-                            {log?.status === "ok" && <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />}
-                            {log?.status === "error" && <AlertTriangle className="w-3.5 h-3.5 text-red-500" />}
-                            {isPending && <Clock className="w-3.5 h-3.5 text-muted-foreground" />}
-                          </TableCell>
-                          <TableCell className="text-xs text-muted-foreground py-1.5">
-                            {log?.status === "ok" && (
-                              <span>
-                                {log.testsSolved || 0}/{log.totalQuestions || 0} тестов, {log.lessonsFilled || 0} уроков
-                                {(log.skippedBatches ?? 0) > 0 && (
-                                  <span className="text-yellow-600 ml-1">⚠ {log.skippedBatches} пропущено</span>
-                                )}
-                              </span>
+                        <Collapsible key={cat} defaultOpen={false}>
+                          <CollapsibleTrigger className="flex items-center gap-2 w-full py-1.5 px-2 text-xs hover:bg-secondary/30 rounded-md transition-colors">
+                            <ChevronDown className="w-3 h-3 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
+                            <CatIcon className={`w-3.5 h-3.5 ${meta.color}`} />
+                            <span className="font-medium flex-1 text-left">{cat}</span>
+                            <span className="text-muted-foreground">{items.length} курсов</span>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            {items.length === 0 ? (
+                              <p className="text-[10px] text-muted-foreground py-1.5 pl-8 italic">Курсы ещё не добавлены</p>
+                            ) : (
+                              <ScrollArea className="max-h-40">
+                                <Table>
+                                  <TableBody>
+                                    {items.map(({ course: c, origIndex: i }) => {
+                                      const log = completedLog[i];
+                                      const isActive = isBusy && i === currentIndex;
+                                      const isPending = !log && !isActive;
+                                      return (
+                                        <TableRow key={c.id} className={isActive ? "bg-primary/10" : ""}>
+                                          <TableCell className="text-[10px] text-muted-foreground py-1 w-6">{i + 1}</TableCell>
+                                          <TableCell className="text-xs py-1 truncate max-w-[180px]">{c.course?.title || "—"}</TableCell>
+                                          <TableCell className="py-1 w-8">
+                                            {isActive && <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />}
+                                            {log?.status === "ok" && <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />}
+                                            {log?.status === "error" && <AlertTriangle className="w-3.5 h-3.5 text-red-500" />}
+                                            {isPending && <Clock className="w-3.5 h-3.5 text-muted-foreground" />}
+                                          </TableCell>
+                                          <TableCell className="text-[10px] text-muted-foreground py-1">
+                                            {log?.status === "ok" && (
+                                              <span>
+                                                {log.testsSolved || 0}/{log.totalQuestions || 0} тестов, {log.lessonsFilled || 0} уроков
+                                                {(log.skippedBatches ?? 0) > 0 && (
+                                                  <span className="text-yellow-600 ml-1">⚠ {log.skippedBatches} пропущено</span>
+                                                )}
+                                              </span>
+                                            )}
+                                            {log?.status === "error" && <span className="text-destructive">{log.message}</span>}
+                                            {isActive && <span className="text-primary">{currentPhase}</span>}
+                                          </TableCell>
+                                          <TableCell className="py-1 w-8">
+                                            <button
+                                              onClick={() => window.open(`/course-builder/${c.course_id}`, '_blank')}
+                                              className="p-1 rounded hover:bg-secondary/50 transition-colors"
+                                              title="Открыть в конструкторе"
+                                            >
+                                              <Eye className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground" />
+                                            </button>
+                                          </TableCell>
+                                        </TableRow>
+                                      );
+                                    })}
+                                  </TableBody>
+                                </Table>
+                              </ScrollArea>
                             )}
-                            {log?.status === "error" && <span className="text-destructive">{log.message}</span>}
-                            {isActive && <span className="text-primary">{currentPhase}</span>}
-                          </TableCell>
-                          <TableCell className="py-1.5">
-                            <button
-                              onClick={() => window.open(`/course-builder/${c.course_id}`, '_blank')}
-                              className="p-1 rounded hover:bg-secondary/50 transition-colors"
-                              title="Открыть в конструкторе"
-                            >
-                              <Eye className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground" />
-                            </button>
-                          </TableCell>
-                        </TableRow>
+                          </CollapsibleContent>
+                        </Collapsible>
                       );
                     })}
-                  </TableBody>
-                </Table>
-              </ScrollArea>
+                  </div>
+                );
+              })()}
             </CollapsibleContent>
           </Collapsible>
         )}
