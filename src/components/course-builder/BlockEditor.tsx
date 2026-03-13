@@ -2213,9 +2213,9 @@ function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSub
     case "heading2":
       return <h2 className={cn("text-xl font-semibold", styleClasses)}>{block.content}</h2>;
     case "bulletList":
-      return <ul className={cn("list-disc pl-6", styleClasses)}>{(block.content || "").split("\n").filter(Boolean).map((item, i) => <li key={i}>{item}</li>)}</ul>;
+      return <ul className={cn("list-disc pl-6", styleClasses)}>{(block.content || "").replace(/<\/?li>/gi, "").split("\n").filter(Boolean).map((item, i) => <li key={i}>{item}</li>)}</ul>;
     case "numberedList":
-      return <ol className={cn("list-decimal pl-6", styleClasses)}>{(block.content || "").split("\n").filter(Boolean).map((item, i) => <li key={i}>{item}</li>)}</ol>;
+      return <ol className={cn("list-decimal pl-6", styleClasses)}>{(block.content || "").replace(/<\/?li>/gi, "").split("\n").filter(Boolean).map((item, i) => <li key={i}>{item}</li>)}</ol>;
     case "quote":
       return <blockquote className={cn("border-l-4 border-muted-foreground/30 pl-4 italic text-muted-foreground", styleClasses)}>{block.content}</blockquote>;
     case "callout-info":
