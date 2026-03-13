@@ -118,6 +118,18 @@ export function useOrgUnreadChats(organizationId: string | null, currentUserId: 
           fetchConversations();
         }
       )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "admin_org_messages",
+          filter: `organization_id=eq.${organizationId}`,
+        },
+        () => {
+          fetchConversations();
+        }
+      )
       .subscribe();
 
     return () => {
