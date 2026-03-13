@@ -48,8 +48,8 @@ export function useCourseBuilder() {
   }, [markAsChanged]);
 
   const getBackPath = () => {
-    // Only redirect to /admin if the user is actually an admin viewing an org
-    if (userRole === 'admin' && localStorage.getItem("adminViewAsOrg")) {
+    // Admin users go back to /admin
+    if (userRole === 'admin') {
       return "/admin";
     }
     return "/organization";
