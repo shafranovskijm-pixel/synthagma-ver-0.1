@@ -326,22 +326,29 @@ export function Hero() {
             transition={{ duration: 0.8, delay: 0.7 }}
             className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto"
           >
-            {features.map((feature, index) => (
-              <motion.div
-                key={feature.label}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.8 + index * 0.1 }}
-                className="group relative px-5 py-4 rounded-2xl bg-card/60 backdrop-blur-sm border border-border/50 hover:border-accent/30 hover:bg-card transition-all duration-300"
-              >
+            {features.map((feature, index) => {
+              const content = (
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
                     <feature.icon className="w-5 h-5 text-accent" />
                   </div>
                   <span className="text-sm font-medium text-foreground/80">{feature.label}</span>
                 </div>
-              </motion.div>
-            ))}
+              );
+              return (
+                <motion.div
+                  key={feature.label}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.8 + index * 0.1 }}
+                  className="group relative px-5 py-4 rounded-2xl bg-card/60 backdrop-blur-sm border border-border/50 hover:border-accent/30 hover:bg-card transition-all duration-300"
+                >
+                  {feature.href ? (
+                    <Link to={feature.href}>{content}</Link>
+                  ) : content}
+                </motion.div>
+              );
+            })}
           </motion.div>
         </div>
 
