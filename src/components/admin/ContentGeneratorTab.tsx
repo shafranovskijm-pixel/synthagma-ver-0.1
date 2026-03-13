@@ -260,6 +260,15 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
         },
       });
       const contentDuration = Date.now() - contentStart;
+      if (contentError || !contentData?.content) {
+        const errMsg = contentError?.message || contentData?.error || "Пустой ответ от ИИ";
+        console.error(`Content generation failed for "${lesson.title}" (stream ${streamIndex}):`, errMsg);
+        await supabase.from("generation_history").insert({
+          course_id: courseId, course_title: courseTitle,
+          action: "content", details: `❌ Поток ${streamIndex}: ошибка «${lesson.title}» — ${errMsg}`, items_count: 0,
+          stream_index: streamIndex, duration_ms: contentDuration,
+        }).then(({ error: h }) => h && console.warn("History insert error:", h));
+      }
       if (!contentError && contentData?.content) {
         // Clean AI intro and convert to blocks
         const cleanedContent = stripAIIntro(contentData.content);
