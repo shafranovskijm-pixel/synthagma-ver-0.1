@@ -937,7 +937,7 @@ function BlockContent({ block, onUpdate, courseTitle, lessonTitle, existingConte
     case "numberedList":
       return (
         <div className={cn("space-y-1 py-2", editorStyleClasses)}>
-          <Textarea value={block.content} onChange={(e) => onUpdate({ content: e.target.value })} placeholder="Элемент списка (каждая строка — отдельный пункт)" className="min-h-[60px] border-0 bg-secondary/30 resize-none focus-visible:ring-1 rounded-lg text-sm" />
+          <Textarea value={(block.content || "").replace(/<\/?li>/gi, "")} onChange={(e) => onUpdate({ content: e.target.value })} placeholder="Элемент списка (каждая строка — отдельный пункт)" className="min-h-[60px] border-0 bg-secondary/30 resize-none focus-visible:ring-1 rounded-lg text-sm" />
         </div>
       );
 
@@ -2213,9 +2213,9 @@ function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSub
     case "heading2":
       return <h2 className={cn("text-xl font-semibold", styleClasses)}>{block.content}</h2>;
     case "bulletList":
-      return <ul className={cn("list-disc pl-6", styleClasses)}>{(block.content || "").split("\n").filter(Boolean).map((item, i) => <li key={i}>{item}</li>)}</ul>;
+      return <ul className={cn("list-disc pl-6", styleClasses)}>{(block.content || "").replace(/<\/?li>/gi, "").split("\n").filter(Boolean).map((item, i) => <li key={i}>{item}</li>)}</ul>;
     case "numberedList":
-      return <ol className={cn("list-decimal pl-6", styleClasses)}>{(block.content || "").split("\n").filter(Boolean).map((item, i) => <li key={i}>{item}</li>)}</ol>;
+      return <ol className={cn("list-decimal pl-6", styleClasses)}>{(block.content || "").replace(/<\/?li>/gi, "").split("\n").filter(Boolean).map((item, i) => <li key={i}>{item}</li>)}</ol>;
     case "quote":
       return <blockquote className={cn("border-l-4 border-muted-foreground/30 pl-4 italic text-muted-foreground", styleClasses)}>{block.content}</blockquote>;
     case "callout-info":
@@ -2449,7 +2449,7 @@ export function markdownToBlocks(md: string): ContentBlock[] {
         items.push(lines[i].replace(/^[-*]\s/, ""));
         i++;
       }
-      blocks.push({ id: mkId(), type: "bulletList", content: items.map(t => `<li>${t}</li>`).join("") });
+      blocks.push({ id: mkId(), type: "bulletList", content: items.join("\n") });
       continue;
     }
 
@@ -2460,7 +2460,7 @@ export function markdownToBlocks(md: string): ContentBlock[] {
         items.push(lines[i].replace(/^\d+\.\s/, ""));
         i++;
       }
-      blocks.push({ id: mkId(), type: "numberedList", content: items.map(t => `<li>${t}</li>`).join("") });
+      blocks.push({ id: mkId(), type: "numberedList", content: items.join("\n") });
       continue;
     }
 
