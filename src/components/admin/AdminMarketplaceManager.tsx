@@ -729,21 +729,26 @@ export function AdminMarketplaceManager() {
               const imageVisuals = [...visuals].filter(v => v.format === "image")
                 .sort((a, b) => b.after_block_index - a.after_block_index);
 
-              let insertedCount = 0;
-              for (const visual of imageVisuals) {
-                try {
-                  const { data: imgData, error: imgErr } = await safeInvoke<any>("generate-image", {
+              // Parallel image generation for speed
+              const imageResults = await Promise.allSettled(
+                imageVisuals.map(visual =>
+                  safeInvoke<any>("generate-image", {
                     body: { prompt: visual.prompt, provider: "gigachat" },
-                  });
-                  if (imgErr || !imgData?.url) continue;
-                  const insertIdx = Math.min(visual.after_block_index + 1, blocks.length);
-                  blocks.splice(insertIdx, 0, {
-                    id: crypto.randomUUID(), type: "image", content: visual.prompt, imageSrc: imgData.url,
-                  });
-                  insertedCount++;
-                } catch (e) {
-                  console.warn(`Auto-fix image failed:`, e);
-                }
+                  }).then(res => ({ ...res, visual }))
+                )
+              );
+
+              let insertedCount = 0;
+              // Insert in reverse order (imageVisuals already sorted desc by after_block_index)
+              for (const result of imageResults) {
+                if (result.status !== "fulfilled") continue;
+                const { data: imgData, error: imgErr, visual } = result.value;
+                if (imgErr || !imgData?.url) continue;
+                const insertIdx = Math.min(visual.after_block_index + 1, blocks.length);
+                blocks.splice(insertIdx, 0, {
+                  id: crypto.randomUUID(), type: "image", content: visual.prompt, imageSrc: imgData.url,
+                });
+                insertedCount++;
               }
 
               if (insertedCount > 0) {
