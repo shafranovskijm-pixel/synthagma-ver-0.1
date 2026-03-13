@@ -354,11 +354,16 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
 
       if (!hasAudio) {
         updateLesson(lesson.id, { status: "generating_audio" as LessonStatus });
-        const firstPara = blocks.find(
-          (b: any) => b.type === "paragraph" && b.content && b.content.trim().length > 50
+        // Collect ALL text from lesson blocks for full TTS
+        const textBlocks = blocks.filter(
+          (b: any) => ["paragraph", "heading1", "heading2", "bulletList", "numberedList", "quote"].includes(b.type) && b.content && b.content.trim().length > 0
         );
-        if (firstPara) {
+        const fullText = textBlocks.map((b: any) => b.content.trim()).join(". ");
+
+        if (fullText.length > 50) {
           try {
+            // Send full text (SaluteSpeech handles up to ~4000 chars, send more for full coverage)
+            const ttsText = fullText.slice(0, 4000);
             const response = await fetch(
               `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/salutespeech-tts`,
               {
@@ -369,7 +374,7 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
                   "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
                 },
                 body: JSON.stringify({
-                  text: firstPara.content.slice(0, 500),
+                  text: ttsText,
                   voice: "natalya",
                   format: "opus",
                 }),
@@ -392,15 +397,17 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
                   blocks.splice(insertIdx, 0, {
                     id: crypto.randomUUID(),
                     type: "audio",
-                    content: firstPara.content.slice(0, 200),
+                    content: fullText.slice(0, 200),
                     audioUrl: urlData.publicUrl,
                   });
                   changed = true;
                 }
               }
+            } else {
+              console.error(`TTS failed for "${lesson.title}": ${response.status} ${response.statusText}`);
             }
           } catch (e) {
-            console.warn("Audio generation failed for", lesson.title, e);
+            console.error(`TTS exception for "${lesson.title}":`, e);
           }
         }
       }
