@@ -253,6 +253,7 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
               courseDescription,
               previousLessons: previousLessonTitles,
               taskIndex,
+              lessonIndex: lesson.order_index,
             },
           });
           if (textError) throw new Error(textError.message || "Ошибка генерации текста");
@@ -326,14 +327,16 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
       if (!hasImage) {
         updateLesson(lesson.id, { status: "generating_image" });
         try {
-          const { data: imgData } = await supabase.functions.invoke("generate-image", {
+          const { data: imgData, error: imgError } = await supabase.functions.invoke("generate-image", {
             body: {
               prompt: `Образовательная иллюстрация для урока "${lesson.title}". Профессиональная, чистая, подходящая для онлайн-курса.`,
               provider: "gigachat",
               slotIndex: taskIndex,
             },
           });
-          if (imgData?.url) {
+          if (imgError) {
+            console.error(`Image generation error for "${lesson.title}":`, imgError);
+          } else if (imgData?.url) {
             blocks.unshift({
               id: crypto.randomUUID(),
               type: "image",
@@ -341,19 +344,26 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
               imageSrc: imgData.url,
             });
             changed = true;
+          } else {
+            console.error(`Image generation returned no URL for "${lesson.title}":`, JSON.stringify(imgData));
           }
         } catch (e) {
-          console.warn("Image generation failed for", lesson.title, e);
+          console.error(`Image generation exception for "${lesson.title}":`, e);
         }
       }
 
       if (!hasAudio) {
         updateLesson(lesson.id, { status: "generating_audio" as LessonStatus });
-        const firstPara = blocks.find(
-          (b: any) => b.type === "paragraph" && b.content && b.content.trim().length > 50
+        // Collect ALL text from lesson blocks for full TTS
+        const textBlocks = blocks.filter(
+          (b: any) => ["paragraph", "heading1", "heading2", "bulletList", "numberedList", "quote"].includes(b.type) && b.content && b.content.trim().length > 0
         );
-        if (firstPara) {
+        const fullText = textBlocks.map((b: any) => b.content.trim()).join(". ");
+
+        if (fullText.length > 50) {
           try {
+            // Send full text (SaluteSpeech handles up to ~4000 chars, send more for full coverage)
+            const ttsText = fullText.slice(0, 4000);
             const response = await fetch(
               `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/salutespeech-tts`,
               {
@@ -364,7 +374,7 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
                   "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
                 },
                 body: JSON.stringify({
-                  text: firstPara.content.slice(0, 500),
+                  text: ttsText,
                   voice: "natalya",
                   format: "opus",
                 }),
@@ -387,15 +397,17 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
                   blocks.splice(insertIdx, 0, {
                     id: crypto.randomUUID(),
                     type: "audio",
-                    content: firstPara.content.slice(0, 200),
+                    content: fullText.slice(0, 200),
                     audioUrl: urlData.publicUrl,
                   });
                   changed = true;
                 }
               }
+            } else {
+              console.error(`TTS failed for "${lesson.title}": ${response.status} ${response.statusText}`);
             }
           } catch (e) {
-            console.warn("Audio generation failed for", lesson.title, e);
+            console.error(`TTS exception for "${lesson.title}":`, e);
           }
         }
       }

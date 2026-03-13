@@ -1,45 +1,18 @@
 
 
-## Проблемы и исправления
+## Plan: Auto-fix after "Проверить все"
 
-### Проблема 1: «Уважаемые коллеги» в каждом уроке
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-**Причина**: В промпте `gigachat/index.ts` (строка 136) написано: *«Начинай СРАЗУ с содержательного текста: приветствие слушателей («Уважаемые коллеги...»)»*. В `generate-lesson-content/index.ts` (строки 158-168) аналогичного указания нет, но и запрета нет. AI по умолчанию начинает каждый урок с приветствия.
+### Changes
 
-**Исправление**: Передавать `order_index` (или `isFirstLesson: boolean`) в edge-функции и модифицировать промпт:
-- Для **первого урока** (`order_index === 0`): разрешить приветствие
-- Для **остальных**: добавить в промпт: `«НЕ начинай с приветствия или обращения к слушателям. Начинай сразу с тематического содержания.»`
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-**Файлы**:
-- `src/components/admin/BulkContentGenerator.tsx` — передавать `lessonIndex` в body
-- `supabase/functions/generate-lesson-content/index.ts` — использовать `lessonIndex` в промпте
-- `supabase/functions/gigachat/index.ts` — аналогично для `generate_content` action
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-### Проблема 2: Не генерируются изображения
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-**Причина**: Фаза 3 (`generateMedia`) вызывает `generate-image`, но ошибки молча проглатываются (`console.warn`). Скриншот показывает ошибку "An error occurred". Нужно:
-1. Логировать ошибки конкретно (какой урок, какой ответ)
-2. Проверить, что `generate-image` получает корректный `slotIndex`
-
-**Исправление**:
-- В `BulkContentGenerator.tsx`, строки 326-347: добавить подробное логирование ответа при ошибке (не только `console.warn`)
-- Показывать toast с количеством неудачных генераций изображений после фазы медиа
-
-### Проблема 3: Не генерируется аудио (полноценное)
-
-**Причина**: Текущая логика (строки 350-401) берёт только **первый параграф** и озвучивает **500 символов** через SaluteSpeech. Это даёт ~30 секунд аудио вместо полной лекции.
-
-**Исправление**: Озвучивать **весь текстовый контент урока** (все параграфы, объединённые в один текст), а не один фрагмент. Использовать полный текст для TTS, разбивая на чанки при необходимости (SaluteSpeech поддерживает до ~4000 символов за запрос).
-
-- Собрать весь текст из блоков `paragraph`, `heading1`, `heading2`, `bulletList`, `numberedList`, `quote`
-- Отправить целиком (или чанками) в `salutespeech-tts`
-- Загрузить и прикрепить результат
-
-### Сводка изменений
-
-| Файл | Что меняется |
-|---|---|
-| `BulkContentGenerator.tsx` | Передавать `lessonIndex`; улучшить логирование ошибок медиа; озвучивать весь текст |
-| `generate-lesson-content/index.ts` | Принять `lessonIndex`, скорректировать промпт |
-| `gigachat/index.ts` | Принять `lessonIndex` для action `generate_content`, скорректировать промпт |
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 
