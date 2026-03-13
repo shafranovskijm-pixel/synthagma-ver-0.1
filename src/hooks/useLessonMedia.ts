@@ -1,8 +1,9 @@
 import { useState, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { safeInvoke } from "@/utils/safeInvoke";
+import { safeInvoke, safeFetch } from "@/utils/safeInvoke";
 import { toast } from "sonner";
-import { ContentBlock } from "@/components/course-builder/BlockEditor";
+import { ContentBlock, blocksToJson as blocksToJsonFn } from "@/components/course-builder/BlockEditor";
+import { initExternalSupabase, getExternalSupabase } from "@/integrations/external-supabase/client";
 
 const SIZE_100MB = 100 * 1024 * 1024;
 const SIZE_500MB = 500 * 1024 * 1024;
