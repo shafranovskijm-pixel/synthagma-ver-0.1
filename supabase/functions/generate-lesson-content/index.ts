@@ -218,7 +218,8 @@ ${courseDescription ? `Описание курса: ${courseDescription}` : ""}
         toolDefinition ? { type: "function", function: toolDefinition.function } : undefined,
         "GigaChat-Pro",
         "google/gemini-3-flash-preview",
-        ai_provider
+        ai_provider,
+        taskIndex,
       );
 
       usedModel = "GigaChat/Lovable AI";
