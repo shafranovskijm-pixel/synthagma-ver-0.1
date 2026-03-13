@@ -110,18 +110,34 @@ serve(async (req) => {
         ? `\n\nВ уроке уже есть контент, НЕ повторяй его:\n${existingContent.slice(0, 1500)}`
         : "";
 
-      const defaultContentPrompt = `Ты эксперт по промышленной безопасности и нормативам Ростехнадзора. Создай подробный учебный материал.
+      let defaultContentPrompt: string;
+      if (lessonType === "practice") {
+        defaultContentPrompt = `Ты эксперт по промышленной безопасности и нормативам Ростехнадзора. Создай практическое задание (кейс / ситуационную задачу).
+Правила:
+1. Структурированный текст с заголовками (используй Markdown)
+2. Структура: Описание ситуации → Вводные данные → Задание → Вопросы для анализа → Ожидаемый результат
+3. Включи раздел «Нормативная база» со ссылками на ФЗ, приказы, постановления
+4. Реалистичный производственный сценарий с конкретными числовыми данными
+5. Минимум 400 слов
+6. На русском языке${contextNote}`;
+      } else {
+        defaultContentPrompt = `Ты эксперт по промышленной безопасности и нормативам Ростехнадзора. Создай подробный учебный материал.
 Правила:
 1. Структурированный текст с заголовками (используй Markdown)
 2. Ссылки на нормативные документы (ФЗ, приказы, постановления)
 3. Практические примеры и ситуации
 4. Минимум 500 слов
 5. На русском языке${contextNote}`;
+      }
       const systemPrompt = customSystemPrompt ? (customSystemPrompt + contextNote) : defaultContentPrompt;
+
+      const userPrompt = lessonType === "practice"
+        ? `Создай практическое задание (кейс) для урока "${lessonTitle}" курса "${courseTitle}"`
+        : `Напиши учебный материал для урока "${lessonTitle}" курса "${courseTitle}"`;
 
       const { text: content, model } = await callAI([
         { role: "system", content: systemPrompt },
-        { role: "user", content: `Напиши учебный материал для урока "${lessonTitle}" курса "${courseTitle}"` },
+        { role: "user", content: userPrompt },
       ], 4096, ai_provider, gigachat_model, lovable_model);
       result = { content, model };
 
