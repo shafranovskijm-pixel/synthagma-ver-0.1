@@ -62,6 +62,25 @@ const subCategoryMetaAdmin: Record<string, { icon: React.ElementType; color: str
   "Строительный контроль": { icon: HardHat, color: "text-accent", bgColor: "bg-accent/10" },
 };
 
+const ICON_OPTIONS: { name: string; icon: React.ElementType; label: string }[] = [
+  { name: "Factory", icon: Factory, label: "Промышленность" },
+  { name: "Zap", icon: Zap, label: "Электричество" },
+  { name: "Flame", icon: Flame, label: "Огонь" },
+  { name: "Leaf", icon: Leaf, label: "Экология" },
+  { name: "Droplets", icon: Droplets, label: "Вода" },
+  { name: "HardHat", icon: HardHat, label: "Стройка" },
+  { name: "ShieldCheck", icon: ShieldCheck, label: "Защита" },
+  { name: "BookOpen", icon: BookOpen, label: "Книга" },
+  { name: "Award", icon: Award, label: "Награда" },
+  { name: "Lightbulb", icon: Lightbulb, label: "Идея" },
+  { name: "Building2", icon: Building2, label: "Здание" },
+  { name: "GraduationCap", icon: GraduationCap, label: "Учёба" },
+];
+
+const iconMap: Record<string, React.ElementType> = {
+  Factory, Zap, Flame, Leaf, Droplets, HardHat, ShieldCheck, BookOpen, Award, Lightbulb, Building2, GraduationCap,
+};
+
 function renderCourseRow(
   item: any, h: any, navigate: any, onBulkGenerate: (item: any) => void,
   validatedCourses: Record<string, 'ok' | 'error'>, onValidate: (courseId: string) => void, validatingId: string | null
@@ -823,17 +842,22 @@ export function AdminMarketplaceManager() {
                             onDragEnd={(event: DragEndEvent) => {
                               const { active, over } = event;
                               if (!over || active.id === over.id) return;
-                              const oldIndex = h.dbCategories.findIndex(c => c.id === active.id);
-                              const newIndex = h.dbCategories.findIndex(c => c.id === over.id);
-                              if (oldIndex === -1 || newIndex === -1) return;
-                              const reordered = arrayMove(h.dbCategories, oldIndex, newIndex).map((c, i) => ({ ...c, order_index: i }));
-                              h.handleReorderCategories(reordered);
+                              // Scope reorder to categories within this parent_type
+                              const parentCats = h.dbCategories.filter(c => (c.parent_type || "Повышение квалификации") === group.category);
+                              const oldIdx = parentCats.findIndex(c => c.id === active.id);
+                              const newIdx = parentCats.findIndex(c => c.id === over.id);
+                              if (oldIdx === -1 || newIdx === -1) return;
+                              const reorderedParent = arrayMove(parentCats, oldIdx, newIdx).map((c, i) => ({ ...c, order_index: i }));
+                              // Merge back with other parent_type categories
+                              const otherCats = h.dbCategories.filter(c => (c.parent_type || "Повышение квалификации") !== group.category);
+                              h.handleReorderCategories([...otherCats, ...reorderedParent]);
                             }}
                           >
                             <SortableContext items={group.subGroups.map(s => s.categoryId || s.category)} strategy={verticalListSortingStrategy}>
                               {group.subGroups.map((sub) => {
+                                const dbIcon = (sub as any).icon ? iconMap[(sub as any).icon] : null;
                                 const subMeta = subCategoryMetaAdmin[sub.category];
-                                const SubIcon = subMeta?.icon || BookOpen;
+                                const SubIcon = dbIcon || subMeta?.icon || BookOpen;
                                 const subColor = subMeta?.color || "text-primary";
                                 const subBg = subMeta?.bgColor || "bg-primary/10";
                                 return (
@@ -871,12 +895,26 @@ export function AdminMarketplaceManager() {
                               })}
                             </SortableContext>
                           </DndContext>
+                          {/* Add subcategory button */}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-xs text-muted-foreground hover:text-foreground ml-5"
+                            onClick={() => {
+                              h.setNewCategoryParentType(group.category);
+                              h.setNewCategoryIcon(null);
+                              h.setNewCategoryName("");
+                              h.setShowCategoryDialog(true);
+                            }}
+                          >
+                            <FolderPlus className="w-3.5 h-3.5 mr-1" />Добавить подкатегорию
+                          </Button>
                         </CollapsibleContent>
                       </Collapsible>
                     );
                   }
 
-                  // Groups without subGroups (e.g. Профпереподготовка, ОТ/ПБ, Рабочие профессии)
+                  // Groups without subGroups — still show add button
                   return (
                     <Collapsible key={group.category} defaultOpen={false}>
                       <CollapsibleTrigger className="flex items-center gap-3 w-full p-4 rounded-xl border border-border bg-card hover:bg-secondary/30 transition-colors">
@@ -900,6 +938,19 @@ export function AdminMarketplaceManager() {
                             </TableBody>
                           </Table>
                         )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-xs text-muted-foreground hover:text-foreground mt-2"
+                          onClick={() => {
+                            h.setNewCategoryParentType(group.category);
+                            h.setNewCategoryIcon(null);
+                            h.setNewCategoryName("");
+                            h.setShowCategoryDialog(true);
+                          }}
+                        >
+                          <FolderPlus className="w-3.5 h-3.5 mr-1" />Добавить подкатегорию
+                        </Button>
                       </CollapsibleContent>
                     </Collapsible>
                   );
@@ -1242,12 +1293,24 @@ export function AdminMarketplaceManager() {
       </Dialog>
       {/* Create Category Dialog */}
       <Dialog open={h.showCategoryDialog} onOpenChange={h.setShowCategoryDialog}>
-        <DialogContent className="rounded-2xl max-w-sm">
+        <DialogContent className="rounded-2xl max-w-md">
           <DialogHeader>
             <DialogTitle>Создать категорию</DialogTitle>
-            <DialogDescription>Введите название новой категории для группировки курсов</DialogDescription>
+            <DialogDescription>Выберите тип программы, введите название и иконку</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Тип программы</Label>
+              <Select value={h.newCategoryParentType} onValueChange={h.setNewCategoryParentType}>
+                <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Повышение квалификации">Повышение квалификации</SelectItem>
+                  <SelectItem value="Профессиональная переподготовка">Профессиональная переподготовка</SelectItem>
+                  <SelectItem value="Охрана труда / Пожарная безопасность">Охрана труда / Пожарная безопасность</SelectItem>
+                  <SelectItem value="Рабочие профессии">Рабочие профессии</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-2">
               <Label>Название категории</Label>
               <Input
@@ -1257,6 +1320,27 @@ export function AdminMarketplaceManager() {
                 className="rounded-xl"
                 autoFocus
               />
+            </div>
+            <div className="space-y-2">
+              <Label>Иконка</Label>
+              <div className="grid grid-cols-6 gap-2">
+                {ICON_OPTIONS.map(opt => {
+                  const IconComp = opt.icon;
+                  const selected = h.newCategoryIcon === opt.name;
+                  return (
+                    <button
+                      key={opt.name}
+                      type="button"
+                      className={`flex flex-col items-center gap-1 p-2 rounded-lg border transition-colors ${selected ? 'border-primary bg-primary/10' : 'border-border hover:bg-secondary/50'}`}
+                      onClick={() => h.setNewCategoryIcon(selected ? null : opt.name)}
+                      title={opt.label}
+                    >
+                      <IconComp className="w-5 h-5" />
+                      <span className="text-[9px] text-muted-foreground leading-tight">{opt.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
           <DialogFooter>

@@ -43,6 +43,8 @@ export interface DbCategory {
   name: string;
   color: string | null;
   order_index: number;
+  parent_type: string | null;
+  icon: string | null;
 }
 
 export function useAdminMarketplace() {
@@ -92,10 +94,15 @@ export function useAdminMarketplace() {
   const fetchDbCategories = async () => {
     const { data } = await supabase
       .from("course_categories")
-      .select("id, name, color, order_index")
+      .select("id, name, color, order_index, parent_type, icon")
       .eq("organization_id", MARKETPLACE_ORG_ID)
       .order("order_index");
-    setDbCategories((data || []).map(d => ({ ...d, order_index: (d as any).order_index ?? 0 })));
+    setDbCategories((data || []).map(d => ({
+      ...d,
+      order_index: (d as any).order_index ?? 0,
+      parent_type: (d as any).parent_type ?? "Повышение квалификации",
+      icon: (d as any).icon ?? null,
+    })));
   };
 
   const fetchData = async () => {
@@ -357,34 +364,66 @@ export function useAdminMarketplace() {
       }
     }
 
-    // Build sub-groups from DB categories (respecting order_index)
-    const subGroups: { category: string; categoryId: string; courses: MarketplaceCourseWithDetails[] }[] = dbCategories.map(cat => ({
-      category: cat.name,
-      categoryId: cat.id,
-      courses: byCatId.get(cat.id) || [],
-    }));
-
-    const allCategorizedCourses = subGroups.flatMap(g => g.courses);
-
-    return [
-      { category: "Повышение квалификации", badge: "ДПО", courses: [...allCategorizedCourses, ...uncategorized], subGroups },
-      { category: "Профессиональная переподготовка", badge: "ДПО", courses: [] },
-      { category: "Охрана труда / Пожарная безопасность", badge: "ОТ / ПБ", courses: [] },
-      { category: "Рабочие профессии", badge: "ПО", courses: [] },
+    const programTypes = [
+      { category: "Повышение квалификации", badge: "ДПО" },
+      { category: "Профессиональная переподготовка", badge: "ДПО" },
+      { category: "Охрана труда / Пожарная безопасность", badge: "ОТ / ПБ" },
+      { category: "Рабочие профессии", badge: "ПО" },
     ];
+
+    return programTypes.map(pt => {
+      const subGroups = dbCategories
+        .filter(cat => (cat.parent_type || "Повышение квалификации") === pt.category)
+        .map(cat => ({
+          category: cat.name,
+          categoryId: cat.id,
+          icon: cat.icon,
+          courses: byCatId.get(cat.id) || [],
+        }));
+
+      const subCourses = subGroups.flatMap(g => g.courses);
+      // Uncategorized courses go to first program type
+      const courses = pt.category === "Повышение квалификации"
+        ? [...subCourses, ...uncategorized]
+        : subCourses;
+
+      return { category: pt.category, badge: pt.badge, courses, subGroups };
+    });
   })();
 
-  const handleCreateCategory = (name: string) => {
+  // State for new category parent_type & icon
+  const [newCategoryParentType, setNewCategoryParentType] = useState("Повышение квалификации");
+  const [newCategoryIcon, setNewCategoryIcon] = useState<string | null>(null);
+
+  const handleCreateCategory = async (name: string) => {
     const trimmed = name.trim();
     if (!trimmed) return;
-    if (categories.includes(trimmed)) {
+    if (dbCategories.some(c => c.name === trimmed && (c.parent_type || "Повышение квалификации") === newCategoryParentType)) {
       toast.error("Такая категория уже существует");
       return;
     }
-    setCustomCategories(prev => [...prev, trimmed]);
-    setNewCategoryName("");
-    setShowCategoryDialog(false);
-    toast.success(`Категория "${trimmed}" создана`);
+    try {
+      const maxOrder = dbCategories
+        .filter(c => (c.parent_type || "Повышение квалификации") === newCategoryParentType)
+        .reduce((max, c) => Math.max(max, c.order_index), -1);
+
+      const { error } = await supabase.from("course_categories").insert({
+        name: trimmed,
+        organization_id: MARKETPLACE_ORG_ID,
+        order_index: maxOrder + 1,
+        parent_type: newCategoryParentType,
+        icon: newCategoryIcon,
+      } as any);
+      if (error) throw error;
+      setNewCategoryName("");
+      setNewCategoryIcon(null);
+      setShowCategoryDialog(false);
+      toast.success(`Категория "${trimmed}" создана`);
+      fetchDbCategories();
+    } catch (err) {
+      console.error("Error creating category:", err);
+      toast.error("Ошибка при создании категории");
+    }
   };
 
   // Move course to a DB category via category_id
@@ -459,6 +498,8 @@ export function useAdminMarketplace() {
     fetchData,
     // Categories
     showCategoryDialog, setShowCategoryDialog, newCategoryName, setNewCategoryName,
+    newCategoryParentType, setNewCategoryParentType,
+    newCategoryIcon, setNewCategoryIcon,
     handleCreateCategory,
     showMoveCategoryDialog, setShowMoveCategoryDialog,
     movingCourse, setMovingCourse, targetCategory, setTargetCategory,
