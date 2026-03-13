@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { MARKETPLACE_ORG_ID } from "@/constants/marketplace";
 
 interface MarketplaceCourseWithDetails {
   id: string;
@@ -12,7 +13,7 @@ interface MarketplaceCourseWithDetails {
   description_short: string | null;
   preview_image_url: string | null;
   created_at: string;
-  course?: { id: string; title: string; description: string | null; duration: string | null };
+  course?: { id: string; title: string; description: string | null; duration: string | null; category_id?: string | null };
   organization?: { name: string } | null;
 }
 
@@ -37,6 +38,13 @@ interface MarketplaceOrder {
   buyer_profile?: { full_name: string | null; email: string | null } | null;
 }
 
+export interface DbCategory {
+  id: string;
+  name: string;
+  color: string | null;
+  order_index: number;
+}
+
 export function useAdminMarketplace() {
   const [activeTab, setActiveTab] = useState<"catalog" | "create" | "import" | "orders">("catalog");
   const [isLoading, setIsLoading] = useState(true);
@@ -57,7 +65,7 @@ export function useAdminMarketplace() {
   const [isCreating, setIsCreating] = useState(false);
 
   // DB categories for marketplace org
-  const [dbCategories, setDbCategories] = useState<{ id: string; name: string; color: string | null }[]>([]);
+  const [dbCategories, setDbCategories] = useState<DbCategory[]>([]);
 
   // Edit dialog
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -84,10 +92,10 @@ export function useAdminMarketplace() {
   const fetchDbCategories = async () => {
     const { data } = await supabase
       .from("course_categories")
-      .select("id, name, color")
-      .eq("organization_id", "00000000-0000-0000-0000-000000000000")
-      .order("name");
-    setDbCategories(data || []);
+      .select("id, name, color, order_index")
+      .eq("organization_id", MARKETPLACE_ORG_ID)
+      .order("order_index");
+    setDbCategories((data || []).map(d => ({ ...d, order_index: (d as any).order_index ?? 0 })));
   };
 
   const fetchData = async () => {
@@ -99,7 +107,7 @@ export function useAdminMarketplace() {
   const fetchCourses = async () => {
     const { data, error } = await supabase
       .from("marketplace_courses")
-      .select("*, course:courses(id, title, description, duration), organization:organizations(name)")
+      .select("*, course:courses(id, title, description, duration, category_id), organization:organizations(name)")
       .order("created_at", { ascending: false });
     if (error) { console.error("Error fetching marketplace courses:", error); return; }
     setCourses(data || []);
@@ -112,7 +120,6 @@ export function useAdminMarketplace() {
       .order("created_at", { ascending: false });
     if (error) { console.error("Error fetching orders:", error); return; }
     
-    // Fetch buyer profiles for student orders
     const studentUserIds = (data || [])
       .filter((o) => o.buyer_type === "student" && o.buyer_user_id)
       .map((o) => o.buyer_user_id!);
@@ -224,7 +231,6 @@ export function useAdminMarketplace() {
 
   const handleDeleteCourse = async (courseId: string) => {
     try {
-      // 1. Get all orders for this marketplace course
       const { data: orders } = await supabase
         .from("marketplace_orders")
         .select("id")
@@ -233,17 +239,14 @@ export function useAdminMarketplace() {
       const orderIds = (orders || []).map(o => o.id);
       
       if (orderIds.length > 0) {
-        // 2. Clear balance_transactions referencing these orders
         for (const oid of orderIds) {
           await supabase.from("balance_transactions").update({ related_order_id: null }).eq("related_order_id", oid);
         }
-        // 3. Clear courses.source_order_id referencing these orders
         for (const oid of orderIds) {
           await supabase.from("courses").update({ source_order_id: null }).eq("source_order_id", oid);
         }
       }
 
-      // 4. Delete marketplace course (cascades to orders and comments)
       const { error } = await supabase.from("marketplace_courses").delete().eq("id", courseId);
       if (error) throw error;
       toast.success("Курс удалён из маркетплейса");
@@ -267,7 +270,6 @@ export function useAdminMarketplace() {
         .eq("id", editingCourse.id);
       if (error) throw error;
 
-      // Update duration in courses table
       if (editingCourse.course?.id) {
         await supabase
           .from("courses")
@@ -297,24 +299,97 @@ export function useAdminMarketplace() {
     }
   };
 
-  // Extract categories from course titles (prefix before " — ")
-  const extractCategory = (title: string | undefined): string => {
-    if (!title) return "Без категории";
-    const dashIndex = title.indexOf(" — ");
-    return dashIndex > 0 ? title.substring(0, dashIndex) : "Без категории";
-  };
-
+  // Extract short title (strip category prefix "Category — Title")
   const extractShortTitle = (title: string | undefined): string => {
     if (!title) return "";
     const dashIndex = title.indexOf(" — ");
     return dashIndex > 0 ? title.substring(dashIndex + 3) : title;
   };
 
-  // Merge DB-derived categories with custom-created ones
-  const categories = Array.from(new Set([
-    ...courses.map(c => extractCategory(c.course?.title)),
-    ...customCategories,
-  ])).sort();
+  // Get category name for a course (DB-based via category_id)
+  const getCourseCategory = (course: MarketplaceCourseWithDetails): DbCategory | null => {
+    const catId = course.course?.category_id;
+    if (!catId) return null;
+    return dbCategories.find(c => c.id === catId) || null;
+  };
+
+  const getCategoryName = (course: MarketplaceCourseWithDetails): string => {
+    return getCourseCategory(course)?.name || "Без категории";
+  };
+
+  // Legacy extractCategory for backward compat
+  const extractCategory = (title: string | undefined): string => {
+    if (!title) return "Без категории";
+    const dashIndex = title.indexOf(" — ");
+    return dashIndex > 0 ? title.substring(0, dashIndex) : "Без категории";
+  };
+
+  // Categories list (DB-based)
+  const categories = [
+    ...dbCategories.map(c => c.name),
+    ...customCategories.filter(c => !dbCategories.some(d => d.name === c)),
+  ];
+
+  // Group courses by DB category_id, ordered by dbCategories order_index
+  const EXCLUDED_FROM_RTN = ["Охрана труда при работах на высоте"];
+
+  const groupedCourses: { category: string; categoryId?: string; courses: MarketplaceCourseWithDetails[]; status?: 'ready' | 'progress'; subGroups?: { category: string; courses: MarketplaceCourseWithDetails[] }[] }[] = (() => {
+    // Group by category_id
+    const byCatId = new Map<string, MarketplaceCourseWithDetails[]>();
+    const uncategorized: MarketplaceCourseWithDetails[] = [];
+
+    for (const c of filteredCourses) {
+      const catId = c.course?.category_id;
+      if (catId) {
+        if (!byCatId.has(catId)) byCatId.set(catId, []);
+        byCatId.get(catId)!.push(c);
+      } else {
+        uncategorized.push(c);
+      }
+    }
+
+    const result: typeof groupedCourses = [];
+
+    // Add categories in order_index order
+    for (const dbCat of dbCategories) {
+      const catCourses = byCatId.get(dbCat.id);
+      if (!catCourses || catCourses.length === 0) {
+        // Still show empty categories
+        result.push({ category: dbCat.name, categoryId: dbCat.id, courses: [], status: 'ready' });
+        continue;
+      }
+      
+      const ready = catCourses.filter(c => (c as any).is_validated === true);
+      const progress = catCourses.filter(c => (c as any).is_validated !== true);
+
+      if (ready.length > 0 || progress.length > 0) {
+        result.push({
+          category: dbCat.name,
+          categoryId: dbCat.id,
+          courses: catCourses,
+          status: ready.length > 0 ? 'ready' : 'progress',
+        });
+      }
+    }
+
+    if (uncategorized.length > 0) {
+      result.push({ category: "Без категории", courses: uncategorized });
+    }
+
+    return result;
+  })();
+
+  const filteredCourses = courses.filter(c => {
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      if (!c.course?.title.toLowerCase().includes(q) && !c.organization?.name?.toLowerCase().includes(q)) return false;
+    }
+    if (selectedCategory !== "all") {
+      const catName = getCategoryName(c);
+      if (catName !== selectedCategory) return false;
+    }
+    return true;
+  });
 
   const handleCreateCategory = (name: string) => {
     const trimmed = name.trim();
@@ -329,16 +404,22 @@ export function useAdminMarketplace() {
     toast.success(`Категория "${trimmed}" создана`);
   };
 
-  const handleMoveToCategory = async (course: MarketplaceCourseWithDetails, newCategory: string) => {
+  // Move course to a DB category via category_id
+  const handleMoveToCategory = async (course: MarketplaceCourseWithDetails, newCategoryIdOrName: string) => {
     if (!course.course?.id) return;
-    const shortTitle = extractShortTitle(course.course.title);
-    const newTitle = newCategory === "__none__"
-      ? shortTitle
-      : `${newCategory} — ${shortTitle}`;
     try {
+      // Check if it's a DB category id or name
+      let catId: string | null = null;
+      if (newCategoryIdOrName === "__none__") {
+        catId = null;
+      } else {
+        const dbCat = dbCategories.find(c => c.id === newCategoryIdOrName || c.name === newCategoryIdOrName);
+        catId = dbCat?.id || null;
+      }
+      
       const { error } = await supabase
         .from("courses")
-        .update({ title: newTitle })
+        .update({ category_id: catId })
         .eq("id", course.course.id);
       if (error) throw error;
       toast.success("Курс перемещён");
@@ -351,58 +432,34 @@ export function useAdminMarketplace() {
     }
   };
 
-  const filteredCourses = courses.filter(c => {
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      if (!c.course?.title.toLowerCase().includes(q) && !c.organization?.name?.toLowerCase().includes(q)) return false;
-    }
-    if (selectedCategory !== "all" && extractCategory(c.course?.title) !== selectedCategory) return false;
-    return true;
-  });
-
-  // Group filtered courses by category, split into "ready" (is_validated) and "in progress"
-  const EXCLUDED_FROM_RTN = ["Охрана труда при работах на высоте"];
-  
-  const groupedCourses: { category: string; courses: MarketplaceCourseWithDetails[]; status?: 'ready' | 'progress'; subGroups?: { category: string; courses: MarketplaceCourseWithDetails[] }[] }[] = (() => {
-    const map = new Map<string, MarketplaceCourseWithDetails[]>();
-    for (const c of filteredCourses) {
-      const cat = extractCategory(c.course?.title);
-      if (!map.has(cat)) map.set(cat, []);
-      map.get(cat)!.push(c);
-    }
+  // Reorder categories via order_index
+  const handleReorderCategories = async (reorderedCategories: DbCategory[]) => {
+    // Optimistic update
+    setDbCategories(reorderedCategories);
     
-    const rtnReadySubGroups: { category: string; courses: MarketplaceCourseWithDetails[] }[] = [];
-    const rtnProgressSubGroups: { category: string; courses: MarketplaceCourseWithDetails[] }[] = [];
-    const standalone: { category: string; courses: MarketplaceCourseWithDetails[]; status?: 'ready' | 'progress' }[] = [];
-    
-    for (const [category, courses] of Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b))) {
-      if (EXCLUDED_FROM_RTN.includes(category)) {
-        standalone.push({ category, courses });
-      } else {
-        const ready = courses.filter(c => (c as any).is_validated === true);
-        const progress = courses.filter(c => (c as any).is_validated !== true);
-        if (ready.length > 0) rtnReadySubGroups.push({ category, courses: ready });
-        if (progress.length > 0) rtnProgressSubGroups.push({ category, courses: progress });
+    // Persist order_index changes
+    try {
+      for (let i = 0; i < reorderedCategories.length; i++) {
+        const cat = reorderedCategories[i];
+        if (cat.order_index !== i) {
+          await supabase
+            .from("course_categories")
+            .update({ order_index: i } as any)
+            .eq("id", cat.id);
+        }
       }
+    } catch (error) {
+      console.error("Error reordering categories:", error);
+      toast.error("Ошибка при сортировке категорий");
+      fetchDbCategories(); // Revert
     }
-    
-    const result: { category: string; courses: MarketplaceCourseWithDetails[]; status?: 'ready' | 'progress'; subGroups?: { category: string; courses: MarketplaceCourseWithDetails[] }[] }[] = [];
-    if (rtnReadySubGroups.length > 0) {
-      const allReady = rtnReadySubGroups.flatMap(g => g.courses);
-      result.push({ category: "Курсы Ростехнадзора", courses: allReady, status: 'ready', subGroups: rtnReadySubGroups });
-    }
-    if (rtnProgressSubGroups.length > 0) {
-      const allProgress = rtnProgressSubGroups.flatMap(g => g.courses);
-      result.push({ category: "В работе", courses: allProgress, status: 'progress', subGroups: rtnProgressSubGroups });
-    }
-    result.push(...standalone);
-    return result;
-  })();
+  };
 
   return {
     activeTab, setActiveTab, isLoading, searchQuery, setSearchQuery,
     selectedCategory, setSelectedCategory, viewMode, setViewMode,
     courses, filteredCourses, groupedCourses, orders, categories, extractCategory, extractShortTitle,
+    getCategoryName,
     // Create
     newTitle, setNewTitle, newDescription, setNewDescription,
     newDuration, setNewDuration, newPriceStudent, setNewPriceStudent,
@@ -424,5 +481,7 @@ export function useAdminMarketplace() {
     movingCourse, setMovingCourse, targetCategory, setTargetCategory,
     newMoveCategoryInput, setNewMoveCategoryInput,
     handleMoveToCategory,
+    handleReorderCategories,
+    fetchDbCategories,
   };
 }
