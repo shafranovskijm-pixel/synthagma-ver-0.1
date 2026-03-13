@@ -292,7 +292,7 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
     }
   };
 
-  // Phase 3: Generate images and audio for content lessons
+  // Phase 3: Generate images and audio for content lessons (parallel batches)
   const generateMedia = async (overrideLessons?: LessonItem[]) => {
     setPhase("media");
     const mediaStart = Date.now();
@@ -303,23 +303,20 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
 
     let mediaCount = 0;
 
-    for (let i = 0; i < targets.length; i++) {
-      if (abortRef.current) break;
-      const lesson = targets[i];
-
+    const processOneMedia = async (lesson: LessonItem, taskIndex: number) => {
       const { data: freshLesson } = await supabase
         .from("lessons")
         .select("content")
         .eq("id", lesson.id)
         .single();
 
-      if (!freshLesson?.content) continue;
+      if (!freshLesson?.content) return;
 
       let blocks: any[];
       try {
         blocks = JSON.parse(freshLesson.content);
-        if (!Array.isArray(blocks)) continue;
-      } catch { continue; }
+        if (!Array.isArray(blocks)) return;
+      } catch { return; }
 
       const hasImage = blocks.some((b: any) => b.type === "image" && b.imageSrc);
       const hasAudio = blocks.some((b: any) => b.type === "audio" && b.audioUrl);
@@ -333,6 +330,7 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
             body: {
               prompt: `Образовательная иллюстрация для урока "${lesson.title}". Профессиональная, чистая, подходящая для онлайн-курса.`,
               provider: "gigachat",
+              slotIndex: taskIndex,
             },
           });
           if (imgData?.url) {
@@ -409,10 +407,16 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
 
       updateLesson(lesson.id, { status: "done" });
       setDoneCount((prev) => prev + 1);
+    };
 
-      if (i < targets.length - 1 && !abortRef.current) {
-        await new Promise((r) => setTimeout(r, 1000));
-      }
+    // Process in parallel batches
+    for (let batchStart = 0; batchStart < targets.length; batchStart += PARALLEL_BATCH_SIZE) {
+      if (abortRef.current) break;
+      const batch = targets.slice(batchStart, batchStart + PARALLEL_BATCH_SIZE);
+      await Promise.allSettled(
+        batch.map((lesson, i) => processOneMedia(lesson, batchStart + i))
+      );
+    }
     }
 
     if (mediaCount > 0) {
