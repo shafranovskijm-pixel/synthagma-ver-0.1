@@ -553,21 +553,13 @@ export async function callAIRoundRobin(
   const gcModel = gigachatModel || "GigaChat-Pro";
   const lModel = lovableModel || "google/gemini-2.5-flash";
 
-  // Build channels dynamically with requested models
+  // Build channels dynamically — only GigaChat slots for round-robin, Lovable AI as last fallback
   const channels: Array<{
     name: string;
     call: (msgs: Array<{ role: string; content: string }>, mt: number) => Promise<{ text: string; model: string }>;
   }> = [];
 
-  // Lovable AI first to consume cloud balance
-  channels.push({
-    name: `Lovable AI (${lModel})`,
-    call: async (msgs, mt) => {
-      const text = await callLovableAI(msgs, mt, lModel);
-      return { text, model: lModel };
-    },
-  });
-
+  // GigaChat slots first — primary channels for 3-slot round-robin
   channels.push({
     name: `GigaChat slot-0 (${gcModel})`,
     call: async (msgs, mt) => {
@@ -596,8 +588,18 @@ export async function callAIRoundRobin(
     });
   }
 
-  // Deterministic routing: use taskIndex if provided, otherwise global counter
-  const startIdx = taskIndex !== undefined ? (taskIndex % channels.length) : (rrCounter++ % channels.length);
+  // Lovable AI as last fallback only
+  channels.push({
+    name: `Lovable AI (${lModel})`,
+    call: async (msgs, mt) => {
+      const text = await callLovableAI(msgs, mt, lModel);
+      return { text, model: lModel };
+    },
+  });
+
+  // Deterministic routing across GigaChat slots only (exclude Lovable AI fallback)
+  const gcSlotCount = Math.min(slots.length, 3);
+  const startIdx = taskIndex !== undefined ? (taskIndex % gcSlotCount) : (rrCounter++ % gcSlotCount);
   const taskLabel = taskIndex !== undefined ? `task#${taskIndex}` : `rr#${rrCounter - 1}`;
   let count402 = 0;
   let lastError: Error | null = null;

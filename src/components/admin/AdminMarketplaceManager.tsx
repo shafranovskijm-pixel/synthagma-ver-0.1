@@ -293,6 +293,26 @@ export function AdminMarketplaceManager() {
   const [valRules, setValRules] = useState<ValidationRules>({ minLessons: 3, minContentLength: 50, requireTest: true, requireText: true, checkDuplicateTitles: true });
   const [aiPrompts, setAiPrompts] = useState<AiPrompts>({});
 
+  // AI settings for 3-slot routing
+  const [aiProvider, setAiProvider] = useState("gigachat");
+  const [gigachatModel, setGigachatModel] = useState<string | undefined>();
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from("ai_settings")
+          .select("provider, gigachat_model")
+          .eq("context", "pipeline")
+          .single();
+        if (data) {
+          setAiProvider(data.provider || "gigachat");
+          setGigachatModel(data.gigachat_model || undefined);
+        }
+      } catch {}
+    })();
+  }, []);
+
   const handleSettingsLoaded = useCallback((rules: ValidationRules, prompts: AiPrompts) => {
     setValRules(rules);
     setAiPrompts(prompts);
@@ -608,12 +628,13 @@ export function AdminMarketplaceManager() {
 
       let completed = 0;
 
-      // 2. Generate content for empty lessons (parallel, concurrency=2)
-      const CONCURRENCY = 2;
+      // 2. Generate content for empty lessons (parallel, concurrency=3)
+      const CONCURRENCY = 3;
       for (let i = 0; i < emptyLessons.length; i += CONCURRENCY) {
         const chunk = emptyLessons.slice(i, i + CONCURRENCY);
-        const promises = chunk.map(async (lesson) => {
+        const promises = chunk.map(async (lesson, idxInChunk) => {
           completed++;
+          const streamIndex = i + idxInChunk;
           toast.loading(`Генерирую контент: "${lesson.title}" (${completed}/${totalTasks})`, { id: toastId });
           try {
             const { data, error } = await safeInvoke<any>("gigachat", {
@@ -622,6 +643,9 @@ export function AdminMarketplaceManager() {
                 courseTitle,
                 lessonTitle: lesson.title,
                 existingContent: null,
+                ai_provider: aiProvider,
+                stream_index: streamIndex,
+                ...(aiProvider === "gigachat" && gigachatModel ? { gigachat_model: gigachatModel } : {}),
                 ...(aiPrompts.content ? { customSystemPrompt: aiPrompts.content } : {}),
               },
             });
@@ -642,8 +666,9 @@ export function AdminMarketplaceManager() {
       if (emptyTests.length > 0) {
         for (let i = 0; i < emptyTests.length; i += CONCURRENCY) {
           const chunk = emptyTests.slice(i, i + CONCURRENCY);
-          const promises = chunk.map(async (test) => {
+          const promises = chunk.map(async (test, idxInChunk) => {
             completed++;
+            const streamIndex = i + idxInChunk;
             toast.loading(`Генерирую вопросы: "${test.title}" (${completed}/${totalTasks})`, { id: toastId });
             try {
               const { data, error } = await safeInvoke<any>("gigachat", {
@@ -651,6 +676,9 @@ export function AdminMarketplaceManager() {
                   action: "generate_questions",
                   courseTitle,
                   lessonTitle: test.title,
+                  ai_provider: aiProvider,
+                  stream_index: streamIndex,
+                  ...(aiProvider === "gigachat" && gigachatModel ? { gigachat_model: gigachatModel } : {}),
                   ...(aiPrompts.questions ? { customSystemPrompt: aiPrompts.questions } : {}),
                 },
               });
@@ -689,8 +717,9 @@ export function AdminMarketplaceManager() {
         const lessonEntries = Array.from(byLesson.entries());
         for (let i = 0; i < lessonEntries.length; i += CONCURRENCY) {
           const chunk = lessonEntries.slice(i, i + CONCURRENCY);
-          const promises = chunk.map(async ([lessonId, questions]) => {
+          const promises = chunk.map(async ([lessonId, questions], idxInChunk) => {
             const lessonInfo = lessons?.find(l => l.id === lessonId);
+            const streamIndex = i + idxInChunk;
             const batchSize = 20;
             for (let j = 0; j < questions.length; j += batchSize) {
               const batch = questions.slice(j, j + batchSize);
@@ -704,6 +733,9 @@ export function AdminMarketplaceManager() {
                       question: q.question,
                       options: q.options || [],
                     })),
+                    ai_provider: aiProvider,
+                    stream_index: streamIndex,
+                    ...(aiProvider === "gigachat" && gigachatModel ? { gigachat_model: gigachatModel } : {}),
                     ...(aiPrompts.answers ? { customSystemPrompt: aiPrompts.answers } : {}),
                   },
                 });

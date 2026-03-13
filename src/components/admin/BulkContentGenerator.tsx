@@ -98,6 +98,26 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
   const [totalToProcess, setTotalToProcess] = useState(0);
   const abortRef = useRef(false);
 
+  // AI settings for 3-slot routing
+  const [aiProvider, setAiProvider] = useState("gigachat");
+  const [gigachatModel, setGigachatModel] = useState<string | undefined>();
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from("ai_settings")
+          .select("provider, gigachat_model")
+          .eq("context", "pipeline")
+          .single();
+        if (data) {
+          setAiProvider(data.provider || "gigachat");
+          setGigachatModel(data.gigachat_model || undefined);
+        }
+      } catch {}
+    })();
+  }, []);
+
   useEffect(() => {
     if (open && courseId) {
       loadLessons();
@@ -255,6 +275,8 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
               previousLessons: previousLessonTitles,
               taskIndex,
               lessonIndex: lesson.order_index,
+              ai_provider: aiProvider,
+              ...(aiProvider === "gigachat" && gigachatModel ? { gigachat_model: gigachatModel } : {}),
             },
           });
           if (textError) throw new Error(textError.message || "Ошибка генерации текста");
@@ -660,7 +682,7 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
           const lessonType = isPracticeLesson(lesson) ? "practice" : "text";
 
           const { data: textData, error: textError } = await supabase.functions.invoke("generate-lesson-content", {
-            body: { lessonTitle: lesson.title, lessonType, courseTitle, courseDescription, previousLessons: [] },
+            body: { lessonTitle: lesson.title, lessonType, courseTitle, courseDescription, previousLessons: [], ai_provider: aiProvider, ...(aiProvider === "gigachat" && gigachatModel ? { gigachat_model: gigachatModel } : {}) },
           });
           if (textError) throw new Error(textError.message);
           if (!textData?.success || !textData?.blocks?.length) throw new Error(textData?.error || "Пустой ответ");
