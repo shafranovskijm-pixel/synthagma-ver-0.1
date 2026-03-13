@@ -123,13 +123,13 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
       try {
         const { data: lessons } = await supabase
           .from("lessons")
-          .select("id, type, content")
+          .select("id, type, content, title")
           .eq("course_id", mc.course_id);
 
         const textLessons = (lessons || []).filter(l => l.type === "text" || l.type === "practice");
         const testLessons = (lessons || []).filter(l => l.type === "test");
         const emptyLessons = textLessons.filter(l =>
-          !l.content || l.content === "[]" || l.content === "" || l.content.length < 50
+          !l.content || l.content === "[]" || l.content === ""
         );
 
         let unansweredQuestions = 0;
@@ -176,13 +176,13 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
       // 1. Check if course has lessons
       const { data: existingLessons } = await supabase
         .from("lessons")
-        .select("id, type, content")
+        .select("id, type, content, title")
         .eq("course_id", courseId);
 
       const hasLessons = existingLessons && existingLessons.length > 0;
       const textLessons = (existingLessons || []).filter(l => l.type === "text" || l.type === "practice");
       const emptyTextLessons = textLessons.filter(l =>
-        !l.content || l.content === "[]" || l.content === "" || l.content.length < 50
+        !l.content || l.content === "[]" || l.content === ""
       );
       const testLessons = (existingLessons || []).filter(l => l.type === "test");
 
@@ -386,7 +386,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
     setGeneratingPhase("content");
     const textLessons = lessons.filter((l: any) => (l.type === "text" || l.type === "practice"));
     const emptyOnes = textLessons.filter((l: any) =>
-      !l.content || l.content === "[]" || l.content === "" || (l.content && l.content.length < 50)
+      !l.content || l.content === "[]" || l.content === ""
     );
 
     const PARALLEL = 3;
