@@ -1,18 +1,24 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## План: Назначить курсы по ОТ, ПБ и медицине в соответствующие категории
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+### Проблема
+У маркетплейс-организации нет категорий под вкладкой «Охрана труда / Пожарная безопасность». 27 курсов (первая помощь, охрана труда, пожарная безопасность, техника безопасности) остаются без категории.
 
-### Changes
+### Решение — SQL миграция
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+Одна миграция, которая:
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+1. **Создаст 3 категории** для маркетплейс-организации с `parent_type = 'Охрана труда / Пожарная безопасность'`:
+   - «Охрана труда» (order_index 0)
+   - «Пожарная безопасность» (order_index 1)
+   - «Медицина» (order_index 2)
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+2. **Назначит category_id** всем курсам маркетплейса, у которых `category_id IS NULL`:
+   - Курсы с `охрана труда`, `безопасные условия`, `техники безопасности` в названии → «Охрана труда»
+   - Курсы с `пожарн`, `противопожарн` → «Пожарная безопасность»
+   - Курсы с `первая помощь`, `оказани% помощ`, `медицин`, `санитарн` → «Медицина»
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+### Файлы
+Изменений в коде не требуется — ключевые слова уже настроены в `useAdminMarketplace.ts`. Нужна только SQL миграция для создания категорий и назначения курсов.
 
