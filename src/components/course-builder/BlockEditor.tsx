@@ -83,6 +83,11 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { SALUTE_VOICES } from "@/components/student/TTSSettingsDialog";
+import { Volume2 } from "lucide-react";
 
 const sanitizeHtml = (html: string): string => {
   return DOMPurify.sanitize(html, {
