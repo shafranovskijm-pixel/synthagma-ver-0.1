@@ -1,18 +1,68 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## План: Заменить «Конвейер» на «Генератор контента» с выбором категории
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+### Концепция
 
-### Changes
+Вместо текущего конвейера (который обрабатывает все курсы разом) — новый интерфейс «Генератор контента», который работает пошагово:
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+1. **Выбор категории** — показать дерево категорий (Тип программы → Категория) со счётчиками курсов и пустых уроков
+2. **Анализ категории** — при выборе показать список курсов: какие есть, сколько уроков, сколько без контента
+3. **Генерация по курсу** — кнопка «Сгенерировать» для каждого курса (структура → контент → тесты → ответы), с прогрессом в реальном времени
+4. **Создание нового курса** — кнопка «+ Добавить курс» прямо в категории, ИИ генерирует название и структуру на основе тематики
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+### Изменения
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+**1. Новый компонент `src/components/admin/ContentGeneratorTab.tsx`**
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+UI с тремя состояниями:
+- **Обзор категорий** — карточки по типам программ, внутри — подкатегории с бейджами (всего курсов / пустых). Используются данные из `h.dbCategories` и `h.courses`
+- **Просмотр категории** — таблица курсов выбранной категории: название, кол-во уроков, кол-во пустых, статус (готов/в работе). Кнопки: «Сгенерировать контент» (один курс), «Создать новый курс в категории»
+- **Генерация** — переиспользование логики из `useBulkPipeline` для одного курса с прогресс-баром
+
+Логика генерации:
+- Переиспользует существующий хук `useBulkPipeline` и edge-функцию `gigachat` (actions: `generate_structure`, `generate_content`, `generate_questions`, `generate_answers`)
+- AI-провайдер и модель загружаются из `ai_settings` (как в текущем `BulkPipelineWidget`)
+
+Создание нового курса в категории:
+- Ввод названия (или ИИ предлагает на основе тематики категории)
+- Создание записи в `courses` + `marketplace_courses`
+- Автоматический запуск генерации структуры и контента
+
+**2. Обновление `src/components/admin/AdminMarketplaceManager.tsx`**
+- Заменить tab `"pipeline"` / `"Конвейер"` на `"generator"` / `"Генератор"`
+- Заменить `<BulkPipelineWidget>` на `<ContentGeneratorTab>`
+- Передать props: `courses`, `dbCategories`, `onComplete`
+- Иконка: `Sparkles` вместо `Zap`
+
+**3. Обновление `src/hooks/useAdminMarketplace.ts`**
+- Заменить `"pipeline"` на `"generator"` в типе `activeTab`
+
+### Интерфейс (схема)
+
+```text
+┌─ Генератор ─────────────────────────────────┐
+│                                              │
+│  [← Назад]  Категория: Строительный контроль│
+│                                              │
+│  ┌──────────────────────────────────────────┐│
+│  │ Курс                    │Уроки│Пустые│   ││
+│  │─────────────────────────│─────│──────│───││
+│  │ Строительный контроль..│  8  │  5   │⚡ ││
+│  │ Основы BIM-моделирован.│  6  │  6   │⚡ ││
+│  │ Технический надзор...  │  0  │  0   │⚡ ││
+│  └──────────────────────────────────────────┘│
+│                                              │
+│  [+ Создать новый курс в категории]          │
+│  [⚡ Сгенерировать все пустые]               │
+└──────────────────────────────────────────────┘
+```
+
+### Файлы
+
+| Файл | Действие |
+|---|---|
+| `src/components/admin/ContentGeneratorTab.tsx` | Создать — новый компонент |
+| `src/components/admin/AdminMarketplaceManager.tsx` | Обновить — заменить pipeline на generator |
+| `src/hooks/useAdminMarketplace.ts` | Обновить — тип activeTab |
 
