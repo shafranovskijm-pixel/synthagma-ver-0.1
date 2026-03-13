@@ -275,6 +275,15 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
                 correct_answer: q.correctAnswer ?? q.correct_answer ?? null,
               });
             }
+
+            // Log questions generation
+            await supabase.from("generation_history").insert({
+              course_id: courseId,
+              course_title: courseTitle,
+              action: "questions",
+              details: `Вопросы для «${test.title}»`,
+              items_count: qData.questions.length,
+            } as any);
           }
         }
       }
