@@ -6,6 +6,7 @@ import {
   Factory, Flame, Droplets, HardHat, Leaf, ChevronDown,
   GraduationCap, ShieldCheck, Wrench,
 } from "lucide-react";
+import { MARKETPLACE_ORG_ID } from "@/constants/marketplace";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
