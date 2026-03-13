@@ -62,6 +62,7 @@ const subCategoryMetaAdmin: Record<string, { icon: React.ElementType; color: str
   "Строительный контроль": { icon: HardHat, color: "text-accent", bgColor: "bg-accent/10" },
 };
 
+function renderCourseRow(
   item: any, h: any, navigate: any, onBulkGenerate: (item: any) => void,
   validatedCourses: Record<string, 'ok' | 'error'>, onValidate: (courseId: string) => void, validatingId: string | null
 ) {
