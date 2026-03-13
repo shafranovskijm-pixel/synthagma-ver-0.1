@@ -871,9 +871,29 @@ export function AdminMarketplaceManager() {
                 </div>
                 <Textarea value={h.newDescription} onChange={(e) => h.setNewDescription(e.target.value)} placeholder="Подробное описание курса..." className="rounded-xl" rows={3} />
               </div>
-              <div className="space-y-2">
-                <Label>Длительность</Label>
-                <Input value={h.newDuration} onChange={(e) => h.setNewDuration(e.target.value)} placeholder="40 часов" className="rounded-xl" />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Категория</Label>
+                  <Select value={h.newCategoryId} onValueChange={h.setNewCategoryId}>
+                    <SelectTrigger className="rounded-xl">
+                      <SelectValue placeholder="Выберите категорию" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {h.dbCategories.map((cat) => (
+                        <SelectItem key={cat.id} value={cat.id}>
+                          <div className="flex items-center gap-2">
+                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: cat.color || '#888' }} />
+                            {cat.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Длительность</Label>
+                  <Input value={h.newDuration} onChange={(e) => h.setNewDuration(e.target.value)} placeholder="40 часов" className="rounded-xl" />
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">

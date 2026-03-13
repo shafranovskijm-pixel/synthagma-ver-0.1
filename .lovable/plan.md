@@ -1,39 +1,18 @@
 
 
-## План: Создание категорий курсов для маркетплейса
+## Plan: Auto-fix after "Проверить все"
 
-### Текущее состояние
-- Таблица `course_categories` существует, но для маркетплейс-организации (`00000000-0000-0000-0000-000000000000`) записей нет — 0 категорий
-- Курсов тоже пока нет — группировка в каталоге работает по префиксу названия курса (до " — "), а не по `category_id`
-- Иконки и цвета уже захардкожены в `categoryMeta` (StudentCourseStore, CourseStoreManager)
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-### Что нужно сделать
+### Changes
 
-**1. Создать 6 категорий в БД** (миграция)
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-Вставить записи в `course_categories` для `MARKETPLACE_ORG_ID`:
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-| Название | Цвет |
-|---|---|
-| Промышленная безопасность | #f97316 (orange) |
-| Электробезопасность | #eab308 (yellow) |
-| Энергетика | #ef4444 (red) |
-| Экологическая безопасность | #22c55e (green) |
-| Гидротехнические сооружения | #3b82f6 (blue) |
-| Строительный контроль | #14b8a6 (teal/accent) |
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-**2. Обновить AdminMarketplaceManager** — добавить выбор категории при создании курса, чтобы новые курсы автоматически привязывались к `category_id`
-
-**3. Обновить ProgramListImporter** — при импорте программ автоматически назначать `category_id` на основе совпадения названия категории
-
-**4. Обновить BulkPipelineWidget** — показывать категории для фильтрации и группировки в конвейере
-
-### Файлы
-
-| Файл | Что |
-|---|---|
-| Миграция SQL | INSERT 6 категорий для MARKETPLACE_ORG_ID |
-| `src/hooks/useAdminMarketplace.ts` | Загружать категории из БД, использовать при создании курсов |
-| `src/components/admin/AdminMarketplaceManager.tsx` | Селект категории в форме создания курса |
-| `src/components/admin/ProgramListImporter.tsx` | Автоназначение category_id при импорте |
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 

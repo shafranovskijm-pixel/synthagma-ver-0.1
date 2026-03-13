@@ -53,7 +53,11 @@ export function useAdminMarketplace() {
   const [newPriceStudent, setNewPriceStudent] = useState("");
   const [newPriceOrg, setNewPriceOrg] = useState("");
   const [newShortDesc, setNewShortDesc] = useState("");
+  const [newCategoryId, setNewCategoryId] = useState("");
   const [isCreating, setIsCreating] = useState(false);
+
+  // DB categories for marketplace org
+  const [dbCategories, setDbCategories] = useState<{ id: string; name: string; color: string | null }[]>([]);
 
   // Edit dialog
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -74,7 +78,17 @@ export function useAdminMarketplace() {
 
   useEffect(() => {
     fetchData();
+    fetchDbCategories();
   }, []);
+
+  const fetchDbCategories = async () => {
+    const { data } = await supabase
+      .from("course_categories")
+      .select("id, name, color")
+      .eq("organization_id", "00000000-0000-0000-0000-000000000000")
+      .order("name");
+    setDbCategories(data || []);
+  };
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -156,6 +170,7 @@ export function useAdminMarketplace() {
           description: newDescription.trim() || null,
           duration: newDuration.trim() || null,
           organization_id: platformOrgId,
+          category_id: newCategoryId || null,
           is_published: true,
         })
         .select("id")
@@ -190,6 +205,7 @@ export function useAdminMarketplace() {
   const resetCreateForm = () => {
     setNewTitle(""); setNewDescription(""); setNewDuration("");
     setNewPriceStudent(""); setNewPriceOrg(""); setNewShortDesc("");
+    setNewCategoryId("");
   };
 
   const handleToggleActive = async (course: MarketplaceCourseWithDetails) => {
@@ -391,6 +407,7 @@ export function useAdminMarketplace() {
     newTitle, setNewTitle, newDescription, setNewDescription,
     newDuration, setNewDuration, newPriceStudent, setNewPriceStudent,
     newPriceOrg, setNewPriceOrg, newShortDesc, setNewShortDesc,
+    newCategoryId, setNewCategoryId, dbCategories,
     isCreating, handleCreateCourse,
     // Edit
     showEditDialog, setShowEditDialog, editingCourse, setEditingCourse, handleEditCourse,
