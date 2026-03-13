@@ -730,11 +730,11 @@ export function AdminMarketplaceManager() {
               const imageVisuals = [...visuals].filter(v => v.format === "image")
                 .sort((a, b) => b.after_block_index - a.after_block_index);
 
-              // Parallel image generation for speed
+              // Parallel image generation for speed, with slotIndex for round-robin
               const imageResults = await Promise.allSettled(
-                imageVisuals.map(visual =>
+                imageVisuals.map((visual, vIdx) =>
                   safeInvoke<any>("generate-image", {
-                    body: { prompt: visual.prompt, provider: "gigachat" },
+                    body: { prompt: visual.prompt, provider: "gigachat", slotIndex: streamIndex * 10 + vIdx },
                   }).then(res => ({ ...res, visual }))
                 )
               );
