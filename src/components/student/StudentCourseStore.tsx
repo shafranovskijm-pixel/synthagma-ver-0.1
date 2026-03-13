@@ -254,6 +254,8 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
     return "Без категории";
   };
 
+  const EXCLUDED_FROM_RTN = ["Охрана труда при работах на высоте", "Без категории"];
+
   const groupedCatalog = useMemo(() => {
     const map = new Map<string, MarketplaceCourse[]>();
     for (const c of filteredCatalog) {
@@ -261,9 +263,25 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
       if (!map.has(cat)) map.set(cat, []);
       map.get(cat)!.push(c);
     }
-    return Array.from(map.entries())
-      .map(([category, courses]) => ({ category, courses }))
-      .sort((a, b) => a.category.localeCompare(b.category));
+
+    const rtnSubGroups: { category: string; courses: MarketplaceCourse[] }[] = [];
+    const standalone: { category: string; courses: MarketplaceCourse[] }[] = [];
+
+    for (const [category, courses] of Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b))) {
+      if (EXCLUDED_FROM_RTN.includes(category)) {
+        standalone.push({ category, courses });
+      } else {
+        rtnSubGroups.push({ category, courses });
+      }
+    }
+
+    const result: { category: string; courses: MarketplaceCourse[]; subGroups?: { category: string; courses: MarketplaceCourse[] }[] }[] = [];
+    if (rtnSubGroups.length > 0) {
+      const allRtnCourses = rtnSubGroups.flatMap(g => g.courses);
+      result.push({ category: "Курсы Ростехнадзора", courses: allRtnCourses, subGroups: rtnSubGroups });
+    }
+    result.push(...standalone);
+    return result;
   }, [filteredCatalog]);
 
   const categoryMeta: Record<string, { icon: React.ElementType; color: string; bgColor: string }> = {
