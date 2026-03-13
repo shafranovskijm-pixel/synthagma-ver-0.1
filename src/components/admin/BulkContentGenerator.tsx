@@ -159,6 +159,7 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
   // Phase 1: Generate structure — returns fresh lessons
   const generateStructure = async (): Promise<LessonItem[]> => {
     setPhase("structure");
+    const structureStart = Date.now();
     try {
       const { data, error } = await supabase.functions.invoke("generate-course-structure", {
         body: { title: courseTitle, description: courseDescription || "" },
