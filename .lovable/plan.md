@@ -1,24 +1,18 @@
 
 
-## История генерации: автообновление + надёжность вставок
+## Plan: Auto-fix after "Проверить все"
 
-### Проблема
-1. **Таблица пустая при генерации** — вкладка «История» загружает данные только один раз при монтировании. Пока идёт генерация и записи появляются, UI их не видит.
-2. **Нет гарантии записи** — если предыдущие генерации не писали в историю, причина скорее в том, что код был обновлён позже. Но нужна защита от молчаливых ошибок.
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-### Решение
+### Changes
 
-#### 1. `GenerationHistoryTab.tsx` — автообновление каждые 5 секунд
-- Добавить `useEffect` с `setInterval(fetchHistory, 5000)` чтобы данные обновлялись в реальном времени во время генерации.
-- Альтернативно: подписаться на Supabase Realtime (`postgres_changes`) на таблицу `generation_history` для мгновенного обновления.
-- Выбранный подход: **polling каждые 5 секунд** — проще, надёжнее, не требует настройки Realtime publication.
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-#### 2. `ContentGeneratorTab.tsx` — убрать `as any`, добавить логирование
-- Убрать `as any` на всех insert-ах в `generation_history` (типы уже обновлены, каст не нужен).
-- Добавить `console.warn` с деталями при ошибке вставки для видимости в консоли.
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-| Файл | Изменение |
-|---|---|
-| `GenerationHistoryTab.tsx` | Авто-обновление каждые 5 секунд через `setInterval` |
-| `ContentGeneratorTab.tsx` | Убрать `as any`, улучшить логирование ошибок |
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
+
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 
