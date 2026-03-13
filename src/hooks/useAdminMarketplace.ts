@@ -350,7 +350,7 @@ export function useAdminMarketplace() {
   });
 
   // Group courses by DB category_id, ordered by dbCategories order_index
-  const groupedCourses: { category: string; badge: string; courses: MarketplaceCourseWithDetails[]; subGroups?: { category: string; categoryId?: string; courses: MarketplaceCourseWithDetails[] }[] }[] = (() => {
+  const groupedCourses: { category: string; badge: string; courses: MarketplaceCourseWithDetails[]; uncategorized: MarketplaceCourseWithDetails[]; subGroups?: { category: string; categoryId?: string; icon?: string | null; courses: MarketplaceCourseWithDetails[] }[] }[] = (() => {
     const byCatId = new Map<string, MarketplaceCourseWithDetails[]>();
     const uncategorized: MarketplaceCourseWithDetails[] = [];
 
@@ -383,11 +383,10 @@ export function useAdminMarketplace() {
 
       const subCourses = subGroups.flatMap(g => g.courses);
       // Uncategorized courses go to first program type
-      const courses = pt.category === "Повышение квалификации"
-        ? [...subCourses, ...uncategorized]
-        : subCourses;
+      const groupUncategorized = pt.category === "Повышение квалификации" ? uncategorized : [];
+      const courses = [...subCourses, ...groupUncategorized];
 
-      return { category: pt.category, badge: pt.badge, courses, subGroups };
+      return { category: pt.category, badge: pt.badge, courses, uncategorized: groupUncategorized, subGroups };
     });
   })();
 
