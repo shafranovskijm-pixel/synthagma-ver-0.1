@@ -1,32 +1,18 @@
 
 
-## План: Выбор голоса SaluteSpeech при конвертации блока в аудио
+## Plan: Auto-fix after "Проверить все"
 
-### Суть
-При нажатии «Аудио (TTS)» в контекстном меню блока — вместо немедленной генерации показать мини-диалог выбора голоса из списка SaluteSpeech (7 голосов), а затем сгенерировать аудио выбранным голосом.
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-### Изменения
+### Changes
 
-**`src/components/course-builder/BlockEditor.tsx`**
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-1. **Заменить `elevenlabs-tts` на `salutespeech-tts`** в `handleConvert` (строка 624) — это также часть плана по удалению ElevenLabs.
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-2. **Добавить состояние для выбора голоса**: при нажатии на «Аудио (TTS)» вместо немедленной генерации — открыть маленький диалог/попап с выпадающим списком голосов SaluteSpeech (импортировать `SALUTE_VOICES` из `TTSSettingsDialog.tsx`).
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-3. **Мини-диалог выбора голоса**:
-   - Список из 7 голосов (Наталья, Борис, Марфа и т.д.)
-   - Кнопка «Сгенерировать»
-   - Запоминать последний выбранный голос в `localStorage` для удобства
-
-4. **Передать `voice` в запрос**: в body запроса к `salutespeech-tts` добавить поле `voice` с выбранным ID голоса (например, `Natalya_24000`).
-
-### Логика
-
-```
-Клик «Аудио (TTS)» → Открывается Dialog с Select голоса → 
-Пользователь выбирает голос → Нажимает «Сгенерировать» →
-fetch('salutespeech-tts', { text, voice }) → Upload → Блок становится аудио
-```
-
-Один файл затронут: `BlockEditor.tsx`. Импорт `SALUTE_VOICES` из существующего `TTSSettingsDialog.tsx`.
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 
