@@ -2475,6 +2475,29 @@ export function markdownToBlocks(md: string): ContentBlock[] {
     // Skip empty lines
     if (!line.trim()) { i++; continue; }
 
+    // ::: callout / highlight / accordion markers
+    const markerMatch = line.match(/^:::(info|warning|tip|danger|highlight|accordion)\s*(.*)?$/i);
+    if (markerMatch) {
+      const markerType = markerMatch[1].toLowerCase();
+      const markerExtra = (markerMatch[2] || "").trim();
+      i++;
+      const bodyLines: string[] = [];
+      while (i < lines.length && !/^:::\s*$/.test(lines[i])) {
+        bodyLines.push(lines[i]);
+        i++;
+      }
+      if (i < lines.length) i++; // skip closing :::
+      const blockType = markerType === "highlight" ? "highlight"
+        : markerType === "accordion" ? "accordion"
+        : `callout-${markerType}`;
+      const block: any = { id: mkId(), type: blockType, content: bodyLines.join("\n").trim() || markerExtra };
+      if (markerType === "accordion" && markerExtra) {
+        block.accordionTitle = markerExtra;
+      }
+      blocks.push(block);
+      continue;
+    }
+
     // Headings
     if (/^## /.test(line)) {
       blocks.push({ id: mkId(), type: "heading2", content: line.replace(/^## /, "").trim() });
@@ -2526,7 +2549,7 @@ export function markdownToBlocks(md: string): ContentBlock[] {
 
     // Regular paragraph — collapse consecutive plain lines
     const paraLines: string[] = [];
-    while (i < lines.length && lines[i].trim() && !/^#{1,2}\s/.test(lines[i]) && !/^>\s?/.test(lines[i]) && !/^[-*]\s/.test(lines[i]) && !/^\d+\.\s/.test(lines[i]) && !/^[-*_]{3,}\s*$/.test(lines[i])) {
+    while (i < lines.length && lines[i].trim() && !/^#{1,2}\s/.test(lines[i]) && !/^>\s?/.test(lines[i]) && !/^[-*]\s/.test(lines[i]) && !/^\d+\.\s/.test(lines[i]) && !/^[-*_]{3,}\s*$/.test(lines[i]) && !/^:::(info|warning|tip|danger|highlight|accordion)/i.test(lines[i]) && !/^:::\s*$/.test(lines[i])) {
       paraLines.push(lines[i]);
       i++;
     }

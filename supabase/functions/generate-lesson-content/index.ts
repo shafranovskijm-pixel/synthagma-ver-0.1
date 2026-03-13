@@ -127,7 +127,12 @@ serve(async (req) => {
 6. Контент минимум 400 слов
 7. Типы заданий: разбор ситуации, анализ документа, выявление нарушений, составление плана действий
 8. Проверяй актуальность НПА, приказов, постановлений и ГОСТов
-${practiceGreetingRule}`;
+${practiceGreetingRule}
+10. ОБЯЗАТЕЛЬНО используй callout-блоки:
+  - "callout-warning" — для предупреждений и опасных факторов в кейсе
+  - "callout-info" — для нормативных ссылок
+  - "callout-danger" — для критических нарушений
+  - "highlight" — для ключевых выводов`;
 
       toolDefinition = {
         type: "function",
@@ -144,10 +149,11 @@ ${practiceGreetingRule}`;
                   properties: {
                     type: { 
                       type: "string", 
-                      enum: ["heading1", "heading2", "paragraph", "bulletList", "numberedList", "quote"],
-                      description: "Тип блока контента"
+                      enum: ["heading1", "heading2", "paragraph", "bulletList", "numberedList", "quote", "callout-info", "callout-warning", "callout-tip", "callout-danger", "highlight", "accordion"],
+                      description: "Тип блока контента. Используй callout-warning для предупреждений, callout-info для справки, callout-danger для нарушений, highlight для ключевых выводов"
                     },
-                    content: { type: "string", description: "Содержимое блока" }
+                    content: { type: "string", description: "Содержимое блока" },
+                    accordionTitle: { type: "string", description: "Заголовок для accordion блока (только для type=accordion)" }
                   },
                   required: ["type", "content"],
                   additionalProperties: false
@@ -175,7 +181,15 @@ ${practiceGreetingRule}`;
 6. Структура: введение, основная часть с подразделами, заключение
 7. Проверяй актуальность нормативно-правовых документов и законов. Ссылайся только на действующие редакции НПА, приказов, постановлений и ГОСТов.
 8. Актуализируй информацию: не используй устаревшие данные, нормы и формулировки.
-${greetingRule}`;
+${greetingRule}
+10. ОБЯЗАТЕЛЬНО используй разнообразные типы блоков для визуального оформления:
+  - "callout-warning" — для предупреждений, техники безопасности, опасных факторов
+  - "callout-info" — для справочной информации, нормативных ссылок, определений
+  - "callout-tip" — для практических советов и рекомендаций
+  - "callout-danger" — для критически важной информации, запретов, грубых нарушений
+  - "highlight" — для ключевых определений и терминов (выделение)
+  - "accordion" — для дополнительных/справочных материалов (укажи accordionTitle)
+11. На каждые 3-4 параграфа — минимум 1 callout или highlight блок. Это ОБЯЗАТЕЛЬНО.`;
 
       toolDefinition = {
         type: "function",
@@ -192,10 +206,11 @@ ${greetingRule}`;
                   properties: {
                     type: { 
                       type: "string", 
-                      enum: ["heading1", "heading2", "paragraph", "bulletList", "numberedList", "quote"],
-                      description: "Тип блока контента"
+                      enum: ["heading1", "heading2", "paragraph", "bulletList", "numberedList", "quote", "callout-info", "callout-warning", "callout-tip", "callout-danger", "highlight", "accordion"],
+                      description: "Тип блока контента. Используй callout-warning для предупреждений, callout-info для справки, callout-tip для советов, callout-danger для запретов, highlight для ключевых терминов, accordion для доп. материалов"
                     },
-                    content: { type: "string", description: "Содержимое блока" }
+                    content: { type: "string", description: "Содержимое блока" },
+                    accordionTitle: { type: "string", description: "Заголовок для accordion блока (только для type=accordion)" }
                   },
                   required: ["type", "content"],
                   additionalProperties: false
