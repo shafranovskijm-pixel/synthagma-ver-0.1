@@ -195,8 +195,8 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
           body: {
             action: "generate_structure",
             courseTitle,
-            aiProvider,
-            ...(aiProvider === "gigachat" ? { gigachatModel } : { lovableModel }),
+            ai_provider: aiProvider,
+            ...(aiProvider === "gigachat" ? { gigachat_model: gigachatModel } : { lovable_model: lovableModel }),
           },
         });
         if (structError) throw structError;
