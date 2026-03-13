@@ -82,6 +82,45 @@ const iconMap: Record<string, React.ElementType> = {
   Factory, Zap, Flame, Leaf, Droplets, HardHat, ShieldCheck, BookOpen, Award, Lightbulb, Building2, GraduationCap,
 };
 
+type CourseGroup = { baseTitle: string; items: any[]; suffix: (item: any) => string };
+
+function groupSimilarCourses(courses: any[]): (any | CourseGroup)[] {
+  const map = new Map<string, any[]>();
+  const order: string[] = [];
+  for (const c of courses) {
+    const title: string = c.course?.title || "";
+    const dashIdx = title.indexOf(" — ");
+    const base = dashIdx > 0 ? title.substring(0, dashIdx) : title;
+    if (!map.has(base)) {
+      map.set(base, []);
+      order.push(base);
+    }
+    map.get(base)!.push(c);
+  }
+  const result: (any | CourseGroup)[] = [];
+  for (const base of order) {
+    const items = map.get(base)!;
+    if (items.length >= 2) {
+      result.push({
+        baseTitle: base,
+        items,
+        suffix: (item: any) => {
+          const title: string = item.course?.title || "";
+          const dashIdx = title.indexOf(" — ");
+          return dashIdx > 0 ? title.substring(dashIdx) : "";
+        },
+      });
+    } else {
+      result.push(items[0]);
+    }
+  }
+  return result;
+}
+
+function isGroup(entry: any): entry is CourseGroup {
+  return entry && Array.isArray(entry.items);
+}
+
 function renderCourseRow(
   item: any, h: any, navigate: any, onBulkGenerate: (item: any) => void,
   validatedCourses: Record<string, 'ok' | 'error'>, onValidate: (courseId: string) => void, validatingId: string | null
