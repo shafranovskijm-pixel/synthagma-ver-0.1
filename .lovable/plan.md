@@ -1,44 +1,18 @@
 
 
-## Проблема: История генерации пустая
+## Plan: Auto-fix after "Проверить все"
 
-### Диагностика
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-1. **Таблица `generation_history` действительно пуста** (проверено через SQL) — записей 0.
-2. **RLS в порядке** — политика разрешает все действия для authenticated.
-3. **Код логирования в `ContentGeneratorTab` корректен** — при успешной генерации контента вставляются записи с `stream_index` и `duration_ms`.
-4. **Причина**: Последний запуск генерации столкнулся с ошибками:
-   - Lovable AI → 402 (кредиты исчерпаны)
-   - GigaChat → 429 (rate limit)
-   
-   Часть уроков (8 из 13) всё же была сгенерирована. Но записи в историю для них **должны были появиться**. Вероятно, история была **очищена кнопкой «Очистить» уже после генерации**.
+### Changes
 
-5. **Проблема UX**: История — единственный инструмент мониторинга, но она не показывает ошибки и провалы. Если генерация провалилась (402/429), в истории ничего не появляется.
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-### План исправления
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-#### 1. Логировать ошибки как записи в историю
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-В `ContentGeneratorTab.tsx` — добавить запись в `generation_history` при **ошибке** генерации, а не только при успехе:
-
-- `action: "content"` + `details: "❌ Ошибка: 402 Payment Required"` — когда `safeInvoke` возвращает ошибку
-- `action: "questions"` + `details: "❌ Ошибка: 429 Rate Limit"` — аналогично
-- Использовать `items_count: 0` для ошибочных записей
-
-Это покажет, какие потоки столкнулись с проблемами.
-
-#### 2. Аналогично в `BulkContentGenerator.tsx`
-
-Добавить `logHistory` при ошибках в фазах контента, медиа и тестов.
-
-#### 3. Защита от очистки активной истории
-
-В `GenerationHistoryTab.tsx` — добавить предупреждение в confirm-диалог: «Вы уверены? После очистки данные не восстановятся.»
-
-### Файлы для изменения
-
-| Файл | Изменение |
-|---|---|
-| `src/components/admin/ContentGeneratorTab.tsx` | Логировать ошибки генерации в `generation_history` |
-| `src/components/admin/BulkContentGenerator.tsx` | Логировать ошибки в `generation_history` |
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 

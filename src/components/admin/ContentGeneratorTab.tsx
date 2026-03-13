@@ -260,6 +260,15 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
         },
       });
       const contentDuration = Date.now() - contentStart;
+      if (contentError || !contentData?.content) {
+        const errMsg = contentError?.message || contentData?.error || "Пустой ответ от ИИ";
+        console.error(`Content generation failed for "${lesson.title}" (stream ${streamIndex}):`, errMsg);
+        await supabase.from("generation_history").insert({
+          course_id: courseId, course_title: courseTitle,
+          action: "content", details: `❌ Поток ${streamIndex}: ошибка «${lesson.title}» — ${errMsg}`, items_count: 0,
+          stream_index: streamIndex, duration_ms: contentDuration,
+        }).then(({ error: h }) => h && console.warn("History insert error:", h));
+      }
       if (!contentError && contentData?.content) {
         // Clean AI intro and convert to blocks
         const cleanedContent = stripAIIntro(contentData.content);
@@ -321,6 +330,15 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
             ...(aiProvider === "gigachat" ? { gigachat_model: gigachatModel } : { lovable_model: lovableModel }),
           },
         });
+        if (qError || !qData?.questions) {
+          const errMsg = qError?.message || qData?.error || "Пустой ответ";
+          console.error(`Questions generation failed for "${lesson.title}" (stream ${streamIndex}):`, errMsg);
+          await supabase.from("generation_history").insert({
+            course_id: courseId, course_title: courseTitle,
+            action: "questions", details: `❌ Поток ${streamIndex}: ошибка вопросов «${lesson.title}» — ${errMsg}`, items_count: 0,
+            stream_index: streamIndex, duration_ms: Date.now() - qStart,
+          }).then(({ error: h }) => h && console.warn("History insert error:", h));
+        }
         if (!qError && qData?.questions) {
           for (const q of qData.questions) {
             await supabase.from("test_questions").insert({
@@ -361,6 +379,15 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
             ...(aiProvider === "gigachat" ? { gigachat_model: gigachatModel } : { lovable_model: lovableModel }),
           },
         });
+        if (ansError || !ansData?.answers) {
+          const errMsg = ansError?.message || ansData?.error || "Пустой ответ";
+          console.error(`Answers generation failed for "${lesson.title}" (stream ${streamIndex}):`, errMsg);
+          await supabase.from("generation_history").insert({
+            course_id: courseId, course_title: courseTitle,
+            action: "answers", details: `❌ Поток ${streamIndex}: ошибка ответов «${lesson.title}» — ${errMsg}`, items_count: 0,
+            stream_index: streamIndex, duration_ms: Date.now() - ansStart,
+          }).then(({ error: h }) => h && console.warn("History insert error:", h));
+        }
         if (!ansError && ansData?.answers) {
           let solved = 0;
           for (const ans of ansData.answers) {

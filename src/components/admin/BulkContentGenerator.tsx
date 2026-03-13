@@ -218,6 +218,7 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
     } catch (e: any) {
       console.error("Structure generation error:", e);
       toast.error(e.message || "Ошибка генерации структуры");
+      await logHistory(courseId, courseTitle, "structure", `❌ Ошибка структуры — ${e.message || "Неизвестная ошибка"}`, 0, 0);
       return [];
     }
   };
@@ -284,6 +285,8 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
           console.error("Error processing lesson", lesson.title, result.reason);
           updateLesson(lesson.id, { status: "error", error: errMsg });
           previousLessonTitles.push(lesson.title);
+          // Log error to history
+          await logHistory(courseId, courseTitle, "content", `❌ Ошибка «${lesson.title}» — ${errMsg}`, 0, 0);
         }
       }
     }
@@ -517,6 +520,7 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
       } catch (e: any) {
         console.error("Error solving test", lesson.title, e);
         updateLesson(lesson.id, { status: "error", error: e.message || "Ошибка решения теста" });
+        await logHistory(courseId, courseTitle, "answers", `❌ Ошибка теста «${lesson.title}» — ${e.message || "Неизвестная ошибка"}`, 0, 0);
       }
 
       if (i < targets.length - 1 && !abortRef.current) {
