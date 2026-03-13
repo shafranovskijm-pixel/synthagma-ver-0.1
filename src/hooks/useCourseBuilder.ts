@@ -234,7 +234,7 @@ export function useCourseBuilder() {
                     const blockType = markerType === "highlight" ? "highlight"
                       : markerType === "accordion" ? "accordion"
                       : `callout-${markerType}`;
-                    return [{ ...b, type: blockType, content }];
+                    return [{ ...b, type: blockType as ContentBlock['type'], content }];
                   }
                   // Check if paragraph contains embedded ::: markers mid-text
                   if (/:::(info|warning|tip|danger|highlight|accordion)/i.test(b.content)) {
