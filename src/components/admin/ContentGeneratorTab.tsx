@@ -268,10 +268,13 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
             }
           }
           if (solved > 0) {
-            await supabase.from("generation_history").insert({
+            const ansDuration = Date.now() - ansStart;
+            const { error: histErr } = await supabase.from("generation_history").insert({
               course_id: courseId, course_title: courseTitle,
-              action: "answers", details: `Решено ${solved} вопросов (${lesson.title})`, items_count: solved,
+              action: "answers", details: `Поток ${streamIndex}: решено ${solved} вопросов (${lesson.title})`, items_count: solved,
+              stream_index: streamIndex, duration_ms: ansDuration,
             } as any);
+            if (histErr) console.error("History insert error (answers):", histErr);
           }
         }
         await delay(500);
