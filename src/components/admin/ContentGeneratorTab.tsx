@@ -248,6 +248,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
 
       const unanswered = (allQ || []).filter(q => q.correct_answer === null || q.correct_answer === undefined);
       if (unanswered.length > 0) {
+        const ansStart = Date.now();
         const { data: ansData, error: ansError } = await safeInvoke<any>("gigachat", {
           body: {
             action: "generate_answers",
