@@ -1104,22 +1104,34 @@ function ImageBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updat
     if (!(await checkAiLimitGlobal())) return;
     setIsGenerating(true);
     try {
-      const { supabase } = await import("@/integrations/supabase/client");
-      const { data, error } = await supabase.functions.invoke('generate-image', {
-        body: { prompt: aiPrompt.trim(), provider: "gigachat" },
+      const { data, error } = await safeInvoke<any>("generate-image", {
+        body: {
+          prompt: aiPrompt.trim(),
+          provider: "gigachat",
+          slotIndex: Date.now(),
+        },
       });
+
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      if (data?.url) {
-        onUpdate({ imageSrc: data.url, imageAlt: aiPrompt.trim() });
-        await incrementAiLimitGlobal();
-        setAiPrompt("");
-        setShowAiInput(false);
-      }
+      if (!data?.url) throw new Error("Изображение не было сгенерировано");
+
+      onUpdate({ imageSrc: data.url, imageAlt: aiPrompt.trim() });
+      await incrementAiLimitGlobal();
+      setAiPrompt("");
+      setShowAiInput(false);
     } catch (err) {
       console.error("AI image generation error:", err);
       const { toast } = await import("sonner");
-      toast.error(err instanceof Error ? err.message : "Ошибка генерации изображения");
+      const message = err instanceof Error ? err.message : "Ошибка генерации изображения";
+
+      if (message.includes("429")) {
+        toast.error("GigaChat перегружен, повторите попытку через 10–20 секунд");
+      } else if (message.includes("402")) {
+        toast.error("Лимит генерации исчерпан, повторите попытку позже");
+      } else {
+        toast.error(message);
+      }
     } finally {
       setIsGenerating(false);
     }
@@ -1129,23 +1141,36 @@ function ImageBlock({ block, onUpdate }: { block: ContentBlock; onUpdate: (updat
     if (!editPrompt.trim() || !block.imageSrc) return;
     setIsEditing(true);
     try {
-      const { supabase } = await import("@/integrations/supabase/client");
-      const { data, error } = await supabase.functions.invoke('generate-image', {
-        body: { prompt: editPrompt.trim(), imageUrl: block.imageSrc, provider: "gigachat" },
+      const { data, error } = await safeInvoke<any>("generate-image", {
+        body: {
+          prompt: editPrompt.trim(),
+          imageUrl: block.imageSrc,
+          provider: "gigachat",
+          slotIndex: Date.now(),
+        },
       });
+
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      if (data?.url) {
-        onUpdate({ imageSrc: data.url });
-        setEditPrompt("");
-        setShowEditInput(false);
-        const { toast } = await import("sonner");
-        toast.success("Изображение отредактировано");
-      }
+      if (!data?.url) throw new Error("Изображение не было отредактировано");
+
+      onUpdate({ imageSrc: data.url });
+      setEditPrompt("");
+      setShowEditInput(false);
+      const { toast } = await import("sonner");
+      toast.success("Изображение отредактировано");
     } catch (err) {
       console.error("AI image edit error:", err);
       const { toast } = await import("sonner");
-      toast.error(err instanceof Error ? err.message : "Ошибка редактирования изображения");
+      const message = err instanceof Error ? err.message : "Ошибка редактирования изображения";
+
+      if (message.includes("429")) {
+        toast.error("GigaChat перегружен, повторите попытку через 10–20 секунд");
+      } else if (message.includes("402")) {
+        toast.error("Лимит генерации исчерпан, повторите попытку позже");
+      } else {
+        toast.error(message);
+      }
     } finally {
       setIsEditing(false);
     }
