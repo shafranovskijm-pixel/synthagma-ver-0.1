@@ -170,12 +170,14 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
     courseId: string,
     courseTitle: string,
     onProgress: () => void,
+    streamIndex: number,
   ) => {
     const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
 
     // 1. Content (for text/practice lessons)
     if ((lesson.type === "text" || lesson.type === "practice") &&
         (!lesson.content || lesson.content === "[]" || lesson.content === "")) {
+      const contentStart = Date.now();
       const { data: contentData, error: contentError } = await safeInvoke<any>("gigachat", {
         body: {
           action: "generate_content",
@@ -186,14 +188,17 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
           ...(aiProvider === "gigachat" ? { gigachat_model: gigachatModel } : { lovable_model: lovableModel }),
         },
       });
+      const contentDuration = Date.now() - contentStart;
       if (!contentError && contentData?.content) {
         const blocks = markdownToBlocks(contentData.content);
         const jsonContent = blocksToJson(blocks);
         await supabase.from("lessons").update({ content: jsonContent }).eq("id", lesson.id);
-        await supabase.from("generation_history").insert({
+        const { error: histErr } = await supabase.from("generation_history").insert({
           course_id: courseId, course_title: courseTitle,
-          action: "content", details: `Контент: «${lesson.title}»`, items_count: 1,
+          action: "content", details: `Поток ${streamIndex}: контент «${lesson.title}»`, items_count: 1,
+          stream_index: streamIndex, duration_ms: contentDuration,
         } as any);
+        if (histErr) console.error("History insert error (content):", histErr);
       }
       await delay(500);
     }
@@ -204,6 +209,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
         .from("test_questions").select("id").eq("lesson_id", lesson.id);
 
       if (!existingQ || existingQ.length === 0) {
+        const qStart = Date.now();
         const { data: qData, error: qError } = await safeInvoke<any>("gigachat", {
           body: {
             action: "generate_questions",
@@ -223,10 +229,13 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
               correct_answer: q.correctAnswer ?? q.correct_answer ?? null,
             });
           }
-          await supabase.from("generation_history").insert({
+          const qDuration = Date.now() - qStart;
+          const { error: histErr } = await supabase.from("generation_history").insert({
             course_id: courseId, course_title: courseTitle,
-            action: "questions", details: `Вопросы для «${lesson.title}»`, items_count: qData.questions.length,
+            action: "questions", details: `Поток ${streamIndex}: вопросы «${lesson.title}»`, items_count: qData.questions.length,
+            stream_index: streamIndex, duration_ms: qDuration,
           } as any);
+          if (histErr) console.error("History insert error (questions):", histErr);
         }
         await delay(500);
       }
@@ -239,6 +248,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
 
       const unanswered = (allQ || []).filter(q => q.correct_answer === null || q.correct_answer === undefined);
       if (unanswered.length > 0) {
+        const ansStart = Date.now();
         const { data: ansData, error: ansError } = await safeInvoke<any>("gigachat", {
           body: {
             action: "generate_answers",
@@ -258,10 +268,13 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
             }
           }
           if (solved > 0) {
-            await supabase.from("generation_history").insert({
+            const ansDuration = Date.now() - ansStart;
+            const { error: histErr } = await supabase.from("generation_history").insert({
               course_id: courseId, course_title: courseTitle,
-              action: "answers", details: `Решено ${solved} вопросов (${lesson.title})`, items_count: solved,
+              action: "answers", details: `Поток ${streamIndex}: решено ${solved} вопросов (${lesson.title})`, items_count: solved,
+              stream_index: streamIndex, duration_ms: ansDuration,
             } as any);
+            if (histErr) console.error("History insert error (answers):", histErr);
           }
         }
         await delay(500);
@@ -277,9 +290,10 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
     courseId: string,
     courseTitle: string,
     onProgress: () => void,
+    streamIndex: number,
   ) => {
     for (const lesson of lessons) {
-      await processLesson(lesson, courseId, courseTitle, onProgress);
+      await processLesson(lesson, courseId, courseTitle, onProgress, streamIndex);
     }
   };
 
@@ -333,10 +347,12 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
         }
 
         if (lessons.length > 0) {
-          await supabase.from("generation_history").insert({
+          const { error: histErr } = await supabase.from("generation_history").insert({
             course_id: courseId, course_title: courseTitle,
             action: "structure", details: `Создано ${lessons.length} уроков`, items_count: lessons.length,
+            stream_index: 0, duration_ms: null,
           } as any);
+          if (histErr) console.error("History insert error (structure):", histErr);
         }
 
         const { data: freshLessons } = await supabase
@@ -372,7 +388,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
       await Promise.all(
         groups
           .filter(g => g.length > 0)
-          .map(group => processStream(group, courseId, courseTitle, onProgress))
+          .map((group, idx) => processStream(group, courseId, courseTitle, onProgress, idx + 1))
       );
 
       // Mark as validated

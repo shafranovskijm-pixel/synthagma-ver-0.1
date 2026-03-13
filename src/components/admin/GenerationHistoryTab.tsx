@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { History, Trash2, Loader2, Layers, FileText, HelpCircle, CheckCircle2, Filter } from "lucide-react";
+import { History, Trash2, Loader2, Layers, FileText, HelpCircle, CheckCircle2, Filter, Timer } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -18,6 +18,8 @@ interface HistoryRecord {
   details: string | null;
   items_count: number;
   created_at: string;
+  stream_index: number | null;
+  duration_ms: number | null;
 }
 
 const ACTION_META: Record<string, { label: string; color: string; icon: React.ElementType }> = {
@@ -27,10 +29,24 @@ const ACTION_META: Record<string, { label: string; color: string; icon: React.El
   answers: { label: "Ответы", color: "bg-violet-500/10 text-violet-600 border-violet-500/20", icon: CheckCircle2 },
 };
 
+const STREAM_COLORS: Record<number, string> = {
+  0: "bg-muted/60 text-muted-foreground border-border",
+  1: "bg-blue-500/10 text-blue-700 border-blue-500/20",
+  2: "bg-emerald-500/10 text-emerald-700 border-emerald-500/20",
+  3: "bg-violet-500/10 text-violet-700 border-violet-500/20",
+};
+
+const formatDuration = (ms: number | null): string | null => {
+  if (ms === null || ms === undefined) return null;
+  if (ms < 1000) return `${ms}мс`;
+  return `${(ms / 1000).toFixed(1)}с`;
+};
+
 export function GenerationHistoryTab() {
   const [records, setRecords] = useState<HistoryRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>("all");
+  const [streamFilter, setStreamFilter] = useState<string>("all");
   const [clearing, setClearing] = useState(false);
 
   const fetchHistory = async () => {
@@ -48,7 +64,14 @@ export function GenerationHistoryTab() {
 
       const { data, error } = await query;
       if (error) throw error;
-      setRecords((data as HistoryRecord[]) || []);
+
+      let filtered = (data as HistoryRecord[]) || [];
+      if (streamFilter !== "all") {
+        const si = parseInt(streamFilter);
+        filtered = filtered.filter(r => r.stream_index === si);
+      }
+
+      setRecords(filtered);
     } catch (e: any) {
       toast.error("Ошибка загрузки истории");
       console.error(e);
@@ -59,7 +82,7 @@ export function GenerationHistoryTab() {
 
   useEffect(() => {
     fetchHistory();
-  }, [filter]);
+  }, [filter, streamFilter]);
 
   const handleClear = async () => {
     if (!confirm("Очистить всю историю генерации?")) return;
@@ -95,7 +118,7 @@ export function GenerationHistoryTab() {
             </CardTitle>
             <div className="flex items-center gap-2">
               <Select value={filter} onValueChange={setFilter}>
-                <SelectTrigger className="w-[160px] h-8 text-xs">
+                <SelectTrigger className="w-[150px] h-8 text-xs">
                   <Filter className="w-3 h-3 mr-1" />
                   <SelectValue />
                 </SelectTrigger>
@@ -105,6 +128,17 @@ export function GenerationHistoryTab() {
                   <SelectItem value="content">Контент</SelectItem>
                   <SelectItem value="questions">Вопросы</SelectItem>
                   <SelectItem value="answers">Ответы</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={streamFilter} onValueChange={setStreamFilter}>
+                <SelectTrigger className="w-[130px] h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Все потоки</SelectItem>
+                  <SelectItem value="1">Поток 1</SelectItem>
+                  <SelectItem value="2">Поток 2</SelectItem>
+                  <SelectItem value="3">Поток 3</SelectItem>
                 </SelectContent>
               </Select>
               <Button
@@ -141,6 +175,8 @@ export function GenerationHistoryTab() {
                     {items.map(item => {
                       const meta = ACTION_META[item.action] || ACTION_META.content;
                       const Icon = meta.icon;
+                      const streamColor = item.stream_index !== null ? (STREAM_COLORS[item.stream_index] || STREAM_COLORS[1]) : null;
+                      const duration = formatDuration(item.duration_ms);
                       return (
                         <div
                           key={item.id}
@@ -154,6 +190,11 @@ export function GenerationHistoryTab() {
                               <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${meta.color}`}>
                                 {meta.label}
                               </Badge>
+                              {streamColor && item.stream_index !== null && item.stream_index > 0 && (
+                                <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${streamColor}`}>
+                                  #{item.stream_index}
+                                </Badge>
+                              )}
                               <span className="font-medium truncate">{item.course_title}</span>
                               {item.items_count > 0 && (
                                 <span className="text-muted-foreground text-xs">({item.items_count} эл.)</span>
@@ -163,9 +204,17 @@ export function GenerationHistoryTab() {
                               <p className="text-xs text-muted-foreground mt-0.5 truncate">{item.details}</p>
                             )}
                           </div>
-                          <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
-                            {format(new Date(item.created_at), "HH:mm")}
-                          </span>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {duration && (
+                              <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                                <Timer className="w-3 h-3" />
+                                {duration}
+                              </span>
+                            )}
+                            <span className="text-xs text-muted-foreground whitespace-nowrap">
+                              {format(new Date(item.created_at), "HH:mm:ss")}
+                            </span>
+                          </div>
                         </div>
                       );
                     })}
