@@ -693,15 +693,14 @@ export function AdminMarketplaceManager() {
         } catch { continue; }
       }
 
-      if (lessonsNeedingMedia.length > 0) {
+      // Take only the first 3 text lessons for media enrichment (parallel, one per API slot)
+      const lessonsToEnrich = lessonsNeedingMedia.slice(0, 3);
+      if (lessonsToEnrich.length > 0) {
         let enrichedLessons = 0;
-        toast.loading(`Обогащаю медиа: 0/${lessonsNeedingMedia.length}...`, { id: toastId });
+        toast.loading(`Генерирую изображения: 0/${lessonsToEnrich.length}...`, { id: toastId });
         let enrichedCount = 0;
-        const ENRICH_CONCURRENCY = 3;
-        for (let ei = 0; ei < lessonsNeedingMedia.length; ei += ENRICH_CONCURRENCY) {
-          const enrichChunk = lessonsNeedingMedia.slice(ei, ei + ENRICH_CONCURRENCY);
-          const enrichPromises = enrichChunk.map(async (lesson, idx) => {
-            const streamIndex = ei + idx;
+        const enrichPromises = lessonsToEnrich.map(async (lesson, idx) => {
+            const streamIndex = idx;
             const startMs = Date.now();
             try {
               let blocks: any[];
@@ -733,7 +732,6 @@ export function AdminMarketplaceManager() {
                 prompt: string; after_block_index: number; format: "image" | "slider"; slides?: string[];
               }>;
 
-              // Take only the first image visual (1 per lesson to avoid overloading slots)
               const imageVisual = visuals.find(v => v.format === "image");
 
               let insertedCount = 0;
@@ -755,7 +753,7 @@ export function AdminMarketplaceManager() {
                 enrichedCount += insertedCount;
               }
               enrichedLessons++;
-              toast.loading(`Обогащаю медиа: ${enrichedLessons}/${lessonsNeedingMedia.length}...`, { id: toastId });
+              toast.loading(`Генерирую изображения: ${enrichedLessons}/${lessonsToEnrich.length}...`, { id: toastId });
 
               await supabase.from("generation_history").insert({
                 course_id: courseId, course_title: courseTitle,
@@ -767,9 +765,8 @@ export function AdminMarketplaceManager() {
             } catch (e) {
               console.error(`Auto-fix enrichment error for ${lesson.id}:`, e);
             }
-          });
-          await Promise.allSettled(enrichPromises);
-        }
+        });
+        await Promise.allSettled(enrichPromises);
         if (enrichedCount > 0) {
           console.log(`[Auto-fix] Enriched ${enrichedCount} images across ${lessonsNeedingMedia.length} lessons`);
         }
