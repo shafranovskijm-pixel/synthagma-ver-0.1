@@ -212,6 +212,7 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
 
       // Return fresh lessons from DB
       const freshLessons = await loadLessons();
+      await logHistory(courseId, courseTitle, "structure", `Создано ${freshLessons.filter(l => l.type !== "test").length} уроков`, freshLessons.length, Date.now() - structureStart);
       return freshLessons;
     } catch (e: any) {
       console.error("Structure generation error:", e);
