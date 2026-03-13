@@ -1,18 +1,43 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## План: Магазин курсов отображает категории из базы данных (как в админ-маркетплейсе)
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+### Проблема
 
-### Changes
+Сейчас две разные системы группировки:
+- **Админ-маркетплейс** — группирует курсы по `category_id` из таблицы `course_categories` (БД)
+- **Магазин курсов** (`CourseStoreManager`) — парсит заголовок курса по шаблону `"Категория — Название"` и собирает группы из захардкоженного массива `RTN_CATEGORIES`
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+Из-за этого порядок категорий и распределение курсов в магазине не зависит от того, как администратор настроил маркетплейс.
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+### Решение
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+Магазин курсов должен получать категории и порядок из БД, а не парсить заголовки.
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+### Изменения
+
+**`src/hooks/useCourseStoreManager.ts`**:
+
+1. Добавить загрузку `course_categories` для `MARKETPLACE_ORG_ID` (отсортированных по `order_index`) — аналогично тому, как это делает `useAdminMarketplace`
+2. Переписать `groupedCatalog` — группировать курсы по `category_id` → DB-категории вместо парсинга заголовков
+3. Каждая DB-категория становится подкатегорией внутри «Повышение квалификации» (как сейчас, но на основе DB, а не хардкода)
+4. Убрать хардкод `RTN_CATEGORIES` и `OT_CATEGORIES` — порядок берётся из `order_index`
+5. Оставить `extractShortTitle` — для красивого отображения названия курса (убирая префикс категории)
+
+**`src/components/student/StudentCourseStore.tsx`**:
+- Аналогичные изменения в `groupedCatalog` — загрузка DB-категорий и группировка по `category_id`
+
+**`src/components/organization/CourseStoreManager.tsx`**:
+- Обновить `subCategoryMeta` — брать иконку/цвет на основе имени DB-категории (логика не меняется, только источник данных)
+- Добавить кнопку «Переместить» в UI курса (для организации-владельца маркетплейса, если нужно)
+
+### Итог
+
+Администратор упорядочивает категории в админ-маркетплейсе → магазин курсов автоматически отображает тот же порядок и группировку.
+
+| Файл | Изменение |
+|---|---|
+| `src/hooks/useCourseStoreManager.ts` | Загрузка DB-категорий, переписать `groupedCatalog` |
+| `src/components/student/StudentCourseStore.tsx` | Аналогичная замена группировки на DB-категории |
+| `src/components/organization/CourseStoreManager.tsx` | Минимальные правки (данные приходят из хука) |
 
