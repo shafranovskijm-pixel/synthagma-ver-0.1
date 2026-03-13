@@ -109,7 +109,7 @@ async function generateWithLovableAI(prompt: string, imageUrl: string | undefine
         { type: "text", text: prompt },
         { type: "image_url", image_url: { url: imageUrl } },
       ]
-    : `Generate an image: ${prompt}. Make it high quality, clean, and suitable for an educational course.`;
+    : `Generate a photo-realistic image: ${prompt}. Requirements: no text or labels on the image, one main subject or scene, clean composition, high quality, suitable for an educational course material.`;
 
   const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
@@ -181,7 +181,7 @@ async function generateWithGigaChat(prompt: string, keySlot?: string) {
       messages: [
         {
           role: "user",
-          content: `Нарисуй изображение: ${prompt}. Сделай качественно, чисто, подходящее для образовательного курса.`,
+          content: `Нарисуй фотореалистичное изображение: ${prompt}. Требования: БЕЗ текста и надписей на изображении, один главный объект или сцена, чистая композиция, высокое качество, подходящее для учебного материала.`,
         },
       ],
       function_call: "auto",
