@@ -144,6 +144,13 @@ export function ProgramListImporter({ onComplete }: ProgramListImporterProps) {
     let skipped = 0;
 
     try {
+      // Fetch DB categories for marketplace org to auto-assign category_id
+      const { data: dbCats } = await supabase
+        .from("course_categories")
+        .select("id, name")
+        .eq("organization_id", MARKETPLACE_ORG_ID);
+      const catMap = new Map((dbCats || []).map(c => [c.name.toLowerCase(), c.id]));
+
       for (const prog of programs) {
         // Check if course with similar title already exists
         const { data: existing } = await supabase
@@ -158,6 +165,15 @@ export function ProgramListImporter({ onComplete }: ProgramListImporterProps) {
           continue;
         }
 
+        // Try to match category by name (fuzzy: check if prog.category or title contains a DB category name)
+        let categoryId: string | null = null;
+        for (const [catName, catId] of catMap.entries()) {
+          if (prog.category.toLowerCase().includes(catName) || catName.includes(prog.category.toLowerCase())) {
+            categoryId = catId;
+            break;
+          }
+        }
+
         // Create course
         const { data: course, error: courseErr } = await supabase
           .from("courses")
@@ -165,6 +181,7 @@ export function ProgramListImporter({ onComplete }: ProgramListImporterProps) {
             title: prog.title,
             organization_id: MARKETPLACE_ORG_ID,
             duration: `${prog.hours} часов`,
+            category_id: categoryId,
             is_published: false,
           })
           .select("id")
