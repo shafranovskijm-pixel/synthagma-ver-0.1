@@ -176,7 +176,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
       // 1. Check if course has lessons
       const { data: existingLessons } = await supabase
         .from("lessons")
-        .select("id, type, content")
+        .select("id, type, content, title")
         .eq("course_id", courseId);
 
       const hasLessons = existingLessons && existingLessons.length > 0;
