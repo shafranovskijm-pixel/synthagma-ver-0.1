@@ -386,7 +386,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
     setGeneratingPhase("content");
     const textLessons = lessons.filter((l: any) => (l.type === "text" || l.type === "practice"));
     const emptyOnes = textLessons.filter((l: any) =>
-      !l.content || l.content === "[]" || l.content === "" || (l.content && l.content.length < 50)
+      !l.content || l.content === "[]" || l.content === ""
     );
 
     const PARALLEL = 3;
