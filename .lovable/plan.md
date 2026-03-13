@@ -1,18 +1,49 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## Проблема: Третий API-ключ GigaChat не используется
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+### Диагностика
 
-### Changes
+Логи edge-функций показывают: **только slot-0 и изредка slot-1**. slot-2 не использовался ни разу.
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+Корневая причина — **не все генераторы передают параметры маршрутизации** (`ai_provider`, `stream_index`, `gigachat_model`) в edge-функцию. Без этих параметров `callAI()` идёт по дефолтному пути (Lovable AI → GigaChat fallback через `acquireSlot`, который всегда берёт первый свободный слот).
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+Конкретные проблемы по файлам:
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+| Генератор | Файл | `ai_provider` | `stream_index` | `CONCURRENCY` |
+|---|---|---|---|---|
+| ContentGeneratorTab | `ContentGeneratorTab.tsx` | ✅ передаётся | ✅ передаётся | 3 ✅ |
+| BulkContentGenerator | `BulkContentGenerator.tsx` | ❌ НЕ передаётся | ✅ taskIndex | 3 ✅ |
+| AdminMarketplace auto-fix | `AdminMarketplaceManager.tsx` | ❌ НЕ передаётся | ❌ НЕ передаётся | 2 ❌ |
+| Bulk Pipeline | `useBulkPipeline.ts` | ✅ передаётся | ✅ `i % 3` | 5 (свой) |
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+Также: `callAIRoundRobin()` в `gigachat-client.ts` всё ещё содержит Lovable AI как **первый канал** (строки 563-569), что расходится с предыдущим решением убрать его.
+
+### План исправления
+
+#### 1. `AdminMarketplaceManager.tsx` — добавить маршрутизацию по 3 слотам
+
+- Изменить `CONCURRENCY = 2` → `3`
+- Загружать AI-настройки из `ai_settings` (context: `pipeline`) при монтировании
+- Передавать `ai_provider`, `gigachat_model`, `stream_index: i % 3` во все вызовы `gigachat` (content, questions, answers)
+
+#### 2. `BulkContentGenerator.tsx` — добавить `ai_provider` и `gigachat_model`
+
+- Загружать AI-настройки из `ai_settings` (context: `pipeline`)
+- Передавать `ai_provider`, `gigachat_model` во все вызовы `generate-lesson-content` и `generate-image`
+- `taskIndex` уже передаётся корректно как `batchStart + idxInBatch`
+
+#### 3. `gigachat-client.ts` — убрать Lovable AI из `callAIRoundRobin`
+
+- Убрать блок Lovable AI (строки 563-569) из массива `channels` в `callAIRoundRobin`
+- Оставить только 3 слота GigaChat как основные каналы, Lovable AI — как последний fallback
+- Это обеспечит, что при `round_robin` провайдере все запросы идут строго по 3 GigaChat API
+
+### Файлы для изменения
+
+| Файл | Что меняется |
+|---|---|
+| `src/components/admin/AdminMarketplaceManager.tsx` | CONCURRENCY=3, добавить ai_provider/gigachat_model/stream_index |
+| `src/components/admin/BulkContentGenerator.tsx` | Добавить загрузку AI-настроек и передачу ai_provider/gigachat_model |
+| `supabase/functions/_shared/gigachat-client.ts` | Убрать Lovable AI из основных каналов callAIRoundRobin |
 
