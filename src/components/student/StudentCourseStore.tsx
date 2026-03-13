@@ -275,6 +275,72 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
       </div>
     );
   }
+  const renderCourseCard = (item: MarketplaceCourse) => (
+    <Card
+      key={item.id}
+      className="flex flex-col hover:shadow-md transition-shadow cursor-pointer group"
+      onClick={() => openPreview(item)}
+    >
+      {item.preview_image_url && (
+        <div className="h-36 overflow-hidden rounded-t-lg">
+          <img
+            src={item.preview_image_url}
+            alt={item.course?.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          />
+        </div>
+      )}
+      <CardHeader className="pb-2">
+        <h3 className="font-semibold text-base leading-tight line-clamp-2">
+          {item.course?.title}
+        </h3>
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
+          <Building2 className="w-3.5 h-3.5 shrink-0" />
+          <span className="truncate">{item.organization?.name || "Организация"}</span>
+        </div>
+      </CardHeader>
+      <CardContent className="flex-1 pb-3">
+        {(item.description_short || item.course?.description) && (
+          <p className="text-sm text-muted-foreground line-clamp-3 mb-3">
+            {item.description_short || item.course?.description}
+          </p>
+        )}
+        {item.course?.duration && (
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Clock className="w-3.5 h-3.5" />
+            {item.course.duration}
+          </div>
+        )}
+      </CardContent>
+      <CardFooter className="flex items-center justify-between border-t border-border pt-4">
+        {item.price_student > 0 ? (
+          <span className="text-lg font-bold text-primary">
+            {formatPrice(item.price_student)}
+          </span>
+        ) : (
+          <Badge className="bg-green-500/10 text-green-600 border-green-500/20 text-sm px-3 py-1">Бесплатно</Badge>
+        )}
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            className="rounded-xl gap-1.5"
+            onClick={(e) => { e.stopPropagation(); openPreview(item); }}
+          >
+            <Eye className="w-4 h-4" />
+            Подробнее
+          </Button>
+          <Button
+            size="sm"
+            className={`rounded-xl gap-1.5 ${item.price_student === 0 ? 'bg-green-600 hover:bg-green-700 text-white' : ''}`}
+            onClick={(e) => { e.stopPropagation(); setSelectedCourse(item); }}
+          >
+            {item.price_student > 0 ? <><ShoppingCart className="w-4 h-4" />Купить</> : <><Gift className="w-4 h-4" />Получить</>}
+          </Button>
+        </div>
+      </CardFooter>
+    </Card>
+  );
 
   return (
     <div className="space-y-8">
