@@ -376,6 +376,15 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
           .from("lessons")
           .update({ content: jsonContent })
           .eq("id", lesson.id);
+
+        // Log content generation
+        await supabase.from("generation_history").insert({
+          course_id: courseId,
+          course_title: courseTitle,
+          action: "content",
+          details: `Контент: «${lesson.title}»`,
+          items_count: 1,
+        } as any);
       }
     }
   };
