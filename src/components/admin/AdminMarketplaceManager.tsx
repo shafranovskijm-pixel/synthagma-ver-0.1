@@ -4,8 +4,12 @@ import {
   Store, Plus, Search, Edit, Trash2, Eye, Loader2,
   Package, ShoppingCart, Building2, Users, Tag, Sparkles, BookOpen, Upload,
   List, LayoutGrid, ChevronDown, FolderPlus, FolderInput, CheckCircle2, AlertTriangle,
-  FolderOpen, Library, X,
+  FolderOpen, Library, X, GripVertical,
 } from "lucide-react";
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import type { DbCategory } from "@/hooks/useAdminMarketplace";
 import { BulkCourseImporter } from "./BulkCourseImporter";
 import { BulkContentGenerator } from "./BulkContentGenerator";
 import { BulkPipelineWidget } from "./BulkPipelineWidget";
@@ -85,9 +89,30 @@ function renderCourseRow(
   );
 }
 
+function SortableCategoryItem({ group, children }: { group: { category: string; categoryId?: string }; children: React.ReactNode }) {
+  const id = group.categoryId || group.category;
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+  return (
+    <div ref={setNodeRef} style={style}>
+      <div className="flex items-center">
+        <button {...attributes} {...listeners} className="p-1 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground shrink-0">
+          <GripVertical className="w-4 h-4" />
+        </button>
+        <div className="flex-1 min-w-0">{children}</div>
+      </div>
+    </div>
+  );
+}
+
 export function AdminMarketplaceManager() {
   const navigate = useNavigate();
   const h = useAdminMarketplace();
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }), useSensor(KeyboardSensor));
   const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
   const [isGeneratingShortDesc, setIsGeneratingShortDesc] = useState(false);
   const [bulkGenCourse, setBulkGenCourse] = useState<{ id: string; title: string; description?: string } | null>(null);
@@ -708,86 +733,65 @@ export function AdminMarketplaceManager() {
               </CardContent>
             </Card>
           ) : h.viewMode === "list" ? (
-            /* Grouped accordion list view */
-            <div className="space-y-2">
-              {h.groupedCourses.map((group) => (
-                <Collapsible key={group.category}>
-                  <Card>
-              <CollapsibleTrigger className="flex items-center justify-between w-full px-4 py-3 hover:bg-secondary/30 transition-colors rounded-t-xl group">
-                       <div className="flex items-center gap-3">
-                         <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
-                         <span className="font-semibold text-sm text-left">{group.category}</span>
-                         {group.status === 'ready' && (
-                           <>
-                             <Badge className="bg-green-500/10 text-green-600 border-green-500/20 text-[10px]">
-                               ✅ {group.courses.filter(c => validatedCourses[c.course_id] === 'ok').length} / ❌ {group.courses.filter(c => validatedCourses[c.course_id] === 'error').length}
-                             </Badge>
-                             <Button
-                               variant="ghost"
-                               size="sm"
-                               className="h-6 text-xs px-2"
-                               disabled={!!bulkValidatingGroup}
-                               onClick={(e) => { e.stopPropagation(); handleBulkValidate(group); }}
-                             >
-                               {bulkValidatingGroup === group.category
-                                 ? <><Loader2 className="w-3 h-3 animate-spin mr-1" />{bulkValidateProgress}</>
-                                 : <><CheckCircle2 className="w-3 h-3 mr-1" />Проверить все</>}
-                             </Button>
-                           </>
-                         )}
-                         {group.status === 'progress' && (
-                           <>
-                             <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20 text-[10px]">В работе</Badge>
-                             <Button
-                               variant="ghost"
-                               size="sm"
-                               className="h-6 text-xs px-2"
-                               disabled={!!bulkValidatingGroup}
-                               onClick={(e) => { e.stopPropagation(); handleBulkValidate(group); }}
-                             >
-                               {bulkValidatingGroup === group.category
-                                 ? <><Loader2 className="w-3 h-3 animate-spin mr-1" />{bulkValidateProgress}</>
-                                 : <><CheckCircle2 className="w-3 h-3 mr-1" />Проверить все</>}
-                             </Button>
-                           </>
-                         )}
-                       </div>
-                       <Badge variant="secondary" className="shrink-0">{group.courses.length}</Badge>
-                     </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      {group.subGroups ? (
-                        <div className="space-y-1 pb-2">
-                          {group.subGroups.map((sub) => (
-                            <Collapsible key={sub.category}>
-                              <CollapsibleTrigger className="flex items-center justify-between w-full px-6 py-2 hover:bg-secondary/20 transition-colors group">
-                                <div className="flex items-center gap-2">
-                                  <ChevronDown className="w-3.5 h-3.5 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
-                                  <span className="text-sm font-medium text-left">{sub.category}</span>
-                                </div>
-                                <Badge variant="outline" className="shrink-0 text-xs">{sub.courses.length}</Badge>
-                              </CollapsibleTrigger>
-                              <CollapsibleContent>
-                                <Table>
-                                  <TableBody>
-                                    {sub.courses.map((item) => renderCourseRow(item, h, navigate, handleBulkGenerate, validatedCourses, handleValidateCourse, validatingId))}
-                                  </TableBody>
-                                </Table>
-                              </CollapsibleContent>
-                            </Collapsible>
-                          ))}
-                        </div>
-                      ) : (
-                        <Table>
-                          <TableBody>
-                            {group.courses.map((item) => renderCourseRow(item, h, navigate, handleBulkGenerate, validatedCourses, handleValidateCourse, validatingId))}
-                          </TableBody>
-                        </Table>
-                      )}
-                    </CollapsibleContent>
-                  </Card>
-                </Collapsible>
-              ))}
-            </div>
+            /* Grouped accordion list view with DnD */
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={(event: DragEndEvent) => {
+                const { active, over } = event;
+                if (!over || active.id === over.id) return;
+                const oldIndex = h.dbCategories.findIndex(c => (c.id || c.name) === active.id);
+                const newIndex = h.dbCategories.findIndex(c => (c.id || c.name) === over.id);
+                if (oldIndex === -1 || newIndex === -1) return;
+                const reordered = arrayMove(h.dbCategories, oldIndex, newIndex).map((c, i) => ({ ...c, order_index: i }));
+                h.handleReorderCategories(reordered);
+              }}
+            >
+              <SortableContext items={h.groupedCourses.map(g => g.categoryId || g.category)} strategy={verticalListSortingStrategy}>
+                <div className="space-y-2">
+                  {h.groupedCourses.map((group) => (
+                    <SortableCategoryItem key={group.categoryId || group.category} group={group}>
+                      <Collapsible>
+                        <Card>
+                          <CollapsibleTrigger className="flex items-center justify-between w-full px-4 py-3 hover:bg-secondary/30 transition-colors rounded-t-xl group">
+                            <div className="flex items-center gap-3">
+                              <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
+                              <span className="font-semibold text-sm text-left">{group.category}</span>
+                              {group.courses.length > 0 && (
+                                <>
+                                  <Badge className="bg-green-500/10 text-green-600 border-green-500/20 text-[10px]">
+                                    ✅ {group.courses.filter(c => validatedCourses[c.course_id] === 'ok').length} / ❌ {group.courses.filter(c => validatedCourses[c.course_id] === 'error').length}
+                                  </Badge>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 text-xs px-2"
+                                    disabled={!!bulkValidatingGroup}
+                                    onClick={(e) => { e.stopPropagation(); handleBulkValidate(group); }}
+                                  >
+                                    {bulkValidatingGroup === group.category
+                                      ? <><Loader2 className="w-3 h-3 animate-spin mr-1" />{bulkValidateProgress}</>
+                                      : <><CheckCircle2 className="w-3 h-3 mr-1" />Проверить все</>}
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                            <Badge variant="secondary" className="shrink-0">{group.courses.length}</Badge>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <Table>
+                              <TableBody>
+                                {group.courses.map((item) => renderCourseRow(item, h, navigate, handleBulkGenerate, validatedCourses, handleValidateCourse, validatingId))}
+                              </TableBody>
+                            </Table>
+                          </CollapsibleContent>
+                        </Card>
+                      </Collapsible>
+                    </SortableCategoryItem>
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
           ) : (
             /* Grid view */
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1169,25 +1173,16 @@ export function AdminMarketplaceManager() {
                 <SelectTrigger className="rounded-xl"><SelectValue placeholder="Выберите категорию" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">Без категории</SelectItem>
-                  {h.categories.filter(c => c !== "Без категории").map(cat => (
-                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                  {h.dbCategories.map(cat => (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      <div className="flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: cat.color || '#888' }} />
+                        {cat.name}
+                      </div>
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Или введите новую</Label>
-              <Input
-                value={h.newMoveCategoryInput}
-                placeholder="Новая категория..."
-                className="rounded-xl"
-                onChange={(e) => {
-                  h.setNewMoveCategoryInput(e.target.value);
-                  if (e.target.value.trim()) {
-                    h.setTargetCategory(e.target.value.trim());
-                  }
-                }}
-              />
             </div>
           </div>
           <DialogFooter>
