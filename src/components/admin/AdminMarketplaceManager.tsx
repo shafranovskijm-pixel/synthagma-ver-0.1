@@ -535,7 +535,7 @@ export function AdminMarketplaceManager() {
             const existingTitles = new Set(currentLessons.map(l => l.title.toLowerCase()));
             const newLessons = generatedLessons
               .filter(gl => !existingTitles.has(gl.title.toLowerCase()))
-              .filter(gl => gl.type !== "test"); // Never create new test lessons
+              ; // Allow test lessons to be created from AI structure
             if (newLessons.length > 0) {
               const toInsert = newLessons.map((gl, i) => ({
                 course_id: courseId,
