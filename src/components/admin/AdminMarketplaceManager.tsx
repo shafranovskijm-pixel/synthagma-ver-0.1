@@ -914,11 +914,109 @@ export function AdminMarketplaceManager() {
                                 <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
                               </CollapsibleTrigger>
                               <CollapsibleContent className="pt-2 pl-11">
+                                {/* Bulk move controls */}
+                                {selectedUncategorized.size > 0 && (
+                                  <div className="flex items-center gap-2 mb-2 p-2 rounded-lg bg-primary/5 border border-primary/20">
+                                    <span className="text-xs text-muted-foreground">Выбрано: {selectedUncategorized.size}</span>
+                                    <Select value={bulkMoveTarget} onValueChange={setBulkMoveTarget}>
+                                      <SelectTrigger className="h-7 text-xs w-[200px]">
+                                        <SelectValue placeholder="Категория..." />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {group.subGroups?.map(sg => (
+                                          <SelectItem key={sg.categoryId} value={sg.categoryId}>{sg.name}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                    <Button
+                                      variant="default"
+                                      size="sm"
+                                      className="h-7 text-xs"
+                                      disabled={!bulkMoveTarget}
+                                      onClick={async () => {
+                                        const ids = Array.from(selectedUncategorized);
+                                        const courseIds = group.uncategorized
+                                          .filter(c => ids.includes(c.id))
+                                          .map(c => c.course_id);
+                                        for (const cid of courseIds) {
+                                          await supabase.from("courses").update({ category_id: bulkMoveTarget }).eq("id", cid);
+                                        }
+                                        toast.success(`Перемещено ${courseIds.length} курсов`);
+                                        setSelectedUncategorized(new Set());
+                                        setBulkMoveTarget("");
+                                        h.refetch();
+                                      }}
+                                    >
+                                      <MoveRight className="w-3 h-3 mr-1" />Переместить
+                                    </Button>
+                                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setSelectedUncategorized(new Set())}>
+                                      <X className="w-3 h-3" />
+                                    </Button>
+                                  </div>
+                                )}
                                 <Table>
                                   <TableBody>
-                                    {group.uncategorized.map((item) => renderCourseRow(item, h, navigate, handleBulkGenerate, validatedCourses, handleValidateCourse, validatingId))}
+                                    {group.uncategorized.map((item) => (
+                                      <TableRow key={item.id} className={!item.is_active ? "opacity-60" : ""}>
+                                        <TableCell className="w-[30px] pr-0">
+                                          <Checkbox
+                                            checked={selectedUncategorized.has(item.id)}
+                                            onCheckedChange={(checked) => {
+                                              setSelectedUncategorized(prev => {
+                                                const next = new Set(prev);
+                                                if (checked) next.add(item.id); else next.delete(item.id);
+                                                return next;
+                                              });
+                                            }}
+                                          />
+                                        </TableCell>
+                                        <TableCell>
+                                          <button
+                                            className="text-sm text-left hover:underline cursor-pointer inline-flex items-center gap-1.5"
+                                            onClick={() => handleValidateCourse(item.course_id)}
+                                            disabled={validatingId === item.course_id}
+                                          >
+                                            {validatingId === item.course_id && <Loader2 className="w-3 h-3 animate-spin" />}
+                                            {validatedCourses[item.course_id] === 'ok' && <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />}
+                                            {validatedCourses[item.course_id] === 'error' && <AlertTriangle className="w-3.5 h-3.5 text-red-500 shrink-0" />}
+                                            {h.extractShortTitle(item.course?.title)}
+                                          </button>
+                                        </TableCell>
+                                        <TableCell className="w-[100px] text-sm">{item.price_student.toLocaleString()} ₽</TableCell>
+                                        <TableCell className="w-[60px]">
+                                          <Switch checked={item.is_active} onCheckedChange={() => h.handleToggleActive(item)} />
+                                        </TableCell>
+                                        <TableCell className="w-[80px]">
+                                          <div className="flex items-center gap-1">
+                                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(`/course-builder/${item.course_id}`)}>
+                                              <Eye className="w-3.5 h-3.5" />
+                                            </Button>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { h.setEditingCourse(item); h.setShowEditDialog(true); }}>
+                                              <Edit className="w-3.5 h-3.5" />
+                                            </Button>
+                                          </div>
+                                        </TableCell>
+                                      </TableRow>
+                                    ))}
                                   </TableBody>
                                 </Table>
+                                {/* Select all toggle */}
+                                <div className="flex items-center gap-2 mt-2">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-xs h-7"
+                                    onClick={() => {
+                                      if (selectedUncategorized.size === group.uncategorized.length) {
+                                        setSelectedUncategorized(new Set());
+                                      } else {
+                                        setSelectedUncategorized(new Set(group.uncategorized.map(c => c.id)));
+                                      }
+                                    }}
+                                  >
+                                    {selectedUncategorized.size === group.uncategorized.length ? "Снять всё" : "Выбрать все"}
+                                  </Button>
+                                </div>
                               </CollapsibleContent>
                             </Collapsible>
                           )}
