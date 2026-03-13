@@ -192,7 +192,7 @@ serve(async (req) => {
       const { text: response, model } = await callAI([
         { role: "system", content: structurePrompt },
         { role: "user", content: `Создай структуру курса "${courseTitle}"` },
-      ], 4096, ai_provider, gigachat_model, lovable_model, stream_index);
+      ], 4096, ai_provider, gigachat_model, lovable_model, effectiveTaskIndex);
 
       try {
         const cleaned = response.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
