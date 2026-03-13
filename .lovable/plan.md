@@ -1,18 +1,48 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## Диагностика
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+**Проблема 1 — Кривые изображения (скриншоты 1, 2):**
+GigaChat получает промпты вроде «инфографика/схема биологических опасностей» и пытается нарисовать сложные диаграммы с текстом. Результат — нечитаемые коллажи с искажённым текстом. GigaChat плохо рисует текст на изображениях, схемы и инфографику.
 
-### Changes
+Успешный пример (скриншот 3 — бетонный колодец) — простой фотореалистичный объект без текста.
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+**Проблема 2 — Промпт `analyze_visuals` провоцирует плохие результаты:**
+Строка 239 в `gigachat/index.ts` прямо предлагает «стиль — инфографика/схема/иллюстрация». GigaChat не справляется с инфографикой и схемами.
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+**Проблема 3 — Промпт для GigaChat в `generate-image`:**
+Строка 184: `"Нарисуй изображение: ${prompt}"` — слишком общий, не даёт ограничений.
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+## План исправления
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+### 1. Изменить промпт `analyze_visuals` (gigachat/index.ts, строки 236-254)
+
+Убрать «инфографика/схема» из рекомендуемых стилей. Заменить на:
+- Фотореалистичные сцены, объекты, оборудование
+- Без текста на изображениях
+- Конкретные физические объекты, а не абстрактные диаграммы
+
+```
+Промпт должен описывать КОНКРЕТНЫЙ ФИЗИЧЕСКИЙ ОБЪЕКТ или СЦЕНУ 
+(оборудование, рабочее место, процесс, материал, природное явление).
+ЗАПРЕЩЕНО: схемы, диаграммы, инфографика, текст на изображении, 
+абстрактные концепции, коллажи из множества элементов.
+```
+
+### 2. Улучшить промпт генерации в `generateWithGigaChat` (generate-image/index.ts, строка 184)
+
+Заменить `"Нарисуй изображение: ${prompt}"` на чёткую инструкцию:
+```
+Нарисуй фотореалистичное изображение: ${prompt}. 
+Требования: без текста и надписей, один главный объект или сцена, 
+чистый фон, высокое качество, подходит для учебного материала.
+```
+
+### 3. Аналогично для Lovable AI fallback (generate-image/index.ts, строка 112)
+
+Добавить те же ограничения в английском промпте для Lovable AI.
+
+### Файлы для изменения:
+- `supabase/functions/gigachat/index.ts` — промпт analyze_visuals
+- `supabase/functions/generate-image/index.ts` — промпты generateWithGigaChat и generateWithLovableAI
 
