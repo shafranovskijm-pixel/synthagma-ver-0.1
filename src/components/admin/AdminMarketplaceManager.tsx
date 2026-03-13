@@ -647,6 +647,7 @@ export function AdminMarketplaceManager() {
                       question: q.question,
                       options: q.options || [],
                     })),
+                    ...(aiPrompts.answers ? { customSystemPrompt: aiPrompts.answers } : {}),
                   },
                 });
                 if (error) throw error;
