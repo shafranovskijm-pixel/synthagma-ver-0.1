@@ -235,7 +235,7 @@ serve(async (req) => {
   }
 
   try {
-    const { text, voice = "natalya", format = "opus" } = await req.json();
+    const { text, voice = "natalya", format = "opus", stream_index } = await req.json();
 
     if (!text || text.trim().length === 0) {
       return new Response(JSON.stringify({ error: "Text is required" }), {
