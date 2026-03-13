@@ -924,7 +924,7 @@ export function AdminMarketplaceManager() {
                                       </SelectTrigger>
                                       <SelectContent>
                                         {group.subGroups?.map(sg => (
-                                          <SelectItem key={sg.categoryId} value={sg.categoryId}>{sg.name}</SelectItem>
+                                          <SelectItem key={sg.categoryId} value={sg.categoryId || sg.category}>{sg.category}</SelectItem>
                                         ))}
                                       </SelectContent>
                                     </Select>
