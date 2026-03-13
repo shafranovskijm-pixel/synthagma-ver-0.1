@@ -51,12 +51,13 @@ interface CourseAnalysis {
   unansweredQuestions: number;
 }
 
-type GeneratingPhase = "idle" | "structure" | "streaming";
+type GeneratingPhase = "idle" | "structure" | "streaming" | "enriching";
 
 const PHASE_LABELS: Record<GeneratingPhase, string> = {
   idle: "",
   structure: "Генерация структуры...",
   streaming: "Параллельная генерация (контент → вопросы → ответы)...",
+  enriching: "Обогащение медиа (анализ + изображения + слайды)...",
 };
 
 const programTypes = [

@@ -216,6 +216,44 @@ serve(async (req) => {
         result = { lessons: [], raw: response, parseError: true, model };
       }
 
+    } else if (action === "analyze_visuals") {
+      const lessonContent = body.lessonContent || "";
+      const blocksCount = body.blocksCount || 0;
+
+      const analyzePrompt = `Ты эксперт по визуальному оформлению образовательных курсов. Проанализируй учебный материал урока и определи 2-3 ключевые концепции, которые лучше всего визуализировать.
+
+Для каждой концепции укажи:
+- "prompt": детальное описание для генерации изображения на русском языке (что именно изобразить, стиль — инфографика/схема/иллюстрация)
+- "after_block_index": индекс блока контента (0-based), после которого вставить визуализацию. Всего блоков: ${blocksCount}. Распредели визуализации равномерно по тексту.
+- "format": "image" (одиночное изображение) или "slider" (презентация из 3-5 слайдов, если концепция содержит шаги/этапы/последовательность)
+- "slides": (только для format="slider") массив заголовков слайдов
+
+Отвечай СТРОГО JSON-объектом:
+{"visuals": [{"prompt": "...", "after_block_index": 3, "format": "image"}, ...]}
+
+Правила:
+1. Выбирай только самые важные концепции, которые сложно понять без визуализации
+2. Промпты для изображений должны быть конкретными и детальными
+3. Используй format "slider" только для пошаговых процессов или сравнений
+4. НЕ дублируй hero-изображение урока (первый блок)
+5. after_block_index должен быть в пределах от 1 до ${blocksCount - 1}
+
+Отвечай ТОЛЬКО JSON, без markdown-обертки.`;
+
+      const { text: response, model } = await callAI([
+        { role: "system", content: analyzePrompt },
+        { role: "user", content: `Курс: "${courseTitle}"\nУрок: "${lessonTitle}"\n\nКонтент урока:\n${lessonContent.slice(0, 4000)}` },
+      ], 2048, ai_provider, gigachat_model, lovable_model, effectiveTaskIndex);
+
+      try {
+        const cleaned = response.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+        const parsed = JSON.parse(cleaned);
+        result = { visuals: parsed.visuals || [], model };
+      } catch {
+        console.error("Failed to parse analyze_visuals response:", response);
+        result = { visuals: [], raw: response, parseError: true, model };
+      }
+
     } else if (action === "verify_answers") {
       // Verification: re-check answers with a different model or prompt
       const questionsText = questions.map((q: any, i: number) => {
