@@ -43,6 +43,8 @@ export interface DbCategory {
   name: string;
   color: string | null;
   order_index: number;
+  parent_type: string | null;
+  icon: string | null;
 }
 
 export function useAdminMarketplace() {
