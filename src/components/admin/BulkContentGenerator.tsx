@@ -250,7 +250,133 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
     }
   };
 
-  // Phase 3: Solve test questions using AI (with batching)
+  // Phase 3: Generate images and audio for content lessons
+  const generateMedia = async (overrideLessons?: LessonItem[]) => {
+    setPhase("media");
+    const source = overrideLessons || lessons;
+    // Only process text/practice lessons that have content (just generated)
+    const targets = source.filter(
+      (l) => l.selected && l.type !== "test" && !isContentEmpty(l.content)
+    );
+
+    for (let i = 0; i < targets.length; i++) {
+      if (abortRef.current) break;
+      const lesson = targets[i];
+
+      // Re-read current content from DB
+      const { data: freshLesson } = await supabase
+        .from("lessons")
+        .select("content")
+        .eq("id", lesson.id)
+        .single();
+
+      if (!freshLesson?.content) continue;
+
+      let blocks: any[];
+      try {
+        blocks = JSON.parse(freshLesson.content);
+        if (!Array.isArray(blocks)) continue;
+      } catch { continue; }
+
+      // Skip if already has image block
+      const hasImage = blocks.some((b: any) => b.type === "image" && b.imageSrc);
+      const hasAudio = blocks.some((b: any) => b.type === "audio" && b.audioUrl);
+
+      let changed = false;
+
+      // Generate hero image
+      if (!hasImage) {
+        updateLesson(lesson.id, { status: "generating_image" });
+        try {
+          const { data: imgData } = await supabase.functions.invoke("generate-image", {
+            body: {
+              prompt: `Образовательная иллюстрация для урока "${lesson.title}". Профессиональная, чистая, подходящая для онлайн-курса.`,
+              provider: "gigachat",
+            },
+          });
+          if (imgData?.url) {
+            blocks.unshift({
+              id: crypto.randomUUID(),
+              type: "image",
+              content: "",
+              imageSrc: imgData.url,
+            });
+            changed = true;
+          }
+        } catch (e) {
+          console.warn("Image generation failed for", lesson.title, e);
+        }
+      }
+
+      // Generate intro audio from first paragraph
+      if (!hasAudio) {
+        updateLesson(lesson.id, { status: "generating_audio" as LessonStatus });
+        const firstPara = blocks.find(
+          (b: any) => b.type === "paragraph" && b.content && b.content.trim().length > 50
+        );
+        if (firstPara) {
+          try {
+            const response = await fetch(
+              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/salutespeech-tts`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+                  "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+                },
+                body: JSON.stringify({
+                  text: firstPara.content.slice(0, 500),
+                  voice: "natalya",
+                  format: "opus",
+                }),
+              }
+            );
+            if (response.ok) {
+              const audioBlob = await response.blob();
+              const fileName = `tts_${crypto.randomUUID()}.ogg`;
+              const { error: uploadErr } = await supabase.storage
+                .from("course-files")
+                .upload(fileName, audioBlob, {
+                  contentType: "audio/ogg",
+                  cacheControl: "3600",
+                  upsert: true,
+                });
+              if (!uploadErr) {
+                const { data: urlData } = supabase.storage.from("course-files").getPublicUrl(fileName);
+                if (urlData?.publicUrl) {
+                  // Insert audio after image (if present) or at start
+                  const insertIdx = blocks[0]?.type === "image" ? 1 : 0;
+                  blocks.splice(insertIdx, 0, {
+                    id: crypto.randomUUID(),
+                    type: "audio",
+                    content: firstPara.content.slice(0, 200),
+                    audioUrl: urlData.publicUrl,
+                  });
+                  changed = true;
+                }
+              }
+            }
+          } catch (e) {
+            console.warn("Audio generation failed for", lesson.title, e);
+          }
+        }
+      }
+
+      if (changed) {
+        await supabase.from("lessons").update({ content: JSON.stringify(blocks) }).eq("id", lesson.id);
+      }
+
+      updateLesson(lesson.id, { status: "done" });
+      setDoneCount((prev) => prev + 1);
+
+      if (i < targets.length - 1 && !abortRef.current) {
+        await new Promise((r) => setTimeout(r, 1000));
+      }
+    }
+  };
+
+  // Phase 4: Solve test questions using AI (with batching)
   const solveTests = async (overrideLessons?: LessonItem[]) => {
     setPhase("tests");
     const source = overrideLessons || lessons;
