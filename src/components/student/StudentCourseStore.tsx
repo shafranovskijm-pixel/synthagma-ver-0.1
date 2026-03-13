@@ -116,10 +116,20 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
     fetchData();
   }, [organizationId]);
 
+  const fetchDbCategories = async () => {
+    const { data, error } = await supabase
+      .from("course_categories")
+      .select("id, name, order_index")
+      .eq("organization_id", MARKETPLACE_ORG_ID)
+      .order("order_index", { ascending: true });
+    if (error) { console.error("Error fetching categories:", error); return; }
+    setDbCategories(data || []);
+  };
+
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      await Promise.all([fetchCatalog(), fetchOrders()]);
+      await Promise.all([fetchCatalog(), fetchOrders(), fetchDbCategories()]);
     } finally {
       setIsLoading(false);
     }
