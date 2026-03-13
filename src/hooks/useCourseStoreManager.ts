@@ -93,7 +93,7 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
   const [receivedOrders, setReceivedOrders] = useState<MarketplaceOrder[]>([]);
   const [availableCourses, setAvailableCourses] = useState<Course[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [dbCategories, setDbCategories] = useState<{ id: string; name: string; order_index: number | null }[]>([]);
+  const [dbCategories, setDbCategories] = useState<{ id: string; name: string; order_index: number | null; parent_type: string | null }[]>([]);
 
   // Add course to marketplace
   const [showAddDialog, setShowAddDialog] = useState(false);
