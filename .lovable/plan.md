@@ -1,23 +1,18 @@
 
 
-## План: Вернуть вкладку «Конвейер» в админку маркетплейса
+## Plan: Auto-fix after "Проверить все"
 
-### Проблема
-Генератор контента (BulkPipelineWidget) сейчас спрятан внутри вкладки «Каталог» и свёрнут под «Инструменты». Пользователь не может его найти.
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-### Решение
-Добавить отдельную вкладку **«Конвейер»** (с иконкой Factory/Zap) в TabsList админки маркетплейса.
+### Changes
 
-### Изменения в `src/components/admin/AdminMarketplaceManager.tsx`
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-1. **Добавить новую вкладку** в TabsList между «Создать курс» и «Импорт»:
-   ```
-   Каталог | Программы | Создать курс | ⚡ Конвейер | Импорт | Банк знаний | Заявки
-   ```
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-2. **Добавить TabsContent `"pipeline"`** — перенести туда `BulkPipelineWidget` с полным набором пропсов (courses, readyCourses, allCourses, onComplete). Виджет будет отображаться развёрнуто, без Collapsible-обёртки.
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-3. **Убрать BulkPipelineWidget из вкладки «Каталог»** — оставить только кнопку «Конвертировать MD→JSON» в секции «Инструменты».
-
-Никаких изменений логики — только перемещение виджета в отдельную вкладку для удобного доступа.
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 
