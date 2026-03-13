@@ -1,30 +1,18 @@
 
 
-## Проблема: старый интерфейс (золотая тема вместо циановой)
+## Plan: Auto-fix after "Проверить все"
 
-### Диагноз
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-Это **проблема кэширования PWA** на продакшн-домене. Service Worker закэшировал старые JS/CSS файлы (с золотой темой) и продолжает их отдавать, несмотря на новые деплои.
+### Changes
 
-**Два домена не являются причиной** — каждый домен имеет свой независимый Service Worker и кэш. Но если на одном домене SW обновился, а на другом — нет (например, пользователь давно не заходил), он будет показывать старую версию.
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-### Текущая проблема в коде
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-В `main.tsx` (строки 25-36) есть механизм очистки SW, но он использует `sessionStorage('sw-purged')` — это значит очистка происходит **только один раз за сессию**. Если старый SW успел закэшировать файлы до очистки, они остаются.
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-### Исправление
-
-**`src/main.tsx`** — добавить версионный контроль кэша:
-1. Использовать `BUILD_TIMESTAMP` (через `define` в vite.config) для определения текущей версии
-2. Сравнивать с `localStorage('app-version')` — если не совпадает, принудительно очищать все кэши и перерегистрировать SW
-3. Это гарантирует, что при каждом новом деплое все пользователи получат свежие файлы
-
-**`vite.config.ts`** — добавить `define: { '__BUILD_TIMESTAMP__': JSON.stringify(Date.now()) }`
-
-### Файлы для изменения
-
-| Файл | Изменение |
-|---|---|
-| `vite.config.ts` | Добавить `define` с `__BUILD_TIMESTAMP__` |
-| `src/main.tsx` | Версионная проверка кэша при каждой загрузке |
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 
