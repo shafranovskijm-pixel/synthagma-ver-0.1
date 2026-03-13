@@ -606,51 +606,63 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
   const canConvert = convertibleTypes.includes(block.type);
   const canStyle = textStyleableTypes.includes(block.type);
 
+  const [ttsVoiceDialogOpen, setTtsVoiceDialogOpen] = useState(false);
+  const [ttsVoice, setTtsVoice] = useState(() => localStorage.getItem('block-editor-tts-voice') || 'Natalya_24000');
+  const [ttsGenerating, setTtsGenerating] = useState(false);
+
+  const handleTtsGenerate = async () => {
+    const plainText = (block.content || "").replace(/<[^>]+>/g, "").trim();
+    if (!plainText) {
+      const { toast } = await import("sonner");
+      toast.error("Нет текста для озвучивания");
+      return;
+    }
+    setTtsGenerating(true);
+    localStorage.setItem('block-editor-tts-voice', ttsVoice);
+    const { toast } = await import("sonner");
+    toast.info("Генерация аудио из текста... Длинные тексты могут занять до 2 минут.");
+    try {
+      const ttsController = new AbortController();
+      const ttsTimeout = setTimeout(() => ttsController.abort(), 180000);
+      const voiceName = ttsVoice.replace(/_\d+$/, '').toLowerCase();
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/salutespeech-tts`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({ text: plainText, voice: voiceName }),
+          signal: ttsController.signal,
+        }
+      );
+      clearTimeout(ttsTimeout);
+      if (!response.ok) {
+        const errData = await response.json().catch(() => null);
+        throw new Error(errData?.error || `Ошибка: ${response.status}`);
+      }
+      const audioBlob = await response.blob();
+      const { supabase } = await import("@/integrations/supabase/client");
+      const fileName = `tts_${crypto.randomUUID()}.mp3`;
+      const { error } = await supabase.storage.from("course-files").upload(fileName, audioBlob, { contentType: "audio/mpeg", upsert: true });
+      if (error) throw error;
+      const audioUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/course-files/${fileName}`;
+      onUpdate({ type: "audio", audioUrl });
+      toast.success("Аудио сгенерировано!");
+      setTtsVoiceDialogOpen(false);
+    } catch (e: any) {
+      console.error("TTS convert error:", e);
+      toast.error(e.message || "Ошибка генерации аудио");
+    } finally {
+      setTtsGenerating(false);
+    }
+  };
+
   const handleConvert = async (newType: BlockType) => {
     if (newType === "audio") {
-      // Extract plain text from block content for TTS
-      const plainText = (block.content || "").replace(/<[^>]+>/g, "").trim();
-      if (!plainText) {
-        const { toast } = await import("sonner");
-        toast.error("Нет текста для озвучивания");
-        return;
-      }
-      const { toast } = await import("sonner");
-      toast.info("Генерация аудио из текста... Длинные тексты могут занять до 2 минут.");
-      try {
-        const ttsController = new AbortController();
-        const ttsTimeout = setTimeout(() => ttsController.abort(), 180000);
-        const response = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-            },
-            body: JSON.stringify({ text: plainText }),
-            signal: ttsController.signal,
-          }
-        );
-        clearTimeout(ttsTimeout);
-        if (!response.ok) {
-          const errData = await response.json().catch(() => null);
-          throw new Error(errData?.error || `Ошибка: ${response.status}`);
-        }
-        const audioBlob = await response.blob();
-        // Upload to storage
-        const { supabase } = await import("@/integrations/supabase/client");
-        const fileName = `tts_${crypto.randomUUID()}.mp3`;
-        const { error } = await supabase.storage.from("course-files").upload(fileName, audioBlob, { contentType: "audio/mpeg", upsert: true });
-        if (error) throw error;
-        const audioUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/course-files/${fileName}`;
-        onUpdate({ type: "audio", audioUrl });
-        toast.success("Аудио сгенерировано!");
-      } catch (e: any) {
-        console.error("TTS convert error:", e);
-        toast.error(e.message || "Ошибка генерации аудио");
-      }
+      setTtsVoiceDialogOpen(true);
       return;
     }
     const updates: Partial<ContentBlock> = { type: newType };
