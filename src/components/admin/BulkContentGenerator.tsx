@@ -691,7 +691,7 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
           let imageUrl: string | null = null;
           try {
             const { data: imgData } = await supabase.functions.invoke("generate-image", {
-              body: { prompt: `Образовательная иллюстрация для урока: ${lesson.title}`, provider: "gigachat" },
+              body: { prompt: `Образовательная иллюстрация для урока: ${lesson.title}`, provider: "gigachat", slotIndex: i },
             });
             if (imgData?.url) imageUrl = imgData.url;
           } catch {}

@@ -267,53 +267,101 @@ serve(async (req) => {
     let usedProvider = selectedProvider;
 
     if (selectedProvider === "gigachat") {
-      // Start from slotIndex, retry each slot on 429, then fallback to Lovable AI only for non-429 failures
+      // Start from slotIndex, retry each slot on 429 with cooldown rounds,
+      // and use Lovable AI fallback only for non-quota technical failures.
       const allSlots = ["KEY", "KEY_2", "KEY_3"] as const;
       const parsedSlotIndex = typeof slotIndex === "number" ? slotIndex : Number(slotIndex);
-      const startSlot = Number.isFinite(parsedSlotIndex) ? Math.abs(parsedSlotIndex) % allSlots.length : 0;
-      const slotFailures: Array<{ slot: string; status: number; message: string }> = [];
+      const randomStartSlot = crypto.getRandomValues(new Uint8Array(1))[0] % allSlots.length;
+      const startSlot = Number.isFinite(parsedSlotIndex) ? Math.abs(parsedSlotIndex) % allSlots.length : randomStartSlot;
 
       let success = false;
-      for (let attempt = 0; attempt < allSlots.length; attempt++) {
-        const si = (startSlot + attempt) % allSlots.length;
-        const slotName = allSlots[si];
+      let lastRoundFailures: Array<{ slot: string; status: number; message: string }> = [];
 
-        const maxSlotRetries = 2;
-        for (let retry = 0; retry < maxSlotRetries; retry++) {
-          try {
-            console.log(`[generate-image] Trying GigaChat slot ${slotName} (attempt ${attempt + 1}, retry ${retry + 1}/${maxSlotRetries}, startSlot=${startSlot})`);
-            generatedImageUrl = await generateWithGigaChat(prompt, slotName);
-            success = true;
-            break;
-          } catch (e: any) {
-            const normalized = normalizeInvokeError(e);
-            const isRetryable429 = normalized.status === 429 && retry < maxSlotRetries - 1;
-            console.warn(`[generate-image] GigaChat slot ${slotName} failed (status=${normalized.status}):`, normalized.message);
+      const maxRounds = 3;
+      for (let round = 0; round < maxRounds && !success; round++) {
+        const roundFailures: Array<{ slot: string; status: number; message: string }> = [];
 
-            if (isRetryable429) {
-              await new Promise((resolve) => setTimeout(resolve, 1200 * (retry + 1)));
-              continue;
+        for (let attempt = 0; attempt < allSlots.length; attempt++) {
+          const si = (startSlot + attempt) % allSlots.length;
+          const slotName = allSlots[si];
+
+          const maxSlotRetries = 2;
+          for (let retry = 0; retry < maxSlotRetries; retry++) {
+            try {
+              console.log(`[generate-image] Trying GigaChat slot ${slotName} (round ${round + 1}/${maxRounds}, attempt ${attempt + 1}, retry ${retry + 1}/${maxSlotRetries}, startSlot=${startSlot})`);
+              generatedImageUrl = await generateWithGigaChat(prompt, slotName);
+              success = true;
+              break;
+            } catch (e: any) {
+              const normalized = normalizeInvokeError(e);
+              const isRetryable429 = normalized.status === 429 && retry < maxSlotRetries - 1;
+              console.warn(`[generate-image] GigaChat slot ${slotName} failed (status=${normalized.status}):`, normalized.message);
+
+              if (isRetryable429) {
+                await new Promise((resolve) => setTimeout(resolve, 1200 * (retry + 1)));
+                continue;
+              }
+
+              roundFailures.push({ slot: slotName, ...normalized });
+              break;
             }
-
-            slotFailures.push({ slot: slotName, ...normalized });
-            break;
           }
+
+          if (success) break;
         }
 
         if (success) break;
-      }
 
-      if (!success) {
-        const allRateLimited = slotFailures.length > 0 && slotFailures.every((f) => f.status === 429);
+        lastRoundFailures = roundFailures;
 
-        if (allRateLimited) {
+        const all429 = roundFailures.length === allSlots.length && roundFailures.every((f) => f.status === 429);
+        const allQuota = roundFailures.length === allSlots.length && roundFailures.every((f) => f.status === 402 || f.status === 429);
+        const has402 = roundFailures.some((f) => f.status === 402);
+
+        if (all429 && round < maxRounds - 1) {
+          const cooldownMs = 2500 * (round + 1);
+          console.warn(`[generate-image] All slots returned 429 on round ${round + 1}, cooling down ${cooldownMs}ms before retry round`);
+          await new Promise((resolve) => setTimeout(resolve, cooldownMs));
+          continue;
+        }
+
+        if (allQuota) {
+          if (has402) {
+            throw {
+              status: 402,
+              message: "Лимит генерации изображений временно исчерпан (402/429 по всем потокам). Повторите попытку позже.",
+            };
+          }
           throw {
             status: 429,
             message: "GigaChat временно перегружен (429 по всем потокам). Повторите попытку через 10–20 секунд.",
           };
         }
 
-        console.log("[generate-image] GigaChat failed not only by 429, trying Lovable AI fallback");
+        // Non-quota failures: break and try fallback below.
+        break;
+      }
+
+      if (!success) {
+        const all429 = lastRoundFailures.length === allSlots.length && lastRoundFailures.every((f) => f.status === 429);
+        const allQuota = lastRoundFailures.length === allSlots.length && lastRoundFailures.every((f) => f.status === 402 || f.status === 429);
+        const has402 = lastRoundFailures.some((f) => f.status === 402);
+
+        if (all429) {
+          throw {
+            status: 429,
+            message: "GigaChat временно перегружен (429 по всем потокам). Повторите попытку через 10–20 секунд.",
+          };
+        }
+
+        if (allQuota && has402) {
+          throw {
+            status: 402,
+            message: "Лимит генерации изображений временно исчерпан (402/429 по всем потокам). Повторите попытку позже.",
+          };
+        }
+
+        console.log("[generate-image] GigaChat failed due to technical errors, trying Lovable AI fallback");
         try {
           generatedImageUrl = await generateWithLovableAI(prompt, imageUrl, model);
           usedProvider = "lovable_ai";
