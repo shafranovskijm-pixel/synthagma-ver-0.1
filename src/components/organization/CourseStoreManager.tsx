@@ -432,7 +432,7 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
             const totalPrice = h.userRole === 'organization' ? orderPrice * h.studentsCount : orderPrice;
             return (
               <>
-                <DialogHeader><DialogTitle>{orderPrice > 0 ? 'Купить курс' : 'Получить курс бесплатно'}</DialogTitle><DialogDescription>{h.selectedCourseForOrder?.course?.title}</DialogDescription></DialogHeader>
+                <DialogHeader><DialogTitle>Получить курс</DialogTitle><DialogDescription>{h.selectedCourseForOrder?.course?.title}</DialogDescription></DialogHeader>
                 <div className="space-y-4 py-4">
                   {h.userRole === 'organization' && (
                     <div className="flex gap-3 p-4 rounded-xl border border-blue-500/20 bg-blue-500/5">
