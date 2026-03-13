@@ -266,7 +266,7 @@ serve(async (req) => {
     console.log(`[SaluteSpeech] voice=${voice} -> ${voiceParam}, slots=${slots.length}`);
 
     // Try primary slot, fallback to secondary
-    const primarySlot = pickSlot()!;
+    const primarySlot = pickSlot(stream_index)!;
     let audioBuffer: ArrayBuffer;
 
     try {
