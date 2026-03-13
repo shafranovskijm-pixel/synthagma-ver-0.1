@@ -10,7 +10,7 @@ const features = [
   { icon: GraduationCap, label: "Дистанционное обучение" },
   { icon: FileCheck, label: "Документооборот" },
   { icon: Shield, label: "Соответствие 273-ФЗ" },
-  { icon: BookOpen, label: "200+ готовых курсов" },
+  { icon: BookOpen, label: "200+ готовых курсов", href: "/rostechnadzor-courses" },
 ];
 
 export function Hero() {
