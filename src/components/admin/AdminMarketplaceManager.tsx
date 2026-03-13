@@ -979,7 +979,7 @@ export function AdminMarketplaceManager() {
                                             {validatingId === item.course_id && <Loader2 className="w-3 h-3 animate-spin" />}
                                             {validatedCourses[item.course_id] === 'ok' && <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />}
                                             {validatedCourses[item.course_id] === 'error' && <AlertTriangle className="w-3.5 h-3.5 text-red-500 shrink-0" />}
-                                            {h.extractShortTitle(item.course?.title)}
+                                            {item.course?.title || ""}
                                           </button>
                                         </TableCell>
                                         <TableCell className="w-[100px] text-sm">{item.price_student.toLocaleString()} ₽</TableCell>

@@ -479,9 +479,9 @@ export function useAdminMarketplace() {
   // Auto-categorize courses by keyword matching
   const handleAutoCategorize = async () => {
     const keywordMappings: { keywords: string[]; categoryName: string; parentType: string; icon: string }[] = [
-      { keywords: ["первая помощь", "медицин", "оказание помощи"], categoryName: "Медицина и первая помощь", parentType: "Охрана труда / Пожарная безопасность", icon: "Lightbulb" },
-      { keywords: ["охрана труда", "безопасные условия"], categoryName: "Охрана труда", parentType: "Охрана труда / Пожарная безопасность", icon: "ShieldCheck" },
-      { keywords: ["пожарная безопасность", "пожарно-технический", "пожарн"], categoryName: "Пожарная безопасность", parentType: "Охрана труда / Пожарная безопасность", icon: "Flame" },
+      { keywords: ["первая помощь", "медицин", "оказание помощи", "оказание первой помощи", "мероприятия по оказанию"], categoryName: "Первая помощь", parentType: "Охрана труда / Пожарная безопасность", icon: "Lightbulb" },
+      { keywords: ["охрана труда", "безопасные условия", "правила по охране труда"], categoryName: "Охрана труда", parentType: "Охрана труда / Пожарная безопасность", icon: "ShieldCheck" },
+      { keywords: ["пожарная безопасность", "пожарно-технический", "пожарн", "противопожарн"], categoryName: "Пожарная безопасность", parentType: "Охрана труда / Пожарная безопасность", icon: "Flame" },
       { keywords: ["промышленная безопасность", "ростехнадзор"], categoryName: "Промышленная безопасность", parentType: "Повышение квалификации", icon: "Factory" },
       { keywords: ["электробезопасность", "электроустановк", "электроустановок", "электроустановки", "эксплуатации электроуст"], categoryName: "Электробезопасность", parentType: "Повышение квалификации", icon: "Zap" },
       { keywords: ["энергетик", "теплоснабж", "котельн", "электрических станций", "электростанций", "электроэнергетич", "тепломеханич", "тепловых энерго"], categoryName: "Энергетика", parentType: "Повышение квалификации", icon: "Flame" },

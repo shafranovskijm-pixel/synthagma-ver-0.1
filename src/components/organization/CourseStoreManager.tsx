@@ -362,7 +362,7 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
                                     onClick={() => setSelectedCourseDetail(item)}
                                   >
                                     <CheckCircle className="w-4 h-4 text-accent shrink-0 mt-0.5" />
-                                    <span className="text-sm text-foreground/75 group-hover/item:text-accent">{h.extractShortTitle(item.course?.title)}</span>
+                                    <span className="text-sm text-foreground/75 group-hover/item:text-accent">{item.course?.title || ""}</span>
                                   </button>
                                 ))}
                               </div>
