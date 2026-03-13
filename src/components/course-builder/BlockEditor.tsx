@@ -900,6 +900,43 @@ function SortableBlockItem({ block, isFocused, onFocus, onUpdate, onDelete, onAd
           </button>
         </div>
       </div>
+      {/* TTS Voice Selection Dialog */}
+      <Dialog open={ttsVoiceDialogOpen} onOpenChange={setTtsVoiceDialogOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Headphones className="w-5 h-5" />
+              Выбор голоса для озвучивания
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Голос SaluteSpeech</Label>
+              <Select value={ttsVoice} onValueChange={setTtsVoice}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Выберите голос" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SALUTE_VOICES.map((voice) => (
+                    <SelectItem key={voice.id} value={voice.id}>
+                      <div className="flex items-center gap-2">
+                        <Volume2 className="w-3.5 h-3.5 text-muted-foreground" />
+                        {voice.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setTtsVoiceDialogOpen(false)}>Отмена</Button>
+              <Button onClick={handleTtsGenerate} disabled={ttsGenerating}>
+                {ttsGenerating ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Генерация...</> : 'Сгенерировать'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
