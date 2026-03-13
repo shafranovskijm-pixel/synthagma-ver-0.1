@@ -1,18 +1,56 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## Результат проверки генерации контента
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+### Найденные проблемы
 
-### Changes
+#### 1. Нет параллельных потоков — всё последовательно
+Клиент (`ContentGeneratorTab.tsx`) обрабатывает уроки **строго по одному** в цикле `for`:
+```typescript
+for (let i = 0; i < emptyOnes.length; i++) {
+  const lesson = emptyOnes[i];
+  await safeInvoke("gigachat", { body: { action: "generate_content", ... } });
+  // ждёт ответа, только потом следующий
+}
+```
+При этом бэкенд (`gigachat-client.ts`) поддерживает 3 GigaChat-слота + Lovable AI и Round-Robin — но клиент никогда не отправляет больше 1 запроса одновременно. Все 3 слота простаивают.
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+#### 2. Неправильное имя поля провайдера
+Клиент отправляет `aiProvider`, а Edge-функция ожидает `ai_provider`. Из-за этого настройка провайдера из `ai_settings` **не применяется** — всегда используется дефолт.
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+#### 3. Генерация вопросов — тоже последовательно
+Тесты обрабатываются по одному в цикле, хотя можно параллельно.
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+### Исправления
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+**Файл: `src/components/admin/ContentGeneratorTab.tsx`**
+
+1. **Параллельная генерация контента** — обрабатывать уроки чанками по 3 (`Promise.all`):
+```typescript
+const PARALLEL = 3;
+for (let i = 0; i < emptyOnes.length; i += PARALLEL) {
+  const chunk = emptyOnes.slice(i, i + PARALLEL);
+  await Promise.all(chunk.map((lesson, idx) =>
+    safeInvoke("gigachat", {
+      body: { action: "generate_content", courseTitle, lessonTitle: lesson.title, ai_provider: aiProvider, ... }
+    }).then(...)
+  ));
+}
+```
+
+2. **Параллельная генерация вопросов** — аналогично, чанками по 3.
+
+3. **Исправить имена полей** — `aiProvider` → `ai_provider`, `gigachatModel` → `gigachat_model`, `lovableModel` → `lovable_model` во всех вызовах `safeInvoke`.
+
+4. **Прогресс** — обновлять после каждого чанка, а не после каждого урока.
+
+### Файлы
+
+| Файл | Действие |
+|---|---|
+| `src/components/admin/ContentGeneratorTab.tsx` | Параллелизация + исправление имён полей |
+
+### Итого
+- **Было**: 1 запрос → ждём → 1 запрос → ждём (16 уроков = 16 последовательных запросов)
+- **Станет**: 3 запроса одновременно → ждём → 3 запроса → ... (16 уроков = ~6 раундов, ускорение ~3x)
 
