@@ -767,6 +767,11 @@ export function AdminMarketplaceManager() {
           </TabsList>
         </div>
 
+        {/* Settings */}
+        <TabsContent value="settings" className="space-y-4">
+          <MarketplaceSettingsTab onSettingsLoaded={handleSettingsLoaded} />
+        </TabsContent>
+
         {/* Generator */}
         <TabsContent value="generator" className="space-y-4">
           <ContentGeneratorTab
