@@ -6,7 +6,8 @@ import {
   Tag, Package, MessageSquarePlus, Megaphone, Send,
   Clock, ChevronDown, ArrowLeft, Info,
   List, LayoutGrid, Gift, Award, Zap, BookOpen, ShieldCheck, Lightbulb,
-  Factory, Flame, Droplets, HardHat, Leaf, Shield,
+  Factory, Flame, Droplets, HardHat, Leaf,
+  Wrench,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,7 +44,14 @@ interface CourseStoreManagerProps {
   refreshBalance?: () => Promise<void>;
 }
 
-const categoryMetaOrg: Record<string, { icon: React.ElementType; color: string; bgColor: string }> = {
+const programTypeMeta: Record<string, { icon: React.ElementType; color: string; bgColor: string }> = {
+  "Повышение квалификации": { icon: GraduationCap, color: "text-blue-600", bgColor: "bg-blue-500/10" },
+  "Профессиональная переподготовка": { icon: Award, color: "text-violet-600", bgColor: "bg-violet-500/10" },
+  "Охрана труда / Пожарная безопасность": { icon: ShieldCheck, color: "text-amber-600", bgColor: "bg-amber-500/10" },
+  "Рабочие профессии": { icon: Store, color: "text-emerald-600", bgColor: "bg-emerald-500/10" },
+};
+
+const subCategoryMeta: Record<string, { icon: React.ElementType; color: string; bgColor: string }> = {
   "Промышленная безопасность": { icon: Factory, color: "text-orange-500", bgColor: "bg-orange-500/10" },
   "Электробезопасность": { icon: Zap, color: "text-yellow-500", bgColor: "bg-yellow-500/10" },
   "Энергетика": { icon: Flame, color: "text-red-500", bgColor: "bg-red-500/10" },
@@ -52,8 +60,11 @@ const categoryMetaOrg: Record<string, { icon: React.ElementType; color: string; 
   "Строительный контроль": { icon: HardHat, color: "text-accent", bgColor: "bg-accent/10" },
 };
 
-const getCategoryMetaOrg = (category: string) =>
-  categoryMetaOrg[category] || { icon: BookOpen, color: "text-primary", bgColor: "bg-primary/10" };
+const getProgramTypeMeta = (category: string) =>
+  programTypeMeta[category] || { icon: BookOpen, color: "text-primary", bgColor: "bg-primary/10" };
+
+const getSubCategoryMeta = (category: string) =>
+  subCategoryMeta[category] || { icon: BookOpen, color: "text-primary", bgColor: "bg-primary/10" };
 
 export function CourseStoreManager({ organizationId, userRole = 'organization', userId }: CourseStoreManagerProps) {
   const navigate = useNavigate();
@@ -246,12 +257,13 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
                     <div className="flex gap-3 items-start">
                       <ShieldCheck className="w-5 h-5 text-primary mt-0.5 shrink-0" />
                       <div>
-                        <h4 className="font-semibold text-sm text-foreground mb-1">Подготовка к аттестации Ростехнадзора</h4>
+                       <h4 className="font-semibold text-sm text-foreground mb-1">Курсы ДПО и профессионального обучения</h4>
                         <p className="text-xs text-muted-foreground leading-relaxed">
-                          Курсы разработаны для подготовки к официальной аттестации. Тесты соответствуют требованиям Единого портала тестирования.
+                          Повышение квалификации, профпереподготовка, охрана труда и рабочие профессии. Тесты соответствуют требованиям аттестации.
                         </p>
                         <div className="flex gap-2 mt-2">
-                          <Badge variant="secondary" className="text-xs">Актуально 2026</Badge>
+                          <Badge variant="secondary" className="text-xs">ДПО</Badge>
+                          <Badge variant="secondary" className="text-xs">ОТ / ПБ</Badge>
                           <Badge variant="secondary" className="text-xs">Бесплатно</Badge>
                         </div>
                         <div className="flex items-start gap-1.5 mt-3 pt-3 border-t border-border/50">
@@ -266,15 +278,12 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
 
                   <div className="grid gap-6">
                     {h.groupedCatalog.map((group) => {
-                      const meta = group.category === "Курсы Ростехнадзора"
-                        ? { icon: Shield, color: "text-primary", bgColor: "bg-primary/10" }
-                        : getCategoryMetaOrg(group.category);
+                      const meta = getProgramTypeMeta(group.category);
                       const CatIcon = meta.icon;
 
-                      // For RTN parent group, render nested collapsibles
                       if (group.subGroups) {
                         return (
-                          <Collapsible key="rtn-root" defaultOpen={false}>
+                          <Collapsible key={group.category} defaultOpen={false}>
                             <CollapsibleTrigger className="flex items-center gap-3 w-full p-4 rounded-xl border border-border bg-card hover:bg-secondary/30 transition-colors">
                               <div className={`w-10 h-10 rounded-lg ${meta.bgColor} flex items-center justify-center shrink-0`}>
                                 <CatIcon className={`w-5 h-5 ${meta.color}`} />
@@ -282,12 +291,13 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
                               <div className="flex-1 text-left">
                                 <h3 className="font-display text-lg font-medium">{group.category}</h3>
                               </div>
+                              <Badge variant="outline" className="text-[10px]">{group.badge}</Badge>
                               <Badge variant="secondary">{group.courses.length} курсов</Badge>
                               <ChevronDown className="w-5 h-5 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
                             </CollapsibleTrigger>
                             <CollapsibleContent className="space-y-3 mt-3 pl-2">
                               {group.subGroups.map((sub) => {
-                                const subMeta = getCategoryMetaOrg(sub.category);
+                                const subMeta = getSubCategoryMeta(sub.category);
                                 const SubIcon = subMeta.icon;
                                 return (
                                   <Collapsible key={sub.category} defaultOpen={false}>
@@ -327,7 +337,6 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
                         );
                       }
 
-                      // Standalone category
                       return (
                         <Collapsible key={group.category} defaultOpen={false}>
                           <CollapsibleTrigger className="flex items-center gap-3 w-full p-4 rounded-xl border border-border bg-card hover:bg-secondary/30 transition-colors">
@@ -335,6 +344,7 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
                               <CatIcon className={`w-5 h-5 ${meta.color}`} />
                             </div>
                             <span className="flex-1 text-left font-display text-lg font-medium">{group.category}</span>
+                            <Badge variant="outline" className="text-[10px]">{group.badge}</Badge>
                             <Badge variant="secondary">
                               {group.courses.length} {group.courses.length === 1 ? 'курс' : group.courses.length < 5 ? 'курса' : 'курсов'}
                             </Badge>
