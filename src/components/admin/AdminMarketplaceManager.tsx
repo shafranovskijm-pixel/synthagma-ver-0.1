@@ -322,34 +322,36 @@ export function AdminMarketplaceManager() {
         const textLessons = lessons.filter(l => l.type === "text" || l.type === "practice");
         const testLessons = lessons.filter(l => l.type === "test");
 
-        if (textLessons.length === 0) {
+        if (valRules.requireText && textLessons.length === 0) {
           issues.push("Нет учебных уроков (текст/практика)");
         }
-        if (testLessons.length === 0) {
+        if (valRules.requireTest && testLessons.length === 0) {
           issues.push("Нет тестов");
         }
-        if (lessons.length < 3) {
-          issues.push(`Слишком мало уроков (${lessons.length}, нужно минимум 3)`);
+        if (lessons.length < valRules.minLessons) {
+          issues.push(`Слишком мало уроков (${lessons.length}, нужно минимум ${valRules.minLessons})`);
         }
 
         // Check empty content in text/practice lessons
         const emptyLessons = textLessons.filter(l =>
-          !l.content || l.content === "[]" || l.content === "" || l.content.length < 50
+          !l.content || l.content === "[]" || l.content === "" || l.content.length < valRules.minContentLength
         );
         if (emptyLessons.length) issues.push(`${emptyLessons.length} уроков без контента`);
 
         // Check filled lessons have substantial content
         const filledLessons = textLessons.filter(l =>
-          l.content && l.content !== "[]" && l.content !== "" && l.content.length >= 50
+          l.content && l.content !== "[]" && l.content !== "" && l.content.length >= valRules.minContentLength
         );
         if (textLessons.length > 0 && filledLessons.length === 0) {
           issues.push("Ни один урок не содержит учебного материала");
         }
 
         // Check duplicates
-        const titles = lessons.map(l => l.title);
-        const dupes = titles.filter((t, i) => titles.indexOf(t) !== i);
-        if (dupes.length) issues.push(`Дубликаты: ${[...new Set(dupes)].join(", ")}`);
+        if (valRules.checkDuplicateTitles) {
+          const titles = lessons.map(l => l.title);
+          const dupes = titles.filter((t, i) => titles.indexOf(t) !== i);
+          if (dupes.length) issues.push(`Дубликаты: ${[...new Set(dupes)].join(", ")}`);
+        }
 
         // Check tests
         const testIds = testLessons.map(l => l.id);
