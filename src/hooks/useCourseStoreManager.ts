@@ -437,69 +437,39 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
     c.organization?.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Category grouping logic
-  const extractCategory = (title: string | undefined): string => {
-    if (!title) return "Без категории";
-    const dashIndex = title.indexOf(" — ");
-    return dashIndex > 0 ? title.substring(0, dashIndex) : "Без категории";
-  };
-
   const extractShortTitle = (title: string | undefined): string => {
     if (!title) return "";
     const dashIndex = title.indexOf(" — ");
     return dashIndex > 0 ? title.substring(dashIndex + 3) : title;
   };
 
-  const OT_CATEGORIES = ["Охрана труда при работах на высоте"];
-
-  const RTN_CATEGORIES = [
-    "Промышленная безопасность",
-    "Электробезопасность",
-    "Энергетика",
-    "Экологическая безопасность",
-    "Гидротехнические сооружения",
-    "Строительный контроль",
-  ];
-
+  // Group catalog by DB categories (from course_categories table, ordered by order_index)
   const groupedCatalog: { category: string; badge: string; courses: MarketplaceCourse[]; subGroups?: { category: string; courses: MarketplaceCourse[] }[] }[] = (() => {
-    const map = new Map<string, MarketplaceCourse[]>();
+    // Map courses by their category_id
+    const byCatId = new Map<string, MarketplaceCourse[]>();
+    const uncategorized: MarketplaceCourse[] = [];
     for (const c of filteredCatalog) {
-      const cat = extractCategory(c.course?.title);
-      if (!map.has(cat)) map.set(cat, []);
-      map.get(cat)!.push(c);
-    }
-
-    // Ensure all RTN categories exist
-    for (const cat of RTN_CATEGORIES) {
-      if (!map.has(cat)) map.set(cat, []);
-    }
-    // Ensure OT categories exist
-    for (const cat of OT_CATEGORIES) {
-      if (!map.has(cat)) map.set(cat, []);
-    }
-
-    // Build RTN sub-groups → "Повышение квалификации"
-    const rtnSubGroups: { category: string; courses: MarketplaceCourse[] }[] = [];
-    for (const cat of RTN_CATEGORIES) {
-      rtnSubGroups.push({ category: cat, courses: map.get(cat) || [] });
-    }
-    // Also add any unknown categories (not RTN, not OT) as sub-groups of PK
-    for (const [cat, courses] of map.entries()) {
-      if (!RTN_CATEGORIES.includes(cat) && !OT_CATEGORIES.includes(cat) && cat !== "Без категории") {
-        rtnSubGroups.push({ category: cat, courses });
+      const catId = (c.course as any)?.category_id;
+      if (catId) {
+        if (!byCatId.has(catId)) byCatId.set(catId, []);
+        byCatId.get(catId)!.push(c);
+      } else {
+        uncategorized.push(c);
       }
     }
-    rtnSubGroups.sort((a, b) => a.category.localeCompare(b.category));
 
-    const allRtnCourses = rtnSubGroups.flatMap(g => g.courses);
+    // Build sub-groups from DB categories (respecting order_index)
+    const subGroups: { category: string; courses: MarketplaceCourse[] }[] = dbCategories.map(cat => ({
+      category: cat.name,
+      courses: byCatId.get(cat.id) || [],
+    }));
 
-    // Build OT courses
-    const otCourses = OT_CATEGORIES.flatMap(cat => map.get(cat) || []);
+    const allCategorizedCourses = subGroups.flatMap(g => g.courses);
 
     return [
-      { category: "Повышение квалификации", badge: "ДПО", courses: allRtnCourses, subGroups: rtnSubGroups },
+      { category: "Повышение квалификации", badge: "ДПО", courses: [...allCategorizedCourses, ...uncategorized], subGroups },
       { category: "Профессиональная переподготовка", badge: "ДПО", courses: [] },
-      { category: "Охрана труда / Пожарная безопасность", badge: "ОТ / ПБ", courses: otCourses },
+      { category: "Охрана труда / Пожарная безопасность", badge: "ОТ / ПБ", courses: [] },
       { category: "Рабочие профессии", badge: "ПО", courses: [] },
     ];
   })();
