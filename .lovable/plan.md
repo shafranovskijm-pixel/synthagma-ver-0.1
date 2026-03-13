@@ -1,40 +1,18 @@
 
 
-## Проблема: История генерации не заполняется
+## Plan: Auto-fix after "Проверить все"
 
-### Диагностика
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-Таблица `generation_history` существует, RLS настроен корректно (authenticated FOR ALL), записи SELECT возвращают 200/OK. Но данных 0 строк.
+### Changes
 
-Причина: **два из четырёх генераторов не пишут в `generation_history`**:
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-| Генератор | Пишет в историю? |
-|---|---|
-| `ContentGeneratorTab` (вкладка Генератор) | ✅ Да |
-| `BulkContentGenerator` (диалог Bulk) | ✅ Да (через `logHistory`) |
-| `AdminMarketplaceManager` auto-fix | ❌ **НЕТ** |
-| `useLessonMedia` (кнопка «Написать с AI») | ❌ **НЕТ** |
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-Пользователь использовал auto-fix и «Написать с AI» — оба не логируют. Поэтому таблица пуста.
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-### План
-
-#### 1. `AdminMarketplaceManager.tsx` — добавить логирование в auto-fix
-
-В функции `handleAutoFix` (строки ~630-760) после каждого этапа (контент, вопросы, ответы) вставлять записи в `generation_history` с action/details/stream_index/duration_ms.
-
-#### 2. `useLessonMedia.ts` — добавить логирование в «Написать с AI»
-
-В `handleGenerateContent` после успешной генерации (текст + изображение + аудио) вставлять запись в `generation_history` с:
-- `course_id` (передаётся в хук)
-- `course_title` (нужно добавить параметр или получить из courseId)
-- `action: "content"`
-- `details` с информацией о сгенерированных блоках/медиа
-
-### Файлы для изменения
-
-| Файл | Что меняется |
-|---|---|
-| `src/components/admin/AdminMarketplaceManager.tsx` | Добавить insert в `generation_history` после генерации контента, вопросов, ответов в handleAutoFix |
-| `src/hooks/useLessonMedia.ts` | Добавить insert в `generation_history` после handleGenerateContent (текст + медиа) |
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 

@@ -636,6 +636,7 @@ export function AdminMarketplaceManager() {
           completed++;
           const streamIndex = i + idxInChunk;
           toast.loading(`Генерирую контент: "${lesson.title}" (${completed}/${totalTasks})`, { id: toastId });
+          const startMs = Date.now();
           try {
             const { data, error } = await safeInvoke<any>("gigachat", {
               body: {
@@ -650,11 +651,22 @@ export function AdminMarketplaceManager() {
               },
             });
             if (error) throw error;
+            let itemsCount = 0;
             if (data?.content) {
               const blocks = markdownToBlocks(data.content);
+              itemsCount = blocks.length;
               const jsonContent = blocks.length > 0 ? blocksToJson(blocks) : data.content;
               await supabase.from("lessons").update({ content: jsonContent }).eq("id", lesson.id);
             }
+            await supabase.from("generation_history").insert({
+              course_id: courseId,
+              course_title: courseTitle,
+              action: "content",
+              details: `Auto-fix: "${lesson.title}"`,
+              items_count: itemsCount,
+              stream_index: streamIndex,
+              duration_ms: Date.now() - startMs,
+            });
           } catch (e) {
             console.error(`Failed to generate content for lesson ${lesson.id}:`, e);
           }
@@ -670,6 +682,7 @@ export function AdminMarketplaceManager() {
             completed++;
             const streamIndex = i + idxInChunk;
             toast.loading(`Генерирую вопросы: "${test.title}" (${completed}/${totalTasks})`, { id: toastId });
+            const startMs = Date.now();
             try {
               const { data, error } = await safeInvoke<any>("gigachat", {
                 body: {
@@ -683,7 +696,9 @@ export function AdminMarketplaceManager() {
                 },
               });
               if (error) throw error;
+              let itemsCount = 0;
               if (data?.questions && !data.parseError && data.questions.length > 0) {
+                itemsCount = data.questions.length;
                 const toInsert = data.questions.map((q: any, idx: number) => ({
                   lesson_id: test.id,
                   question: q.question,
@@ -694,6 +709,15 @@ export function AdminMarketplaceManager() {
                 }));
                 await supabase.from("test_questions").insert(toInsert);
               }
+              await supabase.from("generation_history").insert({
+                course_id: courseId,
+                course_title: courseTitle,
+                action: "questions",
+                details: `Auto-fix: "${test.title}"`,
+                items_count: itemsCount,
+                stream_index: streamIndex,
+                duration_ms: Date.now() - startMs,
+              });
             } catch (e) {
               console.error(`Failed to generate questions for test ${test.id}:`, e);
             }
@@ -721,6 +745,8 @@ export function AdminMarketplaceManager() {
             const lessonInfo = lessons?.find(l => l.id === lessonId);
             const streamIndex = i + idxInChunk;
             const batchSize = 20;
+            const startMs = Date.now();
+            let answeredCount = 0;
             for (let j = 0; j < questions.length; j += batchSize) {
               const batch = questions.slice(j, j + batchSize);
               try {
@@ -744,6 +770,7 @@ export function AdminMarketplaceManager() {
                   for (const ans of data.answers) {
                     const q = batch[ans.questionIndex];
                     if (q && ans.correctAnswer !== undefined) {
+                      answeredCount++;
                       await supabase.from("test_questions")
                         .update({ correct_answer: ans.correctAnswer, explanation: ans.explanation || null })
                         .eq("id", q.id);
@@ -754,6 +781,15 @@ export function AdminMarketplaceManager() {
                 console.error(`Failed to solve test batch for lesson ${lessonId}:`, e);
               }
             }
+            await supabase.from("generation_history").insert({
+              course_id: courseId,
+              course_title: courseTitle,
+              action: "answers",
+              details: `Auto-fix: "${lessonInfo?.title || "Тест"}"`,
+              items_count: answeredCount,
+              stream_index: streamIndex,
+              duration_ms: Date.now() - startMs,
+            }).then(() => {}, () => {});
           });
           await Promise.allSettled(promises);
         }
