@@ -182,7 +182,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
       const hasLessons = existingLessons && existingLessons.length > 0;
       const textLessons = (existingLessons || []).filter(l => l.type === "text" || l.type === "practice");
       const emptyTextLessons = textLessons.filter(l =>
-        !l.content || l.content === "[]" || l.content === "" || l.content.length < 50
+        !l.content || l.content === "[]" || l.content === ""
       );
       const testLessons = (existingLessons || []).filter(l => l.type === "test");
 
