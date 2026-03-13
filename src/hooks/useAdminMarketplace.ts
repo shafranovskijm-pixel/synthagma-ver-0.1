@@ -48,7 +48,7 @@ export interface DbCategory {
 }
 
 export function useAdminMarketplace() {
-  const [activeTab, setActiveTab] = useState<"catalog" | "create" | "import" | "orders" | "programs" | "knowledge" | "pipeline">("catalog");
+  const [activeTab, setActiveTab] = useState<"catalog" | "create" | "import" | "orders" | "programs" | "knowledge" | "generator">("catalog");
   const [isLoading, setIsLoading] = useState(true);
   const [courses, setCourses] = useState<MarketplaceCourseWithDetails[]>([]);
   const [orders, setOrders] = useState<MarketplaceOrder[]>([]);

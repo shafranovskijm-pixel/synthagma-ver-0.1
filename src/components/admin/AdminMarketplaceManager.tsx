@@ -752,12 +752,11 @@ export function AdminMarketplaceManager() {
           </TabsList>
         </div>
 
-        {/* Pipeline */}
-        <TabsContent value="pipeline" className="space-y-4">
-          <BulkPipelineWidget
-            courses={h.courses.filter((c: any) => !c.is_validated)}
-            readyCourses={h.courses.filter((c: any) => c.is_validated === true)}
-            allCourses={h.courses}
+        {/* Generator */}
+        <TabsContent value="generator" className="space-y-4">
+          <ContentGeneratorTab
+            courses={h.courses}
+            dbCategories={h.dbCategories}
             onComplete={() => h.fetchData()}
           />
         </TabsContent>
