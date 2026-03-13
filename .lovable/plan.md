@@ -1,18 +1,40 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## Диагностика: обогащение работает в 3 потока, но медленно
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+### Текущая ситуация
 
-### Changes
+Код в `AdminMarketplaceManager.tsx` (строка 694) **уже использует CONCURRENCY=3** — уроки обрабатываются батчами по 3 через `Promise.allSettled`. Это корректно.
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+**Но внутри каждого урока изображения генерируются последовательно** (строка 733: `for (const visual of imageVisuals)`). Если AI рекомендует 2-3 изображения на урок, каждое — отдельный вызов `generate-image` (5-15 секунд). Итого на 1 урок: ~15с анализ + 3×10с изображения = **~45 секунд**. На 8 уроков (3 батча): ~2-3 минуты минимум.
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+### План ускорения
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+| Изменение | Файл | Что даёт |
+|---|---|---|
+| Параллельная генерация изображений внутри урока | `AdminMarketplaceManager.tsx` | Вместо `for...of` → `Promise.all` для всех visuals одного урока. Ускорение в 2-3 раза |
+| Обновление тоста после каждого урока, а не батча | `AdminMarketplaceManager.tsx` | Пользователь видит прогресс: "Обогащаю медиа: 1/8, 2/8..." вместо скачков 0→3→6→8 |
+| Аналогичное ускорение в ContentGeneratorTab | `ContentGeneratorTab.tsx` | Единообразие обоих потоков |
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+### Ключевое изменение (AdminMarketplaceManager.tsx)
+
+Строки 729-747 — заменить последовательный цикл на параллельный:
+
+```typescript
+// Было: последовательно
+for (const visual of imageVisuals) {
+  const { data: imgData } = await safeInvoke("generate-image", ...);
+  blocks.splice(...);
+}
+
+// Станет: параллельно
+const imageResults = await Promise.allSettled(
+  imageVisuals.map(visual =>
+    safeInvoke("generate-image", { body: { prompt: visual.prompt, provider: "gigachat" } })
+  )
+);
+// Вставка блоков в обратном порядке по after_block_index
+```
+
+Плюс — атомарный счётчик для тоста, обновляемый после каждого урока.
 
