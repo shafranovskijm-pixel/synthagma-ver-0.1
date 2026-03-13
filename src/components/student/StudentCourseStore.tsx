@@ -254,7 +254,6 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
     return "Без категории";
   };
 
-  const EXCLUDED_FROM_RTN = ["Охрана труда при работах на высоте", "Без категории"];
 
   const groupedCatalog = useMemo(() => {
     const map = new Map<string, MarketplaceCourse[]>();
