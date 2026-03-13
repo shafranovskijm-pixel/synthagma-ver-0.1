@@ -756,6 +756,8 @@ export function AdminMarketplaceManager() {
                 await supabase.from("lessons").update({ content: JSON.stringify(blocks) }).eq("id", lesson.id);
                 enrichedCount += insertedCount;
               }
+              enrichedLessons++;
+              toast.loading(`Обогащаю медиа: ${enrichedLessons}/${lessonsNeedingMedia.length}...`, { id: toastId });
 
               await supabase.from("generation_history").insert({
                 course_id: courseId, course_title: courseTitle,

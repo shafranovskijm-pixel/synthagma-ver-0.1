@@ -610,20 +610,23 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
             const sliderVisuals = visuals.filter(v => v.format === "slider" && v.slides && v.slides.length >= 2);
             for (const sv of sliderVisuals) {
               try {
-                const slides: any[] = [];
-                for (const slideTitle of (sv.slides || []).slice(0, 5)) {
-                  const slidePrompt = `${sv.prompt}: ${slideTitle}. Образовательная инфографика, чистый стиль.`;
-                  const { data: slideImg } = await safeInvoke<any>("generate-image", {
-                    body: { prompt: slidePrompt, provider: "gigachat" },
-                  });
-                  slides.push({
+                const slideTitles = (sv.slides || []).slice(0, 5);
+                const slideResults = await Promise.allSettled(
+                  slideTitles.map(slideTitle => {
+                    const slidePrompt = `${sv.prompt}: ${slideTitle}. Образовательная инфографика, чистый стиль.`;
+                    return safeInvoke<any>("generate-image", {
+                      body: { prompt: slidePrompt, provider: "gigachat" },
+                    }).then(res => ({ ...res, slideTitle }));
+                  })
+                );
+                const slides = slideResults
+                  .filter((r): r is PromiseFulfilledResult<any> => r.status === "fulfilled")
+                  .map(r => ({
                     id: crypto.randomUUID(),
-                    title: slideTitle,
+                    title: r.value.slideTitle,
                     content: "",
-                    imageUrl: slideImg?.url || "",
-                  });
-                  await delay(300);
-                }
+                    imageUrl: r.value.data?.url || "",
+                  }));
 
                 if (slides.length > 0) {
                   // Insert slider as a new block in the lesson content
