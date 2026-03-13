@@ -265,6 +265,9 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
       .sort((a, b) => a.category.localeCompare(b.category));
   }, [filteredCatalog]);
 
+  const formatPrice = (price: number) =>
+    new Intl.NumberFormat("ru-RU", { style: "currency", currency: "RUB", maximumFractionDigits: 0 }).format(price);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
