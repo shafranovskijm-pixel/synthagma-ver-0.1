@@ -23,6 +23,7 @@ export interface AiPrompts {
   structure?: string;
   content?: string;
   answers?: string;
+  questions?: string;
 }
 
 const DEFAULT_VALIDATION: ValidationRules = {

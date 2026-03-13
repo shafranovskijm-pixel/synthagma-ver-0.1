@@ -517,7 +517,7 @@ export function AdminMarketplaceManager() {
       const currentLessons = lessons || [];
       const textPracticeLessons = currentLessons.filter(l => l.type === "text" || l.type === "practice");
       const testLessons = currentLessons.filter(l => l.type === "test");
-      const needsStructure = textPracticeLessons.length === 0 || currentLessons.length < valRules.minLessons;
+      const needsStructure = textPracticeLessons.length === 0 || currentLessons.length < valRules.minLessons || (valRules.requireTest && testLessons.length === 0);
 
       // If course needs structural fix (missing text lessons or too few lessons), generate structure first
       if (needsStructure) {
@@ -535,7 +535,7 @@ export function AdminMarketplaceManager() {
             const existingTitles = new Set(currentLessons.map(l => l.title.toLowerCase()));
             const newLessons = generatedLessons
               .filter(gl => !existingTitles.has(gl.title.toLowerCase()))
-              .filter(gl => gl.type !== "test"); // Never create new test lessons
+              ; // Allow test lessons to be created from AI structure
             if (newLessons.length > 0) {
               const toInsert = newLessons.map((gl, i) => ({
                 course_id: courseId,
@@ -556,7 +556,24 @@ export function AdminMarketplaceManager() {
         }
       }
 
-      const allLessons = lessons || [];
+      let allLessons = lessons || [];
+
+      // If tests are required but missing, create a test lesson manually
+      if (valRules.requireTest && allLessons.filter(l => l.type === "test").length === 0) {
+        toast.loading("Создаю тестовый урок...", { id: toastId });
+        const maxOrder = allLessons.reduce((mx, l) => Math.max(mx, l.order_index ?? 0), -1);
+        await supabase.from("lessons").insert({
+          course_id: courseId,
+          title: "Итоговый тест",
+          type: "test",
+          order_index: maxOrder + 1,
+          content: null,
+        });
+        const { data: refreshed2 } = await supabase
+          .from("lessons").select("id, title, type, content, order_index").eq("course_id", courseId).order("order_index");
+        allLessons = refreshed2 || allLessons;
+      }
+
       const emptyLessons = allLessons.filter(l =>
         (l.type === "text" || l.type === "practice") && (!l.content || l.content === "[]" || l.content === "" || l.content.length < valRules.minContentLength)
       );
@@ -570,6 +587,9 @@ export function AdminMarketplaceManager() {
         allQuestions = (questions || []) as typeof allQuestions;
       }
 
+      // Find tests with no questions at all
+      const testQuestionsByLesson = new Set(allQuestions.map(q => q.lesson_id));
+      const emptyTests = allLessons.filter(l => l.type === "test" && !testQuestionsByLesson.has(l.id));
 
       const unansweredQuestions = allQuestions.filter(q => q.correct_answer === null || q.correct_answer === undefined);
 
@@ -582,7 +602,7 @@ export function AdminMarketplaceManager() {
       }
       const duplicateGroups = [...titleCounts.values()].filter(g => g.length > 1);
 
-      const totalTasks = emptyLessons.length + (unansweredQuestions.length > 0 ? 1 : 0) + (duplicateGroups.length > 0 ? 1 : 0);
+      const totalTasks = emptyLessons.length + (unansweredQuestions.length > 0 ? 1 : 0) + (duplicateGroups.length > 0 ? 1 : 0) + emptyTests.length;
       if (totalTasks === 0 && !needsStructure) { toast.info("Нечего исправлять", { id: toastId, duration: 3000 }); return; }
       if (totalTasks === 0) { toast.success("Структура создана! Повторная проверка...", { id: toastId, duration: 3000 }); setTimeout(() => handleValidateCourse(courseId), 1000); return; }
 
@@ -618,7 +638,43 @@ export function AdminMarketplaceManager() {
         await Promise.allSettled(promises);
       }
 
-      // 3. Solve existing unanswered test questions (parallel, concurrency=2)
+      // 3. Generate questions for empty tests
+      if (emptyTests.length > 0) {
+        for (let i = 0; i < emptyTests.length; i += CONCURRENCY) {
+          const chunk = emptyTests.slice(i, i + CONCURRENCY);
+          const promises = chunk.map(async (test) => {
+            completed++;
+            toast.loading(`Генерирую вопросы: "${test.title}" (${completed}/${totalTasks})`, { id: toastId });
+            try {
+              const { data, error } = await safeInvoke<any>("gigachat", {
+                body: {
+                  action: "generate_questions",
+                  courseTitle,
+                  lessonTitle: test.title,
+                  ...(aiPrompts.questions ? { customSystemPrompt: aiPrompts.questions } : {}),
+                },
+              });
+              if (error) throw error;
+              if (data?.questions && !data.parseError && data.questions.length > 0) {
+                const toInsert = data.questions.map((q: any, idx: number) => ({
+                  lesson_id: test.id,
+                  question: q.question,
+                  options: q.options,
+                  correct_answer: q.correctAnswer ?? null,
+                  explanation: q.explanation || null,
+                  order_index: idx,
+                }));
+                await supabase.from("test_questions").insert(toInsert);
+              }
+            } catch (e) {
+              console.error(`Failed to generate questions for test ${test.id}:`, e);
+            }
+          });
+          await Promise.allSettled(promises);
+        }
+      }
+
+      // 4. Solve existing unanswered test questions (parallel, concurrency=2)
       if (unansweredQuestions.length > 0) {
         completed++;
         toast.loading(`Решаю тесты: ${unansweredQuestions.length} вопросов (${completed}/${totalTasks})`, { id: toastId });
