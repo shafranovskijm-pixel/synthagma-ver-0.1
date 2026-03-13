@@ -699,6 +699,8 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
           <span className="text-muted-foreground">→</span>
           {phaseIndicator("content", "Контент", <FileText className="w-3.5 h-3.5" />, phase === "content")}
           <span className="text-muted-foreground">→</span>
+          {phaseIndicator("media", "Медиа", <ImageIcon className="w-3.5 h-3.5" />, phase === "media")}
+          <span className="text-muted-foreground">→</span>
           {phaseIndicator("tests", "Тесты", <FileQuestion className="w-3.5 h-3.5" />, phase === "tests")}
         </div>
 
