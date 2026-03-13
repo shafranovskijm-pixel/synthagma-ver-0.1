@@ -1,39 +1,18 @@
 
 
-## План: Импорт программ из прайс-листа с распределением по категориям
+## Plan: Auto-fix after "Проверить все"
 
-### Анализ файла
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-Из DOCX извлечено **5 групп** программ:
+### Changes
 
-| Группа в файле | Существующая категория | Программ |
-|---|---|---|
-| Охрана труда | ✅ Охрана труда | ~13 |
-| Пожарная безопасность | ✅ Пожарная безопасность | 5 |
-| Экология | ✅ Экологическая безопасность | 3 |
-| Разное | ❌ Нужно создать | 3 |
-| Обучение рабочим профессиям | ❌ Нужно создать | ~40 |
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-### Действия
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-**1. Создать 2 новые категории в БД** (миграция не нужна — через `course_categories` INSERT):
-- **«Разное»** — parent_type: "Повышение квалификации", order_index: 6
-- **«Рабочие профессии»** — parent_type: "Профессиональное обучение", order_index: 7
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-**2. Обновить `ProgramListImporter.tsx`** — заменить hardcoded список `knownPrograms` на полный перечень из DOCX (~64 программы), включая:
-- Все программы ОТ (включая «Управление профрисками», без блоков-комбо)
-- Все 5 программ ПБ (включая «Специалист по пожарной профилактике» 256ч)
-- 3 программы экологии
-- 3 программы «Разное» (скважины, сосуды, газовоздушная среда)
-- ~40 рабочих профессий (от «Антикоррозийщик» до «Электрослесарь»)
-
-Маппинг категорий: `"Экология"` → `"Экологическая безопасность"` (для корректного fuzzy-match с БД).
-
-**3. Файлы**
-
-| Файл | Действие |
-|---|---|
-| `src/components/admin/ProgramListImporter.tsx` | Обновить hardcoded список |
-
-Категории будут созданы программно через существующий `handleCreateAll` — он уже умеет матчить по имени. Но для надёжности лучше создать категории заранее через INSERT в начале `handleCreateAll`, если не найдены.
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 
