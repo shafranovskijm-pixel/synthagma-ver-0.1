@@ -185,6 +185,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
           lessonTitle: lesson.title,
           lessonType: lesson.type,
           ai_provider: aiProvider,
+          stream_index: streamIndex,
           ...(aiProvider === "gigachat" ? { gigachat_model: gigachatModel } : { lovable_model: lovableModel }),
         },
       });
@@ -217,6 +218,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
             lessonTitle: lesson.title,
             questionsCount: 10,
             ai_provider: aiProvider,
+            stream_index: streamIndex,
             ...(aiProvider === "gigachat" ? { gigachat_model: gigachatModel } : { lovable_model: lovableModel }),
           },
         });
@@ -256,6 +258,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
             lessonTitle: lesson.title,
             questions: unanswered.map(q => ({ id: q.id, question: q.question, options: q.options })),
             ai_provider: aiProvider,
+            stream_index: streamIndex,
             ...(aiProvider === "gigachat" ? { gigachat_model: gigachatModel } : { lovable_model: lovableModel }),
           },
         });

@@ -51,7 +51,7 @@ serve(async (req) => {
     if (!rl.allowed) return rateLimitResponse(rl, corsHeaders);
 
     const body = await req.json();
-    const { action, courseTitle, lessonTitle, lessonType, questions, existingContent, customSystemPrompt, previousAnswers, ai_provider, gigachat_model, lovable_model } = body;
+    const { action, courseTitle, lessonTitle, lessonType, questions, existingContent, customSystemPrompt, previousAnswers, ai_provider, gigachat_model, lovable_model, stream_index } = body;
 
     // Log AI usage (fire-and-forget to reduce latency)
     const { data: profile } = await supabase
@@ -95,7 +95,7 @@ serve(async (req) => {
       const { text: response, model } = await callAI([
         { role: "system", content: systemPrompt },
         { role: "user", content: prompt },
-      ], 16384, effectiveProvider, gigachat_model, effectiveLovableModel);
+      ], 16384, effectiveProvider, gigachat_model, effectiveLovableModel, stream_index);
 
       try {
         const cleaned = response.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
@@ -138,7 +138,7 @@ serve(async (req) => {
       const { text: content, model } = await callAI([
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
-      ], 4096, ai_provider, gigachat_model, lovable_model);
+      ], 4096, ai_provider, gigachat_model, lovable_model, stream_index);
       result = { content, model };
 
     } else if (action === "generate_questions") {
@@ -154,7 +154,7 @@ serve(async (req) => {
       const { text: response, model } = await callAI([
         { role: "system", content: systemPrompt },
         { role: "user", content: `Создай тестовые вопросы для теста "${lessonTitle}" курса "${courseTitle}"` },
-      ], 4096, ai_provider, gigachat_model, lovable_model);
+      ], 4096, ai_provider, gigachat_model, lovable_model, stream_index);
 
       try {
         const cleaned = response.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
@@ -178,7 +178,7 @@ serve(async (req) => {
       const { text: response, model } = await callAI([
         { role: "system", content: structurePrompt },
         { role: "user", content: `Создай структуру курса "${courseTitle}"` },
-      ], 4096, ai_provider, gigachat_model, lovable_model);
+      ], 4096, ai_provider, gigachat_model, lovable_model, stream_index);
 
       try {
         const cleaned = response.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
@@ -222,7 +222,7 @@ serve(async (req) => {
       const { text: response, model } = await callAI([
         { role: "system", content: verifyPrompt },
         { role: "user", content: prompt },
-      ], 16384, ai_provider, gigachat_model, lovable_model);
+      ], 16384, ai_provider, gigachat_model, lovable_model, stream_index);
 
       try {
         const cleaned = response.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();

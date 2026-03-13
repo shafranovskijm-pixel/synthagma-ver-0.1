@@ -652,6 +652,13 @@ export async function callAI(
 
   if (preferredProvider === "gigachat") {
     try {
+      // Deterministic slot routing when taskIndex is provided
+      if (taskIndex !== undefined && slots.length > 1) {
+        const slotIdx = taskIndex % slots.length;
+        console.log(`[callAI] GigaChat deterministic routing: taskIndex=${taskIndex} → slot-${slotIdx}`);
+        const text = await useSlotDirect(slotIdx, messages, gcModel, maxTokens);
+        return { text, model: `${gcModel} (slot-${slotIdx})` };
+      }
       const text = await callGigaChat(messages, gcModel, maxTokens);
       return { text, model: gcModel };
     } catch (err) {
