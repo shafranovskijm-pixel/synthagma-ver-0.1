@@ -896,6 +896,49 @@ export function AdminMarketplaceManager() {
                               })}
                             </SortableContext>
                           </DndContext>
+
+                          {/* Uncategorized courses in this group */}
+                          {group.uncategorized.length > 0 && (
+                            <Collapsible>
+                              <CollapsibleTrigger className="flex items-center gap-3 w-full p-3 rounded-lg border border-dashed border-border/60 bg-muted/30 hover:bg-secondary/20 transition-colors">
+                                <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                                  <FolderOpen className="w-4 h-4 text-muted-foreground" />
+                                </div>
+                                <span className="flex-1 text-left font-medium text-sm text-muted-foreground">Без категории</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {group.uncategorized.length} {group.uncategorized.length === 1 ? 'курс' : group.uncategorized.length < 5 ? 'курса' : 'курсов'}
+                                </span>
+                                <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
+                              </CollapsibleTrigger>
+                              <CollapsibleContent className="pt-2 pl-11">
+                                <Table>
+                                  <TableBody>
+                                    {group.uncategorized.map((item) => renderCourseRow(item, h, navigate, handleBulkGenerate, validatedCourses, handleValidateCourse, validatingId))}
+                                  </TableBody>
+                                </Table>
+                              </CollapsibleContent>
+                            </Collapsible>
+                          )}
+
+                          {/* Auto-categorize button */}
+                          {group.uncategorized.length > 0 && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-xs ml-5"
+                              disabled={autoCategorizing}
+                              onClick={async () => {
+                                setAutoCategorizing(true);
+                                await h.handleAutoCategorize();
+                                setAutoCategorizing(false);
+                              }}
+                            >
+                              {autoCategorizing
+                                ? <><Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />Распределение...</>
+                                : <><Wand2 className="w-3.5 h-3.5 mr-1" />Авто-распределить</>}
+                            </Button>
+                          )}
+
                           {/* Add subcategory button */}
                           <Button
                             variant="ghost"
