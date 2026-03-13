@@ -18,6 +18,21 @@ function mkId() {
   return crypto.randomUUID();
 }
 
+function normalizeLines(rawLines: string[]): string[] {
+  const out: string[] = [];
+  for (const raw of rawLines) {
+    const line = raw.trimStart();
+    const compound = line.match(/^([-*_]{3,})\s+(#{1,6}\s+.*)$/);
+    if (compound) {
+      out.push(compound[1]);
+      out.push(compound[2]);
+    } else {
+      out.push(line);
+    }
+  }
+  return out;
+}
+
 function markdownToBlocks(md: string): ContentBlock[] {
   if (!md || typeof md !== "string") return [];
   const trimmed = md.trim();
@@ -29,16 +44,16 @@ function markdownToBlocks(md: string): ContentBlock[] {
   }
 
   const blocks: ContentBlock[] = [];
-  const lines = md.split("\n");
+  const lines = normalizeLines(md.split("\n"));
   let i = 0;
 
   while (i < lines.length) {
     const line = lines[i];
     if (!line.trim()) { i++; continue; }
 
-    // ::: inline format: :::type text :::
-    const inlineMarkerMatch = line.match(/^:::(info|warning|tip|danger|highlight|accordion)\s+(.+?)\s*:::?\s*$/i);
-    if (inlineMarkerMatch) {
+    // Inline marker: :::type text ::: (with or without space after type)
+    const inlineMarkerMatch = line.match(/^:::(info|warning|tip|danger|highlight|accordion)\s*(.+?)\s*:::?\s*$/i);
+    if (inlineMarkerMatch && inlineMarkerMatch[2].trim().length > 0) {
       const markerType = inlineMarkerMatch[1].toLowerCase();
       const content = inlineMarkerMatch[2].trim();
       const blockType = markerType === "highlight" ? "highlight"
@@ -52,14 +67,14 @@ function markdownToBlocks(md: string): ContentBlock[] {
       i++; continue;
     }
 
-    // ::: multiline format
+    // Multiline marker (also handles :::typeText without space)
     const markerMatch = line.match(/^:::(info|warning|tip|danger|highlight|accordion)\s*(.*)?$/i);
     if (markerMatch) {
       const markerType = markerMatch[1].toLowerCase();
       const markerExtra = (markerMatch[2] || "").trim();
       i++;
       const bodyLines: string[] = [];
-      while (i < lines.length && !/^:::\s*$/.test(lines[i])) {
+      while (i < lines.length && !/^:::\s*$/.test(lines[i].trimStart())) {
         bodyLines.push(lines[i]);
         i++;
       }

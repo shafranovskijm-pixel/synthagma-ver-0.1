@@ -2450,6 +2450,23 @@ export function jsonToBlocks(json: string): ContentBlock[] {
   try { return JSON.parse(json); } catch { return []; }
 }
 
+/** Normalize a single line: trim leading whitespace, split compound lines like "--- ### Heading" */
+function normalizeLines(rawLines: string[]): string[] {
+  const out: string[] = [];
+  for (const raw of rawLines) {
+    const line = raw.trimStart();
+    // Split "--- ### Heading" into "---" and "### Heading"
+    const compound = line.match(/^([-*_]{3,})\s+(#{1,6}\s+.*)$/);
+    if (compound) {
+      out.push(compound[1]);
+      out.push(compound[2]);
+    } else {
+      out.push(line);
+    }
+  }
+  return out;
+}
+
 /** Convert plain Markdown text into ContentBlock[] */
 export function markdownToBlocks(md: string): ContentBlock[] {
   if (!md || typeof md !== "string") return [];
@@ -2464,7 +2481,7 @@ export function markdownToBlocks(md: string): ContentBlock[] {
   }
 
   const blocks: ContentBlock[] = [];
-  const lines = md.split("\n");
+  const lines = normalizeLines(md.split("\n"));
   let i = 0;
 
   const mkId = () => crypto.randomUUID?.() ?? `block-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -2475,9 +2492,9 @@ export function markdownToBlocks(md: string): ContentBlock[] {
     // Skip empty lines
     if (!line.trim()) { i++; continue; }
 
-    // ::: callout / highlight / accordion markers — inline format: :::type text :::
-    const inlineMarkerMatch = line.match(/^:::(info|warning|tip|danger|highlight|accordion)\s+(.+?)\s*:::?\s*$/i);
-    if (inlineMarkerMatch) {
+    // ::: callout / highlight / accordion markers — inline format: :::type text ::: (with or without space after type)
+    const inlineMarkerMatch = line.match(/^:::(info|warning|tip|danger|highlight|accordion)\s*(.+?)\s*:::?\s*$/i);
+    if (inlineMarkerMatch && inlineMarkerMatch[2].trim().length > 0) {
       const markerType = inlineMarkerMatch[1].toLowerCase();
       const content = inlineMarkerMatch[2].trim();
       const blockType = markerType === "highlight" ? "highlight"
@@ -2491,14 +2508,14 @@ export function markdownToBlocks(md: string): ContentBlock[] {
       i++; continue;
     }
 
-    // ::: callout / highlight / accordion markers — multiline format
+    // ::: callout / highlight / accordion markers — multiline format (also handles :::typeText without space)
     const markerMatch = line.match(/^:::(info|warning|tip|danger|highlight|accordion)\s*(.*)?$/i);
     if (markerMatch) {
       const markerType = markerMatch[1].toLowerCase();
       const markerExtra = (markerMatch[2] || "").trim();
       i++;
       const bodyLines: string[] = [];
-      while (i < lines.length && !/^:::\s*$/.test(lines[i])) {
+      while (i < lines.length && !/^:::\s*$/.test(lines[i].trimStart())) {
         bodyLines.push(lines[i]);
         i++;
       }
