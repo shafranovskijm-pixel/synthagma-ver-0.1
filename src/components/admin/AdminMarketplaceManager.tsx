@@ -851,8 +851,9 @@ export function AdminMarketplaceManager() {
                           >
                             <SortableContext items={group.subGroups.map(s => s.categoryId || s.category)} strategy={verticalListSortingStrategy}>
                               {group.subGroups.map((sub) => {
+                                const dbIcon = (sub as any).icon ? iconMap[(sub as any).icon] : null;
                                 const subMeta = subCategoryMetaAdmin[sub.category];
-                                const SubIcon = subMeta?.icon || BookOpen;
+                                const SubIcon = dbIcon || subMeta?.icon || BookOpen;
                                 const subColor = subMeta?.color || "text-primary";
                                 const subBg = subMeta?.bgColor || "bg-primary/10";
                                 return (
