@@ -1262,12 +1262,24 @@ export function AdminMarketplaceManager() {
       </Dialog>
       {/* Create Category Dialog */}
       <Dialog open={h.showCategoryDialog} onOpenChange={h.setShowCategoryDialog}>
-        <DialogContent className="rounded-2xl max-w-sm">
+        <DialogContent className="rounded-2xl max-w-md">
           <DialogHeader>
             <DialogTitle>Создать категорию</DialogTitle>
-            <DialogDescription>Введите название новой категории для группировки курсов</DialogDescription>
+            <DialogDescription>Выберите тип программы, введите название и иконку</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Тип программы</Label>
+              <Select value={h.newCategoryParentType} onValueChange={h.setNewCategoryParentType}>
+                <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Повышение квалификации">Повышение квалификации</SelectItem>
+                  <SelectItem value="Профессиональная переподготовка">Профессиональная переподготовка</SelectItem>
+                  <SelectItem value="Охрана труда / Пожарная безопасность">Охрана труда / Пожарная безопасность</SelectItem>
+                  <SelectItem value="Рабочие профессии">Рабочие профессии</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-2">
               <Label>Название категории</Label>
               <Input
@@ -1277,6 +1289,27 @@ export function AdminMarketplaceManager() {
                 className="rounded-xl"
                 autoFocus
               />
+            </div>
+            <div className="space-y-2">
+              <Label>Иконка</Label>
+              <div className="grid grid-cols-6 gap-2">
+                {ICON_OPTIONS.map(opt => {
+                  const IconComp = opt.icon;
+                  const selected = h.newCategoryIcon === opt.name;
+                  return (
+                    <button
+                      key={opt.name}
+                      type="button"
+                      className={`flex flex-col items-center gap-1 p-2 rounded-lg border transition-colors ${selected ? 'border-primary bg-primary/10' : 'border-border hover:bg-secondary/50'}`}
+                      onClick={() => h.setNewCategoryIcon(selected ? null : opt.name)}
+                      title={opt.label}
+                    >
+                      <IconComp className="w-5 h-5" />
+                      <span className="text-[9px] text-muted-foreground leading-tight">{opt.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
           <DialogFooter>
