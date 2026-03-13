@@ -1010,11 +1010,7 @@ function renderGroupedCourses(
                                         {sub.courses.length === 0 ? (
                                           <p className="text-xs text-muted-foreground py-2 italic">Курсы ещё не добавлены</p>
                                         ) : (
-                                          <Table>
-                                            <TableBody>
-                                              {sub.courses.map((item) => renderCourseRow(item, h, navigate, handleBulkGenerate, validatedCourses, handleValidateCourse, validatingId))}
-                                            </TableBody>
-                                          </Table>
+                                          {renderGroupedCourses(sub.courses, h, navigate, handleBulkGenerate, validatedCourses, handleValidateCourse, validatingId)}
                                         )}
                                       </CollapsibleContent>
                                     </Collapsible>
