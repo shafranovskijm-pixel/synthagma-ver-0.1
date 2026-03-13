@@ -419,14 +419,16 @@ export function AdminMarketplaceManager() {
         } else {
           const textLessons = lessons.filter(l => l.type === "text" || l.type === "practice");
           const testLessons = lessons.filter(l => l.type === "test");
-          if (textLessons.length === 0) issues.push("Нет учебных уроков");
-          if (testLessons.length === 0) issues.push("Нет тестов");
-          if (lessons.length < 3) issues.push("Мало уроков");
-          const emptyLessons = textLessons.filter(l => !l.content || l.content === "[]" || l.content === "" || l.content.length < 50);
+          if (valRules.requireText && textLessons.length === 0) issues.push("Нет учебных уроков");
+          if (valRules.requireTest && testLessons.length === 0) issues.push("Нет тестов");
+          if (lessons.length < valRules.minLessons) issues.push("Мало уроков");
+          const emptyLessons = textLessons.filter(l => !l.content || l.content === "[]" || l.content === "" || l.content.length < valRules.minContentLength);
           if (emptyLessons.length) issues.push(`${emptyLessons.length} без контента`);
-          const titles = lessons.map(l => l.title);
-          const dupes = titles.filter((t, i) => titles.indexOf(t) !== i);
-          if (dupes.length) issues.push("Дубликаты");
+          if (valRules.checkDuplicateTitles) {
+            const titles = lessons.map(l => l.title);
+            const dupes = titles.filter((t, i) => titles.indexOf(t) !== i);
+            if (dupes.length) issues.push("Дубликаты");
+          }
           const testIds = testLessons.map(l => l.id);
           if (testIds.length) {
             const { data: questions } = await supabase
