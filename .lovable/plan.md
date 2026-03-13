@@ -1,48 +1,18 @@
 
 
-## План: Распределить курсы по типам программ на основе `parent_type`
+## Plan: Auto-fix after "Проверить все"
 
-### Проблема
-В магазине организации и студента все подкатегории и курсы попадают в «Повышение квалификации», потому что `parent_type` не запрашивается из БД и не используется при группировке.
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-### Решение
+### Changes
 
-Одинаковое исправление в двух файлах: **`src/hooks/useCourseStoreManager.ts`** и **`src/components/student/StudentCourseStore.tsx`**:
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-1. **Добавить `parent_type` в select и state**:
-   - `select("id, name, order_index, parent_type")` вместо `select("id, name, order_index")`
-   - Обновить тип state: добавить `parent_type: string | null`
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-2. **Переписать `groupedCatalog`** — распределить subGroups по `parent_type`:
-   ```typescript
-   const programTypes = [
-     { category: "Повышение квалификации", badge: "ДПО" },
-     { category: "Профессиональная переподготовка", badge: "ДПО" },
-     { category: "Охрана труда / Пожарная безопасность", badge: "ОТ / ПБ" },
-     { category: "Рабочие профессии", badge: "ПО" },
-   ];
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-   return programTypes.map(pt => {
-     const ptCategories = dbCategories.filter(
-       cat => (cat.parent_type || "Повышение квалификации") === pt.category
-     );
-     const subGroups = ptCategories.map(cat => ({
-       category: cat.name,
-       courses: byCatId.get(cat.id) || [],
-     }));
-     const courses = subGroups.flatMap(g => g.courses);
-     // Некатегоризированные — в «Повышение квалификации»
-     if (pt.category === "Повышение квалификации") {
-       courses.push(...uncategorized);
-     }
-     return { ...pt, courses, subGroups };
-   });
-   ```
-
-### Файлы
-
-| Файл | Изменение |
-|---|---|
-| `src/hooks/useCourseStoreManager.ts` | Добавить `parent_type` в fetch и group по parent_type |
-| `src/components/student/StudentCourseStore.tsx` | То же самое |
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 

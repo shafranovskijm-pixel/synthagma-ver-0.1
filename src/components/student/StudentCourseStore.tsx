@@ -99,7 +99,7 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
   const [catalog, setCatalog] = useState<MarketplaceCourse[]>([]);
   const [orders, setOrders] = useState<MarketplaceOrder[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [dbCategories, setDbCategories] = useState<{ id: string; name: string; order_index: number | null }[]>([]);
+  const [dbCategories, setDbCategories] = useState<{ id: string; name: string; order_index: number | null; parent_type: string | null }[]>([]);
 
   // Preview
   const [previewCourse, setPreviewCourse] = useState<MarketplaceCourse | null>(null);
@@ -119,7 +119,7 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
   const fetchDbCategories = async () => {
     const { data, error } = await supabase
       .from("course_categories")
-      .select("id, name, order_index")
+      .select("id, name, order_index, parent_type")
       .eq("organization_id", MARKETPLACE_ORG_ID)
       .order("order_index", { ascending: true });
     if (error) { console.error("Error fetching categories:", error); return; }
@@ -276,19 +276,27 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
       }
     }
 
-    const subGroups = dbCategories.map(cat => ({
-      category: cat.name,
-      courses: byCatId.get(cat.id) || [],
-    }));
-
-    const allCategorizedCourses = subGroups.flatMap(g => g.courses);
-
-    return [
-      { category: "Повышение квалификации", badge: "ДПО", courses: [...allCategorizedCourses, ...uncategorized], subGroups },
-      { category: "Профессиональная переподготовка", badge: "ДПО", courses: [] as MarketplaceCourse[] },
-      { category: "Охрана труда / Пожарная безопасность", badge: "ОТ / ПБ", courses: [] as MarketplaceCourse[] },
-      { category: "Рабочие профессии", badge: "ПО", courses: [] as MarketplaceCourse[] },
+    const programTypes = [
+      { category: "Повышение квалификации", badge: "ДПО" },
+      { category: "Профессиональная переподготовка", badge: "ДПО" },
+      { category: "Охрана труда / Пожарная безопасность", badge: "ОТ / ПБ" },
+      { category: "Рабочие профессии", badge: "ПО" },
     ];
+
+    return programTypes.map(pt => {
+      const ptCategories = dbCategories.filter(
+        cat => (cat.parent_type || "Повышение квалификации") === pt.category
+      );
+      const subGroups = ptCategories.map(cat => ({
+        category: cat.name,
+        courses: byCatId.get(cat.id) || [],
+      }));
+      const courses = subGroups.flatMap(g => g.courses);
+      if (pt.category === "Повышение квалификации") {
+        courses.push(...uncategorized);
+      }
+      return { ...pt, courses, subGroups };
+    });
   }, [filteredCatalog, dbCategories]);
 
   const programTypeMetaStudent: Record<string, { icon: React.ElementType; color: string; bgColor: string }> = {
