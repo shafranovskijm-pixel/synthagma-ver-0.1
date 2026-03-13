@@ -1,9 +1,9 @@
 import {
-  FileText, Video, Image, FileQuestion, Headphones, Presentation,
+  FileText, Video, Image, FileQuestion, Headphones, Presentation, ClipboardList,
 } from "lucide-react";
 import type { ContentBlock } from "@/components/course-builder/BlockEditor";
 
-export type LessonType = "text" | "video" | "image" | "test" | "audio" | "lesson" | "slider";
+export type LessonType = "text" | "video" | "image" | "test" | "audio" | "lesson" | "slider" | "practice";
 
 export interface TestQuestionLocal {
   id: string;
