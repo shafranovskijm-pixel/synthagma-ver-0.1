@@ -586,6 +586,16 @@ export async function callAIRoundRobin(
     });
   }
 
+  if (slots.length > 2) {
+    channels.push({
+      name: `GigaChat slot-2 (${gcModel})`,
+      call: async (msgs, mt) => {
+        const text = await useSlotDirect(2, msgs, gcModel, mt);
+        return { text, model: `${gcModel} (slot-2)` };
+      },
+    });
+  }
+
   // Deterministic routing: use taskIndex if provided, otherwise global counter
   const startIdx = taskIndex !== undefined ? (taskIndex % channels.length) : (rrCounter++ % channels.length);
   const taskLabel = taskIndex !== undefined ? `task#${taskIndex}` : `rr#${rrCounter - 1}`;
