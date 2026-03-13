@@ -2549,7 +2549,7 @@ export function markdownToBlocks(md: string): ContentBlock[] {
 
     // Regular paragraph — collapse consecutive plain lines
     const paraLines: string[] = [];
-    while (i < lines.length && lines[i].trim() && !/^#{1,2}\s/.test(lines[i]) && !/^>\s?/.test(lines[i]) && !/^[-*]\s/.test(lines[i]) && !/^\d+\.\s/.test(lines[i]) && !/^[-*_]{3,}\s*$/.test(lines[i])) {
+    while (i < lines.length && lines[i].trim() && !/^#{1,2}\s/.test(lines[i]) && !/^>\s?/.test(lines[i]) && !/^[-*]\s/.test(lines[i]) && !/^\d+\.\s/.test(lines[i]) && !/^[-*_]{3,}\s*$/.test(lines[i]) && !/^:::(info|warning|tip|danger|highlight|accordion)/i.test(lines[i]) && !/^:::\s*$/.test(lines[i])) {
       paraLines.push(lines[i]);
       i++;
     }
