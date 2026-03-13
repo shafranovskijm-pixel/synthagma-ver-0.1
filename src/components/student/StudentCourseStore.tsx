@@ -391,25 +391,33 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
           {filteredCatalog.map((item) => renderCourseCard(item))}
         </div>
       ) : (
-        <div className="space-y-3">
-          {groupedCatalog.map((group) => (
-            <Collapsible key={group.category}>
-              <div className="rounded-xl border bg-card">
-                <CollapsibleTrigger className="flex items-center justify-between w-full px-4 py-3 hover:bg-secondary/30 transition-colors rounded-xl group">
-                  <div className="flex items-center gap-3">
-                    <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
-                    <span className="font-semibold text-sm">{group.category}</span>
-                  </div>
-                  <Badge variant="secondary" className="shrink-0">{group.courses.length}</Badge>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4 pt-1">
-                    {group.courses.map((item) => renderCourseCard(item))}
-                  </div>
-                </CollapsibleContent>
-              </div>
-            </Collapsible>
-          ))}
+        <div className="space-y-4">
+          {groupedCatalog.map((group) => {
+            const meta = getCategoryMeta(group.category);
+            const IconComp = meta.icon;
+            return (
+              <Collapsible key={group.category}>
+                <Card className="overflow-hidden">
+                  <CollapsibleTrigger className="flex items-center gap-4 w-full px-5 py-4 hover:bg-secondary/30 transition-colors group text-left">
+                    <div className={`w-10 h-10 rounded-xl ${meta.bgColor} flex items-center justify-center shrink-0`}>
+                      <IconComp className={`w-5 h-5 ${meta.color}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="font-semibold text-sm block">{group.category}</span>
+                      <span className="text-xs text-muted-foreground">{group.courses.length} {group.courses.length === 1 ? 'курс' : group.courses.length < 5 ? 'курса' : 'курсов'}</span>
+                    </div>
+                    <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90 shrink-0" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <Separator />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+                      {group.courses.map((item) => renderCourseCard(item))}
+                    </div>
+                  </CollapsibleContent>
+                </Card>
+              </Collapsible>
+            );
+          })}
         </div>
       )}
 
