@@ -637,6 +637,7 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
     switch (status) {
       case "generating_text":
       case "generating_image":
+      case "generating_audio":
       case "solving_test":
         return <Loader2 className="w-4 h-4 animate-spin text-primary" />;
       case "done":
