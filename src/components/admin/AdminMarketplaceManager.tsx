@@ -768,7 +768,6 @@ export function AdminMarketplaceManager() {
             }
           });
           await Promise.allSettled(enrichPromises);
-          toast.loading(`Обогащаю медиа: ${Math.min(ei + CONCURRENCY, lessonsNeedingMedia.length)}/${lessonsNeedingMedia.length}...`, { id: toastId });
         }
         if (enrichedCount > 0) {
           console.log(`[Auto-fix] Enriched ${enrichedCount} images across ${lessonsNeedingMedia.length} lessons`);
