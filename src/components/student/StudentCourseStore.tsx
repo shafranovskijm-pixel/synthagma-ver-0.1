@@ -3,7 +3,8 @@ import {
   Store, Search, Clock, ShoppingCart, Loader2, CheckCircle2,
   Building2, Send, FileText, Video, ClipboardList, Presentation,
   Headphones, BookOpen, Eye, Gift, Zap, Award,
-  Factory, Flame, Droplets, HardHat, Leaf, ChevronDown, Shield,
+  Factory, Flame, Droplets, HardHat, Leaf, ChevronDown,
+  GraduationCap, ShieldCheck, Wrench,
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
