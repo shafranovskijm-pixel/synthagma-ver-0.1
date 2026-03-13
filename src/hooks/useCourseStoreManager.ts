@@ -458,20 +458,27 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
       }
     }
 
-    // Build sub-groups from DB categories (respecting order_index)
-    const subGroups: { category: string; courses: MarketplaceCourse[] }[] = dbCategories.map(cat => ({
-      category: cat.name,
-      courses: byCatId.get(cat.id) || [],
-    }));
-
-    const allCategorizedCourses = subGroups.flatMap(g => g.courses);
-
-    return [
-      { category: "Повышение квалификации", badge: "ДПО", courses: [...allCategorizedCourses, ...uncategorized], subGroups },
-      { category: "Профессиональная переподготовка", badge: "ДПО", courses: [] },
-      { category: "Охрана труда / Пожарная безопасность", badge: "ОТ / ПБ", courses: [] },
-      { category: "Рабочие профессии", badge: "ПО", courses: [] },
+    const programTypes = [
+      { category: "Повышение квалификации", badge: "ДПО" },
+      { category: "Профессиональная переподготовка", badge: "ДПО" },
+      { category: "Охрана труда / Пожарная безопасность", badge: "ОТ / ПБ" },
+      { category: "Рабочие профессии", badge: "ПО" },
     ];
+
+    return programTypes.map(pt => {
+      const ptCategories = dbCategories.filter(
+        cat => (cat.parent_type || "Повышение квалификации") === pt.category
+      );
+      const subGroups = ptCategories.map(cat => ({
+        category: cat.name,
+        courses: byCatId.get(cat.id) || [],
+      }));
+      const courses = subGroups.flatMap(g => g.courses);
+      if (pt.category === "Повышение квалификации") {
+        courses.push(...uncategorized);
+      }
+      return { ...pt, courses, subGroups };
+    });
   })();
 
   return {

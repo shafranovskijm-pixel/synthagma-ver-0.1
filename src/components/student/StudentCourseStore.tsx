@@ -276,19 +276,27 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
       }
     }
 
-    const subGroups = dbCategories.map(cat => ({
-      category: cat.name,
-      courses: byCatId.get(cat.id) || [],
-    }));
-
-    const allCategorizedCourses = subGroups.flatMap(g => g.courses);
-
-    return [
-      { category: "Повышение квалификации", badge: "ДПО", courses: [...allCategorizedCourses, ...uncategorized], subGroups },
-      { category: "Профессиональная переподготовка", badge: "ДПО", courses: [] as MarketplaceCourse[] },
-      { category: "Охрана труда / Пожарная безопасность", badge: "ОТ / ПБ", courses: [] as MarketplaceCourse[] },
-      { category: "Рабочие профессии", badge: "ПО", courses: [] as MarketplaceCourse[] },
+    const programTypes = [
+      { category: "Повышение квалификации", badge: "ДПО" },
+      { category: "Профессиональная переподготовка", badge: "ДПО" },
+      { category: "Охрана труда / Пожарная безопасность", badge: "ОТ / ПБ" },
+      { category: "Рабочие профессии", badge: "ПО" },
     ];
+
+    return programTypes.map(pt => {
+      const ptCategories = dbCategories.filter(
+        cat => (cat.parent_type || "Повышение квалификации") === pt.category
+      );
+      const subGroups = ptCategories.map(cat => ({
+        category: cat.name,
+        courses: byCatId.get(cat.id) || [],
+      }));
+      const courses = subGroups.flatMap(g => g.courses);
+      if (pt.category === "Повышение квалификации") {
+        courses.push(...uncategorized);
+      }
+      return { ...pt, courses, subGroups };
+    });
   }, [filteredCatalog, dbCategories]);
 
   const programTypeMetaStudent: Record<string, { icon: React.ElementType; color: string; bgColor: string }> = {
