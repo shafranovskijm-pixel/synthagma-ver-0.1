@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Upload, FileText, Check, X } from "lucide-react";
+import { Loader2, Upload, FileText, Check, X, AlertTriangle } from "lucide-react";
 import { MARKETPLACE_ORG_ID } from "@/constants/marketplace";
 
 interface ProgramEntry {
@@ -17,9 +17,115 @@ interface ProgramEntry {
   category: string;
 }
 
+interface ImportResult {
+  created: number;
+  skipped: number;
+  errors: { title: string; reason: string }[];
+}
+
 interface ProgramListImporterProps {
   onComplete: () => void;
 }
+
+/** Normalize title for dedup comparison */
+function normalizeTitle(t: string): string {
+  return t.toLowerCase().replace(/[«»"'().,;:!?–—-]/g, "").replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Map category name to the correct parent_type used by programTypes grouping.
+ * Must match the keys in useAdminMarketplace.ts and useCourseStoreManager.ts:
+ *   "Повышение квалификации", "Профессиональная переподготовка",
+ *   "Охрана труда / Пожарная безопасность", "Рабочие профессии"
+ */
+function getParentType(categoryName: string, hours?: number): string {
+  const lower = categoryName.toLowerCase();
+  if (lower === "рабочие профессии") return "Рабочие профессии";
+  if (lower === "охрана труда" || lower === "пожарная безопасность")
+    return "Охрана труда / Пожарная безопасность";
+  // 250+ hours → Профессиональная переподготовка
+  if (hours && hours >= 250) return "Профессиональная переподготовка";
+  return "Повышение квалификации";
+}
+
+const knownPrograms: ProgramEntry[] = [
+  // === Охрана труда ===
+  { title: "Программа обучения по общим вопросам охраны труда и функционирования системы управления охраной труда", hours: "16", category: "Охрана труда" },
+  { title: "Программа обучения безопасным методам и приемам выполнения работ при воздействии вредных и (или) опасных производственных факторов", hours: "16", category: "Охрана труда" },
+  { title: "Программа обучения безопасным методам и приемам выполнения работ повышенной опасности", hours: "16", category: "Охрана труда" },
+  { title: "Обеспечение работников средствами индивидуальной защиты", hours: "16", category: "Охрана труда" },
+  { title: "Оказание первой помощи", hours: "16", category: "Охрана труда" },
+  { title: "Управление профессиональными рисками в системе управления охраной труда", hours: "24", category: "Охрана труда" },
+  { title: "Охрана труда при выполнении работ на высоте 1 группа безопасности", hours: "16", category: "Охрана труда" },
+  { title: "Охрана труда при выполнении работ на высоте 2 группа безопасности", hours: "24", category: "Охрана труда" },
+  { title: "Охрана труда при выполнении работ на высоте 3 группа безопасности", hours: "24", category: "Охрана труда" },
+  { title: "Безопасные методы и приемы выполнения работ в ограниченных и замкнутых пространствах 1 группа", hours: "16", category: "Охрана труда" },
+  { title: "Безопасные методы и приемы выполнения работ в ограниченных и замкнутых пространствах 2 группа", hours: "16", category: "Охрана труда" },
+  { title: "Безопасные методы и приемы выполнения работ в ограниченных и замкнутых пространствах 3 группа", hours: "24", category: "Охрана труда" },
+  // === Пожарная безопасность ===
+  { title: "Обучение мерам пожарной безопасности лиц, ответственных за проведение противопожарного инструктажа", hours: "36", category: "Пожарная безопасность" },
+  { title: "Обучение мерам пожарной безопасности руководителей организаций, лиц, назначаемых ответственными за обеспечение пожарной безопасности (50+ человек)", hours: "16", category: "Пожарная безопасность" },
+  { title: "Обучение мерам пожарной безопасности руководителей эксплуатирующих и управляющих организаций", hours: "36", category: "Пожарная безопасность" },
+  { title: "Обучение мерам пожарной безопасности ответственных должностных лиц, главных специалистов технического и производственного профиля", hours: "36", category: "Пожарная безопасность" },
+  { title: "Специалист по пожарной профилактике", hours: "256", category: "Пожарная безопасность" },
+  // === Экология → Экологическая безопасность ===
+  { title: "Обеспечение экологической безопасности в области обращения с отходами I-IV классов опасности", hours: "40", category: "Экологическая безопасность" },
+  { title: "Обеспечение экологической безопасности руководителями и специалистами общехозяйственных систем управления", hours: "72", category: "Экологическая безопасность" },
+  { title: "Профессиональная подготовка лиц допущенных к обращению с отходами I-IV классов опасности", hours: "116", category: "Экологическая безопасность" },
+  // === Разное ===
+  { title: "Контроль скважин. Управление скважиной при газонефтеводопроявлениях", hours: "24", category: "Разное" },
+  { title: "Безопасная эксплуатация сосудов, работающих под давлением", hours: "40", category: "Разное" },
+  { title: "Анализ газовоздушной среды на санитарно-допустимые нормы, довзрывные (взрывные) концентрации горючих газов и паров", hours: "16", category: "Разное" },
+  // === Рабочие профессии ===
+  { title: "Антикоррозийщик", hours: "320", category: "Рабочие профессии" },
+  { title: "Бетонщик", hours: "160", category: "Рабочие профессии" },
+  { title: "Вальщик леса", hours: "320", category: "Рабочие профессии" },
+  { title: "Вышкомонтажник", hours: "320", category: "Рабочие профессии" },
+  { title: "Изолировщик", hours: "160", category: "Рабочие профессии" },
+  { title: "Изолировщик на термоизоляции", hours: "160", category: "Рабочие профессии" },
+  { title: "Изолировщик-пленочник", hours: "160", category: "Рабочие профессии" },
+  { title: "Каменщик", hours: "160", category: "Рабочие профессии" },
+  { title: "Контролер лома и отходов металла", hours: "160", category: "Рабочие профессии" },
+  { title: "Кровельщик по рулонным кровлям и по кровлям из штучных материалов", hours: "160", category: "Рабочие профессии" },
+  { title: "Маляр строительный", hours: "160", category: "Рабочие профессии" },
+  { title: "Машинист компрессорных установок", hours: "320", category: "Рабочие профессии" },
+  { title: "Машинист крана (крановщик) крана-манипулятора", hours: "320", category: "Рабочие профессии" },
+  { title: "Машинист крана автомобильного", hours: "320", category: "Рабочие профессии" },
+  { title: "Машинист насосных установок", hours: "320", category: "Рабочие профессии" },
+  { title: "Машинист технологических насосов", hours: "320", category: "Рабочие профессии" },
+  { title: "Монтажник наружных трубопроводов", hours: "320", category: "Рабочие профессии" },
+  { title: "Монтажник по монтажу стальных и ж/б конструкций", hours: "320", category: "Рабочие профессии" },
+  { title: "Монтажник технологических трубопроводов", hours: "320", category: "Рабочие профессии" },
+  { title: "Монтажник технологического оборудования и связанных с ним конструкций", hours: "320", category: "Рабочие профессии" },
+  { title: "Облицовщик (плиточник или мозаичник)", hours: "160", category: "Рабочие профессии" },
+  { title: "Оператор котельной", hours: "320", category: "Рабочие профессии" },
+  { title: "Оператор технологических установок", hours: "320", category: "Рабочие профессии" },
+  { title: "Оператор товарный", hours: "320", category: "Рабочие профессии" },
+  { title: "Пескоструйщик", hours: "160", category: "Рабочие профессии" },
+  { title: "Плотник", hours: "160", category: "Рабочие профессии" },
+  { title: "Помощник бурильщика капитального ремонта скважин", hours: "320", category: "Рабочие профессии" },
+  { title: "Помощник бурильщика эксплуатационного и разведочного бурения скважин на нефть и газ (первый)", hours: "320", category: "Рабочие профессии" },
+  { title: "Помощник бурильщика эксплуатационного и разведочного бурения скважин на нефть и газ (второй)", hours: "320", category: "Рабочие профессии" },
+  { title: "Прессовщик лома и отходов металла", hours: "160", category: "Рабочие профессии" },
+  { title: "Раскряжевщик", hours: "160", category: "Рабочие профессии" },
+  { title: "Слесарь по контрольно-измерительным приборам и автоматике", hours: "320", category: "Рабочие профессии" },
+  { title: "Слесарь по обслуживанию буровых", hours: "320", category: "Рабочие профессии" },
+  { title: "Слесарь по ремонту автомобилей", hours: "320", category: "Рабочие профессии" },
+  { title: "Слесарь по ремонту технологических установок", hours: "320", category: "Рабочие профессии" },
+  { title: "Слесарь по сборке металлоконструкций", hours: "320", category: "Рабочие профессии" },
+  { title: "Слесарь строительный", hours: "320", category: "Рабочие профессии" },
+  { title: "Слесарь-ремонтник", hours: "320", category: "Рабочие профессии" },
+  { title: "Слесарь-сантехник", hours: "320", category: "Рабочие профессии" },
+  { title: "Стропальщик", hours: "160", category: "Рабочие профессии" },
+  { title: "Чистильщик", hours: "320", category: "Рабочие профессии" },
+  { title: "Штукатур", hours: "160", category: "Рабочие профессии" },
+  { title: "Электромонтажник по силовым сетям и электрооборудованию", hours: "320", category: "Рабочие профессии" },
+  { title: "Электромонтажник-наладчик", hours: "320", category: "Рабочие профессии" },
+  { title: "Электромонтер охранно-пожарной сигнализации", hours: "320", category: "Рабочие профессии" },
+  { title: "Электромонтер по ремонту и монтажу кабельных линий", hours: "320", category: "Рабочие профессии" },
+  { title: "Электромонтер по ремонту и обслуживанию электрооборудования", hours: "320", category: "Рабочие профессии" },
+  { title: "Электрослесарь по обслуживанию и ремонту оборудования", hours: "320", category: "Рабочие профессии" },
+];
 
 export function ProgramListImporter({ onComplete }: ProgramListImporterProps) {
   const [programs, setPrograms] = useState<ProgramEntry[]>([]);
@@ -27,6 +133,7 @@ export function ProgramListImporter({ onComplete }: ProgramListImporterProps) {
   const [isCreating, setIsCreating] = useState(false);
   const [defaultPriceStudent, setDefaultPriceStudent] = useState("5000");
   const [defaultPriceOrg, setDefaultPriceOrg] = useState("3000");
+  const [lastResult, setLastResult] = useState<ImportResult | null>(null);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -37,14 +144,12 @@ export function ProgramListImporter({ onComplete }: ProgramListImporterProps) {
       const formData = new FormData();
       formData.append("file", file);
 
-      // Use import-course edge function to parse DOCX
       const { data, error } = await safeInvoke<any>("import-course", {
         body: formData,
       });
 
       if (error) throw error;
 
-      // Parse extracted text to find program entries
       const text = data?.text || data?.content || "";
       const parsed = parsePrograms(text);
       setPrograms(parsed);
@@ -63,104 +168,17 @@ export function ProgramListImporter({ onComplete }: ProgramListImporterProps) {
   };
 
   const parsePrograms = (text: string): ProgramEntry[] => {
+    if (text.length < 50) return [...knownPrograms];
+
     const entries: ProgramEntry[] = [];
-    const lines = text.split("\n").map((l: string) => l.trim()).filter(Boolean);
-
-    // Hardcoded list from the parsed DOCX (most reliable approach)
-    const knownPrograms: ProgramEntry[] = [
-      // === Охрана труда ===
-      { title: "Программа обучения по общим вопросам охраны труда и функционирования системы управления охраной труда", hours: "16", category: "Охрана труда" },
-      { title: "Программа обучения безопасным методам и приемам выполнения работ при воздействии вредных и (или) опасных производственных факторов", hours: "16", category: "Охрана труда" },
-      { title: "Программа обучения безопасным методам и приемам выполнения работ повышенной опасности", hours: "16", category: "Охрана труда" },
-      { title: "Обеспечение работников средствами индивидуальной защиты", hours: "16", category: "Охрана труда" },
-      { title: "Оказание первой помощи", hours: "16", category: "Охрана труда" },
-      { title: "Управление профессиональными рисками в системе управления охраной труда", hours: "24", category: "Охрана труда" },
-      { title: "Охрана труда при выполнении работ на высоте 1 группа безопасности", hours: "16", category: "Охрана труда" },
-      { title: "Охрана труда при выполнении работ на высоте 2 группа безопасности", hours: "24", category: "Охрана труда" },
-      { title: "Охрана труда при выполнении работ на высоте 3 группа безопасности", hours: "24", category: "Охрана труда" },
-      { title: "Безопасные методы и приемы выполнения работ в ограниченных и замкнутых пространствах 1 группа", hours: "16", category: "Охрана труда" },
-      { title: "Безопасные методы и приемы выполнения работ в ограниченных и замкнутых пространствах 2 группа", hours: "16", category: "Охрана труда" },
-      { title: "Безопасные методы и приемы выполнения работ в ограниченных и замкнутых пространствах 3 группа", hours: "24", category: "Охрана труда" },
-      // === Пожарная безопасность ===
-      { title: "Обучение мерам пожарной безопасности лиц, ответственных за проведение противопожарного инструктажа", hours: "36", category: "Пожарная безопасность" },
-      { title: "Обучение мерам пожарной безопасности руководителей организаций, лиц, назначаемых ответственными за обеспечение пожарной безопасности (50+ человек)", hours: "16", category: "Пожарная безопасность" },
-      { title: "Обучение мерам пожарной безопасности руководителей эксплуатирующих и управляющих организаций", hours: "36", category: "Пожарная безопасность" },
-      { title: "Обучение мерам пожарной безопасности ответственных должностных лиц, главных специалистов технического и производственного профиля", hours: "36", category: "Пожарная безопасность" },
-      { title: "Специалист по пожарной профилактике", hours: "256", category: "Пожарная безопасность" },
-      // === Экология → Экологическая безопасность ===
-      { title: "Обеспечение экологической безопасности в области обращения с отходами I-IV классов опасности", hours: "40", category: "Экологическая безопасность" },
-      { title: "Обеспечение экологической безопасности руководителями и специалистами общехозяйственных систем управления", hours: "72", category: "Экологическая безопасность" },
-      { title: "Профессиональная подготовка лиц допущенных к обращению с отходами I-IV классов опасности", hours: "116", category: "Экологическая безопасность" },
-      // === Разное ===
-      { title: "Контроль скважин. Управление скважиной при газонефтеводопроявлениях", hours: "24", category: "Разное" },
-      { title: "Безопасная эксплуатация сосудов, работающих под давлением", hours: "40", category: "Разное" },
-      { title: "Анализ газовоздушной среды на санитарно-допустимые нормы, довзрывные (взрывные) концентрации горючих газов и паров", hours: "16", category: "Разное" },
-      // === Рабочие профессии ===
-      { title: "Антикоррозийщик", hours: "320", category: "Рабочие профессии" },
-      { title: "Бетонщик", hours: "160", category: "Рабочие профессии" },
-      { title: "Вальщик леса", hours: "320", category: "Рабочие профессии" },
-      { title: "Вышкомонтажник", hours: "320", category: "Рабочие профессии" },
-      { title: "Изолировщик", hours: "160", category: "Рабочие профессии" },
-      { title: "Изолировщик на термоизоляции", hours: "160", category: "Рабочие профессии" },
-      { title: "Изолировщик-пленочник", hours: "160", category: "Рабочие профессии" },
-      { title: "Каменщик", hours: "160", category: "Рабочие профессии" },
-      { title: "Контролер лома и отходов металла", hours: "160", category: "Рабочие профессии" },
-      { title: "Кровельщик по рулонным кровлям и по кровлям из штучных материалов", hours: "160", category: "Рабочие профессии" },
-      { title: "Маляр строительный", hours: "160", category: "Рабочие профессии" },
-      { title: "Машинист компрессорных установок", hours: "320", category: "Рабочие профессии" },
-      { title: "Машинист крана (крановщик) крана-манипулятора", hours: "320", category: "Рабочие профессии" },
-      { title: "Машинист крана автомобильного", hours: "320", category: "Рабочие профессии" },
-      { title: "Машинист насосных установок", hours: "320", category: "Рабочие профессии" },
-      { title: "Машинист технологических насосов", hours: "320", category: "Рабочие профессии" },
-      { title: "Монтажник наружных трубопроводов", hours: "320", category: "Рабочие профессии" },
-      { title: "Монтажник по монтажу стальных и ж/б конструкций", hours: "320", category: "Рабочие профессии" },
-      { title: "Монтажник технологических трубопроводов", hours: "320", category: "Рабочие профессии" },
-      { title: "Монтажник технологического оборудования и связанных с ним конструкций", hours: "320", category: "Рабочие профессии" },
-      { title: "Облицовщик (плиточник или мозаичник)", hours: "160", category: "Рабочие профессии" },
-      { title: "Оператор котельной", hours: "320", category: "Рабочие профессии" },
-      { title: "Оператор технологических установок", hours: "320", category: "Рабочие профессии" },
-      { title: "Оператор товарный", hours: "320", category: "Рабочие профессии" },
-      { title: "Пескоструйщик", hours: "160", category: "Рабочие профессии" },
-      { title: "Плотник", hours: "160", category: "Рабочие профессии" },
-      { title: "Помощник бурильщика капитального ремонта скважин", hours: "320", category: "Рабочие профессии" },
-      { title: "Помощник бурильщика эксплуатационного и разведочного бурения скважин на нефть и газ (первый)", hours: "320", category: "Рабочие профессии" },
-      { title: "Помощник бурильщика эксплуатационного и разведочного бурения скважин на нефть и газ (второй)", hours: "320", category: "Рабочие профессии" },
-      { title: "Прессовщик лома и отходов металла", hours: "160", category: "Рабочие профессии" },
-      { title: "Раскряжевщик", hours: "160", category: "Рабочие профессии" },
-      { title: "Слесарь по контрольно-измерительным приборам и автоматике", hours: "320", category: "Рабочие профессии" },
-      { title: "Слесарь по обслуживанию буровых", hours: "320", category: "Рабочие профессии" },
-      { title: "Слесарь по ремонту автомобилей", hours: "320", category: "Рабочие профессии" },
-      { title: "Слесарь по ремонту технологических установок", hours: "320", category: "Рабочие профессии" },
-      { title: "Слесарь по сборке металлоконструкций", hours: "320", category: "Рабочие профессии" },
-      { title: "Слесарь строительный", hours: "320", category: "Рабочие профессии" },
-      { title: "Слесарь-ремонтник", hours: "320", category: "Рабочие профессии" },
-      { title: "Слесарь-сантехник", hours: "320", category: "Рабочие профессии" },
-      { title: "Стропальщик", hours: "160", category: "Рабочие профессии" },
-      { title: "Чистильщик", hours: "320", category: "Рабочие профессии" },
-      { title: "Штукатур", hours: "160", category: "Рабочие профессии" },
-      { title: "Электромонтажник по силовым сетям и электрооборудованию", hours: "320", category: "Рабочие профессии" },
-      { title: "Электромонтажник-наладчик", hours: "320", category: "Рабочие профессии" },
-      { title: "Электромонтер охранно-пожарной сигнализации", hours: "320", category: "Рабочие профессии" },
-      { title: "Электромонтер по ремонту и монтажу кабельных линий", hours: "320", category: "Рабочие профессии" },
-      { title: "Электромонтер по ремонту и обслуживанию электрооборудования", hours: "320", category: "Рабочие профессии" },
-      { title: "Электрослесарь по обслуживанию и ремонту оборудования", hours: "320", category: "Рабочие профессии" },
-    ];
-
-    // If we have text from the file, try to match, otherwise use known list
-    if (text.length < 50) {
-      return knownPrograms;
-    }
-
-    // Try to extract from parsed text
     for (const prog of knownPrograms) {
-      // Check if program title appears in the text (fuzzy)
       const words = prog.title.split(" ").slice(0, 3).join(" ").toLowerCase();
       if (text.toLowerCase().includes(words)) {
         entries.push(prog);
       }
     }
 
-    return entries.length > 0 ? entries : knownPrograms;
+    return entries.length > 0 ? entries : [...knownPrograms];
   };
 
   const handleRemoveProgram = (idx: number) => {
@@ -170,64 +188,108 @@ export function ProgramListImporter({ onComplete }: ProgramListImporterProps) {
   const handleCreateAll = async () => {
     if (programs.length === 0) return;
     setIsCreating(true);
+    setLastResult(null);
     const toastId = toast.loading(`Создаю ${programs.length} курсов...`, { duration: Infinity });
 
-    let created = 0;
-    let skipped = 0;
+    const result: ImportResult = { created: 0, skipped: 0, errors: [] };
 
     try {
-      // Fetch DB categories for marketplace org to auto-assign category_id
-      const { data: dbCats } = await supabase
+      // 1. Fetch existing categories
+      const { data: dbCats, error: catFetchErr } = await supabase
         .from("course_categories")
-        .select("id, name")
+        .select("id, name, parent_type")
         .eq("organization_id", MARKETPLACE_ORG_ID);
-      const catMap = new Map((dbCats || []).map(c => [c.name.toLowerCase(), c.id]));
 
-      // Auto-create missing categories used by programs
+      if (catFetchErr) {
+        throw new Error(`Не удалось загрузить категории: ${catFetchErr.message}`);
+      }
+
+      const catMap = new Map<string, string>();
+      for (const c of dbCats || []) {
+        catMap.set(c.name.toLowerCase(), c.id);
+      }
+
+      // 2. Auto-create missing categories with correct parent_type
       const neededCats = [...new Set(programs.map(p => p.category))];
       for (const catName of neededCats) {
         if (!catMap.has(catName.toLowerCase())) {
-          const parentType = catName === "Рабочие профессии" ? "Профессиональное обучение" : "Повышение квалификации";
-          const { data: newCat } = await supabase
+          const hours = Math.max(...programs.filter(p => p.category === catName).map(p => parseInt(p.hours) || 0));
+          const parentType = getParentType(catName, hours);
+
+          const { data: newCat, error: catErr } = await supabase
             .from("course_categories")
             .insert({
               organization_id: MARKETPLACE_ORG_ID,
               name: catName,
               parent_type: parentType,
               order_index: catMap.size + 1,
-            })
+            } as any)
             .select("id, name")
             .single();
+
+          if (catErr) {
+            console.error(`Failed to create category "${catName}":`, catErr);
+            result.errors.push({ title: `[Категория] ${catName}`, reason: catErr.message });
+            continue;
+          }
           if (newCat) {
             catMap.set(newCat.name.toLowerCase(), newCat.id);
           }
         }
       }
 
-      for (const prog of programs) {
-        // Check if course with similar title already exists
-        const { data: existing } = await supabase
-          .from("courses")
-          .select("id")
-          .eq("organization_id", MARKETPLACE_ORG_ID)
-          .ilike("title", `%${prog.title.slice(0, 30)}%`)
-          .limit(1);
+      // 3. Fetch ALL existing courses for this org for dedup
+      const { data: existingCourses } = await supabase
+        .from("courses")
+        .select("id, title")
+        .eq("organization_id", MARKETPLACE_ORG_ID);
 
-        if (existing && existing.length > 0) {
-          skipped++;
+      const existingNormalized = new Map<string, string>();
+      for (const c of existingCourses || []) {
+        existingNormalized.set(normalizeTitle(c.title), c.id);
+      }
+
+      // 4. Fetch existing marketplace entries to avoid duplicates
+      const { data: existingMkt } = await supabase
+        .from("marketplace_courses")
+        .select("course_id")
+        .eq("organization_id", MARKETPLACE_ORG_ID);
+
+      const mktCourseIds = new Set((existingMkt || []).map(m => m.course_id));
+
+      // 5. Create courses
+      for (const prog of programs) {
+        const norm = normalizeTitle(prog.title);
+        const existingId = existingNormalized.get(norm);
+
+        // Resolve category
+        const categoryId = catMap.get(prog.category.toLowerCase()) || null;
+
+        if (existingId) {
+          // Course exists — ensure it has marketplace entry & correct category
+          if (!mktCourseIds.has(existingId)) {
+            const { error: mktErr } = await supabase.from("marketplace_courses").insert({
+              course_id: existingId,
+              organization_id: MARKETPLACE_ORG_ID,
+              price_student: parseInt(defaultPriceStudent) || 5000,
+              price_organization: parseInt(defaultPriceOrg) || 3000,
+              description_short: prog.title,
+              is_active: true,
+              is_validated: false,
+            } as any);
+            if (mktErr) {
+              result.errors.push({ title: prog.title, reason: `Marketplace: ${mktErr.message}` });
+            }
+          }
+          // Update category_id if missing
+          if (categoryId) {
+            await supabase.from("courses").update({ category_id: categoryId }).eq("id", existingId);
+          }
+          result.skipped++;
           continue;
         }
 
-        // Try to match category by name (fuzzy: check if prog.category or title contains a DB category name)
-        let categoryId: string | null = null;
-        for (const [catName, catId] of catMap.entries()) {
-          if (prog.category.toLowerCase().includes(catName) || catName.includes(prog.category.toLowerCase())) {
-            categoryId = catId;
-            break;
-          }
-        }
-
-        // Create course
+        // Create new course
         const { data: course, error: courseErr } = await supabase
           .from("courses")
           .insert({
@@ -242,11 +304,12 @@ export function ProgramListImporter({ onComplete }: ProgramListImporterProps) {
 
         if (courseErr || !course) {
           console.error("Failed to create course:", prog.title, courseErr);
+          result.errors.push({ title: prog.title, reason: courseErr?.message || "Неизвестная ошибка" });
           continue;
         }
 
         // Create marketplace entry
-        await supabase.from("marketplace_courses").insert({
+        const { error: mktErr } = await supabase.from("marketplace_courses").insert({
           course_id: course.id,
           organization_id: MARKETPLACE_ORG_ID,
           price_student: parseInt(defaultPriceStudent) || 5000,
@@ -256,12 +319,31 @@ export function ProgramListImporter({ onComplete }: ProgramListImporterProps) {
           is_validated: false,
         } as any);
 
-        created++;
-        toast.loading(`Создано ${created}/${programs.length}...`, { id: toastId });
+        if (mktErr) {
+          console.error("Failed to create marketplace entry:", prog.title, mktErr);
+          result.errors.push({ title: prog.title, reason: `Marketplace: ${mktErr.message}` });
+          continue;
+        }
+
+        existingNormalized.set(norm, course.id);
+        mktCourseIds.add(course.id);
+        result.created++;
+        toast.loading(`Создано ${result.created}/${programs.length}...`, { id: toastId });
       }
 
       toast.dismiss(toastId);
-      toast.success(`Создано ${created} курсов${skipped > 0 ? `, пропущено ${skipped} (уже существуют)` : ""}`);
+      setLastResult(result);
+
+      const parts: string[] = [];
+      if (result.created > 0) parts.push(`создано ${result.created}`);
+      if (result.skipped > 0) parts.push(`пропущено ${result.skipped}`);
+      if (result.errors.length > 0) parts.push(`ошибок ${result.errors.length}`);
+
+      if (result.errors.length > 0) {
+        toast.warning(`Импорт завершён: ${parts.join(", ")}`);
+      } else {
+        toast.success(`Импорт завершён: ${parts.join(", ")}`);
+      }
       onComplete();
     } catch (err: any) {
       toast.dismiss(toastId);
@@ -274,6 +356,7 @@ export function ProgramListImporter({ onComplete }: ProgramListImporterProps) {
   const loadFromParsedList = () => {
     const parsed = parsePrograms("");
     setPrograms(parsed);
+    setLastResult(null);
     toast.success(`Загружено ${parsed.length} программ из перечня`);
   };
 
@@ -316,6 +399,29 @@ export function ProgramListImporter({ onComplete }: ProgramListImporterProps) {
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="w-4 h-4 animate-spin" />
             Парсинг файла...
+          </div>
+        )}
+
+        {/* Import result report */}
+        {lastResult && (
+          <div className="rounded-xl border p-3 space-y-2 bg-muted/30">
+            <div className="flex gap-3 text-sm">
+              <Badge variant="default" className="bg-green-600">Создано: {lastResult.created}</Badge>
+              <Badge variant="secondary">Пропущено: {lastResult.skipped}</Badge>
+              {lastResult.errors.length > 0 && (
+                <Badge variant="destructive">Ошибок: {lastResult.errors.length}</Badge>
+              )}
+            </div>
+            {lastResult.errors.length > 0 && (
+              <div className="space-y-1 max-h-32 overflow-y-auto">
+                {lastResult.errors.map((e, i) => (
+                  <div key={i} className="flex items-start gap-1.5 text-xs text-destructive">
+                    <AlertTriangle className="w-3 h-3 mt-0.5 shrink-0" />
+                    <span><strong>{e.title}</strong>: {e.reason}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
