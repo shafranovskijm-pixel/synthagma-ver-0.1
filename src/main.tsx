@@ -2,35 +2,39 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 
+declare const __BUILD_TIMESTAMP__: string;
+
 const isNative = typeof (window as any).Capacitor !== 'undefined';
 const isPreview = window.location.hostname.includes('preview--') || window.location.hostname === 'localhost';
 
-// In preview/dev: purge any leftover SW and caches, never re-register
-// In production: register PWA service worker normally
+const APP_VERSION_KEY = 'app-version';
+const currentVersion = typeof __BUILD_TIMESTAMP__ !== 'undefined' ? __BUILD_TIMESTAMP__ : 'dev';
+
+async function purgeAllCaches() {
+  if ('caches' in window) {
+    const names = await caches.keys();
+    await Promise.all(names.map(n => caches.delete(n)));
+  }
+  if ('serviceWorker' in navigator) {
+    const regs = await navigator.serviceWorker.getRegistrations();
+    for (const reg of regs) await reg.unregister();
+  }
+}
+
 (async () => {
+  // In preview/dev: purge any leftover SW and caches, never re-register
   if (!isNative && isPreview) {
-    // Always clear all caches and unregister SW in preview
-    if ('caches' in window) {
-      const names = await caches.keys();
-      await Promise.all(names.map(n => caches.delete(n)));
-    }
-    if ('serviceWorker' in navigator) {
-      const regs = await navigator.serviceWorker.getRegistrations();
-      for (const reg of regs) await reg.unregister();
-    }
-    // Never register SW in preview
+    await purgeAllCaches();
     return;
   }
 
-  if (!isNative && 'serviceWorker' in navigator) {
-    const regs = await navigator.serviceWorker.getRegistrations();
-    if (regs.length > 0 && !sessionStorage.getItem('sw-purged')) {
-      for (const reg of regs) await reg.unregister();
-      if ('caches' in window) {
-        const names = await caches.keys();
-        await Promise.all(names.map(n => caches.delete(n)));
-      }
-      sessionStorage.setItem('sw-purged', '1');
+  // Version-based cache busting: force refresh when a new build is deployed
+  const storedVersion = localStorage.getItem(APP_VERSION_KEY);
+  if (storedVersion !== currentVersion) {
+    await purgeAllCaches();
+    localStorage.setItem(APP_VERSION_KEY, currentVersion);
+    if (storedVersion !== null) {
+      // Only reload if there was a previous version (not first visit)
       window.location.reload();
       return;
     }
