@@ -726,29 +726,31 @@ export function AdminMarketplaceManager() {
   return (
     <div className="space-y-6">
       <Tabs value={h.activeTab} onValueChange={(v) => h.setActiveTab(v as any)} className="space-y-6">
-        <TabsList className="flex w-full max-w-3xl overflow-x-auto">
-          <TabsTrigger value="catalog" className="flex items-center gap-2">
-            <Package className="w-4 h-4" />Каталог
-          </TabsTrigger>
-          <TabsTrigger value="programs" className="flex items-center gap-2">
-            <BookOpen className="w-4 h-4" />Программы
-          </TabsTrigger>
-          <TabsTrigger value="create" className="flex items-center gap-2">
-            <Plus className="w-4 h-4" />Создать курс
-          </TabsTrigger>
-          <TabsTrigger value="pipeline" className="flex items-center gap-2">
-            <Zap className="w-4 h-4" />Конвейер
-          </TabsTrigger>
-          <TabsTrigger value="import" className="flex items-center gap-2">
-            <Upload className="w-4 h-4" />Импорт
-          </TabsTrigger>
-          <TabsTrigger value="knowledge" className="flex items-center gap-2">
-            <Library className="w-4 h-4" />Банк знаний
-          </TabsTrigger>
-          <TabsTrigger value="orders" className="flex items-center gap-2">
-            <ShoppingCart className="w-4 h-4" />Заявки
-          </TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-1 px-1">
+          <TabsList className="inline-flex h-11 w-auto min-w-full gap-1 p-1">
+            <TabsTrigger value="catalog" className="flex items-center gap-2 px-4 whitespace-nowrap">
+              <Package className="w-4 h-4 shrink-0" />Каталог
+            </TabsTrigger>
+            <TabsTrigger value="programs" className="flex items-center gap-2 px-4 whitespace-nowrap">
+              <BookOpen className="w-4 h-4 shrink-0" />Программы
+            </TabsTrigger>
+            <TabsTrigger value="create" className="flex items-center gap-2 px-4 whitespace-nowrap">
+              <Plus className="w-4 h-4 shrink-0" />Создать курс
+            </TabsTrigger>
+            <TabsTrigger value="pipeline" className="flex items-center gap-2 px-4 whitespace-nowrap">
+              <Zap className="w-4 h-4 shrink-0" />Конвейер
+            </TabsTrigger>
+            <TabsTrigger value="import" className="flex items-center gap-2 px-4 whitespace-nowrap">
+              <Upload className="w-4 h-4 shrink-0" />Импорт
+            </TabsTrigger>
+            <TabsTrigger value="knowledge" className="flex items-center gap-2 px-4 whitespace-nowrap">
+              <Library className="w-4 h-4 shrink-0" />Банк знаний
+            </TabsTrigger>
+            <TabsTrigger value="orders" className="flex items-center gap-2 px-4 whitespace-nowrap">
+              <ShoppingCart className="w-4 h-4 shrink-0" />Заявки
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* Pipeline */}
         <TabsContent value="pipeline" className="space-y-4">
