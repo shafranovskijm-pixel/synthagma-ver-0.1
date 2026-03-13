@@ -1,18 +1,34 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## Проблема
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+В `gigachat-client.ts` функция `callAIRoundRobin` (строки 571-587) добавляет в массив каналов только **slot-0** и **slot-1**, но **никогда не добавляет slot-2** (третий ключ). Проверка `if (slots.length > 1)` ловит только второй слот. Нет проверки `if (slots.length > 2)` для третьего.
 
-### Changes
+Итого: 3 ключа GigaChat настроены, 3 слота создаются в пуле, но в round-robin участвуют только 2 из них. Третий ключ простаивает.
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+## Решение
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+**1. `supabase/functions/_shared/gigachat-client.ts`** — добавить slot-2 в каналы round-robin:
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+После блока `if (slots.length > 1)` (строка 579) добавить аналогичный блок:
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+```typescript
+if (slots.length > 2) {
+  channels.push({
+    name: `GigaChat slot-2 (${gcModel})`,
+    call: async (msgs, mt) => {
+      const text = await useSlotDirect(2, msgs, gcModel, mt);
+      return { text, model: `${gcModel} (slot-2)` };
+    },
+  });
+}
+```
+
+Это даст 4 канала в round-robin: Lovable AI → slot-0 → slot-1 → slot-2. Каждая задача по `taskIndex % 4` получает свой канал, все 3 ключа GigaChat работают параллельно.
+
+### Файл
+
+| Файл | Что |
+|---|---|
+| `supabase/functions/_shared/gigachat-client.ts` | Добавить slot-2 в каналы round-robin |
 
