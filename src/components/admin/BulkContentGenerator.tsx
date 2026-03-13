@@ -682,7 +682,7 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
           const lessonType = isPracticeLesson(lesson) ? "practice" : "text";
 
           const { data: textData, error: textError } = await supabase.functions.invoke("generate-lesson-content", {
-            body: { lessonTitle: lesson.title, lessonType, courseTitle, courseDescription, previousLessons: [] },
+            body: { lessonTitle: lesson.title, lessonType, courseTitle, courseDescription, previousLessons: [], ai_provider: aiProvider, ...(aiProvider === "gigachat" && gigachatModel ? { gigachat_model: gigachatModel } : {}) },
           });
           if (textError) throw new Error(textError.message);
           if (!textData?.success || !textData?.blocks?.length) throw new Error(textData?.error || "Пустой ответ");

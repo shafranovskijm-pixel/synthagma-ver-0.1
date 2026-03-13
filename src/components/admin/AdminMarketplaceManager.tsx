@@ -717,8 +717,9 @@ export function AdminMarketplaceManager() {
         const lessonEntries = Array.from(byLesson.entries());
         for (let i = 0; i < lessonEntries.length; i += CONCURRENCY) {
           const chunk = lessonEntries.slice(i, i + CONCURRENCY);
-          const promises = chunk.map(async ([lessonId, questions]) => {
+          const promises = chunk.map(async ([lessonId, questions], idxInChunk) => {
             const lessonInfo = lessons?.find(l => l.id === lessonId);
+            const streamIndex = i + idxInChunk;
             const batchSize = 20;
             for (let j = 0; j < questions.length; j += batchSize) {
               const batch = questions.slice(j, j + batchSize);
@@ -732,6 +733,9 @@ export function AdminMarketplaceManager() {
                       question: q.question,
                       options: q.options || [],
                     })),
+                    ai_provider: aiProvider,
+                    stream_index: streamIndex,
+                    ...(aiProvider === "gigachat" && gigachatModel ? { gigachat_model: gigachatModel } : {}),
                     ...(aiPrompts.answers ? { customSystemPrompt: aiPrompts.answers } : {}),
                   },
                 });
