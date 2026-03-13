@@ -1,0 +1,2 @@
+UPDATE courses SET category_id = '34bb8080-ddd6-407a-b897-e004976cf2ac' WHERE id = 'd4fedfdf-dbe7-4bc5-81bf-1864a328a8c0';
+UPDATE courses SET category_id = '2ae3390e-e3d0-4720-a7f0-9dc88bd930f2' WHERE id = 'cfb7ae7b-b433-4a01-b422-536f191d102a';
