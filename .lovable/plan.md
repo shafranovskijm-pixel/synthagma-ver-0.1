@@ -1,18 +1,17 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## План: Обновить авто-категоризацию для ОТ и медицины
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+### Изменения в `src/hooks/useAdminMarketplace.ts`
 
-### Changes
+**1. Расширить ключевые слова «Охрана труда»:**
+Добавить `"техники безопасности"`, `"правила техники безопасности"` — чтобы курсы вроде «Правила техники безопасности при эксплуатации тепломеханического оборудования...» попадали в Охрану труда.
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+**2. Переименовать категорию «Первая помощь» → «Медицина»:**
+Изменить маппинг: `categoryName: "Медицина"`, оставить `parentType: "Охрана труда / Пожарная безопасность"`. Ключевые слова: `"медицин"`, `"первая помощь"`, `"оказание помощи"`, `"оказание первой помощи"`, `"мероприятия по оказанию"`, `"санитарн"`.
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+**3. SQL миграция:**
+Переименовать существующую категорию «Первая помощь» в «Медицина» в БД (если она уже создана).
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
-
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+После применения — нажать кнопку «Авто-категоризация» в админке, чтобы пересканировать некатегоризированные курсы.
 
