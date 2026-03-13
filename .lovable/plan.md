@@ -1,18 +1,47 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## Проблема
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+`markdownToBlocks` сохраняет содержимое списков как `<li>текст</li><li>текст</li>`, но:
+- **Редактор** (textarea) показывает это как есть → видны raw `<li>` теги
+- **Превью** разбивает по `\n` и оборачивает каждый элемент в `<li>` → теги отображаются как текст
 
-### Changes
+Нужно, чтобы content списков хранился как **чистый текст через `\n`**, без HTML-тегов.
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+## Решение
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+### 1. `BlockEditor.tsx` — `markdownToBlocks()` (строки 2452, 2463)
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+Заменить формат хранения списков с `<li>text</li>` на `text\n`:
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+```
+// Было:
+items.map(t => `<li>${t}</li>`).join("")
+
+// Станет:
+items.join("\n")
+```
+
+### 2. `BlockEditor.tsx` — превью рендеринг (строки 2215-2218)
+
+Добавить очистку `<li>` / `</li>` тегов перед split, чтобы корректно отображать и старые данные с тегами, и новые без:
+
+```typescript
+// Утилита для очистки содержимого списка
+const cleanListContent = (content: string) =>
+  content.replace(/<\/?li>/gi, "").split("\n").filter(Boolean);
+```
+
+### 3. `BlockEditor.tsx` — редактор textarea (строка 940)
+
+Аналогичная очистка для textarea value, чтобы существующие данные в БД с `<li>` тегами корректно отображались при редактировании.
+
+### 4. Edge-функция `convert-lesson-content` (строки аналогичные)
+
+Та же правка в серверной копии `markdownToBlocks`.
+
+| Файл | Изменение |
+|---|---|
+| `BlockEditor.tsx` | Убрать `<li>` обёртку в `markdownToBlocks`, добавить очистку в превью и редакторе |
+| `convert-lesson-content/index.ts` | Аналогичная правка серверной копии `markdownToBlocks` |
 
