@@ -313,20 +313,30 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
         });
         if (structError) throw structError;
 
-        const lessons: { title: string; type: string }[] = structData?.lessons || [];
+        // Deduplicate: re-check DB for lessons that may have been created concurrently
+        const { data: checkAgain } = await supabase
+          .from("lessons").select("id, title").eq("course_id", courseId);
+        const existingTitles = new Set((checkAgain || []).map(l => l.title.trim().toLowerCase()));
+
+        const lessons: { title: string; type: string }[] = (structData?.lessons || [])
+          .filter((l: any) => !existingTitles.has(l.title.trim().toLowerCase()));
+
+        const startIndex = (checkAgain || []).length;
         for (let i = 0; i < lessons.length; i++) {
           await supabase.from("lessons").insert({
             course_id: courseId,
             title: lessons[i].title,
             type: lessons[i].type || "text",
-            order_index: i,
+            order_index: startIndex + i,
           });
         }
 
-        await supabase.from("generation_history").insert({
-          course_id: courseId, course_title: courseTitle,
-          action: "structure", details: `Создано ${lessons.length} уроков`, items_count: lessons.length,
-        } as any);
+        if (lessons.length > 0) {
+          await supabase.from("generation_history").insert({
+            course_id: courseId, course_title: courseTitle,
+            action: "structure", details: `Создано ${lessons.length} уроков`, items_count: lessons.length,
+          } as any);
+        }
 
         const { data: freshLessons } = await supabase
           .from("lessons")
