@@ -177,6 +177,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
     // 1. Content (for text/practice lessons)
     if ((lesson.type === "text" || lesson.type === "practice") &&
         (!lesson.content || lesson.content === "[]" || lesson.content === "")) {
+      const contentStart = Date.now();
       const { data: contentData, error: contentError } = await safeInvoke<any>("gigachat", {
         body: {
           action: "generate_content",
