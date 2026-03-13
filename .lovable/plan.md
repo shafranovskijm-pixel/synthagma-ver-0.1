@@ -1,18 +1,40 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## План: Создать 6 категорий в БД и обновить админ-панель маркетплейса
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+### 1. Миграция БД
 
-### Changes
+- Добавить колонку `order_index` (integer, default 0) в `course_categories` для сортировки/перемещения
+- Вставить 6 категорий для организации `4ac2c05a-d8b5-4e72-ba31-f2c743091d95`:
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+| # | Название | Цвет | order_index |
+|---|----------|------|-------------|
+| 1 | Промышленная безопасность | #ef4444 | 0 |
+| 2 | Электробезопасность | #3b82f6 | 1 |
+| 3 | Энергетика | #f59e0b | 2 |
+| 4 | Экологическая безопасность | #10b981 | 3 |
+| 5 | Гидротехнические сооружения | #6366f1 | 4 |
+| 6 | Строительный контроль | #8b5cf6 | 5 |
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+### 2. `useAdminMarketplace.ts`
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+- Исправить `fetchDbCategories` — использовать `MARKETPLACE_ORG_ID` вместо `00000000-...`
+- Сортировать категории по `order_index`
+- Добавить функции для перемещения категорий (drag-and-drop через `order_index`): `handleReorderCategory(categoryId, newIndex)`
+- Добавить функции для перемещения курса в категорию через `category_id` в `courses` (вместо переименования title)
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+### 3. `AdminMarketplaceManager.tsx`
+
+- В каталоге: группировать курсы по `category_id` → `dbCategories` (вместо парсинга заголовков)
+- Добавить drag-and-drop для категорий через `@dnd-kit/sortable` (уже установлен)
+- На каждой категории показать кнопку перетаскивания (GripVertical)
+- В диалоге «Переместить в категорию» — использовать DB-категории через Select
+
+### Файлы
+
+| Файл | Изменение |
+|---|---|
+| `supabase/migrations/...` | ALTER TABLE + INSERT 6 categories |
+| `src/hooks/useAdminMarketplace.ts` | Fetch с правильным org_id, reorder logic, category-based grouping |
+| `src/components/admin/AdminMarketplaceManager.tsx` | DnD-сортировка категорий, обновлённый рендер каталога |
 
