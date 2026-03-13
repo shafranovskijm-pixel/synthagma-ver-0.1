@@ -1,42 +1,18 @@
 
 
-## Проблема
+## Plan: Auto-fix after "Проверить все"
 
-Авто-фикс при нахождении дублей (уроков с одинаковыми названиями) **переименовывает** их, добавляя суффикс `(2)`, `(3)`. Но на самом деле это полные копии одного и того же урока — их нужно **удалять**, а не переименовывать. Переименование только маскирует проблему и оставляет мусорный контент.
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-## Исправление
+### Changes
 
-**Файл: `src/components/admin/AdminMarketplaceManager.tsx`**
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-Заменить логику «Fix duplicate titles» (строки 730-739):
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-**Было:** переименовать дубли → `title (2)`, `title (3)`
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-**Станет:** оставить первый урок из группы, **удалить остальные** (вместе с их вопросами, если это тесты):
-
-```typescript
-// 5. Remove duplicate lessons (keep first, delete rest)
-if (duplicateGroups.length > 0) {
-  completed++;
-  toast.loading(`Удаляю дубликаты (${completed}/${totalTasks})`, { id: toastId });
-  const idsToDelete: string[] = [];
-  for (const group of duplicateGroups) {
-    // Keep the first, delete the rest
-    for (let i = 1; i < group.length; i++) {
-      idsToDelete.push(group[i].id);
-    }
-  }
-  if (idsToDelete.length > 0) {
-    await supabase.from("test_questions").delete().in("lesson_id", idsToDelete);
-    await supabase.from("lesson_progress").delete().in("lesson_id", idsToDelete);
-    await supabase.from("lessons").delete().in("id", idsToDelete);
-  }
-}
-```
-
-Также обновить текст ошибки в валидации — вместо «дубли заголовков» написать «дубли уроков (будут удалены)».
-
-| Файл | Действие |
-|---|---|
-| `src/components/admin/AdminMarketplaceManager.tsx` | Удалять дубли вместо переименования |
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 

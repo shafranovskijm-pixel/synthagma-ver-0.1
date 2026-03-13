@@ -727,15 +727,21 @@ export function AdminMarketplaceManager() {
         }
       }
 
-      // 5. Fix duplicate titles
+      // 5. Remove duplicate lessons (keep first, delete rest)
       if (duplicateGroups.length > 0) {
         completed++;
-        toast.loading(`Исправляю дубликаты заголовков (${completed}/${totalTasks})`, { id: toastId });
+        toast.loading(`Удаляю дубликаты (${completed}/${totalTasks})`, { id: toastId });
+        const idsToDelete: string[] = [];
         for (const group of duplicateGroups) {
           for (let i = 1; i < group.length; i++) {
-            const newTitle = `${group[i].title} (${i + 1})`;
-            await supabase.from("lessons").update({ title: newTitle }).eq("id", group[i].id);
+            idsToDelete.push(group[i].id);
           }
+        }
+        if (idsToDelete.length > 0) {
+          await supabase.from("test_questions").delete().in("lesson_id", idsToDelete);
+          await supabase.from("lesson_progress").delete().in("lesson_id", idsToDelete);
+          await supabase.from("lesson_attachments").delete().in("lesson_id", idsToDelete);
+          await supabase.from("lessons").delete().in("id", idsToDelete);
         }
       }
 
