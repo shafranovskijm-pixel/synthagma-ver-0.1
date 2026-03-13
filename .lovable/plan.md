@@ -1,18 +1,31 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## Проблема
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+Почти всё уже правильно настроено на 3 слота, но есть одно место, где третий ключ **не подключён**:
 
-### Changes
+| Компонент | Текст (ИИ) | Изображения | Статус |
+|---|---|---|---|
+| **`_shared/gigachat-client.ts`** | 3 слота ✅ | — | OK |
+| **`generate-image/index.ts`** | — | 3 слота ✅ | OK |
+| **`generate-course-content/index.ts`** | 3 слота (через shared client) ✅ | **2 слота** ❌ | **Нет KEY_3** |
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+В файле `generate-course-content/index.ts` (строки 272-276) массив `GIGACHAT_IMAGE_KEYS` включает только `GIGACHAT_AUTH_KEY` и `GIGACHAT_AUTH_KEY_2` — третий ключ `GIGACHAT_AUTH_KEY_3` пропущен. Это значит, что при генерации изображений в конвейере курсов третий API-ключ **не используется** и токены с него не списываются.
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+## Исправление
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+**`supabase/functions/generate-course-content/index.ts`**, строки 272-276:
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+Добавить `GIGACHAT_AUTH_KEY_3` в массив `GIGACHAT_IMAGE_KEYS`:
+
+```typescript
+// GigaChat image generation keys (3 slots)
+const GIGACHAT_IMAGE_KEYS = [
+  Deno.env.get("GIGACHAT_AUTH_KEY"),
+  Deno.env.get("GIGACHAT_AUTH_KEY_2"),
+  Deno.env.get("GIGACHAT_AUTH_KEY_3"),
+].filter(Boolean) as string[];
+```
+
+Одна строка — добавить `Deno.env.get("GIGACHAT_AUTH_KEY_3")` в массив. Остальной round-robin код уже работает корректно и автоматически начнёт использовать все 3 слота.
 
