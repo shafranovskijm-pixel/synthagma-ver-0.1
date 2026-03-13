@@ -391,17 +391,39 @@ export function useAdminMarketplace() {
     });
   })();
 
-  const handleCreateCategory = (name: string) => {
+  // State for new category parent_type & icon
+  const [newCategoryParentType, setNewCategoryParentType] = useState("Повышение квалификации");
+  const [newCategoryIcon, setNewCategoryIcon] = useState<string | null>(null);
+
+  const handleCreateCategory = async (name: string) => {
     const trimmed = name.trim();
     if (!trimmed) return;
-    if (categories.includes(trimmed)) {
+    if (dbCategories.some(c => c.name === trimmed && (c.parent_type || "Повышение квалификации") === newCategoryParentType)) {
       toast.error("Такая категория уже существует");
       return;
     }
-    setCustomCategories(prev => [...prev, trimmed]);
-    setNewCategoryName("");
-    setShowCategoryDialog(false);
-    toast.success(`Категория "${trimmed}" создана`);
+    try {
+      const maxOrder = dbCategories
+        .filter(c => (c.parent_type || "Повышение квалификации") === newCategoryParentType)
+        .reduce((max, c) => Math.max(max, c.order_index), -1);
+
+      const { error } = await supabase.from("course_categories").insert({
+        name: trimmed,
+        organization_id: MARKETPLACE_ORG_ID,
+        order_index: maxOrder + 1,
+        parent_type: newCategoryParentType,
+        icon: newCategoryIcon,
+      } as any);
+      if (error) throw error;
+      setNewCategoryName("");
+      setNewCategoryIcon(null);
+      setShowCategoryDialog(false);
+      toast.success(`Категория "${trimmed}" создана`);
+      fetchDbCategories();
+    } catch (err) {
+      console.error("Error creating category:", err);
+      toast.error("Ошибка при создании категории");
+    }
   };
 
   // Move course to a DB category via category_id
