@@ -5,8 +5,9 @@ import {
   Package, ShoppingCart, Building2, Users, Tag, Sparkles, BookOpen, Upload,
   List, LayoutGrid, ChevronDown, FolderPlus, FolderInput, CheckCircle2, AlertTriangle,
   FolderOpen, Library, X, GripVertical, GraduationCap, Award, ShieldCheck, Wand2,
-  Factory, Flame, Droplets, HardHat, Leaf, Zap, Lightbulb,
+  Factory, Flame, Droplets, HardHat, Leaf, Zap, Lightbulb, MoveRight,
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
