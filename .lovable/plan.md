@@ -1,18 +1,32 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## Анализ: используются ли 3 потока параллельно?
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+**Нет.** Сейчас реальный параллелизм — **2 потока**, а не 3.
 
-### Changes
+### Текущая логика
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+| Компонент | Значение | Эффект |
+|---|---|---|
+| `ENRICH_CONCURRENCY` (AdminMarketplaceManager) | `2` | Одновременно обогащаются 2 урока |
+| Изображений на урок | `1` | После прошлого фикса — только 1 |
+| `generate-image` edge function | Последовательный перебор KEY→KEY_2→KEY_3 | Каждый вызов использует **один** ключ, при 429 переключается на следующий |
+| `slotIndex` | `streamIndex` (0 или 1) | Определяет стартовый слот, но не параллелит запросы |
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+**Итого**: 2 урока × 1 изображение = 2 одновременных запроса к GigaChat. Третий ключ простаивает как резерв.
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+### План: включить полный параллелизм на 3 потока
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+1. **Увеличить `ENRICH_CONCURRENCY` до `3`** в `AdminMarketplaceManager.tsx` (строка 695)
+   - Было: `const ENRICH_CONCURRENCY = 2`
+   - Станет: `const ENRICH_CONCURRENCY = 3`
+
+2. **Передавать `slotIndex` = 0, 1, 2** — уже работает корректно через `streamIndex = ei + idx`, т.к. `ei` шагает по 3, `idx` = 0..2 → `streamIndex % 3` даст 0, 1, 2.
+
+3. Никаких изменений в edge function не нужно — она уже принимает `slotIndex` и стартует с нужного слота.
+
+**Результат**: 3 урока обогащаются одновременно, каждый использует свой GigaChat-ключ (KEY, KEY_2, KEY_3). Генерация ускорится ~на 33%.
+
+### Файл для изменения
+- `src/components/admin/AdminMarketplaceManager.tsx` — одна строка: `ENRICH_CONCURRENCY = 2` → `3`
 
