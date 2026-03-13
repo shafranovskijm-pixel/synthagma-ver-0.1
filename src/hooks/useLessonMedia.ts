@@ -312,6 +312,17 @@ export function useLessonMedia(
 
           onUpdate({ blocks: newBlocks, content: blocksToJsonFn(newBlocks) });
           toast.success("Контент сгенерирован");
+
+          // Log to generation history
+          try {
+            await supabase.from("generation_history").insert({
+              course_id: courseId || null,
+              course_title: courseTitle || "Без курса",
+              action: "content",
+              details: `Написать с AI: "${lessonTitle}" (${newBlocks.length} блоков)`,
+              items_count: newBlocks.length,
+            });
+          } catch (_) {}
         } else toast.error("AI не вернул контент");
       }
     } catch (error: any) {

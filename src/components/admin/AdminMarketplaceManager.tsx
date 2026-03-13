@@ -745,6 +745,8 @@ export function AdminMarketplaceManager() {
             const lessonInfo = lessons?.find(l => l.id === lessonId);
             const streamIndex = i + idxInChunk;
             const batchSize = 20;
+            const startMs = Date.now();
+            let answeredCount = 0;
             for (let j = 0; j < questions.length; j += batchSize) {
               const batch = questions.slice(j, j + batchSize);
               try {
@@ -768,6 +770,7 @@ export function AdminMarketplaceManager() {
                   for (const ans of data.answers) {
                     const q = batch[ans.questionIndex];
                     if (q && ans.correctAnswer !== undefined) {
+                      answeredCount++;
                       await supabase.from("test_questions")
                         .update({ correct_answer: ans.correctAnswer, explanation: ans.explanation || null })
                         .eq("id", q.id);
@@ -778,6 +781,15 @@ export function AdminMarketplaceManager() {
                 console.error(`Failed to solve test batch for lesson ${lessonId}:`, e);
               }
             }
+            await supabase.from("generation_history").insert({
+              course_id: courseId,
+              course_title: courseTitle,
+              action: "answers",
+              details: `Auto-fix: "${lessonInfo?.title || "Тест"}"`,
+              items_count: answeredCount,
+              stream_index: streamIndex,
+              duration_ms: Date.now() - startMs,
+            }).then(() => {}, () => {});
           });
           await Promise.allSettled(promises);
         }
