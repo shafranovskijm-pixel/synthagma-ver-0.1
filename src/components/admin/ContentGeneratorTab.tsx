@@ -170,6 +170,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
     courseId: string,
     courseTitle: string,
     onProgress: () => void,
+    streamIndex: number,
   ) => {
     const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
 
