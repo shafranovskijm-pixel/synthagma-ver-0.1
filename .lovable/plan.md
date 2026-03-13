@@ -1,18 +1,33 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## Проблема
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+Курс уже имеет сгенерированный контент, но система заново генерирует его вместо того, чтобы просто добавить недостающий тест.
 
-### Changes
+### Причины
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+1. **Порог `content.length < 50` слишком агрессивен** — валидный JSON-блок (`[{"type":"paragraph","content":"..."}]`) может быть корректным контентом, но если текст короткий, он попадает под порог и считается «пустым». Система перегенерирует уже готовые уроки.
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+2. **Запрос уроков на строке 177 не включает `title`** — `select("id, type, content")`. Когда эти уроки передаются в `generateContent`, поле `lesson.title` = `undefined`, и ИИ получает пустое название.
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+3. **Нет отдельной ветки «только тесты»** — логика:
+   - Нет уроков → структура + контент + тесты
+   - Есть пустые уроки → контент + тесты  
+   - Всё заполнено → только тесты
+   
+   Но из-за ложных «пустых» (порог 50 символов) система попадает во вторую ветку.
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+### Исправление
+
+**Файл: `src/components/admin/ContentGeneratorTab.tsx`**
+
+1. **Добавить `title` в запрос** (строка 179): `select("id, type, content, title")`
+
+2. **Убрать порог `content.length < 50`** — считать пустым только `!content || content === "[]" || content === ""`. Если контент есть (даже короткий), он уже сгенерирован.
+
+3. **Применить то же исправление во всех местах** — строки 131-133 (анализ), 184-186 (проверка), 388-390 (функция `generateContent`). Везде одинаковая формула.
+
+| Файл | Действие |
+|---|---|
+| `src/components/admin/ContentGeneratorTab.tsx` | Убрать порог 50 символов, добавить `title` в запрос |
 
