@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Store, Plus, Search, Edit, Trash2, Eye, Loader2,
   Package, ShoppingCart, Building2, Users, Tag, Sparkles, BookOpen, Upload,
   List, LayoutGrid, ChevronDown, FolderPlus, FolderInput, CheckCircle2, AlertTriangle,
   FolderOpen, Library, X, GripVertical, GraduationCap, Award, ShieldCheck, Wand2,
-  Factory, Flame, Droplets, HardHat, Leaf, Zap, Lightbulb, MoveRight,
+  Factory, Flame, Droplets, HardHat, Leaf, Zap, Lightbulb, MoveRight, Settings,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
@@ -17,6 +17,7 @@ import { BulkContentGenerator } from "./BulkContentGenerator";
 import { ContentGeneratorTab } from "./ContentGeneratorTab";
 import { ProgramListImporter } from "./ProgramListImporter";
 import { KnowledgeBankTab } from "./KnowledgeBankTab";
+import { MarketplaceSettingsTab, type ValidationRules, type AiPrompts } from "./MarketplaceSettingsTab";
 import { ProgramsTab } from "./ProgramsTab";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
@@ -288,6 +289,13 @@ export function AdminMarketplaceManager() {
   const [bulkMoveTarget, setBulkMoveTarget] = useState<string>("");
   const [validationReport, setValidationReport] = useState<{ courseId: string; title: string; issues: string[] }[] | null>(null);
   const [validationReportOk, setValidationReportOk] = useState(0);
+  const [valRules, setValRules] = useState<ValidationRules>({ minLessons: 3, minContentLength: 50, requireTest: true, requireText: true, checkDuplicateTitles: true });
+  const [aiPrompts, setAiPrompts] = useState<AiPrompts>({});
+
+  const handleSettingsLoaded = useCallback((rules: ValidationRules, prompts: AiPrompts) => {
+    setValRules(rules);
+    setAiPrompts(prompts);
+  }, []);
 
   // Initialize validated state from DB on courses load (preserve existing error statuses)
   useEffect(() => {
@@ -314,34 +322,36 @@ export function AdminMarketplaceManager() {
         const textLessons = lessons.filter(l => l.type === "text" || l.type === "practice");
         const testLessons = lessons.filter(l => l.type === "test");
 
-        if (textLessons.length === 0) {
+        if (valRules.requireText && textLessons.length === 0) {
           issues.push("Нет учебных уроков (текст/практика)");
         }
-        if (testLessons.length === 0) {
+        if (valRules.requireTest && testLessons.length === 0) {
           issues.push("Нет тестов");
         }
-        if (lessons.length < 3) {
-          issues.push(`Слишком мало уроков (${lessons.length}, нужно минимум 3)`);
+        if (lessons.length < valRules.minLessons) {
+          issues.push(`Слишком мало уроков (${lessons.length}, нужно минимум ${valRules.minLessons})`);
         }
 
         // Check empty content in text/practice lessons
         const emptyLessons = textLessons.filter(l =>
-          !l.content || l.content === "[]" || l.content === "" || l.content.length < 50
+          !l.content || l.content === "[]" || l.content === "" || l.content.length < valRules.minContentLength
         );
         if (emptyLessons.length) issues.push(`${emptyLessons.length} уроков без контента`);
 
         // Check filled lessons have substantial content
         const filledLessons = textLessons.filter(l =>
-          l.content && l.content !== "[]" && l.content !== "" && l.content.length >= 50
+          l.content && l.content !== "[]" && l.content !== "" && l.content.length >= valRules.minContentLength
         );
         if (textLessons.length > 0 && filledLessons.length === 0) {
           issues.push("Ни один урок не содержит учебного материала");
         }
 
         // Check duplicates
-        const titles = lessons.map(l => l.title);
-        const dupes = titles.filter((t, i) => titles.indexOf(t) !== i);
-        if (dupes.length) issues.push(`Дубликаты: ${[...new Set(dupes)].join(", ")}`);
+        if (valRules.checkDuplicateTitles) {
+          const titles = lessons.map(l => l.title);
+          const dupes = titles.filter((t, i) => titles.indexOf(t) !== i);
+          if (dupes.length) issues.push(`Дубликаты: ${[...new Set(dupes)].join(", ")}`);
+        }
 
         // Check tests
         const testIds = testLessons.map(l => l.id);
@@ -409,14 +419,16 @@ export function AdminMarketplaceManager() {
         } else {
           const textLessons = lessons.filter(l => l.type === "text" || l.type === "practice");
           const testLessons = lessons.filter(l => l.type === "test");
-          if (textLessons.length === 0) issues.push("Нет учебных уроков");
-          if (testLessons.length === 0) issues.push("Нет тестов");
-          if (lessons.length < 3) issues.push("Мало уроков");
-          const emptyLessons = textLessons.filter(l => !l.content || l.content === "[]" || l.content === "" || l.content.length < 50);
+          if (valRules.requireText && textLessons.length === 0) issues.push("Нет учебных уроков");
+          if (valRules.requireTest && testLessons.length === 0) issues.push("Нет тестов");
+          if (lessons.length < valRules.minLessons) issues.push("Мало уроков");
+          const emptyLessons = textLessons.filter(l => !l.content || l.content === "[]" || l.content === "" || l.content.length < valRules.minContentLength);
           if (emptyLessons.length) issues.push(`${emptyLessons.length} без контента`);
-          const titles = lessons.map(l => l.title);
-          const dupes = titles.filter((t, i) => titles.indexOf(t) !== i);
-          if (dupes.length) issues.push("Дубликаты");
+          if (valRules.checkDuplicateTitles) {
+            const titles = lessons.map(l => l.title);
+            const dupes = titles.filter((t, i) => titles.indexOf(t) !== i);
+            if (dupes.length) issues.push("Дубликаты");
+          }
           const testIds = testLessons.map(l => l.id);
           if (testIds.length) {
             const { data: questions } = await supabase
@@ -504,7 +516,7 @@ export function AdminMarketplaceManager() {
       const currentLessons = lessons || [];
       const textPracticeLessons = currentLessons.filter(l => l.type === "text" || l.type === "practice");
       const testLessons = currentLessons.filter(l => l.type === "test");
-      const needsStructure = textPracticeLessons.length === 0 || currentLessons.length < 3;
+      const needsStructure = textPracticeLessons.length === 0 || currentLessons.length < valRules.minLessons;
 
       // If course needs structural fix (missing text lessons or too few lessons), generate structure first
       if (needsStructure) {
@@ -545,7 +557,7 @@ export function AdminMarketplaceManager() {
 
       const allLessons = lessons || [];
       const emptyLessons = allLessons.filter(l =>
-        (l.type === "text" || l.type === "practice") && (!l.content || l.content === "[]" || l.content === "" || l.content.length < 50)
+        (l.type === "text" || l.type === "practice") && (!l.content || l.content === "[]" || l.content === "" || l.content.length < valRules.minContentLength)
       );
 
       const testIds = allLessons.filter(l => l.type === "test").map(l => l.id);
@@ -589,6 +601,7 @@ export function AdminMarketplaceManager() {
                 courseTitle,
                 lessonTitle: lesson.title,
                 existingContent: null,
+                ...(aiPrompts.content ? { customSystemPrompt: aiPrompts.content } : {}),
               },
             });
             if (error) throw error;
@@ -634,6 +647,7 @@ export function AdminMarketplaceManager() {
                       question: q.question,
                       options: q.options || [],
                     })),
+                    ...(aiPrompts.answers ? { customSystemPrompt: aiPrompts.answers } : {}),
                   },
                 });
                 if (error) throw error;
@@ -746,11 +760,19 @@ export function AdminMarketplaceManager() {
             <TabsTrigger value="knowledge" className="flex items-center gap-2 px-4 whitespace-nowrap">
               <Library className="w-4 h-4 shrink-0" />Банк знаний
             </TabsTrigger>
-            <TabsTrigger value="orders" className="flex items-center gap-2 px-4 whitespace-nowrap">
-              <ShoppingCart className="w-4 h-4 shrink-0" />Заявки
-            </TabsTrigger>
+             <TabsTrigger value="orders" className="flex items-center gap-2 px-4 whitespace-nowrap">
+               <ShoppingCart className="w-4 h-4 shrink-0" />Заявки
+             </TabsTrigger>
+             <TabsTrigger value="settings" className="flex items-center gap-2 px-4 whitespace-nowrap">
+               <Settings className="w-4 h-4 shrink-0" />Настройки
+             </TabsTrigger>
           </TabsList>
         </div>
+
+        {/* Settings */}
+        <TabsContent value="settings" className="space-y-4">
+          <MarketplaceSettingsTab onSettingsLoaded={handleSettingsLoaded} />
+        </TabsContent>
 
         {/* Generator */}
         <TabsContent value="generator" className="space-y-4">

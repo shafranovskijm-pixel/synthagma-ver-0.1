@@ -1,55 +1,18 @@
 
 
-## Настройки проверки и генерации контента
+## Plan: Auto-fix after "Проверить все"
 
-### Проблема
-Правила валидации (мин. уроков, мин. длина контента, обязательность тестов) и промпты ИИ (генерация контента, ответов, структуры) захардкожены в коде. Нет возможности настраивать их из интерфейса.
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-### Решение
-Добавить вкладку **«Настройки»** (⚙️) в маркетплейс-менеджер с двумя секциями:
+### Changes
 
-#### 1. Правила проверки (валидации)
-Настраиваемые параметры:
-- Минимум уроков (сейчас: 3)
-- Минимум длина контента (сейчас: 50 символов)
-- Обязательность тестов (да/нет)
-- Обязательность текстовых уроков (да/нет)
-- Проверка дубликатов заголовков (да/нет)
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-#### 2. Промпты ИИ
-Редактируемые текстовые поля для каждого действия:
-- **Генерация контента** — системный промпт для `generate_content`
-- **Генерация вопросов** — системный промпт для `generate_questions`
-- **Решение тестов** — системный промпт для `generate_answers`
-- **Генерация структуры** — системный промпт для `generate_structure`
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-Каждое поле имеет кнопку «Сбросить по умолчанию».
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-### Хранение
-Таблица `marketplace_settings` (ключ-значение):
-- `validation_rules` — JSON с параметрами проверки
-- `ai_prompts` — JSON с кастомными промптами
-
-### Файлы
-
-| Файл | Действие |
-|---|---|
-| Миграция БД | Создать таблицу `marketplace_settings` |
-| `src/components/admin/MarketplaceSettingsTab.tsx` | Новый компонент — форма настроек |
-| `src/components/admin/AdminMarketplaceManager.tsx` | Добавить вкладку «Настройки», загружать настройки и передавать в валидацию/autofix |
-| `supabase/functions/gigachat/index.ts` | Уже поддерживает `customSystemPrompt` — клиент будет передавать из настроек |
-
-### Поток данных
-
-```text
-MarketplaceSettingsTab → marketplace_settings (БД)
-                              ↓
-AdminMarketplaceManager читает при загрузке
-      ↓                              ↓
-handleValidateCourse          autoFixCourse → gigachat edge fn
-(использует правила)          (передаёт промпты в body)
-```
-
-### Что уже работает
-Edge-функция `gigachat` уже принимает `customSystemPrompt` в body — нужно только передавать его из настроек вместо `null`.
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 
