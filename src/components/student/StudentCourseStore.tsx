@@ -264,24 +264,9 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
       map.get(cat)!.push(c);
     }
 
-    const rtnSubGroups: { category: string; courses: MarketplaceCourse[] }[] = [];
-    const standalone: { category: string; courses: MarketplaceCourse[] }[] = [];
-
-    for (const [category, courses] of Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b))) {
-      if (EXCLUDED_FROM_RTN.includes(category)) {
-        standalone.push({ category, courses });
-      } else {
-        rtnSubGroups.push({ category, courses });
-      }
-    }
-
-    const result: { category: string; courses: MarketplaceCourse[]; subGroups?: { category: string; courses: MarketplaceCourse[] }[] }[] = [];
-    if (rtnSubGroups.length > 0) {
-      const allRtnCourses = rtnSubGroups.flatMap(g => g.courses);
-      result.push({ category: "Курсы Ростехнадзора", courses: allRtnCourses, subGroups: rtnSubGroups });
-    }
-    result.push(...standalone);
-    return result;
+    return Array.from(map.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([category, courses]) => ({ category, courses }));
   }, [filteredCatalog]);
 
   const categoryMeta: Record<string, { icon: React.ElementType; color: string; bgColor: string }> = {
