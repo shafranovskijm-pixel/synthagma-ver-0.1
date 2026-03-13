@@ -317,8 +317,8 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
                   question: q.question,
                   options: q.options,
                 })),
-                aiProvider,
-                ...(aiProvider === "gigachat" ? { gigachatModel } : { lovableModel }),
+                ai_provider: aiProvider,
+                ...(aiProvider === "gigachat" ? { gigachat_model: gigachatModel } : { lovable_model: lovableModel }),
               },
             });
 
