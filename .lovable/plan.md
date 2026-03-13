@@ -1,18 +1,43 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## План: Каталог маркетплейса в стиле страницы Ростехнадзора
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+### Что сделать
 
-### Changes
+Заменить текущий вид каталога (Collapsible с вложенными таблицами/карточками) на визуально идентичный странице `/rostechnadzor-courses`: **карточки категорий** с иконкой в цветном круге, названием, бейджем «N+ курсов» и **2-колоночной сеткой подкурсов** с иконками `CheckCircle2`. Курсы при клике открывают детали/покупку.
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+### Дизайн (как на скриншоте)
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+```text
+┌──────────────────────────────────────────────────┐
+│  [🏭]  Промышленная безопасность   85+ курсов    │
+│                                                  │
+│  ✓ А.1 — Общие требования      ✓ Б.1.1–Б.1.19  │
+│  ✓ Б.2.1–Б.2.6 — Нефть         ✓ Б.3.1–Б.3.3   │
+│  ...                                             │
+└──────────────────────────────────────────────────┘
+```
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+Каждый элемент списка кликабельный — открывает покупку/детали курса.
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+### Изменения
+
+**1. `StudentCourseStore.tsx`** — заменить текущий рендер `groupedCatalog` (Collapsible → Card → подCollapsible → карточки курсов):
+- Убрать обёртку «Курсы Ростехнадзора» — показывать подкатегории сразу как отдельные карточки
+- Каждая категория — `Card` с иконкой в цветном круге, названием, бейджем количества
+- Внутри — 2-колоночная сетка `sm:grid-cols-2` с `CheckCircle2` + название курса (кликабельное)
+- Клик по курсу → открывает `openPreview(item)` или `setSelectedCourse(item)`
+
+**2. `CourseStoreManager.tsx`** — аналогичное изменение для list view организаций:
+- Каждая подкатегория — отдельная `Card` (не вложенный Collapsible)
+- Иконка + название + бейдж + 2-колоночный список с `CheckCircle2`
+- Клик по курсу → `setSelectedCourseDetail(item)`
+- Инфо-баннер «Подготовка к аттестации» оставить сверху
+
+### Файлы
+
+| Файл | Что |
+|---|---|
+| `src/components/student/StudentCourseStore.tsx` | Каталог в стиле Ростехнадзора: карточки категорий с 2-колоночными списками курсов |
+| `src/components/organization/CourseStoreManager.tsx` | То же самое для организаций (list view) |
 
