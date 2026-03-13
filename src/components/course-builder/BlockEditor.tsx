@@ -2460,7 +2460,7 @@ export function markdownToBlocks(md: string): ContentBlock[] {
         items.push(lines[i].replace(/^\d+\.\s/, ""));
         i++;
       }
-      blocks.push({ id: mkId(), type: "numberedList", content: items.map(t => `<li>${t}</li>`).join("") });
+      blocks.push({ id: mkId(), type: "numberedList", content: items.join("\n") });
       continue;
     }
 
