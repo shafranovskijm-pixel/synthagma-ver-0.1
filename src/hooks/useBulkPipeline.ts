@@ -345,6 +345,7 @@ export function useBulkPipeline({ courses, onComplete, enableVerification = fals
                     ai_provider: aiProvider,
                     gigachat_model: gigachatModel,
                     lovable_model: lovableModel,
+                    stream_index: i % 3,
                   },
                 }),
                 AI_CALL_TIMEOUT, "verify_answers"
