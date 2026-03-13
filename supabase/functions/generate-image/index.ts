@@ -241,13 +241,31 @@ serve(async (req) => {
     const { prompt, imageUrl, provider, model, gigachat_key } = await req.json();
     if (!prompt) throw new Error("Prompt is required");
 
-    const selectedProvider = provider || "lovable_ai";
+    const selectedProvider = provider || "gigachat";
     console.log(`Generating image with provider: ${selectedProvider}, prompt: ${prompt}`);
 
     let generatedImageUrl: string;
+    let usedProvider = selectedProvider;
 
     if (selectedProvider === "gigachat") {
-      generatedImageUrl = await generateWithGigaChat(prompt, gigachat_key);
+      // Round-robin across 3 GigaChat key slots
+      const slots: (string | undefined)[] = ["KEY", "KEY_2", "KEY_3"];
+      let success = false;
+      for (let i = 0; i < slots.length; i++) {
+        try {
+          generatedImageUrl = await generateWithGigaChat(prompt, slots[i]);
+          success = true;
+          break;
+        } catch (e: any) {
+          console.warn(`[generate-image] GigaChat slot ${slots[i]} failed:`, e?.message);
+        }
+      }
+      if (!success) {
+        // Fallback to Lovable AI if all GigaChat slots failed
+        console.log("[generate-image] All GigaChat slots failed, falling back to Lovable AI");
+        generatedImageUrl = await generateWithLovableAI(prompt, imageUrl, model);
+        usedProvider = "lovable_ai";
+      }
     } else {
       generatedImageUrl = await generateWithLovableAI(prompt, imageUrl, model);
     }
