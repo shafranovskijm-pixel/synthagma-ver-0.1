@@ -1,8 +1,9 @@
 import { useState, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { safeInvoke } from "@/utils/safeInvoke";
+import { safeInvoke, safeFetch } from "@/utils/safeInvoke";
 import { toast } from "sonner";
-import { ContentBlock } from "@/components/course-builder/BlockEditor";
+import { ContentBlock, blocksToJson as blocksToJsonFn } from "@/components/course-builder/BlockEditor";
+import { initExternalSupabase, getExternalSupabase } from "@/integrations/external-supabase/client";
 
 const SIZE_100MB = 100 * 1024 * 1024;
 const SIZE_500MB = 500 * 1024 * 1024;
@@ -234,11 +235,82 @@ export function useLessonMedia(
         }
       } else {
         const newBlocks: ContentBlock[] = (data.blocks || []).map((b: any) => ({
-          id: crypto.randomUUID(), type: b.type, content: b.content
+          id: crypto.randomUUID(), type: b.type, content: b.content,
+          ...(b.accordionTitle ? { accordionTitle: b.accordionTitle } : {}),
+          ...(b.imageSrc ? { imageSrc: b.imageSrc } : {}),
         }));
         if (newBlocks.length > 0) {
-          const { blocksToJson } = await import("@/components/course-builder/BlockEditor");
-          onUpdate({ blocks: newBlocks, content: blocksToJson(newBlocks) });
+          // Generate hero image (non-blocking)
+          try {
+            const snippet = newBlocks
+              .filter(b => b.type === "paragraph")
+              .map(b => (b.content || "").replace(/<[^>]+>/g, ""))
+              .join(" ")
+              .slice(0, 200);
+            const prompt = `Educational illustration for lesson "${lessonTitle}". ${snippet}. Professional, clean, suitable for online course.`;
+            const { data: imgData } = await safeInvoke<any>("generate-image", {
+              body: { prompt, provider: "gigachat" },
+            });
+            if (imgData?.url) {
+              newBlocks.unshift({
+                id: crypto.randomUUID(),
+                type: "image",
+                content: "",
+                imageSrc: imgData.url,
+              } as ContentBlock);
+              toast.success("Изображение сгенерировано");
+            }
+          } catch (e) {
+            console.warn("Hero image generation skipped:", e);
+          }
+
+          // Generate intro audio via SaluteSpeech (non-blocking)
+          try {
+            const firstPara = newBlocks.find(
+              b => b.type === "paragraph" && b.content && b.content.replace(/<[^>]+>/g, "").trim().length > 50
+            );
+            if (firstPara) {
+              const plainText = (firstPara.content || "").replace(/<[^>]+>/g, "").slice(0, 500);
+              const response = await safeFetch(
+                `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/salutespeech-tts`,
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+                    "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+                  },
+                  body: JSON.stringify({ text: plainText, voice: "natalya", format: "opus" }),
+                }
+              );
+              if (response.ok) {
+                const audioBlob = await response.blob();
+                await initExternalSupabase();
+                const storageClient = getExternalSupabase() || supabase;
+                const fileName = `tts_${crypto.randomUUID()}.ogg`;
+                const { error: uploadError } = await storageClient.storage
+                  .from("course-files")
+                  .upload(fileName, audioBlob, { contentType: "audio/ogg", cacheControl: "3600", upsert: true });
+                if (!uploadError) {
+                  const { data: urlData } = storageClient.storage.from("course-files").getPublicUrl(fileName);
+                  if (urlData?.publicUrl) {
+                    const insertIdx = newBlocks[0]?.type === "image" ? 1 : 0;
+                    newBlocks.splice(insertIdx, 0, {
+                      id: crypto.randomUUID(),
+                      type: "audio",
+                      content: plainText.slice(0, 200),
+                      audioUrl: urlData.publicUrl,
+                    } as ContentBlock);
+                    toast.success("Аудио сгенерировано");
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            console.warn("Intro audio generation skipped:", e);
+          }
+
+          onUpdate({ blocks: newBlocks, content: blocksToJsonFn(newBlocks) });
           toast.success("Контент сгенерирован");
         } else toast.error("AI не вернул контент");
       }

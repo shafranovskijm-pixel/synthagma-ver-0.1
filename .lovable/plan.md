@@ -1,34 +1,18 @@
 
 
-## Проблема
+## Plan: Auto-fix after "Проверить все"
 
-Кнопка **«Написать с AI»** в конструкторе курса (`useLessonMedia.ts` → `handleGenerateContent`) получает текстовые блоки от `generate-lesson-content`, но **не добавляет**:
-- **Изображение** — не вызывает `generate-image` после генерации текста
-- **Аудио** — не вызывает TTS (SaluteSpeech) для озвучки контента
-- **Слайдер** — не генерирует слайды
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-В отличие от этого, `ContentGeneratorTab` (конвейер маркетплейса) уже делает и то, и другое (строки 278-301).
+### Changes
 
-## План
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-### 1. `useLessonMedia.ts` — добавить генерацию изображения и аудио после текста
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-После получения текстовых блоков от AI:
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-1. **Генерация изображения**: вызвать `generate-image` с промптом на основе заголовка урока → вставить блок `image` в начало массива блоков
-2. **Генерация аудио**: собрать текст из параграфов → вызвать `salutespeech-tts` → загрузить аудио в storage → вставить блок `audio` после изображения
-
-Логика скопирована из `ContentGeneratorTab.processLesson` (строки 278-301).
-
-### 2. `useLessonMedia.ts` — обновить `accordionTitle` при маппинге блоков
-
-Сейчас маппинг блоков (строка 236-238) не копирует `accordionTitle` — добавить.
-
-### Файлы для изменения
-
-| Файл | Что меняется |
-|---|---|
-| `src/hooks/useLessonMedia.ts` | После получения текстовых блоков — генерация изображения (generate-image) + аудио (salutespeech-tts), вставка блоков image/audio. Копирование accordionTitle |
-
-**Примечание**: Генерация слайдера (slideshow) требует генерации нескольких изображений с текстом для каждого слайда — это значительно более сложная задача. На данном этапе добавляем hero-изображение и аудио-озвучку, что уже обеспечит «полноценный» контент из кнопки «Написать с AI».
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 
