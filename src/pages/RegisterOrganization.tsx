@@ -313,7 +313,7 @@ const RegisterOrganization = () => {
   return (
     <div className="min-h-screen bg-background flex">
       {/* Left side - Visual */}
-      <div className="hidden lg:flex flex-1 relative bg-gradient-to-br from-sigma-blue via-primary to-sigma-cyan items-center justify-center overflow-hidden">
+      <div className="hidden lg:flex flex-1 relative bg-gradient-to-br from-primary via-primary/80 to-accent items-center justify-center overflow-hidden">
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzRoLTJ2LTRoMnY0em0wLTZoLTJ2LTRoMnY0em0wLTZoLTJ2LTRoMnY0em0wLTZoLTJ2LTRoMnY0em0wLTZoLTJWNmgydjR6Ii8+PC9nPjwvZz48L3N2Zz4=')] opacity-30" />
         
         <div className="relative z-10 text-center text-white px-12">
