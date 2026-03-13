@@ -170,6 +170,7 @@ export function useAdminMarketplace() {
           description: newDescription.trim() || null,
           duration: newDuration.trim() || null,
           organization_id: platformOrgId,
+          category_id: newCategoryId || null,
           is_published: true,
         })
         .select("id")
