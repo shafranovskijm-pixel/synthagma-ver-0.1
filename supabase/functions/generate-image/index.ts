@@ -286,7 +286,7 @@ serve(async (req) => {
           const si = (startSlot + attempt) % allSlots.length;
           const slotName = allSlots[si];
 
-          const maxSlotRetries = 2;
+          const maxSlotRetries = 1;
           for (let retry = 0; retry < maxSlotRetries; retry++) {
             try {
               console.log(`[generate-image] Trying GigaChat slot ${slotName} (round ${round + 1}/${maxRounds}, attempt ${attempt + 1}, retry ${retry + 1}/${maxSlotRetries}, startSlot=${startSlot})`);
