@@ -160,6 +160,8 @@ export function AdminMarketplaceManager() {
   const [bulkFixing, setBulkFixing] = useState(false);
   const [converting, setConverting] = useState(false);
   const [autoCategorizing, setAutoCategorizing] = useState(false);
+  const [selectedUncategorized, setSelectedUncategorized] = useState<Set<string>>(new Set());
+  const [bulkMoveTarget, setBulkMoveTarget] = useState<string>("");
   const [validationReport, setValidationReport] = useState<{ courseId: string; title: string; issues: string[] }[] | null>(null);
   const [validationReportOk, setValidationReportOk] = useState(0);
 
