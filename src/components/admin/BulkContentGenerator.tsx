@@ -218,6 +218,7 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
     } catch (e: any) {
       console.error("Structure generation error:", e);
       toast.error(e.message || "Ошибка генерации структуры");
+      await logHistory(courseId, courseTitle, "structure", `❌ Ошибка структуры — ${e.message || "Неизвестная ошибка"}`, 0, 0);
       return [];
     }
   };
