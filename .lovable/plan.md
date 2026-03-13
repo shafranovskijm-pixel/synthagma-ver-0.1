@@ -1,18 +1,31 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## Проблема
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+Тип `"practice"` **не существует** в типизации курс-билдера (`LessonType`). Когда курс-билдер отображает урок с `type = "practice"`, он не попадает ни в одну ветку рендеринга:
+- Строка 159: `lesson.type === "text" || lesson.type === "lesson"` — practice не включён
+- Блочный редактор не показывается → урок выглядит пустым
 
-### Changes
+При этом в БД контент **есть** (JSON-блоки), просто он не отображается.
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+## Решение
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+Два варианта: (1) добавить `"practice"` как полноценный тип в курс-билдер, или (2) просто приравнять practice к text при рендеринге.
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+**Выбранный подход: приравнять practice к text** — минимальные изменения, practice отображается как текстовый урок с блочным редактором.
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+### 1. `LessonTypeConfig.ts`
+- Добавить `"practice"` в тип `LessonType`
+- Добавить иконку и цвет для practice (например, `ClipboardList`, оранжево-красный)
+
+### 2. `SortableLessonItem.tsx`
+- Строка 159: добавить `|| lesson.type === "practice"` к условию рендеринга блочного редактора
+
+### 3. `useCourseBuilder.ts`
+- При загрузке уроков из БД, `l.type as LessonType` уже кастит — нужно убедиться что practice корректно обрабатывается при сохранении и отображении
+
+| Файл | Изменение |
+|---|---|
+| `LessonTypeConfig.ts` | Добавить `"practice"` в тип, иконку и цвет |
+| `SortableLessonItem.tsx` | Добавить `"practice"` в условие рендеринга блочного редактора |
 
