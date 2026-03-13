@@ -569,10 +569,6 @@ export function AdminMarketplaceManager() {
         allQuestions = (questions || []) as typeof allQuestions;
       }
 
-        {/* Settings */}
-        <TabsContent value="settings" className="space-y-4">
-          <MarketplaceSettingsTab onSettingsLoaded={handleSettingsLoaded} />
-        </TabsContent>
 
       const unansweredQuestions = allQuestions.filter(q => q.correct_answer === null || q.correct_answer === undefined);
 
