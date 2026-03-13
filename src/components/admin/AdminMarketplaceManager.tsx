@@ -674,6 +674,102 @@ export function AdminMarketplaceManager() {
         await Promise.allSettled(promises);
       }
 
+      // 2b. Enrich text/practice lessons with images (analyze_visuals + generate-image)
+      const allTextLessons = allLessons.filter(l => l.type === "text" || l.type === "practice");
+      const lessonsNeedingMedia: typeof allTextLessons = [];
+      for (const lesson of allTextLessons) {
+        const { data: freshLesson } = await supabase.from("lessons").select("content").eq("id", lesson.id).single();
+        if (!freshLesson?.content || freshLesson.content === "[]") continue;
+        try {
+          const blocks = JSON.parse(freshLesson.content);
+          if (!Array.isArray(blocks) || blocks.length < 3) continue;
+          const hasMedia = blocks.some((b: any) => b.type === "image" || b.type === "slider");
+          if (!hasMedia) lessonsNeedingMedia.push({ ...lesson, content: freshLesson.content });
+        } catch { continue; }
+      }
+
+      if (lessonsNeedingMedia.length > 0) {
+        toast.loading(`Обогащаю медиа: 0/${lessonsNeedingMedia.length}...`, { id: toastId });
+        let enrichedCount = 0;
+        for (let ei = 0; ei < lessonsNeedingMedia.length; ei += CONCURRENCY) {
+          const enrichChunk = lessonsNeedingMedia.slice(ei, ei + CONCURRENCY);
+          const enrichPromises = enrichChunk.map(async (lesson, idx) => {
+            const streamIndex = ei + idx;
+            const startMs = Date.now();
+            try {
+              let blocks: any[];
+              try { blocks = JSON.parse(lesson.content!); } catch { return; }
+              const textContent = blocks
+                .filter((b: any) => b.type === "paragraph" || b.type?.startsWith("heading"))
+                .map((b: any) => b.content || "").join("\n").slice(0, 4000);
+              if (textContent.length < 100) return;
+
+              const { data: analysisData, error: analysisErr } = await safeInvoke<any>("gigachat", {
+                body: {
+                  action: "analyze_visuals",
+                  courseTitle,
+                  lessonTitle: lesson.title,
+                  lessonContent: textContent,
+                  blocksCount: blocks.length,
+                  ai_provider: aiProvider,
+                  stream_index: streamIndex,
+                  ...(aiProvider === "gigachat" && gigachatModel ? { gigachat_model: gigachatModel } : {}),
+                },
+              });
+
+              if (analysisErr || !analysisData?.visuals || analysisData.visuals.length === 0) {
+                console.warn(`[Auto-fix enrichment] Skip "${lesson.title}":`, analysisErr?.message || "no visuals");
+                return;
+              }
+
+              const visuals = analysisData.visuals as Array<{
+                prompt: string; after_block_index: number; format: "image" | "slider"; slides?: string[];
+              }>;
+
+              const imageVisuals = [...visuals].filter(v => v.format === "image")
+                .sort((a, b) => b.after_block_index - a.after_block_index);
+
+              let insertedCount = 0;
+              for (const visual of imageVisuals) {
+                try {
+                  const { data: imgData, error: imgErr } = await safeInvoke<any>("generate-image", {
+                    body: { prompt: visual.prompt, provider: "gigachat" },
+                  });
+                  if (imgErr || !imgData?.url) continue;
+                  const insertIdx = Math.min(visual.after_block_index + 1, blocks.length);
+                  blocks.splice(insertIdx, 0, {
+                    id: crypto.randomUUID(), type: "image", content: visual.prompt, imageSrc: imgData.url,
+                  });
+                  insertedCount++;
+                } catch (e) {
+                  console.warn(`Auto-fix image failed:`, e);
+                }
+              }
+
+              if (insertedCount > 0) {
+                await supabase.from("lessons").update({ content: JSON.stringify(blocks) }).eq("id", lesson.id);
+                enrichedCount += insertedCount;
+              }
+
+              await supabase.from("generation_history").insert({
+                course_id: courseId, course_title: courseTitle,
+                action: "enrichment",
+                details: `Auto-fix media: "${lesson.title}" (+${insertedCount} img)`,
+                items_count: insertedCount, stream_index: streamIndex,
+                duration_ms: Date.now() - startMs,
+              }).then(() => {}, () => {});
+            } catch (e) {
+              console.error(`Auto-fix enrichment error for ${lesson.id}:`, e);
+            }
+          });
+          await Promise.allSettled(enrichPromises);
+          toast.loading(`Обогащаю медиа: ${Math.min(ei + CONCURRENCY, lessonsNeedingMedia.length)}/${lessonsNeedingMedia.length}...`, { id: toastId });
+        }
+        if (enrichedCount > 0) {
+          console.log(`[Auto-fix] Enriched ${enrichedCount} images across ${lessonsNeedingMedia.length} lessons`);
+        }
+      }
+
       // 3. Generate questions for empty tests
       if (emptyTests.length > 0) {
         for (let i = 0; i < emptyTests.length; i += CONCURRENCY) {
