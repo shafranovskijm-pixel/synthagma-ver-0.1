@@ -290,15 +290,17 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
           const BATCH_SIZE = 60;
           for (let i = 0; i < unanswered.length; i += BATCH_SIZE) {
             const batch = unanswered.slice(i, i + BATCH_SIZE);
-            const { data: ansData, error: ansError } = await safeInvoke("gigachat", {
-              action: "generate_answers",
-              questions: batch.map(q => ({
-                id: q.id,
-                question: q.question,
-                options: q.options,
-              })),
-              aiProvider,
-              ...(aiProvider === "gigachat" ? { gigachatModel } : { lovableModel }),
+            const { data: ansData, error: ansError } = await safeInvoke<any>("gigachat", {
+              body: {
+                action: "generate_answers",
+                questions: batch.map(q => ({
+                  id: q.id,
+                  question: q.question,
+                  options: q.options,
+                })),
+                aiProvider,
+                ...(aiProvider === "gigachat" ? { gigachatModel } : { lovableModel }),
+              },
             });
 
             if (!ansError && ansData?.answers) {
