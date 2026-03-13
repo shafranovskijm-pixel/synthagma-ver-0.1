@@ -43,6 +43,18 @@ interface CourseStoreManagerProps {
   refreshBalance?: () => Promise<void>;
 }
 
+const categoryMetaOrg: Record<string, { icon: React.ElementType; color: string; bgColor: string }> = {
+  "Промышленная безопасность": { icon: Factory, color: "text-orange-500", bgColor: "bg-orange-500/10" },
+  "Электробезопасность": { icon: Zap, color: "text-yellow-500", bgColor: "bg-yellow-500/10" },
+  "Энергетика": { icon: Flame, color: "text-red-500", bgColor: "bg-red-500/10" },
+  "Экологическая безопасность": { icon: Leaf, color: "text-green-500", bgColor: "bg-green-500/10" },
+  "Гидротехнические сооружения": { icon: Droplets, color: "text-blue-500", bgColor: "bg-blue-500/10" },
+  "Строительный контроль": { icon: HardHat, color: "text-accent", bgColor: "bg-accent/10" },
+};
+
+const getCategoryMetaOrg = (category: string) =>
+  categoryMetaOrg[category] || { icon: BookOpen, color: "text-primary", bgColor: "bg-primary/10" };
+
 export function CourseStoreManager({ organizationId, userRole = 'organization', userId }: CourseStoreManagerProps) {
   const navigate = useNavigate();
   const h = useCourseStoreManager({ organizationId, userRole, userId });
