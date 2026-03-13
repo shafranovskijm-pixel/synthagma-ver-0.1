@@ -94,10 +94,15 @@ export function useAdminMarketplace() {
   const fetchDbCategories = async () => {
     const { data } = await supabase
       .from("course_categories")
-      .select("id, name, color, order_index")
+      .select("id, name, color, order_index, parent_type, icon")
       .eq("organization_id", MARKETPLACE_ORG_ID)
       .order("order_index");
-    setDbCategories((data || []).map(d => ({ ...d, order_index: (d as any).order_index ?? 0 })));
+    setDbCategories((data || []).map(d => ({
+      ...d,
+      order_index: (d as any).order_index ?? 0,
+      parent_type: (d as any).parent_type ?? "Повышение квалификации",
+      icon: (d as any).icon ?? null,
+    })));
   };
 
   const fetchData = async () => {
