@@ -944,7 +944,7 @@ export function AdminMarketplaceManager() {
                                         toast.success(`Перемещено ${courseIds.length} курсов`);
                                         setSelectedUncategorized(new Set());
                                         setBulkMoveTarget("");
-                                        h.refetch();
+                                        h.fetchData();
                                       }}
                                     >
                                       <MoveRight className="w-3 h-3 mr-1" />Переместить
