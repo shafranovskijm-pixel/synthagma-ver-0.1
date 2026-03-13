@@ -653,6 +653,7 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
     switch (status) {
       case "generating_text": return "Текст...";
       case "generating_image": return "Изображение...";
+      case "generating_audio": return "Аудио...";
       case "solving_test": return "Решение теста...";
       case "done": return "Готово";
       case "error": return "Ошибка";
