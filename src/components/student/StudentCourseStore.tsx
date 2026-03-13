@@ -246,8 +246,24 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
     );
   });
 
-  const formatPrice = (price: number) =>
-    new Intl.NumberFormat("ru-RU", { style: "currency", currency: "RUB", maximumFractionDigits: 0 }).format(price);
+  const extractCategory = (title: string | undefined): string => {
+    if (!title) return "Без категории";
+    const dashIndex = title.indexOf(" — ");
+    if (dashIndex > 0) return title.substring(0, dashIndex).trim();
+    return "Без категории";
+  };
+
+  const groupedCatalog = useMemo(() => {
+    const map = new Map<string, MarketplaceCourse[]>();
+    for (const c of filteredCatalog) {
+      const cat = extractCategory(c.course?.title);
+      if (!map.has(cat)) map.set(cat, []);
+      map.get(cat)!.push(c);
+    }
+    return Array.from(map.entries())
+      .map(([category, courses]) => ({ category, courses }))
+      .sort((a, b) => a.category.localeCompare(b.category));
+  }, [filteredCatalog]);
 
   if (isLoading) {
     return (
