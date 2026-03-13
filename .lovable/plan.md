@@ -1,36 +1,18 @@
 
 
-## Диагностика и план исправления
+## Plan: Auto-fix after "Проверить все"
 
-### Проблема 1: Некачественное изображение (скриншот 826)
-Изображение выглядит как «документы/графики на столе» — это результат промпта вроде «документы с графиками и диаграммами». Несмотря на запрет в `analyze_visuals`, GigaChat всё ещё может генерировать промпты с абстрактными понятиями вроде «рабочий стол с документами», «графики на бумаге». Нужно ужесточить промпт `analyze_visuals` — добавить **конкретные примеры запрещённых промптов** (документы, бумаги, графики на столе) и сократить количество visuals до 1-2 вместо 2-3.
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-### Проблема 2: Медленная генерация — «Обогащаю медиа 1/5»
-Уроков, нуждающихся в медиа, оказывается 5. Каждый урок:
-1. Вызов `analyze_visuals` (~5-10с)
-2. Параллельная генерация 2-3 изображений (~10-15с каждое, но параллельно)
+### Changes
 
-При `CONCURRENCY=3` обрабатываются 3 урока одновременно, потом ещё 2. Но каждый урок генерирует 2-3 изображения → 6-9 одновременных вызовов `generate-image` → все 3 GigaChat-слота перегружаются → 429 → retry → cooldown → **экспоненциальное замедление**.
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-**Корень проблемы**: 3 потока × 2-3 изображения на урок = 6-9 параллельных запросов к 3 слотам GigaChat. Это неизбежно вызывает 429.
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-### План исправления
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-| # | Что | Файл | Эффект |
-|---|---|---|---|
-| 1 | Сократить visuals до **1 изображения на урок** | `gigachat/index.ts` | В 2-3 раза меньше запросов к generate-image |
-| 2 | Добавить конкретные запрещённые примеры промптов | `gigachat/index.ts` | Исключить документы/графики/бумаги |
-| 3 | Ограничить параллелизм enrichment до `CONCURRENCY=2` | `AdminMarketplaceManager.tsx` | 2 урока × 1 изображение = 2 запроса одновременно — укладывается в 3 слота |
-| 4 | Убрать внутренний `Promise.allSettled` для imageVisuals — генерировать последовательно (т.к. теперь 1 картинка) | `AdminMarketplaceManager.tsx` | Упрощение, меньше конкуренции за слоты |
-
-### Ключевые изменения
-
-**gigachat/index.ts** — промпт `analyze_visuals` (строка 236):
-- Заменить "2-3 ключевые концепции" → "1 самую важную концепцию"
-- Добавить запрет: `"ЗАПРЕЩЕНО: документы, бумаги, графики на столе, люди за компьютерами без контекста"`
-- Результат: `{"visuals": [одна запись]}`
-
-**AdminMarketplaceManager.tsx** (строка 695):
-- Enrichment concurrency: `CONCURRENCY` → `2` (отдельная переменная)
-- Упростить генерацию: 1 изображение → простой вызов без `Promise.allSettled`
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 

@@ -692,8 +692,9 @@ export function AdminMarketplaceManager() {
         let enrichedLessons = 0;
         toast.loading(`Обогащаю медиа: 0/${lessonsNeedingMedia.length}...`, { id: toastId });
         let enrichedCount = 0;
-        for (let ei = 0; ei < lessonsNeedingMedia.length; ei += CONCURRENCY) {
-          const enrichChunk = lessonsNeedingMedia.slice(ei, ei + CONCURRENCY);
+        const ENRICH_CONCURRENCY = 2;
+        for (let ei = 0; ei < lessonsNeedingMedia.length; ei += ENRICH_CONCURRENCY) {
+          const enrichChunk = lessonsNeedingMedia.slice(ei, ei + ENRICH_CONCURRENCY);
           const enrichPromises = enrichChunk.map(async (lesson, idx) => {
             const streamIndex = ei + idx;
             const startMs = Date.now();
@@ -727,29 +728,21 @@ export function AdminMarketplaceManager() {
                 prompt: string; after_block_index: number; format: "image" | "slider"; slides?: string[];
               }>;
 
-              const imageVisuals = [...visuals].filter(v => v.format === "image")
-                .sort((a, b) => b.after_block_index - a.after_block_index);
-
-              // Parallel image generation for speed, with slotIndex for round-robin
-              const imageResults = await Promise.allSettled(
-                imageVisuals.map((visual, vIdx) =>
-                  safeInvoke<any>("generate-image", {
-                    body: { prompt: visual.prompt, provider: "gigachat", slotIndex: streamIndex * 10 + vIdx },
-                  }).then(res => ({ ...res, visual }))
-                )
-              );
+              // Take only the first image visual (1 per lesson to avoid overloading slots)
+              const imageVisual = visuals.find(v => v.format === "image");
 
               let insertedCount = 0;
-              // Insert in reverse order (imageVisuals already sorted desc by after_block_index)
-              for (const result of imageResults) {
-                if (result.status !== "fulfilled") continue;
-                const { data: imgData, error: imgErr, visual } = result.value;
-                if (imgErr || !imgData?.url) continue;
-                const insertIdx = Math.min(visual.after_block_index + 1, blocks.length);
-                blocks.splice(insertIdx, 0, {
-                  id: crypto.randomUUID(), type: "image", content: visual.prompt, imageSrc: imgData.url,
+              if (imageVisual) {
+                const { data: imgData, error: imgErr } = await safeInvoke<any>("generate-image", {
+                  body: { prompt: imageVisual.prompt, provider: "gigachat", slotIndex: streamIndex },
                 });
-                insertedCount++;
+                if (!imgErr && imgData?.url) {
+                  const insertIdx = Math.min(imageVisual.after_block_index + 1, blocks.length);
+                  blocks.splice(insertIdx, 0, {
+                    id: crypto.randomUUID(), type: "image", content: imageVisual.prompt, imageSrc: imgData.url,
+                  });
+                  insertedCount++;
+                }
               }
 
               if (insertedCount > 0) {
