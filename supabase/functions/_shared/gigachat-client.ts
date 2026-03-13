@@ -711,16 +711,11 @@ export async function callAIWithTools(
     return tool ? parsed : { content: text };
   };
 
-  // Round-robin mode: distribute across Lovable AI + GigaChat slots
+  // Round-robin mode: distribute across 3 GigaChat API slots only
   if (taskIndex !== undefined && preferredProvider !== "gigachat") {
-    // Build channels: [Lovable AI, GigaChat slot-0, slot-1, slot-2]
+    // Build channels: [GigaChat slot-0, slot-1, slot-2] — strictly 3 streams
     type Channel = { name: string; call: () => Promise<any> };
-    const channels: Channel[] = [
-      {
-        name: `Lovable AI (${lovableModel})`,
-        call: () => callLovableAIWithTools(messages, tool, lovableModel),
-      },
-    ];
+    const channels: Channel[] = [];
     for (let si = 0; si < slots.length; si++) {
       const slotIdx = si;
       channels.push({
@@ -746,6 +741,15 @@ export async function callAIWithTools(
         const msg = err instanceof Error ? err.message : String(err);
         console.warn(`[callAIWithTools-RR] ${channel.name} failed: ${msg}`);
       }
+    }
+
+    // Last resort: try Lovable AI if all GigaChat slots failed
+    try {
+      console.log(`[callAIWithTools-RR] ${taskLabel} → Lovable AI (last fallback)`);
+      return await callLovableAIWithTools(messages, tool, lovableModel);
+    } catch (fallbackErr) {
+      const msg = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
+      console.error(`[callAIWithTools-RR] Lovable AI fallback also failed: ${msg}`);
     }
     throw new Error("All AI channels exhausted in callAIWithTools round-robin");
   }
