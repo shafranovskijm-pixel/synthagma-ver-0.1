@@ -289,6 +289,13 @@ export function AdminMarketplaceManager() {
   const [bulkMoveTarget, setBulkMoveTarget] = useState<string>("");
   const [validationReport, setValidationReport] = useState<{ courseId: string; title: string; issues: string[] }[] | null>(null);
   const [validationReportOk, setValidationReportOk] = useState(0);
+  const [valRules, setValRules] = useState<ValidationRules>({ minLessons: 3, minContentLength: 50, requireTest: true, requireText: true, checkDuplicateTitles: true });
+  const [aiPrompts, setAiPrompts] = useState<AiPrompts>({});
+
+  const handleSettingsLoaded = useCallback((rules: ValidationRules, prompts: AiPrompts) => {
+    setValRules(rules);
+    setAiPrompts(prompts);
+  }, []);
 
   // Initialize validated state from DB on courses load (preserve existing error statuses)
   useEffect(() => {
