@@ -842,11 +842,15 @@ export function AdminMarketplaceManager() {
                             onDragEnd={(event: DragEndEvent) => {
                               const { active, over } = event;
                               if (!over || active.id === over.id) return;
-                              const oldIndex = h.dbCategories.findIndex(c => c.id === active.id);
-                              const newIndex = h.dbCategories.findIndex(c => c.id === over.id);
-                              if (oldIndex === -1 || newIndex === -1) return;
-                              const reordered = arrayMove(h.dbCategories, oldIndex, newIndex).map((c, i) => ({ ...c, order_index: i }));
-                              h.handleReorderCategories(reordered);
+                              // Scope reorder to categories within this parent_type
+                              const parentCats = h.dbCategories.filter(c => (c.parent_type || "Повышение квалификации") === group.category);
+                              const oldIdx = parentCats.findIndex(c => c.id === active.id);
+                              const newIdx = parentCats.findIndex(c => c.id === over.id);
+                              if (oldIdx === -1 || newIdx === -1) return;
+                              const reorderedParent = arrayMove(parentCats, oldIdx, newIdx).map((c, i) => ({ ...c, order_index: i }));
+                              // Merge back with other parent_type categories
+                              const otherCats = h.dbCategories.filter(c => (c.parent_type || "Повышение квалификации") !== group.category);
+                              h.handleReorderCategories([...otherCats, ...reorderedParent]);
                             }}
                           >
                             <SortableContext items={group.subGroups.map(s => s.categoryId || s.category)} strategy={verticalListSortingStrategy}>
