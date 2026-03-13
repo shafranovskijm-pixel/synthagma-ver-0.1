@@ -255,12 +255,26 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
   };
 
 
+  const ALL_RTN_CATEGORIES_STUDENT = [
+    "Промышленная безопасность",
+    "Электробезопасность",
+    "Энергетика",
+    "Экологическая безопасность",
+    "Гидротехнические сооружения",
+    "Строительный контроль",
+  ];
+
   const groupedCatalog = useMemo(() => {
     const map = new Map<string, MarketplaceCourse[]>();
     for (const c of filteredCatalog) {
       const cat = extractCategory(c.course?.title);
       if (!map.has(cat)) map.set(cat, []);
       map.get(cat)!.push(c);
+    }
+
+    // Ensure all 6 RTN categories exist
+    for (const cat of ALL_RTN_CATEGORIES_STUDENT) {
+      if (!map.has(cat)) map.set(cat, []);
     }
 
     return Array.from(map.entries())

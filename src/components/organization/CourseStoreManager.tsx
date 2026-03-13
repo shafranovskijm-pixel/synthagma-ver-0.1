@@ -271,76 +271,94 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
                         : getCategoryMetaOrg(group.category);
                       const CatIcon = meta.icon;
 
-                      // For RTN parent group, render subGroups as individual cards
+                      // For RTN parent group, render nested collapsibles
                       if (group.subGroups) {
-                        return group.subGroups.map((sub) => {
-                          const subMeta = getCategoryMetaOrg(sub.category);
-                          const SubIcon = subMeta.icon;
-                          return (
-                            <Card key={sub.category} className="border-border/60 bg-card/80 backdrop-blur-sm hover:border-accent/30 transition-colors duration-300 overflow-hidden">
-                              <CardContent className="p-6 md:p-8">
-                                <div className="flex items-start gap-4 mb-5">
-                                  <div className={`w-12 h-12 rounded-xl ${subMeta.bgColor} flex items-center justify-center shrink-0`}>
-                                    <SubIcon className={`w-6 h-6 ${subMeta.color}`} />
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-3 flex-wrap">
-                                      <h3 className="font-display text-xl font-medium">{sub.category}</h3>
-                                      <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-accent/10 text-accent">
+                        return (
+                          <Collapsible key="rtn-root" defaultOpen={false}>
+                            <CollapsibleTrigger className="flex items-center gap-3 w-full p-4 rounded-xl border border-border bg-card hover:bg-secondary/30 transition-colors">
+                              <div className={`w-10 h-10 rounded-lg ${meta.bgColor} flex items-center justify-center shrink-0`}>
+                                <CatIcon className={`w-5 h-5 ${meta.color}`} />
+                              </div>
+                              <div className="flex-1 text-left">
+                                <h3 className="font-display text-lg font-medium">{group.category}</h3>
+                              </div>
+                              <Badge variant="secondary">{group.courses.length} курсов</Badge>
+                              <ChevronDown className="w-5 h-5 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="space-y-3 mt-3 pl-2">
+                              {group.subGroups.map((sub) => {
+                                const subMeta = getCategoryMetaOrg(sub.category);
+                                const SubIcon = subMeta.icon;
+                                return (
+                                  <Collapsible key={sub.category} defaultOpen={false}>
+                                    <CollapsibleTrigger className="flex items-center gap-3 w-full p-3 rounded-lg border border-border/60 bg-card/80 hover:bg-secondary/20 transition-colors">
+                                      <div className={`w-8 h-8 rounded-lg ${subMeta.bgColor} flex items-center justify-center shrink-0`}>
+                                        <SubIcon className={`w-4 h-4 ${subMeta.color}`} />
+                                      </div>
+                                      <span className="flex-1 text-left font-medium text-sm">{sub.category}</span>
+                                      <span className="text-xs text-muted-foreground">
                                         {sub.courses.length} {sub.courses.length === 1 ? 'курс' : sub.courses.length < 5 ? 'курса' : 'курсов'}
                                       </span>
-                                    </div>
-                                  </div>
-                                </div>
-                                <div className="grid sm:grid-cols-2 gap-x-6 gap-y-2 pl-0 md:pl-16">
-                                  {sub.courses.map((item) => (
-                                    <button
-                                      key={item.id}
-                                      className="flex items-start gap-2 py-1 text-left hover:text-accent transition-colors group/item"
-                                      onClick={() => setSelectedCourseDetail(item)}
-                                    >
-                                      <CheckCircle className="w-4 h-4 text-accent shrink-0 mt-0.5" />
-                                      <span className="text-sm text-foreground/75 group-hover/item:text-accent">{h.extractShortTitle(item.course?.title)}</span>
-                                    </button>
-                                  ))}
-                                </div>
-                              </CardContent>
-                            </Card>
-                          );
-                        });
+                                      <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent className="pt-2 pl-11">
+                                      {sub.courses.length === 0 ? (
+                                        <p className="text-xs text-muted-foreground py-2 italic">Курсы ещё не добавлены</p>
+                                      ) : (
+                                        <div className="grid sm:grid-cols-2 gap-x-6 gap-y-2">
+                                          {sub.courses.map((item) => (
+                                            <button
+                                              key={item.id}
+                                              className="flex items-start gap-2 py-1 text-left hover:text-accent transition-colors group/item"
+                                              onClick={() => setSelectedCourseDetail(item)}
+                                            >
+                                              <CheckCircle className="w-4 h-4 text-accent shrink-0 mt-0.5" />
+                                              <span className="text-sm text-foreground/75 group-hover/item:text-accent">{h.extractShortTitle(item.course?.title)}</span>
+                                            </button>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </CollapsibleContent>
+                                  </Collapsible>
+                                );
+                              })}
+                            </CollapsibleContent>
+                          </Collapsible>
+                        );
                       }
 
                       // Standalone category
                       return (
-                        <Card key={group.category} className="border-border/60 bg-card/80 backdrop-blur-sm hover:border-accent/30 transition-colors duration-300 overflow-hidden">
-                          <CardContent className="p-6 md:p-8">
-                            <div className="flex items-start gap-4 mb-5">
-                              <div className={`w-12 h-12 rounded-xl ${meta.bgColor} flex items-center justify-center shrink-0`}>
-                                <CatIcon className={`w-6 h-6 ${meta.color}`} />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-3 flex-wrap">
-                                  <h3 className="font-display text-xl font-medium">{group.category}</h3>
-                                  <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-accent/10 text-accent">
-                                    {group.courses.length} {group.courses.length === 1 ? 'курс' : group.courses.length < 5 ? 'курса' : 'курсов'}
-                                  </span>
-                                </div>
-                              </div>
+                        <Collapsible key={group.category} defaultOpen={false}>
+                          <CollapsibleTrigger className="flex items-center gap-3 w-full p-4 rounded-xl border border-border bg-card hover:bg-secondary/30 transition-colors">
+                            <div className={`w-10 h-10 rounded-lg ${meta.bgColor} flex items-center justify-center shrink-0`}>
+                              <CatIcon className={`w-5 h-5 ${meta.color}`} />
                             </div>
-                            <div className="grid sm:grid-cols-2 gap-x-6 gap-y-2 pl-0 md:pl-16">
-                              {group.courses.map((item) => (
-                                <button
-                                  key={item.id}
-                                  className="flex items-start gap-2 py-1 text-left hover:text-accent transition-colors group/item"
-                                  onClick={() => setSelectedCourseDetail(item)}
-                                >
-                                  <CheckCircle className="w-4 h-4 text-accent shrink-0 mt-0.5" />
-                                  <span className="text-sm text-foreground/75 group-hover/item:text-accent">{h.extractShortTitle(item.course?.title)}</span>
-                                </button>
-                              ))}
-                            </div>
-                          </CardContent>
-                        </Card>
+                            <span className="flex-1 text-left font-display text-lg font-medium">{group.category}</span>
+                            <Badge variant="secondary">
+                              {group.courses.length} {group.courses.length === 1 ? 'курс' : group.courses.length < 5 ? 'курса' : 'курсов'}
+                            </Badge>
+                            <ChevronDown className="w-5 h-5 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
+                          </CollapsibleTrigger>
+                          <CollapsibleContent className="pt-3 pl-13">
+                            {group.courses.length === 0 ? (
+                              <p className="text-xs text-muted-foreground py-2 italic">Курсы ещё не добавлены</p>
+                            ) : (
+                              <div className="grid sm:grid-cols-2 gap-x-6 gap-y-2">
+                                {group.courses.map((item) => (
+                                  <button
+                                    key={item.id}
+                                    className="flex items-start gap-2 py-1 text-left hover:text-accent transition-colors group/item"
+                                    onClick={() => setSelectedCourseDetail(item)}
+                                  >
+                                    <CheckCircle className="w-4 h-4 text-accent shrink-0 mt-0.5" />
+                                    <span className="text-sm text-foreground/75 group-hover/item:text-accent">{h.extractShortTitle(item.course?.title)}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </CollapsibleContent>
+                        </Collapsible>
                       );
                     })}
                   </div>

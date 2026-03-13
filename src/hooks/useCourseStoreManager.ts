@@ -439,6 +439,15 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
 
   const EXCLUDED_FROM_RTN = ["Охрана труда при работах на высоте"];
 
+  const ALL_RTN_CATEGORIES = [
+    "Промышленная безопасность",
+    "Электробезопасность",
+    "Энергетика",
+    "Экологическая безопасность",
+    "Гидротехнические сооружения",
+    "Строительный контроль",
+  ];
+
   const groupedCatalog: { category: string; courses: MarketplaceCourse[]; subGroups?: { category: string; courses: MarketplaceCourse[] }[] }[] = (() => {
     const map = new Map<string, MarketplaceCourse[]>();
     for (const c of filteredCatalog) {
@@ -447,13 +456,18 @@ export function useCourseStoreManager({ organizationId, userRole = 'organization
       map.get(cat)!.push(c);
     }
 
+    // Ensure all 6 RTN categories exist (even if empty)
+    for (const cat of ALL_RTN_CATEGORIES) {
+      if (!map.has(cat)) map.set(cat, []);
+    }
+
     const rtnSubGroups: { category: string; courses: MarketplaceCourse[] }[] = [];
     const standalone: { category: string; courses: MarketplaceCourse[] }[] = [];
 
     for (const [category, courses] of Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b))) {
       if (EXCLUDED_FROM_RTN.includes(category)) {
         standalone.push({ category, courses });
-      } else {
+      } else if (ALL_RTN_CATEGORIES.includes(category) || !EXCLUDED_FROM_RTN.includes(category)) {
         rtnSubGroups.push({ category, courses });
       }
     }
