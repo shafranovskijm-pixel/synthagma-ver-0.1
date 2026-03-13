@@ -26,9 +26,19 @@ export function useOrgUnreadChats(organizationId: string | null, currentUserId: 
         .eq("organization_id", organizationId)
         .order("created_at", { ascending: false });
 
+      // Also count unread admin messages
+      const { count: adminUnread } = await supabase
+        .from("admin_org_messages")
+        .select("*", { count: "exact", head: true })
+        .eq("organization_id", organizationId)
+        .eq("sender_role", "admin")
+        .eq("is_read", false);
+
+      const adminUnreadCount = adminUnread || 0;
+
       if (!messages || messages.length === 0) {
         setConversations([]);
-        setTotalUnread(0);
+        setTotalUnread(adminUnreadCount);
         setIsLoading(false);
         return;
       }
@@ -78,7 +88,7 @@ export function useOrgUnreadChats(organizationId: string | null, currentUserId: 
       convos.sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime());
 
       setConversations(convos);
-      setTotalUnread(unreadTotal);
+      setTotalUnread(unreadTotal + adminUnreadCount);
     } catch (err) {
       console.error("Failed to fetch chats:", err);
     } finally {
@@ -102,6 +112,18 @@ export function useOrgUnreadChats(organizationId: string | null, currentUserId: 
           event: "*",
           schema: "public",
           table: "org_student_messages",
+          filter: `organization_id=eq.${organizationId}`,
+        },
+        () => {
+          fetchConversations();
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "admin_org_messages",
           filter: `organization_id=eq.${organizationId}`,
         },
         () => {
