@@ -370,14 +370,6 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
                         </Collapsible>
                       );
                     })}
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                          </CollapsibleContent>
-                        </Collapsible>
-                      );
-                    })}
                   </div>
                 </div>
               ) : (
