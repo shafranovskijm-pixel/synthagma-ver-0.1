@@ -1,18 +1,20 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## План: Добавить третьи API-ключи для GigaChat и SaluteSpeech
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+### Что нужно сделать
 
-### Changes
+Добавить два новых секрета через инструмент `add_secret`:
+1. **`GIGACHAT_AUTH_KEY_3`** — третий ключ авторизации GigaChat (Basic auth, base64)
+2. **`SALUTESPEECH_AUTH_KEY_3`** — третий ключ авторизации SaluteSpeech (Basic auth, base64)
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+### Код уже готов
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+Оба edge-функции (`gigachat-client.ts` и `salutespeech-tts/index.ts`) уже поддерживают третий слот — достаточно добавить секреты, и они автоматически подхватятся:
+- GigaChat: строка 146-157 в `gigachat-client.ts` — `GIGACHAT_AUTH_KEY_3`
+- SaluteSpeech: строка 137 в `salutespeech-tts/index.ts` — `SALUTESPEECH_AUTH_KEY_3`
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+### Никаких изменений в коде не требуется
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+Нужно только ввести значения ключей через интерфейс добавления секретов. После этого оба сервиса начнут использовать 3 параллельных слота с round-robin распределением.
 
