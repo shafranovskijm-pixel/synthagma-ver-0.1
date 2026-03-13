@@ -1,31 +1,18 @@
 
 
-## План: Распределить оставшиеся 122 курса
+## Plan: Auto-fix after "Проверить все"
 
-### Анализ
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-Из 186 некатегоризированных курсов текущие ключевые слова покрывают только 64. Оставшиеся 122 распределяются так:
+### Changes
 
-| Группа | Кол-во | Недостающие ключевые слова |
-|---|---|---|
-| Электробезопасность | 75 | `электроустановок`, `электроустановки`, `эксплуатации электроуст` |
-| Энергетика | 38 | `электрических станций`, `электростанций`, `электроэнергетич`, `тепломеханич`, `тепловых энерго` |
-| Прочее (ИИ, антитерроризм, тест) | 9 | — |
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-### Решение
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-Расширить массив `keywordMappings` в `handleAutoCategorize` (`useAdminMarketplace.ts`, строки 481-491):
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-**Электробезопасность** — добавить ключевые слова: `электроустановок`, `электроустановки`, `эксплуатации электроуст`
-
-**Энергетика** — добавить: `электрических станций`, `электростанций`, `электроэнергетич`, `тепломеханич`, `тепловых энерго`
-
-Для оставшихся 9 курсов (ИИ, антитерроризм, тестовые) — добавить секцию **«Без категории»** внутри «Повышение квалификации» с чекбоксами для ручного массового перемещения: выбрал курсы → выбрал категорию → «Переместить».
-
-### Файлы
-
-| Файл | Изменение |
-|---|---|
-| `src/hooks/useAdminMarketplace.ts` | Расширить `keywordMappings` новыми ключевыми словами |
-| `src/components/admin/AdminMarketplaceManager.tsx` | Добавить чекбоксы + массовое перемещение в блок «Без категории» |
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 
