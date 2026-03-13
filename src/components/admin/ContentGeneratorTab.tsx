@@ -229,10 +229,13 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
               correct_answer: q.correctAnswer ?? q.correct_answer ?? null,
             });
           }
-          await supabase.from("generation_history").insert({
+          const qDuration = Date.now() - qStart;
+          const { error: histErr } = await supabase.from("generation_history").insert({
             course_id: courseId, course_title: courseTitle,
-            action: "questions", details: `Вопросы для «${lesson.title}»`, items_count: qData.questions.length,
+            action: "questions", details: `Поток ${streamIndex}: вопросы «${lesson.title}»`, items_count: qData.questions.length,
+            stream_index: streamIndex, duration_ms: qDuration,
           } as any);
+          if (histErr) console.error("History insert error (questions):", histErr);
         }
         await delay(500);
       }
