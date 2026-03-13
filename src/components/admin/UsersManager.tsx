@@ -87,8 +87,8 @@ export function UsersManager() {
 
   const viewAsStudent = (user: UserWithRole) => {
     localStorage.setItem('adminViewAsStudent', JSON.stringify({
-      odoo_user_id: user.user_id,
-      studentName: user.full_name || user.email || 'Ученик',
+      userId: user.user_id,
+      name: user.full_name || user.email || 'Ученик',
       orgName: user.organization_name || '',
     }));
     navigate('/student');
