@@ -247,13 +247,15 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
           setGeneratingPhase("questions");
           setGeneratingProgress(70);
 
-          const { data: qData, error: qError } = await safeInvoke("gigachat", {
-            action: "generate_questions",
-            courseTitle,
-            lessonTitle: test.title,
-            questionsCount: 10,
-            aiProvider,
-            ...(aiProvider === "gigachat" ? { gigachatModel } : { lovableModel }),
+          const { data: qData, error: qError } = await safeInvoke<any>("gigachat", {
+            body: {
+              action: "generate_questions",
+              courseTitle,
+              lessonTitle: test.title,
+              questionsCount: 10,
+              aiProvider,
+              ...(aiProvider === "gigachat" ? { gigachatModel } : { lovableModel }),
+            },
           });
           if (!qError && qData?.questions) {
             for (const q of qData.questions) {
