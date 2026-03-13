@@ -250,7 +250,7 @@ function renderGroupedCourses(
   );
 }
 
-
+function SortableCategoryItem({ group, children }: { group: { category: string; categoryId?: string }; children: React.ReactNode }) {
   const id = group.categoryId || group.category;
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style = {
