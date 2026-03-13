@@ -98,6 +98,26 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
   const [totalToProcess, setTotalToProcess] = useState(0);
   const abortRef = useRef(false);
 
+  // AI settings for 3-slot routing
+  const [aiProvider, setAiProvider] = useState("gigachat");
+  const [gigachatModel, setGigachatModel] = useState<string | undefined>();
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from("ai_settings")
+          .select("provider, gigachat_model")
+          .eq("context", "pipeline")
+          .single();
+        if (data) {
+          setAiProvider(data.provider || "gigachat");
+          setGigachatModel(data.gigachat_model || undefined);
+        }
+      } catch {}
+    })();
+  }, []);
+
   useEffect(() => {
     if (open && courseId) {
       loadLessons();
