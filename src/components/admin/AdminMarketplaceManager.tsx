@@ -46,7 +46,22 @@ const statusLabels: Record<string, { label: string; color: string }> = {
   cancelled: { label: "Отменена", color: "bg-red-500/10 text-red-600 border-red-500/20" },
 };
 
-function renderCourseRow(
+const programTypeMetaAdmin: Record<string, { icon: React.ElementType; color: string; bgColor: string }> = {
+  "Повышение квалификации": { icon: GraduationCap, color: "text-blue-600", bgColor: "bg-blue-500/10" },
+  "Профессиональная переподготовка": { icon: Award, color: "text-violet-600", bgColor: "bg-violet-500/10" },
+  "Охрана труда / Пожарная безопасность": { icon: ShieldCheck, color: "text-amber-600", bgColor: "bg-amber-500/10" },
+  "Рабочие профессии": { icon: Store, color: "text-emerald-600", bgColor: "bg-emerald-500/10" },
+};
+
+const subCategoryMetaAdmin: Record<string, { icon: React.ElementType; color: string; bgColor: string }> = {
+  "Промышленная безопасность": { icon: Factory, color: "text-orange-500", bgColor: "bg-orange-500/10" },
+  "Электробезопасность": { icon: Zap, color: "text-yellow-500", bgColor: "bg-yellow-500/10" },
+  "Энергетика": { icon: Flame, color: "text-red-500", bgColor: "bg-red-500/10" },
+  "Экологическая безопасность": { icon: Leaf, color: "text-green-500", bgColor: "bg-green-500/10" },
+  "Гидротехнические сооружения": { icon: Droplets, color: "text-blue-500", bgColor: "bg-blue-500/10" },
+  "Строительный контроль": { icon: HardHat, color: "text-accent", bgColor: "bg-accent/10" },
+};
+
   item: any, h: any, navigate: any, onBulkGenerate: (item: any) => void,
   validatedCourses: Record<string, 'ok' | 'error'>, onValidate: (courseId: string) => void, validatingId: string | null
 ) {
