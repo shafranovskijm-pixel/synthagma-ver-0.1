@@ -5,7 +5,7 @@ import {
   Package, ShoppingCart, Building2, Users, Tag, Sparkles, BookOpen, Upload,
   List, LayoutGrid, ChevronDown, FolderPlus, FolderInput, CheckCircle2, AlertTriangle,
   FolderOpen, Library, X, GripVertical, GraduationCap, Award, ShieldCheck, Wand2,
-  Factory, Flame, Droplets, HardHat, Leaf, Zap, Lightbulb, MoveRight, Settings,
+  Factory, Flame, Droplets, HardHat, Leaf, Zap, Lightbulb, MoveRight, Settings, History,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
@@ -15,6 +15,7 @@ import type { DbCategory } from "@/hooks/useAdminMarketplace";
 import { BulkCourseImporter } from "./BulkCourseImporter";
 import { BulkContentGenerator } from "./BulkContentGenerator";
 import { ContentGeneratorTab } from "./ContentGeneratorTab";
+import { GenerationHistoryTab } from "./GenerationHistoryTab";
 import { ProgramListImporter } from "./ProgramListImporter";
 import { KnowledgeBankTab } from "./KnowledgeBankTab";
 import { MarketplaceSettingsTab, type ValidationRules, type AiPrompts } from "./MarketplaceSettingsTab";
@@ -763,11 +764,19 @@ export function AdminMarketplaceManager() {
              <TabsTrigger value="orders" className="flex items-center gap-2 px-4 whitespace-nowrap">
                <ShoppingCart className="w-4 h-4 shrink-0" />Заявки
              </TabsTrigger>
+             <TabsTrigger value="history" className="flex items-center gap-2 px-4 whitespace-nowrap">
+               <History className="w-4 h-4 shrink-0" />История
+             </TabsTrigger>
              <TabsTrigger value="settings" className="flex items-center gap-2 px-4 whitespace-nowrap">
                <Settings className="w-4 h-4 shrink-0" />Настройки
              </TabsTrigger>
           </TabsList>
         </div>
+
+        {/* History */}
+        <TabsContent value="history" className="space-y-4">
+          <GenerationHistoryTab />
+        </TabsContent>
 
         {/* Settings */}
         <TabsContent value="settings" className="space-y-4">

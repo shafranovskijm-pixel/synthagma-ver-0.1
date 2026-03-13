@@ -212,6 +212,15 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
         }
         setGeneratingProgress(25);
 
+        // Log structure generation
+        await supabase.from("generation_history").insert({
+          course_id: courseId,
+          course_title: courseTitle,
+          action: "structure",
+          details: `Создано ${lessons.length} уроков`,
+          items_count: lessons.length,
+        } as any);
+
         // Re-fetch lessons
         const { data: freshLessons } = await supabase
           .from("lessons")
@@ -266,6 +275,15 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
                 correct_answer: q.correctAnswer ?? q.correct_answer ?? null,
               });
             }
+
+            // Log questions generation
+            await supabase.from("generation_history").insert({
+              course_id: courseId,
+              course_title: courseTitle,
+              action: "questions",
+              details: `Вопросы для «${test.title}»`,
+              items_count: qData.questions.length,
+            } as any);
           }
         }
       }
@@ -288,6 +306,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
         if (unanswered.length > 0) {
           // Batch solve
           const BATCH_SIZE = 60;
+          let solvedTotal = 0;
           for (let i = 0; i < unanswered.length; i += BATCH_SIZE) {
             const batch = unanswered.slice(i, i + BATCH_SIZE);
             const { data: ansData, error: ansError } = await safeInvoke<any>("gigachat", {
@@ -310,9 +329,21 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
                     .from("test_questions")
                     .update({ correct_answer: ans.correct_answer })
                     .eq("id", ans.id);
+                  solvedTotal++;
                 }
               }
             }
+          }
+
+          // Log answers generation
+          if (solvedTotal > 0) {
+            await supabase.from("generation_history").insert({
+              course_id: courseId,
+              course_title: courseTitle,
+              action: "answers",
+              details: `Решено ${solvedTotal} вопросов`,
+              items_count: solvedTotal,
+            } as any);
           }
         }
       }
@@ -367,6 +398,15 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
           .from("lessons")
           .update({ content: jsonContent })
           .eq("id", lesson.id);
+
+        // Log content generation
+        await supabase.from("generation_history").insert({
+          course_id: courseId,
+          course_title: courseTitle,
+          action: "content",
+          details: `Контент: «${lesson.title}»`,
+          items_count: 1,
+        } as any);
       }
     }
   };
