@@ -142,11 +142,13 @@ function buildSlots(): TokenSlot[] {
 }
 
 const slots = buildSlots();
-function pickSlot(): TokenSlot | null {
+let roundRobinCounter = 0;
+function pickSlot(streamIndex?: number): TokenSlot | null {
   if (slots.length === 0) return null;
   if (slots.length === 1) return slots[0];
-  // Random distribution across all available slots
-  const idx = Math.floor(Math.random() * slots.length);
+  if (typeof streamIndex === 'number') return slots[streamIndex % slots.length];
+  const idx = roundRobinCounter % slots.length;
+  roundRobinCounter++;
   return slots[idx];
 }
 
@@ -233,7 +235,7 @@ serve(async (req) => {
   }
 
   try {
-    const { text, voice = "natalya", format = "opus" } = await req.json();
+    const { text, voice = "natalya", format = "opus", stream_index } = await req.json();
 
     if (!text || text.trim().length === 0) {
       return new Response(JSON.stringify({ error: "Text is required" }), {
@@ -264,7 +266,7 @@ serve(async (req) => {
     console.log(`[SaluteSpeech] voice=${voice} -> ${voiceParam}, slots=${slots.length}`);
 
     // Try primary slot, fallback to secondary
-    const primarySlot = pickSlot()!;
+    const primarySlot = pickSlot(stream_index)!;
     let audioBuffer: ArrayBuffer;
 
     try {
