@@ -257,7 +257,9 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
   };
 
 
-  const ALL_RTN_CATEGORIES_STUDENT = [
+  const OT_CATEGORIES_STUDENT = ["Охрана труда при работах на высоте"];
+
+  const RTN_CATEGORIES_STUDENT = [
     "Промышленная безопасность",
     "Электробезопасность",
     "Энергетика",
@@ -273,18 +275,33 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
       if (!map.has(cat)) map.set(cat, []);
       map.get(cat)!.push(c);
     }
-
-    // Ensure all 6 RTN categories exist
-    for (const cat of ALL_RTN_CATEGORIES_STUDENT) {
+    for (const cat of RTN_CATEGORIES_STUDENT) {
+      if (!map.has(cat)) map.set(cat, []);
+    }
+    for (const cat of OT_CATEGORIES_STUDENT) {
       if (!map.has(cat)) map.set(cat, []);
     }
 
-    return Array.from(map.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([category, courses]) => ({ category, courses }));
+    const rtnSubGroups = RTN_CATEGORIES_STUDENT.map(cat => ({ category: cat, courses: map.get(cat) || [] }));
+    const allRtnCourses = rtnSubGroups.flatMap(g => g.courses);
+    const otCourses = OT_CATEGORIES_STUDENT.flatMap(cat => map.get(cat) || []);
+
+    return [
+      { category: "Повышение квалификации", badge: "ДПО", courses: allRtnCourses, subGroups: rtnSubGroups },
+      { category: "Профессиональная переподготовка", badge: "ДПО", courses: [] as MarketplaceCourse[] },
+      { category: "Охрана труда / Пожарная безопасность", badge: "ОТ / ПБ", courses: otCourses },
+      { category: "Рабочие профессии", badge: "ПО", courses: [] as MarketplaceCourse[] },
+    ];
   }, [filteredCatalog]);
 
-  const categoryMeta: Record<string, { icon: React.ElementType; color: string; bgColor: string }> = {
+  const programTypeMetaStudent: Record<string, { icon: React.ElementType; color: string; bgColor: string }> = {
+    "Повышение квалификации": { icon: GraduationCap, color: "text-blue-600", bgColor: "bg-blue-500/10" },
+    "Профессиональная переподготовка": { icon: Award, color: "text-violet-600", bgColor: "bg-violet-500/10" },
+    "Охрана труда / Пожарная безопасность": { icon: ShieldCheck, color: "text-amber-600", bgColor: "bg-amber-500/10" },
+    "Рабочие профессии": { icon: Wrench, color: "text-emerald-600", bgColor: "bg-emerald-500/10" },
+  };
+
+  const subCategoryMetaStudent: Record<string, { icon: React.ElementType; color: string; bgColor: string }> = {
     "Промышленная безопасность": { icon: Factory, color: "text-orange-500", bgColor: "bg-orange-500/10" },
     "Электробезопасность": { icon: Zap, color: "text-yellow-500", bgColor: "bg-yellow-500/10" },
     "Энергетика": { icon: Flame, color: "text-red-500", bgColor: "bg-red-500/10" },
@@ -293,8 +310,11 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
     "Строительный контроль": { icon: HardHat, color: "text-accent", bgColor: "bg-accent/10" },
   };
 
-  const getCategoryMeta = (category: string) =>
-    categoryMeta[category] || { icon: BookOpen, color: "text-primary", bgColor: "bg-primary/10" };
+  const getProgramMeta = (category: string) =>
+    programTypeMetaStudent[category] || { icon: BookOpen, color: "text-primary", bgColor: "bg-primary/10" };
+
+  const getSubMeta = (category: string) =>
+    subCategoryMetaStudent[category] || { icon: BookOpen, color: "text-primary", bgColor: "bg-primary/10" };
 
   const formatPrice = (price: number) =>
     new Intl.NumberFormat("ru-RU", { style: "currency", currency: "RUB", maximumFractionDigits: 0 }).format(price);
