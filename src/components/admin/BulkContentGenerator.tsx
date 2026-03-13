@@ -417,7 +417,6 @@ export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle
         batch.map((lesson, i) => processOneMedia(lesson, batchStart + i))
       );
     }
-    }
 
     if (mediaCount > 0) {
       await logHistory(courseId, courseTitle, "media", `Изображения и аудио для ${mediaCount} уроков`, mediaCount, Date.now() - mediaStart);
