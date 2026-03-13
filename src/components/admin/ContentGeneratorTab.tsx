@@ -123,7 +123,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
       try {
         const { data: lessons } = await supabase
           .from("lessons")
-          .select("id, type, content")
+          .select("id, type, content, title")
           .eq("course_id", mc.course_id);
 
         const textLessons = (lessons || []).filter(l => l.type === "text" || l.type === "practice");
