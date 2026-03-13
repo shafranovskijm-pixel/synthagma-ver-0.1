@@ -3,7 +3,7 @@ import {
   Store, Search, Clock, ShoppingCart, Loader2, CheckCircle2,
   Building2, Send, FileText, Video, ClipboardList, Presentation,
   Headphones, BookOpen, Eye, Gift, Zap, Award, ChevronDown,
-  Factory, Flame, Droplets, HardHat, Leaf,
+  Factory, Flame, Droplets, HardHat, Leaf, Shield, ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
@@ -254,6 +254,8 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
     return "Без категории";
   };
 
+  const EXCLUDED_FROM_RTN = ["Охрана труда при работах на высоте", "Без категории"];
+
   const groupedCatalog = useMemo(() => {
     const map = new Map<string, MarketplaceCourse[]>();
     for (const c of filteredCatalog) {
@@ -261,9 +263,25 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
       if (!map.has(cat)) map.set(cat, []);
       map.get(cat)!.push(c);
     }
-    return Array.from(map.entries())
-      .map(([category, courses]) => ({ category, courses }))
-      .sort((a, b) => a.category.localeCompare(b.category));
+
+    const rtnSubGroups: { category: string; courses: MarketplaceCourse[] }[] = [];
+    const standalone: { category: string; courses: MarketplaceCourse[] }[] = [];
+
+    for (const [category, courses] of Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b))) {
+      if (EXCLUDED_FROM_RTN.includes(category)) {
+        standalone.push({ category, courses });
+      } else {
+        rtnSubGroups.push({ category, courses });
+      }
+    }
+
+    const result: { category: string; courses: MarketplaceCourse[]; subGroups?: { category: string; courses: MarketplaceCourse[] }[] }[] = [];
+    if (rtnSubGroups.length > 0) {
+      const allRtnCourses = rtnSubGroups.flatMap(g => g.courses);
+      result.push({ category: "Курсы Ростехнадзора", courses: allRtnCourses, subGroups: rtnSubGroups });
+    }
+    result.push(...standalone);
+    return result;
   }, [filteredCatalog]);
 
   const categoryMeta: Record<string, { icon: React.ElementType; color: string; bgColor: string }> = {
@@ -386,21 +404,23 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
           <p className="font-medium">Курсы пока не найдены</p>
           <p className="text-sm">Попробуйте изменить поисковый запрос</p>
         </div>
-      ) : groupedCatalog.length === 1 ? (
+      ) : groupedCatalog.length === 1 && !groupedCatalog[0].subGroups ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredCatalog.map((item) => renderCourseCard(item))}
         </div>
       ) : (
         <div className="space-y-4">
           {groupedCatalog.map((group) => {
-            const meta = getCategoryMeta(group.category);
-            const IconComp = meta.icon;
+            const parentMeta = group.category === "Курсы Ростехнадзора"
+              ? { icon: Shield, color: "text-primary", bgColor: "bg-primary/10" }
+              : getCategoryMeta(group.category);
+            const ParentIcon = parentMeta.icon;
             return (
               <Collapsible key={group.category}>
                 <Card className="overflow-hidden">
                   <CollapsibleTrigger className="flex items-center gap-4 w-full px-5 py-4 hover:bg-secondary/30 transition-colors group text-left">
-                    <div className={`w-10 h-10 rounded-xl ${meta.bgColor} flex items-center justify-center shrink-0`}>
-                      <IconComp className={`w-5 h-5 ${meta.color}`} />
+                    <div className={`w-10 h-10 rounded-xl ${parentMeta.bgColor} flex items-center justify-center shrink-0`}>
+                      <ParentIcon className={`w-5 h-5 ${parentMeta.color}`} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <span className="font-semibold text-sm block">{group.category}</span>
@@ -410,9 +430,35 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
                   </CollapsibleTrigger>
                   <CollapsibleContent>
                     <Separator />
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
-                      {group.courses.map((item) => renderCourseCard(item))}
-                    </div>
+                    {group.subGroups ? (
+                      <div className="space-y-1 p-2">
+                        {group.subGroups.map((sub) => {
+                          const subMeta = getCategoryMeta(sub.category);
+                          const SubIcon = subMeta.icon;
+                          return (
+                            <Collapsible key={sub.category}>
+                              <CollapsibleTrigger className="flex items-center gap-3 w-full px-4 py-2.5 hover:bg-secondary/20 transition-colors rounded-lg group">
+                                <div className={`w-7 h-7 rounded-lg ${subMeta.bgColor} flex items-center justify-center shrink-0`}>
+                                  <SubIcon className={`w-3.5 h-3.5 ${subMeta.color}`} />
+                                </div>
+                                <span className="text-sm font-medium text-left flex-1">{sub.category}</span>
+                                <Badge variant="outline" className="shrink-0 text-xs">{sub.courses.length}</Badge>
+                                <ChevronDown className="w-3.5 h-3.5 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
+                              </CollapsibleTrigger>
+                              <CollapsibleContent>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-3 pl-10">
+                                  {sub.courses.map((item) => renderCourseCard(item))}
+                                </div>
+                              </CollapsibleContent>
+                            </Collapsible>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+                        {group.courses.map((item) => renderCourseCard(item))}
+                      </div>
+                    )}
                   </CollapsibleContent>
                 </Card>
               </Collapsible>

@@ -6,6 +6,7 @@ import {
   Tag, Package, MessageSquarePlus, Megaphone, Send,
   Clock, ChevronDown, ArrowLeft, Info,
   List, LayoutGrid, Gift, Award, Zap, BookOpen, ShieldCheck, Lightbulb,
+  Factory, Flame, Droplets, HardHat, Leaf, Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,6 +42,18 @@ interface CourseStoreManagerProps {
   topUpBalance?: (amount: number, description: string) => Promise<boolean>;
   refreshBalance?: () => Promise<void>;
 }
+
+const categoryMetaOrg: Record<string, { icon: React.ElementType; color: string; bgColor: string }> = {
+  "Промышленная безопасность": { icon: Factory, color: "text-orange-500", bgColor: "bg-orange-500/10" },
+  "Электробезопасность": { icon: Zap, color: "text-yellow-500", bgColor: "bg-yellow-500/10" },
+  "Энергетика": { icon: Flame, color: "text-red-500", bgColor: "bg-red-500/10" },
+  "Экологическая безопасность": { icon: Leaf, color: "text-green-500", bgColor: "bg-green-500/10" },
+  "Гидротехнические сооружения": { icon: Droplets, color: "text-blue-500", bgColor: "bg-blue-500/10" },
+  "Строительный контроль": { icon: HardHat, color: "text-accent", bgColor: "bg-accent/10" },
+};
+
+const getCategoryMetaOrg = (category: string) =>
+  categoryMetaOrg[category] || { icon: BookOpen, color: "text-primary", bgColor: "bg-primary/10" };
 
 export function CourseStoreManager({ organizationId, userRole = 'organization', userId }: CourseStoreManagerProps) {
   const navigate = useNavigate();
@@ -227,85 +240,99 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
                 <Card className="border-dashed"><CardContent className="py-12 text-center"><Package className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" /><p className="text-muted-foreground">{h.searchQuery ? 'Курсы не найдены' : 'В каталоге пока нет курсов'}</p></CardContent></Card>
               ) : catalogViewMode === 'list' ? (
                 /* Grouped list view */
-                <div className="space-y-2">
-                  {h.groupedCatalog.map((group) => (
-                    <Collapsible key={group.category}>
-                      <Card>
-                        <CollapsibleTrigger className="flex items-center justify-between w-full px-4 py-3 hover:bg-secondary/30 transition-colors rounded-t-xl group">
-                          <div className="flex items-center gap-3">
-                            <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
-                            <span className="font-semibold text-sm text-left">{group.category}</span>
-                          </div>
-                          <Badge variant="secondary" className="shrink-0">{group.courses.length}</Badge>
-                        </CollapsibleTrigger>
-                        <CollapsibleContent>
-                          {group.category === "Курсы Ростехнадзора" && (
-                            <div className="mx-4 mt-3 mb-2 bg-gradient-to-r from-primary/5 via-accent/5 to-primary/3 border border-border rounded-lg p-4">
-                              <div className="flex gap-3 items-start">
-                                <ShieldCheck className="w-5 h-5 text-primary mt-0.5 shrink-0" />
-                                <div>
-                                  <h4 className="font-semibold text-sm text-foreground mb-1">Подготовка к аттестации Ростехнадзора</h4>
-                                  <p className="text-xs text-muted-foreground leading-relaxed">
-                                    Курсы разработаны для подготовки к официальной аттестации. Тесты соответствуют требованиям Единого портала тестирования.
-                                  </p>
-                                  <div className="flex gap-2 mt-2">
-                                    <Badge variant="secondary" className="text-xs">Актуально 2026</Badge>
-                                    <Badge variant="secondary" className="text-xs">Бесплатно</Badge>
-                                  </div>
-                                  <div className="flex items-start gap-1.5 mt-3 pt-3 border-t border-border/50">
-                                    <Lightbulb className="w-3.5 h-3.5 text-amber-500 mt-0.5 shrink-0" />
-                                    <p className="text-xs text-muted-foreground">
-                                      После добавления курса проверьте правильность ответов в тестах с помощью ИИ — кнопка «Решить ИИ» в редакторе курса.
+                <div className="space-y-3">
+                  {h.groupedCatalog.map((group) => {
+                    const parentMeta = group.category === "Курсы Ростехнадзора"
+                      ? { icon: Shield, color: "text-primary", bgColor: "bg-primary/10" }
+                      : getCategoryMetaOrg(group.category);
+                    const ParentIcon = parentMeta.icon;
+                    return (
+                      <Collapsible key={group.category}>
+                        <Card className="overflow-hidden">
+                          <CollapsibleTrigger className="flex items-center gap-4 w-full px-5 py-4 hover:bg-secondary/30 transition-colors group text-left">
+                            <div className={`w-10 h-10 rounded-xl ${parentMeta.bgColor} flex items-center justify-center shrink-0`}>
+                              <ParentIcon className={`w-5 h-5 ${parentMeta.color}`} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <span className="font-semibold text-sm block">{group.category}</span>
+                              <span className="text-xs text-muted-foreground">{group.courses.length} {group.courses.length === 1 ? 'курс' : group.courses.length < 5 ? 'курса' : 'курсов'}</span>
+                            </div>
+                            <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90 shrink-0" />
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            {group.category === "Курсы Ростехнадзора" && (
+                              <div className="mx-4 mt-3 mb-2 bg-gradient-to-r from-primary/5 via-accent/5 to-primary/3 border border-border rounded-lg p-4">
+                                <div className="flex gap-3 items-start">
+                                  <ShieldCheck className="w-5 h-5 text-primary mt-0.5 shrink-0" />
+                                  <div>
+                                    <h4 className="font-semibold text-sm text-foreground mb-1">Подготовка к аттестации Ростехнадзора</h4>
+                                    <p className="text-xs text-muted-foreground leading-relaxed">
+                                      Курсы разработаны для подготовки к официальной аттестации. Тесты соответствуют требованиям Единого портала тестирования.
                                     </p>
+                                    <div className="flex gap-2 mt-2">
+                                      <Badge variant="secondary" className="text-xs">Актуально 2026</Badge>
+                                      <Badge variant="secondary" className="text-xs">Бесплатно</Badge>
+                                    </div>
+                                    <div className="flex items-start gap-1.5 mt-3 pt-3 border-t border-border/50">
+                                      <Lightbulb className="w-3.5 h-3.5 text-amber-500 mt-0.5 shrink-0" />
+                                      <p className="text-xs text-muted-foreground">
+                                        После добавления курса проверьте правильность ответов в тестах с помощью ИИ — кнопка «Решить ИИ» в редакторе курса.
+                                      </p>
+                                    </div>
                                   </div>
                                 </div>
                               </div>
-                            </div>
-                          )}
-                          {group.subGroups ? (
-                            <div className="space-y-1 pb-2">
-                              {group.subGroups.map((sub) => (
-                                <Collapsible key={sub.category}>
-                                  <CollapsibleTrigger className="flex items-center justify-between w-full px-6 py-2 hover:bg-secondary/20 transition-colors group">
-                                    <div className="flex items-center gap-2">
-                                      <ChevronDown className="w-3.5 h-3.5 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
-                                      <span className="text-sm font-medium text-left">{sub.category}</span>
-                                    </div>
-                                    <Badge variant="outline" className="shrink-0 text-xs">{sub.courses.length}</Badge>
-                                  </CollapsibleTrigger>
-                                  <CollapsibleContent>
-                                    <Table>
-                                      <TableBody>
-                                        {sub.courses.map((item) => (
-                                          <TableRow key={item.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedCourseDetail(item)}>
-                                            <TableCell>
-                                              <span className="text-sm">{h.extractShortTitle(item.course?.title)}</span>
-                                            </TableCell>
-                                          </TableRow>
-                                        ))}
-                                      </TableBody>
-                                    </Table>
-                                  </CollapsibleContent>
-                                </Collapsible>
-                              ))}
-                            </div>
-                          ) : (
-                            <Table>
-                              <TableBody>
-                                {group.courses.map((item) => (
-                                  <TableRow key={item.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedCourseDetail(item)}>
-                                    <TableCell>
-                                      <span className="text-sm">{h.extractShortTitle(item.course?.title)}</span>
-                                    </TableCell>
-                                  </TableRow>
-                                ))}
-                              </TableBody>
-                            </Table>
-                          )}
-                        </CollapsibleContent>
-                      </Card>
-                    </Collapsible>
-                  ))}
+                            )}
+                            {group.subGroups ? (
+                              <div className="space-y-1 pb-2">
+                                {group.subGroups.map((sub) => {
+                                  const subMeta = getCategoryMetaOrg(sub.category);
+                                  const SubIcon = subMeta.icon;
+                                  return (
+                                    <Collapsible key={sub.category}>
+                                      <CollapsibleTrigger className="flex items-center gap-3 w-full px-6 py-2.5 hover:bg-secondary/20 transition-colors group">
+                                        <div className={`w-7 h-7 rounded-lg ${subMeta.bgColor} flex items-center justify-center shrink-0`}>
+                                          <SubIcon className={`w-3.5 h-3.5 ${subMeta.color}`} />
+                                        </div>
+                                        <span className="text-sm font-medium text-left flex-1">{sub.category}</span>
+                                        <Badge variant="outline" className="shrink-0 text-xs">{sub.courses.length}</Badge>
+                                        <ChevronDown className="w-3.5 h-3.5 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
+                                      </CollapsibleTrigger>
+                                      <CollapsibleContent>
+                                        <Table>
+                                          <TableBody>
+                                            {sub.courses.map((item) => (
+                                              <TableRow key={item.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedCourseDetail(item)}>
+                                                <TableCell>
+                                                  <span className="text-sm">{h.extractShortTitle(item.course?.title)}</span>
+                                                </TableCell>
+                                              </TableRow>
+                                            ))}
+                                          </TableBody>
+                                        </Table>
+                                      </CollapsibleContent>
+                                    </Collapsible>
+                                  );
+                                })}
+                              </div>
+                            ) : (
+                              <Table>
+                                <TableBody>
+                                  {group.courses.map((item) => (
+                                    <TableRow key={item.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedCourseDetail(item)}>
+                                      <TableCell>
+                                        <span className="text-sm">{h.extractShortTitle(item.course?.title)}</span>
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            )}
+                          </CollapsibleContent>
+                        </Card>
+                      </Collapsible>
+                    );
+                  })}
                 </div>
               ) : (
                 /* Grid view */

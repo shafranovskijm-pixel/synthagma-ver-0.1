@@ -1,34 +1,18 @@
 
 
-## План: Иерархический каталог с иконками — для организаций и студентов
+## Plan: Auto-fix after "Проверить все"
 
-### Текущее состояние
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-- **Организации** (`CourseStoreManager.tsx`): уже есть иерархия «Курсы Ростехнадзора → подкатегории», но **без иконок и цветов** — просто текст с `ChevronDown`.
-- **Студенты** (`StudentCourseStore.tsx`): есть иконки и цвета для категорий, но **нет иерархии** — все категории на одном уровне, внутри сразу карточки курсов.
+### Changes
 
-### Что нужно сделать
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-**1. Организации — добавить иконки и цвета к существующей иерархии**
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-В `CourseStoreManager.tsx` (строки 230-308): добавить `categoryMeta` маппинг (как уже есть в `StudentCourseStore`) и применить к CollapsibleTrigger:
-- Родительская группа «Курсы Ростехнадзора» — иконка `Shield` с accent-цветом
-- Каждая подкатегория — иконка из `categoryMeta` (Factory/Zap/Flame/Leaf/Droplets/HardHat) в цветном круге
-- Standalone категории (типа «Охрана труда при работах на высоте») — fallback-иконка BookOpen
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-**2. Студенты — добавить иерархию (группа → подгруппы → курсы)**
-
-В `StudentCourseStore.tsx`: переработать `groupedCatalog` аналогично `useCourseStoreManager.ts` — объединить подкатегории в родительскую группу «Курсы Ростехнадзора» с подгруппами, и добавить `extractShortTitle` для чистого отображения названий внутри подгрупп.
-
-Структура рендера:
-- Верхний уровень: карточка «Курсы Ростехнадзора» с иконкой Shield, суммарное количество курсов
-- Второй уровень: подкатегории с иконками (Factory, Zap, Flame...) — Collapsible
-- Третий уровень: список курсов (карточки `renderCourseCard` или строки таблицы)
-
-### Файлы для изменения
-
-| Файл | Что |
-|---|---|
-| `src/components/organization/CourseStoreManager.tsx` | Добавить иконки и цвета к категориям/подкатегориям в list view |
-| `src/components/student/StudentCourseStore.tsx` | Добавить иерархию «Курсы Ростехнадзора → подкатегории → курсы» с иконками |
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 
