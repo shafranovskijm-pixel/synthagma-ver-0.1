@@ -14,7 +14,7 @@ import { CSS } from "@dnd-kit/utilities";
 import type { DbCategory } from "@/hooks/useAdminMarketplace";
 import { BulkCourseImporter } from "./BulkCourseImporter";
 import { BulkContentGenerator } from "./BulkContentGenerator";
-import { BulkPipelineWidget } from "./BulkPipelineWidget";
+import { ContentGeneratorTab } from "./ContentGeneratorTab";
 import { ProgramListImporter } from "./ProgramListImporter";
 import { KnowledgeBankTab } from "./KnowledgeBankTab";
 import { ProgramsTab } from "./ProgramsTab";
