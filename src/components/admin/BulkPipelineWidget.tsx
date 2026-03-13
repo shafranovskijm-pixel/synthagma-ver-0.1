@@ -533,7 +533,7 @@ export function BulkPipelineWidget({ courses, readyCourses = [], allCourses, onC
             </CollapsibleTrigger>
             <CollapsibleContent>
               {(() => {
-                const categoryMetaPipeline: Record<string, { icon: React.ElementType; color: string }> = {
+                const subCategoryMetaPipeline: Record<string, { icon: React.ElementType; color: string }> = {
                   "Промышленная безопасность": { icon: Factory, color: "text-orange-500" },
                   "Электробезопасность": { icon: Zap, color: "text-yellow-500" },
                   "Энергетика": { icon: Flame, color: "text-red-500" },
@@ -541,20 +541,41 @@ export function BulkPipelineWidget({ courses, readyCourses = [], allCourses, onC
                   "Гидротехнические сооружения": { icon: Droplets, color: "text-blue-500" },
                   "Строительный контроль": { icon: HardHat, color: "text-accent" },
                 };
-                const ALL_CATS = Object.keys(categoryMetaPipeline);
+                const programTypeMeta: Record<string, { icon: React.ElementType; color: string }> = {
+                  "Повышение квалификации": { icon: GraduationCap, color: "text-blue-600" },
+                  "Профессиональная переподготовка": { icon: Award, color: "text-violet-600" },
+                  "Охрана труда / Пожарная безопасность": { icon: ShieldCheck, color: "text-amber-600" },
+                  "Рабочие профессии": { icon: Wrench, color: "text-emerald-600" },
+                };
+                const RTN_CATS = Object.keys(subCategoryMetaPipeline);
+                const OT_CATS = ["Охрана труда при работах на высоте"];
                 const extractCat = (title?: string) => {
                   if (!title) return "Без категории";
                   const idx = title.indexOf(" — ");
                   return idx > 0 ? title.substring(0, idx) : "Без категории";
                 };
+
+                // Build sub-category map
                 const catMap = new Map<string, { course: typeof courses[0]; origIndex: number }[]>();
-                for (const cat of ALL_CATS) catMap.set(cat, []);
+                for (const cat of RTN_CATS) catMap.set(cat, []);
+                for (const cat of OT_CATS) catMap.set(cat, []);
                 courses.forEach((c, i) => {
                   const cat = extractCat(c.course?.title);
                   if (!catMap.has(cat)) catMap.set(cat, []);
                   catMap.get(cat)!.push({ course: c, origIndex: i });
                 });
-                const sortedCats = Array.from(catMap.entries()).sort(([a], [b]) => a.localeCompare(b));
+
+                // Build program type groups
+                const rtnSubGroups = RTN_CATS.map(cat => ({ category: cat, items: catMap.get(cat) || [] }));
+                const allRtnItems = rtnSubGroups.flatMap(g => g.items);
+                const otItems = OT_CATS.flatMap(cat => catMap.get(cat) || []);
+
+                const programGroups = [
+                  { category: "Повышение квалификации", items: allRtnItems, subGroups: rtnSubGroups },
+                  { category: "Профессиональная переподготовка", items: [] as typeof allRtnItems },
+                  { category: "Охрана труда / Пожарная безопасность", items: otItems },
+                  { category: "Рабочие профессии", items: [] as typeof allRtnItems },
+                ];
 
                 return (
                   <div className="space-y-2 mt-2">
