@@ -98,7 +98,7 @@ function renderCourseRow(
           {validatingId === item.course_id && <Loader2 className="w-3 h-3 animate-spin" />}
           {status === 'ok' && <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />}
           {status === 'error' && <AlertTriangle className="w-3.5 h-3.5 text-red-500 shrink-0" />}
-          {h.extractShortTitle(item.course?.title)}
+          {item.course?.title || ""}
         </button>
       </TableCell>
       <TableCell className="w-[100px] text-sm">{item.price_student.toLocaleString()} ₽</TableCell>
@@ -710,7 +710,7 @@ export function AdminMarketplaceManager() {
                       {validationReport.map((r) => (
                         <li key={r.courseId} className="text-xs text-muted-foreground flex items-start gap-1.5">
                           <AlertTriangle className="w-3 h-3 text-destructive shrink-0 mt-0.5" />
-                          <span>{h.extractShortTitle(r.title)}{r.issues.length > 0 ? ` — ${r.issues.join(", ")}` : ""}</span>
+                          <span>{r.title}{r.issues.length > 0 ? ` — ${r.issues.join(", ")}` : ""}</span>
                         </li>
                       ))}
                     </ul>
@@ -979,7 +979,7 @@ export function AdminMarketplaceManager() {
                                             {validatingId === item.course_id && <Loader2 className="w-3 h-3 animate-spin" />}
                                             {validatedCourses[item.course_id] === 'ok' && <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />}
                                             {validatedCourses[item.course_id] === 'error' && <AlertTriangle className="w-3.5 h-3.5 text-red-500 shrink-0" />}
-                                            {h.extractShortTitle(item.course?.title)}
+                                            {item.course?.title || ""}
                                           </button>
                                         </TableCell>
                                         <TableCell className="w-[100px] text-sm">{item.price_student.toLocaleString()} ₽</TableCell>

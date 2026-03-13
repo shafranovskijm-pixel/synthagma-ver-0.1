@@ -261,11 +261,6 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
     );
   });
 
-  const extractShortTitle = (title: string | undefined): string => {
-    if (!title) return "";
-    const dashIndex = title.indexOf(" — ");
-    return dashIndex > 0 ? title.substring(dashIndex + 3) : title;
-  };
 
   const groupedCatalog = useMemo(() => {
     // Group by DB category_id
