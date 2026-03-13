@@ -246,45 +246,57 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
         .eq("course_id", courseId);
 
       const freshTests = (freshLessons2 || []).filter(l => l.type === "test");
+
+      // Filter tests that need questions
+      const testsNeedingQuestions: typeof freshTests = [];
       for (const test of freshTests) {
         const { data: existingQ } = await supabase
           .from("test_questions")
           .select("id")
           .eq("lesson_id", test.id);
-
         if (!existingQ || existingQ.length === 0) {
-          setGeneratingPhase("questions");
-          setGeneratingProgress(70);
+          testsNeedingQuestions.push(test);
+        }
+      }
 
-          const { data: qData, error: qError } = await safeInvoke<any>("gigachat", {
-            body: {
-              action: "generate_questions",
-              courseTitle,
-              lessonTitle: test.title,
-              questionsCount: 10,
-              ai_provider: aiProvider,
-              ...(aiProvider === "gigachat" ? { gigachat_model: gigachatModel } : { lovable_model: lovableModel }),
-            },
-          });
-          if (!qError && qData?.questions) {
-            for (const q of qData.questions) {
-              await supabase.from("test_questions").insert({
-                lesson_id: test.id,
-                question: q.question,
-                options: q.options,
-                correct_answer: q.correctAnswer ?? q.correct_answer ?? null,
-              });
+      if (testsNeedingQuestions.length > 0) {
+        setGeneratingPhase("questions");
+        const PARALLEL = 3;
+        for (let i = 0; i < testsNeedingQuestions.length; i += PARALLEL) {
+          const chunk = testsNeedingQuestions.slice(i, i + PARALLEL);
+          setGeneratingProgress(65 + Math.round((i / testsNeedingQuestions.length) * 15));
+
+          await Promise.all(chunk.map(async (test) => {
+            const { data: qData, error: qError } = await safeInvoke<any>("gigachat", {
+              body: {
+                action: "generate_questions",
+                courseTitle,
+                lessonTitle: test.title,
+                questionsCount: 10,
+                ai_provider: aiProvider,
+                ...(aiProvider === "gigachat" ? { gigachat_model: gigachatModel } : { lovable_model: lovableModel }),
+              },
+            });
+            if (!qError && qData?.questions) {
+              for (const q of qData.questions) {
+                await supabase.from("test_questions").insert({
+                  lesson_id: test.id,
+                  question: q.question,
+                  options: q.options,
+                  correct_answer: q.correctAnswer ?? q.correct_answer ?? null,
+                });
+              }
+
+              // Log questions generation
+              await supabase.from("generation_history").insert({
+                course_id: courseId,
+                course_title: courseTitle,
+                action: "questions",
+                details: `Вопросы для «${test.title}»`,
+                items_count: qData.questions.length,
+              } as any);
             }
-
-            // Log questions generation
-            await supabase.from("generation_history").insert({
-              course_id: courseId,
-              course_title: courseTitle,
-              action: "questions",
-              details: `Вопросы для «${test.title}»`,
-              items_count: qData.questions.length,
-            } as any);
-          }
+          }));
         }
       }
 
