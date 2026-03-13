@@ -792,11 +792,6 @@ export function AdminMarketplaceManager() {
                 </div>
               </SortableContext>
             </DndContext>
-                    </CollapsibleContent>
-                  </Card>
-                </Collapsible>
-              ))}
-            </div>
           ) : (
             /* Grid view */
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
