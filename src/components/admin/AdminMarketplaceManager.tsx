@@ -293,6 +293,26 @@ export function AdminMarketplaceManager() {
   const [valRules, setValRules] = useState<ValidationRules>({ minLessons: 3, minContentLength: 50, requireTest: true, requireText: true, checkDuplicateTitles: true });
   const [aiPrompts, setAiPrompts] = useState<AiPrompts>({});
 
+  // AI settings for 3-slot routing
+  const [aiProvider, setAiProvider] = useState("gigachat");
+  const [gigachatModel, setGigachatModel] = useState<string | undefined>();
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from("ai_settings")
+          .select("provider, gigachat_model")
+          .eq("context", "pipeline")
+          .single();
+        if (data) {
+          setAiProvider(data.provider || "gigachat");
+          setGigachatModel(data.gigachat_model || undefined);
+        }
+      } catch {}
+    })();
+  }, []);
+
   const handleSettingsLoaded = useCallback((rules: ValidationRules, prompts: AiPrompts) => {
     setValRules(rules);
     setAiPrompts(prompts);
