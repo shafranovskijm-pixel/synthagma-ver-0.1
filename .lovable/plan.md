@@ -1,18 +1,45 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## План: Исправить отображение названий и перенести категории в правильные родительские группы
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+### Проблема 1: Обрезанные названия курсов
 
-### Changes
+Функция `extractShortTitle` (строка 310 в `useAdminMarketplace.ts`) обрезает всё до первого ` — `. Курс «Правила по охране труда при эксплуатации электроустановок — до 1000 В — Группа V» превращается в «до 1000 В — Группа V» — непонятно, что это за курс.
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+**Решение:** Показывать полное название курса. Убрать вызов `extractShortTitle` в `renderCourseRow` (строка 101 в `AdminMarketplaceManager.tsx`) и использовать `item.course?.title` напрямую. Аналогично в магазине (`useCourseStoreManager.ts`).
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+### Проблема 2: Все категории под «Повышение квалификации»
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+В БД **все 17 категорий** имеют `parent_type = 'Повышение квалификации'`. Категории «Охрана труда», «Пожарная безопасность» и будущая «Первая помощь» должны быть под `parent_type = 'Охрана труда / Пожарная безопасность'`.
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+**Решение:** SQL миграция — обновить `parent_type` для этих категорий:
+
+```sql
+UPDATE course_categories SET parent_type = 'Охрана труда / Пожарная безопасность'
+WHERE name IN ('Охрана труда', 'Пожарная безопасность', 'Медицина и первая помощь');
+```
+
+### Проблема 3: Нет категории «Первая помощь»
+
+Курсы с «первая помощь» и «медицин» в названии должны попадать в отдельную категорию «Первая помощь» (не «Медицина и первая помощь»), и она должна быть под ОТ/ПБ.
+
+**Решение:** Обновить `keywordMappings` в `handleAutoCategorize`:
+- Переименовать «Медицина и первая помощь» → «Первая помощь»
+- Установить `parentType: 'Охрана труда / Пожарная безопасность'` для всех трёх (Охрана труда, Пожарная безопасность, Первая помощь)
+
+### Проблема 4: Некатегоризированные курсы с ключевыми словами
+
+Курсы «Правила противопожарного режима» (с вольтажами) не попали в «Пожарная безопасность», потому что `handleAutoCategorize` уже был запущен до добавления нужных ключевых слов. Расширить маппинг:
+- «противопожарн» → Пожарная безопасность
+- «правила по охране труда» → Охрана труда  
+- «оказание первой помощи», «мероприятия по оказанию» → Первая помощь
+
+### Файлы
+
+| Файл | Изменение |
+|---|---|
+| Миграция SQL | UPDATE `parent_type` для Охрана труда, Пожарная безопасность; RENAME «Медицина и первая помощь» → «Первая помощь» |
+| `src/hooks/useAdminMarketplace.ts` | 1) Обновить `keywordMappings` — правильные `parentType` + новые ключевые слова; 2) Убрать/не использовать `extractShortTitle` |
+| `src/components/admin/AdminMarketplaceManager.tsx` | Показывать полный `item.course?.title` вместо `h.extractShortTitle(...)` |
+| `src/hooks/useCourseStoreManager.ts` | Аналогично — полные названия в магазине |
 
