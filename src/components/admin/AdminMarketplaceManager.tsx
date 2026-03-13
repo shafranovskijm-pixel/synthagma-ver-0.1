@@ -677,14 +677,19 @@ export function AdminMarketplaceManager() {
       // 2b. Enrich text/practice lessons with images (analyze_visuals + generate-image)
       const allTextLessons = allLessons.filter(l => l.type === "text" || l.type === "practice");
       const lessonsNeedingMedia: typeof allTextLessons = [];
-      for (const lesson of allTextLessons) {
-        const { data: freshLesson } = await supabase.from("lessons").select("content").eq("id", lesson.id).single();
-        if (!freshLesson?.content || freshLesson.content === "[]") continue;
+      const freshLessons = await Promise.all(
+        allTextLessons.map(async (lesson) => {
+          const { data } = await supabase.from("lessons").select("content").eq("id", lesson.id).single();
+          return { lesson, content: data?.content };
+        })
+      );
+      for (const { lesson, content } of freshLessons) {
+        if (!content || content === "[]") continue;
         try {
-          const blocks = JSON.parse(freshLesson.content);
+          const blocks = JSON.parse(content);
           if (!Array.isArray(blocks) || blocks.length < 3) continue;
           const hasMedia = blocks.some((b: any) => b.type === "image" || b.type === "slider");
-          if (!hasMedia) lessonsNeedingMedia.push({ ...lesson, content: freshLesson.content });
+          if (!hasMedia) lessonsNeedingMedia.push({ ...lesson, content });
         } catch { continue; }
       }
 
