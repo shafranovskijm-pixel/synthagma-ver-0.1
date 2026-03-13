@@ -1,18 +1,25 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## Проблема: двойная работа при генерации тестов
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+Шаг 3 (`generate_questions`) уже возвращает `correctAnswer` (camelCase) в JSON от ИИ, но клиент сохраняет `q.correct_answer` (snake_case) — это поле `undefined`. В результате все вопросы записываются с `correct_answer: null`, и Шаг 4 (`generate_answers`) вынужден заново решать все вопросы — это двойная работа и лишние вызовы ИИ.
 
-### Changes
+## Исправление
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+**Файл: `src/components/admin/ContentGeneratorTab.tsx`** (строки 260-268)
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+Заменить маппинг при сохранении вопросов — использовать `q.correctAnswer` (camelCase, как возвращает ИИ):
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+```typescript
+for (const q of qData.questions) {
+  await supabase.from("test_questions").insert({
+    lesson_id: test.id,
+    question: q.question,
+    options: q.options,
+    correct_answer: q.correctAnswer ?? q.correct_answer ?? null,
+  });
+}
+```
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+Это гарантирует, что `correctAnswer` из ответа ИИ сразу сохраняется в БД. Шаг 4 всё ещё останется как страховка — он обработает только вопросы, где ИИ по какой-то причине не указал ответ.
 
