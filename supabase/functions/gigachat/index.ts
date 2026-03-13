@@ -54,7 +54,8 @@ serve(async (req) => {
     if (!rl.allowed) return rateLimitResponse(rl, corsHeaders);
 
     const body = await req.json();
-    const { action, courseTitle, lessonTitle, lessonType, questions, existingContent, customSystemPrompt, previousAnswers, ai_provider, gigachat_model, lovable_model, stream_index } = body;
+    const { action, courseTitle, lessonTitle, lessonType, questions, existingContent, customSystemPrompt, previousAnswers, ai_provider, gigachat_model, lovable_model, stream_index, taskIndex: bodyTaskIndex } = body;
+    const effectiveTaskIndex = bodyTaskIndex ?? stream_index;
 
     // Log AI usage (fire-and-forget to reduce latency)
     const { data: profile } = await supabase
