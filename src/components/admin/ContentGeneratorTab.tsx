@@ -354,8 +354,8 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
             course_id: courseId, course_title: courseTitle,
             action: "structure", details: `Создано ${lessons.length} уроков`, items_count: lessons.length,
             stream_index: 0, duration_ms: null,
-          } as any);
-          if (histErr) console.error("History insert error (structure):", histErr);
+          });
+          if (histErr) console.warn("⚠️ History insert error (structure):", histErr, { courseId, courseTitle });
         }
 
         const { data: freshLessons } = await supabase

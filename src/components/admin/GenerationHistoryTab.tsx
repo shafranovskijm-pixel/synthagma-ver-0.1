@@ -84,6 +84,14 @@ export function GenerationHistoryTab() {
     fetchHistory();
   }, [filter, streamFilter]);
 
+  // Auto-refresh every 5 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchHistory();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [filter, streamFilter]);
+
   const handleClear = async () => {
     if (!confirm("Очистить всю историю генерации?")) return;
     setClearing(true);
