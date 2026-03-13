@@ -347,10 +347,12 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
         }
 
         if (lessons.length > 0) {
-          await supabase.from("generation_history").insert({
+          const { error: histErr } = await supabase.from("generation_history").insert({
             course_id: courseId, course_title: courseTitle,
             action: "structure", details: `Создано ${lessons.length} уроков`, items_count: lessons.length,
+            stream_index: 0, duration_ms: null,
           } as any);
+          if (histErr) console.error("History insert error (structure):", histErr);
         }
 
         const { data: freshLessons } = await supabase
