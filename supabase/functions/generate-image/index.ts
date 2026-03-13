@@ -99,6 +99,22 @@ function createSberHttpClient(): Deno.HttpClient | undefined {
 
 const sberHttpClient = createSberHttpClient();
 
+function normalizeInvokeError(err: any): { status: number; message: string } {
+  if (typeof err?.status === "number") {
+    return {
+      status: err.status,
+      message: err?.message || `Error ${err.status}`,
+    };
+  }
+
+  const message = err?.message || (err instanceof Error ? err.message : String(err));
+  const statusMatch = message.match(/\b(4\d\d|5\d\d)\b/);
+  return {
+    status: statusMatch ? Number(statusMatch[1]) : 500,
+    message,
+  };
+}
+
 async function generateWithLovableAI(prompt: string, imageUrl: string | undefined, model: string) {
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
@@ -129,12 +145,12 @@ async function generateWithLovableAI(prompt: string, imageUrl: string | undefine
     if (response.status === 402) throw { status: 402, message: "Недостаточно средств для генерации" };
     const text = await response.text();
     console.error("AI gateway error:", response.status, text);
-    throw new Error(`AI gateway error: ${response.status}`);
+    throw { status: response.status, message: `AI gateway error: ${response.status}` };
   }
 
   const data = await response.json();
   const generatedImageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-  if (!generatedImageUrl) throw new Error("No image generated");
+  if (!generatedImageUrl) throw { status: 502, message: "No image generated" };
   return generatedImageUrl;
 }
 
@@ -142,7 +158,7 @@ async function generateWithGigaChat(prompt: string, keySlot?: string) {
   // GigaChat uses its own auth flow to get an access token, then calls the image generation endpoint
   const envKey = keySlot === "KEY_2" ? "GIGACHAT_AUTH_KEY_2" : keySlot === "KEY_3" ? "GIGACHAT_AUTH_KEY_3" : "GIGACHAT_AUTH_KEY";
   const authKey = Deno.env.get(envKey);
-  if (!authKey) throw new Error(`${envKey} is not configured`);
+  if (!authKey) throw { status: 500, message: `${envKey} is not configured` };
 
   // Step 1: Get access token
   const tokenFetchOpts: RequestInit & { client?: Deno.HttpClient } = {
@@ -162,11 +178,14 @@ async function generateWithGigaChat(prompt: string, keySlot?: string) {
   if (!tokenRes.ok) {
     const text = await tokenRes.text();
     console.error("GigaChat auth error:", tokenRes.status, text);
-    throw new Error(`GigaChat auth error: ${tokenRes.status}`);
+    throw { status: tokenRes.status, message: `GigaChat auth error: ${tokenRes.status}` };
   }
 
   const tokenData = await tokenRes.json();
   const accessToken = tokenData.access_token;
+  if (!accessToken) {
+    throw { status: 502, message: "GigaChat auth error: no access token" };
+  }
 
   // Step 2: Ask GigaChat to generate an image via chat completions
   const chatFetchOpts: RequestInit & { client?: Deno.HttpClient } = {
@@ -194,7 +213,7 @@ async function generateWithGigaChat(prompt: string, keySlot?: string) {
   if (!chatRes.ok) {
     const text = await chatRes.text();
     console.error("GigaChat generation error:", chatRes.status, text);
-    throw new Error(`GigaChat generation error: ${chatRes.status}`);
+    throw { status: chatRes.status, message: `GigaChat generation error: ${chatRes.status}` };
   }
 
   const chatData = await chatRes.json();
@@ -204,7 +223,7 @@ async function generateWithGigaChat(prompt: string, keySlot?: string) {
   const fileIdMatch = content.match(/<img\s+src="([^"]+)"/);
   if (!fileIdMatch) {
     console.error("GigaChat response has no image:", content);
-    throw new Error("GigaChat не сгенерировал изображение");
+    throw { status: 502, message: "GigaChat не сгенерировал изображение" };
   }
 
   const fileId = fileIdMatch[1];
@@ -221,7 +240,7 @@ async function generateWithGigaChat(prompt: string, keySlot?: string) {
   const imageRes = await fetch(`https://gigachat.devices.sberbank.ru/api/v1/files/${fileId}/content`, imgFetchOpts);
 
   if (!imageRes.ok) {
-    throw new Error(`GigaChat image download error: ${imageRes.status}`);
+    throw { status: imageRes.status, message: `GigaChat image download error: ${imageRes.status}` };
   }
 
   const imageBytes = new Uint8Array(await imageRes.arrayBuffer());
@@ -238,39 +257,73 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { prompt, imageUrl, provider, model, gigachat_key, slotIndex } = await req.json();
+    const { prompt, imageUrl, provider, model, slotIndex } = await req.json();
     if (!prompt) throw new Error("Prompt is required");
 
     const selectedProvider = provider || "gigachat";
     console.log(`Generating image with provider: ${selectedProvider}, prompt: ${prompt}, slotIndex: ${slotIndex}`);
 
-    let generatedImageUrl: string;
+    let generatedImageUrl = "";
     let usedProvider = selectedProvider;
 
     if (selectedProvider === "gigachat") {
-      // True round-robin: start from slotIndex, fallback to others
-      const allSlots: (string | undefined)[] = ["KEY", "KEY_2", "KEY_3"];
-      const startSlot = typeof slotIndex === "number" ? (slotIndex % allSlots.length) : 0;
+      // Start from slotIndex, retry each slot on 429, then fallback to Lovable AI only for non-429 failures
+      const allSlots = ["KEY", "KEY_2", "KEY_3"] as const;
+      const parsedSlotIndex = typeof slotIndex === "number" ? slotIndex : Number(slotIndex);
+      const startSlot = Number.isFinite(parsedSlotIndex) ? Math.abs(parsedSlotIndex) % allSlots.length : 0;
+      const slotFailures: Array<{ slot: string; status: number; message: string }> = [];
+
       let success = false;
       for (let attempt = 0; attempt < allSlots.length; attempt++) {
         const si = (startSlot + attempt) % allSlots.length;
-        try {
-          console.log(`[generate-image] Trying GigaChat slot ${allSlots[si]} (attempt ${attempt}, startSlot=${startSlot})`);
-          generatedImageUrl = await generateWithGigaChat(prompt, allSlots[si]);
-          success = true;
-          break;
-        } catch (e: any) {
-          console.warn(`[generate-image] GigaChat slot ${allSlots[si]} failed:`, e?.message);
+        const slotName = allSlots[si];
+
+        const maxSlotRetries = 2;
+        for (let retry = 0; retry < maxSlotRetries; retry++) {
+          try {
+            console.log(`[generate-image] Trying GigaChat slot ${slotName} (attempt ${attempt + 1}, retry ${retry + 1}/${maxSlotRetries}, startSlot=${startSlot})`);
+            generatedImageUrl = await generateWithGigaChat(prompt, slotName);
+            success = true;
+            break;
+          } catch (e: any) {
+            const normalized = normalizeInvokeError(e);
+            const isRetryable429 = normalized.status === 429 && retry < maxSlotRetries - 1;
+            console.warn(`[generate-image] GigaChat slot ${slotName} failed (status=${normalized.status}):`, normalized.message);
+
+            if (isRetryable429) {
+              await new Promise((resolve) => setTimeout(resolve, 1200 * (retry + 1)));
+              continue;
+            }
+
+            slotFailures.push({ slot: slotName, ...normalized });
+            break;
+          }
         }
+
+        if (success) break;
       }
+
       if (!success) {
-        console.log("[generate-image] All GigaChat slots failed, falling back to Lovable AI");
+        const allRateLimited = slotFailures.length > 0 && slotFailures.every((f) => f.status === 429);
+
+        if (allRateLimited) {
+          throw {
+            status: 429,
+            message: "GigaChat временно перегружен (429 по всем потокам). Повторите попытку через 10–20 секунд.",
+          };
+        }
+
+        console.log("[generate-image] GigaChat failed not only by 429, trying Lovable AI fallback");
         try {
           generatedImageUrl = await generateWithLovableAI(prompt, imageUrl, model);
           usedProvider = "lovable_ai";
         } catch (fallbackErr: any) {
-          console.error("[generate-image] Lovable AI fallback also failed:", fallbackErr?.message);
-          throw { status: fallbackErr?.status || 500, message: fallbackErr?.message || "Все провайдеры изображений недоступны" };
+          const normalizedFallback = normalizeInvokeError(fallbackErr);
+          console.error("[generate-image] Lovable AI fallback also failed:", normalizedFallback.message);
+          throw {
+            status: normalizedFallback.status || 500,
+            message: normalizedFallback.message || "Все провайдеры изображений недоступны",
+          };
         }
       }
     } else {
