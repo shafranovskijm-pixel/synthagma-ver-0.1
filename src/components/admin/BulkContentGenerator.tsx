@@ -63,6 +63,31 @@ const isPracticeLesson = (lesson: LessonItem): boolean => {
 
 const TEST_BATCH_SIZE = 20;
 
+/** Helper to log generation history */
+const logHistory = async (
+  courseId: string,
+  courseTitle: string,
+  action: string,
+  details: string,
+  itemsCount: number,
+  durationMs: number,
+  streamIndex?: number
+) => {
+  try {
+    await supabase.from("generation_history").insert({
+      course_id: courseId,
+      course_title: courseTitle,
+      action,
+      details,
+      items_count: itemsCount,
+      duration_ms: durationMs,
+      stream_index: streamIndex ?? null,
+    });
+  } catch (e) {
+    console.warn("Failed to log generation history:", e);
+  }
+};
+
 export function BulkContentGenerator({ open, onOpenChange, courseId, courseTitle, courseDescription }: Props) {
   const [lessons, setLessons] = useState<LessonItem[]>([]);
   const [loading, setLoading] = useState(false);
