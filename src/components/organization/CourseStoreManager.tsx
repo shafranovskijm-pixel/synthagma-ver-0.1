@@ -152,8 +152,8 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
                 {(() => {
                   const price = h.userRole === 'organization' ? selectedCourseDetail.price_organization : selectedCourseDetail.price_student;
                   return (
-                    <Button className={`flex-1 rounded-xl gap-2 text-base py-5 ${price > 0 ? 'bg-primary hover:bg-primary/90' : 'bg-green-600 hover:bg-green-700'} text-white`} onClick={() => { const item = selectedCourseDetail; setSelectedCourseDetail(null); h.setSelectedCourseForOrder(item); h.setShowOrderDialog(true); }}>
-                      {price > 0 ? <><ShoppingCart className="w-4 h-4" />Купить за {price.toLocaleString()} ₽</> : <><Gift className="w-4 h-4" />Получить бесплатно</>}
+                    <Button className="flex-1 rounded-xl gap-2 text-base py-5 bg-green-600 hover:bg-green-700 text-white" onClick={() => { const item = selectedCourseDetail; setSelectedCourseDetail(null); h.setSelectedCourseForOrder(item); h.setShowOrderDialog(true); }}>
+                      <Plus className="w-4 h-4" />Получить курс
                     </Button>
                   );
                 })()}
@@ -432,7 +432,7 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
             const totalPrice = h.userRole === 'organization' ? orderPrice * h.studentsCount : orderPrice;
             return (
               <>
-                <DialogHeader><DialogTitle>{orderPrice > 0 ? 'Купить курс' : 'Получить курс бесплатно'}</DialogTitle><DialogDescription>{h.selectedCourseForOrder?.course?.title}</DialogDescription></DialogHeader>
+                <DialogHeader><DialogTitle>Получить курс</DialogTitle><DialogDescription>{h.selectedCourseForOrder?.course?.title}</DialogDescription></DialogHeader>
                 <div className="space-y-4 py-4">
                   {h.userRole === 'organization' && (
                     <div className="flex gap-3 p-4 rounded-xl border border-blue-500/20 bg-blue-500/5">
@@ -456,7 +456,7 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
                   )}
                   <div className="space-y-2"><Label>Комментарий</Label><Textarea value={h.orderNotes} onChange={(e) => h.setOrderNotes(e.target.value)} placeholder="Дополнительная информация..." className="rounded-xl" /></div>
                 </div>
-                <DialogFooter><Button className={`w-full rounded-xl gap-2 ${orderPrice > 0 ? 'btn-gradient' : 'bg-green-600 hover:bg-green-700 text-white'}`} onClick={h.handleOrder} disabled={h.isOrdering}>{h.isOrdering ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Оформление...</> : orderPrice > 0 ? <><ShoppingCart className="w-4 h-4" />Купить за {totalPrice.toLocaleString()} ₽</> : <><Gift className="w-4 h-4" />Получить бесплатно</>}</Button></DialogFooter>
+                <DialogFooter><Button className="w-full rounded-xl gap-2 bg-green-600 hover:bg-green-700 text-white" onClick={h.handleOrder} disabled={h.isOrdering}>{h.isOrdering ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Оформление...</> : <><Plus className="w-4 h-4" />Получить курс</>}</Button></DialogFooter>
               </>
             );
           })()}

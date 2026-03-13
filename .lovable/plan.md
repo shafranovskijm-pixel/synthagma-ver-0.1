@@ -1,34 +1,18 @@
 
 
-## План: Категоризация каталога для студентов + исправление кнопок
+## Plan: Auto-fix after "Проверить все"
 
-### 1. Кнопки для студентов — оставить «Купить курс»
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-Студентам оставляем текущую логику: кнопка «Купить курс», заявка сохраняется в `marketplace_orders` и уходит в Telegram. Никаких изменений.
+### Changes
 
-### 2. Кнопки для организаций — «Получить курс»
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-В `CourseStoreManager.tsx` заменить все вхождения:
-- «Купить за X ₽» / «Получить бесплатно» → **«Получить курс»** (иконка `Plus`)
-- «Купить курс» в заголовке диалога → **«Получить курс»**
-- Зелёный стиль для всех кнопок (курсы бесплатны для организаций)
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-**Строки**: 155-156, 435, 459
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-### 3. Категоризация каталога в StudentCourseStore
-
-Добавить группировку `filteredCatalog` по категориям (аналогично `CourseStoreManager`):
-- Переиспользовать `extractCategory` — парсинг префикса до « — » в названии курса
-- Обернуть сетку карточек в `Collapsible`-секции по категориям
-- Каждая секция: название категории + бейдж с количеством + раскрывающийся список карточек
-- Если категория одна — показывать плоскую сетку без группировки
-
-**Файл**: `src/components/student/StudentCourseStore.tsx` — добавить группировку перед рендером сетки (строки 283-358)
-
-### Файлы для изменения
-
-| Файл | Что |
-|---|---|
-| `src/components/student/StudentCourseStore.tsx` | Добавить категоризацию каталога с Collapsible |
-| `src/components/organization/CourseStoreManager.tsx` | Заменить «Купить» → «Получить курс» для организаций |
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 
