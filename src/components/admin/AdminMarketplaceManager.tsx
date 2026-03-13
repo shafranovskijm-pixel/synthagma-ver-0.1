@@ -692,7 +692,7 @@ export function AdminMarketplaceManager() {
         let enrichedLessons = 0;
         toast.loading(`Обогащаю медиа: 0/${lessonsNeedingMedia.length}...`, { id: toastId });
         let enrichedCount = 0;
-        const ENRICH_CONCURRENCY = 2;
+        const ENRICH_CONCURRENCY = 3;
         for (let ei = 0; ei < lessonsNeedingMedia.length; ei += ENRICH_CONCURRENCY) {
           const enrichChunk = lessonsNeedingMedia.slice(ei, ei + ENRICH_CONCURRENCY);
           const enrichPromises = enrichChunk.map(async (lesson, idx) => {
