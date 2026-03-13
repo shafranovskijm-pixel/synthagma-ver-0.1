@@ -350,12 +350,14 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
       const lesson = emptyOnes[i];
       setGeneratingProgress(25 + Math.round((i / emptyOnes.length) * 35));
 
-      const { data: contentData, error: contentError } = await safeInvoke("gigachat", {
-        action: "generate_content",
-        courseTitle,
-        lessonTitle: lesson.title,
-        aiProvider,
-        ...(aiProvider === "gigachat" ? { gigachatModel } : { lovableModel }),
+      const { data: contentData, error: contentError } = await safeInvoke<any>("gigachat", {
+        body: {
+          action: "generate_content",
+          courseTitle,
+          lessonTitle: lesson.title,
+          aiProvider,
+          ...(aiProvider === "gigachat" ? { gigachatModel } : { lovableModel }),
+        },
       });
 
       if (!contentError && contentData?.content) {
