@@ -78,7 +78,17 @@ export function useAdminMarketplace() {
 
   useEffect(() => {
     fetchData();
+    fetchDbCategories();
   }, []);
+
+  const fetchDbCategories = async () => {
+    const { data } = await supabase
+      .from("course_categories")
+      .select("id, name, color")
+      .eq("organization_id", "00000000-0000-0000-0000-000000000000")
+      .order("name");
+    setDbCategories(data || []);
+  };
 
   const fetchData = async () => {
     setIsLoading(true);
