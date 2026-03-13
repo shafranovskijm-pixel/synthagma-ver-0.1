@@ -142,11 +142,13 @@ function buildSlots(): TokenSlot[] {
 }
 
 const slots = buildSlots();
-function pickSlot(): TokenSlot | null {
+let roundRobinCounter = 0;
+function pickSlot(streamIndex?: number): TokenSlot | null {
   if (slots.length === 0) return null;
   if (slots.length === 1) return slots[0];
-  // Random distribution across all available slots
-  const idx = Math.floor(Math.random() * slots.length);
+  if (typeof streamIndex === 'number') return slots[streamIndex % slots.length];
+  const idx = roundRobinCounter % slots.length;
+  roundRobinCounter++;
   return slots[idx];
 }
 
