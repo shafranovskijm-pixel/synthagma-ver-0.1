@@ -1,36 +1,18 @@
 
 
-## План: 3 изображения на курс, параллельно, для первых 3 уроков
+## Plan: Auto-fix after "Проверить все"
 
-### Текущая проблема
-Сейчас система пытается обогатить **все** текстовые уроки без медиа (может быть 5-8 штук). Каждый урок = вызов `analyze_visuals` + `generate-image` → много последовательных батчей, долго.
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-### Новая логика
-1. Из всех текстовых уроков без медиа взять **только первые 3**
-2. Запустить все 3 **параллельно** (каждый на своём GigaChat-слоте: 0, 1, 2)
-3. Убрать цикл `for (ei = 0; ei < ...; ei += ENRICH_CONCURRENCY)` — он больше не нужен, т.к. всегда ровно 3 урока
+### Changes
 
-### Изменения в файле
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-**`src/components/admin/AdminMarketplaceManager.tsx`** (строки 696-772):
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-```typescript
-// Берём только первые 3 урока для обогащения
-const lessonsToEnrich = lessonsNeedingMedia.slice(0, 3);
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-if (lessonsToEnrich.length > 0) {
-  toast.loading(`Генерирую изображения: 0/${lessonsToEnrich.length}...`, { id: toastId });
-  let enrichedCount = 0;
-  let enrichedLessons = 0;
-
-  // Все 3 параллельно, каждый на своём слоте
-  const enrichPromises = lessonsToEnrich.map(async (lesson, idx) => {
-    // idx = 0, 1, 2 → slotIndex = 0, 1, 2
-    // ... analyze_visuals + generate-image (без изменений внутренней логики)
-  });
-  await Promise.allSettled(enrichPromises);
-}
-```
-
-Результат: вместо 5-8 уроков по батчам → ровно 3 параллельных запроса, каждый на своём API-ключе. Генерация займёт время одного изображения (~10-15с) вместо нескольких батчей.
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 
