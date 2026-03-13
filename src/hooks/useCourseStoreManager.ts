@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
+import { MARKETPLACE_ORG_ID } from "@/constants/marketplace";
 
 interface Course {
   id: string;
