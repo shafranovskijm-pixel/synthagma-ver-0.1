@@ -15,6 +15,7 @@ import type { DbCategory } from "@/hooks/useAdminMarketplace";
 import { BulkCourseImporter } from "./BulkCourseImporter";
 import { BulkContentGenerator } from "./BulkContentGenerator";
 import { ContentGeneratorTab } from "./ContentGeneratorTab";
+import { GenerationHistoryTab } from "./GenerationHistoryTab";
 import { ProgramListImporter } from "./ProgramListImporter";
 import { KnowledgeBankTab } from "./KnowledgeBankTab";
 import { MarketplaceSettingsTab, type ValidationRules, type AiPrompts } from "./MarketplaceSettingsTab";
