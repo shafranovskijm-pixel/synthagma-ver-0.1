@@ -6,6 +6,7 @@ import {
   Factory, Flame, Droplets, HardHat, Leaf, ChevronDown,
   GraduationCap, ShieldCheck, Wrench,
 } from "lucide-react";
+import { MARKETPLACE_ORG_ID } from "@/constants/marketplace";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
@@ -98,6 +99,7 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
   const [catalog, setCatalog] = useState<MarketplaceCourse[]>([]);
   const [orders, setOrders] = useState<MarketplaceOrder[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [dbCategories, setDbCategories] = useState<{ id: string; name: string; order_index: number | null }[]>([]);
 
   // Preview
   const [previewCourse, setPreviewCourse] = useState<MarketplaceCourse | null>(null);
@@ -114,10 +116,20 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
     fetchData();
   }, [organizationId]);
 
+  const fetchDbCategories = async () => {
+    const { data, error } = await supabase
+      .from("course_categories")
+      .select("id, name, order_index")
+      .eq("organization_id", MARKETPLACE_ORG_ID)
+      .order("order_index", { ascending: true });
+    if (error) { console.error("Error fetching categories:", error); return; }
+    setDbCategories(data || []);
+  };
+
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      await Promise.all([fetchCatalog(), fetchOrders()]);
+      await Promise.all([fetchCatalog(), fetchOrders(), fetchDbCategories()]);
     } finally {
       setIsLoading(false);
     }
@@ -128,7 +140,7 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
       .from("marketplace_courses")
       .select(`
         *,
-        course:courses(id, title, description, duration),
+        course:courses(id, title, description, duration, category_id),
         organization:organizations(name)
       `)
       .eq("is_active", true);
@@ -249,50 +261,40 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
     );
   });
 
-  const extractCategory = (title: string | undefined): string => {
-    if (!title) return "Без категории";
+  const extractShortTitle = (title: string | undefined): string => {
+    if (!title) return "";
     const dashIndex = title.indexOf(" — ");
-    if (dashIndex > 0) return title.substring(0, dashIndex).trim();
-    return "Без категории";
+    return dashIndex > 0 ? title.substring(dashIndex + 3) : title;
   };
 
-
-  const OT_CATEGORIES_STUDENT = ["Охрана труда при работах на высоте"];
-
-  const RTN_CATEGORIES_STUDENT = [
-    "Промышленная безопасность",
-    "Электробезопасность",
-    "Энергетика",
-    "Экологическая безопасность",
-    "Гидротехнические сооружения",
-    "Строительный контроль",
-  ];
-
   const groupedCatalog = useMemo(() => {
-    const map = new Map<string, MarketplaceCourse[]>();
+    // Group by DB category_id
+    const byCatId = new Map<string, MarketplaceCourse[]>();
+    const uncategorized: MarketplaceCourse[] = [];
     for (const c of filteredCatalog) {
-      const cat = extractCategory(c.course?.title);
-      if (!map.has(cat)) map.set(cat, []);
-      map.get(cat)!.push(c);
-    }
-    for (const cat of RTN_CATEGORIES_STUDENT) {
-      if (!map.has(cat)) map.set(cat, []);
-    }
-    for (const cat of OT_CATEGORIES_STUDENT) {
-      if (!map.has(cat)) map.set(cat, []);
+      const catId = (c.course as any)?.category_id;
+      if (catId) {
+        if (!byCatId.has(catId)) byCatId.set(catId, []);
+        byCatId.get(catId)!.push(c);
+      } else {
+        uncategorized.push(c);
+      }
     }
 
-    const rtnSubGroups = RTN_CATEGORIES_STUDENT.map(cat => ({ category: cat, courses: map.get(cat) || [] }));
-    const allRtnCourses = rtnSubGroups.flatMap(g => g.courses);
-    const otCourses = OT_CATEGORIES_STUDENT.flatMap(cat => map.get(cat) || []);
+    const subGroups = dbCategories.map(cat => ({
+      category: cat.name,
+      courses: byCatId.get(cat.id) || [],
+    }));
+
+    const allCategorizedCourses = subGroups.flatMap(g => g.courses);
 
     return [
-      { category: "Повышение квалификации", badge: "ДПО", courses: allRtnCourses, subGroups: rtnSubGroups },
+      { category: "Повышение квалификации", badge: "ДПО", courses: [...allCategorizedCourses, ...uncategorized], subGroups },
       { category: "Профессиональная переподготовка", badge: "ДПО", courses: [] as MarketplaceCourse[] },
-      { category: "Охрана труда / Пожарная безопасность", badge: "ОТ / ПБ", courses: otCourses },
+      { category: "Охрана труда / Пожарная безопасность", badge: "ОТ / ПБ", courses: [] as MarketplaceCourse[] },
       { category: "Рабочие профессии", badge: "ПО", courses: [] as MarketplaceCourse[] },
     ];
-  }, [filteredCatalog]);
+  }, [filteredCatalog, dbCategories]);
 
   const programTypeMetaStudent: Record<string, { icon: React.ElementType; color: string; bgColor: string }> = {
     "Повышение квалификации": { icon: GraduationCap, color: "text-blue-600", bgColor: "bg-blue-500/10" },
