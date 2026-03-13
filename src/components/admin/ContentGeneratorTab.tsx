@@ -258,6 +258,7 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
             lessonTitle: lesson.title,
             questions: unanswered.map(q => ({ id: q.id, question: q.question, options: q.options })),
             ai_provider: aiProvider,
+            stream_index: streamIndex,
             ...(aiProvider === "gigachat" ? { gigachat_model: gigachatModel } : { lovable_model: lovableModel }),
           },
         });
