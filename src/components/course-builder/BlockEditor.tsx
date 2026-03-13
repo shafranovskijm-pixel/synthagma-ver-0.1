@@ -2475,7 +2475,23 @@ export function markdownToBlocks(md: string): ContentBlock[] {
     // Skip empty lines
     if (!line.trim()) { i++; continue; }
 
-    // ::: callout / highlight / accordion markers
+    // ::: callout / highlight / accordion markers — inline format: :::type text :::
+    const inlineMarkerMatch = line.match(/^:::(info|warning|tip|danger|highlight|accordion)\s+(.+?)\s*:::?\s*$/i);
+    if (inlineMarkerMatch) {
+      const markerType = inlineMarkerMatch[1].toLowerCase();
+      const content = inlineMarkerMatch[2].trim();
+      const blockType = markerType === "highlight" ? "highlight"
+        : markerType === "accordion" ? "accordion"
+        : `callout-${markerType}`;
+      const block: any = { id: mkId(), type: blockType, content };
+      if (markerType === "accordion" && content) {
+        block.accordionTitle = content.split("\n")[0];
+      }
+      blocks.push(block);
+      i++; continue;
+    }
+
+    // ::: callout / highlight / accordion markers — multiline format
     const markerMatch = line.match(/^:::(info|warning|tip|danger|highlight|accordion)\s*(.*)?$/i);
     if (markerMatch) {
       const markerType = markerMatch[1].toLowerCase();
@@ -2498,7 +2514,11 @@ export function markdownToBlocks(md: string): ContentBlock[] {
       continue;
     }
 
-    // Headings
+    // Headings (### before ## before #)
+    if (/^###+ /.test(line)) {
+      blocks.push({ id: mkId(), type: "heading2", content: line.replace(/^#{3,}\s+/, "").trim() });
+      i++; continue;
+    }
     if (/^## /.test(line)) {
       blocks.push({ id: mkId(), type: "heading2", content: line.replace(/^## /, "").trim() });
       i++; continue;
