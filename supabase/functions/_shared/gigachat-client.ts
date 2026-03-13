@@ -690,22 +690,76 @@ export async function callAIWithTools(
   gigachatModel = "GigaChat-Max",
   lovableModel = "google/gemini-2.5-pro",
   preferredProvider?: string,
+  taskIndex?: number,
 ): Promise<any> {
+  const jsonHint = tool
+    ? `\n\nОтветь СТРОГО в формате JSON, соответствующем следующей структуре: ${JSON.stringify(tool.function.parameters)}. Без markdown-обёртки, только JSON.`
+    : "";
+
+  const makeGcMessages = () => {
+    const systemMsg = messages.find((m) => m.role === "system");
+    const userMsg = messages.find((m) => m.role === "user");
+    return [
+      { role: "system", content: (systemMsg?.content || "") + jsonHint },
+      { role: "user", content: userMsg?.content || "" },
+    ];
+  };
+
+  const parseGcResponse = (text: string) => {
+    const cleaned = text.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+    const parsed = JSON.parse(cleaned);
+    return tool ? parsed : { content: text };
+  };
+
+  // Round-robin mode: distribute across Lovable AI + GigaChat slots
+  if (taskIndex !== undefined && preferredProvider !== "gigachat") {
+    // Build channels: [Lovable AI, GigaChat slot-0, slot-1, slot-2]
+    type Channel = { name: string; call: () => Promise<any> };
+    const channels: Channel[] = [
+      {
+        name: `Lovable AI (${lovableModel})`,
+        call: () => callLovableAIWithTools(messages, tool, lovableModel),
+      },
+    ];
+    for (let si = 0; si < slots.length; si++) {
+      const slotIdx = si;
+      channels.push({
+        name: `GigaChat slot-${slotIdx} (${gigachatModel})`,
+        call: async () => {
+          const text = await useSlotDirect(slotIdx, makeGcMessages(), gigachatModel, 8192);
+          return parseGcResponse(text);
+        },
+      });
+    }
+
+    const startIdx = taskIndex % channels.length;
+    const taskLabel = `toolsRR-task#${taskIndex}`;
+    console.log(`[callAIWithTools-RR] ${taskLabel} → startChannel=${startIdx}/${channels.length} (${channels[startIdx].name})`);
+
+    for (let attempt = 0; attempt < channels.length; attempt++) {
+      const chIdx = (startIdx + attempt) % channels.length;
+      const channel = channels[chIdx];
+      try {
+        console.log(`[callAIWithTools-RR] ${taskLabel} → ${channel.name}${attempt > 0 ? " (fallback)" : ""}`);
+        return await channel.call();
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn(`[callAIWithTools-RR] ${channel.name} failed: ${msg}`);
+      }
+    }
+    throw new Error("All AI channels exhausted in callAIWithTools round-robin");
+  }
+
   if (preferredProvider === "gigachat") {
     try {
-      const systemMsg = messages.find((m) => m.role === "system");
-      const userMsg = messages.find((m) => m.role === "user");
-      const jsonHint = tool
-        ? `\n\nОтветь СТРОГО в формате JSON, соответствующем следующей структуре: ${JSON.stringify(tool.function.parameters)}. Без markdown-обёртки, только JSON.`
-        : "";
-      const gcMessages = [
-        { role: "system", content: (systemMsg?.content || "") + jsonHint },
-        { role: "user", content: userMsg?.content || "" },
-      ];
-      const text = await callGigaChat(gcMessages, gigachatModel, 8192);
-      const cleaned = text.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
-      const parsed = JSON.parse(cleaned);
-      return tool ? parsed : { content: text };
+      if (taskIndex !== undefined && slots.length > 1) {
+        const slotIdx = taskIndex % slots.length;
+        console.log(`[callAIWithTools] GigaChat deterministic routing: taskIndex=${taskIndex} → slot-${slotIdx}`);
+        const text = await useSlotDirect(slotIdx, makeGcMessages(), gigachatModel, 8192);
+        return parseGcResponse(text);
+      }
+      const text = await callGigaChat(makeGcMessages(), gigachatModel, 8192);
+      return parseGcResponse(text);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.warn("[callAIWithTools] GigaChat failed, falling back to Lovable AI:", msg);
@@ -720,19 +774,8 @@ export async function callAIWithTools(
     const msg = err instanceof Error ? err.message : String(err);
     console.warn("[callAIWithTools] Lovable AI failed, falling back to GigaChat:", msg);
     try {
-      const systemMsg = messages.find((m) => m.role === "system");
-      const userMsg = messages.find((m) => m.role === "user");
-      const jsonHint = tool
-        ? `\n\nОтветь СТРОГО в формате JSON, соответствующем следующей структуре: ${JSON.stringify(tool.function.parameters)}. Без markdown-обёртки, только JSON.`
-        : "";
-      const gcMessages = [
-        { role: "system", content: (systemMsg?.content || "") + jsonHint },
-        { role: "user", content: userMsg?.content || "" },
-      ];
-      const text = await callGigaChat(gcMessages, gigachatModel, 8192);
-      const cleaned = text.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
-      const parsed = JSON.parse(cleaned);
-      return tool ? parsed : { content: text };
+      const text = await callGigaChat(makeGcMessages(), gigachatModel, 8192);
+      return parseGcResponse(text);
     } catch (gcErr) {
       throw gcErr;
     }

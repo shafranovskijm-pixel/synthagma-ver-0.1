@@ -52,7 +52,7 @@ serve(async (req) => {
       );
     }
 
-    const { lessonTitle, lessonType, courseTitle, courseDescription, previousLessons, ai_provider } = await req.json();
+    const { lessonTitle, lessonType, courseTitle, courseDescription, previousLessons, ai_provider, taskIndex } = await req.json();
 
     if (!lessonTitle?.trim()) {
       return new Response(
@@ -218,7 +218,8 @@ ${courseDescription ? `Описание курса: ${courseDescription}` : ""}
         toolDefinition ? { type: "function", function: toolDefinition.function } : undefined,
         "GigaChat-Pro",
         "google/gemini-3-flash-preview",
-        ai_provider
+        ai_provider,
+        taskIndex,
       );
 
       usedModel = "GigaChat/Lovable AI";

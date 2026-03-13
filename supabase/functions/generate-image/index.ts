@@ -238,30 +238,32 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { prompt, imageUrl, provider, model, gigachat_key } = await req.json();
+    const { prompt, imageUrl, provider, model, gigachat_key, slotIndex } = await req.json();
     if (!prompt) throw new Error("Prompt is required");
 
     const selectedProvider = provider || "gigachat";
-    console.log(`Generating image with provider: ${selectedProvider}, prompt: ${prompt}`);
+    console.log(`Generating image with provider: ${selectedProvider}, prompt: ${prompt}, slotIndex: ${slotIndex}`);
 
     let generatedImageUrl: string;
     let usedProvider = selectedProvider;
 
     if (selectedProvider === "gigachat") {
-      // Round-robin across 3 GigaChat key slots
-      const slots: (string | undefined)[] = ["KEY", "KEY_2", "KEY_3"];
+      // True round-robin: start from slotIndex, fallback to others
+      const allSlots: (string | undefined)[] = ["KEY", "KEY_2", "KEY_3"];
+      const startSlot = typeof slotIndex === "number" ? (slotIndex % allSlots.length) : 0;
       let success = false;
-      for (let i = 0; i < slots.length; i++) {
+      for (let attempt = 0; attempt < allSlots.length; attempt++) {
+        const si = (startSlot + attempt) % allSlots.length;
         try {
-          generatedImageUrl = await generateWithGigaChat(prompt, slots[i]);
+          console.log(`[generate-image] Trying GigaChat slot ${allSlots[si]} (attempt ${attempt}, startSlot=${startSlot})`);
+          generatedImageUrl = await generateWithGigaChat(prompt, allSlots[si]);
           success = true;
           break;
         } catch (e: any) {
-          console.warn(`[generate-image] GigaChat slot ${slots[i]} failed:`, e?.message);
+          console.warn(`[generate-image] GigaChat slot ${allSlots[si]} failed:`, e?.message);
         }
       }
       if (!success) {
-        // Fallback to Lovable AI if all GigaChat slots failed
         console.log("[generate-image] All GigaChat slots failed, falling back to Lovable AI");
         generatedImageUrl = await generateWithLovableAI(prompt, imageUrl, model);
         usedProvider = "lovable_ai";
