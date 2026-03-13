@@ -193,12 +193,12 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
     }
   };
 
-  // Utility: generate intro audio for a lesson paragraph
+  // Utility: generate intro audio for a lesson paragraph via SaluteSpeech
   const generateIntroAudio = async (text: string): Promise<string | null> => {
     try {
       const truncated = text.slice(0, 500);
       const response = await safeFetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/salutespeech-tts`,
         {
           method: "POST",
           headers: {
@@ -206,11 +206,11 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
             "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
             "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
-          body: JSON.stringify({ text: truncated, voiceId: "JBFqnCBsd6RMkjVDRZzb" }),
+          body: JSON.stringify({ text: truncated, voice: "natalya", format: "opus" }),
         }
       );
       if (!response.ok) {
-        console.warn("TTS failed:", response.status);
+        console.warn("SaluteSpeech TTS failed:", response.status);
         return null;
       }
       const audioBlob = await response.blob();
@@ -218,10 +218,10 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
       // Upload to storage
       await initExternalSupabase();
       const storageClient = getExternalSupabase() || supabase;
-      const fileName = `tts_${crypto.randomUUID()}.mp3`;
+      const fileName = `tts_${crypto.randomUUID()}.ogg`;
       const { error: uploadError } = await storageClient.storage
         .from("course-files")
-        .upload(fileName, audioBlob, { contentType: "audio/mpeg", cacheControl: "3600", upsert: true });
+        .upload(fileName, audioBlob, { contentType: "audio/ogg", cacheControl: "3600", upsert: true });
       if (uploadError) {
         console.warn("Audio upload error:", uploadError);
         return null;
