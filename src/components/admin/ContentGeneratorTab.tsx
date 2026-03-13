@@ -8,7 +8,10 @@ import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 import { MARKETPLACE_ORG_ID } from "@/constants/marketplace";
 import { markdownToBlocks, blocksToJson } from "@/components/course-builder/BlockEditor";
+import type { ContentBlock } from "@/components/course-builder/BlockEditor";
 import type { DbCategory } from "@/hooks/useAdminMarketplace";
+import { initExternalSupabase, getExternalSupabase } from "@/integrations/external-supabase/client";
+import { safeFetch } from "@/utils/safeInvoke";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
