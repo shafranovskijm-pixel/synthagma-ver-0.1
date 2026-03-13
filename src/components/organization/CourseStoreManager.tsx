@@ -257,12 +257,13 @@ export function CourseStoreManager({ organizationId, userRole = 'organization', 
                     <div className="flex gap-3 items-start">
                       <ShieldCheck className="w-5 h-5 text-primary mt-0.5 shrink-0" />
                       <div>
-                        <h4 className="font-semibold text-sm text-foreground mb-1">Подготовка к аттестации Ростехнадзора</h4>
+                       <h4 className="font-semibold text-sm text-foreground mb-1">Курсы ДПО и профессионального обучения</h4>
                         <p className="text-xs text-muted-foreground leading-relaxed">
-                          Курсы разработаны для подготовки к официальной аттестации. Тесты соответствуют требованиям Единого портала тестирования.
+                          Повышение квалификации, профпереподготовка, охрана труда и рабочие профессии. Тесты соответствуют требованиям аттестации.
                         </p>
                         <div className="flex gap-2 mt-2">
-                          <Badge variant="secondary" className="text-xs">Актуально 2026</Badge>
+                          <Badge variant="secondary" className="text-xs">ДПО</Badge>
+                          <Badge variant="secondary" className="text-xs">ОТ / ПБ</Badge>
                           <Badge variant="secondary" className="text-xs">Бесплатно</Badge>
                         </div>
                         <div className="flex items-start gap-1.5 mt-3 pt-3 border-t border-border/50">
