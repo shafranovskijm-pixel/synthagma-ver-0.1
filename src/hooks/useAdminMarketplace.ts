@@ -53,7 +53,11 @@ export function useAdminMarketplace() {
   const [newPriceStudent, setNewPriceStudent] = useState("");
   const [newPriceOrg, setNewPriceOrg] = useState("");
   const [newShortDesc, setNewShortDesc] = useState("");
+  const [newCategoryId, setNewCategoryId] = useState("");
   const [isCreating, setIsCreating] = useState(false);
+
+  // DB categories for marketplace org
+  const [dbCategories, setDbCategories] = useState<{ id: string; name: string; color: string | null }[]>([]);
 
   // Edit dialog
   const [showEditDialog, setShowEditDialog] = useState(false);
