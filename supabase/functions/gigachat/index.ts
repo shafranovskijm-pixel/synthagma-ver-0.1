@@ -99,7 +99,7 @@ serve(async (req) => {
       const { text: response, model } = await callAI([
         { role: "system", content: systemPrompt },
         { role: "user", content: prompt },
-      ], 16384, effectiveProvider, gigachat_model, effectiveLovableModel, stream_index);
+      ], 16384, effectiveProvider, gigachat_model, effectiveLovableModel, effectiveTaskIndex);
 
       try {
         const cleaned = response.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
