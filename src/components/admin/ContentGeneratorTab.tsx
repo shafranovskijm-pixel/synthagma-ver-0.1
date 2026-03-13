@@ -48,14 +48,12 @@ interface CourseAnalysis {
   unansweredQuestions: number;
 }
 
-type GeneratingPhase = "idle" | "structure" | "content" | "questions" | "answers";
+type GeneratingPhase = "idle" | "structure" | "streaming";
 
 const PHASE_LABELS: Record<GeneratingPhase, string> = {
   idle: "",
   structure: "Генерация структуры...",
-  content: "Генерация контента уроков...",
-  questions: "Генерация тестовых вопросов...",
-  answers: "Решение тестов...",
+  streaming: "Параллельная генерация (контент → вопросы → ответы)...",
 };
 
 const programTypes = [
