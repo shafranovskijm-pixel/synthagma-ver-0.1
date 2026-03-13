@@ -89,9 +89,30 @@ function renderCourseRow(
   );
 }
 
+function SortableCategoryItem({ group, children }: { group: { category: string; categoryId?: string }; children: React.ReactNode }) {
+  const id = group.categoryId || group.category;
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+  return (
+    <div ref={setNodeRef} style={style}>
+      <div className="flex items-center">
+        <button {...attributes} {...listeners} className="p-1 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground shrink-0">
+          <GripVertical className="w-4 h-4" />
+        </button>
+        <div className="flex-1 min-w-0">{children}</div>
+      </div>
+    </div>
+  );
+}
+
 export function AdminMarketplaceManager() {
   const navigate = useNavigate();
   const h = useAdminMarketplace();
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }), useSensor(KeyboardSensor));
   const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
   const [isGeneratingShortDesc, setIsGeneratingShortDesc] = useState(false);
   const [bulkGenCourse, setBulkGenCourse] = useState<{ id: string; title: string; description?: string } | null>(null);
