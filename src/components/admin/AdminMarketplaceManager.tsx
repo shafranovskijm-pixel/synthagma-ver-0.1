@@ -516,7 +516,7 @@ export function AdminMarketplaceManager() {
       const currentLessons = lessons || [];
       const textPracticeLessons = currentLessons.filter(l => l.type === "text" || l.type === "practice");
       const testLessons = currentLessons.filter(l => l.type === "test");
-      const needsStructure = textPracticeLessons.length === 0 || currentLessons.length < 3;
+      const needsStructure = textPracticeLessons.length === 0 || currentLessons.length < valRules.minLessons;
 
       // If course needs structural fix (missing text lessons or too few lessons), generate structure first
       if (needsStructure) {
