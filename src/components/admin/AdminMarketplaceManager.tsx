@@ -470,95 +470,9 @@ export function AdminMarketplaceManager() {
         const { data: questions } = await supabase
           .from("test_questions").select("id, lesson_id, correct_answer, explanation, question, options").in("lesson_id", testIds);
         allQuestions = (questions || []) as typeof allQuestions;
-}
-
-function renderVariantRow(
-  item: any, suffix: string, h: any, navigate: any, onBulkGenerate: (item: any) => void,
-  validatedCourses: Record<string, 'ok' | 'error'>, onValidate: (courseId: string) => void, validatingId: string | null
-) {
-  const status = validatedCourses[item.course_id];
-  return (
-    <TableRow key={item.id} className={!item.is_active ? "opacity-60" : ""}>
-      <TableCell>
-        <button
-          className="text-sm text-left hover:underline cursor-pointer inline-flex items-center gap-1.5 pl-2"
-          onClick={() => onValidate(item.course_id)}
-          disabled={validatingId === item.course_id}
-        >
-          {validatingId === item.course_id && <Loader2 className="w-3 h-3 animate-spin" />}
-          {status === 'ok' && <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0" />}
-          {status === 'error' && <AlertTriangle className="w-3.5 h-3.5 text-red-500 shrink-0" />}
-          {suffix || item.course?.title || ""}
-        </button>
-      </TableCell>
-      <TableCell className="w-[100px] text-sm">{item.price_student.toLocaleString()} ₽</TableCell>
-      <TableCell className="w-[100px] text-sm">{item.price_organization.toLocaleString()} ₽</TableCell>
-      <TableCell className="w-[60px]">
-        <Switch checked={item.is_active} onCheckedChange={() => h.handleToggleActive(item)} />
-      </TableCell>
-      <TableCell className="w-[130px]">
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-8 w-8" title="Войти" onClick={() => navigate(`/course-builder/${item.course_id}`)}>
-            <Eye className="w-3.5 h-3.5" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" title="Просмотр" onClick={() => onBulkGenerate(item)}>
-            <FolderOpen className="w-3.5 h-3.5" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" title="Редактировать" onClick={() => { h.setEditingCourse(item); h.setShowEditDialog(true); }}>
-            <Edit className="w-3.5 h-3.5" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => h.handleDeleteCourse(item.id)}>
-            <Trash2 className="w-3.5 h-3.5" />
-          </Button>
-        </div>
-      </TableCell>
-    </TableRow>
-  );
-}
-
-function renderGroupedCourses(
-  courses: any[], h: any, navigate: any, onBulkGenerate: (item: any) => void,
-  validatedCourses: Record<string, 'ok' | 'error'>, onValidate: (courseId: string) => void, validatingId: string | null
-) {
-  const grouped = groupSimilarCourses(courses);
-  return (
-    <Table>
-      <TableBody>
-        {grouped.map((entry, idx) => {
-          if (isGroup(entry)) {
-            const g = entry as CourseGroup;
-            return (
-              <TableRow key={`group-${idx}`} className="hover:bg-transparent">
-                <TableCell colSpan={5} className="p-0">
-                  <Collapsible>
-                    <CollapsibleTrigger className="flex items-center gap-2 w-full px-4 py-2.5 hover:bg-secondary/30 transition-colors text-sm font-medium text-left">
-                      <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform [&[data-state=closed]]:-rotate-90 shrink-0" />
-                      <span className="flex-1">{g.baseTitle}</span>
-                      <Badge variant="secondary" className="text-[10px] shrink-0">
-                        {g.items.length} {g.items.length < 5 ? 'варианта' : 'вариантов'}
-                      </Badge>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <Table>
-                        <TableBody>
-                          {g.items.map(item => renderVariantRow(item, g.suffix(item), h, navigate, onBulkGenerate, validatedCourses, onValidate, validatingId))}
-                        </TableBody>
-                      </Table>
-                    </CollapsibleContent>
-                  </Collapsible>
-                </TableCell>
-              </TableRow>
-            );
-          }
-          return renderCourseRow(entry, h, navigate, onBulkGenerate, validatedCourses, onValidate, validatingId);
-        })}
-      </TableBody>
-    </Table>
-  );
-}
+      }
 
 
-      // Find unanswered questions (deterministic: only null/undefined correct_answer)
       const unansweredQuestions = allQuestions.filter(q => q.correct_answer === null || q.correct_answer === undefined);
 
       // Find duplicate titles
