@@ -1,18 +1,49 @@
 
+Проверил по коду и данным: проблема подтверждена и состоит из двух отдельных причин.
 
-## Plan: Auto-fix after "Проверить все"
+1) Почему нет изображений/слайдов  
+- Текущий курс был заполнен через `Auto-fix` (`AdminMarketplaceManager.tsx`), а этот поток генерирует только текст/вопросы/ответы.  
+- В `generation_history` есть только `content/questions/answers`, но нет `enrichment`.  
+- В этом курсе 0 блоков `image` и 0 блоков `slider`.
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+2) Почему остались артефакты `:::tip ... :::`, `:::danger...`, сплошные блоки  
+- Парсер `markdownToBlocks` в `BlockEditor.tsx` и `convert-lesson-content/index.ts` неустойчив к реальным вариантам AI-текста:
+  - маркеры с отступами перед `:::`
+  - inline-формат без пробела после типа (`:::dangerТекст :::`)
+  - смешанные строки вида `--- ### ...`
+- В итоге такие строки уходят в обычный `paragraph`, поэтому в интерфейсе видны «сырые» маркеры.
 
-### Changes
+План исправления
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+1. Добавить медиа-обогащение в Auto-fix (главный пробел)
+- Файл: `src/components/admin/AdminMarketplaceManager.tsx`
+- После генерации контента запускать фазу enrichment (в 3 потока):  
+  `analyze_visuals` → `generate-image` → вставка `image/slider` блоков → сохранение урока.
+- Логировать в `generation_history` действие `enrichment` с количеством добавленных визуализаций.
+- Обогащать не только пустые уроки, но и уже заполненные без визуальных блоков (чтобы чинить текущий курс повторным Auto-fix).
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+2. Усилить парсер markdown → blocks
+- Файлы:  
+  `src/components/course-builder/BlockEditor.tsx`  
+  `supabase/functions/convert-lesson-content/index.ts`
+- Сделать нормализацию перед разбором:
+  - `trimStart` для распознавания заголовков/маркеров/списков
+  - поддержка `:::typeТекст :::` и `:::type   Текст :::`
+  - корректное разделение `---` и заголовков
+  - единая очистка LaTeX-артефактов до plain text
+- Это уберёт `:::...:::` из paragraph-блоков при новых генерациях и конвертациях.
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+3. Авто-ремонт уже сохранённых JSON-уроков
+- Файл: `src/hooks/useCourseBuilder.ts` (self-healing при открытии курса)  
+- Если урок уже в JSON, но содержит paragraph с `:::...:::`, конвертировать такие абзацы в `callout-*`/`highlight` и тихо пересохранить урок.
+- Это позволит очистить текущие курсы без полной регенерации вручную.
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+4. Жёсткие guardrails в backend-промпте
+- Файл: `supabase/functions/gigachat/index.ts`
+- Если задан кастомный промпт, не заменять полностью системные правила форматирования, а добавлять его к базовым правилам (чтобы не терялись ограничения на формат маркеров/формул).
 
+5. Точечная верификация после внедрения
+- Для проблемного курса повторить Auto-fix и проверить:
+  - появились записи `enrichment` в истории
+  - в уроках есть `image`/`slider`
+  - в контенте больше нет сырых `:::...:::` в paragraph.
