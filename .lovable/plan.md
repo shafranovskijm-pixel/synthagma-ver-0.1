@@ -1,17 +1,18 @@
 
 
-## Проблема
+## Plan: Auto-fix after "Проверить все"
 
-На странице регистрации (`RegisterOrganization.tsx`, строка 316) левая панель использует **захардкоженные** цвета градиента:
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-```
-from-sigma-blue via-primary to-sigma-cyan
-```
+### Changes
 
-Эти цвета (`--sigma-blue`, `--sigma-cyan`) — фиксированные, они не меняются при смене акцентного цвета пользователя. Поэтому градиент всегда сине-голубой, независимо от выбранной темы.
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-## Решение
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-**`src/pages/RegisterOrganization.tsx`** (строка 316):
-- Заменить `from-sigma-blue via-primary to-sigma-cyan` на `from-primary via-primary/80 to-accent` — это подхватит текущий акцентный цвет из CSS-переменных темы.
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
+
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 
