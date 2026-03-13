@@ -138,7 +138,7 @@ serve(async (req) => {
       const { text: content, model } = await callAI([
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
-      ], 4096, ai_provider, gigachat_model, lovable_model);
+      ], 4096, ai_provider, gigachat_model, lovable_model, stream_index);
       result = { content, model };
 
     } else if (action === "generate_questions") {
