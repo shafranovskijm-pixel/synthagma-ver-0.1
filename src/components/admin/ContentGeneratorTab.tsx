@@ -167,7 +167,74 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
     }
   }, [selectedCategoryId]);
 
-  // Process a single lesson end-to-end: content → questions → answers
+  // Utility: strip AI meta-intro phrases
+  const stripAIIntro = (text: string): string => {
+    return text
+      .replace(/^\s*(#{1,3}\s*)?((\*\*)?(\s)*(Отлично!?|Конечно!?|Подготовлю для вас|Вот учебный материал|Учебный материал по курсу|Учебный материал для урока|Учебный материал:|Курс:)(\*\*)?\s*.*?\n+)+/gi, "")
+      .replace(/^\s*\*\*Учебный материал[^*]*\*\*\s*\n+/gi, "")
+      .trim();
+  };
+
+  // Utility: generate hero image for a lesson
+  const generateHeroImage = async (lessonTitle: string, contentSnippet: string): Promise<string | null> => {
+    try {
+      const prompt = `Educational illustration for lesson "${lessonTitle}". ${contentSnippet.slice(0, 200)}. Professional, clean, suitable for online course.`;
+      const { data, error } = await safeInvoke<any>("generate-image", {
+        body: { prompt, provider: "lovable_ai", model: "google/gemini-3.1-flash-image-preview" },
+      });
+      if (error || !data?.url) {
+        console.warn("Hero image generation failed:", error);
+        return null;
+      }
+      return data.url;
+    } catch (e) {
+      console.warn("Hero image generation error:", e);
+      return null;
+    }
+  };
+
+  // Utility: generate intro audio for a lesson paragraph
+  const generateIntroAudio = async (text: string): Promise<string | null> => {
+    try {
+      const truncated = text.slice(0, 500);
+      const response = await safeFetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({ text: truncated, voiceId: "JBFqnCBsd6RMkjVDRZzb" }),
+        }
+      );
+      if (!response.ok) {
+        console.warn("TTS failed:", response.status);
+        return null;
+      }
+      const audioBlob = await response.blob();
+
+      // Upload to storage
+      await initExternalSupabase();
+      const storageClient = getExternalSupabase() || supabase;
+      const fileName = `tts_${crypto.randomUUID()}.mp3`;
+      const { error: uploadError } = await storageClient.storage
+        .from("course-files")
+        .upload(fileName, audioBlob, { contentType: "audio/mpeg", cacheControl: "3600", upsert: true });
+      if (uploadError) {
+        console.warn("Audio upload error:", uploadError);
+        return null;
+      }
+      const { data: urlData } = storageClient.storage.from("course-files").getPublicUrl(fileName);
+      return urlData?.publicUrl || null;
+    } catch (e) {
+      console.warn("Intro audio generation error:", e);
+      return null;
+    }
+  };
+
+  // Process a single lesson end-to-end: content → image → audio → questions → answers
   const processLesson = async (
     lesson: any,
     courseId: string,
@@ -194,12 +261,41 @@ export function ContentGeneratorTab({ courses, dbCategories, onComplete }: Props
       });
       const contentDuration = Date.now() - contentStart;
       if (!contentError && contentData?.content) {
-        const blocks = markdownToBlocks(contentData.content);
+        // Clean AI intro and convert to blocks
+        const cleanedContent = stripAIIntro(contentData.content);
+        let blocks: ContentBlock[] = markdownToBlocks(cleanedContent);
+
+        // 1b. Generate hero image (optional, non-blocking failure)
+        const heroImageUrl = await generateHeroImage(lesson.title, cleanedContent);
+        if (heroImageUrl) {
+          blocks.unshift({
+            id: crypto.randomUUID(),
+            type: "image",
+            content: "",
+            imageSrc: heroImageUrl,
+          } as ContentBlock);
+        }
+
+        // 1c. Generate intro audio from first paragraph (optional)
+        const firstPara = blocks.find(b => b.type === "paragraph" && b.content && b.content.trim().length > 50);
+        if (firstPara) {
+          const audioUrl = await generateIntroAudio(firstPara.content);
+          if (audioUrl) {
+            const insertIdx = heroImageUrl ? 1 : 0;
+            blocks.splice(insertIdx, 0, {
+              id: crypto.randomUUID(),
+              type: "audio",
+              content: firstPara.content.slice(0, 200),
+              audioUrl,
+            } as ContentBlock);
+          }
+        }
+
         const jsonContent = blocksToJson(blocks);
         await supabase.from("lessons").update({ content: jsonContent }).eq("id", lesson.id);
         const { error: histErr } = await supabase.from("generation_history").insert({
           course_id: courseId, course_title: courseTitle,
-          action: "content", details: `Поток ${streamIndex}: контент «${lesson.title}»`, items_count: 1,
+          action: "content", details: `Поток ${streamIndex}: контент «${lesson.title}»${heroImageUrl ? ' + изображение' : ''}${firstPara ? ' + аудио' : ''}`, items_count: 1,
           stream_index: streamIndex, duration_ms: contentDuration,
         });
         if (histErr) console.warn("⚠️ History insert error (content):", histErr, { courseId, courseTitle, streamIndex });
