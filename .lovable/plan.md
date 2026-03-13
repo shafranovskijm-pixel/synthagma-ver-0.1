@@ -1,18 +1,39 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## План: Категории программ ДПО/ПО в магазине курсов
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+### Что делаем
 
-### Changes
+Заменяем текущую структуру «Курсы Ростехнадзора → подкатегории» на 4 типа программ (как в ProgramsTab):
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+1. **Повышение квалификации** (ДПО) — все текущие курсы Ростехнадзора (6 подкатегорий) переезжают сюда
+2. **Профессиональная переподготовка** (ДПО) — пустая
+3. **Охрана труда / Пожарная безопасность** (ОТ/ПБ) — сюда переезжает «Охрана труда при работах на высоте»
+4. **Рабочие профессии** (ПО) — пустая
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+Все свёрнуты по умолчанию. Иконки как в ProgramsTab (GraduationCap, Award, ShieldCheck, Wrench).
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+### Файлы
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+| Файл | Что |
+|---|---|
+| `src/hooks/useCourseStoreManager.ts` | Перестроить `groupedCatalog` — 4 программных группы вместо одной «Курсы Ростехнадзора». RTN-курсы → «Повышение квалификации» (с подкатегориями). «Охрана труда при работах на высоте» → «Охрана труда / ПБ». Две пустые группы. |
+| `src/components/organization/CourseStoreManager.tsx` | Обновить categoryMeta для 4 типов программ (иконки, цвета, бейджи ДПО/ОТ/ПБ/ПО). Рендер: верхние аккордеоны → подкатегории внутри «Повышение квалификации». |
+| `src/components/student/StudentCourseStore.tsx` | Аналогичные изменения для студенческого магазина. |
+| `src/components/admin/BulkPipelineWidget.tsx` | Группировка по тем же 4 категориям. |
+
+### Структура данных groupedCatalog
+
+```text
+[
+  { category: "Повышение квалификации", badge: "ДПО",
+    subGroups: [6 RTN-подкатегорий], courses: [...все RTN] },
+  { category: "Профессиональная переподготовка", badge: "ДПО",
+    courses: [] },
+  { category: "Охрана труда / Пожарная безопасность", badge: "ОТ / ПБ",
+    courses: [...охрана труда на высоте] },
+  { category: "Рабочие профессии", badge: "ПО",
+    courses: [] },
+]
+```
 
