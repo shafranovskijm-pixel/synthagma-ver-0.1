@@ -750,7 +750,7 @@ export function AdminMarketplaceManager() {
                 if (!imgErr && imgData?.url) {
                   const insertIdx = Math.min(imageVisual.after_block_index + 1, blocks.length);
                   blocks.splice(insertIdx, 0, {
-                    id: crypto.randomUUID(), type: "image", content: imageVisual.prompt, imageSrc: imgData.url,
+                    id: crypto.randomUUID(), type: "image", content: imageVisual.prompt, imageSrc: imgData.url, imageAlt: imageVisual.prompt,
                   });
                   insertedCount++;
                 }
