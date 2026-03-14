@@ -278,7 +278,7 @@ serve(async (req) => {
       let success = false;
       let lastRoundFailures: Array<{ slot: string; status: number; message: string }> = [];
 
-      const maxRounds = 2;
+      const maxRounds = 3;
       for (let round = 0; round < maxRounds && !success; round++) {
         const roundFailures: Array<{ slot: string; status: number; message: string }> = [];
 
