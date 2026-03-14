@@ -1,31 +1,18 @@
 
 
-## Проблема
+## Plan: Auto-fix after "Проверить все"
 
-В строках 907-909 файла `AdminMarketplaceManager.tsx` добавлена искусственная задержка между запросами на генерацию изображений:
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-```typescript
-if (idx > 0) {
-  await new Promise(r => setTimeout(r, idx * 3000));
-}
-```
+### Changes
 
-Это означает: 2-е изображение ждёт 3 секунды, 3-е — 6 секунд. Запросы запускаются «параллельно» через `Promise.allSettled`, но из-за `await` внутри каждого промиса они фактически стартуют последовательно.
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-Эта задержка была добавлена ранее для предотвращения конкуренции за одни и те же GigaChat-слоты, но она **не нужна**, потому что каждый запрос уже получает свой `slotIndex` (0, 1, 2) — они используют разные API-ключи и не конкурируют.
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-## Решение
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-**Файл: `src/components/admin/AdminMarketplaceManager.tsx`**
-
-Удалить задержку на строках 907-909:
-
-```typescript
-// Удалить:
-if (idx > 0) {
-  await new Promise(r => setTimeout(r, idx * 3000));
-}
-```
-
-Все 3 изображения будут генерироваться одновременно на разных API-слотах, как и задумано архитектурой пула ключей.
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 
