@@ -166,7 +166,7 @@ async function generateWithGigaChat(prompt: string, keySlot?: string) {
   };
   if (sberHttpClient) (chatFetchOpts as any).client = sberHttpClient;
 
-  const chatRes = await fetchWithTimeout("https://gigachat.devices.sberbank.ru/api/v1/chat/completions", chatFetchOpts, 60000);
+  const chatRes = await fetchWithTimeout("https://gigachat.devices.sberbank.ru/api/v1/chat/completions", chatFetchOpts, 90000);
 
   if (!chatRes.ok) {
     const text = await chatRes.text();
