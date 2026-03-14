@@ -971,8 +971,9 @@ export function AdminMarketplaceManager() {
             } catch (e) {
               console.error(`Auto-fix enrichment error for ${lesson.id}:`, e);
             }
-          });
-          await Promise.allSettled(generatePromises);
+            });
+            await Promise.allSettled(batchPromises);
+          }
         }
         if (enrichedCount > 0) {
           console.log(`[Auto-fix] Enriched ${enrichedCount} images across ${lessonsNeedingMedia.length} lessons`);
