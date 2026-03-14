@@ -708,7 +708,15 @@ export function AdminMarketplaceManager() {
               const textContent = blocks
                 .filter((b: any) => b.type === "paragraph" || b.type?.startsWith("heading"))
                 .map((b: any) => b.content || "").join("\n").slice(0, 4000);
-              if (textContent.length < 100) return;
+              if (textContent.length < 50) {
+                console.warn(`[Enrichment] Skipping "${lesson.title}": text too short (${textContent.length} chars)`);
+                await supabase.from("generation_history").insert({
+                  course_id: courseId, course_title: courseTitle,
+                  action: "media", details: `Пропущен: "${lesson.title}" — текст < 50 символов`,
+                  items_count: 0, stream_index: streamIndex,
+                }).then(() => {}, () => {});
+                return;
+              }
 
               const { data: analysisData, error: analysisErr } = await safeInvoke<any>("gigachat", {
                 body: {
@@ -742,7 +750,7 @@ export function AdminMarketplaceManager() {
                 if (!imgErr && imgData?.url) {
                   const insertIdx = Math.min(imageVisual.after_block_index + 1, blocks.length);
                   blocks.splice(insertIdx, 0, {
-                    id: crypto.randomUUID(), type: "image", content: imageVisual.prompt, imageSrc: imgData.url,
+                    id: crypto.randomUUID(), type: "image", content: imageVisual.prompt, imageSrc: imgData.url, imageAlt: imageVisual.prompt,
                   });
                   insertedCount++;
                 }
