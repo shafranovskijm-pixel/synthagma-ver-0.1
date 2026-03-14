@@ -166,7 +166,7 @@ async function generateWithGigaChat(prompt: string, keySlot?: string) {
   };
   if (sberHttpClient) (chatFetchOpts as any).client = sberHttpClient;
 
-  const chatRes = await fetchWithTimeout("https://gigachat.devices.sberbank.ru/api/v1/chat/completions", chatFetchOpts, 90000);
+  const chatRes = await fetchWithTimeout("https://gigachat.devices.sberbank.ru/api/v1/chat/completions", chatFetchOpts, 120000);
 
   if (!chatRes.ok) {
     const text = await chatRes.text();
@@ -254,20 +254,24 @@ serve(async (req) => {
         } catch (e: any) {
           lastErr = e;
           const status = e?.status || 500;
-          console.warn(`[generate-image] Slot ${slotName} attempt ${attempt + 1} failed: status=${status}, ${e?.message}`);
+          const msg = e?.message || "";
+          console.warn(`[generate-image] Slot ${slotName} attempt ${attempt + 1} failed: status=${status}, ${msg}`);
 
-          // Only retry on 429 (rate limit). Other errors — fail immediately.
-          if (status !== 429) break;
+          // Retry on 429 (rate limit) and abort/timeout errors
+          const isAbort = msg.includes("aborted") || msg.includes("timed out");
+          if (status !== 429 && !isAbort) break;
         }
       }
 
       if (!success) {
         const status = lastErr?.status || 503;
+        const msg = lastErr?.message || "";
+        const isRetryable = lastErr?.status === 429 || msg.includes("aborted") || msg.includes("timed out");
         throw {
           status,
-          message: lastErr?.message || "GigaChat слот недоступен",
+          message: msg || "GigaChat слот недоступен",
           slot: slotName,
-          retryable: lastErr?.status === 429,
+          retryable: isRetryable,
         };
       }
     } else {
