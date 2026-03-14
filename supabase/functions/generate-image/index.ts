@@ -298,7 +298,7 @@ serve(async (req) => {
 
     const publicUrl = `${supabaseUrl}/storage/v1/object/public/course-files/${fileName}`;
 
-    return new Response(JSON.stringify({ url: publicUrl, slot: pinnedSlot }), {
+    return new Response(JSON.stringify({ url: publicUrl, slot: usedSlot }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e: any) {
