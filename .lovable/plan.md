@@ -1,41 +1,18 @@
 
 
-## Проблема
+## Plan: Auto-fix after "Проверить все"
 
-Хотя код использует `Promise.allSettled` для параллельного запуска, внутри каждого промиса **последовательно** выполняются два шага:
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-1. `analyze_visuals` (анализ текста → выбор промпта) — занимает разное время для каждого урока
-2. `generate-image` (генерация картинки)
+### Changes
 
-Поскольку `analyze_visuals` для разных уроков завершается в разное время, `generate-image` запускается **вразнобой** — один за другим, а не одновременно.
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-```text
-Сейчас:
-  Урок 1: [===analyze===][====generate-image====]
-  Урок 2: [=====analyze=====][====generate-image====]
-  Урок 3: [========analyze========][====generate-image====]
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-Нужно:
-  Фаза 1 (параллельно):
-    Урок 1: [===analyze===]
-    Урок 2: [=====analyze=====]
-    Урок 3: [========analyze========]
-  
-  Фаза 2 (параллельно, после завершения ВСЕХ анализов):
-    Урок 1: [====generate-image====]
-    Урок 2: [====generate-image====]
-    Урок 3: [====generate-image====]
-```
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-## Решение
-
-**Файл: `src/components/admin/AdminMarketplaceManager.tsx`** (строки 829-924)
-
-Разбить обогащение на две фазы:
-
-1. **Фаза анализа**: запустить все 3 `analyze_visuals` параллельно через `Promise.allSettled`, собрать результаты (промпты) в массив.
-
-2. **Фаза генерации**: запустить все 3 `generate-image` параллельно (с ретраем) через `Promise.allSettled`, затем сохранить блоки.
-
-Это гарантирует, что все 3 запроса к GigaChat Image уходят **одновременно** на 3 разных API-ключа, сокращая общее время примерно втрое.
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 
