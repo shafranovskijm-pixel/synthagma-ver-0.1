@@ -254,10 +254,12 @@ serve(async (req) => {
         } catch (e: any) {
           lastErr = e;
           const status = e?.status || 500;
-          console.warn(`[generate-image] Slot ${slotName} attempt ${attempt + 1} failed: status=${status}, ${e?.message}`);
+          const msg = e?.message || "";
+          console.warn(`[generate-image] Slot ${slotName} attempt ${attempt + 1} failed: status=${status}, ${msg}`);
 
-          // Only retry on 429 (rate limit). Other errors — fail immediately.
-          if (status !== 429) break;
+          // Retry on 429 (rate limit) and abort/timeout errors
+          const isAbort = msg.includes("aborted") || msg.includes("timed out");
+          if (status !== 429 && !isAbort) break;
         }
       }
 
