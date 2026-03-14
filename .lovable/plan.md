@@ -1,60 +1,18 @@
 
-Проверил текущую реализацию и данные по вашему курсу. Причина не в лимите “9”, а в устойчивости пайплайна и одном логическом разрыве.
 
-1) Что уже видно по фактам
-- В текущем курсе (`bf5022da...`) сейчас 8 текстовых/практических уроков, из них с изображениями — 4.
-- История генерации показывает, что медиа-фаза пыталась обработать 8 уроков, но часть завершилась `(+0 img)`.
-- В логах backend-функции есть таймауты `504` на `generate-image` (около 150s), плюс 429.
-- В `generate-image` один вызов при неудаче “обходит” все 3 слота подряд — из-за этого даже батч 3× параллельно снова превращается в шторм по всем ключам.
+## Plan: Auto-fix after "Проверить все"
 
-2) Главные причины, почему выходит “1 картинка вместо 9”
-- Внутри `generate-image` ретраи по всем слотам на один запрос (не закреплено “1 запрос = 1 слот”).
-- Слишком длинные внутренние попытки в функции → часть вызовов упирается в platform timeout (504).
-- Список уроков для медиа берётся слишком рано (`lessonsNeedingMediaEarly`), до финального обновления контента; после генерации контента реальная потребность может измениться.
-- В курсе меньше 9 учебных уроков (8), значит без режима “несколько картинок в один урок” физически максимум 8.
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-3) План исправления
-Шаг 1. Починить стратегию слотов в `supabase/functions/generate-image/index.ts`
-- Жёстко привязывать запрос к слоту по `slotIndex % 3`.
-- На 429 ретраить только тот же слот (с backoff), не перебирая все 3.
-- Переключение на другой слот — только для технических сбоев (не quota/rate).
-- Возвращать диагностику (`status`, `slot`, `retryAfter`) в ответе.
+### Changes
 
-Шаг 2. Убрать таймауты 150s в `generate-image`
-- Добавить явные таймауты (AbortController/timeout) на oauth/chat/image-download.
-- Ограничить суммарное время одной функции < platform timeout.
-- Сократить/перебалансировать `maxRounds` и паузы так, чтобы функция завершалась предсказуемо.
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-Шаг 3. Исправить выбор уроков для обогащения в `src/components/admin/AdminMarketplaceManager.tsx`
-- Пересчитывать `lessonsNeedingMedia` после этапов структуры/контента/тестов, а не использовать только ранний snapshot.
-- Сохранить последовательность: структура → контент (батчи по 3) → тесты (батчи по 3) → анализ (батчи по 3) → изображения (батчи по 3).
-- Добавить небольшой “cooldown-барьер” перед стартом медиа-фазы.
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-Шаг 4. Сделать “догон” неуспешных изображений
-- После каждого батча собирать failed-уроки в очередь.
-- Повторять волны для failed очереди (до N раундов), пока не достигнут целевой лимит.
-- В `generation_history` писать причину отказа по уроку (429/503/504), чтобы сразу видно было “почему 0 img”.
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-Шаг 5. Прозрачный целевой лимит
-- Для “Рабочие профессии” цель: до 9 изображений.
-- Если учебных уроков < 9, показывать явное сообщение “доступно X уроков, максимум X изображений при 1 img/урок”.
-- (Опционально) режим 2 изображения в урок для добора до 9 при коротком курсе.
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 
-4) Технические детали реализации
-- Файлы:
-  - `supabase/functions/generate-image/index.ts`
-  - `src/components/admin/AdminMarketplaceManager.tsx`
-- Ключевые изменения:
-  - slot pinning + no cross-slot storm on 429
-  - function-level timeout budget
-  - post-generation recompute of media candidates
-  - retry queue between image waves
-  - error-aware logging in generation history
-
-5) Как проверим после внедрения
-- На курсе из “Рабочие профессии” запустить автоисправление.
-- Убедиться в истории:
-  - есть батчи по 3,
-  - нет массовых 503/504,
-  - количество изображений доходит до целевого (или до объяснимого максимума по числу уроков).
-- Финально проверить в редакторе, что изображения реально вставлены в контент уроков, а не только “успех” в тостах.
