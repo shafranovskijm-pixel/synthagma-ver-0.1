@@ -1,18 +1,30 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## Проблема
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+Валидация курса (`handleValidateCourse`, строки 332-420) **не проверяет наличие изображений** в уроках. Она проверяет только:
+- Наличие уроков
+- Пустой контент
+- Тесты и вопросы
+- Дубликаты заголовков
 
-### Changes
+Поэтому курс без картинок получает ✅.
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+## План
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+**Файл: `src/components/admin/AdminMarketplaceManager.tsx`**
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+1. **Добавить проверку изображений в валидацию** (после строки 368):
+   - Для каждого заполненного текстового урока парсить `content` (JSON) и искать блоки с `type === "image"`
+   - Если ни один текстовый урок не содержит изображений → добавить issue: `"Нет изображений в уроках"`
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+2. **Автоматический запуск исправления** (строки 399-410):
+   - Когда найдены ошибки, вместо toast с кнопкой "Исправить ИИ" → автоматически вызывать `autoFixCourse(courseId, title)` 
+   - Показать info-toast: "Найдены проблемы, запускаю исправление..."
+
+3. **Убедиться что `autoFixCourse` обогащает медиа**:
+   - Уже реализовано — после генерации контента запускается фаза enrichment для первых 3 уроков
+   - Нужно проверить, что enrichment запускается и когда контент уже есть, но картинок нет (сейчас он проверяет `lessonsNeedingMedia`)
+
+Результат: нажатие на курс → валидация → обнаруживает отсутствие картинок → автоматически запускает auto-fix → добавляет изображения.
 
