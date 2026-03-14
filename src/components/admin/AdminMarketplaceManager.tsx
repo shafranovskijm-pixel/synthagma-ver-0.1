@@ -927,7 +927,7 @@ export function AdminMarketplaceManager() {
 
           // Process in batches of 3 (matching API slot count) with cooldown between batches
           const BATCH_SIZE = 3;
-          const BATCH_COOLDOWN_MS = 10000;
+          const BATCH_COOLDOWN_MS = 20000; // 20s cooldown — slots need recovery after heavy text generation
           for (let batchStart = 0; batchStart < analysisResults.length; batchStart += BATCH_SIZE) {
             const batch = analysisResults.slice(batchStart, batchStart + BATCH_SIZE);
             if (batchStart > 0) {
