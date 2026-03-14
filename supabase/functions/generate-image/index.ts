@@ -116,7 +116,7 @@ async function generateWithGigaChat(prompt: string, keySlot?: string) {
   const authKey = Deno.env.get(envKey);
   if (!authKey) throw { status: 500, message: `${envKey} is not configured` };
 
-  const STEP_TIMEOUT = 30000; // 30s per network step
+  const STEP_TIMEOUT = 45000; // 45s per network step (auth + image download)
 
   // Step 1: Get access token
   const tokenFetchOpts: RequestInit & { client?: Deno.HttpClient } = {
