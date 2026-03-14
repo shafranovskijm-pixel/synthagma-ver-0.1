@@ -256,8 +256,16 @@ ${courseDescription ? `Описание курса: ${courseDescription}` : ""}
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       } else {
+        // Post-process: fix accordion blocks with empty content
+        const blocks = (args.blocks || []).map((b: any) => {
+          if (b.type === "accordion" && !b.content?.trim() && b.accordionTitle?.trim()) {
+            return { ...b, content: b.accordionTitle };
+          }
+          return b;
+        }).filter((b: any) => b.content?.trim());
+
         return new Response(
-          JSON.stringify({ success: true, blocks: args.blocks || [], model: usedModel }),
+          JSON.stringify({ success: true, blocks, model: usedModel }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
