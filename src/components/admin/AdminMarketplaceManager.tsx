@@ -684,7 +684,128 @@ export function AdminMarketplaceManager() {
         await Promise.allSettled(promises);
       }
 
-      // 2b. Enrich text/practice lessons with images (analyze_visuals + generate-image)
+      // 2b. Generate questions for empty tests (before media enrichment)
+      if (emptyTests.length > 0) {
+        for (let i = 0; i < emptyTests.length; i += CONCURRENCY) {
+          const chunk = emptyTests.slice(i, i + CONCURRENCY);
+          const promises = chunk.map(async (test, idxInChunk) => {
+            completed++;
+            const streamIndex = i + idxInChunk;
+            toast.loading(`Генерирую вопросы: "${test.title}" (${completed}/${totalTasks})`, { id: toastId });
+            const startMs = Date.now();
+            try {
+              const { data, error } = await safeInvoke<any>("gigachat", {
+                body: {
+                  action: "generate_questions",
+                  courseTitle,
+                  lessonTitle: test.title,
+                  ai_provider: aiProvider,
+                  stream_index: streamIndex,
+                  ...(aiProvider === "gigachat" && gigachatModel ? { gigachat_model: gigachatModel } : {}),
+                  ...(aiPrompts.questions ? { customSystemPrompt: aiPrompts.questions } : {}),
+                },
+              });
+              if (error) throw error;
+              let itemsCount = 0;
+              if (data?.questions && !data.parseError && data.questions.length > 0) {
+                itemsCount = data.questions.length;
+                const toInsert = data.questions.map((q: any, idx: number) => ({
+                  lesson_id: test.id,
+                  question: q.question,
+                  options: q.options,
+                  correct_answer: q.correctAnswer ?? null,
+                  explanation: q.explanation || null,
+                  order_index: idx,
+                }));
+                await supabase.from("test_questions").insert(toInsert);
+              }
+              await supabase.from("generation_history").insert({
+                course_id: courseId,
+                course_title: courseTitle,
+                action: "questions",
+                details: `Auto-fix: "${test.title}"`,
+                items_count: itemsCount,
+                stream_index: streamIndex,
+                duration_ms: Date.now() - startMs,
+              });
+            } catch (e) {
+              console.error(`Failed to generate questions for test ${test.id}:`, e);
+            }
+          });
+          await Promise.allSettled(promises);
+        }
+      }
+
+      // 2c. Solve existing unanswered test questions (parallel, concurrency=2)
+      if (unansweredQuestions.length > 0) {
+        completed++;
+        toast.loading(`Решаю тесты: ${unansweredQuestions.length} вопросов (${completed}/${totalTasks})`, { id: toastId });
+
+        const byLesson = new Map<string, typeof unansweredQuestions>();
+        for (const q of unansweredQuestions) {
+          const arr = byLesson.get(q.lesson_id) || [];
+          arr.push(q);
+          byLesson.set(q.lesson_id, arr);
+        }
+
+        const lessonEntries = Array.from(byLesson.entries());
+        for (let i = 0; i < lessonEntries.length; i += CONCURRENCY) {
+          const chunk = lessonEntries.slice(i, i + CONCURRENCY);
+          const promises = chunk.map(async ([lessonId, questions], idxInChunk) => {
+            const lessonInfo = lessons?.find(l => l.id === lessonId);
+            const streamIndex = i + idxInChunk;
+            const batchSize = 20;
+            const startMs = Date.now();
+            let answeredCount = 0;
+            for (let j = 0; j < questions.length; j += batchSize) {
+              const batch = questions.slice(j, j + batchSize);
+              try {
+                const { data, error } = await safeInvoke<any>("gigachat", {
+                  body: {
+                    action: "generate_answers",
+                    courseTitle,
+                    lessonTitle: lessonInfo?.title || "Тест",
+                    questions: batch.map(q => ({
+                      question: q.question,
+                      options: q.options || [],
+                    })),
+                    ai_provider: aiProvider,
+                    stream_index: streamIndex,
+                    ...(aiProvider === "gigachat" && gigachatModel ? { gigachat_model: gigachatModel } : {}),
+                    ...(aiPrompts.answers ? { customSystemPrompt: aiPrompts.answers } : {}),
+                  },
+                });
+                if (error) throw error;
+                if (data?.answers && !data.parseError) {
+                  for (const ans of data.answers) {
+                    const q = batch[ans.questionIndex];
+                    if (q && ans.correctAnswer !== undefined) {
+                      answeredCount++;
+                      await supabase.from("test_questions")
+                        .update({ correct_answer: ans.correctAnswer, explanation: ans.explanation || null })
+                        .eq("id", q.id);
+                    }
+                  }
+                }
+              } catch (e) {
+                console.error(`Failed to solve test batch for lesson ${lessonId}:`, e);
+              }
+            }
+            await supabase.from("generation_history").insert({
+              course_id: courseId,
+              course_title: courseTitle,
+              action: "answers",
+              details: `Auto-fix: "${lessonInfo?.title || "Тест"}"`,
+              items_count: answeredCount,
+              stream_index: streamIndex,
+              duration_ms: Date.now() - startMs,
+            }).then(() => {}, () => {});
+          });
+          await Promise.allSettled(promises);
+        }
+      }
+
+      // 2d. Enrich text/practice lessons with images (analyze_visuals + generate-image)
       const allTextLessons = allLessons.filter(l => l.type === "text" || l.type === "practice");
       const lessonsNeedingMedia: typeof allTextLessons = [];
       const freshLessons = await Promise.all(
@@ -788,127 +909,15 @@ export function AdminMarketplaceManager() {
         if (enrichedCount > 0) {
           console.log(`[Auto-fix] Enriched ${enrichedCount} images across ${lessonsNeedingMedia.length} lessons`);
         }
-      }
-
-      // 3. Generate questions for empty tests
-      if (emptyTests.length > 0) {
-        for (let i = 0; i < emptyTests.length; i += CONCURRENCY) {
-          const chunk = emptyTests.slice(i, i + CONCURRENCY);
-          const promises = chunk.map(async (test, idxInChunk) => {
-            completed++;
-            const streamIndex = i + idxInChunk;
-            toast.loading(`Генерирую вопросы: "${test.title}" (${completed}/${totalTasks})`, { id: toastId });
-            const startMs = Date.now();
-            try {
-              const { data, error } = await safeInvoke<any>("gigachat", {
-                body: {
-                  action: "generate_questions",
-                  courseTitle,
-                  lessonTitle: test.title,
-                  ai_provider: aiProvider,
-                  stream_index: streamIndex,
-                  ...(aiProvider === "gigachat" && gigachatModel ? { gigachat_model: gigachatModel } : {}),
-                  ...(aiPrompts.questions ? { customSystemPrompt: aiPrompts.questions } : {}),
-                },
-              });
-              if (error) throw error;
-              let itemsCount = 0;
-              if (data?.questions && !data.parseError && data.questions.length > 0) {
-                itemsCount = data.questions.length;
-                const toInsert = data.questions.map((q: any, idx: number) => ({
-                  lesson_id: test.id,
-                  question: q.question,
-                  options: q.options,
-                  correct_answer: q.correctAnswer ?? null,
-                  explanation: q.explanation || null,
-                  order_index: idx,
-                }));
-                await supabase.from("test_questions").insert(toInsert);
-              }
-              await supabase.from("generation_history").insert({
-                course_id: courseId,
-                course_title: courseTitle,
-                action: "questions",
-                details: `Auto-fix: "${test.title}"`,
-                items_count: itemsCount,
-                stream_index: streamIndex,
-                duration_ms: Date.now() - startMs,
-              });
-            } catch (e) {
-              console.error(`Failed to generate questions for test ${test.id}:`, e);
-            }
-          });
-          await Promise.allSettled(promises);
-        }
-      }
-
-      // 4. Solve existing unanswered test questions (parallel, concurrency=2)
-      if (unansweredQuestions.length > 0) {
-        completed++;
-        toast.loading(`Решаю тесты: ${unansweredQuestions.length} вопросов (${completed}/${totalTasks})`, { id: toastId });
-
-        const byLesson = new Map<string, typeof unansweredQuestions>();
-        for (const q of unansweredQuestions) {
-          const arr = byLesson.get(q.lesson_id) || [];
-          arr.push(q);
-          byLesson.set(q.lesson_id, arr);
-        }
-
-        const lessonEntries = Array.from(byLesson.entries());
-        for (let i = 0; i < lessonEntries.length; i += CONCURRENCY) {
-          const chunk = lessonEntries.slice(i, i + CONCURRENCY);
-          const promises = chunk.map(async ([lessonId, questions], idxInChunk) => {
-            const lessonInfo = lessons?.find(l => l.id === lessonId);
-            const streamIndex = i + idxInChunk;
-            const batchSize = 20;
-            const startMs = Date.now();
-            let answeredCount = 0;
-            for (let j = 0; j < questions.length; j += batchSize) {
-              const batch = questions.slice(j, j + batchSize);
-              try {
-                const { data, error } = await safeInvoke<any>("gigachat", {
-                  body: {
-                    action: "generate_answers",
-                    courseTitle,
-                    lessonTitle: lessonInfo?.title || "Тест",
-                    questions: batch.map(q => ({
-                      question: q.question,
-                      options: q.options || [],
-                    })),
-                    ai_provider: aiProvider,
-                    stream_index: streamIndex,
-                    ...(aiProvider === "gigachat" && gigachatModel ? { gigachat_model: gigachatModel } : {}),
-                    ...(aiPrompts.answers ? { customSystemPrompt: aiPrompts.answers } : {}),
-                  },
-                });
-                if (error) throw error;
-                if (data?.answers && !data.parseError) {
-                  for (const ans of data.answers) {
-                    const q = batch[ans.questionIndex];
-                    if (q && ans.correctAnswer !== undefined) {
-                      answeredCount++;
-                      await supabase.from("test_questions")
-                        .update({ correct_answer: ans.correctAnswer, explanation: ans.explanation || null })
-                        .eq("id", q.id);
-                    }
-                  }
-                }
-              } catch (e) {
-                console.error(`Failed to solve test batch for lesson ${lessonId}:`, e);
-              }
-            }
-            await supabase.from("generation_history").insert({
-              course_id: courseId,
-              course_title: courseTitle,
-              action: "answers",
-              details: `Auto-fix: "${lessonInfo?.title || "Тест"}"`,
-              items_count: answeredCount,
-              stream_index: streamIndex,
-              duration_ms: Date.now() - startMs,
-            }).then(() => {}, () => {});
-          });
-          await Promise.allSettled(promises);
-        }
+      } else if (allTextLessons.length > 0) {
+        // All lessons already have images — log and skip
+        console.log(`[Auto-fix] All text lessons already contain images, skipping enrichment`);
+        await supabase.from("generation_history").insert({
+          course_id: courseId, course_title: courseTitle,
+          action: "media",
+          details: "Все уроки уже содержат изображения — пропуск",
+          items_count: 0,
+        }).then(() => {}, () => {});
       }
 
       // 5. Remove duplicate lessons (keep first, delete rest)
