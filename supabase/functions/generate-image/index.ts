@@ -99,66 +99,24 @@ function createSberHttpClient(): Deno.HttpClient | undefined {
 
 const sberHttpClient = createSberHttpClient();
 
-function normalizeInvokeError(err: any): { status: number; message: string } {
-  if (typeof err?.status === "number") {
-    return {
-      status: err.status,
-      message: err?.message || `Error ${err.status}`,
-    };
+// --- Timeout-aware fetch wrapper ---
+async function fetchWithTimeout(url: string, opts: RequestInit & { client?: any }, timeoutMs: number): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { ...opts, signal: controller.signal });
+    return res;
+  } finally {
+    clearTimeout(timer);
   }
-
-  const message = err?.message || (err instanceof Error ? err.message : String(err));
-  const statusMatch = message.match(/\b(4\d\d|5\d\d)\b/);
-  return {
-    status: statusMatch ? Number(statusMatch[1]) : 500,
-    message,
-  };
-}
-
-async function generateWithLovableAI(prompt: string, imageUrl: string | undefined, model: string) {
-  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
-
-  const isEditing = !!imageUrl;
-  const messageContent = isEditing
-    ? [
-        { type: "text", text: prompt },
-        { type: "image_url", image_url: { url: imageUrl } },
-      ]
-    : `Generate a photo-realistic image: ${prompt}. Requirements: no text or labels on the image, one main subject or scene, clean composition, high quality, suitable for an educational course material.`;
-
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${LOVABLE_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: model || "google/gemini-3.1-flash-image-preview",
-      messages: [{ role: "user", content: messageContent }],
-      modalities: ["image", "text"],
-    }),
-  });
-
-  if (!response.ok) {
-    if (response.status === 429) throw { status: 429, message: "Превышен лимит запросов, попробуйте позже" };
-    if (response.status === 402) throw { status: 402, message: "Недостаточно средств для генерации" };
-    const text = await response.text();
-    console.error("AI gateway error:", response.status, text);
-    throw { status: response.status, message: `AI gateway error: ${response.status}` };
-  }
-
-  const data = await response.json();
-  const generatedImageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-  if (!generatedImageUrl) throw { status: 502, message: "No image generated" };
-  return generatedImageUrl;
 }
 
 async function generateWithGigaChat(prompt: string, keySlot?: string) {
-  // GigaChat uses its own auth flow to get an access token, then calls the image generation endpoint
   const envKey = keySlot === "KEY_2" ? "GIGACHAT_AUTH_KEY_2" : keySlot === "KEY_3" ? "GIGACHAT_AUTH_KEY_3" : "GIGACHAT_AUTH_KEY";
   const authKey = Deno.env.get(envKey);
   if (!authKey) throw { status: 500, message: `${envKey} is not configured` };
+
+  const STEP_TIMEOUT = 30000; // 30s per network step
 
   // Step 1: Get access token
   const tokenFetchOpts: RequestInit & { client?: Deno.HttpClient } = {
@@ -173,7 +131,7 @@ async function generateWithGigaChat(prompt: string, keySlot?: string) {
   };
   if (sberHttpClient) (tokenFetchOpts as any).client = sberHttpClient;
 
-  const tokenRes = await fetch("https://ngw.devices.sberbank.ru:9443/api/v2/oauth", tokenFetchOpts);
+  const tokenRes = await fetchWithTimeout("https://ngw.devices.sberbank.ru:9443/api/v2/oauth", tokenFetchOpts, STEP_TIMEOUT);
 
   if (!tokenRes.ok) {
     const text = await tokenRes.text();
@@ -187,7 +145,7 @@ async function generateWithGigaChat(prompt: string, keySlot?: string) {
     throw { status: 502, message: "GigaChat auth error: no access token" };
   }
 
-  // Step 2: Ask GigaChat to generate an image via chat completions
+  // Step 2: Ask GigaChat to generate an image via chat completions (longer timeout — generation is slow)
   const chatFetchOpts: RequestInit & { client?: Deno.HttpClient } = {
     method: "POST",
     headers: {
@@ -208,7 +166,7 @@ async function generateWithGigaChat(prompt: string, keySlot?: string) {
   };
   if (sberHttpClient) (chatFetchOpts as any).client = sberHttpClient;
 
-  const chatRes = await fetch("https://gigachat.devices.sberbank.ru/api/v1/chat/completions", chatFetchOpts);
+  const chatRes = await fetchWithTimeout("https://gigachat.devices.sberbank.ru/api/v1/chat/completions", chatFetchOpts, 60000);
 
   if (!chatRes.ok) {
     const text = await chatRes.text();
@@ -237,14 +195,13 @@ async function generateWithGigaChat(prompt: string, keySlot?: string) {
   };
   if (sberHttpClient) (imgFetchOpts as any).client = sberHttpClient;
 
-  const imageRes = await fetch(`https://gigachat.devices.sberbank.ru/api/v1/files/${fileId}/content`, imgFetchOpts);
+  const imageRes = await fetchWithTimeout(`https://gigachat.devices.sberbank.ru/api/v1/files/${fileId}/content`, imgFetchOpts, STEP_TIMEOUT);
 
   if (!imageRes.ok) {
     throw { status: imageRes.status, message: `GigaChat image download error: ${imageRes.status}` };
   }
 
   const imageBytes = new Uint8Array(await imageRes.arrayBuffer());
-  // Return as base64 data URL — use chunked encoding to avoid stack overflow on large images
   const CHUNK = 8192;
   const parts: string[] = [];
   for (let i = 0; i < imageBytes.length; i += CHUNK) {
@@ -262,85 +219,54 @@ serve(async (req) => {
     if (!prompt) throw new Error("Prompt is required");
 
     const selectedProvider = provider || "gigachat";
-    console.log(`Generating image with provider: ${selectedProvider}, prompt: ${prompt}, slotIndex: ${slotIndex}`);
+    console.log(`[generate-image] provider=${selectedProvider}, slotIndex=${slotIndex}, prompt="${prompt.slice(0, 80)}..."`);
 
     let generatedImageUrl = "";
-    let usedProvider = selectedProvider;
 
     if (selectedProvider === "gigachat") {
-      // Start from slotIndex, retry each slot on 429 with cooldown rounds,
-      // and use Lovable AI fallback only for non-quota technical failures.
+      // SLOT PINNING: each request is bound to exactly one slot.
+      // On 429 — retry SAME slot with backoff, never storm other slots.
       const allSlots = ["KEY", "KEY_2", "KEY_3"] as const;
       const parsedSlotIndex = typeof slotIndex === "number" ? slotIndex : Number(slotIndex);
-      const randomStartSlot = crypto.getRandomValues(new Uint8Array(1))[0] % allSlots.length;
-      const startSlot = Number.isFinite(parsedSlotIndex) ? Math.abs(parsedSlotIndex) % allSlots.length : randomStartSlot;
+      const pinnedSlot = Number.isFinite(parsedSlotIndex)
+        ? Math.abs(parsedSlotIndex) % allSlots.length
+        : crypto.getRandomValues(new Uint8Array(1))[0] % allSlots.length;
 
+      const slotName = allSlots[pinnedSlot];
+      const MAX_RETRIES = 3;
       let success = false;
-      let lastRoundFailures: Array<{ slot: string; status: number; message: string }> = [];
+      let lastErr: any = null;
 
-      const maxRounds = 3;
-      for (let round = 0; round < maxRounds && !success; round++) {
-        const roundFailures: Array<{ slot: string; status: number; message: string }> = [];
-
-        for (let attempt = 0; attempt < allSlots.length; attempt++) {
-          const si = (startSlot + attempt) % allSlots.length;
-          const slotName = allSlots[si];
-
-          const maxSlotRetries = 1;
-          for (let retry = 0; retry < maxSlotRetries; retry++) {
-            try {
-              console.log(`[generate-image] Trying GigaChat slot ${slotName} (round ${round + 1}/${maxRounds}, attempt ${attempt + 1}, retry ${retry + 1}/${maxSlotRetries}, startSlot=${startSlot})`);
-              generatedImageUrl = await generateWithGigaChat(prompt, slotName);
-              success = true;
-              break;
-            } catch (e: any) {
-              const normalized = normalizeInvokeError(e);
-              const isRetryable429 = normalized.status === 429 && retry < maxSlotRetries - 1;
-              console.warn(`[generate-image] GigaChat slot ${slotName} failed (status=${normalized.status}):`, normalized.message);
-
-              if (isRetryable429) {
-                await new Promise((resolve) => setTimeout(resolve, 1200 * (retry + 1)));
-                continue;
-              }
-
-              roundFailures.push({ slot: slotName, ...normalized });
-              break;
-            }
-          }
-
-          if (success) break;
+      for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+        if (attempt > 0) {
+          // Exponential backoff: 8s, 16s
+          const backoffMs = 8000 * Math.pow(2, attempt - 1);
+          console.log(`[generate-image] Slot ${slotName} retry ${attempt + 1}/${MAX_RETRIES} after ${backoffMs}ms backoff`);
+          await new Promise(r => setTimeout(r, backoffMs));
         }
 
-        if (success) break;
-
-        lastRoundFailures = roundFailures;
-
-        const all429 = roundFailures.length === allSlots.length && roundFailures.every((f) => f.status === 429);
-        const allQuota = roundFailures.length === allSlots.length && roundFailures.every((f) => f.status === 402 || f.status === 429);
-        const has402 = roundFailures.some((f) => f.status === 402);
-
-        if (all429 && round < maxRounds - 1) {
-          const cooldownMs = 10000; // 10s cooldown between rounds to let GigaChat recover
-          console.warn(`[generate-image] All slots returned 429 on round ${round + 1}, cooling down ${cooldownMs}ms before retry round`);
-          await new Promise((resolve) => setTimeout(resolve, cooldownMs));
-          continue;
-        }
-
-        if (allQuota) {
-          console.warn(`[generate-image] All GigaChat slots exhausted (402/429)`);
+        try {
+          console.log(`[generate-image] Trying slot ${slotName} (attempt ${attempt + 1}/${MAX_RETRIES})`);
+          generatedImageUrl = await generateWithGigaChat(prompt, slotName);
+          success = true;
           break;
-        }
+        } catch (e: any) {
+          lastErr = e;
+          const status = e?.status || 500;
+          console.warn(`[generate-image] Slot ${slotName} attempt ${attempt + 1} failed: status=${status}, ${e?.message}`);
 
-        // Non-quota failures: break
-        break;
+          // Only retry on 429 (rate limit). Other errors — fail immediately.
+          if (status !== 429) break;
+        }
       }
 
       if (!success) {
-        const summary = lastRoundFailures.map(f => `${f.slot}:${f.status}`).join(', ');
-        console.error(`[generate-image] All GigaChat slots failed: ${summary}`);
+        const status = lastErr?.status || 503;
         throw {
-          status: 503,
-          message: "Все слоты GigaChat временно недоступны, повторите позже",
+          status,
+          message: lastErr?.message || "GigaChat слот недоступен",
+          slot: slotName,
+          retryable: lastErr?.status === 429,
         };
       }
     } else {
@@ -356,12 +282,11 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const ext = usedProvider === "gigachat" ? "jpg" : "png";
-    const fileName = `block-images/ai-${Date.now()}.${ext}`;
+    const fileName = `block-images/ai-${Date.now()}.jpg`;
     const { error: uploadError } = await supabase.storage
       .from("course-files")
       .upload(fileName, binaryData, {
-        contentType: `image/${ext === "jpg" ? "jpeg" : "png"}`,
+        contentType: "image/jpeg",
         cacheControl: "3600",
         upsert: true,
       });
@@ -373,14 +298,14 @@ serve(async (req) => {
 
     const publicUrl = `${supabaseUrl}/storage/v1/object/public/course-files/${fileName}`;
 
-    return new Response(JSON.stringify({ url: publicUrl }), {
+    return new Response(JSON.stringify({ url: publicUrl, slot: pinnedSlot }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e: any) {
     console.error("generate-image error:", e);
     const status = e?.status || 500;
     const message = e?.message || (e instanceof Error ? e.message : "Unknown error");
-    return new Response(JSON.stringify({ error: message }), {
+    return new Response(JSON.stringify({ error: message, retryable: !!e?.retryable, slot: e?.slot }), {
       status,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

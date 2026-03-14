@@ -837,12 +837,30 @@ export function AdminMarketplaceManager() {
         }
       }
 
-      // 2d. Enrich text/practice lessons with images (reuse pre-computed lessonsNeedingMediaEarly)
-      const lessonsNeedingMedia = lessonsNeedingMediaEarly;
+      // 2d. Enrich text/practice lessons with images
+      // RECOMPUTE lessons needing media AFTER content/tests generation (content may have changed)
+      const allTextLessonsPost = allLessons.filter(l => l.type === "text" || l.type === "practice");
+      const lessonsNeedingMedia: typeof allTextLessonsPost = [];
+      const freshLessonsPost = await Promise.all(
+        allTextLessonsPost.map(async (lesson) => {
+          const { data } = await supabase.from("lessons").select("content").eq("id", lesson.id).single();
+          return { lesson, content: data?.content };
+        })
+      );
+      for (const { lesson, content } of freshLessonsPost) {
+        if (!content || content === "[]") continue;
+        try {
+          const blocks = JSON.parse(content);
+          if (!Array.isArray(blocks) || blocks.length < 3) continue;
+          const hasMedia = blocks.some((b: any) => b.type === "image" || b.type === "slider");
+          if (!hasMedia) lessonsNeedingMedia.push({ ...lesson, content });
+        } catch { continue; }
+      }
 
       // Для рабочих профессий — до 9 изображений, для остальных — 3
       const mediaLimit = programType === "Рабочие профессии" ? 9 : 3;
       const lessonsToEnrich = lessonsNeedingMedia.slice(0, mediaLimit);
+      console.log(`[Auto-fix] Media recompute: ${lessonsNeedingMedia.length} lessons need media, limit=${mediaLimit}, enriching=${lessonsToEnrich.length}`);
       if (lessonsToEnrich.length > 0) {
         let enrichedCount = 0;
 
