@@ -196,7 +196,7 @@ async function generateWithGigaChat(prompt: string, keySlot?: string) {
       Authorization: `Bearer ${accessToken}`,
     },
     body: JSON.stringify({
-      model: "GigaChat",
+      model: "GigaChat-Pro",
       messages: [
         {
           role: "user",
