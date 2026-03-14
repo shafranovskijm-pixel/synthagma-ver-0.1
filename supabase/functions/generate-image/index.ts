@@ -222,6 +222,7 @@ serve(async (req) => {
     console.log(`[generate-image] provider=${selectedProvider}, slotIndex=${slotIndex}, prompt="${prompt.slice(0, 80)}..."`);
 
     let generatedImageUrl = "";
+    let usedSlot = -1;
 
     if (selectedProvider === "gigachat") {
       // SLOT PINNING: each request is bound to exactly one slot.
