@@ -899,8 +899,12 @@ export function AdminMarketplaceManager() {
           let generatedCount = 0;
           toast.loading(`Генерирую изображения: 0/${analysisResults.length}...`, { id: toastId });
 
-          const generatePromises = analysisResults.map(async ({ lesson, streamIndex, blocks, imageVisual, startMs }) => {
+          const generatePromises = analysisResults.map(async ({ lesson, streamIndex, blocks, imageVisual, startMs }, idx) => {
             try {
+              // Stagger requests by 3s each so they don't all compete for the same GigaChat slots
+              if (idx > 0) {
+                await new Promise(r => setTimeout(r, idx * 3000));
+              }
               let imgUrl: string | null = null;
               let lastImgErr: any = null;
               for (let attempt = 0; attempt < 2; attempt++) {
