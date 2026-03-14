@@ -234,8 +234,15 @@ export function useLessonMedia(
           toast.success(`Сгенерировано ${questions.length} вопросов`);
         }
       } else {
-        const newBlocks: ContentBlock[] = (data.blocks || []).map((b: any) => ({
-          id: crypto.randomUUID(), type: b.type, content: b.content,
+        const newBlocks: ContentBlock[] = (data.blocks || [])
+          .filter((b: any) => {
+            // Skip accordion blocks with no useful content
+            if (b.type === "accordion" && !b.content?.trim() && !b.accordionTitle?.trim()) return false;
+            return true;
+          })
+          .map((b: any) => ({
+          id: crypto.randomUUID(), type: b.type,
+          content: (b.type === "accordion" && !b.content?.trim() && b.accordionTitle?.trim()) ? b.accordionTitle : (b.content || ""),
           ...(b.accordionTitle ? { accordionTitle: b.accordionTitle } : {}),
           ...(b.imageSrc ? { imageSrc: b.imageSrc } : {}),
         }));
