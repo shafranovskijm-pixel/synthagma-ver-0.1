@@ -840,8 +840,9 @@ export function AdminMarketplaceManager() {
       // 2d. Enrich text/practice lessons with images (reuse pre-computed lessonsNeedingMediaEarly)
       const lessonsNeedingMedia = lessonsNeedingMediaEarly;
 
-      // Take only the first 3 text lessons for media enrichment (parallel, one per API slot)
-      const lessonsToEnrich = lessonsNeedingMedia.slice(0, 3);
+      // Для рабочих профессий — до 9 изображений, для остальных — 3
+      const mediaLimit = programType === "Рабочие профессии" ? 9 : 3;
+      const lessonsToEnrich = lessonsNeedingMedia.slice(0, mediaLimit);
       if (lessonsToEnrich.length > 0) {
         let enrichedCount = 0;
 
