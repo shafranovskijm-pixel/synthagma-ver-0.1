@@ -1,18 +1,37 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## Проблема
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+Из логов видно: все 3 запроса `generate-image` запускаются одновременно (параллельно), но GigaChat API возвращает **429 Too Many Requests** на одном из слотов. Код молча пропускает ошибку (строка 881: `if (!imgErr && imgData?.url)`) — изображение не вставляется, `insertedCount` остаётся 0, урок сохраняется без картинки. В лог записывается `+0 img`, но это не вызывает повторной попытки.
 
-### Changes
+## Решение
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+**Файл: `src/components/admin/AdminMarketplaceManager.tsx`** (строки 876-888)
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+1. **Добавить ретрай для `generate-image`**: если первый вызов вернул ошибку или пустой URL, подождать 5 секунд и повторить (до 2 попыток). Это покрывает сценарий 429 rate limit.
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+2. **Логировать неудачу**: если после ретраев изображение так и не получено, записать в `generation_history` с деталями ошибки (сейчас записывается `+0 img` без пояснения).
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+Изменение локализовано в одном блоке (~15 строк). Остальная логика (анализ, вставка блока, сохранение) не меняется.
+
+```typescript
+// Вместо одного вызова generate-image:
+let imgUrl: string | null = null;
+let lastImgErr: any = null;
+for (let attempt = 0; attempt < 2; attempt++) {
+  if (attempt > 0) await new Promise(r => setTimeout(r, 5000));
+  const { data: imgData, error: imgErr } = await safeInvoke<any>("generate-image", {
+    body: { prompt: imageVisual.prompt, provider: "gigachat", slotIndex: streamIndex },
+  });
+  if (!imgErr && imgData?.url) { imgUrl = imgData.url; break; }
+  lastImgErr = imgErr;
+  console.warn(`[Enrichment] generate-image attempt ${attempt+1} failed for "${lesson.title}":`, imgErr?.message);
+}
+if (imgUrl) {
+  // splice block...
+  insertedCount++;
+} else {
+  console.error(`[Enrichment] All attempts failed for "${lesson.title}"`);
+}
+```
 
