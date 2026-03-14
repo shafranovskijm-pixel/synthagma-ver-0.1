@@ -367,6 +367,21 @@ export function AdminMarketplaceManager() {
           issues.push("Ни один урок не содержит учебного материала");
         }
 
+        // Check if any text lesson has image blocks
+        if (filledLessons.length > 0) {
+          let hasAnyImage = false;
+          for (const l of filledLessons) {
+            try {
+              const blocks = JSON.parse(l.content!);
+              if (Array.isArray(blocks) && blocks.some((b: any) => b.type === "image" || b.type === "slider")) {
+                hasAnyImage = true;
+                break;
+              }
+            } catch { /* skip */ }
+          }
+          if (!hasAnyImage) issues.push("Нет изображений в уроках");
+        }
+
         // Check duplicates
         if (valRules.checkDuplicateTitles) {
           const titles = lessons.map(l => l.title);
@@ -398,16 +413,10 @@ export function AdminMarketplaceManager() {
       
       if (issues.length > 0) {
         const mpItem = h.courses.find((c: any) => c.course_id === courseId);
-        toast.error("Проблемы курса", {
-          description: issues.join(" • "),
-          duration: 12000,
-          action: {
-            label: "Исправить ИИ",
-            onClick: () => {
-              autoFixCourse(courseId, mpItem?.course?.title || "");
-            },
-          },
-        });
+        const title = mpItem?.course?.title || "";
+        toast.info(`Найдены проблемы: ${issues.join(" • ")}. Запускаю исправление...`, { duration: 6000 });
+        // Auto-trigger fix
+        autoFixCourse(courseId, title);
       } else {
         toast.success("Курс готов ✅");
       }
@@ -494,7 +503,8 @@ export function AdminMarketplaceManager() {
     setValidationReport(errCount > 0 ? failedCourses : null);
 
     if (errCount > 0) {
-      toast.info(`Проверено ${total}: ✅ ${okCount}, ❌ ${errCount}. Смотрите отчёт ниже.`);
+      toast.info(`Проверено ${total}: ✅ ${okCount}, ❌ ${errCount}. Запускаю авто-исправление...`);
+      handleBulkAutoFix(failedCourses.map(r => ({ courseId: r.courseId, title: r.title })));
     } else {
       toast.success(`Проверено ${total}: ✅ ${okCount} готово`);
     }
