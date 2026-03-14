@@ -632,7 +632,26 @@ export function AdminMarketplaceManager() {
       }
       const duplicateGroups = [...titleCounts.values()].filter(g => g.length > 1);
 
-      const totalTasks = emptyLessons.length + (unansweredQuestions.length > 0 ? 1 : 0) + (duplicateGroups.length > 0 ? 1 : 0) + emptyTests.length;
+      // Pre-check lessons needing media (moved here so totalTasks accounts for it)
+      const allTextLessonsEarly = allLessons.filter(l => l.type === "text" || l.type === "practice");
+      const lessonsNeedingMediaEarly: typeof allTextLessonsEarly = [];
+      const freshLessonsEarly = await Promise.all(
+        allTextLessonsEarly.map(async (lesson) => {
+          const { data } = await supabase.from("lessons").select("content").eq("id", lesson.id).single();
+          return { lesson, content: data?.content };
+        })
+      );
+      for (const { lesson, content } of freshLessonsEarly) {
+        if (!content || content === "[]") continue;
+        try {
+          const blocks = JSON.parse(content);
+          if (!Array.isArray(blocks) || blocks.length < 3) continue;
+          const hasMedia = blocks.some((b: any) => b.type === "image" || b.type === "slider");
+          if (!hasMedia) lessonsNeedingMediaEarly.push({ ...lesson, content });
+        } catch { continue; }
+      }
+
+      const totalTasks = emptyLessons.length + (unansweredQuestions.length > 0 ? 1 : 0) + (duplicateGroups.length > 0 ? 1 : 0) + emptyTests.length + (lessonsNeedingMediaEarly.length > 0 ? 1 : 0);
       if (totalTasks === 0 && !needsStructure) { toast.info("Нечего исправлять", { id: toastId, duration: 3000 }); return; }
       if (totalTasks === 0) { toast.success("Структура создана! Повторная проверка...", { id: toastId, duration: 3000 }); setTimeout(() => handleValidateCourse(courseId), 1000); return; }
 
@@ -805,24 +824,8 @@ export function AdminMarketplaceManager() {
         }
       }
 
-      // 2d. Enrich text/practice lessons with images (analyze_visuals + generate-image)
-      const allTextLessons = allLessons.filter(l => l.type === "text" || l.type === "practice");
-      const lessonsNeedingMedia: typeof allTextLessons = [];
-      const freshLessons = await Promise.all(
-        allTextLessons.map(async (lesson) => {
-          const { data } = await supabase.from("lessons").select("content").eq("id", lesson.id).single();
-          return { lesson, content: data?.content };
-        })
-      );
-      for (const { lesson, content } of freshLessons) {
-        if (!content || content === "[]") continue;
-        try {
-          const blocks = JSON.parse(content);
-          if (!Array.isArray(blocks) || blocks.length < 3) continue;
-          const hasMedia = blocks.some((b: any) => b.type === "image" || b.type === "slider");
-          if (!hasMedia) lessonsNeedingMedia.push({ ...lesson, content });
-        } catch { continue; }
-      }
+      // 2d. Enrich text/practice lessons with images (reuse pre-computed lessonsNeedingMediaEarly)
+      const lessonsNeedingMedia = lessonsNeedingMediaEarly;
 
       // Take only the first 3 text lessons for media enrichment (parallel, one per API slot)
       const lessonsToEnrich = lessonsNeedingMedia.slice(0, 3);
@@ -955,7 +958,7 @@ export function AdminMarketplaceManager() {
         if (enrichedCount > 0) {
           console.log(`[Auto-fix] Enriched ${enrichedCount} images across ${lessonsNeedingMedia.length} lessons`);
         }
-      } else if (allTextLessons.length > 0) {
+      } else if (allTextLessonsEarly.length > 0) {
         // All lessons already have images — log and skip
         console.log(`[Auto-fix] All text lessons already contain images, skipping enrichment`);
         await supabase.from("generation_history").insert({

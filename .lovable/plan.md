@@ -1,28 +1,18 @@
 
 
-## Проблема
+## Plan: Auto-fix after "Проверить все"
 
-Валидация курса обнаруживает «Нет изображений в уроках» (строка 382) → показывает ⚠️. При нажатии «Исправить» вызывается `autoFixCourse`, но `totalTasks` (строка 635) **не учитывает отсутствие медиа**. Когда текст/тесты/вопросы в порядке, `totalTasks === 0` → функция возвращает «Нечего исправлять», **не доходя** до кода обогащения на строке 808.
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-## Решение
+### Changes
 
-**Файл: `src/components/admin/AdminMarketplaceManager.tsx`**
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-1. **Перенести проверку `lessonsNeedingMedia`** (строки 808-825) **выше** — до подсчёта `totalTasks` (перед строкой 635). Это включает:
-   - Загрузку контента уроков (`freshLessons`)
-   - Проверку наличия блоков `image`/`slider`
-   - Формирование массива `lessonsNeedingMedia`
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-2. **Добавить в `totalTasks`** учёт медиа:
-```typescript
-const totalTasks = emptyLessons.length 
-  + (unansweredQuestions.length > 0 ? 1 : 0) 
-  + (duplicateGroups.length > 0 ? 1 : 0) 
-  + emptyTests.length
-  + (lessonsNeedingMedia.length > 0 ? 1 : 0);
-```
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-3. **На строках 808-825** убрать дублирующий код (уже выполнен выше), оставить только `lessonsToEnrich = lessonsNeedingMedia.slice(0, 3)` и далее генерацию.
-
-Это гарантирует, что при отсутствии изображений функция не выходит раньше времени и запускает обогащение.
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 
