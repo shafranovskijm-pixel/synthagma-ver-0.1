@@ -858,58 +858,67 @@ export function AdminMarketplaceManager() {
         const analysisResults: AnalysisResult[] = [];
         let analyzedCount = 0;
 
-        const analyzePromises = lessonsToEnrich.map(async (lesson, idx) => {
-          const streamIndex = idx;
-          const startMs = Date.now();
-          try {
-            let blocks: any[];
-            try { blocks = JSON.parse(lesson.content!); } catch { return; }
-            const textContent = blocks
-              .filter((b: any) => b.type === "paragraph" || b.type?.startsWith("heading"))
-              .map((b: any) => b.content || "").join("\n").slice(0, 4000);
-            if (textContent.length < 50) {
-              console.warn(`[Enrichment] Skipping "${lesson.title}": text too short (${textContent.length} chars)`);
-              await supabase.from("generation_history").insert({
-                course_id: courseId, course_title: courseTitle,
-                action: "media", details: `Пропущен: "${lesson.title}" — текст < 50 символов`,
-                items_count: 0, stream_index: streamIndex,
-              }).then(() => {}, () => {});
-              return;
-            }
-
-            const { data: analysisData, error: analysisErr } = await safeInvoke<any>("gigachat", {
-              body: {
-                action: "analyze_visuals",
-                courseTitle,
-                lessonTitle: lesson.title,
-                lessonContent: textContent,
-                blocksCount: blocks.length,
-                ai_provider: aiProvider,
-                stream_index: streamIndex,
-                ...(aiProvider === "gigachat" && gigachatModel ? { gigachat_model: gigachatModel } : {}),
-              },
-            });
-
-            analyzedCount++;
-            toast.loading(`Анализирую уроки: ${analyzedCount}/${lessonsToEnrich.length}...`, { id: toastId });
-
-            if (analysisErr || !analysisData?.visuals || analysisData.visuals.length === 0) {
-              console.warn(`[Auto-fix enrichment] Skip "${lesson.title}":`, analysisErr?.message || "no visuals");
-              return;
-            }
-
-            const visuals = analysisData.visuals as Array<{
-              prompt: string; after_block_index: number; format: "image" | "slider"; slides?: string[];
-            }>;
-            const imageVisual = visuals.find(v => v.format === "image");
-            if (imageVisual) {
-              analysisResults.push({ lesson, streamIndex, blocks, imageVisual, startMs });
-            }
-          } catch (e) {
-            console.error(`Enrichment analysis error for ${lesson.id}:`, e);
+        const ANALYSIS_BATCH_SIZE = CONCURRENCY; // 3 — match API slot count
+        const ANALYSIS_COOLDOWN_MS = 5000;
+        for (let batchStart = 0; batchStart < lessonsToEnrich.length; batchStart += ANALYSIS_BATCH_SIZE) {
+          const batch = lessonsToEnrich.slice(batchStart, batchStart + ANALYSIS_BATCH_SIZE);
+          if (batchStart > 0) {
+            await new Promise(r => setTimeout(r, ANALYSIS_COOLDOWN_MS));
           }
-        });
-        await Promise.allSettled(analyzePromises);
+          const batchPromises = batch.map(async (lesson, idxInBatch) => {
+            const idx = batchStart + idxInBatch;
+            const streamIndex = idx;
+            const startMs = Date.now();
+            try {
+              let blocks: any[];
+              try { blocks = JSON.parse(lesson.content!); } catch { return; }
+              const textContent = blocks
+                .filter((b: any) => b.type === "paragraph" || b.type?.startsWith("heading"))
+                .map((b: any) => b.content || "").join("\n").slice(0, 4000);
+              if (textContent.length < 50) {
+                console.warn(`[Enrichment] Skipping "${lesson.title}": text too short (${textContent.length} chars)`);
+                await supabase.from("generation_history").insert({
+                  course_id: courseId, course_title: courseTitle,
+                  action: "media", details: `Пропущен: "${lesson.title}" — текст < 50 символов`,
+                  items_count: 0, stream_index: streamIndex,
+                }).then(() => {}, () => {});
+                return;
+              }
+
+              const { data: analysisData, error: analysisErr } = await safeInvoke<any>("gigachat", {
+                body: {
+                  action: "analyze_visuals",
+                  courseTitle,
+                  lessonTitle: lesson.title,
+                  lessonContent: textContent,
+                  blocksCount: blocks.length,
+                  ai_provider: aiProvider,
+                  stream_index: streamIndex,
+                  ...(aiProvider === "gigachat" && gigachatModel ? { gigachat_model: gigachatModel } : {}),
+                },
+              });
+
+              analyzedCount++;
+              toast.loading(`Анализирую уроки: ${analyzedCount}/${lessonsToEnrich.length}...`, { id: toastId });
+
+              if (analysisErr || !analysisData?.visuals || analysisData.visuals.length === 0) {
+                console.warn(`[Auto-fix enrichment] Skip "${lesson.title}":`, analysisErr?.message || "no visuals");
+                return;
+              }
+
+              const visuals = analysisData.visuals as Array<{
+                prompt: string; after_block_index: number; format: "image" | "slider"; slides?: string[];
+              }>;
+              const imageVisual = visuals.find(v => v.format === "image");
+              if (imageVisual) {
+                analysisResults.push({ lesson, streamIndex, blocks, imageVisual, startMs });
+              }
+            } catch (e) {
+              console.error(`Enrichment analysis error for ${lesson.id}:`, e);
+            }
+          });
+          await Promise.allSettled(batchPromises);
+        }
 
         // === PHASE 2: Generate ALL images in parallel (each on its own API slot) ===
         if (analysisResults.length > 0) {
