@@ -1,18 +1,25 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## Проблема
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+В `autoFixCourse` порядок операций такой:
 
-### Changes
+1. Генерация контента для пустых уроков
+2. **Обогащение изображениями** (строки 687-791)
+3. Генерация вопросов для пустых тестов (строки 793-843)
+4. Решение тестов
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+Изображения генерируются **до** тестов. Поэтому пользователь видит "Генерирую изображения: 0/3..." даже когда проблема только в тестах.
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+Кроме того, проверка `hasMedia` на строке 701 заново парсит контент из БД — но если изображения уже были добавлены в предыдущем прогоне, они должны быть найдены. Возможная причина повторной генерации: контент не был сохранён корректно или блоки изображений не содержат `type: "image"`.
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+## План
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+**Файл: `src/components/admin/AdminMarketplaceManager.tsx`**
+
+1. **Переставить порядок**: сначала тесты (генерация вопросов + решение), потом обогащение медиа. Это логичнее — сначала исправляем контент и тесты, потом добавляем картинки.
+
+2. **Пропускать обогащение, если изображения уже есть**: добавить в `totalTasks` учёт медиа-задач и показывать в toast, что именно делается. Если `lessonsNeedingMedia` пуст — не показывать toast про изображения.
+
+3. **Добавить логирование**: если enrichment-фаза находит 0 уроков без медиа, записать в `generation_history` "Все уроки уже содержат изображения" и пропустить.
 
