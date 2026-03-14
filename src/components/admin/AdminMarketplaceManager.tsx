@@ -827,88 +827,113 @@ export function AdminMarketplaceManager() {
       // Take only the first 3 text lessons for media enrichment (parallel, one per API slot)
       const lessonsToEnrich = lessonsNeedingMedia.slice(0, 3);
       if (lessonsToEnrich.length > 0) {
-        let enrichedLessons = 0;
-        toast.loading(`Генерирую изображения: 0/${lessonsToEnrich.length}...`, { id: toastId });
         let enrichedCount = 0;
-        const enrichPromises = lessonsToEnrich.map(async (lesson, idx) => {
-            const streamIndex = idx;
-            const startMs = Date.now();
+
+        // === PHASE 1: Analyze all lessons in parallel ===
+        toast.loading(`Анализирую уроки: 0/${lessonsToEnrich.length}...`, { id: toastId });
+        type AnalysisResult = {
+          lesson: typeof lessonsToEnrich[0];
+          streamIndex: number;
+          blocks: any[];
+          imageVisual: { prompt: string; after_block_index: number; format: "image" | "slider"; slides?: string[] };
+          startMs: number;
+        };
+        const analysisResults: AnalysisResult[] = [];
+        let analyzedCount = 0;
+
+        const analyzePromises = lessonsToEnrich.map(async (lesson, idx) => {
+          const streamIndex = idx;
+          const startMs = Date.now();
+          try {
+            let blocks: any[];
+            try { blocks = JSON.parse(lesson.content!); } catch { return; }
+            const textContent = blocks
+              .filter((b: any) => b.type === "paragraph" || b.type?.startsWith("heading"))
+              .map((b: any) => b.content || "").join("\n").slice(0, 4000);
+            if (textContent.length < 50) {
+              console.warn(`[Enrichment] Skipping "${lesson.title}": text too short (${textContent.length} chars)`);
+              await supabase.from("generation_history").insert({
+                course_id: courseId, course_title: courseTitle,
+                action: "media", details: `Пропущен: "${lesson.title}" — текст < 50 символов`,
+                items_count: 0, stream_index: streamIndex,
+              }).then(() => {}, () => {});
+              return;
+            }
+
+            const { data: analysisData, error: analysisErr } = await safeInvoke<any>("gigachat", {
+              body: {
+                action: "analyze_visuals",
+                courseTitle,
+                lessonTitle: lesson.title,
+                lessonContent: textContent,
+                blocksCount: blocks.length,
+                ai_provider: aiProvider,
+                stream_index: streamIndex,
+                ...(aiProvider === "gigachat" && gigachatModel ? { gigachat_model: gigachatModel } : {}),
+              },
+            });
+
+            analyzedCount++;
+            toast.loading(`Анализирую уроки: ${analyzedCount}/${lessonsToEnrich.length}...`, { id: toastId });
+
+            if (analysisErr || !analysisData?.visuals || analysisData.visuals.length === 0) {
+              console.warn(`[Auto-fix enrichment] Skip "${lesson.title}":`, analysisErr?.message || "no visuals");
+              return;
+            }
+
+            const visuals = analysisData.visuals as Array<{
+              prompt: string; after_block_index: number; format: "image" | "slider"; slides?: string[];
+            }>;
+            const imageVisual = visuals.find(v => v.format === "image");
+            if (imageVisual) {
+              analysisResults.push({ lesson, streamIndex, blocks, imageVisual, startMs });
+            }
+          } catch (e) {
+            console.error(`Enrichment analysis error for ${lesson.id}:`, e);
+          }
+        });
+        await Promise.allSettled(analyzePromises);
+
+        // === PHASE 2: Generate ALL images in parallel (each on its own API slot) ===
+        if (analysisResults.length > 0) {
+          let generatedCount = 0;
+          toast.loading(`Генерирую изображения: 0/${analysisResults.length}...`, { id: toastId });
+
+          const generatePromises = analysisResults.map(async ({ lesson, streamIndex, blocks, imageVisual, startMs }) => {
             try {
-              let blocks: any[];
-              try { blocks = JSON.parse(lesson.content!); } catch { return; }
-              const textContent = blocks
-                .filter((b: any) => b.type === "paragraph" || b.type?.startsWith("heading"))
-                .map((b: any) => b.content || "").join("\n").slice(0, 4000);
-              if (textContent.length < 50) {
-                console.warn(`[Enrichment] Skipping "${lesson.title}": text too short (${textContent.length} chars)`);
-                await supabase.from("generation_history").insert({
-                  course_id: courseId, course_title: courseTitle,
-                  action: "media", details: `Пропущен: "${lesson.title}" — текст < 50 символов`,
-                  items_count: 0, stream_index: streamIndex,
-                }).then(() => {}, () => {});
-                return;
+              let imgUrl: string | null = null;
+              let lastImgErr: any = null;
+              for (let attempt = 0; attempt < 2; attempt++) {
+                if (attempt > 0) {
+                  console.warn(`[Enrichment] Retrying generate-image for "${lesson.title}" after 5s...`);
+                  await new Promise(r => setTimeout(r, 5000));
+                }
+                const { data: imgData, error: imgErr } = await safeInvoke<any>("generate-image", {
+                  body: { prompt: imageVisual.prompt, provider: "gigachat", slotIndex: streamIndex },
+                });
+                if (!imgErr && imgData?.url) {
+                  imgUrl = imgData.url;
+                  break;
+                }
+                lastImgErr = imgErr;
+                console.warn(`[Enrichment] generate-image attempt ${attempt + 1} failed for "${lesson.title}":`, imgErr?.message ?? 'no url');
               }
-
-              const { data: analysisData, error: analysisErr } = await safeInvoke<any>("gigachat", {
-                body: {
-                  action: "analyze_visuals",
-                  courseTitle,
-                  lessonTitle: lesson.title,
-                  lessonContent: textContent,
-                  blocksCount: blocks.length,
-                  ai_provider: aiProvider,
-                  stream_index: streamIndex,
-                  ...(aiProvider === "gigachat" && gigachatModel ? { gigachat_model: gigachatModel } : {}),
-                },
-              });
-
-              if (analysisErr || !analysisData?.visuals || analysisData.visuals.length === 0) {
-                console.warn(`[Auto-fix enrichment] Skip "${lesson.title}":`, analysisErr?.message || "no visuals");
-                return;
-              }
-
-              const visuals = analysisData.visuals as Array<{
-                prompt: string; after_block_index: number; format: "image" | "slider"; slides?: string[];
-              }>;
-
-              const imageVisual = visuals.find(v => v.format === "image");
 
               let insertedCount = 0;
-              if (imageVisual) {
-                let imgUrl: string | null = null;
-                let lastImgErr: any = null;
-                for (let attempt = 0; attempt < 2; attempt++) {
-                  if (attempt > 0) {
-                    console.warn(`[Enrichment] Retrying generate-image for "${lesson.title}" after 5s...`);
-                    await new Promise(r => setTimeout(r, 5000));
-                  }
-                  const { data: imgData, error: imgErr } = await safeInvoke<any>("generate-image", {
-                    body: { prompt: imageVisual.prompt, provider: "gigachat", slotIndex: streamIndex },
-                  });
-                  if (!imgErr && imgData?.url) {
-                    imgUrl = imgData.url;
-                    break;
-                  }
-                  lastImgErr = imgErr;
-                  console.warn(`[Enrichment] generate-image attempt ${attempt + 1} failed for "${lesson.title}":`, imgErr?.message ?? 'no url');
-                }
-                if (imgUrl) {
-                  const insertIdx = Math.min(imageVisual.after_block_index + 1, blocks.length);
-                  blocks.splice(insertIdx, 0, {
-                    id: crypto.randomUUID(), type: "image", content: imageVisual.prompt, imageSrc: imgUrl, imageAlt: imageVisual.prompt,
-                  });
-                  insertedCount++;
-                } else {
-                  console.error(`[Enrichment] All attempts failed for "${lesson.title}":`, lastImgErr?.message);
-                }
-              }
-
-              if (insertedCount > 0) {
+              if (imgUrl) {
+                const insertIdx = Math.min(imageVisual.after_block_index + 1, blocks.length);
+                blocks.splice(insertIdx, 0, {
+                  id: crypto.randomUUID(), type: "image", content: imageVisual.prompt, imageSrc: imgUrl, imageAlt: imageVisual.prompt,
+                });
+                insertedCount++;
                 await supabase.from("lessons").update({ content: JSON.stringify(blocks) }).eq("id", lesson.id);
                 enrichedCount += insertedCount;
+              } else {
+                console.error(`[Enrichment] All attempts failed for "${lesson.title}":`, lastImgErr?.message);
               }
-              enrichedLessons++;
-              toast.loading(`Генерирую изображения: ${enrichedLessons}/${lessonsToEnrich.length}...`, { id: toastId });
+
+              generatedCount++;
+              toast.loading(`Генерирую изображения: ${generatedCount}/${analysisResults.length}...`, { id: toastId });
 
               await supabase.from("generation_history").insert({
                 course_id: courseId, course_title: courseTitle,
@@ -920,8 +945,9 @@ export function AdminMarketplaceManager() {
             } catch (e) {
               console.error(`Auto-fix enrichment error for ${lesson.id}:`, e);
             }
-        });
-        await Promise.allSettled(enrichPromises);
+          });
+          await Promise.allSettled(generatePromises);
+        }
         if (enrichedCount > 0) {
           console.log(`[Auto-fix] Enriched ${enrichedCount} images across ${lessonsNeedingMedia.length} lessons`);
         }
