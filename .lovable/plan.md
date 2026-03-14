@@ -1,33 +1,18 @@
 
 
-## Проблема
+## Plan: Auto-fix after "Проверить все"
 
-Все 9 изображений провалились с ошибкой **429 Too Many Requests** — все 3 слота GigaChat перегружены. Причины:
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-1. Перед генерацией изображений уже прошла массивная генерация текста/тестов для 25-35 уроков — лимиты GigaChat исчерпаны.
-2. Все 9 запросов `generate-image` стартуют **одновременно** (строки 919-930), что создаёт мгновенный пик из 9 параллельных запросов на 3 слота.
-3. Cooldown в edge-функции слишком короткий (1.5 секунды), а клиентский ретрай — всего 5 секунд и 2 попытки.
+### Changes
 
-## Решение
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-Генерировать изображения **батчами по 3** (по количеству слотов), с паузой между батчами, вместо всех 9 параллельно.
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-### Изменения в `src/components/admin/AdminMarketplaceManager.tsx`
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-**Фаза 2 (строки 914-950)**: Вместо `Promise.allSettled(все 9)` — разбить `analysisResults` на чанки по 3 и обрабатывать их последовательно с 10-секундной паузой между батчами:
-
-```text
-Батч 1: изображения 0, 1, 2 → параллельно → ждём завершения
-  ↓ пауза 10 секунд (cooldown API)
-Батч 2: изображения 3, 4, 5 → параллельно → ждём завершения
-  ↓ пауза 10 секунд
-Батч 3: изображения 6, 7, 8 → параллельно → ждём завершения
-```
-
-### Изменения в `supabase/functions/generate-image/index.ts`
-
-- Увеличить cooldown между раундами с 1500ms до **5000ms** (строка 323)
-- Увеличить `maxRounds` с 2 до **3** (строка 281)
-
-Эти два изменения дадут API GigaChat больше времени на восстановление при 429-ошибках.
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 

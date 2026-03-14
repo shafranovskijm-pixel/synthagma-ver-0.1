@@ -916,7 +916,16 @@ export function AdminMarketplaceManager() {
           let generatedCount = 0;
           toast.loading(`Генерирую изображения: 0/${analysisResults.length}...`, { id: toastId });
 
-          const generatePromises = analysisResults.map(async ({ lesson, streamIndex, blocks, imageVisual, startMs }, idx) => {
+          // Process in batches of 3 (matching API slot count) with cooldown between batches
+          const BATCH_SIZE = 3;
+          const BATCH_COOLDOWN_MS = 10000;
+          for (let batchStart = 0; batchStart < analysisResults.length; batchStart += BATCH_SIZE) {
+            const batch = analysisResults.slice(batchStart, batchStart + BATCH_SIZE);
+            if (batchStart > 0) {
+              console.log(`[Enrichment] Cooling down ${BATCH_COOLDOWN_MS}ms before batch ${Math.floor(batchStart / BATCH_SIZE) + 1}...`);
+              await new Promise(r => setTimeout(r, BATCH_COOLDOWN_MS));
+            }
+            const batchPromises = batch.map(async ({ lesson, streamIndex, blocks, imageVisual, startMs }, idx) => {
             try {
               let imgUrl: string | null = null;
               let lastImgErr: any = null;
@@ -962,8 +971,9 @@ export function AdminMarketplaceManager() {
             } catch (e) {
               console.error(`Auto-fix enrichment error for ${lesson.id}:`, e);
             }
-          });
-          await Promise.allSettled(generatePromises);
+            });
+            await Promise.allSettled(batchPromises);
+          }
         }
         if (enrichedCount > 0) {
           console.log(`[Auto-fix] Enriched ${enrichedCount} images across ${lessonsNeedingMedia.length} lessons`);
