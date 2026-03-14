@@ -938,69 +938,102 @@ export function AdminMarketplaceManager() {
           await Promise.allSettled(batchPromises);
         }
 
-        // === PHASE 2: Generate ALL images in parallel (each on its own API slot) ===
+        // === PHASE 2: Generate images in batches with retry waves for failures ===
         if (analysisResults.length > 0) {
           let generatedCount = 0;
           toast.loading(`Генерирую изображения: 0/${analysisResults.length}...`, { id: toastId });
 
-          // Process in batches of 3 (matching API slot count) with cooldown between batches
           const BATCH_SIZE = 3;
-          const BATCH_COOLDOWN_MS = 20000; // 20s cooldown — slots need recovery after heavy text generation
-          for (let batchStart = 0; batchStart < analysisResults.length; batchStart += BATCH_SIZE) {
-            const batch = analysisResults.slice(batchStart, batchStart + BATCH_SIZE);
-            if (batchStart > 0) {
-              console.log(`[Enrichment] Cooling down ${BATCH_COOLDOWN_MS}ms before batch ${Math.floor(batchStart / BATCH_SIZE) + 1}...`);
-              await new Promise(r => setTimeout(r, BATCH_COOLDOWN_MS));
+          const BATCH_COOLDOWN_MS = 15000; // 15s cooldown between batches
+
+          // Track which items still need images
+          type PendingItem = typeof analysisResults[0];
+          let pending: PendingItem[] = [...analysisResults];
+          const MAX_WAVES = 3; // up to 3 waves of retries
+
+          for (let wave = 0; wave < MAX_WAVES && pending.length > 0; wave++) {
+            if (wave > 0) {
+              const waveCooldown = 20000 * wave; // 20s, 40s
+              console.log(`[Enrichment] Wave ${wave + 1}: retrying ${pending.length} failed items after ${waveCooldown / 1000}s cooldown`);
+              toast.loading(`Повторная генерация (волна ${wave + 1}): ${pending.length} изображений...`, { id: toastId });
+              await new Promise(r => setTimeout(r, waveCooldown));
             }
-            const batchPromises = batch.map(async ({ lesson, streamIndex, blocks, imageVisual, startMs }, idx) => {
-            try {
-              let imgUrl: string | null = null;
-              let lastImgErr: any = null;
-              for (let attempt = 0; attempt < 3; attempt++) {
-                if (attempt > 0) {
-                  const retryDelay = 15000 * attempt; // 15s, 30s
-                  console.warn(`[Enrichment] Retrying generate-image for "${lesson.title}" after ${retryDelay / 1000}s (attempt ${attempt + 1}/3)...`);
-                  await new Promise(r => setTimeout(r, retryDelay));
-                }
-                const { data: imgData, error: imgErr } = await safeInvoke<any>("generate-image", {
-                  body: { prompt: imageVisual.prompt, provider: "gigachat", slotIndex: streamIndex },
-                });
-                if (!imgErr && imgData?.url) {
-                  imgUrl = imgData.url;
-                  break;
-                }
-                lastImgErr = imgErr;
-                console.warn(`[Enrichment] generate-image attempt ${attempt + 1} failed for "${lesson.title}":`, imgErr?.message ?? 'no url');
+
+            const failedThisWave: PendingItem[] = [];
+
+            for (let batchStart = 0; batchStart < pending.length; batchStart += BATCH_SIZE) {
+              const batch = pending.slice(batchStart, batchStart + BATCH_SIZE);
+              if (batchStart > 0) {
+                console.log(`[Enrichment] Wave ${wave + 1}: cooldown ${BATCH_COOLDOWN_MS}ms before batch ${Math.floor(batchStart / BATCH_SIZE) + 1}`);
+                await new Promise(r => setTimeout(r, BATCH_COOLDOWN_MS));
               }
 
-              let insertedCount = 0;
-              if (imgUrl) {
-                const insertIdx = Math.min(imageVisual.after_block_index + 1, blocks.length);
-                blocks.splice(insertIdx, 0, {
-                  id: crypto.randomUUID(), type: "image", content: imageVisual.prompt, imageSrc: imgUrl, imageAlt: imageVisual.prompt,
-                });
-                insertedCount++;
-                await supabase.from("lessons").update({ content: JSON.stringify(blocks) }).eq("id", lesson.id);
-                enrichedCount += insertedCount;
-              } else {
-                console.error(`[Enrichment] All attempts failed for "${lesson.title}":`, lastImgErr?.message);
-              }
+              const batchPromises = batch.map(async (item) => {
+                const { lesson, streamIndex, blocks, imageVisual, startMs } = item;
+                try {
+                  let imgUrl: string | null = null;
+                  let lastImgErr: any = null;
 
-              generatedCount++;
-              toast.loading(`Генерирую изображения: ${generatedCount}/${analysisResults.length}...`, { id: toastId });
+                  // Single attempt per wave (waves handle retries)
+                  const { data: imgData, error: imgErr } = await safeInvoke<any>("generate-image", {
+                    body: { prompt: imageVisual.prompt, provider: "gigachat", slotIndex: streamIndex },
+                  });
 
-              await supabase.from("generation_history").insert({
-                course_id: courseId, course_title: courseTitle,
-                action: "enrichment",
-                details: `Auto-fix media: "${lesson.title}" (+${insertedCount} img)`,
-                items_count: insertedCount, stream_index: streamIndex,
-                duration_ms: Date.now() - startMs,
-              }).then(() => {}, () => {});
-            } catch (e) {
-              console.error(`Auto-fix enrichment error for ${lesson.id}:`, e);
+                  if (!imgErr && imgData?.url) {
+                    imgUrl = imgData.url;
+                  } else {
+                    lastImgErr = imgErr;
+                    console.warn(`[Enrichment] Wave ${wave + 1}: generate-image failed for "${lesson.title}":`, imgErr?.message ?? 'no url');
+                  }
+
+                  let insertedCount = 0;
+                  if (imgUrl) {
+                    const insertIdx = Math.min(imageVisual.after_block_index + 1, blocks.length);
+                    blocks.splice(insertIdx, 0, {
+                      id: crypto.randomUUID(), type: "image", content: imageVisual.prompt, imageSrc: imgUrl, imageAlt: imageVisual.prompt,
+                    });
+                    insertedCount++;
+                    await supabase.from("lessons").update({ content: JSON.stringify(blocks) }).eq("id", lesson.id);
+                    enrichedCount += insertedCount;
+                  } else {
+                    // Add to retry queue
+                    failedThisWave.push(item);
+                  }
+
+                  generatedCount++;
+                  toast.loading(`Генерирую изображения: ${generatedCount}/${analysisResults.length}...`, { id: toastId });
+
+                  const errDetail = lastImgErr ? ` [err: ${lastImgErr?.message?.slice(0, 60)}]` : "";
+                  await supabase.from("generation_history").insert({
+                    course_id: courseId, course_title: courseTitle,
+                    action: "media",
+                    details: `Wave ${wave + 1}: "${lesson.title}" (+${insertedCount} img)${errDetail}`,
+                    items_count: insertedCount, stream_index: streamIndex,
+                    duration_ms: Date.now() - startMs,
+                  }).then(() => {}, () => {});
+                } catch (e) {
+                  console.error(`Auto-fix enrichment error for ${lesson.id}:`, e);
+                  failedThisWave.push(item);
+                }
+              });
+              await Promise.allSettled(batchPromises);
             }
-            });
-            await Promise.allSettled(batchPromises);
+
+            pending = failedThisWave;
+            if (pending.length === 0) {
+              console.log(`[Enrichment] All images generated successfully on wave ${wave + 1}`);
+              break;
+            }
+          }
+
+          if (pending.length > 0) {
+            console.warn(`[Enrichment] ${pending.length} images failed after ${MAX_WAVES} waves`);
+            await supabase.from("generation_history").insert({
+              course_id: courseId, course_title: courseTitle,
+              action: "media",
+              details: `${pending.length} изображений не удалось сгенерировать после ${MAX_WAVES} волн`,
+              items_count: 0,
+            }).then(() => {}, () => {});
           }
         }
         if (enrichedCount > 0) {
