@@ -732,6 +732,7 @@ export function AdminMarketplaceManager() {
                   lessonTitle: test.title,
                   ai_provider: aiProvider,
                   stream_index: streamIndex,
+                  ...(programType ? { programType } : {}),
                   ...(aiProvider === "gigachat" && gigachatModel ? { gigachat_model: gigachatModel } : {}),
                   ...(aiPrompts.questions ? { customSystemPrompt: aiPrompts.questions } : {}),
                 },
