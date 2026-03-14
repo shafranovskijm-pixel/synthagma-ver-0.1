@@ -236,6 +236,7 @@ serve(async (req) => {
       const slotName = allSlots[pinnedSlot];
       let success = false;
       let lastErr: any = null;
+      const MAX_RETRIES = 3;
 
       for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
         if (attempt > 0) {
