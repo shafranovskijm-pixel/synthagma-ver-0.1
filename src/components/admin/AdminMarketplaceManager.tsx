@@ -367,6 +367,21 @@ export function AdminMarketplaceManager() {
           issues.push("Ни один урок не содержит учебного материала");
         }
 
+        // Check if any text lesson has image blocks
+        if (filledLessons.length > 0) {
+          let hasAnyImage = false;
+          for (const l of filledLessons) {
+            try {
+              const blocks = JSON.parse(l.content!);
+              if (Array.isArray(blocks) && blocks.some((b: any) => b.type === "image" || b.type === "slider")) {
+                hasAnyImage = true;
+                break;
+              }
+            } catch { /* skip */ }
+          }
+          if (!hasAnyImage) issues.push("Нет изображений в уроках");
+        }
+
         // Check duplicates
         if (valRules.checkDuplicateTitles) {
           const titles = lessons.map(l => l.title);
