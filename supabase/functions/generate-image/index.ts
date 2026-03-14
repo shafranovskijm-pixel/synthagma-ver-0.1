@@ -337,25 +337,7 @@ serve(async (req) => {
       }
 
       if (!success) {
-        const all429 = lastRoundFailures.length === allSlots.length && lastRoundFailures.every((f) => f.status === 429);
-        const allQuota = lastRoundFailures.length === allSlots.length && lastRoundFailures.every((f) => f.status === 402 || f.status === 429);
-        const has402 = lastRoundFailures.some((f) => f.status === 402);
-
-        if (all429) {
-          throw {
-            status: 429,
-            message: "GigaChat временно перегружен (429 по всем потокам). Повторите попытку через 10–20 секунд.",
-          };
-        }
-
-        if (allQuota && has402) {
-          throw {
-            status: 402,
-            message: "Лимит генерации изображений временно исчерпан (402/429 по всем потокам). Повторите попытку позже.",
-          };
-        }
-
-        console.log("[generate-image] GigaChat failed due to technical errors, trying Lovable AI fallback");
+        console.log("[generate-image] GigaChat failed, trying Lovable AI fallback");
         try {
           generatedImageUrl = await generateWithLovableAI(prompt, imageUrl, model);
           usedProvider = "lovable_ai";
