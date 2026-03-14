@@ -196,7 +196,7 @@ async function generateWithGigaChat(prompt: string, keySlot?: string) {
       Authorization: `Bearer ${accessToken}`,
     },
     body: JSON.stringify({
-      model: "GigaChat-Pro",
+      model: "GigaChat",
       messages: [
         {
           role: "user",
@@ -327,31 +327,24 @@ serve(async (req) => {
         }
 
         if (allQuota) {
-          // Don't throw — fall through to Lovable AI fallback below
-          console.warn(`[generate-image] All GigaChat slots exhausted (402/429), will try Lovable AI fallback`);
+          console.warn(`[generate-image] All GigaChat slots exhausted (402/429)`);
           break;
         }
 
-        // Non-quota failures: break and try fallback below.
+        // Non-quota failures: break
         break;
       }
 
       if (!success) {
-        console.log("[generate-image] GigaChat failed, trying Lovable AI fallback");
-        try {
-          generatedImageUrl = await generateWithLovableAI(prompt, imageUrl, model);
-          usedProvider = "lovable_ai";
-        } catch (fallbackErr: any) {
-          const normalizedFallback = normalizeInvokeError(fallbackErr);
-          console.error("[generate-image] Lovable AI fallback also failed:", normalizedFallback.message);
-          throw {
-            status: normalizedFallback.status || 500,
-            message: normalizedFallback.message || "Все провайдеры изображений недоступны",
-          };
-        }
+        const summary = lastRoundFailures.map(f => `${f.slot}:${f.status}`).join(', ');
+        console.error(`[generate-image] All GigaChat slots failed: ${summary}`);
+        throw {
+          status: 503,
+          message: "Все слоты GigaChat временно недоступны, повторите позже",
+        };
       }
     } else {
-      generatedImageUrl = await generateWithLovableAI(prompt, imageUrl, model);
+      throw { status: 400, message: "Неподдерживаемый провайдер. Используйте gigachat." };
     }
 
     // Convert base64 to binary and upload to storage

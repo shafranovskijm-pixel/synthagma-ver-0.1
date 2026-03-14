@@ -1,22 +1,18 @@
 
 
-## Диагноз
+## Plan: Auto-fix after "Проверить все"
 
-Из логов видно:
-- **KEY** → 402 (Payment Required)
-- **KEY_2** → 402 (Payment Required)  
-- **KEY_3** → 429 (Too Many Requests)
-- **Lovable AI fallback** → тоже 402
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-Причина 402 от GigaChat: на строке 199 используется модель **`GigaChat-Pro`**, но ваши ключи настроены со скоупом `GIGACHAT_API_PERS` (строка 172). Персональный тариф **не поддерживает модель Pro** — только базовую `GigaChat`. Именно поэтому 2 из 3 ключей возвращают 402 «Payment Required».
+### Changes
 
-Это было сломано предыдущим изменением (смена `GigaChat` → `GigaChat-Pro`).
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-## Решение
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-**Файл: `supabase/functions/generate-image/index.ts`**
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-1. **Строка 199**: Вернуть модель `"GigaChat"` вместо `"GigaChat-Pro"` — базовая модель поддерживается на персональном тарифе (scope `GIGACHAT_API_PERS`).
-
-2. **Строки 339-352**: Убрать Lovable AI fallback — по вашему запросу, всё через GigaChat. При неудаче всех слотов — возвращать понятную ошибку «Все слоты GigaChat временно недоступны, повторите позже» без попытки обращения к Lovable AI.
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 
