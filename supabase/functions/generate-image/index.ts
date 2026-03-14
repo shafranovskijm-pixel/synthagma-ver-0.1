@@ -327,16 +327,9 @@ serve(async (req) => {
         }
 
         if (allQuota) {
-          if (has402) {
-            throw {
-              status: 402,
-              message: "Лимит генерации изображений временно исчерпан (402/429 по всем потокам). Повторите попытку позже.",
-            };
-          }
-          throw {
-            status: 429,
-            message: "GigaChat временно перегружен (429 по всем потокам). Повторите попытку через 10–20 секунд.",
-          };
+          // Don't throw — fall through to Lovable AI fallback below
+          console.warn(`[generate-image] All GigaChat slots exhausted (402/429), will try Lovable AI fallback`);
+          break;
         }
 
         // Non-quota failures: break and try fallback below.
