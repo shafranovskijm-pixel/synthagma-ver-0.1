@@ -1,18 +1,20 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## Проблема
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+Сейчас обогащение изображениями ограничено **3 уроками** (строка 844: `lessonsNeedingMedia.slice(0, 3)`). Для рабочих профессий с 25-35 уроками этого мало — нужно **9 изображений**.
 
-### Changes
+## Решение
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+**Файл: `src/components/admin/AdminMarketplaceManager.tsx`**
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+Строка 843-844 — изменить лимит в зависимости от `programType`:
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+```typescript
+// Для рабочих профессий — до 9 изображений, для остальных — 3
+const mediaLimit = programType === "Рабочие профессии" ? 9 : 3;
+const lessonsToEnrich = lessonsNeedingMedia.slice(0, mediaLimit);
+```
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+Переменная `programType` уже определена выше (строка 543) и доступна в этом месте. Параллельная генерация по 3 слотам (round-robin) уже реализована — просто будет 3 батча по 3 изображения вместо одного.
 
