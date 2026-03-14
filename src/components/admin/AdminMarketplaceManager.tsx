@@ -938,10 +938,11 @@ export function AdminMarketplaceManager() {
             try {
               let imgUrl: string | null = null;
               let lastImgErr: any = null;
-              for (let attempt = 0; attempt < 2; attempt++) {
+              for (let attempt = 0; attempt < 3; attempt++) {
                 if (attempt > 0) {
-                  console.warn(`[Enrichment] Retrying generate-image for "${lesson.title}" after 5s...`);
-                  await new Promise(r => setTimeout(r, 5000));
+                  const retryDelay = 15000 * attempt; // 15s, 30s
+                  console.warn(`[Enrichment] Retrying generate-image for "${lesson.title}" after ${retryDelay / 1000}s (attempt ${attempt + 1}/3)...`);
+                  await new Promise(r => setTimeout(r, retryDelay));
                 }
                 const { data: imgData, error: imgErr } = await safeInvoke<any>("generate-image", {
                   body: { prompt: imageVisual.prompt, provider: "gigachat", slotIndex: streamIndex },
