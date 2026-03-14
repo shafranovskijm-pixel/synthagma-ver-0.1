@@ -1,18 +1,36 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## Результат проверки: всё уже правильно
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+Код **уже отправляет запросы на 3 разных API-ключа**. Никаких изменений не требуется.
 
-### Changes
+### Как это работает сейчас
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+```text
+lessonsToEnrich.map((lesson, idx) => {
+  const streamIndex = idx;  // 0, 1, 2
+  ...
+  safeInvoke("generate-image", {
+    body: { ..., slotIndex: streamIndex }  // 0, 1, 2
+  });
+})
+```
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+В edge-функции `generate-image`:
+```text
+allSlots = ["KEY", "KEY_2", "KEY_3"]
+startSlot = slotIndex % 3
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+Урок 0 → slotIndex=0 → KEY
+Урок 1 → slotIndex=1 → KEY_2
+Урок 2 → slotIndex=2 → KEY_3
+```
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+Каждый из 3 параллельных запросов начинает с **разного** API-ключа GigaChat. Если его ключ возвращает 429, функция пробует следующие слоты по кругу (до 2 раундов с cooldown).
+
+### Почему раньше терялась 3-я картинка
+
+Проблема была не в распределении по слотам, а в отсутствии ретрая на клиенте — это уже исправлено в предыдущем изменении (retry с 5-секундной паузой).
+
+**Вывод: изменения не требуются — распределение по трём ключам уже реализовано корректно.**
 
