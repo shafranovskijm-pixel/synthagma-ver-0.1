@@ -1039,7 +1039,7 @@ export function AdminMarketplaceManager() {
         if (enrichedCount > 0) {
           console.log(`[Auto-fix] Enriched ${enrichedCount} images across ${lessonsNeedingMedia.length} lessons`);
         }
-      } else if (allTextLessonsEarly.length > 0) {
+      } else if (allTextLessonsPost.length > 0) {
         // All lessons already have images — log and skip
         console.log(`[Auto-fix] All text lessons already contain images, skipping enrichment`);
         await supabase.from("generation_history").insert({
