@@ -264,6 +264,7 @@ export function useLessonMedia(
                 type: "image",
                 content: "",
                 imageSrc: imgData.url,
+                imageAlt: `Иллюстрация к уроку "${lessonTitle}"`,
               } as ContentBlock);
               toast.success("Изображение сгенерировано");
             }
