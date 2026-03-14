@@ -503,7 +503,8 @@ export function AdminMarketplaceManager() {
     setValidationReport(errCount > 0 ? failedCourses : null);
 
     if (errCount > 0) {
-      toast.info(`Проверено ${total}: ✅ ${okCount}, ❌ ${errCount}. Смотрите отчёт ниже.`);
+      toast.info(`Проверено ${total}: ✅ ${okCount}, ❌ ${errCount}. Запускаю авто-исправление...`);
+      handleBulkAutoFix(failedCourses.map(r => ({ courseId: r.courseId, title: r.title })));
     } else {
       toast.success(`Проверено ${total}: ✅ ${okCount} готово`);
     }
