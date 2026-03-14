@@ -265,11 +265,13 @@ serve(async (req) => {
 
       if (!success) {
         const status = lastErr?.status || 503;
+        const msg = lastErr?.message || "";
+        const isRetryable = lastErr?.status === 429 || msg.includes("aborted") || msg.includes("timed out");
         throw {
           status,
-          message: lastErr?.message || "GigaChat слот недоступен",
+          message: msg || "GigaChat слот недоступен",
           slot: slotName,
-          retryable: lastErr?.status === 429,
+          retryable: isRetryable,
         };
       }
     } else {
