@@ -413,16 +413,10 @@ export function AdminMarketplaceManager() {
       
       if (issues.length > 0) {
         const mpItem = h.courses.find((c: any) => c.course_id === courseId);
-        toast.error("Проблемы курса", {
-          description: issues.join(" • "),
-          duration: 12000,
-          action: {
-            label: "Исправить ИИ",
-            onClick: () => {
-              autoFixCourse(courseId, mpItem?.course?.title || "");
-            },
-          },
-        });
+        const title = mpItem?.course?.title || "";
+        toast.info(`Найдены проблемы: ${issues.join(" • ")}. Запускаю исправление...`, { duration: 6000 });
+        // Auto-trigger fix
+        autoFixCourse(courseId, title);
       } else {
         toast.success("Курс готов ✅");
       }
