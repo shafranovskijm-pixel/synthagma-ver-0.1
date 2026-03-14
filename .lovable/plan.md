@@ -1,28 +1,18 @@
 
 
-## Проблема
+## Plan: Auto-fix after "Проверить все"
 
-В `supabase/functions/generate-image/index.ts`, строка 199:
-```typescript
-model: "GigaChat",
-```
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-Используется **базовая модель GigaChat**, которая медленнее и хуже генерирует изображения. Для генерации изображений GigaChat рекомендует использовать модель **GigaChat-Pro** (не Max — Max не поддерживает генерацию изображений через function_call).
+### Changes
 
-> Примечание: GigaChat-Max используется для текстовых задач (analyze_visuals и др.), а для **генерации изображений** оптимальная модель — `GigaChat-Pro`.
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-## Решение
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-**Файл: `supabase/functions/generate-image/index.ts`**, строка 199
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-Заменить:
-```typescript
-model: "GigaChat",
-```
-На:
-```typescript
-model: "GigaChat-Pro",
-```
-
-Одно изменение, одна строка. Это должно ускорить генерацию и повысить качество изображений.
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 
