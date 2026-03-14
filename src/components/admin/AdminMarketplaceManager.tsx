@@ -940,8 +940,10 @@ export function AdminMarketplaceManager() {
 
         // === PHASE 2: Generate images in batches with retry waves for failures ===
         if (analysisResults.length > 0) {
-          let generatedCount = 0;
-          toast.loading(`Генерирую изображения: 0/${analysisResults.length}...`, { id: toastId });
+          let successCount = 0;
+          let skipCount = 0;
+          const totalLessons = analysisResults.length;
+          toast.loading(`Генерирую изображения: 0/${totalLessons}...`, { id: toastId });
 
           const BATCH_SIZE = 3;
           const BATCH_COOLDOWN_MS = 15000; // 15s cooldown between batches
@@ -959,9 +961,16 @@ export function AdminMarketplaceManager() {
               await new Promise(r => setTimeout(r, waveCooldown));
             }
 
+            const isLastWave = wave === MAX_WAVES - 1;
             const failedThisWave: PendingItem[] = [];
 
             for (let batchStart = 0; batchStart < pending.length; batchStart += BATCH_SIZE) {
+              // Early exit: already got enough images
+              if (successCount >= mediaLimit) {
+                console.log(`[Enrichment] Reached mediaLimit (${mediaLimit}), stopping generation`);
+                break;
+              }
+
               const batch = pending.slice(batchStart, batchStart + BATCH_SIZE);
               if (batchStart > 0) {
                 console.log(`[Enrichment] Wave ${wave + 1}: cooldown ${BATCH_COOLDOWN_MS}ms before batch ${Math.floor(batchStart / BATCH_SIZE) + 1}`);
@@ -969,6 +978,9 @@ export function AdminMarketplaceManager() {
               }
 
               const batchPromises = batch.map(async (item) => {
+                // Skip if we already hit the limit
+                if (successCount >= mediaLimit) return;
+
                 const { lesson, streamIndex, blocks, imageVisual, startMs } = item;
                 try {
                   let imgUrl: string | null = null;
@@ -995,13 +1007,18 @@ export function AdminMarketplaceManager() {
                     insertedCount++;
                     await supabase.from("lessons").update({ content: JSON.stringify(blocks) }).eq("id", lesson.id);
                     enrichedCount += insertedCount;
+                    successCount++;
+                    toast.loading(`Генерирую изображения: ${successCount + skipCount}/${totalLessons}...`, { id: toastId });
                   } else {
-                    // Add to retry queue
-                    failedThisWave.push(item);
+                    if (isLastWave) {
+                      // Final wave — count as processed (skipped)
+                      skipCount++;
+                      toast.loading(`Генерирую изображения: ${successCount + skipCount}/${totalLessons}...`, { id: toastId });
+                    } else {
+                      // Will retry in next wave — don't increment counter
+                      failedThisWave.push(item);
+                    }
                   }
-
-                  generatedCount++;
-                  toast.loading(`Генерирую изображения: ${generatedCount}/${analysisResults.length}...`, { id: toastId });
 
                   const errDetail = lastImgErr ? ` [err: ${lastImgErr?.message?.slice(0, 60)}]` : "";
                   await supabase.from("generation_history").insert({
@@ -1013,12 +1030,17 @@ export function AdminMarketplaceManager() {
                   }).then(() => {}, () => {});
                 } catch (e) {
                   console.error(`Auto-fix enrichment error for ${lesson.id}:`, e);
-                  failedThisWave.push(item);
+                  if (isLastWave) {
+                    skipCount++;
+                  } else {
+                    failedThisWave.push(item);
+                  }
                 }
               });
               await Promise.allSettled(batchPromises);
             }
 
+            if (successCount >= mediaLimit) break;
             pending = failedThisWave;
             if (pending.length === 0) {
               console.log(`[Enrichment] All images generated successfully on wave ${wave + 1}`);

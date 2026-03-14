@@ -1,36 +1,18 @@
 
 
-## Проблема
+## Plan: Auto-fix after "Проверить все"
 
-Счётчик `generatedCount` увеличивается на **каждую попытку** во всех волнах (wave 1 + wave 2 + wave 3), а не на каждый уникальный урок. Если из 9 уроков 2 провалились в wave 1 и ушли на retry в wave 2 — счётчик показывает 9 + 2 = 11 попыток, хотя уроков всего 9. Это также означает лишние вызовы API (токены).
+Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
 
-## Решение
+### Changes
 
-### 1. Разделить счётчики: "обработано уроков" vs "попыток"
-- `generatedCount` → считать только **уникальные уроки**, обработанные (успех или финальный отказ), а не каждую попытку в каждой волне.
-- Тост: `Генерирую изображения: ${uniqueProcessed}/${analysisResults.length}` — всегда ≤ 9.
+**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
 
-### 2. Не инкрементировать счётчик при неудаче с retry
-- Строка 1003: `generatedCount++` перенести только в ветку успеха + ветку финального отказа (когда item больше не будет ретраиться).
-- В retry-ветке (failedThisWave.push) — НЕ инкрементировать.
+Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
 
-### 3. Остановить генерацию при достижении лимита
-- Добавить early exit: если `enrichedCount >= mediaLimit`, прервать обработку оставшихся pending.
-- Это предотвратит лишние API-вызовы если часть уроков уже получили изображения в предыдущих волнах.
+- Show an info toast saying validation found errors and auto-fix is starting
+- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
+- Keep the success toast when no errors are found
 
-### Технические изменения
-
-**Файл: `src/components/admin/AdminMarketplaceManager.tsx`** (строки ~942-1027)
-
-```text
-Было:
-  generatedCount++ на КАЖДУЮ попытку (строка 1003)
-  toast показывает generatedCount/analysisResults.length
-
-Станет:
-  successCount++ только при imgUrl != null
-  skipCount++ при финальном отказе (последняя волна)
-  toast: ${successCount + skipCount}/${analysisResults.length}
-  early exit если successCount >= mediaLimit
-```
+This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
 
