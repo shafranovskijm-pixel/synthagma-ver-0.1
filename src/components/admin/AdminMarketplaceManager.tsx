@@ -927,7 +927,7 @@ export function AdminMarketplaceManager() {
 
           // Process in batches of 3 (matching API slot count) with cooldown between batches
           const BATCH_SIZE = 3;
-          const BATCH_COOLDOWN_MS = 10000;
+          const BATCH_COOLDOWN_MS = 20000; // 20s cooldown — slots need recovery after heavy text generation
           for (let batchStart = 0; batchStart < analysisResults.length; batchStart += BATCH_SIZE) {
             const batch = analysisResults.slice(batchStart, batchStart + BATCH_SIZE);
             if (batchStart > 0) {
@@ -938,10 +938,11 @@ export function AdminMarketplaceManager() {
             try {
               let imgUrl: string | null = null;
               let lastImgErr: any = null;
-              for (let attempt = 0; attempt < 2; attempt++) {
+              for (let attempt = 0; attempt < 3; attempt++) {
                 if (attempt > 0) {
-                  console.warn(`[Enrichment] Retrying generate-image for "${lesson.title}" after 5s...`);
-                  await new Promise(r => setTimeout(r, 5000));
+                  const retryDelay = 15000 * attempt; // 15s, 30s
+                  console.warn(`[Enrichment] Retrying generate-image for "${lesson.title}" after ${retryDelay / 1000}s (attempt ${attempt + 1}/3)...`);
+                  await new Promise(r => setTimeout(r, retryDelay));
                 }
                 const { data: imgData, error: imgErr } = await safeInvoke<any>("generate-image", {
                   body: { prompt: imageVisual.prompt, provider: "gigachat", slotIndex: streamIndex },
