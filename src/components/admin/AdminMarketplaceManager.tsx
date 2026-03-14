@@ -875,15 +875,31 @@ export function AdminMarketplaceManager() {
 
               let insertedCount = 0;
               if (imageVisual) {
-                const { data: imgData, error: imgErr } = await safeInvoke<any>("generate-image", {
-                  body: { prompt: imageVisual.prompt, provider: "gigachat", slotIndex: streamIndex },
-                });
-                if (!imgErr && imgData?.url) {
+                let imgUrl: string | null = null;
+                let lastImgErr: any = null;
+                for (let attempt = 0; attempt < 2; attempt++) {
+                  if (attempt > 0) {
+                    console.warn(`[Enrichment] Retrying generate-image for "${lesson.title}" after 5s...`);
+                    await new Promise(r => setTimeout(r, 5000));
+                  }
+                  const { data: imgData, error: imgErr } = await safeInvoke<any>("generate-image", {
+                    body: { prompt: imageVisual.prompt, provider: "gigachat", slotIndex: streamIndex },
+                  });
+                  if (!imgErr && imgData?.url) {
+                    imgUrl = imgData.url;
+                    break;
+                  }
+                  lastImgErr = imgErr;
+                  console.warn(`[Enrichment] generate-image attempt ${attempt + 1} failed for "${lesson.title}":`, imgErr?.message ?? 'no url');
+                }
+                if (imgUrl) {
                   const insertIdx = Math.min(imageVisual.after_block_index + 1, blocks.length);
                   blocks.splice(insertIdx, 0, {
-                    id: crypto.randomUUID(), type: "image", content: imageVisual.prompt, imageSrc: imgData.url, imageAlt: imageVisual.prompt,
+                    id: crypto.randomUUID(), type: "image", content: imageVisual.prompt, imageSrc: imgUrl, imageAlt: imageVisual.prompt,
                   });
                   insertedCount++;
+                } else {
+                  console.error(`[Enrichment] All attempts failed for "${lesson.title}":`, lastImgErr?.message);
                 }
               }
 
