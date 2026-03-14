@@ -320,7 +320,7 @@ serve(async (req) => {
         const has402 = roundFailures.some((f) => f.status === 402);
 
         if (all429 && round < maxRounds - 1) {
-          const cooldownMs = 1500;
+          const cooldownMs = 5000;
           console.warn(`[generate-image] All slots returned 429 on round ${round + 1}, cooling down ${cooldownMs}ms before retry round`);
           await new Promise((resolve) => setTimeout(resolve, cooldownMs));
           continue;
