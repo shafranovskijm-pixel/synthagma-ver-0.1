@@ -232,9 +232,8 @@ serve(async (req) => {
       const pinnedSlot = Number.isFinite(parsedSlotIndex)
         ? Math.abs(parsedSlotIndex) % allSlots.length
         : crypto.getRandomValues(new Uint8Array(1))[0] % allSlots.length;
-
+      usedSlot = pinnedSlot;
       const slotName = allSlots[pinnedSlot];
-      const MAX_RETRIES = 3;
       let success = false;
       let lastErr: any = null;
 
