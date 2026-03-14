@@ -539,6 +539,16 @@ export function AdminMarketplaceManager() {
   const autoFixCourse = async (courseId: string, courseTitle: string) => {
     const toastId = toast.loading("Анализирую курс...", { duration: Infinity });
 
+    // Determine program type from course category
+    let programType: string | undefined;
+    try {
+      const { data: courseData } = await supabase.from("courses").select("category_id").eq("id", courseId).single();
+      if (courseData?.category_id) {
+        const cat = h.dbCategories.find(c => c.id === courseData.category_id);
+        if (cat?.parent_type) programType = cat.parent_type;
+      }
+    } catch {}
+
     try {
       // 1. Fetch fresh data from DB
       let { data: lessons } = await supabase
