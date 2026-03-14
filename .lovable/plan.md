@@ -1,18 +1,44 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## Проблема
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+Фаза анализа визуалов (`analyze_visuals`) отправляет **все запросы одновременно** (строки 861-912: `analyzePromises` → `Promise.allSettled`). Для 9 уроков рабочих профессий это 9 одновременных запросов на 3 слота GigaChat → перегрузка и 429 ошибки.
 
-### Changes
+Текущий порядок уже правильный: структура → контент (по 3) → тесты → **анализ (все сразу!)** → изображения (по 3). Нужно просто исправить фазу анализа.
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+## Решение
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+**Файл: `src/components/admin/AdminMarketplaceManager.tsx`**
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+Заменить параллельный запуск всех `analyzePromises` через `Promise.allSettled` на **батчи по 3** с паузой между ними (аналогично тому, как уже сделано для контента и изображений):
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+```typescript
+// Было (строки 861-912):
+const analyzePromises = lessonsToEnrich.map(async (lesson, idx) => { ... });
+await Promise.allSettled(analyzePromises);
+
+// Станет:
+for (let i = 0; i < lessonsToEnrich.length; i += CONCURRENCY) {
+  const chunk = lessonsToEnrich.slice(i, i + CONCURRENCY);
+  if (i > 0) await new Promise(r => setTimeout(r, 5000)); // cooldown
+  const chunkPromises = chunk.map(async (lesson, idxInChunk) => {
+    const idx = i + idxInChunk;
+    // ... existing analysis logic ...
+  });
+  await Promise.allSettled(chunkPromises);
+}
+```
+
+Константа `CONCURRENCY = 3` уже определена выше. Пауза 5 секунд между батчами анализа (меньше чем у изображений, т.к. анализ — текстовый запрос, не такой тяжёлый).
+
+Итоговый порядок конвейера:
+
+```text
+1. Структура курса (1 запрос)
+2. Контент уроков — батчи по 3, последовательно
+3. Вопросы тестов — батчи по 3
+4. Решение тестов — батчи по 3
+5. Анализ визуалов — батчи по 3 (ИСПРАВЛЕНО)
+6. Генерация изображений — батчи по 3 с паузой 10с
+```
 
