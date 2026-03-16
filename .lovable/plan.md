@@ -1,18 +1,40 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## Диагноз
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+Проблема специфична для iPhone. На iOS клавиатура часто:
+1. **Автокапитализация** — первая буква логина становится заглавной (`Student_58708` вместо `student_58708`)
+2. **Автокоррекция** — может подставить пробелы или изменить текст
+3. **Автозаполнение** — добавляет пробел в конце
 
-### Changes
+В коде логин и пароль передаются **без `.trim()` и без `.toLowerCase()`** — на Android это не проблема (другое поведение клавиатуры), а на iPhone вызывает ошибку «Неверный логин или пароль».
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+## План исправления
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+### 1. Добавить `.trim()` и `.toLowerCase()` для логина во всех формах входа
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+**Файлы**: `src/pages/Login.tsx`, `src/pages/BrandedLogin.tsx`
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+- В `handleSubmit`: перед отправкой нормализовать `login.trim().toLowerCase()` и `password` (только `.trim()`, без lowercase)
+- В `signInEmail` построении: `${login.trim().toLowerCase()}@student.local`
+
+### 2. Отключить автокапитализацию и автокоррекцию на полях логина
+
+**Файлы**: `src/pages/Login.tsx`, `src/pages/BrandedLogin.tsx`
+
+Добавить HTML-атрибуты на `<Input>` для логина:
+```
+autoCapitalize="none"
+autoCorrect="off"
+autoComplete="username"
+spellCheck={false}
+```
+
+### 3. Добавить `.trim()` к паролю
+
+На iPhone автозаполнение иногда добавляет trailing space к паролю. Добавить `.trim()` при передаче пароля в `signIn()`.
+
+---
+
+Итого: 2 файла, минимальные изменения — нормализация ввода + iOS-атрибуты на полях.
 
