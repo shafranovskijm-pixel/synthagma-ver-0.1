@@ -112,12 +112,14 @@ const BrandedLogin = () => {
 
     setIsLoading(true);
     
-    let signInEmail = email;
+    let signInEmail = email.trim();
+    const cleanPassword = password.trim();
     
     if (loginMode === "login") {
+      const cleanLogin = login.trim().toLowerCase();
       // Verify login exists using secure RPC
       const { data: lookupResult, error: lookupError } = await supabase
-        .rpc('public_lookup_user_by_login', { login_input: login });
+        .rpc('public_lookup_user_by_login', { login_input: cleanLogin });
       
       if (lookupError || !lookupResult || lookupResult.length === 0) {
         toast({ title: "Ошибка входа", description: "Неверный логин или пароль", variant: "destructive" });
@@ -126,11 +128,10 @@ const BrandedLogin = () => {
       }
       
       // Always use standardized email format for login-based auth
-      // The auth.users email is always {login}@student.local
-      signInEmail = `${login}@student.local`;
+      signInEmail = `${cleanLogin}@student.local`;
     }
     
-    const { error } = await signIn(signInEmail, password);
+    const { error } = await signIn(signInEmail, cleanPassword);
     
     if (error) {
       toast({
