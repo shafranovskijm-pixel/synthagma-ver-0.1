@@ -240,6 +240,10 @@ const BrandedLogin = () => {
                     value={login}
                     onChange={(e) => setLogin(e.target.value)}
                     disabled={isLoading}
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    autoComplete="username"
                   />
                 </div>
               </div>
