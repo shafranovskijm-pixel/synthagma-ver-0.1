@@ -161,8 +161,15 @@ export function useStudentDashboard() {
     }
 
     const uid = effectiveUserId;
-    if (!uid) return;
+    if (!uid) { setLoading(false); return; }
     setLoading(true);
+
+    // Safety timeout: never show spinner for more than 15 seconds
+    const safetyTimer = setTimeout(() => {
+      console.warn('[StudentDashboard] Loading timeout reached, forcing display');
+      setLoading(false);
+    }, 15000);
+
     try {
       const { data: profileData } = await supabase.from("profiles").select("full_name, organization_id, organizations(name, branding, student_dashboard_settings, subscription_plan)").eq("user_id", uid).maybeSingle();
       let effectiveOrgId: string | null = profileData?.organization_id || null;
@@ -208,24 +215,43 @@ export function useStudentDashboard() {
 
       const { data: enrollments } = await supabase.from("enrollments").select("id, progress, status, time_spent, course_id, courses(id, title, description, duration, skip_video_identification)").eq("user_id", uid);
       if (enrollments) {
+        // Collect all course IDs first for batch queries (eliminates N+1 problem)
+        const validEnrollments = enrollments.filter(e => e.courses);
+        const allCourseIds = validEnrollments.map(e => (e.courses as any).id);
+
+        // Batch fetch: all lessons for all courses in one query
+        const { data: allLessons } = allCourseIds.length > 0
+          ? await supabase.from("lessons").select("id, course_id").in("course_id", allCourseIds)
+          : { data: [] as { id: string; course_id: string }[] };
+
+        // Batch fetch: all completed lesson progress for this user in one query
+        const allLessonIds = (allLessons || []).map(l => l.id);
+        const { data: allProgress } = allLessonIds.length > 0
+          ? await supabase.from("lesson_progress").select("lesson_id").eq("user_id", uid).in("lesson_id", allLessonIds).eq("completed", true)
+          : { data: [] as { lesson_id: string }[] };
+
+        // Build lookup maps for O(1) access
+        const lessonsByCourse = new Map<string, string[]>();
+        for (const lesson of allLessons || []) {
+          const list = lessonsByCourse.get(lesson.course_id) || [];
+          list.push(lesson.id);
+          lessonsByCourse.set(lesson.course_id, list);
+        }
+        const completedLessonIds = new Set((allProgress || []).map(p => p.lesson_id));
+
         const coursesData: StudentCourse[] = [];
         let totalTime = 0;
         let completedLessonsTotal = 0;
-        for (const enrollment of enrollments) {
+
+        for (const enrollment of validEnrollments) {
           const course = enrollment.courses as any;
-          if (!course) continue;
           totalTime += enrollment.time_spent || 0;
-          const { count: totalLessons } = await supabase.from("lessons").select("id", { count: "exact", head: true }).eq("course_id", course.id);
-          const { data: lessonIds } = await supabase.from("lessons").select("id").eq("course_id", course.id);
-          let completedLessons = 0;
-          if (lessonIds && lessonIds.length > 0) {
-            const { count } = await supabase.from("lesson_progress").select("id", { count: "exact", head: true }).eq("user_id", uid).in("lesson_id", lessonIds.map(l => l.id)).eq("completed", true);
-            completedLessons = count || 0;
-          }
+          const courseLessonIds = lessonsByCourse.get(course.id) || [];
+          const completedLessons = courseLessonIds.filter(id => completedLessonIds.has(id)).length;
           completedLessonsTotal += completedLessons;
           coursesData.push({
             id: course.id, title: course.title, description: course.description, duration: course.duration,
-            progress: Math.min(enrollment.progress || 0, 100), totalLessons: totalLessons || 0, completedLessons,
+            progress: Math.min(enrollment.progress || 0, 100), totalLessons: courseLessonIds.length, completedLessons,
             status: enrollment.status === "completed" ? "completed" : "in_progress",
             skip_video_identification: course.skip_video_identification || false
           });
@@ -246,7 +272,7 @@ export function useStudentDashboard() {
         const { data: videoId } = await supabase.from("video_identifications").select("status").eq("user_id", uid).eq("organization_id", effectiveOrgId).in("status", ["approved", "verified"]).order("created_at", { ascending: false }).limit(1).maybeSingle();
         setIsVideoIdentified(!!videoId);
       }
-    } catch (error) { console.error("Error loading data:", error); } finally { setLoading(false); }
+    } catch (error) { console.error("Error loading data:", error); } finally { clearTimeout(safetyTimer); setLoading(false); }
   };
 
   const handleLogout = async () => { await signOut(); navigate("/"); };
