@@ -80,13 +80,15 @@ const Login = () => {
 
     setIsLoading(true);
     
-    let signInEmail = email;
+    let signInEmail = email.trim();
+    const cleanPassword = password.trim();
     
     // If login mode, find the user's email by login
     if (loginMode === "login") {
+      const cleanLogin = login.trim().toLowerCase();
       // Use secure RPC to lookup user by login
       const { data: lookupResult, error: lookupError } = await supabase
-        .rpc('public_lookup_user_by_login', { login_input: login });
+        .rpc('public_lookup_user_by_login', { login_input: cleanLogin });
       
       if (lookupError || !lookupResult || lookupResult.length === 0) {
         toast({
@@ -99,11 +101,10 @@ const Login = () => {
       }
       
       // For login-based students, use the standardized email format
-      // The reset-student-password function ensures auth email matches this format
-      signInEmail = `${login}@student.local`;
+      signInEmail = `${cleanLogin}@student.local`;
     }
     
-    const { error } = await signIn(signInEmail, password);
+    const { error } = await signIn(signInEmail, cleanPassword);
     
     if (error) {
       toast({
