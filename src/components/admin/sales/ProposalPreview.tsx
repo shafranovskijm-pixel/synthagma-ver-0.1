@@ -282,7 +282,7 @@ export function ProposalPreview({ open, onClose, proposal, services, showActions
   };
 
   const handleCopyLink = () => {
-    const url = `${window.location.origin}/proposal/${proposal.id}`;
+    const url = `${getBaseUrl()}/proposal/${proposal.id}`;
     navigator.clipboard.writeText(url);
     toast({ title: 'Ссылка скопирована', description: url });
   };

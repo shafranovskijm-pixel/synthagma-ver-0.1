@@ -141,7 +141,7 @@ const Login = () => {
       const response = await safeInvoke<any>('send-password-reset', {
         body: {
           email: resetEmail,
-          redirectTo: `${window.location.origin}/reset-password`,
+          redirectTo: `${getBaseUrl()}/reset-password`,
         },
       });
 

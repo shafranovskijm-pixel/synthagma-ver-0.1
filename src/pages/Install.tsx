@@ -44,7 +44,7 @@ export default function Install() {
 
   const handleCopyLink = async () => {
     try {
-      await navigator.clipboard.writeText(window.location.origin + "/install");
+      await navigator.clipboard.writeText(getBaseUrl() + "/install");
       toast.success("Ссылка скопирована в буфер обмена");
     } catch {
       toast.error("Не удалось скопировать ссылку");

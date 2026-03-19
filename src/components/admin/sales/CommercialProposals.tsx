@@ -149,7 +149,7 @@ export function CommercialProposals() {
   };
 
   const copyLink = (p: CommercialProposal) => {
-    const url = `${window.location.origin}/proposal/${p.id}`;
+    const url = `${getBaseUrl()}/proposal/${p.id}`;
     navigator.clipboard.writeText(url);
     toast({ title: 'Ссылка скопирована', description: url });
   };
