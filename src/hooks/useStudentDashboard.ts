@@ -273,7 +273,38 @@ export function useStudentDashboard() {
         const { data: videoId } = await supabase.from("video_identifications").select("status").eq("user_id", uid).eq("organization_id", effectiveOrgId).in("status", ["approved", "verified"]).order("created_at", { ascending: false }).limit(1).maybeSingle();
         setIsVideoIdentified(!!videoId);
       }
-    } catch (error) { console.error("Error loading data:", error); } finally { clearTimeout(safetyTimer); setLoading(false); }
+
+      // Cache dashboard data for offline fallback
+      if (uid) {
+        cacheDashboardData(uid, {
+          courses: courses.length > 0 ? courses : [],
+          profile: profile,
+          branding: branding,
+          dashboardSettings: dashboardSettings,
+          totalTimeSpent: totalTimeSpent,
+          totalCompletedLessons: totalCompletedLessons,
+          documentsProgress: documentsProgress,
+        }).catch(() => {});
+      }
+    } catch (error) {
+      console.error("Error loading data:", error);
+      
+      // Try loading from cache as fallback
+      if (uid) {
+        const cached = await getCachedDashboardData(uid);
+        if (cached) {
+          console.log('[DashboardCache] Loading from offline cache');
+          setCourses(cached.courses || []);
+          if (cached.profile) setProfile(cached.profile);
+          if (cached.branding) setBranding(cached.branding);
+          if (cached.dashboardSettings) setDashboardSettings(cached.dashboardSettings);
+          setTotalTimeSpent(cached.totalTimeSpent || 0);
+          setTotalCompletedLessons(cached.totalCompletedLessons || 0);
+          setDocumentsProgress(cached.documentsProgress || { completed: 0, total: 3 });
+          toast.info('Загружены данные из кеша', { description: 'Данные могут быть устаревшими' });
+        }
+      }
+    } finally { clearTimeout(safetyTimer); setLoading(false); }
   };
 
   const handleLogout = async () => { await signOut(); navigate("/"); };
