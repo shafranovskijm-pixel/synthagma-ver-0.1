@@ -33,6 +33,7 @@ export function AdminSettings() {
   });
 
   const [isSaving, setIsSaving] = useState(false);
+  const [isResettingCache, setIsResettingCache] = useState(false);
   const [dbStats, setDbStats] = useState({
     totalOrgs: 0,
     totalUsers: 0,
