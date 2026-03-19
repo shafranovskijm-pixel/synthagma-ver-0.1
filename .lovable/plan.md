@@ -1,18 +1,46 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## Вкладка «Тестирование» в Активности студента
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+### Что будет сделано
 
-### Changes
+Во вкладке «Активность» карточки студента добавляется третий таб **«Тестирование»** рядом с «Заходы на курсы» и «Входы на платформу».
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+### Поведение
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+- Загружаются все `test_attempts` этого студента, обогащаются названиями тестов (из `lessons`) и курсов (из `courses`)
+- Каждая попытка показывает: название теста, курс, дату, результат в процентах, статус (пройден/не пройден) на основе `test_passing_score` урока
+- **Не пройден** — красный бейдж «Не пройден»
+- **Пройден** — зелёный бейдж с процентом, например «87%»
+- По клику на попытку — раскрывается детализация: список вопросов с ответами студента, правильными ответами, зелёная/красная подсветка
+- Кнопка **«Скачать PDF»** — генерирует PDF-отчёт по попытке с вопросами, ответами студента и правильными ответами
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+### Технический план
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+**1. Обновить `ActivityTab.tsx`**
+- Добавить третий таб «Тестирование» с иконкой `ClipboardCheck`
+- Загрузить `test_attempts` по `user_id`, обогатить данными из `lessons` (title, `test_passing_score`, course_id) и `courses` (title)
+- Загрузить `test_questions` для всех lesson_id из попыток
+
+**2. Создать компонент `TestAttemptDetail.tsx`**
+- Раскрывающаяся панель (Collapsible) с детализацией ответов
+- Для каждого вопроса: текст, варианты, ответ студента (красный/зелёный), правильный ответ
+- Использовать `shown_question_ids` для фильтрации показанных вопросов
+
+**3. Создать утилиту генерации PDF `testAttemptPdf.ts`**
+- Использовать библиотеку `jspdf` для генерации PDF
+- Содержимое: ФИО студента, курс, тест, дата, результат, таблица вопросов с ответами
+- Кнопка «Скачать PDF» на каждой попытке
+
+**4. Установить `jspdf`**
+- Добавить зависимость для генерации PDF на клиенте
+
+### Файлы
+
+| Файл | Действие |
+|------|----------|
+| `src/components/organization/student-detail/ActivityTab.tsx` | Обновить — добавить таб «Тестирование» и загрузку данных |
+| `src/components/organization/student-detail/TestAttemptDetail.tsx` | Создать — детализация попытки с вопросами/ответами |
+| `src/utils/testAttemptPdf.ts` | Создать — генерация PDF-отчёта |
+| `package.json` | Добавить `jspdf` |
 
