@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { ThemePersonalization } from "@/components/ui/ThemePersonalization";
 import { 
   Palette, ChevronRight, Database,
-  Shield, Bell, Loader2, Save, Globe, Tag, Sparkles, Settings
+  Shield, Bell, Loader2, Save, Globe, Tag, Sparkles, Settings, RefreshCw
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,6 +33,7 @@ export function AdminSettings() {
   });
 
   const [isSaving, setIsSaving] = useState(false);
+  const [isResettingCache, setIsResettingCache] = useState(false);
   const [dbStats, setDbStats] = useState({
     totalOrgs: 0,
     totalUsers: 0,
@@ -171,7 +172,49 @@ export function AdminSettings() {
         </div>
       </details>
 
-      {/* SEO Settings */}
+      {/* Cache Reset */}
+      <details className={cardClass}>
+        <summary className="p-4 lg:p-6 cursor-pointer list-none flex items-center justify-between">
+          <h3 className="font-display font-semibold text-base lg:text-lg flex items-center gap-2">
+            <div className="p-1.5 rounded-lg bg-red-500/10">
+              <RefreshCw className="w-4 h-4 lg:w-5 lg:h-5 text-red-500" />
+            </div>
+            Сброс кеша у пользователей
+          </h3>
+          <ChevronRight className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90" />
+        </summary>
+        <div className="px-4 lg:px-6 pb-4 lg:pb-6 space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Принудительно сбросить кеш PWA у всех пользователей. Используйте, если студенты видят устаревший интерфейс.
+          </p>
+          <Button
+            variant="destructive"
+            className="rounded-xl gap-2"
+            disabled={isResettingCache}
+            onClick={async () => {
+              setIsResettingCache(true);
+              try {
+                const newVersion = 'v' + Date.now();
+                const { error } = await supabase
+                  .from('app_settings')
+                  .update({ setting_value: newVersion, updated_at: new Date().toISOString() })
+                  .eq('setting_key', 'force_cache_version');
+                if (error) throw error;
+                toast.success('Кеш будет сброшен при следующей загрузке у всех пользователей');
+              } catch (error) {
+                console.error(error);
+                toast.error('Ошибка сброса кеша');
+              } finally {
+                setIsResettingCache(false);
+              }
+            }}
+          >
+            {isResettingCache ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+            Сбросить кеш у всех
+          </Button>
+        </div>
+      </details>
+
       <details className={cardClass}>
         <summary className="p-4 lg:p-6 cursor-pointer list-none flex items-center justify-between">
           <h3 className="font-display font-semibold text-base lg:text-lg flex items-center gap-2">

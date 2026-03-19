@@ -83,6 +83,31 @@
     <noscript><div><img src="https://mc.yandex.ru/watch/105216554" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
     <noscript><div><img src="https://mc.yandex.ru/watch/107590605" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
     <div id="root"></div>
+    <!-- Inline cache buster: runs BEFORE any cached JS -->
+    <script>
+      (function(){
+        var CACHE_VER = 'v2026-03-19';
+        var key = '__cache_ver';
+        if (localStorage.getItem(key) !== CACHE_VER) {
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(regs){
+              regs.forEach(function(r){ r.unregister(); });
+            });
+          }
+          if ('caches' in window) {
+            caches.keys().then(function(names){
+              names.forEach(function(n){ caches.delete(n); });
+            });
+          }
+          localStorage.setItem(key, CACHE_VER);
+          if (localStorage.getItem(key + '-init')) {
+            location.reload();
+            return;
+          }
+          localStorage.setItem(key + '-init', '1');
+        }
+      })();
+    </script>
     <!-- SW recovery: if app fails to render in 8s, unregister SW and reload -->
     <script>
       (function(){
