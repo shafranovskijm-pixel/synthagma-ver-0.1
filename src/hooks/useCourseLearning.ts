@@ -8,6 +8,8 @@ import { useElevenLabsTTS } from "@/hooks/useElevenLabsTTS";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
+import { cacheCourseData, getCachedCourseData } from "@/utils/courseCache";
+import { setupOfflineSyncListeners } from "@/utils/offlineSync";
 import { showLimitToast } from "@/utils/limitToast";
 import { ContentBlock, jsonToBlocks } from "@/components/course-builder/BlockEditor";
 import { generateAttestationProtocol } from "@/utils/generateAttestationProtocol";
