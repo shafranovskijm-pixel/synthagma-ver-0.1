@@ -137,6 +137,11 @@ export function AdminSidebar({
           <button onClick={() => handleTabClick("chats")} className={tabButtonClass("chats")}>
             <MessageSquare className="w-5 h-5" />
             Чаты
+            {unreadChats > 0 && (
+              <span className="ml-auto bg-destructive text-destructive-foreground text-xs font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1.5">
+                {unreadChats > 99 ? "99+" : unreadChats}
+              </span>
+            )}
           </button>
 
           {/* Dev Tools */}
