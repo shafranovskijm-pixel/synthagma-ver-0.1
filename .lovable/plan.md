@@ -1,18 +1,63 @@
 
 
-## Plan: Auto-fix after "Проверить все"
+## Офлайн-кеширование курсов для студентов
 
-Currently, "Проверить все" validates all courses and shows a toast with a "🔧 Исправить все ИИ" button requiring manual click. The user wants it to automatically trigger the fix when errors are found.
+### Проблема
+Kaspersky и корпоративные фаерволы блокируют запросы к `*.supabase.co`, из-за чего у ~5% студентов не загружаются курсы или разрывается сессия. Уже реализован `safeInvoke` с ретраями, но он не помогает при полной блокировке домена.
 
-### Changes
+### Решение
+Кешировать данные курсов (уроки, вопросы тестов, вложения) в `localStorage`/`IndexedDB` после первой успешной загрузки. При следующем входе — если БД недоступна, показывать курс из кеша. Организация может принудительно «запечь» курсы кнопкой.
 
-**File: `src/components/admin/AdminMarketplaceManager.tsx`** (lines 268-277)
+### Как это будет работать
 
-Replace the toast with action button by directly calling `handleBulkAutoFix(failedCourses)` when `errCount > 0`:
+**Для студента:**
+1. Студент открывает курс → данные загружаются из БД как обычно
+2. После успешной загрузки — курс, уроки, вопросы тестов, вложения (метаданные) сохраняются в IndexedDB
+3. При следующем открытии, если БД недоступна (таймаут/ошибка) — курс загружается из кеша, показывается бейдж «Офлайн-режим»
+4. В офлайн-режиме прогресс и ответы на тесты накапливаются локально и синхронизируются при восстановлении связи
 
-- Show an info toast saying validation found errors and auto-fix is starting
-- Immediately call `handleBulkAutoFix(failedCourses)` without waiting for user click
-- Keep the success toast when no errors are found
+**Для организации (опционально):**
+- Кнопка «Подготовить офлайн-версию» в настройках курса — принудительно подгружает все данные курса в кеш студентов при следующем входе
 
-This is a ~5-line change in the `handleBulkValidate` function, replacing the `toast.error` block (with action button) with a `toast.info` + direct `handleBulkAutoFix()` call.
+### Технический план
+
+**1. Создать утилиту кеширования `src/utils/courseCache.ts`**
+- Обёртка над IndexedDB (через `idb-keyval` или нативный API)
+- Методы: `cacheCourse(courseId, data)`, `getCachedCourse(courseId)`, `clearCourseCache(courseId)`
+- Структура: `{ course, lessons, testQuestions, lessonAttachments, cachedAt }`
+- TTL: 7 дней (автоочистка старых данных)
+
+**2. Обновить `src/hooks/useCourseLearning.ts`**
+- В `fetchCourseData()`: после успешной загрузки — вызвать `cacheCourse()`
+- При ошибке загрузки (после ретраев) — попробовать `getCachedCourse()`
+- Добавить состояние `isOfflineMode` для UI-индикации
+- В офлайн-режиме: отключить сохранение прогресса, показать предупреждение
+
+**3. Обновить `src/hooks/useStudentDashboard.ts`**
+- Кешировать список курсов и прогресс
+- При недоступности БД — показывать кешированный список
+
+**4. Создать компонент `OfflineBanner.tsx`**
+- Жёлтый баннер сверху страницы: «Офлайн-режим: данные могут быть устаревшими»
+
+**5. Добавить очередь отложенной синхронизации `src/utils/offlineSync.ts`**
+- При офлайне: прогресс уроков и ответы на тесты сохраняются в IndexedDB
+- При восстановлении связи — автоматическая синхронизация с БД
+
+### Файлы
+
+| Файл | Действие |
+|------|----------|
+| `src/utils/courseCache.ts` | Создать — IndexedDB обёртка для кеширования курсов |
+| `src/utils/offlineSync.ts` | Создать — очередь отложенных операций |
+| `src/hooks/useCourseLearning.ts` | Обновить — кеширование + fallback на кеш |
+| `src/hooks/useStudentDashboard.ts` | Обновить — кеширование списка курсов |
+| `src/components/student/OfflineBanner.tsx` | Создать — индикатор офлайн-режима |
+| `src/pages/CourseLearning.tsx` | Обновить — показать баннер при офлайне |
+
+### Ограничения
+- Видеоуроки не кешируются (только метаданные, ссылки)
+- Файловые вложения не кешируются (только ссылки)
+- AI-чат и TTS недоступны в офлайн-режиме
+- Прогресс синхронизируется при восстановлении связи, возможны конфликты (приоритет серверу)
 
