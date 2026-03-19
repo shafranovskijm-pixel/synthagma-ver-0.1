@@ -1,15 +1,26 @@
 
 
-## Plan: Offline course caching — IMPLEMENTED
+## Убрать цены со всех курсов в магазине
 
-Реализовано офлайн-кеширование курсов для студентов через IndexedDB. При блокировке Supabase антивирусами/фаерволами курсы загружаются из локального кеша.
+### Что делаем
+Одна SQL-миграция: обновляем все записи в `marketplace_courses`, выставляя `price_student = 0` и `price_organization = 0`.
 
-### Что создано
-- `src/utils/courseCache.ts` — IndexedDB обёртка для кеширования курсов и дашборда (TTL 7 дней)
-- `src/utils/offlineSync.ts` — очередь отложенной синхронизации прогресса
-- `src/components/student/OfflineBanner.tsx` — баннер «Офлайн-режим»
+### Почему этого достаточно
+Код уже корректно обрабатывает нулевые цены:
+- При `price_student === 0` показывается зелёный бейдж «Бесплатно» и кнопка «Получить» вместо «Купить»
+- В `CourseStoreManager.tsx` аналогично — при цене 0 отображается «БЕСПЛАТНО»
+- Никаких изменений в коде не требуется
 
-### Что обновлено
-- `src/hooks/useCourseLearning.ts` — кеширует курс после загрузки, fallback на кеш при ошибке
-- `src/hooks/useStudentDashboard.ts` — кеширует список курсов, fallback при ошибке
-- `src/pages/CourseLearning.tsx` — показывает OfflineBanner при офлайн-режиме
+### Техническая реализация
+
+**Миграция БД** — один запрос:
+```sql
+UPDATE public.marketplace_courses
+SET price_student = 0, price_organization = 0;
+```
+
+### Файлы
+| Файл | Действие |
+|------|----------|
+| Миграция БД | UPDATE всех цен на 0 |
+
