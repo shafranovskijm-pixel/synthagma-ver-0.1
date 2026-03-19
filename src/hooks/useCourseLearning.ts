@@ -86,6 +86,8 @@ export function useCourseLearning() {
   const [enrollmentId, setEnrollmentId] = useState<string | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
+  const [offlineCachedAt, setOfflineCachedAt] = useState<number | undefined>(undefined);
 
   // Tooltip state for mobile progress bar
   const [tooltipLesson, setTooltipLesson] = useState<{ index: number; title: string } | null>(null);
