@@ -214,6 +214,10 @@ export function useStudentDashboard() {
         setDashboardSettings({ showLibrary: s.showLibrary === true, showAchievements: s.showAchievements !== false, showAiChat: s.showAiChat !== false });
       }
 
+      let cachedCoursesData: StudentCourse[] = [];
+      let cachedTotalTime = 0;
+      let cachedCompletedLessonsTotal = 0;
+
       const { data: enrollments } = await supabase.from("enrollments").select("id, progress, status, time_spent, course_id, courses(id, title, description, duration, skip_video_identification)").eq("user_id", uid);
       if (enrollments) {
         // Collect all course IDs first for batch queries (eliminates N+1 problem)
@@ -240,26 +244,22 @@ export function useStudentDashboard() {
         }
         const completedLessonIds = new Set((allProgress || []).map(p => p.lesson_id));
 
-        const coursesData: StudentCourse[] = [];
-        let totalTime = 0;
-        let completedLessonsTotal = 0;
-
         for (const enrollment of validEnrollments) {
           const course = enrollment.courses as any;
-          totalTime += enrollment.time_spent || 0;
+          cachedTotalTime += enrollment.time_spent || 0;
           const courseLessonIds = lessonsByCourse.get(course.id) || [];
           const completedLessons = courseLessonIds.filter(id => completedLessonIds.has(id)).length;
-          completedLessonsTotal += completedLessons;
-          coursesData.push({
+          cachedCompletedLessonsTotal += completedLessons;
+          cachedCoursesData.push({
             id: course.id, title: course.title, description: course.description, duration: course.duration,
             progress: Math.min(enrollment.progress || 0, 100), totalLessons: courseLessonIds.length, completedLessons,
             status: enrollment.status === "completed" ? "completed" : "in_progress",
             skip_video_identification: course.skip_video_identification || false
           });
         }
-        setCourses(coursesData);
-        setTotalTimeSpent(totalTime);
-        setTotalCompletedLessons(completedLessonsTotal);
+        setCourses(cachedCoursesData);
+        setTotalTimeSpent(cachedTotalTime);
+        setTotalCompletedLessons(cachedCompletedLessonsTotal);
       }
 
       if (effectiveOrgId) {
