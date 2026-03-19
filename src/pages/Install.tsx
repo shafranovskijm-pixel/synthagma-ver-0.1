@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { getBaseUrl } from "@/utils/getBaseUrl";
 import { Helmet } from "react-helmet-async";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -44,7 +45,7 @@ export default function Install() {
 
   const handleCopyLink = async () => {
     try {
-      await navigator.clipboard.writeText(window.location.origin + "/install");
+      await navigator.clipboard.writeText(getBaseUrl() + "/install");
       toast.success("Ссылка скопирована в буфер обмена");
     } catch {
       toast.error("Не удалось скопировать ссылку");

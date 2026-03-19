@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { getBaseUrl } from "@/utils/getBaseUrl";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
@@ -58,7 +59,7 @@ export function CompanyLinksDialog({
   onDeleteLink,
 }: CompanyLinksDialogProps) {
   const copyLink = (token: string) => {
-    const url = `${window.location.origin}/join/${token}`;
+    const url = `${getBaseUrl()}/join/${token}`;
     navigator.clipboard.writeText(url);
     toast.success("Ссылка скопирована");
   };

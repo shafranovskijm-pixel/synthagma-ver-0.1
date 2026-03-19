@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { getBaseUrl } from "@/utils/getBaseUrl";
 import {
   Dialog,
   DialogContent,
@@ -168,7 +169,7 @@ export const RegistrationLinksManager = ({ organizationId }: Props) => {
   };
 
   const copyLink = (token: string) => {
-    const url = `${window.location.origin}/join/${token}`;
+    const url = `${getBaseUrl()}/join/${token}`;
     navigator.clipboard.writeText(url);
     toast({
       title: "Скопировано!",

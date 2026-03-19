@@ -3,6 +3,7 @@ import { X, Download, Link2, Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
+import { getBaseUrl } from '@/utils/getBaseUrl';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import type { CommercialProposal, ProposalServiceItem } from '@/hooks/useSalesManager';
@@ -281,7 +282,7 @@ export function ProposalPreview({ open, onClose, proposal, services, showActions
   };
 
   const handleCopyLink = () => {
-    const url = `${window.location.origin}/proposal/${proposal.id}`;
+    const url = `${getBaseUrl()}/proposal/${proposal.id}`;
     navigator.clipboard.writeText(url);
     toast({ title: 'Ссылка скопирована', description: url });
   };

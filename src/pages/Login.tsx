@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
+import { getBaseUrl } from "@/utils/getBaseUrl";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
@@ -141,7 +142,7 @@ const Login = () => {
       const response = await safeInvoke<any>('send-password-reset', {
         body: {
           email: resetEmail,
-          redirectTo: `${window.location.origin}/reset-password`,
+          redirectTo: `${getBaseUrl()}/reset-password`,
         },
       });
 

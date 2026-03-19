@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
+import { getBaseUrl } from "@/utils/getBaseUrl";
 import { Student } from "@/types/shared";
 import { generateLogin, generateSimplePassword } from "@/utils/credentials";
 
@@ -35,7 +36,7 @@ export function useStudentActions(
     }
     setIsSendingCredentials(true);
     try {
-      const text = `Здравствуйте!\n\nВаши данные для входа в систему обучения:\n\nЛогин: ${student.login}\nПароль: ${student.generated_password}\n\nСсылка для входа: ${window.location.origin}/login`;
+      const text = `Здравствуйте!\n\nВаши данные для входа в систему обучения:\n\nЛогин: ${student.login}\nПароль: ${student.generated_password}\n\nСсылка для входа: ${getBaseUrl()}/login`;
       await navigator.clipboard.writeText(text);
       toast.success("Сообщение с данными скопировано в буфер обмена.");
     } catch (error) {
@@ -63,7 +64,7 @@ export function useStudentActions(
           name: student.name,
           login: student.login,
           password: student.generated_password,
-          loginUrl: `${window.location.origin}/login`,
+          loginUrl: `${getBaseUrl()}/login`,
           organizationName
         }
       });
@@ -146,7 +147,7 @@ export function useStudentActions(
               name: student.name,
               login: student.login!,
               password: student.generated_password!,
-              loginUrl: `${window.location.origin}/login`,
+              loginUrl: `${getBaseUrl()}/login`,
               organizationName
             }
           });
@@ -209,7 +210,7 @@ export function useStudentActions(
       
       // Send emails if requested
       if (sendEmails && createdCredentials.length > 0) {
-        const loginUrl = `${window.location.origin}/login`;
+        const loginUrl = `${getBaseUrl()}/login`;
         
         for (const { student, login, password } of createdCredentials) {
           if (!student.email) continue;
@@ -318,7 +319,7 @@ export function useStudentActions(
               studentName: student.name,
               missingDocuments: student.missing,
               organizationName,
-              loginUrl: window.location.origin + "/login",
+              loginUrl: getBaseUrl() + "/login",
             },
           });
           if (response.error) throw response.error;

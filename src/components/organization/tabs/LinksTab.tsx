@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Link, Copy, Trash2, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { getBaseUrl } from "@/utils/getBaseUrl";
 
 interface RegistrationLink {
   id: string;
@@ -45,7 +46,7 @@ export function LinksTab({ organizationId, onCreateLinkClick }: LinksTabProps) {
   }, [organizationId]);
 
   const copyLinkToClipboard = (token: string) => {
-    const link = `${window.location.origin}/join/${token}`;
+    const link = `${getBaseUrl()}/join/${token}`;
     navigator.clipboard.writeText(link);
     toast.success("Ссылка скопирована");
   };

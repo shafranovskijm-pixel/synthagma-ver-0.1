@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { getBaseUrl } from "@/utils/getBaseUrl";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 
@@ -191,7 +192,7 @@ export function LoginBrandingSettings({
 
   const getLoginUrl = () => {
     if (!loginSlug) return '';
-    return `${window.location.origin}/login/${loginSlug}`;
+    return `${getBaseUrl()}/login/${loginSlug}`;
   };
 
   const copyLoginUrl = () => {
@@ -227,7 +228,7 @@ export function LoginBrandingSettings({
           <div className="flex-1">
             <div className="flex items-center">
               <span className="bg-muted px-3 h-10 flex items-center text-sm text-muted-foreground rounded-l-lg border border-r-0 border-border">
-                {window.location.origin}/login/
+                {getBaseUrl()}/login/
               </span>
               <Input
                 value={loginSlug}

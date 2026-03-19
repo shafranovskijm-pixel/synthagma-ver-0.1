@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { getBaseUrl } from '@/utils/getBaseUrl';
 import { Plus, Eye, Trash2, Send, FileText, Link2, Pencil, Loader2, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -96,7 +97,7 @@ function generateProposalEmailHtml(proposal: CommercialProposal, services: Propo
       <div style="border-top:1px solid #e5e7eb;padding-top:16px;font-size:13px;color:#6b7280">
         ${validUntil}
         <p>Дата: ${format(new Date(proposal.created_at), 'dd MMMM yyyy', { locale: ru })}</p>
-        <p style="margin-top:8px">Онлайн-версия: <a href="${window.location.origin}/proposal/${proposal.id}">${window.location.origin}/proposal/${proposal.id}</a></p>
+        <p style="margin-top:8px">Онлайн-версия: <a href="${getBaseUrl()}/proposal/${proposal.id}">${getBaseUrl()}/proposal/${proposal.id}</a></p>
       </div>
     </div>
   </body></html>`;
@@ -148,7 +149,7 @@ export function CommercialProposals() {
   };
 
   const copyLink = (p: CommercialProposal) => {
-    const url = `${window.location.origin}/proposal/${p.id}`;
+    const url = `${getBaseUrl()}/proposal/${p.id}`;
     navigator.clipboard.writeText(url);
     toast({ title: 'Ссылка скопирована', description: url });
   };

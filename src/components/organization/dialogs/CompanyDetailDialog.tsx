@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
+import { getBaseUrl } from "@/utils/getBaseUrl";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -724,8 +725,8 @@ function CompanyAccessTab({ company }: { company: Company }) {
             </div>
             <div className="flex items-center gap-2 p-3 rounded-xl bg-secondary/50 border">
               <span className="text-sm text-muted-foreground w-16">Ссылка:</span>
-              <span className="text-sm font-mono flex-1 truncate">{window.location.origin}/login</span>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => copyToClipboard(`${window.location.origin}/login`, "Ссылка")}>
+              <span className="text-sm font-mono flex-1 truncate">{getBaseUrl()}/login</span>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => copyToClipboard(`${getBaseUrl()}/login`, "Ссылка")}>
                 <Copy className="w-4 h-4" />
               </Button>
             </div>
