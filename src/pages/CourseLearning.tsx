@@ -185,6 +185,7 @@ const CourseLearning = () => {
           </div>
         </header>
 
+        {isOfflineMode && <OfflineBanner cachedAt={offlineCachedAt} />}
         <ScrollArea className="flex-1" ref={contentRef}>
           <div ref={swipeRef} className={cn("max-w-4xl mx-auto transition-all duration-300 min-h-full", isMobile ? "p-4" : "p-8", isTransitioning ? "opacity-0 translate-y-4" : "opacity-100 translate-y-0")}>
             {currentLesson?.type === 'text' && (
