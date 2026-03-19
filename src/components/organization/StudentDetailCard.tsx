@@ -111,7 +111,7 @@ export function StudentDetailCard({
                     <DocumentsTab h={h} />
                   </TabsContent>
                   <TabsContent value="activity" className="m-0">
-                    <ActivityTab userId={student.user_id} organizationId={organizationId} />
+                    <ActivityTab userId={student.user_id} organizationId={organizationId} studentName={student.name} />
                   </TabsContent>
                   <TabsContent value="chat" className="m-0">
                     {user && <ChatTab studentUserId={student.user_id} organizationId={organizationId} currentUserId={user.id} studentName={student.name} />}
