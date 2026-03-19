@@ -28,6 +28,7 @@ import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { VideoPlayerInline } from "@/components/course-learning/VideoPlayerInline";
 import { SliderLessonViewer } from "@/components/course-learning/SliderLessonViewer";
 import { useCourseLearning, getOptionText } from "@/hooks/useCourseLearning";
+import { OfflineBanner } from "@/components/student/OfflineBanner";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useState as useReactState } from "react";
 import { FilePreviewDialog } from "@/components/course-learning/FilePreviewDialog";
