@@ -281,12 +281,12 @@ export function useStudentDashboard() {
           return documentsProgress; // already set above via setDocumentsProgress
         })();
         cacheDashboardData(uid, {
-          courses: coursesData || [],
+          courses: cachedCoursesData,
           profile: profileData ? { full_name: profileData.full_name, organization_name: effectiveOrgName, organization_id: profileData.organization_id } : null,
           branding: effectiveBranding,
           dashboardSettings: effectiveDashboardSettings,
-          totalTimeSpent: totalTime || 0,
-          totalCompletedLessons: completedLessonsTotal || 0,
+          totalTimeSpent: cachedTotalTime,
+          totalCompletedLessons: cachedCompletedLessonsTotal,
           documentsProgress: docsProgress,
         }).catch(() => {});
       }
