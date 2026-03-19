@@ -319,7 +319,7 @@ export function useStudentActions(
               studentName: student.name,
               missingDocuments: student.missing,
               organizationName,
-              loginUrl: window.location.origin + "/login",
+              loginUrl: getBaseUrl() + "/login",
             },
           });
           if (response.error) throw response.error;

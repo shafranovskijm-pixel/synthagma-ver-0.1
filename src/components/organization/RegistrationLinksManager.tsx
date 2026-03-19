@@ -169,7 +169,7 @@ export const RegistrationLinksManager = ({ organizationId }: Props) => {
   };
 
   const copyLink = (token: string) => {
-    const url = `${window.location.origin}/join/${token}`;
+    const url = `${getBaseUrl()}/join/${token}`;
     navigator.clipboard.writeText(url);
     toast({
       title: "Скопировано!",
