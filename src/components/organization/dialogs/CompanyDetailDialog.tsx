@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
+import { getBaseUrl } from "@/utils/getBaseUrl";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
