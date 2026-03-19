@@ -40,6 +40,19 @@ async function purgeAllCaches() {
     }
   }
 
+  // Remote cache version check (admin-triggered forced refresh)
+  try {
+    const { checkRemoteCacheVersion } = await import('./utils/remoteCacheCheck');
+    const needsReload = await checkRemoteCacheVersion();
+    if (needsReload) {
+      await purgeAllCaches();
+      window.location.reload();
+      return;
+    }
+  } catch {
+    // Silently ignore — DB might be unreachable
+  }
+
   // Register new SW only on production
   if (!isNative && !isPreview && import.meta.env.PROD) {
     import('virtual:pwa-register').then(({ registerSW }) => {
