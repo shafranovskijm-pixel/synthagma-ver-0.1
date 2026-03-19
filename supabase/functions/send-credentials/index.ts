@@ -118,6 +118,7 @@ const handler = async (req: Request): Promise<Response> => {
       // Production custom domains (punycode format)
       /^https:\/\/xn--80aaiswd0ak\.xn--p1ai/, // синтагма.рф
       /^https:\/\/синтагма\.рф/, // Unicode format
+      /^https:\/\/(www\.)?sintagma\.com\.ru/, // sintagma.com.ru
     ];
     
     const isAllowedUrl = allowedPatterns.some(pattern => pattern.test(loginUrl));

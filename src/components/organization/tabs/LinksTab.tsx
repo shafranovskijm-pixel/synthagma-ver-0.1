@@ -46,7 +46,7 @@ export function LinksTab({ organizationId, onCreateLinkClick }: LinksTabProps) {
   }, [organizationId]);
 
   const copyLinkToClipboard = (token: string) => {
-    const link = `${window.location.origin}/join/${token}`;
+    const link = `${getBaseUrl()}/join/${token}`;
     navigator.clipboard.writeText(link);
     toast.success("Ссылка скопирована");
   };
