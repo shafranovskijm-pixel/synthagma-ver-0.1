@@ -4,6 +4,7 @@ import {
 } from "lucide-react";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { HelpButton } from "@/components/onboarding/HelpButton";
+import { useAdminUnreadChats } from "@/hooks/useAdminUnreadChats";
 
 export type AdminTabType = 
   | "analytics" 
