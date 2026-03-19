@@ -51,6 +51,7 @@ const CourseLearning = () => {
     goToNextLesson, goToPrevLesson, goToLesson, markLessonComplete, resetCourseProgress,
     submitTest, retryTest,
     getLessonIcon, lessonButtonRefs, lessonAttachments,
+    isOfflineMode, offlineCachedAt,
   } = useCourseLearning();
 
   const [previewFile, setPreviewFile] = useReactState<{ url: string; name: string; type: string | null } | null>(null);
