@@ -192,7 +192,7 @@ export function LoginBrandingSettings({
 
   const getLoginUrl = () => {
     if (!loginSlug) return '';
-    return `${window.location.origin}/login/${loginSlug}`;
+    return `${getBaseUrl()}/login/${loginSlug}`;
   };
 
   const copyLoginUrl = () => {
