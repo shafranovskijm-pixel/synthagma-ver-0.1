@@ -97,7 +97,7 @@ function generateProposalEmailHtml(proposal: CommercialProposal, services: Propo
       <div style="border-top:1px solid #e5e7eb;padding-top:16px;font-size:13px;color:#6b7280">
         ${validUntil}
         <p>Дата: ${format(new Date(proposal.created_at), 'dd MMMM yyyy', { locale: ru })}</p>
-        <p style="margin-top:8px">Онлайн-версия: <a href="${window.location.origin}/proposal/${proposal.id}">${window.location.origin}/proposal/${proposal.id}</a></p>
+        <p style="margin-top:8px">Онлайн-версия: <a href="${getBaseUrl()}/proposal/${proposal.id}">${getBaseUrl()}/proposal/${proposal.id}</a></p>
       </div>
     </div>
   </body></html>`;
