@@ -64,7 +64,7 @@ export function useStudentActions(
           name: student.name,
           login: student.login,
           password: student.generated_password,
-          loginUrl: `${window.location.origin}/login`,
+          loginUrl: `${getBaseUrl()}/login`,
           organizationName
         }
       });
