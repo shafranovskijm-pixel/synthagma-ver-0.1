@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { Clock, Monitor, BookOpen, Loader2 } from "lucide-react";
+import { Clock, Monitor, BookOpen, Loader2, ClipboardCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { TestAttemptDetail, type EnrichedTestAttempt, type QuestionData } from "./TestAttemptDetail";
 
 interface LoginRecord {
   id: string;
@@ -23,6 +24,7 @@ interface CourseAccessRecord {
 interface ActivityTabProps {
   userId: string;
   organizationId: string;
+  studentName?: string;
 }
 
 function parseUserAgent(ua: string | null): string {
@@ -35,9 +37,10 @@ function parseUserAgent(ua: string | null): string {
   return "🖥 Браузер";
 }
 
-export function ActivityTab({ userId, organizationId }: ActivityTabProps) {
+export function ActivityTab({ userId, organizationId, studentName }: ActivityTabProps) {
   const [history, setHistory] = useState<LoginRecord[]>([]);
   const [courseAccess, setCourseAccess] = useState<CourseAccessRecord[]>([]);
+  const [testAttempts, setTestAttempts] = useState<EnrichedTestAttempt[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -46,7 +49,7 @@ export function ActivityTab({ userId, organizationId }: ActivityTabProps) {
 
   const loadData = async () => {
     setIsLoading(true);
-    const [loginRes, accessRes] = await Promise.all([
+    const [loginRes, accessRes, attemptsRes] = await Promise.all([
       supabase
         .from("student_login_history")
         .select("*")
@@ -61,6 +64,12 @@ export function ActivityTab({ userId, organizationId }: ActivityTabProps) {
         .eq("organization_id", organizationId)
         .order("accessed_at", { ascending: false })
         .limit(50),
+      supabase
+        .from("test_attempts")
+        .select("id, lesson_id, score, max_score, completed_at, answers, shown_question_ids")
+        .eq("user_id", userId)
+        .order("completed_at", { ascending: false })
+        .limit(100),
     ]);
 
     setHistory((loginRes.data as LoginRecord[]) || []);
@@ -79,6 +88,86 @@ export function ActivityTab({ userId, organizationId }: ActivityTabProps) {
       });
     }
     setCourseAccess(accessData);
+
+    // Enrich test attempts
+    const rawAttempts = (attemptsRes.data || []) as any[];
+    if (rawAttempts.length > 0) {
+      const lessonIds = [...new Set(rawAttempts.map((a) => a.lesson_id))];
+      
+      const [lessonsRes, questionsRes] = await Promise.all([
+        supabase
+          .from("lessons")
+          .select("id, title, course_id, test_passing_score")
+          .in("id", lessonIds),
+        supabase
+          .from("test_questions")
+          .select("id, lesson_id, question, options, correct_answer, explanation, order_index")
+          .in("lesson_id", lessonIds)
+          .order("order_index", { ascending: true }),
+      ]);
+
+      const lessonMap = new Map((lessonsRes.data || []).map((l: any) => [l.id, l]));
+      const questionsByLesson = new Map<string, QuestionData[]>();
+      (questionsRes.data || []).forEach((q: any) => {
+        const list = questionsByLesson.get(q.lesson_id) || [];
+        list.push({
+          id: q.id,
+          question: q.question,
+          options: Array.isArray(q.options) ? q.options : [],
+          correct_answer: q.correct_answer,
+          explanation: q.explanation,
+        });
+        questionsByLesson.set(q.lesson_id, list);
+      });
+
+      // Get course titles
+      const courseIds = [...new Set((lessonsRes.data || []).map((l: any) => l.course_id).filter(Boolean))];
+      const { data: courses } = courseIds.length > 0
+        ? await supabase.from("courses").select("id, title").in("id", courseIds)
+        : { data: [] };
+      const courseMap = new Map((courses || []).map((c: any) => [c.id, c.title]));
+
+      // Filter attempts to only those belonging to org courses
+      const orgCourseIds = new Set(
+        (courses || [])
+          .map((c: any) => c.id)
+      );
+      
+      // We need to check org ownership - get org courses
+      const { data: orgCourses } = await supabase
+        .from("courses")
+        .select("id")
+        .eq("organization_id", organizationId)
+        .in("id", courseIds);
+      const orgCourseIdSet = new Set((orgCourses || []).map((c: any) => c.id));
+
+      const enriched: EnrichedTestAttempt[] = rawAttempts
+        .filter((a) => {
+          const lesson = lessonMap.get(a.lesson_id);
+          return lesson && orgCourseIdSet.has(lesson.course_id);
+        })
+        .map((a) => {
+          const lesson = lessonMap.get(a.lesson_id)!;
+          return {
+            id: a.id,
+            lesson_id: a.lesson_id,
+            lesson_title: lesson.title,
+            course_title: courseMap.get(lesson.course_id) || "Неизвестный курс",
+            score: a.score,
+            max_score: a.max_score,
+            completed_at: a.completed_at,
+            answers: (a.answers as Record<string, number>) || {},
+            shown_question_ids: a.shown_question_ids as string[] | null,
+            passing_score: lesson.test_passing_score || 60,
+            questions: questionsByLesson.get(a.lesson_id) || [],
+          };
+        });
+
+      setTestAttempts(enriched);
+    } else {
+      setTestAttempts([]);
+    }
+
     setIsLoading(false);
   };
 
@@ -96,6 +185,10 @@ export function ActivityTab({ userId, organizationId }: ActivityTabProps) {
         <TabsTrigger value="courses">
           <BookOpen className="w-4 h-4 mr-1.5" />
           Заходы на курсы ({courseAccess.length})
+        </TabsTrigger>
+        <TabsTrigger value="tests">
+          <ClipboardCheck className="w-4 h-4 mr-1.5" />
+          Тестирование ({testAttempts.length})
         </TabsTrigger>
         <TabsTrigger value="logins">
           <Monitor className="w-4 h-4 mr-1.5" />
@@ -131,6 +224,25 @@ export function ActivityTab({ userId, organizationId }: ActivityTabProps) {
                   </div>
                 </div>
               </div>
+            ))}
+          </div>
+        )}
+      </TabsContent>
+
+      <TabsContent value="tests">
+        {testAttempts.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            <ClipboardCheck className="w-10 h-10 mx-auto mb-3 opacity-50" />
+            <p>Нет записей о тестировании</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {testAttempts.map((attempt) => (
+              <TestAttemptDetail
+                key={attempt.id}
+                attempt={attempt}
+                studentName={studentName || "Студент"}
+              />
             ))}
           </div>
         )}
