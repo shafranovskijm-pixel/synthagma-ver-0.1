@@ -274,16 +274,20 @@ export function useStudentDashboard() {
         setIsVideoIdentified(!!videoId);
       }
 
-      // Cache dashboard data for offline fallback
+      // Cache dashboard data for offline fallback using local variables
       if (uid) {
+        const docsProgress = (() => {
+          if (!effectiveOrgId) return { completed: 0, total: 3 };
+          return documentsProgress; // already set above via setDocumentsProgress
+        })();
         cacheDashboardData(uid, {
-          courses: courses.length > 0 ? courses : [],
-          profile: profile,
-          branding: branding,
-          dashboardSettings: dashboardSettings,
-          totalTimeSpent: totalTimeSpent,
-          totalCompletedLessons: totalCompletedLessons,
-          documentsProgress: documentsProgress,
+          courses: coursesData || [],
+          profile: profileData ? { full_name: profileData.full_name, organization_name: effectiveOrgName, organization_id: profileData.organization_id } : null,
+          branding: effectiveBranding,
+          dashboardSettings: effectiveDashboardSettings,
+          totalTimeSpent: totalTime || 0,
+          totalCompletedLessons: completedLessonsTotal || 0,
+          documentsProgress: docsProgress,
         }).catch(() => {});
       }
     } catch (error) {
