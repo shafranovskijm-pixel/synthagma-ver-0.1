@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { getBaseUrl } from "@/utils/getBaseUrl";
 import { Helmet } from "react-helmet-async";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
