@@ -39,6 +39,8 @@ export function AdminSidebar({
   onLogout
 }: AdminSidebarProps) {
   
+  const unreadChats = useAdminUnreadChats();
+
   const handleTabClick = (tab: AdminTabType) => {
     setActiveTab(tab);
     setIsMobileSidebarOpen(false);
