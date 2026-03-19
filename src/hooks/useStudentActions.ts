@@ -36,7 +36,7 @@ export function useStudentActions(
     }
     setIsSendingCredentials(true);
     try {
-      const text = `Здравствуйте!\n\nВаши данные для входа в систему обучения:\n\nЛогин: ${student.login}\nПароль: ${student.generated_password}\n\nСсылка для входа: ${window.location.origin}/login`;
+      const text = `Здравствуйте!\n\nВаши данные для входа в систему обучения:\n\nЛогин: ${student.login}\nПароль: ${student.generated_password}\n\nСсылка для входа: ${getBaseUrl()}/login`;
       await navigator.clipboard.writeText(text);
       toast.success("Сообщение с данными скопировано в буфер обмена.");
     } catch (error) {
