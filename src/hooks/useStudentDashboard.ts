@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { supabase } from "@/integrations/supabase/client";
+import { cacheDashboardData, getCachedDashboardData } from "@/utils/courseCache";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
 import { useTheme } from "next-themes";
@@ -213,6 +214,10 @@ export function useStudentDashboard() {
         setDashboardSettings({ showLibrary: s.showLibrary === true, showAchievements: s.showAchievements !== false, showAiChat: s.showAiChat !== false });
       }
 
+      let cachedCoursesData: StudentCourse[] = [];
+      let cachedTotalTime = 0;
+      let cachedCompletedLessonsTotal = 0;
+
       const { data: enrollments } = await supabase.from("enrollments").select("id, progress, status, time_spent, course_id, courses(id, title, description, duration, skip_video_identification)").eq("user_id", uid);
       if (enrollments) {
         // Collect all course IDs first for batch queries (eliminates N+1 problem)
@@ -239,26 +244,22 @@ export function useStudentDashboard() {
         }
         const completedLessonIds = new Set((allProgress || []).map(p => p.lesson_id));
 
-        const coursesData: StudentCourse[] = [];
-        let totalTime = 0;
-        let completedLessonsTotal = 0;
-
         for (const enrollment of validEnrollments) {
           const course = enrollment.courses as any;
-          totalTime += enrollment.time_spent || 0;
+          cachedTotalTime += enrollment.time_spent || 0;
           const courseLessonIds = lessonsByCourse.get(course.id) || [];
           const completedLessons = courseLessonIds.filter(id => completedLessonIds.has(id)).length;
-          completedLessonsTotal += completedLessons;
-          coursesData.push({
+          cachedCompletedLessonsTotal += completedLessons;
+          cachedCoursesData.push({
             id: course.id, title: course.title, description: course.description, duration: course.duration,
             progress: Math.min(enrollment.progress || 0, 100), totalLessons: courseLessonIds.length, completedLessons,
             status: enrollment.status === "completed" ? "completed" : "in_progress",
             skip_video_identification: course.skip_video_identification || false
           });
         }
-        setCourses(coursesData);
-        setTotalTimeSpent(totalTime);
-        setTotalCompletedLessons(completedLessonsTotal);
+        setCourses(cachedCoursesData);
+        setTotalTimeSpent(cachedTotalTime);
+        setTotalCompletedLessons(cachedCompletedLessonsTotal);
       }
 
       if (effectiveOrgId) {
@@ -272,7 +273,42 @@ export function useStudentDashboard() {
         const { data: videoId } = await supabase.from("video_identifications").select("status").eq("user_id", uid).eq("organization_id", effectiveOrgId).in("status", ["approved", "verified"]).order("created_at", { ascending: false }).limit(1).maybeSingle();
         setIsVideoIdentified(!!videoId);
       }
-    } catch (error) { console.error("Error loading data:", error); } finally { clearTimeout(safetyTimer); setLoading(false); }
+
+      // Cache dashboard data for offline fallback using local variables
+      if (uid) {
+        const docsProgress = (() => {
+          if (!effectiveOrgId) return { completed: 0, total: 3 };
+          return documentsProgress; // already set above via setDocumentsProgress
+        })();
+        cacheDashboardData(uid, {
+          courses: cachedCoursesData,
+          profile: profileData ? { full_name: profileData.full_name, organization_name: effectiveOrgName, organization_id: profileData.organization_id } : null,
+          branding: effectiveBranding,
+          dashboardSettings: effectiveDashboardSettings,
+          totalTimeSpent: cachedTotalTime,
+          totalCompletedLessons: cachedCompletedLessonsTotal,
+          documentsProgress: docsProgress,
+        }).catch(() => {});
+      }
+    } catch (error) {
+      console.error("Error loading data:", error);
+      
+      // Try loading from cache as fallback
+      if (uid) {
+        const cached = await getCachedDashboardData(uid);
+        if (cached) {
+          console.log('[DashboardCache] Loading from offline cache');
+          setCourses(cached.courses || []);
+          if (cached.profile) setProfile(cached.profile);
+          if (cached.branding) setBranding(cached.branding);
+          if (cached.dashboardSettings) setDashboardSettings(cached.dashboardSettings);
+          setTotalTimeSpent(cached.totalTimeSpent || 0);
+          setTotalCompletedLessons(cached.totalCompletedLessons || 0);
+          setDocumentsProgress(cached.documentsProgress || { completed: 0, total: 3 });
+          toast.info('Загружены данные из кеша', { description: 'Данные могут быть устаревшими' });
+        }
+      }
+    } finally { clearTimeout(safetyTimer); setLoading(false); }
   };
 
   const handleLogout = async () => { await signOut(); navigate("/"); };

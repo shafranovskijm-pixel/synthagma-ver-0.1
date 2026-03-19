@@ -8,6 +8,8 @@ import { useElevenLabsTTS } from "@/hooks/useElevenLabsTTS";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { toast } from "sonner";
+import { cacheCourseData, getCachedCourseData } from "@/utils/courseCache";
+import { setupOfflineSyncListeners } from "@/utils/offlineSync";
 import { showLimitToast } from "@/utils/limitToast";
 import { ContentBlock, jsonToBlocks } from "@/components/course-builder/BlockEditor";
 import { generateAttestationProtocol } from "@/utils/generateAttestationProtocol";
@@ -84,6 +86,8 @@ export function useCourseLearning() {
   const [enrollmentId, setEnrollmentId] = useState<string | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
+  const [offlineCachedAt, setOfflineCachedAt] = useState<number | undefined>(undefined);
 
   // Tooltip state for mobile progress bar
   const [tooltipLesson, setTooltipLesson] = useState<{ index: number; title: string } | null>(null);
@@ -376,6 +380,12 @@ export function useCourseLearning() {
     }
   }, [currentLessonIndex, isMobile]);
 
+  // Setup offline sync listeners
+  useEffect(() => {
+    const cleanup = setupOfflineSyncListeners();
+    return cleanup;
+  }, []);
+
   const fetchCourseData = async () => {
     try {
       const [courseResult, lessonsResult, enrollmentResult] = await Promise.all([
@@ -386,6 +396,7 @@ export function useCourseLearning() {
       if (courseResult.error) throw courseResult.error;
       const courseData = courseResult.data;
       setCourse(courseData);
+      setIsOfflineMode(false);
 
       // Check video identification requirement
       if (courseData.skip_video_identification === false && user) {
@@ -422,6 +433,9 @@ export function useCourseLearning() {
       }
 
       const courseLessonIds = lessonsData.map((l: any) => l.id);
+      let progressData: any[] = [];
+      let attMap: Record<string, typeof lessonAttachments[string]> = {};
+      
       if (courseLessonIds.length > 0) {
         const [progressResult, attachmentsResult] = await Promise.all([
           supabase.from('lesson_progress').select('lesson_id, completed').eq('user_id', user!.id).in('lesson_id', courseLessonIds),
@@ -431,9 +445,9 @@ export function useCourseLearning() {
           console.error('Error fetching lesson attachments:', attachmentsResult.error);
         }
         console.log('Lesson attachments loaded:', attachmentsResult.data?.length || 0, 'items for', courseLessonIds.length, 'lessons');
-        setLessonProgress(progressResult.data || []);
+        progressData = progressResult.data || [];
+        setLessonProgress(progressData);
         // Group attachments by lesson_id
-        const attMap: Record<string, typeof lessonAttachments[string]> = {};
         for (const a of (attachmentsResult.data || [])) {
           if (!attMap[a.lesson_id]) attMap[a.lesson_id] = [];
           attMap[a.lesson_id].push({ id: a.id, name: a.name, file_url: a.file_url, file_type: a.file_type, file_size: a.file_size ? Number(a.file_size) : null, category: a.category });
@@ -442,9 +456,32 @@ export function useCourseLearning() {
       } else {
         setLessonProgress([]);
       }
+
+      // Cache course data to IndexedDB for offline fallback
+      if (courseId) {
+        cacheCourseData(courseId, courseData, lessonsData, progressData, attMap).catch(() => {});
+      }
     } catch (error) {
       console.error('Error fetching course:', error);
-      toast.error('Ошибка загрузки курса');
+      
+      // Try loading from cache as fallback
+      if (courseId) {
+        const cached = await getCachedCourseData(courseId);
+        if (cached) {
+          console.log('[CourseCache] Loading from offline cache');
+          setCourse(cached.course);
+          setLessons(cached.lessons);
+          setLessonProgress(cached.lessonProgress);
+          setLessonAttachments(cached.lessonAttachments);
+          setIsOfflineMode(true);
+          setOfflineCachedAt(cached.cachedAt);
+          toast.info('Загружена офлайн-версия курса', { description: 'Данные могут быть устаревшими' });
+        } else {
+          toast.error('Ошибка загрузки курса');
+        }
+      } else {
+        toast.error('Ошибка загрузки курса');
+      }
     } finally {
       setLoading(false);
     }
@@ -718,6 +755,7 @@ export function useCourseLearning() {
     // Core data
     course, lessons, currentLesson, currentLessonIndex, loading, enrollmentId,
     lessonProgress, completedCount, progressPercent, isMobile, user, courseId, lessonAttachments,
+    isOfflineMode, offlineCachedAt,
 
     // Navigation
     navigate, goToNextLesson, goToPrevLesson, goToLesson, isTransitioning,

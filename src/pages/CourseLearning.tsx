@@ -28,6 +28,7 @@ import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { VideoPlayerInline } from "@/components/course-learning/VideoPlayerInline";
 import { SliderLessonViewer } from "@/components/course-learning/SliderLessonViewer";
 import { useCourseLearning, getOptionText } from "@/hooks/useCourseLearning";
+import { OfflineBanner } from "@/components/student/OfflineBanner";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useState as useReactState } from "react";
 import { FilePreviewDialog } from "@/components/course-learning/FilePreviewDialog";
@@ -50,6 +51,7 @@ const CourseLearning = () => {
     goToNextLesson, goToPrevLesson, goToLesson, markLessonComplete, resetCourseProgress,
     submitTest, retryTest,
     getLessonIcon, lessonButtonRefs, lessonAttachments,
+    isOfflineMode, offlineCachedAt,
   } = useCourseLearning();
 
   const [previewFile, setPreviewFile] = useReactState<{ url: string; name: string; type: string | null } | null>(null);
@@ -183,6 +185,7 @@ const CourseLearning = () => {
           </div>
         </header>
 
+        {isOfflineMode && <OfflineBanner cachedAt={offlineCachedAt} />}
         <ScrollArea className="flex-1" ref={contentRef}>
           <div ref={swipeRef} className={cn("max-w-4xl mx-auto transition-all duration-300 min-h-full", isMobile ? "p-4" : "p-8", isTransitioning ? "opacity-0 translate-y-4" : "opacity-100 translate-y-0")}>
             {currentLesson?.type === 'text' && (
