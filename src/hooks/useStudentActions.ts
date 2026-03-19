@@ -210,7 +210,7 @@ export function useStudentActions(
       
       // Send emails if requested
       if (sendEmails && createdCredentials.length > 0) {
-        const loginUrl = `${window.location.origin}/login`;
+        const loginUrl = `${getBaseUrl()}/login`;
         
         for (const { student, login, password } of createdCredentials) {
           if (!student.email) continue;
