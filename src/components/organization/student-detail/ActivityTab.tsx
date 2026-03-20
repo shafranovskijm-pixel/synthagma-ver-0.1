@@ -113,7 +113,7 @@ export function ActivityTab({ userId, organizationId, studentName }: ActivityTab
         list.push({
           id: q.id,
           question: q.question,
-          options: Array.isArray(q.options) ? q.options : [],
+          options: Array.isArray(q.options) ? q.options.map((o: any) => typeof o === 'object' && o !== null ? o.text : String(o)) : [],
           correct_answer: q.correct_answer,
           explanation: q.explanation,
         });
