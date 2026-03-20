@@ -53,11 +53,11 @@ export function Footer() {
                 </div>
                 <span className="text-sm">8 (914) 721-34-24</span>
               </a>
-              <a href="tel:89243296290" className="flex items-center gap-3 text-background/60 hover:text-background transition-colors group">
+              <a href="tel:89247213424" className="flex items-center gap-3 text-background/60 hover:text-background transition-colors group">
                 <div className="w-9 h-9 rounded-lg bg-background/10 flex items-center justify-center group-hover:bg-background/15 transition-colors">
                   <Phone className="w-4 h-4" />
                 </div>
-                <span className="text-sm">8 (924) 329-62-90</span>
+                <span className="text-sm">8 (924) 721-34-24</span>
               </a>
             </div>
           </div>
