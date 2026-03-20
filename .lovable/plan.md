@@ -1,26 +1,25 @@
 
 
-## Убрать цены со всех курсов в магазине
+## Исправление ошибки React #31 в карточке ученика
 
-### Что делаем
-Одна SQL-миграция: обновляем все записи в `marketplace_courses`, выставляя `price_student = 0` и `price_organization = 0`.
+### Проблема
+В таблице `test_questions` поле `options` хранит массив объектов `{text: "..."}`, а не массив строк. Когда компонент `TestAttemptDetail` пытается отрендерить `{opt}` напрямую (строка 115), React получает объект вместо строки → ошибка #31 "Objects are not valid as a React child".
 
-### Почему этого достаточно
-Код уже корректно обрабатывает нулевые цены:
-- При `price_student === 0` показывается зелёный бейдж «Бесплатно» и кнопка «Получить» вместо «Купить»
-- В `CourseStoreManager.tsx` аналогично — при цене 0 отображается «БЕСПЛАТНО»
-- Никаких изменений в коде не требуется
+### Решение
+Исправить два файла:
 
-### Техническая реализация
+**1. `src/components/organization/student-detail/TestAttemptDetail.tsx`**
+- Строка 115: заменить `{opt}` на `{typeof opt === 'object' && opt !== null ? (opt as any).text : opt}`
+- Аналогично в строке 99 для `q.question` — добавить защиту на случай если вопрос тоже объект
 
-**Миграция БД** — один запрос:
-```sql
-UPDATE public.marketplace_courses
-SET price_student = 0, price_organization = 0;
-```
+**2. `src/components/organization/student-detail/ActivityTab.tsx`**
+- В строке 116, где формируются `options`, нормализовать: `options: Array.isArray(q.options) ? q.options.map((o: any) => typeof o === 'object' ? o.text : o) : []`
+
+Предпочтительнее нормализовать данные в ActivityTab при загрузке, чтобы TestAttemptDetail получал уже чистые строки.
 
 ### Файлы
-| Файл | Действие |
-|------|----------|
-| Миграция БД | UPDATE всех цен на 0 |
+| Файл | Изменение |
+|------|-----------|
+| `ActivityTab.tsx` | Нормализация options при загрузке данных |
+| `TestAttemptDetail.tsx` | Защитный рендеринг на случай объектов |
 
