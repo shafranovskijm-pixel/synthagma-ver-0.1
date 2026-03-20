@@ -2054,12 +2054,16 @@ function CalloutBlock({ block, onUpdate, courseTitle, lessonTitle, existingConte
       const { data, error } = await supabase.functions.invoke("generate-course-content", {
         body: { contentType: "callout", calloutType: block.type, lessonTitle: lessonTitle || "Общая тема", courseTitle: courseTitle || "Курс", existingContent },
       });
+      console.log("Callout AI response:", { data, error });
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
       if (data?.content) { onUpdate({ content: data.content }); await incrementAiLimitGlobal(); }
-    } catch (e) {
+      else throw new Error("Пустой ответ от сервера");
+    } catch (e: any) {
       console.error("Callout AI error:", e);
       const { toast } = await import("sonner");
-      toast.error("Ошибка генерации");
+      const msg = e?.message || "Неизвестная ошибка";
+      toast.error(msg.includes("429") ? "Лимит запросов, попробуйте позже" : `Ошибка генерации: ${msg.slice(0, 100)}`);
     } finally { setIsGenerating(false); }
   };
 
@@ -2084,12 +2088,16 @@ function HighlightBlock({ block, onUpdate, courseTitle, lessonTitle, existingCon
       const { data, error } = await supabase.functions.invoke("generate-course-content", {
         body: { contentType: "callout", calloutType: "highlight", lessonTitle: lessonTitle || "Общая тема", courseTitle: courseTitle || "Курс", existingContent },
       });
+      console.log("Highlight AI response:", { data, error });
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
       if (data?.content) { onUpdate({ content: data.content }); await incrementAiLimitGlobal(); }
-    } catch (e) {
+      else throw new Error("Пустой ответ от сервера");
+    } catch (e: any) {
       console.error("Highlight AI error:", e);
       const { toast } = await import("sonner");
-      toast.error("Ошибка генерации");
+      const msg = e?.message || "Неизвестная ошибка";
+      toast.error(msg.includes("429") ? "Лимит запросов, попробуйте позже" : `Ошибка генерации: ${msg.slice(0, 100)}`);
     } finally { setIsGenerating(false); }
   };
   return (
@@ -2118,15 +2126,18 @@ function AccordionBlock({ block, onUpdate, courseTitle, lessonTitle, existingCon
       const { data, error } = await supabase.functions.invoke("generate-course-content", {
         body: { contentType: "accordion", lessonTitle: lessonTitle || "Общая тема", courseTitle: courseTitle || "Курс", existingContent },
       });
+      console.log("Accordion AI response:", { data, error });
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
       if (data?.accordion) {
         onUpdate({ accordionTitle: data.accordion.title || block.accordionTitle, content: data.accordion.content || "" });
         await incrementAiLimitGlobal();
-      }
-    } catch (e) {
+      } else throw new Error("Пустой ответ от сервера");
+    } catch (e: any) {
       console.error("Accordion AI error:", e);
       const { toast } = await import("sonner");
-      toast.error("Ошибка генерации");
+      const msg = e?.message || "Неизвестная ошибка";
+      toast.error(msg.includes("429") ? "Лимит запросов, попробуйте позже" : `Ошибка генерации: ${msg.slice(0, 100)}`);
     } finally { setIsGenerating(false); }
   };
 
