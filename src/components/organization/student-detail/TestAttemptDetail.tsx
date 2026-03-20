@@ -112,7 +112,7 @@ export function TestAttemptDetail({ attempt, studentName }: TestAttemptDetailPro
                         {isStudentChoice && isCorrect && <CheckCircle2 className="w-3.5 h-3.5 inline mr-1.5" />}
                         {isStudentChoice && !isCorrect && <XCircle className="w-3.5 h-3.5 inline mr-1.5" />}
                         {!isStudentChoice && isCorrectOption && <CheckCircle2 className="w-3.5 h-3.5 inline mr-1.5 opacity-50" />}
-                        {opt}
+                        {typeof opt === 'object' && opt !== null ? (opt as any).text : opt}
                       </div>
                     );
                   })}
