@@ -448,6 +448,14 @@ const Login = () => {
               Зарегистрировать организацию
             </Link>
           </p>
+
+          <button
+            onClick={() => forceClientRefresh()}
+            className="flex items-center justify-center gap-1.5 mx-auto mt-6 text-xs text-muted-foreground hover:text-primary transition-colors"
+          >
+            <RefreshCw className="w-3 h-3" />
+            Обновить интерфейс
+          </button>
         </div>
       </div>
 
