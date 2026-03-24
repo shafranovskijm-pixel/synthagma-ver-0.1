@@ -1,0 +1,1 @@
+ALTER TABLE public.organizations ADD COLUMN IF NOT EXISTS menu_settings JSONB DEFAULT '{}'::jsonb;
