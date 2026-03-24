@@ -144,12 +144,25 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
     filteredCourses,
     create,
     update,
+    duplicate,
     createCat,
     updateCat,
     removeCat,
     refresh,
     updateCourseLocally,
   } = useCourses(organizationId);
+
+  const [isDuplicating, setIsDuplicating] = useState(false);
+
+  const handleDuplicate = async (courseId: string) => {
+    if (isDuplicating) return;
+    setIsDuplicating(true);
+    try {
+      await duplicate(courseId);
+    } finally {
+      setIsDuplicating(false);
+    }
+  };
 
   // Category dialog state
   const [showCategoryDialog, setShowCategoryDialog] = useState(false);
