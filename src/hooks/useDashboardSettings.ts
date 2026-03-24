@@ -20,6 +20,37 @@ interface MenuSettings {
   showFrdo?: boolean;
 }
 
+const defaultMenuSettings: MenuSettings = {
+  showStats: false,
+  showLinks: false,
+  showDocuments: false,
+  showLibrary: true,
+  showServices: true,
+  showCourses: true,
+  showCompanies: true,
+  showStudents: true,
+  showJournals: true,
+  showFrdo: true,
+};
+
+/** Ensures critical menu items are never accidentally hidden */
+function normalizeMenuSettings(raw: Record<string, unknown> | null | undefined): MenuSettings {
+  if (!raw || typeof raw !== 'object') return { ...defaultMenuSettings };
+  return {
+    showStats: raw.showStats === true,
+    showLinks: raw.showLinks === true,
+    showDocuments: raw.showDocuments === true,
+    showLibrary: raw.showLibrary !== false,
+    showServices: raw.showServices !== false,
+    // Critical items — always true unless explicitly set to false
+    showCourses: raw.showCourses !== false,
+    showCompanies: raw.showCompanies !== false,
+    showStudents: raw.showStudents !== false,
+    showJournals: raw.showJournals !== false,
+    showFrdo: raw.showFrdo !== false,
+  };
+}
+
 export function useDashboardSettings(organizationId: string | null) {
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -34,21 +65,7 @@ export function useDashboardSettings(organizationId: string | null) {
     showAiChat: true
   });
 
-  const defaultMenuSettings: MenuSettings = {
-    showStats: false,
-    showLinks: false,
-    showDocuments: false,
-    showLibrary: true,
-    showServices: true,
-    showCourses: true,
-    showCompanies: true,
-    showStudents: true,
-    showJournals: true,
-    showFrdo: true,
-  };
-
   const [menuSettings, setMenuSettings] = useState<MenuSettings>(defaultMenuSettings);
-
   const [isSavingSettings, setIsSavingSettings] = useState(false);
 
   // Load theme on mount
@@ -64,59 +81,73 @@ export function useDashboardSettings(organizationId: string | null) {
   }, []);
 
   // Load menu settings from DB (with localStorage migration)
-  useEffect(() => {
-    const loadMenuSettings = async () => {
-      if (!organizationId) return;
-      try {
-        const { data, error } = await supabase
-          .from('organizations')
-          .select('menu_settings')
-          .eq('id', organizationId)
-          .single();
-        if (error) throw error;
+  const loadMenuSettings = useCallback(async () => {
+    if (!organizationId) return;
+    try {
+      const { data, error } = await supabase
+        .from('organizations')
+        .select('menu_settings')
+        .eq('id', organizationId)
+        .single();
+      if (error) throw error;
 
-        if (data?.menu_settings && typeof data.menu_settings === 'object' && Object.keys(data.menu_settings as object).length > 0) {
-          const s = data.menu_settings as Record<string, unknown>;
-          setMenuSettings({
-            ...defaultMenuSettings,
-            showStats: s.showStats === true,
-            showLinks: s.showLinks === true,
-            showDocuments: s.showDocuments === true,
-            showLibrary: s.showLibrary !== false,
-            showServices: s.showServices !== false,
-            showCourses: s.showCourses !== false,
-            showCompanies: s.showCompanies !== false,
-            showStudents: s.showStudents !== false,
-            showJournals: s.showJournals !== false,
-            showFrdo: s.showFrdo !== false,
-          });
+      if (data?.menu_settings && typeof data.menu_settings === 'object' && Object.keys(data.menu_settings as object).length > 0) {
+        setMenuSettings(normalizeMenuSettings(data.menu_settings as Record<string, unknown>));
+      } else {
+        // Migrate from localStorage if DB is empty
+        const saved = localStorage.getItem('orgMenuSettings');
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            const migrated = normalizeMenuSettings(parsed);
+            setMenuSettings(migrated);
+            await supabase
+              .from('organizations')
+              .update({ menu_settings: migrated as any })
+              .eq('id', organizationId);
+            localStorage.removeItem('orgMenuSettings');
+          } catch (e) {
+            console.error('Error migrating menu settings:', e);
+          }
         } else {
-          // Migrate from localStorage if DB is empty
-          const saved = localStorage.getItem('orgMenuSettings');
-          if (saved) {
-            try {
-              const parsed = JSON.parse(saved);
-              const migrated = { ...defaultMenuSettings, ...parsed };
-              setMenuSettings(migrated);
-              // Save to DB
-              await supabase
-                .from('organizations')
-                .update({ menu_settings: migrated })
-                .eq('id', organizationId);
-              localStorage.removeItem('orgMenuSettings');
-            } catch (e) {
-              console.error('Error migrating menu settings:', e);
-            }
-          } else {
-            // No settings anywhere — use defaults (all visible)
-            setMenuSettings(defaultMenuSettings);
+          setMenuSettings({ ...defaultMenuSettings });
+        }
+      }
+    } catch (error) {
+      console.error('Error loading menu settings from DB:', error);
+    }
+  }, [organizationId]);
+
+  useEffect(() => {
+    loadMenuSettings();
+  }, [loadMenuSettings]);
+
+  // Realtime subscription for menu_settings changes
+  useEffect(() => {
+    if (!organizationId) return;
+
+    const channel = supabase
+      .channel(`org-menu-${organizationId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'organizations',
+          filter: `id=eq.${organizationId}`,
+        },
+        (payload) => {
+          const newSettings = (payload.new as any)?.menu_settings;
+          if (newSettings && typeof newSettings === 'object') {
+            setMenuSettings(normalizeMenuSettings(newSettings));
           }
         }
-      } catch (error) {
-        console.error('Error loading menu settings from DB:', error);
-      }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
     };
-    loadMenuSettings();
   }, [organizationId]);
 
   // Load student dashboard settings from organization
@@ -145,6 +176,26 @@ export function useDashboardSettings(organizationId: string | null) {
     loadStudentSettings();
   }, [organizationId]);
 
+  // Reload menu from DB (for manual refresh button)
+  const reloadMenuSettings = useCallback(async () => {
+    await loadMenuSettings();
+  }, [loadMenuSettings]);
+
+  // Reset menu to defaults and save to DB
+  const resetMenuSettings = useCallback(async () => {
+    if (!organizationId) return;
+    const defaults = { ...defaultMenuSettings };
+    setMenuSettings(defaults);
+    try {
+      await supabase
+        .from('organizations')
+        .update({ menu_settings: defaults as any })
+        .eq('id', organizationId);
+    } catch (error) {
+      console.error('Error resetting menu settings:', error);
+    }
+  }, [organizationId]);
+
   // Preview student dashboard
   const previewStudentDashboard = useCallback(() => {
     localStorage.setItem('previewStudentDashboard', 'true');
@@ -162,5 +213,7 @@ export function useDashboardSettings(organizationId: string | null) {
     isSavingSettings,
     setIsSavingSettings,
     previewStudentDashboard,
+    reloadMenuSettings,
+    resetMenuSettings,
   };
 }
