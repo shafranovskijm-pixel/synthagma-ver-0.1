@@ -451,11 +451,17 @@ const Login = () => {
 
           <button
             onClick={() => forceClientRefresh()}
-            className="flex items-center justify-center gap-1.5 mx-auto mt-6 text-xs text-muted-foreground hover:text-primary transition-colors"
+            className="flex items-center justify-center gap-2 mx-auto mt-6 px-4 py-2 text-sm text-muted-foreground hover:text-primary border border-border rounded-lg hover:border-primary/50 transition-all"
           >
-            <RefreshCw className="w-3 h-3" />
+            <RefreshCw className="w-4 h-4" />
             Обновить интерфейс
           </button>
+
+          {(window.location.hostname.includes('preview--') || window.location.hostname === 'localhost') && (
+            <p className="text-center text-[10px] text-muted-foreground/50 mt-3 font-mono">
+              build: {(window as any).__BUILD_VERSION__ || 'unknown'}
+            </p>
+          )}
         </div>
       </div>
 

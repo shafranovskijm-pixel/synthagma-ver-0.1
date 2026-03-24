@@ -3,14 +3,12 @@
  * clear version keys, and do a hard reload.
  */
 
-const RELOAD_GUARD_KEY = 'force-refresh-guard';
+const MANUAL_GUARD_KEY = '__manual_refresh_guard';
 
 export async function forceClientRefresh(): Promise<void> {
-  // Prevent infinite reload loops
-  const guard = sessionStorage.getItem(RELOAD_GUARD_KEY);
-  if (guard === 'pending') {
-    // Already did one forced reload this session — abort
-    sessionStorage.removeItem(RELOAD_GUARD_KEY);
+  // Prevent infinite reload loops — allow only once per session
+  if (sessionStorage.getItem(MANUAL_GUARD_KEY)) {
+    sessionStorage.removeItem(MANUAL_GUARD_KEY);
     return;
   }
 
@@ -28,13 +26,14 @@ export async function forceClientRefresh(): Promise<void> {
     await Promise.all(names.map(n => caches.delete(n)));
   }
 
-  // Clear version keys so main.tsx picks up the new build
+  // Clear all version/guard keys
   localStorage.removeItem('app-version');
   localStorage.removeItem('remote-cache-ver');
+  localStorage.removeItem('__asset_id');
 
   // Set guard before reload
-  sessionStorage.setItem(RELOAD_GUARD_KEY, 'pending');
+  sessionStorage.setItem(MANUAL_GUARD_KEY, '1');
 
-  // Hard reload (bypass browser cache)
+  // Hard reload
   window.location.reload();
 }
