@@ -1,6 +1,7 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, Navigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import { useAuth } from "@/hooks/useAuth";
 import {
   BookOpen, MessageCircle, Trophy, Settings, LogOut, Video, FileCheck, FileText,
   Menu, Sun, Moon, Monitor, CheckCircle2, Clock, Eye, Store,
