@@ -17,7 +17,7 @@ import {
   BookOpen, Users, Edit, Eye, Trash2, FolderOpen, Folder,
   ChevronDown, ChevronRight, MoreVertical, FolderPlus, 
   MoveRight, Pencil, Video, VideoOff, Lock, Unlock, FastForward,
-  Sparkles, ShoppingCart, GripVertical, CheckCircle, Palette, Play
+  Sparkles, ShoppingCart, GripVertical, CheckCircle, Palette, Play, Copy
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { useCourses } from "@/hooks/useCourses";
