@@ -8,7 +8,7 @@ import {
   Library, BarChart3, Link, ShoppingBag, Save, Settings, HardDrive,
   Trophy, MessageCircle, ChevronRight, Loader2, Upload,
   X, ExternalLink, Image, Eye, AlertCircle, LogIn, KeyRound,
-  Lock, ArrowUpRight
+  Lock, ArrowUpRight, RefreshCw, RotateCcw
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
