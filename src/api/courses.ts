@@ -175,7 +175,13 @@ export async function duplicateCourse(courseId: string): Promise<Course | null> 
       description: original.description,
       category_id: original.category_id,
       duration: original.duration,
-      is_published: false
+      is_published: false,
+      sequential_lessons: original.sequential_lessons,
+      allow_video_seek: original.allow_video_seek,
+      skip_video_identification: original.skip_video_identification,
+      training_form: original.training_form,
+      notify_on_completion: original.notify_on_completion,
+      completion_notify_emails: original.completion_notify_emails,
     })
     .select()
     .single();
@@ -190,16 +196,81 @@ export async function duplicateCourse(courseId: string): Promise<Course | null> 
     .order("order_index");
 
   if (lessons && lessons.length > 0) {
-    const newLessons = lessons.map(lesson => ({
-      course_id: newCourse.id,
-      title: lesson.title,
-      type: lesson.type,
-      content: lesson.content,
-      order_index: lesson.order_index,
-      test_questions_count: lesson.test_questions_count
-    }));
+    // Insert lessons one by one to get ID mapping
+    const lessonMapping: Record<string, string> = {};
 
-    await supabase.from("lessons").insert(newLessons);
+    for (const lesson of lessons) {
+      const { data: newLesson } = await supabase
+        .from("lessons")
+        .insert({
+          course_id: newCourse.id,
+          title: lesson.title,
+          type: lesson.type,
+          content: lesson.content,
+          order_index: lesson.order_index,
+          test_questions_count: lesson.test_questions_count,
+          test_passing_score: lesson.test_passing_score,
+          test_questions_to_show: lesson.test_questions_to_show,
+        })
+        .select("id")
+        .single();
+
+      if (newLesson) {
+        lessonMapping[lesson.id] = newLesson.id;
+      }
+    }
+
+    // Copy test questions for test-type lessons
+    const testLessons = lessons.filter(l => l.type === "test");
+    for (const lesson of testLessons) {
+      const newLessonId = lessonMapping[lesson.id];
+      if (!newLessonId) continue;
+
+      const { data: questions } = await supabase
+        .from("test_questions")
+        .select("*")
+        .eq("lesson_id", lesson.id);
+
+      if (questions && questions.length > 0) {
+        const newQuestions = questions.map(q => ({
+          lesson_id: newLessonId,
+          question: q.question,
+          options: q.options,
+          correct_answer: q.correct_answer,
+          order_index: q.order_index,
+          explanation: q.explanation,
+          image_url: q.image_url,
+          is_bank_question: q.is_bank_question,
+        }));
+
+        await supabase.from("test_questions").insert(newQuestions);
+      }
+    }
+
+    // Copy lesson attachments
+    for (const lesson of lessons) {
+      const newLessonId = lessonMapping[lesson.id];
+      if (!newLessonId) continue;
+
+      const { data: attachments } = await supabase
+        .from("lesson_attachments")
+        .select("*")
+        .eq("lesson_id", lesson.id);
+
+      if (attachments && attachments.length > 0) {
+        const newAttachments = attachments.map(a => ({
+          lesson_id: newLessonId,
+          name: a.name,
+          file_url: a.file_url,
+          file_type: a.file_type,
+          file_size: a.file_size,
+          category: a.category,
+          order_index: a.order_index,
+        }));
+
+        await supabase.from("lesson_attachments").insert(newAttachments);
+      }
+    }
   }
 
   return newCourse as Course;

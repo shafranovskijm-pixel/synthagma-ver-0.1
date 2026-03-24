@@ -17,7 +17,7 @@ import {
   BookOpen, Users, Edit, Eye, Trash2, FolderOpen, Folder,
   ChevronDown, ChevronRight, MoreVertical, FolderPlus, 
   MoveRight, Pencil, Video, VideoOff, Lock, Unlock, FastForward,
-  Sparkles, ShoppingCart, GripVertical, CheckCircle, Palette, Play
+  Sparkles, ShoppingCart, GripVertical, CheckCircle, Palette, Play, Copy
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { useCourses } from "@/hooks/useCourses";
@@ -144,12 +144,25 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
     filteredCourses,
     create,
     update,
+    duplicate,
     createCat,
     updateCat,
     removeCat,
     refresh,
     updateCourseLocally,
   } = useCourses(organizationId);
+
+  const [isDuplicating, setIsDuplicating] = useState(false);
+
+  const handleDuplicate = async (courseId: string) => {
+    if (isDuplicating) return;
+    setIsDuplicating(true);
+    try {
+      await duplicate(courseId);
+    } finally {
+      setIsDuplicating(false);
+    }
+  };
 
   // Category dialog state
   const [showCategoryDialog, setShowCategoryDialog] = useState(false);
@@ -569,6 +582,10 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
                         Просмотр
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={e => { e.stopPropagation(); handleDuplicate(course.id); }}>
+                        <Copy className="w-4 h-4 mr-2" />
+                        Дублировать курс
+                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={e => openMoveCourseDialog(course, e)}>
                         <MoveRight className="w-4 h-4 mr-2" />
                         Переместить в категорию
@@ -710,6 +727,10 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
                   Просмотр
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={e => { e.stopPropagation(); handleDuplicate(course.id); }}>
+                  <Copy className="w-4 h-4 mr-2" />
+                  Дублировать курс
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={e => openMoveCourseDialog(course, e)}>
                   <MoveRight className="w-4 h-4 mr-2" />
                   Переместить в категорию
