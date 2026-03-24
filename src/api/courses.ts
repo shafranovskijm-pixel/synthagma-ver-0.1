@@ -235,12 +235,12 @@ export async function duplicateCourse(courseId: string): Promise<Course | null> 
         const newQuestions = questions.map(q => ({
           lesson_id: newLessonId,
           question: q.question,
-          type: q.type,
           options: q.options,
           correct_answer: q.correct_answer,
           order_index: q.order_index,
-          points: q.points,
           explanation: q.explanation,
+          image_url: q.image_url,
+          is_bank_question: q.is_bank_question,
         }));
 
         await supabase.from("test_questions").insert(newQuestions);
