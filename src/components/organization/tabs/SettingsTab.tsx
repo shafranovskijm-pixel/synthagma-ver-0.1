@@ -257,10 +257,18 @@ export function SettingsTab() {
               </button>
             </div>
           </div>
-          <div className="mt-4 lg:mt-6 pt-3 lg:pt-4 border-t border-border">
-            <Button className="btn-gradient rounded-xl gap-2 w-full sm:w-auto text-sm" onClick={handleSaveMenuSettings}>
+          <div className="mt-4 lg:mt-6 pt-3 lg:pt-4 border-t border-border flex flex-wrap gap-2">
+            <Button className="btn-gradient rounded-xl gap-2 text-sm" onClick={handleSaveMenuSettings}>
               <Save className="w-4 h-4" />
-              Сохранить настройки меню
+              Сохранить
+            </Button>
+            <Button variant="outline" className="rounded-xl gap-2 text-sm" onClick={async () => { await reloadMenuSettings(); toast.success('Меню обновлено'); }}>
+              <RefreshCw className="w-4 h-4" />
+              Обновить меню
+            </Button>
+            <Button variant="ghost" className="rounded-xl gap-2 text-sm" onClick={async () => { await resetMenuSettings(); toast.success('Меню восстановлено по умолчанию'); }}>
+              <RotateCcw className="w-4 h-4" />
+              По умолчанию
             </Button>
           </div>
         </div>
