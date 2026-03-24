@@ -714,6 +714,10 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
                   Просмотр
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={e => { e.stopPropagation(); handleDuplicate(course.id); }}>
+                  <Copy className="w-4 h-4 mr-2" />
+                  Дублировать курс
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={e => openMoveCourseDialog(course, e)}>
                   <MoveRight className="w-4 h-4 mr-2" />
                   Переместить в категорию
