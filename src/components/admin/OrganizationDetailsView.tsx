@@ -1130,17 +1130,17 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
 
         {/* Settings Tab */}
         <TabsContent value="settings" className="space-y-6">
-          {credentials && (
-            <Card className={`${cardClass} border-primary/20`}>
-              <CardHeader className="pb-3">
-                <CardDescription className="flex items-center gap-1.5">
-                  <div className="p-1 rounded-md bg-primary/10">
-                    <KeyRound className="w-3 h-3 text-primary" />
-                  </div>
-                  Учётные данные организации
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pt-0">
+          <Card className={`${cardClass} border-primary/20`}>
+            <CardHeader className="pb-3">
+              <CardDescription className="flex items-center gap-1.5">
+                <div className="p-1 rounded-md bg-primary/10">
+                  <KeyRound className="w-3 h-3 text-primary" />
+                </div>
+                Учётные данные организации
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0">
+              {credentials ? (
                 <div className="flex flex-wrap items-center gap-4">
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-muted-foreground">Логин:</span>
@@ -1168,9 +1168,27 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                     </Button>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          )}
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Логин:</span>
+                    <code className="text-sm font-mono bg-muted px-2 py-0.5 rounded">{organization.email || "—"}</code>
+                    {organization.email && (
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
+                        navigator.clipboard.writeText(organization.email);
+                        toast.success("Email скопирован");
+                      }}>
+                        <Copy className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground italic">Пароль не сохранён в системе</span>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
           <Card className={cardClass}>
             <CardHeader>
               <CardTitle>Настройки организации</CardTitle>
