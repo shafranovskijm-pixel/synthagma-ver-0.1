@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="ru">
   <head>
-    <!-- cache-bust: 2026-03-07-v3 -->
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>СИНТАГМА — Система дистанционного обучения и документооборота организации</title>
@@ -19,15 +18,11 @@
     
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
-    
-    
    <meta property="og:image" content="https://storage.googleapis.com/gpt-engineer-file-uploads/PTpM50g6m7PLHlVz6xEAe06wJ5E3/social-images/social-1771917829613-ChatGPT_Image_24_февр._2026_г.,_17_23_19.webp">
    <meta property="og:url" content="https://synthagma-bloom.lovable.app/">
     
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
-    
-    
    <meta name="twitter:image" content="https://storage.googleapis.com/gpt-engineer-file-uploads/PTpM50g6m7PLHlVz6xEAe06wJ5E3/social-images/social-1771917829613-ChatGPT_Image_24_февр._2026_г.,_17_23_19.webp">
     
     <!-- Yandex.Metrika counter (only in web context) -->
@@ -42,7 +37,6 @@
         ym(105216554, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", referrer: document.referrer, url: location.href, accurateTrackBounce:true, trackLinks:true});
       }
     </script>
-    <!-- /Yandex.Metrika counter -->
     
     <!-- Second Yandex.Metrika counter -->
     <script type="text/javascript">
@@ -56,23 +50,7 @@
         ym(107590605, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", referrer: document.referrer, url: location.href, accurateTrackBounce:true, trackLinks:true});
       }
     </script>
-    <!-- /Second Yandex.Metrika counter -->
-    
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
+
   <meta property="og:title" content="СИНТАГМА — Система дистанционного обучения и документооборота организации">
   <meta name="twitter:title" content="СИНТАГМА — Система дистанционного обучения и документооборота организации">
   <meta property="og:description" content="Система дистанционного обучения и документооборота для организаций. Создавайте курсы, автоматизируйте документы, получайте аналитику. Соответствует 273-ФЗ.">
@@ -83,31 +61,51 @@
     <noscript><div><img src="https://mc.yandex.ru/watch/105216554" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
     <noscript><div><img src="https://mc.yandex.ru/watch/107590605" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
     <div id="root"></div>
-    <!-- Inline cache buster: runs BEFORE any cached JS -->
+
+    <!-- Robust cache/SW bootstrap: purge once per session in preview, purge on asset change in production -->
     <script>
       (function(){
-        var CACHE_VER = 'v2026-03-19';
-        var key = '__cache_ver';
-        if (localStorage.getItem(key) !== CACHE_VER) {
+        var isPreview = location.hostname.indexOf('preview--') !== -1 || location.hostname === 'localhost';
+        var scriptEl = document.querySelector('script[type="module"][src]');
+        var assetId = scriptEl ? scriptEl.getAttribute('src') : 'unknown';
+
+        function purgeAndReload(guardKey) {
+          var guard = '__purge_' + guardKey;
+          if (sessionStorage.getItem(guard)) return;
+          sessionStorage.setItem(guard, '1');
+
+          var tasks = [];
           if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(function(regs){
-              regs.forEach(function(r){ r.unregister(); });
-            });
+            tasks.push(
+              navigator.serviceWorker.getRegistrations().then(function(regs){
+                return Promise.all(regs.map(function(r){ return r.unregister(); }));
+              })
+            );
           }
           if ('caches' in window) {
-            caches.keys().then(function(names){
-              names.forEach(function(n){ caches.delete(n); });
-            });
+            tasks.push(
+              caches.keys().then(function(names){
+                return Promise.all(names.map(function(n){ return caches.delete(n); }));
+              })
+            );
           }
-          localStorage.setItem(key, CACHE_VER);
-          if (localStorage.getItem(key + '-init')) {
-            location.reload();
-            return;
+          Promise.all(tasks).then(function(){ location.reload(); }).catch(function(){ location.reload(); });
+        }
+
+        if (isPreview) {
+          purgeAndReload('preview-session');
+        } else {
+          var storedAsset = localStorage.getItem('__asset_id');
+          if (storedAsset && storedAsset !== assetId) {
+            localStorage.setItem('__asset_id', assetId);
+            purgeAndReload('asset-' + assetId);
+          } else {
+            localStorage.setItem('__asset_id', assetId);
           }
-          localStorage.setItem(key + '-init', '1');
         }
       })();
     </script>
+
     <!-- SW recovery: if app fails to render in 8s, unregister SW and reload -->
     <script>
       (function(){
