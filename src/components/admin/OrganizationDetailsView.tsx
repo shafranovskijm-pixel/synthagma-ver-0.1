@@ -164,6 +164,8 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
   const [isSaving, setIsSaving] = useState(false);
   const [credentials, setCredentials] = useState<{ login_email: string; login_password: string } | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [generatingCredentials, setGeneratingCredentials] = useState(false);
+  const [resettingPassword, setResettingPassword] = useState(false);
 
   const planKey = (organization.subscription_plan as SubscriptionPlan) || 'free';
   const planInfo = getPlanInfo(planKey);
