@@ -164,6 +164,8 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
   const [isSaving, setIsSaving] = useState(false);
   const [credentials, setCredentials] = useState<{ login_email: string; login_password: string } | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [generatingCredentials, setGeneratingCredentials] = useState(false);
+  const [resettingPassword, setResettingPassword] = useState(false);
 
   const planKey = (organization.subscription_plan as SubscriptionPlan) || 'free';
   const planInfo = getPlanInfo(planKey);
@@ -1141,32 +1143,62 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
             </CardHeader>
             <CardContent className="pt-0">
               {credentials ? (
-                <div className="flex flex-wrap items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">Логин:</span>
-                    <code className="text-sm font-mono bg-muted px-2 py-0.5 rounded">{credentials.login_email}</code>
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
-                      navigator.clipboard.writeText(credentials.login_email);
-                      toast.success("Логин скопирован");
-                    }}>
-                      <Copy className="w-3.5 h-3.5" />
-                    </Button>
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">Логин:</span>
+                      <code className="text-sm font-mono bg-muted px-2 py-0.5 rounded">{credentials.login_email}</code>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
+                        navigator.clipboard.writeText(credentials.login_email);
+                        toast.success("Логин скопирован");
+                      }}>
+                        <Copy className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">Пароль:</span>
+                      <code className="text-sm font-mono bg-muted px-2 py-0.5 rounded">
+                        {showPassword ? credentials.login_password : "••••••••"}
+                      </code>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowPassword(!showPassword)}>
+                        {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
+                        navigator.clipboard.writeText(credentials.login_password);
+                        toast.success("Пароль скопирован");
+                      }}>
+                        <Copy className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">Пароль:</span>
-                    <code className="text-sm font-mono bg-muted px-2 py-0.5 rounded">
-                      {showPassword ? credentials.login_password : "••••••••"}
-                    </code>
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowPassword(!showPassword)}>
-                      {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
-                      navigator.clipboard.writeText(credentials.login_password);
-                      toast.success("Пароль скопирован");
-                    }}>
-                      <Copy className="w-3.5 h-3.5" />
-                    </Button>
-                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={resettingPassword}
+                    onClick={async () => {
+                      setResettingPassword(true);
+                      try {
+                        const { data, error } = await supabase.functions.invoke("reset-org-password", {
+                          body: { organization_id: organization.id }
+                        });
+                        if (error) throw error;
+                        toast.success("Пароль сброшен");
+                        // Reload credentials
+                        const { data: newCreds } = await supabase.rpc('get_decrypted_org_credentials', { p_organization_id: organization.id });
+                        if (newCreds && newCreds.length > 0) {
+                          setCredentials(newCreds[0]);
+                        }
+                      } catch (err: any) {
+                        console.error("Reset password error:", err);
+                        toast.error("Ошибка сброса пароля");
+                      } finally {
+                        setResettingPassword(false);
+                      }
+                    }}
+                  >
+                    {resettingPassword ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <KeyRound className="w-3.5 h-3.5 mr-1.5" />}
+                    Сбросить пароль
+                  </Button>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -1185,6 +1217,34 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-muted-foreground italic">Пароль не сохранён в системе</span>
                   </div>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    disabled={generatingCredentials}
+                    onClick={async () => {
+                      setGeneratingCredentials(true);
+                      try {
+                        const { data, error } = await supabase.functions.invoke("generate-org-credentials", {
+                          body: { organization_id: organization.id }
+                        });
+                        if (error) throw error;
+                        toast.success(`Учётные данные созданы: ${data.login_email}`);
+                        // Reload credentials
+                        const { data: newCreds } = await supabase.rpc('get_decrypted_org_credentials', { p_organization_id: organization.id });
+                        if (newCreds && newCreds.length > 0) {
+                          setCredentials(newCreds[0]);
+                        }
+                      } catch (err: any) {
+                        console.error("Generate credentials error:", err);
+                        toast.error("Ошибка генерации учётных данных");
+                      } finally {
+                        setGeneratingCredentials(false);
+                      }
+                    }}
+                  >
+                    {generatingCredentials ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <KeyRound className="w-3.5 h-3.5 mr-1.5" />}
+                    Сгенерировать учётные данные
+                  </Button>
                 </div>
               )}
             </CardContent>
