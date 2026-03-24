@@ -2670,6 +2670,7 @@ export type Database = {
           legal_address: string | null
           login_branding: Json | null
           login_slug: string | null
+          menu_settings: Json | null
           monthly_price: number | null
           name: string
           notify_on_limit_80: boolean
@@ -2714,6 +2715,7 @@ export type Database = {
           legal_address?: string | null
           login_branding?: Json | null
           login_slug?: string | null
+          menu_settings?: Json | null
           monthly_price?: number | null
           name: string
           notify_on_limit_80?: boolean
@@ -2758,6 +2760,7 @@ export type Database = {
           legal_address?: string | null
           login_branding?: Json | null
           login_slug?: string | null
+          menu_settings?: Json | null
           monthly_price?: number | null
           name?: string
           notify_on_limit_80?: boolean

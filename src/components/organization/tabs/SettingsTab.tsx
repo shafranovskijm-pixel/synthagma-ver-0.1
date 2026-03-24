@@ -96,9 +96,17 @@ export function SettingsTab() {
     }
   };
 
-  const handleSaveMenuSettings = () => {
+  const handleSaveMenuSettings = async () => {
+    if (!organizationId) {
+      toast.error('Организация не найдена');
+      return;
+    }
     try {
-      localStorage.setItem('orgMenuSettings', JSON.stringify(menuSettings));
+      const { error } = await supabase
+        .from('organizations')
+        .update({ menu_settings: menuSettings as any })
+        .eq('id', organizationId);
+      if (error) throw error;
       toast.success('Настройки меню сохранены');
     } catch (error) {
       console.error('Error saving menu settings:', error);
