@@ -34,6 +34,8 @@ export function SettingsTab() {
     studentDashboardSettings, setStudentDashboardSettings,
     isSavingSettings, setIsSavingSettings,
     previewStudentDashboard,
+    reloadMenuSettings,
+    resetMenuSettings,
   } = d.dashboardSettings;
   const {
     brandingSettings, setBrandingSettings,
