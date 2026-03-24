@@ -28,6 +28,7 @@ import { StudentOrgChat } from "@/components/student/StudentOrgChat";
 
 export default function StudentDashboard() {
   const [chatMode, setChatMode] = useState<'select' | 'org' | 'ai'>('select');
+  const { userRole } = useAuth();
   const {
     user, navigate, isMobile, theme, setTheme,
     activeTab, setActiveTab, messages, inputValue, setInputValue, isAiLoading, handleSendMessage,
@@ -42,6 +43,14 @@ export default function StudentDashboard() {
   } = useStudentDashboard();
 
   const isFreePlan = orgPlan === 'free';
+
+  // Redirect non-student users to their dashboards
+  if (userRole && userRole !== 'student' && !isAdminView) {
+    if (userRole === 'organization') return <Navigate to="/organization" replace />;
+    if (userRole === 'company') return <Navigate to="/company" replace />;
+    if (userRole === 'admin') return <Navigate to="/admin" replace />;
+    if (userRole === 'sales_manager') return <Navigate to="/sales" replace />;
+  }
 
   if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
 
