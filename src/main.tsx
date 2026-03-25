@@ -14,8 +14,8 @@ const currentVersion = typeof __BUILD_TIMESTAMP__ !== 'undefined' ? __BUILD_TIME
 // Expose build version globally for diagnostics
 (window as any).__BUILD_VERSION__ = currentVersion;
 
-// Skip build-version reload if bootstrap already did a URL-marker reload
-const bootstrapJustReloaded = isPreview && window.location.search.includes('__preview_refresh=1');
+// Skip build-version reload if bootstrap already did a session-guard reload
+const bootstrapJustReloaded = isPreview && sessionStorage.getItem('__purge_preview_session') === '1';
 
 async function purgeAllCaches() {
   if ('caches' in window) {
