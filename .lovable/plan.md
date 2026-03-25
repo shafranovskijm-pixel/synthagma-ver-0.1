@@ -1,31 +1,27 @@
 
 
-## Исправить белый экран на sintagma.com.ru
+## Добавить редирект с синтагма.рф в main.tsx
 
-### Причина
-В последнем изменении `index.html` статический тег `<script type="module" src="/src/main.tsx">` был заменён на динамическое создание скрипта (строки 170-178). Vite при сборке трансформирует только статические теги — динамически созданные скрипты он не обрабатывает. На продакшене браузер пытается загрузить `/src/main.tsx` (dev-путь), файл не найден, приложение не запускается.
+Редирект в `index.html` есть, но SW на кириллическом домене кеширует старый HTML без него. Нужно добавить редирект в `src/main.tsx` — JS-бандл обновляется независимо от HTML.
 
-### Решение
+### Изменение
 
-**1. Вернуть статический entry-скрипт в `index.html`**
+**`src/main.tsx`** — добавить после строки 3 (`import "./index.css"`) и до строки 5 (`declare const __BUILD_TIMESTAMP__`):
 
-Заменить динамический блок (строки 170-178) на обычный статический тег, который Vite умеет обрабатывать:
-
-```html
-<script type="module" src="/src/main.tsx"></script>
+```typescript
+// Redirect from Cyrillic domain to primary domain (bypasses stale SW cache)
+const CYRILLIC_DOMAINS = ['xn--80aaiswd0ak.xn--p1ai', 'www.xn--80aaiswd0ak.xn--p1ai'];
+if (CYRILLIC_DOMAINS.includes(window.location.hostname)) {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister()));
+  }
+  if ('caches' in window) {
+    caches.keys().then(names => names.forEach(n => caches.delete(n)));
+  }
+  window.location.replace('https://sintagma.com.ru' + window.location.pathname + window.location.search + window.location.hash);
+  throw new Error('Redirecting to primary domain');
+}
 ```
 
-Кеш-бастинг для preview не нужен через динамический скрипт — Vite dev server и так отдаёт актуальные модули. В production Vite автоматически заменит путь на хешированный бандл.
-
-**2. Упростить preview-bootstrap (строки 97-114)**
-
-Текущая логика preview с URL-маркером `__preview_refresh=1` добавляет ненужную сложность и может вызывать проблемы. Заменить на простой session-guard без URL-манипуляций:
-- Один раз за сессию очистить SW/cache и сделать reload
-- Guard через `sessionStorage` предотвращает циклы
-
-### Файлы
-| Файл | Изменение |
-|------|-----------|
-| `index.html` | Убрать динамическое создание скрипта (строки 170-178), вернуть статический `<script type="module" src="/src/main.tsx">`. Упростить preview-bootstrap |
-| `src/main.tsx` | Убрать проверку `__preview_refresh=1` в URL (строка 18), т.к. URL-маркер больше не используется |
+Один файл, одно изменение. Остальной код без изменений.
 
