@@ -95,22 +95,10 @@
         }
 
         if (isPreview) {
-          // URL-marker approach: purge & reload once, then remove marker
-          var search = location.search || '';
-          if (search.indexOf('__preview_refresh=1') === -1) {
-            purgeAll().then(function(){
-              var sep = search ? search + '&' : '?';
-              location.replace(location.pathname + sep + '__preview_refresh=1' + location.hash);
-            }).catch(function(){
-              location.reload();
-            });
-          } else {
-            // Remove the marker from URL so next navigation can refresh again
-            try {
-              var clean = location.pathname + location.search.replace(/[?&]__preview_refresh=1/, '').replace(/^\&/, '?') + location.hash;
-              if (clean.indexOf('?') === -1) clean = clean.replace('&', '?');
-              history.replaceState(null, '', clean || location.pathname);
-            } catch(e) {}
+          var guard = '__purge_preview_session';
+          if (!sessionStorage.getItem(guard)) {
+            sessionStorage.setItem(guard, '1');
+            purgeAll().then(function(){ location.reload(); }).catch(function(){ location.reload(); });
           }
         } else {
           // Production: reload on asset change
@@ -167,15 +155,6 @@
         if (root) observer.observe(root, { childList: true });
       })();
     </script>
-    <script>
-      // Cache-bust the entry module in preview mode
-      (function(){
-        var isPreview = location.hostname.indexOf('preview--') !== -1 || location.hostname === 'localhost';
-        var s = document.createElement('script');
-        s.type = 'module';
-        s.src = '/src/main.tsx' + (isPreview ? '?v=' + Date.now() : '');
-        document.body.appendChild(s);
-      })();
-    </script>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
