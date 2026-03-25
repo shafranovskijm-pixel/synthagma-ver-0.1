@@ -1,39 +1,26 @@
 
 
-## Исправить вход студентов с брендированной страницы
+## Редирект с синтагма.рф на sintagma.com.ru
 
-### Проблема
-В RPC `public_lookup_user_by_login` сравнение логина **регистрозависимое** (`WHERE p.login = login_input`). В базе у многих студентов логин хранится с заглавной буквы (например `Sgt104680`), а код на клиенте приводит ввод к нижнему регистру (`sgt104680`). Результат: поиск не находит профиль → ошибка «Неверный логин или пароль».
+### Суть
+Добавить в `index.html` (в самое начало, до любой другой логики) проверку домена: если текущий hostname — это `xn--80aaiswd0ak.xn--p1ai` (punycode для `синтагма.рф`), сразу делать `window.location.replace` на `https://sintagma.com.ru` с сохранением пути и параметров.
 
-На обычной странице входа (Login.tsx) по умолчанию открыта вкладка «email», поэтому студенты входят по email и проблема не проявляется. На брендированной странице (BrandedLogin.tsx) по умолчанию вкладка «По логину» — и тут ломается.
+Это самый надёжный способ — срабатывает до загрузки React, до SW, до кеша.
 
-### Решение
+### Изменения
 
-**1. Миграция: сделать поиск регистронезависимым**
+**`index.html`** — добавить inline-скрипт в `<head>` (первым, до всех остальных скриптов):
 
-```sql
-CREATE OR REPLACE FUNCTION public.public_lookup_user_by_login(login_input TEXT)
-RETURNS TABLE(user_id UUID)
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  RETURN QUERY
-  SELECT p.user_id
-  FROM profiles p
-  WHERE LOWER(p.login) = LOWER(login_input)
-  LIMIT 1;
-END;
-$$;
+```javascript
+<script>
+  (function(){
+    var dominated = ['xn--80aaiswd0ak.xn--p1ai', 'www.xn--80aaiswd0ak.xn--p1ai'];
+    if (dominated.indexOf(location.hostname) !== -1) {
+      location.replace('https://sintagma.com.ru' + location.pathname + location.search + location.hash);
+    }
+  })();
+</script>
 ```
 
-Это единственное необходимое изменение — клиентский код уже корректно формирует `{login}@student.local` в нижнем регистре, что совпадает с auth email (тоже в нижнем регистре).
-
-### Файлы
-| Файл | Изменение |
-|------|-----------|
-| SQL-миграция | `LOWER(p.login) = LOWER(login_input)` в RPC |
-
-Изменений в клиентском коде не требуется.
+Один файл, одно изменение. Клиентский код и `getBaseUrl.ts` уже используют `sintagma.com.ru` как основной домен.
 
