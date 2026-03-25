@@ -5,6 +5,7 @@ import "./index.css";
 declare const __BUILD_TIMESTAMP__: string;
 
 const isNative = typeof (window as any).Capacitor !== 'undefined';
+const isPreview = window.location.hostname.includes('preview--') || window.location.hostname === 'localhost';
 
 const BUILD_GUARD_KEY = '__build_refresh_guard';
 const REMOTE_GUARD_KEY = '__remote_refresh_guard';
@@ -12,6 +13,9 @@ const currentVersion = typeof __BUILD_TIMESTAMP__ !== 'undefined' ? __BUILD_TIME
 
 // Expose build version globally for diagnostics
 (window as any).__BUILD_VERSION__ = currentVersion;
+
+// Skip build-version reload if bootstrap already did a URL-marker reload
+const bootstrapJustReloaded = isPreview && window.location.search.includes('__preview_refresh=1');
 
 async function purgeAllCaches() {
   if ('caches' in window) {
@@ -25,19 +29,20 @@ async function purgeAllCaches() {
 }
 
 (async () => {
-  // Build version check (second line of defense after index.html bootstrap)
-  const storedVersion = localStorage.getItem('app-version');
-
-  if (storedVersion !== null && storedVersion !== currentVersion) {
-    const guard = sessionStorage.getItem(BUILD_GUARD_KEY);
-    if (guard !== currentVersion) {
-      await purgeAllCaches();
-      localStorage.setItem('app-version', currentVersion);
-      sessionStorage.setItem(BUILD_GUARD_KEY, currentVersion);
-      window.location.reload();
-      return;
+  // Build version check (second line of defense — skip if bootstrap just reloaded)
+  if (!bootstrapJustReloaded) {
+    const storedVersion = localStorage.getItem('app-version');
+    if (storedVersion !== null && storedVersion !== currentVersion) {
+      const guard = sessionStorage.getItem(BUILD_GUARD_KEY);
+      if (guard !== currentVersion) {
+        await purgeAllCaches();
+        localStorage.setItem('app-version', currentVersion);
+        sessionStorage.setItem(BUILD_GUARD_KEY, currentVersion);
+        window.location.reload();
+        return;
+      }
+      sessionStorage.removeItem(BUILD_GUARD_KEY);
     }
-    sessionStorage.removeItem(BUILD_GUARD_KEY);
   }
 
   localStorage.setItem('app-version', currentVersion);
@@ -61,7 +66,6 @@ async function purgeAllCaches() {
   }
 
   // Register SW only on production (not preview, not native)
-  const isPreview = window.location.hostname.includes('preview--') || window.location.hostname === 'localhost';
   if (!isNative && !isPreview && import.meta.env.PROD) {
     import('virtual:pwa-register').then(({ registerSW }) => {
       const updateSW = registerSW({
