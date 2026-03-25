@@ -62,18 +62,12 @@
     <noscript><div><img src="https://mc.yandex.ru/watch/107590605" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
     <div id="root"></div>
 
-    <!-- Robust cache/SW bootstrap: purge once per session in preview, purge on asset change in production -->
+    <!-- Cache/SW bootstrap: URL-marker reload in preview, asset-change reload in production -->
     <script>
       (function(){
         var isPreview = location.hostname.indexOf('preview--') !== -1 || location.hostname === 'localhost';
-        var scriptEl = document.querySelector('script[type="module"][src]');
-        var assetId = scriptEl ? scriptEl.getAttribute('src') : 'unknown';
 
-        function purgeAndReload(guardKey) {
-          var guard = '__purge_' + guardKey;
-          if (sessionStorage.getItem(guard)) return;
-          sessionStorage.setItem(guard, '1');
-
+        function purgeAll() {
           var tasks = [];
           if ('serviceWorker' in navigator) {
             tasks.push(
@@ -89,16 +83,39 @@
               })
             );
           }
-          Promise.all(tasks).then(function(){ location.reload(); }).catch(function(){ location.reload(); });
+          return Promise.all(tasks);
         }
 
         if (isPreview) {
-          purgeAndReload('preview-session');
+          // URL-marker approach: purge & reload once, then remove marker
+          var search = location.search || '';
+          if (search.indexOf('__preview_refresh=1') === -1) {
+            purgeAll().then(function(){
+              var sep = search ? search + '&' : '?';
+              location.replace(location.pathname + sep + '__preview_refresh=1' + location.hash);
+            }).catch(function(){
+              location.reload();
+            });
+          } else {
+            // Remove the marker from URL so next navigation can refresh again
+            try {
+              var clean = location.pathname + location.search.replace(/[?&]__preview_refresh=1/, '').replace(/^\&/, '?') + location.hash;
+              if (clean.indexOf('?') === -1) clean = clean.replace('&', '?');
+              history.replaceState(null, '', clean || location.pathname);
+            } catch(e) {}
+          }
         } else {
+          // Production: reload on asset change
+          var scriptEl = document.querySelector('script[type="module"][src]');
+          var assetId = scriptEl ? scriptEl.getAttribute('src') : 'unknown';
           var storedAsset = localStorage.getItem('__asset_id');
           if (storedAsset && storedAsset !== assetId) {
             localStorage.setItem('__asset_id', assetId);
-            purgeAndReload('asset-' + assetId);
+            var guard = '__purge_asset_' + assetId;
+            if (!sessionStorage.getItem(guard)) {
+              sessionStorage.setItem(guard, '1');
+              purgeAll().then(function(){ location.reload(); }).catch(function(){ location.reload(); });
+            }
           } else {
             localStorage.setItem('__asset_id', assetId);
           }
@@ -142,6 +159,15 @@
         if (root) observer.observe(root, { childList: true });
       })();
     </script>
-    <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Cache-bust the entry module in preview mode
+      (function(){
+        var isPreview = location.hostname.indexOf('preview--') !== -1 || location.hostname === 'localhost';
+        var s = document.createElement('script');
+        s.type = 'module';
+        s.src = '/src/main.tsx' + (isPreview ? '?v=' + Date.now() : '');
+        document.body.appendChild(s);
+      })();
+    </script>
   </body>
 </html>
