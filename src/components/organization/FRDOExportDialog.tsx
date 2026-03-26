@@ -403,7 +403,7 @@ export function FRDOExportDialog({
                     </div>
                     <div className="space-y-2">
                       <Label>СНИЛС</Label>
-                      <Input value={frдоData.snils} onChange={(e) => updateField("snils", e.target.value)} placeholder="123-456-789 00" />
+                      <Input value={frдоData.snils} onChange={(e) => updateField("snils", formatSnils(e.target.value))} placeholder="123-456-789 00" maxLength={14} />
                     </div>
                   </div>
 
