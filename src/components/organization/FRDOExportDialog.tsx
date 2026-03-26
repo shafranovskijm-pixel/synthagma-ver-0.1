@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { formatSnils } from "@/utils/formatSnils";
 import {
   Dialog,
   DialogContent,
