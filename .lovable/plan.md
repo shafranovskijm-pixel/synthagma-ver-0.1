@@ -1,27 +1,43 @@
 
 
-## Добавить редирект с синтагма.рф в main.tsx
+## Проблема с СНИЛС в выгрузке ФРДО
 
-Редирект в `index.html` есть, но SW на кириллическом домене кеширует старый HTML без него. Нужно добавить редирект в `src/main.tsx` — JS-бандл обновляется независимо от HTML.
+### Суть проблемы
 
-### Изменение
+СНИЛС — это числовой идентификатор в формате `XXX-XXX-XXX XX` (11 цифр). Сейчас система:
 
-**`src/main.tsx`** — добавить после строки 3 (`import "./index.css"`) и до строки 5 (`declare const __BUILD_TIMESTAMP__`):
+1. **Ввод**: Принимает СНИЛС как обычный текст без маски и валидации (поле `Input` с placeholder `123-456-789 00`)
+2. **Хранение**: Сохраняет в `student_frdo_data.snils` как строку
+3. **Экспорт**: Вставляет в Excel через `worksheet.addRow(row)` без указания формата ячейки
 
-```typescript
-// Redirect from Cyrillic domain to primary domain (bypasses stale SW cache)
-const CYRILLIC_DOMAINS = ['xn--80aaiswd0ak.xn--p1ai', 'www.xn--80aaiswd0ak.xn--p1ai'];
-if (CYRILLIC_DOMAINS.includes(window.location.hostname)) {
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister()));
-  }
-  if ('caches' in window) {
-    caches.keys().then(names => names.forEach(n => caches.delete(n)));
-  }
-  window.location.replace('https://sintagma.com.ru' + window.location.pathname + window.location.search + window.location.hash);
-  throw new Error('Redirecting to primary domain');
-}
-```
+**Проблема при экспорте**: Если СНИЛС введён без дефисов (например, `12345678900`), Excel может интерпретировать его как число и:
+- Потерять ведущие нули
+- Отобразить в экспоненциальном формате (1.23E+10)
+- Округлить значение
 
-Один файл, одно изменение. Остальной код без изменений.
+Также нет маски ввода — пользователь может ввести СНИЛС в любом формате, что приводит к несогласованным данным.
+
+### Решение
+
+**1. `src/utils/frdoExcelExport.ts`** — форматировать колонку СНИЛС как текст:
+- После добавления данных в Excel, пройтись по колонке СНИЛС (колонка 27 для DPO, 22 для PO) и установить `numFmt = '@'` (текстовый формат)
+- Это гарантирует, что Excel не преобразует СНИЛС в число
+
+**2. `src/components/organization/FRDOExportDialog.tsx`** — добавить маску/форматирование ввода СНИЛС:
+- При вводе автоматически форматировать в `XXX-XXX-XXX XX`
+- Валидация: ровно 11 цифр
+- При сохранении хранить в формате с дефисами (как требует ФРДО)
+
+**3. Утилита форматирования СНИЛС** — создать функцию `formatSnils(value: string): string`:
+- Убирает всё кроме цифр
+- Форматирует в `XXX-XXX-XXX XX`
+- Используется и при вводе, и при экспорте
+
+### Файлы
+
+| Файл | Изменение |
+|------|-----------|
+| `src/utils/frdoExcelExport.ts` | Установить текстовый формат (`numFmt = '@'`) для колонки СНИЛС в DPO (27) и PO (22) |
+| `src/utils/formatSnils.ts` | Новый файл — функция форматирования и валидации СНИЛС |
+| `src/components/organization/FRDOExportDialog.tsx` | Маска ввода СНИЛС с автоформатированием |
 
