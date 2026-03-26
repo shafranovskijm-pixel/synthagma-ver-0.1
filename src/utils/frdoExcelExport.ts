@@ -265,6 +265,11 @@ export async function exportFRDOExcel(
     worksheet.addRow(row);
   }
 
+  // Force SNILS column to text format so Excel doesn't convert to number
+  const snilsCol = exportType === "dpo" ? 27 : 22;
+  const snilsColumn = worksheet.getColumn(snilsCol);
+  snilsColumn.numFmt = '@';
+
   // Apply data validation (dropdowns) — apply to 1000 rows for future use
   const maxRow = Math.max(rows.length + 1, 1000);
   for (const [colStr, allowedValues] of Object.entries(validations)) {
