@@ -154,7 +154,7 @@ export default function CourseBuilder() {
 
               {lessons.length === 0 && (
                 <div className="text-center py-10 sm:py-16 border-2 border-dashed border-border rounded-xl">
-                  <Layers className="w-16 h-16 mx-auto text-primary/20 mb-4" />
+                  <Layers className="w-12 h-12 sm:w-16 sm:h-16 mx-auto text-primary/20 mb-4" />
                   <h3 className="text-lg font-semibold mb-2">Начните создавать курс</h3>
                   <p className="text-muted-foreground mb-6 max-w-md mx-auto text-sm">Добавьте уроки вручную, импортируйте из файлов или сгенерируйте структуру с помощью AI</p>
                   <div className="flex gap-3 justify-center">
