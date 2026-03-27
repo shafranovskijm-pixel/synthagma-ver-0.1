@@ -806,12 +806,6 @@ export function CourseDetailsModal({
               <div className="space-y-6">
                 <h3 className="font-semibold">Настройки курса</h3>
                 
-                {isFreePlan && (
-                  <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex items-center gap-3">
-                    <Lock className="w-5 h-5 text-amber-500 flex-shrink-0" />
-                    <p className="text-sm text-amber-700 dark:text-amber-400">Доступно на тарифе Старт и выше. Перейдите на другой тариф для управления настройками курса.</p>
-                  </div>
-                )}
                 
                 <div className="bg-secondary/30 rounded-xl p-4 space-y-6">
                   {/* Skip video identification */}
