@@ -827,7 +827,7 @@ export function CourseDetailsModal({
                       id="skip-video-id"
                       checked={skipVideoId}
                       onCheckedChange={handleToggleSkipVideoId}
-                      disabled={isSavingSettings || isFreePlan}
+                      disabled={isSavingSettings}
                     />
                   </div>
 
