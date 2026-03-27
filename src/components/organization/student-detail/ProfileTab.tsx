@@ -157,12 +157,7 @@ export function ProfileTab({ student, enrollmentsCount, h, orgPlan }: ProfileTab
                     <div className="text-sm font-medium">{item.label}</div>
                     {item.uploadable && (
                       <div className="mt-2 flex gap-1">
-                        {isFreePlan && gatedDocTypes.includes(item.uploadType || "") ? (
-                          <div className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
-                            <Lock className="w-3 h-3" />
-                            Доступно на другом тарифе
-                          </div>
-                        ) : existingDoc ? (
+                        {existingDoc ? (
                           <div className="flex flex-wrap gap-1">
                             <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => h.handlePreviewDoc(existingDoc)}><Eye className="w-3 h-3 mr-1" />Просмотр</Button>
                             <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => existingDoc.file_url && h.handleDownloadDoc(existingDoc.file_url, existingDoc.name)}><Download className="w-3 h-3" /></Button>
