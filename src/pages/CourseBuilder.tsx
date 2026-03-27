@@ -67,7 +67,7 @@ export default function CourseBuilder() {
             <Tooltip><TooltipTrigger asChild>
               <Button variant="ghost" size="sm" onClick={handleBackClick} className="rounded-xl"><ArrowLeft className="w-4 h-4 sm:mr-2" /><span className="hidden sm:inline">Назад</span></Button>
             </TooltipTrigger><TooltipContent>Вернуться к списку курсов</TooltipContent></Tooltip>
-            <SigmaLogo size="sm" />
+            <SigmaLogo size="sm" className="hidden sm:block" />
           </div>
           <div className="flex items-center gap-3">
             <Tooltip><TooltipTrigger asChild>
