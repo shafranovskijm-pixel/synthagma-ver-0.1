@@ -1,7 +1,7 @@
 import {
   User, Mail, Building2, GraduationCap, Key, Pencil, Check, Copy,
   Eye, EyeOff, Loader2, CheckCircle2, Upload, Trash2, Download,
-  Bell, FileText, Shield, AlertCircle, Lock,
+  Bell, FileText, Shield, AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
