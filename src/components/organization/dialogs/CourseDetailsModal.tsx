@@ -57,6 +57,7 @@ import {
   type CourseFRDOSettings,
 } from "@/constants/frdo";
 import { CourseRemindersTab } from "@/components/organization/CourseRemindersTab";
+import { CourseGroupsTab } from "@/components/organization/CourseGroupsTab";
 
 interface Course {
   id: string;
