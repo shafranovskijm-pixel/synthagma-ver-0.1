@@ -297,7 +297,13 @@ export function useCourseBuilder() {
         content: l.type === "text" || l.type === "test" ? (l.description || "") : "",
         expanded: false, blocks: l.type === "text" ? [] : undefined,
       }));
-      if (generatedLessons.length > 0) { setLessons(prev => [...prev, ...generatedLessons]); toast.success(`Добавлено ${generatedLessons.length} уроков`); }
+      if (generatedLessons.length > 0) {
+        setLessons(prev => [...prev, ...generatedLessons]);
+        toast.success(`Добавлено ${generatedLessons.length} уроков`);
+        markAsChanged();
+        // Autosave after structure generation
+        setTimeout(() => { saveCourse(true); }, 500);
+      }
       else toast.error("AI не вернул уроки");
     } catch (error: any) { console.error("Generate error:", error); toast.error(error.message || "Ошибка генерации"); }
     finally { setIsGenerating(false); }
