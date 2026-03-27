@@ -117,14 +117,10 @@ export function useStudentDashboard() {
   const [targetUserId, setTargetUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    const preview = localStorage.getItem('previewStudentDashboard');
-    if (preview === 'true') { setIsPreviewMode(true); localStorage.removeItem('previewStudentDashboard'); }
     const adminView = localStorage.getItem('adminViewAsStudent');
     if (adminView) {
       try {
         const data = JSON.parse(adminView);
-        setIsAdminView(true);
-        setAdminViewStudentName(data.name || '');
         if (data.userId) setTargetUserId(data.userId);
       } catch (e) { /* ignore */ }
     }
