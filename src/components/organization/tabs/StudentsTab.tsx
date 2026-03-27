@@ -1046,7 +1046,9 @@ export const StudentsTab = React.memo(function StudentsTab({
                         <div>
                           <div className="font-medium text-sm">{group.name}</div>
                           <div className="text-xs text-muted-foreground">
-                            {count} уч. · {format(new Date(group.created_at), "d MMM yyyy", { locale: ru })}
+                            {count} уч.
+                            {group.start_date && ` · с ${format(new Date(group.start_date), "d MMM", { locale: ru })}`}
+                            {group.end_date && ` по ${format(new Date(group.end_date), "d MMM yyyy", { locale: ru })}`}
                           </div>
                         </div>
                       </div>
