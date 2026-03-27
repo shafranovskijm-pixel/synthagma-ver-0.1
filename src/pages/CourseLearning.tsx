@@ -65,7 +65,7 @@ const CourseLearning = () => {
   // Auto-complete slider (presentation) lessons when opened
   useEffect(() => {
     if (currentLesson?.type === 'slider' && !isLessonCompleted(currentLesson.id)) {
-      markLessonComplete();
+      markLessonComplete(false);
     }
   }, [currentLesson?.id]);
   
