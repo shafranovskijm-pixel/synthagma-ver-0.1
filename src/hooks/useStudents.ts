@@ -8,6 +8,8 @@ interface StudentGroup {
   color: string;
   organization_id: string;
   created_at: string;
+  start_date: string | null;
+  end_date: string | null;
 }
 import { 
   fetchStudents,
