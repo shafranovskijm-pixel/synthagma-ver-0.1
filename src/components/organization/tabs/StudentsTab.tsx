@@ -67,6 +67,9 @@ export const StudentsTab = React.memo(function StudentsTab({
   isCreatingBulkCredentials = false,
   isSendingBulkCredentials = false,
   isSendingBulkDocReminders = false,
+  onAddStudent,
+  onImportStudents,
+  onNavigateToFRDO,
 }: StudentsTabProps) {
   const courseIds = courses.map(c => c.id);
 
