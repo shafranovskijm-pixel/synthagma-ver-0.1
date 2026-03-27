@@ -1,11 +1,11 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Save, Loader2, Eye, Plus, FileUp, Wand2 } from "lucide-react";
+import { ArrowLeft, Save, Loader2, Eye, Plus, FileUp, Wand2, Check, AlertCircle } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { DndContext, closestCenter, useSensor, useSensors, PointerSensor, KeyboardSensor } from "@dnd-kit/core";
@@ -19,6 +19,7 @@ export default function CourseBuilder() {
   const navigate = useNavigate();
   const { courseId } = useParams();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isSavingForPreview, setIsSavingForPreview] = useState(false);
 
   const {
     courseTitle, setCourseTitle, courseDescription, setCourseDescription,
@@ -27,8 +28,32 @@ export default function CourseBuilder() {
     addLesson, updateLesson, deleteLesson, toggleLesson,
     handleAIGenerate, handleGenerateStructure, handleFileImport,
     handleSaveAndExit, handleExitWithoutSave, handleBackClick,
-    sensors, handleDragEnd, saveCourse
+    sensors, handleDragEnd, saveCourse, autoSaveStatus,
+    courseId: resolvedCourseId,
   } = useCourseBuilder();
+
+  const handlePreview = async () => {
+    if (resolvedCourseId && !hasUnsavedChanges) {
+      navigate(`/course-preview/${resolvedCourseId}`);
+      return;
+    }
+    setIsSavingForPreview(true);
+    const success = await saveCourse(true);
+    setIsSavingForPreview(false);
+    if (success) {
+      // resolvedCourseId may have been set during save for new courses
+      // Use a small delay to let state update
+      setTimeout(() => {
+        const id = resolvedCourseId || window.location.pathname.split('/course-builder/')[1];
+        if (id) {
+          toast.success("Курс сохранён");
+          navigate(`/course-preview/${id}`);
+        } else {
+          toast.error("Не удалось определить ID курса");
+        }
+      }, 100);
+    }
+  };
 
   if (isLoading) return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
 
@@ -41,18 +66,36 @@ export default function CourseBuilder() {
             <SigmaLogo size="sm" />
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="outline" onClick={() => courseId ? navigate(`/course-preview/${courseId}`) : toast.error("Сначала сохраните курс")} disabled={!courseId} className="rounded-xl gap-2"><Eye className="w-4 h-4" /><span className="hidden sm:inline">Предпросмотр</span></Button>
+            <Button variant="outline" onClick={handlePreview} disabled={isSavingForPreview} className="rounded-xl gap-2">
+              {isSavingForPreview ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
+              <span className="hidden sm:inline">{isSavingForPreview ? 'Сохранение...' : 'Предпросмотр'}</span>
+            </Button>
           </div>
         </div>
       </header>
 
       <div className="fixed bottom-0 inset-x-0 z-50 bg-gradient-to-t from-background via-background to-transparent pb-4 pt-8 pointer-events-none">
-        <div className="container mx-auto px-6 pointer-events-auto flex justify-center">
-          <Button onClick={saveCourse} disabled={isSaving} size="lg" className="btn-gradient rounded-2xl gap-3 px-8 py-6 text-lg font-semibold shadow-2xl hover:scale-105 transition-transform">
+        <div className="container mx-auto px-6 pointer-events-auto flex flex-col items-center gap-2">
+          <Button onClick={() => saveCourse()} disabled={isSaving} size="lg" className="btn-gradient rounded-2xl gap-3 px-8 py-6 text-lg font-semibold shadow-2xl hover:scale-105 transition-transform">
             {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
             {isSaving ? "Сохранение..." : "Сохранить курс"}
             {hasUnsavedChanges && !isSaving && <span className="ml-1 w-2 h-2 rounded-full bg-white/80 animate-pulse" />}
           </Button>
+          {autoSaveStatus === 'saved' && (
+            <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1 animate-in fade-in">
+              <Check className="w-3 h-3" /> Сохранено
+            </span>
+          )}
+          {autoSaveStatus === 'saving' && (
+            <span className="text-xs text-muted-foreground flex items-center gap-1">
+              <Loader2 className="w-3 h-3 animate-spin" /> Автосохранение...
+            </span>
+          )}
+          {autoSaveStatus === 'error' && (
+            <span className="text-xs text-destructive flex items-center gap-1">
+              <AlertCircle className="w-3 h-3" /> Ошибка сохранения
+            </span>
+          )}
         </div>
       </div>
 
@@ -86,7 +129,7 @@ export default function CourseBuilder() {
                         onUpdate={(updates) => updateLesson(lesson.id, updates)}
                         onDelete={() => deleteLesson(lesson.id)}
                         onToggle={() => toggleLesson(lesson.id)}
-                        courseId={courseId}
+                        courseId={resolvedCourseId}
                         courseTitle={courseTitle}
                         courseDescription={courseDescription}
                       />

@@ -563,7 +563,7 @@ export function useCourseBuilder() {
     navigate, courseId, courseTitle, setCourseTitle, courseDescription, setCourseDescription,
     lessons, setLessons, isGenerating, isSaving, isLoading, isImporting,
     hasUnsavedChanges, showExitDialog, setShowExitDialog, showAIGenerateDialog, setShowAIGenerateDialog,
-    fileInputRef, markAsChanged, updateLessons,
+    fileInputRef, markAsChanged, updateLessons, autoSaveStatus,
     handleBackClick, handleSaveAndExit, handleExitWithoutSave, handleFileImport,
     addLesson, handleGenerateStructure, handleAIGenerate,
     updateLesson, deleteLesson, toggleLesson,
