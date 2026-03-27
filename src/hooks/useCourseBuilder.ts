@@ -40,6 +40,9 @@ export function useCourseBuilder() {
   const [subscriptionPlan, setSubscriptionPlan] = useState<string>('free');
   const aiLimit = useAiGenerationLimit(organizationId, subscriptionPlan);
 
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const markAsChanged = useCallback(() => { setHasUnsavedChanges(true); }, []);
 
   const updateLessons = useCallback((updater: Lesson[] | ((prev: Lesson[]) => Lesson[])) => {
@@ -135,6 +138,9 @@ export function useCourseBuilder() {
 
       if (totalImported > 0) {
         toast.success(`Импортировано ${totalImported} ${totalImported === 1 ? 'урок' : totalImported < 5 ? 'урока' : 'уроков'}`);
+        markAsChanged();
+        // Autosave after import
+        setTimeout(() => { saveCourse(true); }, 500);
       } else {
         toast.warning("Не удалось извлечь уроки из файла");
       }
@@ -291,7 +297,13 @@ export function useCourseBuilder() {
         content: l.type === "text" || l.type === "test" ? (l.description || "") : "",
         expanded: false, blocks: l.type === "text" ? [] : undefined,
       }));
-      if (generatedLessons.length > 0) { setLessons(prev => [...prev, ...generatedLessons]); toast.success(`Добавлено ${generatedLessons.length} уроков`); }
+      if (generatedLessons.length > 0) {
+        setLessons(prev => [...prev, ...generatedLessons]);
+        toast.success(`Добавлено ${generatedLessons.length} уроков`);
+        markAsChanged();
+        // Autosave after structure generation
+        setTimeout(() => { saveCourse(true); }, 500);
+      }
       else toast.error("AI не вернул уроки");
     } catch (error: any) { console.error("Generate error:", error); toast.error(error.message || "Ошибка генерации"); }
     finally { setIsGenerating(false); }
@@ -380,6 +392,8 @@ export function useCourseBuilder() {
 
     await aiLimit.increment();
     updateLessons([...lessons, newLesson]);
+    // Autosave after AI generation
+    setTimeout(() => { saveCourse(true); }, 500);
   };
 
   const _createFallbackSlides = (lesson: Lesson, prompt: string, content?: string) => {
@@ -393,7 +407,13 @@ export function useCourseBuilder() {
   };
 
   const updateLesson = (id: string, updates: Partial<Lesson>) => { setLessons(lessons.map(l => l.id === id ? { ...l, ...updates } : l)); markAsChanged(); };
-  const deleteLesson = (id: string) => { setLessons(lessons.filter(l => l.id !== id)); };
+  const deleteLesson = (id: string) => {
+    setLessons(lessons.filter(l => l.id !== id));
+    markAsChanged();
+    // Autosave after delete with debounce
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(() => { saveCourse(true); }, 500);
+  };
   const toggleLesson = (id: string) => { setLessons(lessons.map(l => l.id === id ? { ...l, expanded: !l.expanded } : l)); };
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
@@ -404,6 +424,9 @@ export function useCourseBuilder() {
       const oldIndex = lessons.findIndex(l => l.id === active.id);
       const newIndex = lessons.findIndex(l => l.id === over.id);
       setLessons(arrayMove(lessons, oldIndex, newIndex));
+      markAsChanged();
+      // Autosave after reorder
+      setTimeout(() => { saveCourse(true); }, 500);
     }
   };
 
@@ -416,12 +439,13 @@ export function useCourseBuilder() {
     return orgId;
   };
 
-  const saveCourse = async () => {
-    if (isSaving) return;
-    if (!courseTitle.trim()) { toast.error("Введите название курса"); return; }
+  const saveCourse = async (silent = false): Promise<boolean> => {
+    if (isSaving) return false;
+    if (!courseTitle.trim()) { if (!silent) toast.error("Введите название курса"); return false; }
     const orgId = await ensureOrganizationId();
-    if (!orgId) { toast.error("Не найдена организация"); return; }
+    if (!orgId) { if (!silent) toast.error("Не найдена организация"); return false; }
     setIsSaving(true);
+    setAutoSaveStatus('saving');
     try {
       let savedCourseId = courseId;
       if (courseId) {
@@ -485,13 +509,25 @@ export function useCourseBuilder() {
           }
         }
       }
-      toast.success(courseId ? "Курс обновлён" : "Курс создан");
+      if (!silent) toast.success(courseId ? "Курс обновлён" : "Курс создан");
       setHasUnsavedChanges(false);
+      setAutoSaveStatus('saved');
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+      autoSaveTimerRef.current = setTimeout(() => setAutoSaveStatus('idle'), 3000);
+      return true;
     } catch (error: any) {
       if (error?.name === 'AbortError' || error?.message?.includes('AbortError')) {
-        toast.success(courseId ? "Курс обновлён" : "Курс создан");
+        if (!silent) toast.success(courseId ? "Курс обновлён" : "Курс создан");
         setHasUnsavedChanges(false);
-      } else { toast.error("Ошибка сохранения: " + error.message); }
+        setAutoSaveStatus('saved');
+        if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+        autoSaveTimerRef.current = setTimeout(() => setAutoSaveStatus('idle'), 3000);
+        return true;
+      } else {
+        toast.error("Ошибка сохранения: " + error.message);
+        setAutoSaveStatus('error');
+        return false;
+      }
     } finally { setIsSaving(false); }
   };
 
@@ -527,7 +563,7 @@ export function useCourseBuilder() {
     navigate, courseId, courseTitle, setCourseTitle, courseDescription, setCourseDescription,
     lessons, setLessons, isGenerating, isSaving, isLoading, isImporting,
     hasUnsavedChanges, showExitDialog, setShowExitDialog, showAIGenerateDialog, setShowAIGenerateDialog,
-    fileInputRef, markAsChanged, updateLessons,
+    fileInputRef, markAsChanged, updateLessons, autoSaveStatus,
     handleBackClick, handleSaveAndExit, handleExitWithoutSave, handleFileImport,
     addLesson, handleGenerateStructure, handleAIGenerate,
     updateLesson, deleteLesson, toggleLesson,
