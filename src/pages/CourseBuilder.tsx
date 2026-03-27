@@ -119,7 +119,7 @@ export default function CourseBuilder() {
             <div className="bg-card rounded-2xl border border-border p-4 sm:p-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 gap-3">
                 <h2 className="font-display text-lg sm:text-xl font-semibold">Содержание курса</h2>
-                <div className="flex gap-3">
+                <div className="flex gap-2 sm:gap-3">
                   <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={isImporting} className="h-auto py-2 px-3 flex flex-col items-center gap-0.5">
                     <span className="flex items-center gap-1.5"><FileUp className="w-4 h-4" />{isImporting ? 'Импорт...' : 'Импорт'}</span>
                     <span className="text-[10px] text-muted-foreground font-normal">DOCX, TXT, MD, HTML</span>
