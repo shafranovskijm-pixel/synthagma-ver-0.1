@@ -648,6 +648,10 @@ export function CourseDetailsModal({
                 <Bell className="w-4 h-4" />
                 Напоминания
               </TabsTrigger>
+              <TabsTrigger value="groups" className="rounded-lg gap-2">
+                <Users className="w-4 h-4" />
+                Группы
+              </TabsTrigger>
             </TabsList>
           </div>
 
