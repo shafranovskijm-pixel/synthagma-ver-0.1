@@ -98,7 +98,7 @@ export function CourseGroupsTab({ courseId, organizationId, onRefreshStudents }:
         .from("profiles")
         .select("user_id")
         .eq("organization_id", organizationId)
-        .eq("student_group_id" as any, groupId);
+        .eq("student_group_id", groupId);
 
       const userIds = (profiles as any[] || []).map((p: any) => p.user_id);
       if (userIds.length === 0) {
