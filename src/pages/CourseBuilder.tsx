@@ -62,12 +62,12 @@ export default function CourseBuilder() {
     <TooltipProvider delayDuration={300}>
     <div className="min-h-screen bg-background">
       <header className="bg-card border-b border-border sticky top-0 z-10">
-        <div className="container mx-auto px-6 py-4 flex items-center justify-between backdrop-blur-sm bg-card/80">
-          <div className="flex items-center gap-4">
+        <div className="container mx-auto px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between backdrop-blur-sm bg-card/80">
+          <div className="flex items-center gap-2 sm:gap-4">
             <Tooltip><TooltipTrigger asChild>
-              <Button variant="ghost" size="sm" onClick={handleBackClick} className="rounded-xl"><ArrowLeft className="w-4 h-4 mr-2" />Назад</Button>
+              <Button variant="ghost" size="sm" onClick={handleBackClick} className="rounded-xl"><ArrowLeft className="w-4 h-4 sm:mr-2" /><span className="hidden sm:inline">Назад</span></Button>
             </TooltipTrigger><TooltipContent>Вернуться к списку курсов</TooltipContent></Tooltip>
-            <SigmaLogo size="sm" />
+            <SigmaLogo size="sm" className="hidden sm:block" />
           </div>
           <div className="flex items-center gap-3">
             <Tooltip><TooltipTrigger asChild>
@@ -80,10 +80,10 @@ export default function CourseBuilder() {
         </div>
       </header>
 
-      <div className="fixed bottom-0 inset-x-0 z-50 bg-gradient-to-t from-background via-background to-transparent pb-4 pt-8 pointer-events-none">
-        <div className="container mx-auto px-6 pointer-events-auto flex flex-col items-center gap-2">
+      <div className="fixed bottom-0 inset-x-0 z-50 bg-gradient-to-t from-background via-background to-transparent pb-3 sm:pb-4 pt-6 sm:pt-8 pointer-events-none">
+        <div className="container mx-auto px-3 sm:px-6 pointer-events-auto flex flex-col items-center gap-2">
           <Tooltip><TooltipTrigger asChild>
-            <Button onClick={() => saveCourse()} disabled={isSaving} size="lg" className="btn-gradient rounded-2xl gap-3 px-8 py-6 text-lg font-semibold shadow-2xl hover:scale-105 transition-transform">
+            <Button onClick={() => saveCourse()} disabled={isSaving} size="lg" className="btn-gradient rounded-2xl gap-2 sm:gap-3 px-6 sm:px-8 py-5 sm:py-6 text-base sm:text-lg font-semibold shadow-2xl hover:scale-105 transition-transform w-full sm:w-auto">
               {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
               {isSaving ? "Сохранение..." : "Сохранить курс"}
               {hasUnsavedChanges && !isSaving && <span className="ml-1 w-2 h-2 rounded-full bg-white/80 animate-pulse" />}
@@ -107,19 +107,19 @@ export default function CourseBuilder() {
         </div>
       </div>
 
-      <div className="container mx-auto px-6 py-8 pb-32">
-        <div className="grid lg:grid-cols-3 gap-8">
+      <div className="container mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-28 sm:pb-32">
+        <div className="grid lg:grid-cols-3 gap-4 sm:gap-8">
           <div className="lg:col-span-2 space-y-6">
-            <div className="bg-card rounded-2xl border border-border border-t-2 border-t-primary/30 p-6 space-y-4">
+            <div className="bg-card rounded-2xl border border-border border-t-2 border-t-primary/30 p-4 sm:p-6 space-y-4">
               <h2 className="font-display text-xl font-semibold mb-4 flex items-center gap-2"><BookOpen className="w-5 h-5 text-primary" />Информация о курсе</h2>
               <div className="space-y-2"><Label>Название курса</Label><Input value={courseTitle} onChange={e => setCourseTitle(e.target.value)} placeholder="Введите название курса" className="text-lg font-medium" /></div>
               <div className="space-y-2"><Label>Описание</Label><Textarea value={courseDescription} onChange={e => setCourseDescription(e.target.value)} placeholder="О чем этот курс?" className="min-h-[100px]" /></div>
             </div>
 
-            <div className="bg-card rounded-2xl border border-border p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="font-display text-xl font-semibold">Содержание курса</h2>
-                <div className="flex gap-3">
+            <div className="bg-card rounded-2xl border border-border p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 gap-3">
+                <h2 className="font-display text-lg sm:text-xl font-semibold">Содержание курса</h2>
+                <div className="flex gap-2 sm:gap-3">
                   <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={isImporting} className="h-auto py-2 px-3 flex flex-col items-center gap-0.5">
                     <span className="flex items-center gap-1.5"><FileUp className="w-4 h-4" />{isImporting ? 'Импорт...' : 'Импорт'}</span>
                     <span className="text-[10px] text-muted-foreground font-normal">DOCX, TXT, MD, HTML</span>
@@ -153,14 +153,14 @@ export default function CourseBuilder() {
               </DndContext>
 
               {lessons.length === 0 && (
-                <div className="text-center py-16 border-2 border-dashed border-border rounded-xl">
-                  <Layers className="w-16 h-16 mx-auto text-primary/20 mb-4" />
+                <div className="text-center py-10 sm:py-16 border-2 border-dashed border-border rounded-xl">
+                  <Layers className="w-12 h-12 sm:w-16 sm:h-16 mx-auto text-primary/20 mb-4" />
                   <h3 className="text-lg font-semibold mb-2">Начните создавать курс</h3>
                   <p className="text-muted-foreground mb-6 max-w-md mx-auto text-sm">Добавьте уроки вручную, импортируйте из файлов или сгенерируйте структуру с помощью AI</p>
-                  <div className="flex gap-3 justify-center">
-                    <Button variant="outline" onClick={() => addLesson('text')} className="gap-2"><Plus className="w-4 h-4" />Добавить урок</Button>
-                    <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="gap-2"><FileUp className="w-4 h-4" />Импорт</Button>
-                    <Button onClick={handleGenerateStructure} variant="outline" className="gap-2"><Wand2 className="w-4 h-4" />AI Структура</Button>
+                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 justify-center px-4">
+                    <Button variant="outline" onClick={() => addLesson('text')} className="gap-2" size="sm"><Plus className="w-4 h-4" />Добавить урок</Button>
+                    <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="gap-2" size="sm"><FileUp className="w-4 h-4" />Импорт</Button>
+                    <Button onClick={handleGenerateStructure} variant="outline" className="gap-2" size="sm"><Wand2 className="w-4 h-4" />AI Структура</Button>
                   </div>
                 </div>
               )}
@@ -168,38 +168,38 @@ export default function CourseBuilder() {
           </div>
 
           <div className="space-y-6">
-            <div className="bg-card rounded-2xl border border-border p-6 sticky top-24">
-              <h3 className="font-semibold mb-4">Добавить урок</h3>
-              <div className="grid grid-cols-2 gap-3">
-                <Button variant="outline" className="h-auto py-4 flex flex-col gap-2 rounded-xl hover:shadow-md hover:-translate-y-0.5 transition-all hover:border-primary/30" onClick={() => addLesson('text')}>
-                  <div className="p-2 rounded-full bg-primary/10"><FileText className="w-5 h-5 text-primary" /></div>
-                  <span className="text-xs font-semibold">Текст</span>
-                  <span className="text-[10px] text-muted-foreground leading-tight text-center">Блочный редактор с медиа</span>
+            <div className="bg-card rounded-2xl border border-border p-4 sm:p-6 lg:sticky lg:top-24">
+              <h3 className="font-semibold mb-3 sm:mb-4">Добавить урок</h3>
+              <div className="grid grid-cols-3 sm:grid-cols-2 gap-2 sm:gap-3">
+                <Button variant="outline" className="h-auto py-3 sm:py-4 flex flex-col gap-1 sm:gap-2 rounded-xl hover:shadow-md hover:-translate-y-0.5 transition-all hover:border-primary/30" onClick={() => addLesson('text')}>
+                  <div className="p-1.5 sm:p-2 rounded-full bg-primary/10"><FileText className="w-4 h-4 sm:w-5 sm:h-5 text-primary" /></div>
+                  <span className="text-[10px] sm:text-xs font-semibold">Текст</span>
+                  <span className="text-[9px] sm:text-[10px] text-muted-foreground leading-tight text-center hidden sm:block">Блочный редактор с медиа</span>
                 </Button>
-                <Button variant="outline" className="h-auto py-4 flex flex-col gap-2 rounded-xl hover:shadow-md hover:-translate-y-0.5 transition-all hover:border-purple-400/30" onClick={() => addLesson('video')}>
-                  <div className="p-2 rounded-full bg-purple-500/10"><Video className="w-5 h-5 text-purple-500" /></div>
-                  <span className="text-xs font-semibold">Видео</span>
-                  <span className="text-[10px] text-muted-foreground leading-tight text-center">MP4, WebM · YouTube, VK, Rutube</span>
+                <Button variant="outline" className="h-auto py-3 sm:py-4 flex flex-col gap-1 sm:gap-2 rounded-xl hover:shadow-md hover:-translate-y-0.5 transition-all hover:border-purple-400/30" onClick={() => addLesson('video')}>
+                  <div className="p-1.5 sm:p-2 rounded-full bg-purple-500/10"><Video className="w-4 h-4 sm:w-5 sm:h-5 text-purple-500" /></div>
+                  <span className="text-[10px] sm:text-xs font-semibold">Видео</span>
+                  <span className="text-[9px] sm:text-[10px] text-muted-foreground leading-tight text-center hidden sm:block">MP4, WebM · YouTube, VK</span>
                 </Button>
-                <Button variant="outline" className="h-auto py-4 flex flex-col gap-2 rounded-xl hover:shadow-md hover:-translate-y-0.5 transition-all hover:border-orange-400/30" onClick={() => addLesson('test')}>
-                  <div className="p-2 rounded-full bg-orange-500/10"><CheckSquare className="w-5 h-5 text-orange-500" /></div>
-                  <span className="text-xs font-semibold">Тест</span>
-                  <span className="text-[10px] text-muted-foreground leading-tight text-center">Вопросы с вариантами ответов</span>
+                <Button variant="outline" className="h-auto py-3 sm:py-4 flex flex-col gap-1 sm:gap-2 rounded-xl hover:shadow-md hover:-translate-y-0.5 transition-all hover:border-orange-400/30" onClick={() => addLesson('test')}>
+                  <div className="p-1.5 sm:p-2 rounded-full bg-orange-500/10"><CheckSquare className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500" /></div>
+                  <span className="text-[10px] sm:text-xs font-semibold">Тест</span>
+                  <span className="text-[9px] sm:text-[10px] text-muted-foreground leading-tight text-center hidden sm:block">Вопросы с вариантами</span>
                 </Button>
-                <Button variant="outline" className="h-auto py-4 flex flex-col gap-2 rounded-xl hover:shadow-md hover:-translate-y-0.5 transition-all hover:border-primary/30" onClick={() => setShowAIGenerateDialog(true)}>
-                  <div className="p-2 rounded-full bg-primary/10"><Sparkles className="w-5 h-5 text-primary" /></div>
-                  <span className="text-xs font-semibold">AI Генерация</span>
-                  <span className="text-[10px] text-muted-foreground leading-tight text-center">Создать урок с помощью ИИ</span>
+                <Button variant="outline" className="h-auto py-3 sm:py-4 flex flex-col gap-1 sm:gap-2 rounded-xl hover:shadow-md hover:-translate-y-0.5 transition-all hover:border-primary/30" onClick={() => setShowAIGenerateDialog(true)}>
+                  <div className="p-1.5 sm:p-2 rounded-full bg-primary/10"><Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-primary" /></div>
+                  <span className="text-[10px] sm:text-xs font-semibold">AI</span>
+                  <span className="text-[9px] sm:text-[10px] text-muted-foreground leading-tight text-center hidden sm:block">Создать с помощью ИИ</span>
                 </Button>
-                <Button variant="outline" className="h-auto py-4 flex flex-col gap-2 rounded-xl hover:shadow-md hover:-translate-y-0.5 transition-all hover:border-amber-400/30" onClick={() => addLesson('slider')}>
-                  <div className="p-2 rounded-full bg-amber-500/10"><Presentation className="w-5 h-5 text-amber-500" /></div>
-                  <span className="text-xs font-semibold">Слайды</span>
-                  <span className="text-[10px] text-muted-foreground leading-tight text-center">PPTX или создать вручную</span>
+                <Button variant="outline" className="h-auto py-3 sm:py-4 flex flex-col gap-1 sm:gap-2 rounded-xl hover:shadow-md hover:-translate-y-0.5 transition-all hover:border-amber-400/30" onClick={() => addLesson('slider')}>
+                  <div className="p-1.5 sm:p-2 rounded-full bg-amber-500/10"><Presentation className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500" /></div>
+                  <span className="text-[10px] sm:text-xs font-semibold">Слайды</span>
+                  <span className="text-[9px] sm:text-[10px] text-muted-foreground leading-tight text-center hidden sm:block">PPTX или вручную</span>
                 </Button>
-                <Button variant="outline" className="h-auto py-4 flex flex-col gap-2 rounded-xl hover:shadow-md hover:-translate-y-0.5 transition-all hover:border-green-400/30" onClick={() => addLesson('audio')}>
-                  <div className="p-2 rounded-full bg-green-500/10"><Headphones className="w-5 h-5 text-green-500" /></div>
-                  <span className="text-xs font-semibold">Аудио</span>
-                  <span className="text-[10px] text-muted-foreground leading-tight text-center">MP3, WAV, OGG · или ссылка</span>
+                <Button variant="outline" className="h-auto py-3 sm:py-4 flex flex-col gap-1 sm:gap-2 rounded-xl hover:shadow-md hover:-translate-y-0.5 transition-all hover:border-green-400/30" onClick={() => addLesson('audio')}>
+                  <div className="p-1.5 sm:p-2 rounded-full bg-green-500/10"><Headphones className="w-4 h-4 sm:w-5 sm:h-5 text-green-500" /></div>
+                  <span className="text-[10px] sm:text-xs font-semibold">Аудио</span>
+                  <span className="text-[9px] sm:text-[10px] text-muted-foreground leading-tight text-center hidden sm:block">MP3, WAV, OGG</span>
                 </Button>
               </div>
             </div>
