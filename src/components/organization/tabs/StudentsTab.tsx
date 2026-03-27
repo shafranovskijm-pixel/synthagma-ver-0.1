@@ -666,6 +666,12 @@ export const StudentsTab = React.memo(function StudentsTab({
                     <span>Группировка по группам</span>
                   </li>
                 </ul>
+                {onImportStudents && (
+                  <Button onClick={onImportStudents} variant="outline" className="w-full rounded-xl gap-2 mt-2">
+                    <FileSpreadsheet className="w-4 h-4" />
+                    Импорт учеников
+                  </Button>
+                )}
               </div>
             </div>
 
