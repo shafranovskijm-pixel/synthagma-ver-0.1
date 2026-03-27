@@ -62,7 +62,7 @@ export default function CourseBuilder() {
     <TooltipProvider delayDuration={300}>
     <div className="min-h-screen bg-background">
       <header className="bg-card border-b border-border sticky top-0 z-10">
-        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="container mx-auto px-6 py-4 flex items-center justify-between backdrop-blur-sm bg-card/80">
           <div className="flex items-center gap-4">
             <Tooltip><TooltipTrigger asChild>
               <Button variant="ghost" size="sm" onClick={handleBackClick} className="rounded-xl"><ArrowLeft className="w-4 h-4 mr-2" />Назад</Button>
