@@ -1,7 +1,7 @@
 import {
   User, Mail, Building2, GraduationCap, Key, Pencil, Check, Copy,
   Eye, EyeOff, Loader2, CheckCircle2, Upload, Trash2, Download,
-  Bell, FileText, Shield, AlertCircle, Lock,
+  Bell, FileText, Shield, AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,8 +23,6 @@ interface ProfileTabProps {
 }
 
 export function ProfileTab({ student, enrollmentsCount, h, orgPlan }: ProfileTabProps) {
-  const isFreePlan = orgPlan === 'free';
-  const gatedDocTypes = ["passport", "snils", "education_document"];
   const checklistItems = [
     { id: "contract", label: "Договор", icon: FileText, completed: h.documents?.some((d: any) => d.type === "contract") || false, uploadable: false },
     { id: "passport", label: "Паспорт / Св-во о рождении", icon: User, completed: h.identityDocs.some((d: any) => d.type === "passport" || d.type === "birth_certificate"), uploadable: true, uploadType: "passport" },
@@ -157,12 +155,7 @@ export function ProfileTab({ student, enrollmentsCount, h, orgPlan }: ProfileTab
                     <div className="text-sm font-medium">{item.label}</div>
                     {item.uploadable && (
                       <div className="mt-2 flex gap-1">
-                        {isFreePlan && gatedDocTypes.includes(item.uploadType || "") ? (
-                          <div className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
-                            <Lock className="w-3 h-3" />
-                            Доступно на другом тарифе
-                          </div>
-                        ) : existingDoc ? (
+                        {existingDoc ? (
                           <div className="flex flex-wrap gap-1">
                             <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => h.handlePreviewDoc(existingDoc)}><Eye className="w-3 h-3 mr-1" />Просмотр</Button>
                             <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => existingDoc.file_url && h.handleDownloadDoc(existingDoc.file_url, existingDoc.name)}><Download className="w-3 h-3" /></Button>
