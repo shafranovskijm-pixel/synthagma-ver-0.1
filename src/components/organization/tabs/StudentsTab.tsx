@@ -630,6 +630,12 @@ export const StudentsTab = React.memo(function StudentsTab({
                     <span>Зачисление на курсы</span>
                   </li>
                 </ul>
+                {onAddStudent && (
+                  <Button onClick={onAddStudent} className="w-full rounded-xl gap-2 btn-gradient mt-2">
+                    <Plus className="w-4 h-4" />
+                    Добавить ученика
+                  </Button>
+                )}
               </div>
             </div>
 
