@@ -67,9 +67,28 @@ export function useStudentDashboard() {
   const [loading, setLoading] = useState(true);
   const [totalTimeSpent, setTotalTimeSpent] = useState(0);
   const [totalCompletedLessons, setTotalCompletedLessons] = useState(0);
-  const [isPreviewMode, setIsPreviewMode] = useState(false);
-  const [isAdminView, setIsAdminView] = useState(false);
-  const [adminViewStudentName, setAdminViewStudentName] = useState("");
+  const [isPreviewMode, setIsPreviewMode] = useState(() => {
+    const preview = localStorage.getItem('previewStudentDashboard');
+    if (preview === 'true') {
+      localStorage.removeItem('previewStudentDashboard');
+      return true;
+    }
+    return false;
+  });
+  const [isAdminView, setIsAdminView] = useState(() => {
+    const adminView = localStorage.getItem('adminViewAsStudent');
+    if (adminView) {
+      try { JSON.parse(adminView); return true; } catch { return false; }
+    }
+    return false;
+  });
+  const [adminViewStudentName, setAdminViewStudentName] = useState(() => {
+    const adminView = localStorage.getItem('adminViewAsStudent');
+    if (adminView) {
+      try { return JSON.parse(adminView).name || ''; } catch { return ''; }
+    }
+    return '';
+  });
   const [showVideoIdentification, setShowVideoIdentification] = useState(false);
   const [showConsentForm, setShowConsentForm] = useState(false);
   const [showDocumentsUpload, setShowDocumentsUpload] = useState(false);
@@ -98,14 +117,10 @@ export function useStudentDashboard() {
   const [targetUserId, setTargetUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    const preview = localStorage.getItem('previewStudentDashboard');
-    if (preview === 'true') { setIsPreviewMode(true); localStorage.removeItem('previewStudentDashboard'); }
     const adminView = localStorage.getItem('adminViewAsStudent');
     if (adminView) {
       try {
         const data = JSON.parse(adminView);
-        setIsAdminView(true);
-        setAdminViewStudentName(data.name || '');
         if (data.userId) setTargetUserId(data.userId);
       } catch (e) { /* ignore */ }
     }

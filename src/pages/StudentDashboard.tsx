@@ -45,7 +45,7 @@ export default function StudentDashboard() {
   const isFreePlan = orgPlan === 'free';
 
   // Redirect non-student users to their dashboards
-  if (userRole && userRole !== 'student' && !isAdminView) {
+  if (userRole && userRole !== 'student' && !isAdminView && !isPreviewMode) {
     if (userRole === 'organization') return <Navigate to="/organization" replace />;
     if (userRole === 'company') return <Navigate to="/company" replace />;
     if (userRole === 'admin') return <Navigate to="/admin" replace />;
