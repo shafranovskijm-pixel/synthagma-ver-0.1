@@ -179,6 +179,10 @@ export function useStudentDetailCardLogic({
   const [showPassword, setShowPassword] = useState(false);
   const [isSendingReminder, setIsSendingReminder] = useState(false);
 
+  // FRDO data state
+  const [frdoData, setFrdoData] = useState<Record<string, string | null>>({});
+  const [savingFrdoField, setSavingFrdoField] = useState<string | null>(null);
+
   useEffect(() => {
     if (isOpen && student) loadStudentData();
   }, [isOpen, student]);
@@ -187,20 +191,39 @@ export function useStudentDetailCardLogic({
     if (!student) return;
     setIsLoading(true);
     try {
-      const [consentsRes, generatedConsentsRes, verificationsRes, documentsRes, identityDocsRes] = await Promise.all([
+      const [consentsRes, generatedConsentsRes, verificationsRes, documentsRes, identityDocsRes, frdoRes] = await Promise.all([
         supabase.from("student_consents").select("*").eq("user_id", student.user_id).eq("organization_id", organizationId).order("created_at", { ascending: false }),
         supabase.from("consent_documents").select("*").eq("student_user_id", student.user_id).eq("organization_id", organizationId).order("created_at", { ascending: false }),
         supabase.from("video_identifications").select("*").eq("user_id", student.user_id).order("created_at", { ascending: false }),
         supabase.from("student_documents").select("*, enrollments!inner(user_id)").eq("enrollments.user_id", student.user_id).order("created_at", { ascending: false }),
         supabase.from("student_identity_documents").select("*").eq("user_id", student.user_id).eq("organization_id", organizationId).order("created_at", { ascending: false }),
+        supabase.from("student_frdo_data").select("*").eq("user_id", student.user_id).eq("organization_id", organizationId).maybeSingle(),
       ]);
       if (consentsRes.data) setConsents(consentsRes.data as ConsentRecord[]);
       if (generatedConsentsRes.data) setGeneratedConsents(generatedConsentsRes.data as GeneratedConsentRecord[]);
       if (verificationsRes.data) setVerifications(verificationsRes.data as VerificationRecord[]);
       if (documentsRes.data) setDocuments(documentsRes.data as DocumentRecord[]);
       if (identityDocsRes.data) setIdentityDocs(identityDocsRes.data as IdentityDocumentRecord[]);
+      if (frdoRes.data) setFrdoData(frdoRes.data as Record<string, string | null>);
+      else setFrdoData({});
     } catch (error) { console.error("Error loading student data:", error); }
     finally { setIsLoading(false); }
+  };
+
+  const saveFrdoField = async (field: string, value: string) => {
+    if (!student) return;
+    setSavingFrdoField(field);
+    try {
+      const { error } = await supabase.from("student_frdo_data").upsert({
+        user_id: student.user_id,
+        organization_id: organizationId,
+        [field]: value || null,
+      }, { onConflict: "user_id,organization_id" });
+      if (error) throw error;
+      setFrdoData(prev => ({ ...prev, [field]: value || null }));
+      toast.success("Сохранено");
+    } catch (error) { console.error("Save FRDO field error:", error); toast.error("Ошибка сохранения"); }
+    finally { setSavingFrdoField(null); }
   };
 
   const copyToClipboard = async (text: string, field: string) => {
