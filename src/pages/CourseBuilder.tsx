@@ -116,9 +116,9 @@ export default function CourseBuilder() {
               <div className="space-y-2"><Label>Описание</Label><Textarea value={courseDescription} onChange={e => setCourseDescription(e.target.value)} placeholder="О чем этот курс?" className="min-h-[100px]" /></div>
             </div>
 
-            <div className="bg-card rounded-2xl border border-border p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="font-display text-xl font-semibold">Содержание курса</h2>
+            <div className="bg-card rounded-2xl border border-border p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 gap-3">
+                <h2 className="font-display text-lg sm:text-xl font-semibold">Содержание курса</h2>
                 <div className="flex gap-3">
                   <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={isImporting} className="h-auto py-2 px-3 flex flex-col items-center gap-0.5">
                     <span className="flex items-center gap-1.5"><FileUp className="w-4 h-4" />{isImporting ? 'Импорт...' : 'Импорт'}</span>
