@@ -806,12 +806,6 @@ export function CourseDetailsModal({
               <div className="space-y-6">
                 <h3 className="font-semibold">Настройки курса</h3>
                 
-                {isFreePlan && (
-                  <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex items-center gap-3">
-                    <Lock className="w-5 h-5 text-amber-500 flex-shrink-0" />
-                    <p className="text-sm text-amber-700 dark:text-amber-400">Доступно на тарифе Старт и выше. Перейдите на другой тариф для управления настройками курса.</p>
-                  </div>
-                )}
                 
                 <div className="bg-secondary/30 rounded-xl p-4 space-y-6">
                   {/* Skip video identification */}
@@ -833,7 +827,7 @@ export function CourseDetailsModal({
                       id="skip-video-id"
                       checked={skipVideoId}
                       onCheckedChange={handleToggleSkipVideoId}
-                      disabled={isSavingSettings || isFreePlan}
+                      disabled={isSavingSettings}
                     />
                   </div>
 
@@ -856,7 +850,7 @@ export function CourseDetailsModal({
                       id="sequential-lessons"
                       checked={sequentialLessons}
                       onCheckedChange={handleToggleSequentialLessons}
-                      disabled={isSavingSettings || isFreePlan}
+                      disabled={isSavingSettings}
                     />
                   </div>
 
@@ -879,7 +873,7 @@ export function CourseDetailsModal({
                       id="allow-video-seek"
                       checked={allowVideoSeek}
                       onCheckedChange={handleToggleAllowVideoSeek}
-                      disabled={isSavingSettings || isFreePlan}
+                      disabled={isSavingSettings}
                     />
                   </div>
                 </div>
@@ -1099,13 +1093,7 @@ export function CourseDetailsModal({
             </TabsContent>
 
             <TabsContent value="reminders" className="mt-0 h-full">
-              {isFreePlan && (
-                <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex items-center gap-3 mb-4">
-                  <Lock className="w-5 h-5 text-amber-500 flex-shrink-0" />
-                  <p className="text-sm text-amber-700 dark:text-amber-400">Доступно на тарифе Старт и выше. Перейдите на другой тариф для управления напоминаниями.</p>
-                </div>
-              )}
-              <div className={isFreePlan ? "opacity-50 pointer-events-none" : ""}>
+              <div>
               <CourseRemindersTab
                 courseId={course.id}
                 organizationId={organizationId || ""}
