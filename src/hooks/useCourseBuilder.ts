@@ -407,7 +407,13 @@ export function useCourseBuilder() {
   };
 
   const updateLesson = (id: string, updates: Partial<Lesson>) => { setLessons(lessons.map(l => l.id === id ? { ...l, ...updates } : l)); markAsChanged(); };
-  const deleteLesson = (id: string) => { setLessons(lessons.filter(l => l.id !== id)); };
+  const deleteLesson = (id: string) => {
+    setLessons(lessons.filter(l => l.id !== id));
+    markAsChanged();
+    // Autosave after delete with debounce
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(() => { saveCourse(true); }, 500);
+  };
   const toggleLesson = (id: string) => { setLessons(lessons.map(l => l.id === id ? { ...l, expanded: !l.expanded } : l)); };
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
