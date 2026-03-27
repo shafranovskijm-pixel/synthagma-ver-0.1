@@ -1,19 +1,44 @@
 
 
-## Убрать блокировки функций для бесплатного тарифа
+## Исправить предпросмотр кабинета студента для администраторов
 
 ### Проблема
-Несмотря на то что в конфигурации тарифов (`subscriptionPlans.ts`) все функции уже включены для бесплатного плана, в UI остались жёсткие проверки `isFreePlan`, которые блокируют разделы меню, настройки курсов, документооборот и другие возможности.
+Кнопка «Посмотрите, как выглядит кабинет ученика» открывает `/student` в новой вкладке, но на странице StudentDashboard есть защитный редирект (строка 48):
 
-### Что нужно изменить
+```typescript
+if (userRole && userRole !== 'student' && !isAdminView) {
+  if (userRole === 'organization') return <Navigate to="/organization" replace />;
+  if (userRole === 'admin') return <Navigate to="/admin" replace />;
+}
+```
 
-| Файл | Что убрать |
+Этот редирект проверяет только `isAdminView` (режим «Войти как»), но **не проверяет `isPreviewMode`**. Более того, `isPreviewMode` устанавливается в `useEffect` (асинхронно), а редирект выполняется синхронно при первом рендере — до того, как preview-флаг успевает примениться.
+
+### Решение
+
+**`src/pages/StudentDashboard.tsx`** — добавить `isPreviewMode` в условие редиректа:
+```typescript
+if (userRole && userRole !== 'student' && !isAdminView && !isPreviewMode) {
+```
+
+**`src/hooks/useStudentDashboard.ts`** — инициализировать `isPreviewMode` синхронно (через `useState` initializer) вместо `useEffect`, чтобы значение было доступно уже при первом рендере:
+```typescript
+const [isPreviewMode, setIsPreviewMode] = useState(() => {
+  const preview = localStorage.getItem('previewStudentDashboard');
+  if (preview === 'true') {
+    localStorage.removeItem('previewStudentDashboard');
+    return true;
+  }
+  return false;
+});
+```
+
+Аналогично для `isAdminView` — читать `localStorage` синхронно в initializer, чтобы оба флага были доступны до первого рендера.
+
+### Файлы
+
+| Файл | Изменение |
 |------|-----------|
-| `src/components/organization/tabs/SettingsTab.tsx` | Удалить `isFreePlan` и `LockedOverlay` на секции «Разделы меню» (строка 157) |
-| `src/components/organization/tabs/DocumentsTab.tsx` | Удалить `isFreePlan` и `LockedOverlay` на конструкторе документов (строка 177) |
-| `src/components/organization/dialogs/CourseDetailsModal.tsx` | Удалить блокировку настроек курса (`isFreePlan` на строках 809, 836, 859, 882) и блокировку напоминаний (строки 1102–1108) |
-| `src/pages/StudentDashboard.tsx` | Удалить проверки `isFreePlan` для видеоидентификации (строка 72) и документов (строка 77), убрать замочки |
-
-### Принцип
-Все проверки `isFreePlan` с блокировкой UI будут удалены. Различия тарифов остаются только в количественных лимитах (курсы, ученики, хранилище) — эти проверки (`checkLimit`) не затрагиваются.
+| `src/hooks/useStudentDashboard.ts` | Перенести чтение `previewStudentDashboard` и `adminViewAsStudent` из `useEffect` в инициализаторы `useState` |
+| `src/pages/StudentDashboard.tsx` | Добавить `!isPreviewMode` в условие редиректа |
 
