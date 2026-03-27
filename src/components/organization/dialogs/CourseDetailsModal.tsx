@@ -873,7 +873,7 @@ export function CourseDetailsModal({
                       id="allow-video-seek"
                       checked={allowVideoSeek}
                       onCheckedChange={handleToggleAllowVideoSeek}
-                      disabled={isSavingSettings || isFreePlan}
+                      disabled={isSavingSettings}
                     />
                   </div>
                 </div>
