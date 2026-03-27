@@ -46,6 +46,9 @@ interface StudentsTabProps {
   isCreatingBulkCredentials?: boolean;
   isSendingBulkCredentials?: boolean;
   isSendingBulkDocReminders?: boolean;
+  onAddStudent?: () => void;
+  onImportStudents?: () => void;
+  onNavigateToFRDO?: () => void;
 }
 
 export const StudentsTab = React.memo(function StudentsTab({
@@ -64,6 +67,9 @@ export const StudentsTab = React.memo(function StudentsTab({
   isCreatingBulkCredentials = false,
   isSendingBulkCredentials = false,
   isSendingBulkDocReminders = false,
+  onAddStudent,
+  onImportStudents,
+  onNavigateToFRDO,
 }: StudentsTabProps) {
   const courseIds = courses.map(c => c.id);
 
@@ -624,6 +630,12 @@ export const StudentsTab = React.memo(function StudentsTab({
                     <span>Зачисление на курсы</span>
                   </li>
                 </ul>
+                {onAddStudent && (
+                  <Button onClick={onAddStudent} className="w-full rounded-xl gap-2 btn-gradient mt-2">
+                    <Plus className="w-4 h-4" />
+                    Добавить ученика
+                  </Button>
+                )}
               </div>
             </div>
 
@@ -654,6 +666,12 @@ export const StudentsTab = React.memo(function StudentsTab({
                     <span>Группировка по группам</span>
                   </li>
                 </ul>
+                {onImportStudents && (
+                  <Button onClick={onImportStudents} variant="outline" className="w-full rounded-xl gap-2 mt-2">
+                    <FileSpreadsheet className="w-4 h-4" />
+                    Импорт учеников
+                  </Button>
+                )}
               </div>
             </div>
 
@@ -684,6 +702,12 @@ export const StudentsTab = React.memo(function StudentsTab({
                     <span>Напоминания о документах</span>
                   </li>
                 </ul>
+                {onNavigateToFRDO && (
+                  <Button onClick={onNavigateToFRDO} variant="outline" className="w-full rounded-xl gap-2 mt-2">
+                    <FileText className="w-4 h-4" />
+                    Перейти в ФИС ФРДО
+                  </Button>
+                )}
               </div>
             </div>
           </div>

@@ -102,6 +102,9 @@ export function TabContentRenderer() {
           isCreatingBulkCredentials={d.studentActions.isCreatingBulkCredentials}
           isSendingBulkCredentials={d.studentActions.isSendingBulkCredentials}
           isSendingBulkDocReminders={d.studentActions.isSendingBulkDocReminders}
+          onAddStudent={() => d.studentManagement.setShowAddStudentDialog(true)}
+          onImportStudents={() => d.setShowImportDialog(true)}
+          onNavigateToFRDO={() => d.tabNavigation.setActiveTab("frdo" as any)}
         />
       )}
 
