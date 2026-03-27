@@ -119,10 +119,14 @@ export const StudentsTab = React.memo(function StudentsTab({
         name: newGroupName.trim(),
         color: newGroupColor,
         organization_id: organizationId,
+        start_date: newGroupStartDate || null,
+        end_date: newGroupEndDate || null,
       } as any);
       if (error) throw error;
       toast.success("Группа создана");
       setNewGroupName("");
+      setNewGroupStartDate("");
+      setNewGroupEndDate("");
       refreshGroups();
     } catch (e) {
       toast.error("Ошибка создания группы");
