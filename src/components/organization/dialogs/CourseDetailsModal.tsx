@@ -1167,6 +1167,14 @@ export function CourseDetailsModal({
               />
               </div>
             </TabsContent>
+
+            <TabsContent value="groups" className="mt-0 h-full">
+              <CourseGroupsTab
+                courseId={course.id}
+                organizationId={organizationId || ""}
+                onRefreshStudents={onRefreshStudents}
+              />
+            </TabsContent>
           </div>
         </Tabs>
       </DialogContent>
