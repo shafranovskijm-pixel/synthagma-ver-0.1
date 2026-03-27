@@ -157,10 +157,10 @@ export default function CourseBuilder() {
                   <Layers className="w-12 h-12 sm:w-16 sm:h-16 mx-auto text-primary/20 mb-4" />
                   <h3 className="text-lg font-semibold mb-2">Начните создавать курс</h3>
                   <p className="text-muted-foreground mb-6 max-w-md mx-auto text-sm">Добавьте уроки вручную, импортируйте из файлов или сгенерируйте структуру с помощью AI</p>
-                  <div className="flex gap-3 justify-center">
-                    <Button variant="outline" onClick={() => addLesson('text')} className="gap-2"><Plus className="w-4 h-4" />Добавить урок</Button>
-                    <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="gap-2"><FileUp className="w-4 h-4" />Импорт</Button>
-                    <Button onClick={handleGenerateStructure} variant="outline" className="gap-2"><Wand2 className="w-4 h-4" />AI Структура</Button>
+                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 justify-center px-4">
+                    <Button variant="outline" onClick={() => addLesson('text')} className="gap-2" size="sm"><Plus className="w-4 h-4" />Добавить урок</Button>
+                    <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="gap-2" size="sm"><FileUp className="w-4 h-4" />Импорт</Button>
+                    <Button onClick={handleGenerateStructure} variant="outline" className="gap-2" size="sm"><Wand2 className="w-4 h-4" />AI Структура</Button>
                   </div>
                 </div>
               )}
