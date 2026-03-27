@@ -65,7 +65,7 @@ export default function CourseBuilder() {
         <div className="container mx-auto px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between backdrop-blur-sm bg-card/80">
           <div className="flex items-center gap-2 sm:gap-4">
             <Tooltip><TooltipTrigger asChild>
-              <Button variant="ghost" size="sm" onClick={handleBackClick} className="rounded-xl"><ArrowLeft className="w-4 h-4 mr-2" />Назад</Button>
+              <Button variant="ghost" size="sm" onClick={handleBackClick} className="rounded-xl"><ArrowLeft className="w-4 h-4 sm:mr-2" /><span className="hidden sm:inline">Назад</span></Button>
             </TooltipTrigger><TooltipContent>Вернуться к списку курсов</TooltipContent></Tooltip>
             <SigmaLogo size="sm" />
           </div>
