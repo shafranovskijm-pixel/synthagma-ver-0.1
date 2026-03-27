@@ -3606,25 +3606,31 @@ export type Database = {
         Row: {
           color: string | null
           created_at: string
+          end_date: string | null
           id: string
           name: string
           organization_id: string
+          start_date: string | null
           updated_at: string
         }
         Insert: {
           color?: string | null
           created_at?: string
+          end_date?: string | null
           id?: string
           name: string
           organization_id: string
+          start_date?: string | null
           updated_at?: string
         }
         Update: {
           color?: string | null
           created_at?: string
+          end_date?: string | null
           id?: string
           name?: string
           organization_id?: string
+          start_date?: string | null
           updated_at?: string
         }
         Relationships: [

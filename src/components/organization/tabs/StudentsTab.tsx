@@ -104,6 +104,8 @@ export const StudentsTab = React.memo(function StudentsTab({
   const [showGroupDialog, setShowGroupDialog] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
   const [newGroupColor, setNewGroupColor] = useState("#6366f1");
+  const [newGroupStartDate, setNewGroupStartDate] = useState<string>("");
+  const [newGroupEndDate, setNewGroupEndDate] = useState<string>("");
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [showSendConfirm, setShowSendConfirm] = useState(false);
   const [showLoginsConfirm, setShowLoginsConfirm] = useState(false);
@@ -117,10 +119,14 @@ export const StudentsTab = React.memo(function StudentsTab({
         name: newGroupName.trim(),
         color: newGroupColor,
         organization_id: organizationId,
+        start_date: newGroupStartDate || null,
+        end_date: newGroupEndDate || null,
       } as any);
       if (error) throw error;
       toast.success("Группа создана");
       setNewGroupName("");
+      setNewGroupStartDate("");
+      setNewGroupEndDate("");
       refreshGroups();
     } catch (e) {
       toast.error("Ошибка создания группы");
@@ -1003,10 +1009,29 @@ export const StudentsTab = React.memo(function StudentsTab({
                 onChange={e => setNewGroupColor(e.target.value)}
                 className="w-10 h-10 rounded border border-border cursor-pointer"
               />
-              <Button onClick={handleCreateGroup} size="icon">
-                <Plus className="w-4 h-4" />
-              </Button>
             </div>
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <label className="text-xs text-muted-foreground mb-1 block">Дата начала</label>
+                <Input
+                  type="date"
+                  value={newGroupStartDate}
+                  onChange={e => setNewGroupStartDate(e.target.value)}
+                />
+              </div>
+              <div className="flex-1">
+                <label className="text-xs text-muted-foreground mb-1 block">Дата окончания</label>
+                <Input
+                  type="date"
+                  value={newGroupEndDate}
+                  onChange={e => setNewGroupEndDate(e.target.value)}
+                />
+              </div>
+            </div>
+            <Button onClick={handleCreateGroup} className="w-full rounded-xl gap-2">
+              <Plus className="w-4 h-4" />
+              Создать группу
+            </Button>
             
             {studentGroups.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">Нет групп</p>
@@ -1021,7 +1046,9 @@ export const StudentsTab = React.memo(function StudentsTab({
                         <div>
                           <div className="font-medium text-sm">{group.name}</div>
                           <div className="text-xs text-muted-foreground">
-                            {count} уч. · {format(new Date(group.created_at), "d MMM yyyy", { locale: ru })}
+                            {count} уч.
+                            {group.start_date && ` · с ${format(new Date(group.start_date), "d MMM", { locale: ru })}`}
+                            {group.end_date && ` по ${format(new Date(group.end_date), "d MMM yyyy", { locale: ru })}`}
                           </div>
                         </div>
                       </div>

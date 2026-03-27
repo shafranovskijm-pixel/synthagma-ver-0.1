@@ -57,6 +57,7 @@ import {
   type CourseFRDOSettings,
 } from "@/constants/frdo";
 import { CourseRemindersTab } from "@/components/organization/CourseRemindersTab";
+import { CourseGroupsTab } from "@/components/organization/CourseGroupsTab";
 
 interface Course {
   id: string;
@@ -109,8 +110,8 @@ interface CourseDetailsModalProps {
   course: Course | null;
   courseStudents: Student[];
   organizationId: string | null;
-  activeTab: "students" | "materials" | "history" | "tests" | "settings" | "reminders";
-  onTabChange: (tab: "students" | "materials" | "history" | "tests" | "settings" | "reminders") => void;
+  activeTab: "students" | "materials" | "history" | "tests" | "settings" | "reminders" | "groups";
+  onTabChange: (tab: "students" | "materials" | "history" | "tests" | "settings" | "reminders" | "groups") => void;
   onEnrollStudent: () => void;
   onCourseDeleted?: () => void;
   onCourseUpdated?: () => void;
@@ -647,6 +648,10 @@ export function CourseDetailsModal({
                 <Bell className="w-4 h-4" />
                 Напоминания
               </TabsTrigger>
+              <TabsTrigger value="groups" className="rounded-lg gap-2">
+                <Users className="w-4 h-4" />
+                Группы
+              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -1161,6 +1166,14 @@ export function CourseDetailsModal({
                 }}
               />
               </div>
+            </TabsContent>
+
+            <TabsContent value="groups" className="mt-0 h-full">
+              <CourseGroupsTab
+                courseId={course.id}
+                organizationId={organizationId || ""}
+                onRefreshStudents={onRefreshStudents}
+              />
             </TabsContent>
           </div>
         </Tabs>
