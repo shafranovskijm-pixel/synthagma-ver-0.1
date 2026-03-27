@@ -138,6 +138,9 @@ export function useCourseBuilder() {
 
       if (totalImported > 0) {
         toast.success(`Импортировано ${totalImported} ${totalImported === 1 ? 'урок' : totalImported < 5 ? 'урока' : 'уроков'}`);
+        markAsChanged();
+        // Autosave after import
+        setTimeout(() => { saveCourse(true); }, 500);
       } else {
         toast.warning("Не удалось извлечь уроки из файла");
       }
