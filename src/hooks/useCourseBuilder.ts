@@ -424,6 +424,9 @@ export function useCourseBuilder() {
       const oldIndex = lessons.findIndex(l => l.id === active.id);
       const newIndex = lessons.findIndex(l => l.id === over.id);
       setLessons(arrayMove(lessons, oldIndex, newIndex));
+      markAsChanged();
+      // Autosave after reorder
+      setTimeout(() => { saveCourse(true); }, 500);
     }
   };
 
