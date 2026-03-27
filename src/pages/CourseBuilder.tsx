@@ -107,8 +107,8 @@ export default function CourseBuilder() {
         </div>
       </div>
 
-      <div className="container mx-auto px-6 py-8 pb-32">
-        <div className="grid lg:grid-cols-3 gap-8">
+      <div className="container mx-auto px-3 sm:px-6 py-4 sm:py-8 pb-28 sm:pb-32">
+        <div className="grid lg:grid-cols-3 gap-4 sm:gap-8">
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-card rounded-2xl border border-border border-t-2 border-t-primary/30 p-6 space-y-4">
               <h2 className="font-display text-xl font-semibold mb-4 flex items-center gap-2"><BookOpen className="w-5 h-5 text-primary" />Информация о курсе</h2>
