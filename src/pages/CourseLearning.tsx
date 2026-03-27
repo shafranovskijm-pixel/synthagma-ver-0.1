@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useSwipeGesture } from "@/hooks/useSwipeGesture";
@@ -61,6 +61,13 @@ const CourseLearning = () => {
   const handleSwipeRight = () => { if (currentLessonIndex > 0) goToPrevLesson(); };
   const isTestActive = currentLesson?.type === 'test' && !testSubmitted;
   const [reviewOpen, setReviewOpen] = useReactState(false);
+
+  // Auto-complete slider (presentation) lessons when opened
+  useEffect(() => {
+    if (currentLesson?.type === 'slider' && !isLessonCompleted(currentLesson.id)) {
+      markLessonComplete();
+    }
+  }, [currentLesson?.id]);
   
   const swipeRef = useSwipeGesture<HTMLDivElement>({
     onSwipeLeft: isMobile && !isTestActive ? handleSwipeLeft : undefined,
