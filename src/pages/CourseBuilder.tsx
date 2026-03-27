@@ -120,15 +120,15 @@ export default function CourseBuilder() {
               <div className="flex items-center justify-between mb-6">
                 <h2 className="font-display text-xl font-semibold">Содержание курса</h2>
                 <div className="flex gap-3">
-                  <div className="flex flex-col items-center">
-                    <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={isImporting}><FileUp className="w-4 h-4 mr-2" />{isImporting ? 'Импорт...' : 'Импорт'}</Button>
-                    <span className="text-[10px] text-muted-foreground mt-1">DOCX, TXT, MD, HTML</span>
-                  </div>
+                  <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={isImporting} className="h-auto py-2 px-3 flex flex-col items-center gap-0.5">
+                    <span className="flex items-center gap-1.5"><FileUp className="w-4 h-4" />{isImporting ? 'Импорт...' : 'Импорт'}</span>
+                    <span className="text-[10px] text-muted-foreground font-normal">DOCX, TXT, MD, HTML</span>
+                  </Button>
                   <input type="file" ref={fileInputRef} onChange={handleFileImport} multiple accept=".docx,.txt,.md,.html,.htm" className="hidden" />
-                  <div className="flex flex-col items-center">
-                    <Button variant="outline" size="sm" onClick={handleGenerateStructure} disabled={isGenerating}><Wand2 className="w-4 h-4 mr-2" />{isGenerating ? 'Генерация...' : 'AI Структура'}</Button>
-                    <span className="text-[10px] text-muted-foreground mt-1">По названию и описанию курса</span>
-                  </div>
+                  <Button variant="outline" size="sm" onClick={handleGenerateStructure} disabled={isGenerating} className="h-auto py-2 px-3 flex flex-col items-center gap-0.5">
+                    <span className="flex items-center gap-1.5"><Wand2 className="w-4 h-4" />{isGenerating ? 'Генерация...' : 'AI Структура'}</span>
+                    <span className="text-[10px] text-muted-foreground font-normal">По названию и описанию курса</span>
+                  </Button>
                 </div>
               </div>
 
