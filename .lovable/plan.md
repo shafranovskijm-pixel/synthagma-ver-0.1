@@ -1,34 +1,19 @@
 
 
-## Все функции доступны на всех тарифах
+## Исправление: презентация не должна перекидывать на следующий урок
 
 ### Проблема
 
-В базе данных есть две функции, которые при смене/создании тарифа записывают ограниченный набор категорий:
-
-- **`apply_plan_features_on_change()`** — триггер при смене `subscription_plan`. Для `free` включает только `courses, students, services, settings, student_cabinet`. Для `start` — без `documents, journals, frdo, library, labor_safety, webinars`. И так далее.
-- **`apply_free_plan_features()`** — вызывается при создании организации. Тоже включает только 5 категорий.
-
-Клиентский код (`useOrgFeatures.ts`, строки 280-291) использует `enabledCategories` из `subscriptionPlans.ts` как финальный источник, и там уже все категории включены для всех тарифов. Но данные в таблице `organization_feature_categories` остаются старыми (ограниченными), и админ-панель их показывает неверно.
+`markLessonComplete()` всегда вызывает `goToNextLesson()` в конце (строка 660). Когда `useEffect` автоматически вызывает `markLessonComplete()` для презентации — студент сразу перебрасывается на следующий урок, не успев посмотреть слайды.
 
 ### Решение
 
-**1. Миграция БД** — обновить обе функции:
+Добавить параметр `autoAdvance = true` в `markLessonComplete()`. При автозавершении презентации передавать `false`, чтобы галочка ставилась, но переход не происходил.
 
-- `apply_plan_features_on_change()` — для ВСЕХ планов включать ВСЕ категории (одинаковый массив)
-- `apply_free_plan_features()` — включать ВСЕ категории
+### Изменения
 
-**2. Та же миграция** — одноразовый UPDATE: включить все категории для всех существующих организаций в `organization_feature_categories`
-
-**3. `src/constants/subscriptionPlans.ts`** — уже корректный (все категории на всех тарифах), изменений не нужно
-
-**4. `src/hooks/useOrgFeatures.ts`** — уже корректный (план — финальный авторитет), изменений не нужно
-
-### Файлы
-
-| Файл | Изменение |
-|------|-----------|
-| Миграция SQL | Обновить `apply_plan_features_on_change()` и `apply_free_plan_features()` — все категории для всех планов. UPDATE существующих записей. |
-
-Одна миграция, без изменений в клиентском коде.
+| Файл | Что меняется |
+|------|-------------|
+| `src/hooks/useCourseLearning.ts` | `markLessonComplete(autoAdvance = true)` — вызывать `goToNextLesson()` только если `autoAdvance === true` |
+| `src/pages/CourseLearning.tsx` | В `useEffect` для slider вызывать `markLessonComplete(false)` — отметить без перехода |
 
