@@ -40,6 +40,9 @@ export function useCourseBuilder() {
   const [subscriptionPlan, setSubscriptionPlan] = useState<string>('free');
   const aiLimit = useAiGenerationLimit(organizationId, subscriptionPlan);
 
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const markAsChanged = useCallback(() => { setHasUnsavedChanges(true); }, []);
 
   const updateLessons = useCallback((updater: Lesson[] | ((prev: Lesson[]) => Lesson[])) => {
