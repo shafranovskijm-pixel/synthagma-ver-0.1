@@ -358,5 +358,6 @@ export function useStudentDetailCardLogic({
     handleUploadClick, handleFileChange, handleDeleteIdentityDoc, handlePreviewDoc, handleDownloadDoc,
     formatDate, formatDuration, latestConsent, latestVerification, getIdentityDocByType, getMissingDocuments,
     isSendingReminder, handleSendDocumentsReminder, handleVerifyIdentification, handleManualVerification,
+    frdoData, saveFrdoField, savingFrdoField,
   };
 }
