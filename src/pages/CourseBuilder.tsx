@@ -110,8 +110,8 @@ export default function CourseBuilder() {
       <div className="container mx-auto px-6 py-8 pb-32">
         <div className="grid lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
-            <div className="bg-card rounded-2xl border border-border p-6 space-y-4">
-              <h2 className="font-display text-xl font-semibold mb-4">Информация о курсе</h2>
+            <div className="bg-card rounded-2xl border border-border border-t-2 border-t-primary/30 p-6 space-y-4">
+              <h2 className="font-display text-xl font-semibold mb-4 flex items-center gap-2"><BookOpen className="w-5 h-5 text-primary" />Информация о курсе</h2>
               <div className="space-y-2"><Label>Название курса</Label><Input value={courseTitle} onChange={e => setCourseTitle(e.target.value)} placeholder="Введите название курса" className="text-lg font-medium" /></div>
               <div className="space-y-2"><Label>Описание</Label><Textarea value={courseDescription} onChange={e => setCourseDescription(e.target.value)} placeholder="О чем этот курс?" className="min-h-[100px]" /></div>
             </div>
