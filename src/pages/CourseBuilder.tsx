@@ -153,9 +153,15 @@ export default function CourseBuilder() {
               </DndContext>
 
               {lessons.length === 0 && (
-                <div className="text-center py-12 border-2 border-dashed border-border rounded-xl">
-                  <p className="text-muted-foreground mb-4">В курсе пока нет уроков</p>
-                  <Button onClick={handleGenerateStructure} variant="outline" className="gap-2"><Wand2 className="w-4 h-4" />Сгенерировать структуру с AI</Button>
+                <div className="text-center py-16 border-2 border-dashed border-border rounded-xl">
+                  <Layers className="w-16 h-16 mx-auto text-primary/20 mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Начните создавать курс</h3>
+                  <p className="text-muted-foreground mb-6 max-w-md mx-auto text-sm">Добавьте уроки вручную, импортируйте из файлов или сгенерируйте структуру с помощью AI</p>
+                  <div className="flex gap-3 justify-center">
+                    <Button variant="outline" onClick={() => addLesson('text')} className="gap-2"><Plus className="w-4 h-4" />Добавить урок</Button>
+                    <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="gap-2"><FileUp className="w-4 h-4" />Импорт</Button>
+                    <Button onClick={handleGenerateStructure} variant="outline" className="gap-2"><Wand2 className="w-4 h-4" />AI Структура</Button>
+                  </div>
                 </div>
               )}
             </div>
