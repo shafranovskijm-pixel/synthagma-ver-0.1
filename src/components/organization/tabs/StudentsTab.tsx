@@ -46,6 +46,9 @@ interface StudentsTabProps {
   isCreatingBulkCredentials?: boolean;
   isSendingBulkCredentials?: boolean;
   isSendingBulkDocReminders?: boolean;
+  onAddStudent?: () => void;
+  onImportStudents?: () => void;
+  onNavigateToFRDO?: () => void;
 }
 
 export const StudentsTab = React.memo(function StudentsTab({
