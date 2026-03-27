@@ -174,13 +174,6 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
       <div className="mt-4">
         {activeDocTab === "constructor" && (
           <div className="bg-card rounded-xl lg:rounded-2xl border border-border p-4 lg:p-6 relative">
-            {isFreePlan && <LockedOverlay features={[
-              "Шаблоны договоров с автозаполнением реквизитов",
-              "Протоколы аттестационной комиссии (Word)",
-              "Конструктор удостоверений и дипломов",
-              "Согласия на обработку персональных данных",
-              "Печать и подпись — автовставка во все документы",
-            ]} />}
             <Tabs value={constructorTab} onValueChange={setConstructorTab}>
               <TabsList className="flex flex-wrap h-auto gap-1 bg-muted/50 p-1 rounded-xl">
                 <TabsTrigger value="requisites" className="rounded-lg text-xs gap-1.5 px-2.5 py-1.5">

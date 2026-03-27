@@ -154,10 +154,6 @@ export function SettingsTab() {
           <ChevronRight className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90" />
         </summary>
         <div className="px-4 lg:px-6 pb-4 lg:pb-6 relative">
-          {isFreePlan && <LockedOverlay features={[
-            "Гибкая настройка навигации под ваши задачи",
-            "Скрывайте неиспользуемые разделы",
-          ]} />}
           <p className="text-xs lg:text-sm text-muted-foreground mb-3 lg:mb-4">
             Включите или отключите разделы в боковом меню
           </p>

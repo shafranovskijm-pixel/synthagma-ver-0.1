@@ -70,10 +70,7 @@ export default function StudentDashboard() {
         
         <button onClick={() => { setShowVideoIdentification(true); onNavigate?.(); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors"><Video className="w-5 h-5" />Идентификация{isVideoIdentified && <CheckCircle2 className="w-4 h-4 ml-auto text-green-500" />}</button>
         <button onClick={() => { setShowConsentForm(true); onNavigate?.(); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors"><FileCheck className="w-5 h-5" />Согласие на ПД</button>
-        <button onClick={() => { 
-          if (isFreePlan) { toast.info("Эта функция доступна на другом тарифе"); return; }
-          setShowDocumentsUpload(true); onNavigate?.(); 
-        }} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors"><FileText className="w-5 h-5" />Мои документы{isFreePlan ? <Lock className="w-4 h-4 ml-auto text-amber-500" /> : documentsProgress.completed < documentsProgress.total ? <span className="ml-auto text-xs text-amber-600 font-medium">{documentsProgress.completed}/{documentsProgress.total}</span> : <CheckCircle2 className="w-4 h-4 ml-auto text-green-500" />}</button>
+        <button onClick={() => { setShowDocumentsUpload(true); onNavigate?.(); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors"><FileText className="w-5 h-5" />Мои документы{documentsProgress.completed < documentsProgress.total ? <span className="ml-auto text-xs text-amber-600 font-medium">{documentsProgress.completed}/{documentsProgress.total}</span> : <CheckCircle2 className="w-4 h-4 ml-auto text-green-500" />}</button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild><button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors"><Settings className="w-5 h-5" />Настройки</button></DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
