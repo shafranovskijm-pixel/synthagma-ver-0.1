@@ -23,8 +23,6 @@ interface ProfileTabProps {
 }
 
 export function ProfileTab({ student, enrollmentsCount, h, orgPlan }: ProfileTabProps) {
-  const isFreePlan = orgPlan === 'free';
-  const gatedDocTypes = ["passport", "snils", "education_document"];
   const checklistItems = [
     { id: "contract", label: "Договор", icon: FileText, completed: h.documents?.some((d: any) => d.type === "contract") || false, uploadable: false },
     { id: "passport", label: "Паспорт / Св-во о рождении", icon: User, completed: h.identityDocs.some((d: any) => d.type === "passport" || d.type === "birth_certificate"), uploadable: true, uploadType: "passport" },
