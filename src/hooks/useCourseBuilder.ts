@@ -419,12 +419,13 @@ export function useCourseBuilder() {
     return orgId;
   };
 
-  const saveCourse = async () => {
-    if (isSaving) return;
-    if (!courseTitle.trim()) { toast.error("Введите название курса"); return; }
+  const saveCourse = async (silent = false): Promise<boolean> => {
+    if (isSaving) return false;
+    if (!courseTitle.trim()) { if (!silent) toast.error("Введите название курса"); return false; }
     const orgId = await ensureOrganizationId();
-    if (!orgId) { toast.error("Не найдена организация"); return; }
+    if (!orgId) { if (!silent) toast.error("Не найдена организация"); return false; }
     setIsSaving(true);
+    setAutoSaveStatus('saving');
     try {
       let savedCourseId = courseId;
       if (courseId) {
@@ -488,13 +489,25 @@ export function useCourseBuilder() {
           }
         }
       }
-      toast.success(courseId ? "Курс обновлён" : "Курс создан");
+      if (!silent) toast.success(courseId ? "Курс обновлён" : "Курс создан");
       setHasUnsavedChanges(false);
+      setAutoSaveStatus('saved');
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+      autoSaveTimerRef.current = setTimeout(() => setAutoSaveStatus('idle'), 3000);
+      return true;
     } catch (error: any) {
       if (error?.name === 'AbortError' || error?.message?.includes('AbortError')) {
-        toast.success(courseId ? "Курс обновлён" : "Курс создан");
+        if (!silent) toast.success(courseId ? "Курс обновлён" : "Курс создан");
         setHasUnsavedChanges(false);
-      } else { toast.error("Ошибка сохранения: " + error.message); }
+        setAutoSaveStatus('saved');
+        if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+        autoSaveTimerRef.current = setTimeout(() => setAutoSaveStatus('idle'), 3000);
+        return true;
+      } else {
+        toast.error("Ошибка сохранения: " + error.message);
+        setAutoSaveStatus('error');
+        return false;
+      }
     } finally { setIsSaving(false); }
   };
 
