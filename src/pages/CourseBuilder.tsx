@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ArrowLeft, Save, Loader2, Eye, Plus, FileUp, Wand2, Check, AlertCircle } from "lucide-react";
 import { Label } from "@/components/ui/label";
@@ -58,29 +59,36 @@ export default function CourseBuilder() {
   if (isLoading) return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
 
   return (
+    <TooltipProvider delayDuration={300}>
     <div className="min-h-screen bg-background">
       <header className="bg-card border-b border-border sticky top-0 z-10">
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={handleBackClick} className="rounded-xl"><ArrowLeft className="w-4 h-4 mr-2" />Назад</Button>
+            <Tooltip><TooltipTrigger asChild>
+              <Button variant="ghost" size="sm" onClick={handleBackClick} className="rounded-xl"><ArrowLeft className="w-4 h-4 mr-2" />Назад</Button>
+            </TooltipTrigger><TooltipContent>Вернуться к списку курсов</TooltipContent></Tooltip>
             <SigmaLogo size="sm" />
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="outline" onClick={handlePreview} disabled={isSavingForPreview} className="rounded-xl gap-2">
-              {isSavingForPreview ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
-              <span className="hidden sm:inline">{isSavingForPreview ? 'Сохранение...' : 'Предпросмотр'}</span>
-            </Button>
+            <Tooltip><TooltipTrigger asChild>
+              <Button variant="outline" onClick={handlePreview} disabled={isSavingForPreview} className="rounded-xl gap-2">
+                {isSavingForPreview ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
+                <span className="hidden sm:inline">{isSavingForPreview ? 'Сохранение...' : 'Предпросмотр'}</span>
+              </Button>
+            </TooltipTrigger><TooltipContent>Посмотреть курс глазами ученика</TooltipContent></Tooltip>
           </div>
         </div>
       </header>
 
       <div className="fixed bottom-0 inset-x-0 z-50 bg-gradient-to-t from-background via-background to-transparent pb-4 pt-8 pointer-events-none">
         <div className="container mx-auto px-6 pointer-events-auto flex flex-col items-center gap-2">
-          <Button onClick={() => saveCourse()} disabled={isSaving} size="lg" className="btn-gradient rounded-2xl gap-3 px-8 py-6 text-lg font-semibold shadow-2xl hover:scale-105 transition-transform">
-            {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-            {isSaving ? "Сохранение..." : "Сохранить курс"}
-            {hasUnsavedChanges && !isSaving && <span className="ml-1 w-2 h-2 rounded-full bg-white/80 animate-pulse" />}
-          </Button>
+          <Tooltip><TooltipTrigger asChild>
+            <Button onClick={() => saveCourse()} disabled={isSaving} size="lg" className="btn-gradient rounded-2xl gap-3 px-8 py-6 text-lg font-semibold shadow-2xl hover:scale-105 transition-transform">
+              {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+              {isSaving ? "Сохранение..." : "Сохранить курс"}
+              {hasUnsavedChanges && !isSaving && <span className="ml-1 w-2 h-2 rounded-full bg-white/80 animate-pulse" />}
+            </Button>
+          </TooltipTrigger><TooltipContent>Сохранить все изменения курса</TooltipContent></Tooltip>
           {autoSaveStatus === 'saved' && (
             <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1 animate-in fade-in">
               <Check className="w-3 h-3" /> Сохранено
@@ -112,9 +120,13 @@ export default function CourseBuilder() {
               <div className="flex items-center justify-between mb-6">
                 <h2 className="font-display text-xl font-semibold">Содержание курса</h2>
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={isImporting}><FileUp className="w-4 h-4 mr-2" />{isImporting ? 'Импорт...' : 'Импорт'}</Button>
+                  <Tooltip><TooltipTrigger asChild>
+                    <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={isImporting}><FileUp className="w-4 h-4 mr-2" />{isImporting ? 'Импорт...' : 'Импорт'}</Button>
+                  </TooltipTrigger><TooltipContent>Загрузить уроки из файлов: .docx, .txt, .md, .html</TooltipContent></Tooltip>
                   <input type="file" ref={fileInputRef} onChange={handleFileImport} multiple accept=".docx,.txt,.md,.html,.htm" className="hidden" />
-                  <Button variant="outline" size="sm" onClick={handleGenerateStructure} disabled={isGenerating}><Wand2 className="w-4 h-4 mr-2" />{isGenerating ? 'Генерация...' : 'AI Структура'}</Button>
+                  <Tooltip><TooltipTrigger asChild>
+                    <Button variant="outline" size="sm" onClick={handleGenerateStructure} disabled={isGenerating}><Wand2 className="w-4 h-4 mr-2" />{isGenerating ? 'Генерация...' : 'AI Структура'}</Button>
+                  </TooltipTrigger><TooltipContent>Автоматически сгенерировать структуру уроков по названию и описанию курса</TooltipContent></Tooltip>
                 </div>
               </div>
 
@@ -151,24 +163,36 @@ export default function CourseBuilder() {
             <div className="bg-card rounded-2xl border border-border p-6 sticky top-24">
               <h3 className="font-semibold mb-4">Добавить урок</h3>
               <div className="grid grid-cols-2 gap-3">
-                <Button variant="outline" className="h-auto py-4 flex flex-col gap-2 hover:bg-primary/5 hover:border-primary/30" onClick={() => addLesson('text')}>
-                  <span className="text-2xl">📝</span><span className="text-xs">Текст</span>
-                </Button>
-                <Button variant="outline" className="h-auto py-4 flex flex-col gap-2 hover:bg-primary/5 hover:border-primary/30" onClick={() => addLesson('video')}>
-                  <span className="text-2xl">🎥</span><span className="text-xs">Видео</span>
-                </Button>
-                <Button variant="outline" className="h-auto py-4 flex flex-col gap-2 hover:bg-primary/5 hover:border-primary/30" onClick={() => addLesson('test')}>
-                  <span className="text-2xl">✅</span><span className="text-xs">Тест</span>
-                </Button>
-                <Button variant="outline" className="h-auto py-4 flex flex-col gap-2 hover:bg-primary/5 hover:border-primary/30" onClick={() => setShowAIGenerateDialog(true)}>
-                  <span className="text-2xl">✨</span><span className="text-xs">AI Генерация</span>
-                </Button>
-                <Button variant="outline" className="h-auto py-4 flex flex-col gap-2 hover:bg-primary/5 hover:border-primary/30" onClick={() => addLesson('slider')}>
-                  <span className="text-2xl">🖼️</span><span className="text-xs">Слайды</span>
-                </Button>
-                <Button variant="outline" className="h-auto py-4 flex flex-col gap-2 hover:bg-primary/5 hover:border-primary/30" onClick={() => addLesson('audio')}>
-                  <span className="text-2xl">🎧</span><span className="text-xs">Аудио</span>
-                </Button>
+                <Tooltip><TooltipTrigger asChild>
+                  <Button variant="outline" className="h-auto py-4 flex flex-col gap-2 hover:bg-primary/5 hover:border-primary/30" onClick={() => addLesson('text')}>
+                    <span className="text-2xl">📝</span><span className="text-xs">Текст</span>
+                  </Button>
+                </TooltipTrigger><TooltipContent>Урок с текстовым содержимым и блочным редактором</TooltipContent></Tooltip>
+                <Tooltip><TooltipTrigger asChild>
+                  <Button variant="outline" className="h-auto py-4 flex flex-col gap-2 hover:bg-primary/5 hover:border-primary/30" onClick={() => addLesson('video')}>
+                    <span className="text-2xl">🎥</span><span className="text-xs">Видео</span>
+                  </Button>
+                </TooltipTrigger><TooltipContent>Урок с видео: YouTube, VK, Rutube или загрузка файла</TooltipContent></Tooltip>
+                <Tooltip><TooltipTrigger asChild>
+                  <Button variant="outline" className="h-auto py-4 flex flex-col gap-2 hover:bg-primary/5 hover:border-primary/30" onClick={() => addLesson('test')}>
+                    <span className="text-2xl">✅</span><span className="text-xs">Тест</span>
+                  </Button>
+                </TooltipTrigger><TooltipContent>Проверочный тест с вопросами и вариантами ответов</TooltipContent></Tooltip>
+                <Tooltip><TooltipTrigger asChild>
+                  <Button variant="outline" className="h-auto py-4 flex flex-col gap-2 hover:bg-primary/5 hover:border-primary/30" onClick={() => setShowAIGenerateDialog(true)}>
+                    <span className="text-2xl">✨</span><span className="text-xs">AI Генерация</span>
+                  </Button>
+                </TooltipTrigger><TooltipContent>Сгенерировать урок с помощью искусственного интеллекта</TooltipContent></Tooltip>
+                <Tooltip><TooltipTrigger asChild>
+                  <Button variant="outline" className="h-auto py-4 flex flex-col gap-2 hover:bg-primary/5 hover:border-primary/30" onClick={() => addLesson('slider')}>
+                    <span className="text-2xl">🖼️</span><span className="text-xs">Слайды</span>
+                  </Button>
+                </TooltipTrigger><TooltipContent>Урок-презентация с несколькими слайдами</TooltipContent></Tooltip>
+                <Tooltip><TooltipTrigger asChild>
+                  <Button variant="outline" className="h-auto py-4 flex flex-col gap-2 hover:bg-primary/5 hover:border-primary/30" onClick={() => addLesson('audio')}>
+                    <span className="text-2xl">🎧</span><span className="text-xs">Аудио</span>
+                  </Button>
+                </TooltipTrigger><TooltipContent>Аудиоурок: загрузите файл или вставьте ссылку</TooltipContent></Tooltip>
               </div>
             </div>
           </div>
@@ -188,5 +212,6 @@ export default function CourseBuilder() {
 
       <AIGenerateDialog open={showAIGenerateDialog} onOpenChange={setShowAIGenerateDialog} onGenerate={handleAIGenerate} courseTitle={courseTitle} courseDescription={courseDescription} />
     </div>
+    </TooltipProvider>
   );
 }
