@@ -635,9 +635,9 @@ export function useCourseLearning() {
     };
   }, [user, enrollmentId, currentLesson?.id, saveLessonTime]);
 
-  const markLessonComplete = async () => {
+  const markLessonComplete = async (autoAdvance = true) => {
     if (!currentLesson || !user) return;
-    if (isLessonCompleted(currentLesson.id)) { goToNextLesson(); return; }
+    if (isLessonCompleted(currentLesson.id)) { if (autoAdvance) goToNextLesson(); return; }
 
     await saveLessonTime();
 
@@ -657,7 +657,7 @@ export function useCourseLearning() {
     await supabase.from('enrollments').update({ progress: newProgress }).eq('id', enrollmentId);
 
     if (newProgress >= 100) { await handleCourseCompletion(); } else { toast.success('Урок завершён!'); }
-    goToNextLesson();
+    if (autoAdvance) goToNextLesson();
   };
 
   const goToNextLesson = () => {

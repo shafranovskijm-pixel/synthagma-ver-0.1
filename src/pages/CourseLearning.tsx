@@ -65,7 +65,7 @@ const CourseLearning = () => {
   // Auto-complete slider (presentation) lessons when opened
   useEffect(() => {
     if (currentLesson?.type === 'slider' && !isLessonCompleted(currentLesson.id)) {
-      markLessonComplete();
+      markLessonComplete(false);
     }
   }, [currentLesson?.id]);
   
@@ -213,7 +213,7 @@ const CourseLearning = () => {
                 </div>
                 <div className="aspect-video bg-muted rounded-2xl flex items-center justify-center overflow-hidden shadow-lg">
                   {isVideoProgressLoading ? <div className="flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-muted-foreground" /></div> : currentLesson.content ? (
-                    <VideoPlayerInline key={`${currentLesson.id}-${course?.allow_video_seek !== false ? "seek" : "no-seek"}`} content={currentLesson.content} allowSeek={course?.allow_video_seek !== false} userId={user?.id} lessonId={currentLesson.id} savedPosition={savedPosition} onSavePosition={saveVideoPosition} onProgressChange={setVideoWatchProgress} onFinishLesson={markLessonComplete} onVideoComplete={async () => { if (!isLessonCompleted(currentLesson.id)) markLessonComplete(); }} />
+                    <VideoPlayerInline key={`${currentLesson.id}-${course?.allow_video_seek !== false ? "seek" : "no-seek"}`} content={currentLesson.content} allowSeek={course?.allow_video_seek !== false} userId={user?.id} lessonId={currentLesson.id} savedPosition={savedPosition} onSavePosition={saveVideoPosition} onProgressChange={setVideoWatchProgress} onFinishLesson={() => markLessonComplete()} onVideoComplete={async () => { if (!isLessonCompleted(currentLesson.id)) markLessonComplete(); }} />
                   ) : <div className="text-center text-muted-foreground"><Video className="w-16 h-16 mx-auto mb-4" /><p>Видео не загружено</p></div>}
                 </div>
               </div>
@@ -425,7 +425,7 @@ const CourseLearning = () => {
           <div className="text-sm text-muted-foreground">{isLessonCompleted(currentLesson?.id || '') && <span className="flex items-center gap-2 text-sigma-green font-medium"><CheckCircle2 className="w-4 h-4" />{!isMobile && "Урок завершён"}</span>}</div>
           <div className="flex gap-2 md:gap-3">
             {currentLesson?.type === 'test' && !testSubmitted && <Button onClick={submitTest} disabled={Object.keys(answers).length !== testQuestions.length} className={cn("btn-gradient rounded-xl", isMobile && "text-sm px-3")}>{isMobile ? "Отправить" : "Отправить ответы"}</Button>}
-            {currentLesson?.type !== 'test' && !isLessonCompleted(currentLesson?.id || '') && (currentLesson?.type !== 'video' || videoWatchProgress >= 90) && <Button onClick={markLessonComplete} className={cn("btn-gradient rounded-xl", isMobile && "text-sm px-3")}>{isMobile ? "Завершить" : "Завершить урок"}<ChevronRight className="w-4 h-4 ml-1" /></Button>}
+            {currentLesson?.type !== 'test' && !isLessonCompleted(currentLesson?.id || '') && (currentLesson?.type !== 'video' || videoWatchProgress >= 90) && <Button onClick={() => markLessonComplete()} className={cn("btn-gradient rounded-xl", isMobile && "text-sm px-3")}>{isMobile ? "Завершить" : "Завершить урок"}<ChevronRight className="w-4 h-4 ml-1" /></Button>}
             {isLessonCompleted(currentLesson?.id || '') && currentLessonIndex < lessons.length - 1 && <Button onClick={goToNextLesson} className={cn("btn-gradient rounded-xl", isMobile && "text-sm px-3")}>{isMobile ? "Далее" : "Следующий урок"}<ChevronRight className="w-4 h-4 ml-1" /></Button>}
             {isLessonCompleted(currentLesson?.id || '') && currentLessonIndex === lessons.length - 1 && <Button onClick={() => navigate('/student')} className={cn("btn-gradient rounded-xl", isMobile && "text-sm px-3")}><Trophy className="w-4 h-4 mr-1" />{isMobile ? "Готово!" : "Курс завершён!"}</Button>}
           </div>
