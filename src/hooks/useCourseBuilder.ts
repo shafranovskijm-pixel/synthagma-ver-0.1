@@ -392,6 +392,8 @@ export function useCourseBuilder() {
 
     await aiLimit.increment();
     updateLessons([...lessons, newLesson]);
+    // Autosave after AI generation
+    setTimeout(() => { saveCourse(true); }, 500);
   };
 
   const _createFallbackSlides = (lesson: Lesson, prompt: string, content?: string) => {
