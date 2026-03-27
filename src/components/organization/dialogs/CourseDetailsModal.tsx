@@ -850,7 +850,7 @@ export function CourseDetailsModal({
                       id="sequential-lessons"
                       checked={sequentialLessons}
                       onCheckedChange={handleToggleSequentialLessons}
-                      disabled={isSavingSettings || isFreePlan}
+                      disabled={isSavingSettings}
                     />
                   </div>
 
