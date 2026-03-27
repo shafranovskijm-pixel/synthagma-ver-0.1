@@ -68,10 +68,7 @@ export default function StudentDashboard() {
         {dashboardSettings.showLibrary && <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors"><Library className="w-5 h-5" />Библиотека</button>}
         {dashboardSettings.showAchievements && <button onClick={() => { setShowAchievements(true); onNavigate?.(); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors"><Trophy className="w-5 h-5" />Достижения</button>}
         
-        <button onClick={() => { 
-          if (isFreePlan) { toast.info("Эта функция доступна на другом тарифе"); return; }
-          setShowVideoIdentification(true); onNavigate?.(); 
-        }} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors"><Video className="w-5 h-5" />Идентификация{isFreePlan ? <Lock className="w-4 h-4 ml-auto text-amber-500" /> : isVideoIdentified && <CheckCircle2 className="w-4 h-4 ml-auto text-green-500" />}</button>
+        <button onClick={() => { setShowVideoIdentification(true); onNavigate?.(); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors"><Video className="w-5 h-5" />Идентификация{isVideoIdentified && <CheckCircle2 className="w-4 h-4 ml-auto text-green-500" />}</button>
         <button onClick={() => { setShowConsentForm(true); onNavigate?.(); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-muted-foreground hover:bg-secondary transition-colors"><FileCheck className="w-5 h-5" />Согласие на ПД</button>
         <button onClick={() => { 
           if (isFreePlan) { toast.info("Эта функция доступна на другом тарифе"); return; }
