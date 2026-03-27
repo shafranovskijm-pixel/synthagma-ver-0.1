@@ -80,8 +80,8 @@ export default function CourseBuilder() {
         </div>
       </header>
 
-      <div className="fixed bottom-0 inset-x-0 z-50 bg-gradient-to-t from-background via-background to-transparent pb-4 pt-8 pointer-events-none">
-        <div className="container mx-auto px-6 pointer-events-auto flex flex-col items-center gap-2">
+      <div className="fixed bottom-0 inset-x-0 z-50 bg-gradient-to-t from-background via-background to-transparent pb-3 sm:pb-4 pt-6 sm:pt-8 pointer-events-none">
+        <div className="container mx-auto px-3 sm:px-6 pointer-events-auto flex flex-col items-center gap-2">
           <Tooltip><TooltipTrigger asChild>
             <Button onClick={() => saveCourse()} disabled={isSaving} size="lg" className="btn-gradient rounded-2xl gap-3 px-8 py-6 text-lg font-semibold shadow-2xl hover:scale-105 transition-transform">
               {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
