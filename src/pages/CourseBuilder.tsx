@@ -212,5 +212,6 @@ export default function CourseBuilder() {
 
       <AIGenerateDialog open={showAIGenerateDialog} onOpenChange={setShowAIGenerateDialog} onGenerate={handleAIGenerate} courseTitle={courseTitle} courseDescription={courseDescription} />
     </div>
+    </TooltipProvider>
   );
 }
