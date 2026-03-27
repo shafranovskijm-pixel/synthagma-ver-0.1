@@ -168,9 +168,9 @@ export default function CourseBuilder() {
           </div>
 
           <div className="space-y-6">
-            <div className="bg-card rounded-2xl border border-border p-6 sticky top-24">
-              <h3 className="font-semibold mb-4">Добавить урок</h3>
-              <div className="grid grid-cols-2 gap-3">
+            <div className="bg-card rounded-2xl border border-border p-4 sm:p-6 lg:sticky lg:top-24">
+              <h3 className="font-semibold mb-3 sm:mb-4">Добавить урок</h3>
+              <div className="grid grid-cols-3 sm:grid-cols-2 gap-2 sm:gap-3">
                 <Button variant="outline" className="h-auto py-4 flex flex-col gap-2 rounded-xl hover:shadow-md hover:-translate-y-0.5 transition-all hover:border-primary/30" onClick={() => addLesson('text')}>
                   <div className="p-2 rounded-full bg-primary/10"><FileText className="w-5 h-5 text-primary" /></div>
                   <span className="text-xs font-semibold">Текст</span>
