@@ -165,36 +165,30 @@ export default function CourseBuilder() {
             <div className="bg-card rounded-2xl border border-border p-6 sticky top-24">
               <h3 className="font-semibold mb-4">Добавить урок</h3>
               <div className="grid grid-cols-2 gap-3">
-                <Tooltip><TooltipTrigger asChild>
-                  <Button variant="outline" className="h-auto py-4 flex flex-col gap-2 hover:bg-primary/5 hover:border-primary/30" onClick={() => addLesson('text')}>
-                    <span className="text-2xl">📝</span><span className="text-xs">Текст</span>
-                  </Button>
-                </TooltipTrigger><TooltipContent>Урок с текстовым содержимым и блочным редактором</TooltipContent></Tooltip>
-                <Tooltip><TooltipTrigger asChild>
-                  <Button variant="outline" className="h-auto py-4 flex flex-col gap-2 hover:bg-primary/5 hover:border-primary/30" onClick={() => addLesson('video')}>
-                    <span className="text-2xl">🎥</span><span className="text-xs">Видео</span>
-                  </Button>
-                </TooltipTrigger><TooltipContent>Урок с видео: YouTube, VK, Rutube или загрузка файла</TooltipContent></Tooltip>
-                <Tooltip><TooltipTrigger asChild>
-                  <Button variant="outline" className="h-auto py-4 flex flex-col gap-2 hover:bg-primary/5 hover:border-primary/30" onClick={() => addLesson('test')}>
-                    <span className="text-2xl">✅</span><span className="text-xs">Тест</span>
-                  </Button>
-                </TooltipTrigger><TooltipContent>Проверочный тест с вопросами и вариантами ответов</TooltipContent></Tooltip>
-                <Tooltip><TooltipTrigger asChild>
-                  <Button variant="outline" className="h-auto py-4 flex flex-col gap-2 hover:bg-primary/5 hover:border-primary/30" onClick={() => setShowAIGenerateDialog(true)}>
-                    <span className="text-2xl">✨</span><span className="text-xs">AI Генерация</span>
-                  </Button>
-                </TooltipTrigger><TooltipContent>Сгенерировать урок с помощью искусственного интеллекта</TooltipContent></Tooltip>
-                <Tooltip><TooltipTrigger asChild>
-                  <Button variant="outline" className="h-auto py-4 flex flex-col gap-2 hover:bg-primary/5 hover:border-primary/30" onClick={() => addLesson('slider')}>
-                    <span className="text-2xl">🖼️</span><span className="text-xs">Слайды</span>
-                  </Button>
-                </TooltipTrigger><TooltipContent>Урок-презентация с несколькими слайдами</TooltipContent></Tooltip>
-                <Tooltip><TooltipTrigger asChild>
-                  <Button variant="outline" className="h-auto py-4 flex flex-col gap-2 hover:bg-primary/5 hover:border-primary/30" onClick={() => addLesson('audio')}>
-                    <span className="text-2xl">🎧</span><span className="text-xs">Аудио</span>
-                  </Button>
-                </TooltipTrigger><TooltipContent>Аудиоурок: загрузите файл или вставьте ссылку</TooltipContent></Tooltip>
+                <Button variant="outline" className="h-auto py-4 flex flex-col gap-1 hover:bg-primary/5 hover:border-primary/30" onClick={() => addLesson('text')}>
+                  <span className="text-2xl">📝</span><span className="text-xs font-medium">Текст</span>
+                  <span className="text-[10px] text-muted-foreground leading-tight text-center">Блочный редактор с медиа</span>
+                </Button>
+                <Button variant="outline" className="h-auto py-4 flex flex-col gap-1 hover:bg-primary/5 hover:border-primary/30" onClick={() => addLesson('video')}>
+                  <span className="text-2xl">🎥</span><span className="text-xs font-medium">Видео</span>
+                  <span className="text-[10px] text-muted-foreground leading-tight text-center">MP4, WebM · YouTube, VK, Rutube</span>
+                </Button>
+                <Button variant="outline" className="h-auto py-4 flex flex-col gap-1 hover:bg-primary/5 hover:border-primary/30" onClick={() => addLesson('test')}>
+                  <span className="text-2xl">✅</span><span className="text-xs font-medium">Тест</span>
+                  <span className="text-[10px] text-muted-foreground leading-tight text-center">Вопросы с вариантами ответов</span>
+                </Button>
+                <Button variant="outline" className="h-auto py-4 flex flex-col gap-1 hover:bg-primary/5 hover:border-primary/30" onClick={() => setShowAIGenerateDialog(true)}>
+                  <span className="text-2xl">✨</span><span className="text-xs font-medium">AI Генерация</span>
+                  <span className="text-[10px] text-muted-foreground leading-tight text-center">Создать урок с помощью ИИ</span>
+                </Button>
+                <Button variant="outline" className="h-auto py-4 flex flex-col gap-1 hover:bg-primary/5 hover:border-primary/30" onClick={() => addLesson('slider')}>
+                  <span className="text-2xl">🖼️</span><span className="text-xs font-medium">Слайды</span>
+                  <span className="text-[10px] text-muted-foreground leading-tight text-center">PPTX или создать вручную</span>
+                </Button>
+                <Button variant="outline" className="h-auto py-4 flex flex-col gap-1 hover:bg-primary/5 hover:border-primary/30" onClick={() => addLesson('audio')}>
+                  <span className="text-2xl">🎧</span><span className="text-xs font-medium">Аудио</span>
+                  <span className="text-[10px] text-muted-foreground leading-tight text-center">MP3, WAV, OGG · или ссылка</span>
+                </Button>
               </div>
             </div>
           </div>
