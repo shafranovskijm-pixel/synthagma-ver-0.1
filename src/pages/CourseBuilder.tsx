@@ -171,28 +171,34 @@ export default function CourseBuilder() {
             <div className="bg-card rounded-2xl border border-border p-6 sticky top-24">
               <h3 className="font-semibold mb-4">Добавить урок</h3>
               <div className="grid grid-cols-2 gap-3">
-                <Button variant="outline" className="h-auto py-4 flex flex-col gap-1 hover:bg-primary/5 hover:border-primary/30" onClick={() => addLesson('text')}>
-                  <span className="text-2xl">📝</span><span className="text-xs font-medium">Текст</span>
+                <Button variant="outline" className="h-auto py-4 flex flex-col gap-2 rounded-xl hover:shadow-md hover:-translate-y-0.5 transition-all hover:border-primary/30" onClick={() => addLesson('text')}>
+                  <div className="p-2 rounded-full bg-primary/10"><FileText className="w-5 h-5 text-primary" /></div>
+                  <span className="text-xs font-semibold">Текст</span>
                   <span className="text-[10px] text-muted-foreground leading-tight text-center">Блочный редактор с медиа</span>
                 </Button>
-                <Button variant="outline" className="h-auto py-4 flex flex-col gap-1 hover:bg-primary/5 hover:border-primary/30" onClick={() => addLesson('video')}>
-                  <span className="text-2xl">🎥</span><span className="text-xs font-medium">Видео</span>
+                <Button variant="outline" className="h-auto py-4 flex flex-col gap-2 rounded-xl hover:shadow-md hover:-translate-y-0.5 transition-all hover:border-purple-400/30" onClick={() => addLesson('video')}>
+                  <div className="p-2 rounded-full bg-purple-500/10"><Video className="w-5 h-5 text-purple-500" /></div>
+                  <span className="text-xs font-semibold">Видео</span>
                   <span className="text-[10px] text-muted-foreground leading-tight text-center">MP4, WebM · YouTube, VK, Rutube</span>
                 </Button>
-                <Button variant="outline" className="h-auto py-4 flex flex-col gap-1 hover:bg-primary/5 hover:border-primary/30" onClick={() => addLesson('test')}>
-                  <span className="text-2xl">✅</span><span className="text-xs font-medium">Тест</span>
+                <Button variant="outline" className="h-auto py-4 flex flex-col gap-2 rounded-xl hover:shadow-md hover:-translate-y-0.5 transition-all hover:border-orange-400/30" onClick={() => addLesson('test')}>
+                  <div className="p-2 rounded-full bg-orange-500/10"><CheckSquare className="w-5 h-5 text-orange-500" /></div>
+                  <span className="text-xs font-semibold">Тест</span>
                   <span className="text-[10px] text-muted-foreground leading-tight text-center">Вопросы с вариантами ответов</span>
                 </Button>
-                <Button variant="outline" className="h-auto py-4 flex flex-col gap-1 hover:bg-primary/5 hover:border-primary/30" onClick={() => setShowAIGenerateDialog(true)}>
-                  <span className="text-2xl">✨</span><span className="text-xs font-medium">AI Генерация</span>
+                <Button variant="outline" className="h-auto py-4 flex flex-col gap-2 rounded-xl hover:shadow-md hover:-translate-y-0.5 transition-all hover:border-primary/30" onClick={() => setShowAIGenerateDialog(true)}>
+                  <div className="p-2 rounded-full bg-primary/10"><Sparkles className="w-5 h-5 text-primary" /></div>
+                  <span className="text-xs font-semibold">AI Генерация</span>
                   <span className="text-[10px] text-muted-foreground leading-tight text-center">Создать урок с помощью ИИ</span>
                 </Button>
-                <Button variant="outline" className="h-auto py-4 flex flex-col gap-1 hover:bg-primary/5 hover:border-primary/30" onClick={() => addLesson('slider')}>
-                  <span className="text-2xl">🖼️</span><span className="text-xs font-medium">Слайды</span>
+                <Button variant="outline" className="h-auto py-4 flex flex-col gap-2 rounded-xl hover:shadow-md hover:-translate-y-0.5 transition-all hover:border-amber-400/30" onClick={() => addLesson('slider')}>
+                  <div className="p-2 rounded-full bg-amber-500/10"><Presentation className="w-5 h-5 text-amber-500" /></div>
+                  <span className="text-xs font-semibold">Слайды</span>
                   <span className="text-[10px] text-muted-foreground leading-tight text-center">PPTX или создать вручную</span>
                 </Button>
-                <Button variant="outline" className="h-auto py-4 flex flex-col gap-1 hover:bg-primary/5 hover:border-primary/30" onClick={() => addLesson('audio')}>
-                  <span className="text-2xl">🎧</span><span className="text-xs font-medium">Аудио</span>
+                <Button variant="outline" className="h-auto py-4 flex flex-col gap-2 rounded-xl hover:shadow-md hover:-translate-y-0.5 transition-all hover:border-green-400/30" onClick={() => addLesson('audio')}>
+                  <div className="p-2 rounded-full bg-green-500/10"><Headphones className="w-5 h-5 text-green-500" /></div>
+                  <span className="text-xs font-semibold">Аудио</span>
                   <span className="text-[10px] text-muted-foreground leading-tight text-center">MP3, WAV, OGG · или ссылка</span>
                 </Button>
               </div>
