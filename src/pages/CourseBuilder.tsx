@@ -82,11 +82,13 @@ export default function CourseBuilder() {
 
       <div className="fixed bottom-0 inset-x-0 z-50 bg-gradient-to-t from-background via-background to-transparent pb-4 pt-8 pointer-events-none">
         <div className="container mx-auto px-6 pointer-events-auto flex flex-col items-center gap-2">
-          <Button onClick={() => saveCourse()} disabled={isSaving} size="lg" className="btn-gradient rounded-2xl gap-3 px-8 py-6 text-lg font-semibold shadow-2xl hover:scale-105 transition-transform">
-            {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-            {isSaving ? "Сохранение..." : "Сохранить курс"}
-            {hasUnsavedChanges && !isSaving && <span className="ml-1 w-2 h-2 rounded-full bg-white/80 animate-pulse" />}
-          </Button>
+          <Tooltip><TooltipTrigger asChild>
+            <Button onClick={() => saveCourse()} disabled={isSaving} size="lg" className="btn-gradient rounded-2xl gap-3 px-8 py-6 text-lg font-semibold shadow-2xl hover:scale-105 transition-transform">
+              {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+              {isSaving ? "Сохранение..." : "Сохранить курс"}
+              {hasUnsavedChanges && !isSaving && <span className="ml-1 w-2 h-2 rounded-full bg-white/80 animate-pulse" />}
+            </Button>
+          </TooltipTrigger><TooltipContent>Сохранить все изменения курса</TooltipContent></Tooltip>
           {autoSaveStatus === 'saved' && (
             <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1 animate-in fade-in">
               <Check className="w-3 h-3" /> Сохранено
