@@ -702,6 +702,12 @@ export const StudentsTab = React.memo(function StudentsTab({
                     <span>Напоминания о документах</span>
                   </li>
                 </ul>
+                {onNavigateToFRDO && (
+                  <Button onClick={onNavigateToFRDO} variant="outline" className="w-full rounded-xl gap-2 mt-2">
+                    <FileText className="w-4 h-4" />
+                    Перейти в ФИС ФРДО
+                  </Button>
+                )}
               </div>
             </div>
           </div>
