@@ -1009,10 +1009,29 @@ export const StudentsTab = React.memo(function StudentsTab({
                 onChange={e => setNewGroupColor(e.target.value)}
                 className="w-10 h-10 rounded border border-border cursor-pointer"
               />
-              <Button onClick={handleCreateGroup} size="icon">
-                <Plus className="w-4 h-4" />
-              </Button>
             </div>
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <label className="text-xs text-muted-foreground mb-1 block">Дата начала</label>
+                <Input
+                  type="date"
+                  value={newGroupStartDate}
+                  onChange={e => setNewGroupStartDate(e.target.value)}
+                />
+              </div>
+              <div className="flex-1">
+                <label className="text-xs text-muted-foreground mb-1 block">Дата окончания</label>
+                <Input
+                  type="date"
+                  value={newGroupEndDate}
+                  onChange={e => setNewGroupEndDate(e.target.value)}
+                />
+              </div>
+            </div>
+            <Button onClick={handleCreateGroup} className="w-full rounded-xl gap-2">
+              <Plus className="w-4 h-4" />
+              Создать группу
+            </Button>
             
             {studentGroups.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">Нет групп</p>
