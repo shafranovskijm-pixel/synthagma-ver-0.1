@@ -1498,7 +1498,7 @@ export function AdminMarketplaceManager() {
                                         {sub.courses.length === 0 ? (
                                           <p className="text-xs text-muted-foreground py-2 italic">Курсы ещё не добавлены</p>
                                         ) : (
-                                          renderGroupedCourses(sub.courses, h, navigate, handleBulkGenerate, validatedCourses, handleValidateCourse, validatingId)
+                                          renderGroupedCourses(sub.courses, h, navigate, handleBulkGenerate, validatedCourses, handleValidateCourse, validatingId, selectedCourses, toggleCourseSelect)
                                         )}
                                       </CollapsibleContent>
                                     </Collapsible>
