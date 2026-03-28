@@ -2181,7 +2181,46 @@ export function AdminMarketplaceManager() {
         </DialogContent>
       </Dialog>
 
-      {bulkGenCourse && (
+      {/* Bulk Move Dialog */}
+      <Dialog open={showBulkMoveDialog} onOpenChange={setShowBulkMoveDialog}>
+        <DialogContent className="rounded-2xl max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Переместить {selectedCourses.size} {selectedCourses.size === 1 ? 'курс' : selectedCourses.size < 5 ? 'курса' : 'курсов'}</DialogTitle>
+            <DialogDescription>
+              Выберите категорию для перемещения выбранных курсов
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Категория</Label>
+              <Select value={bulkMoveTargetCategory} onValueChange={setBulkMoveTargetCategory}>
+                <SelectTrigger className="rounded-xl"><SelectValue placeholder="Выберите категорию" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Без категории</SelectItem>
+                  {h.dbCategories.map(cat => (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      <div className="flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: cat.color || '#888' }} />
+                        {cat.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              className="w-full btn-gradient rounded-xl"
+              disabled={!bulkMoveTargetCategory}
+              onClick={handleBulkMove}
+            >
+              <FolderInput className="w-4 h-4 mr-2" />Переместить ({selectedCourses.size})
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
         <BulkContentGenerator
           open={!!bulkGenCourse}
           onOpenChange={(v) => { if (!v) setBulkGenCourse(null); }}
