@@ -79,10 +79,14 @@ const ICON_OPTIONS: { name: string; icon: React.ElementType; label: string }[] =
   { name: "Lightbulb", icon: Lightbulb, label: "Идея" },
   { name: "Building2", icon: Building2, label: "Здание" },
   { name: "GraduationCap", icon: GraduationCap, label: "Учёба" },
+  { name: "DollarSign", icon: DollarSign, label: "Финансы" },
+  { name: "Briefcase", icon: Briefcase, label: "Бизнес" },
+  { name: "TrendingUp", icon: TrendingUp, label: "Рост" },
 ];
 
 const iconMap: Record<string, React.ElementType> = {
   Factory, Zap, Flame, Leaf, Droplets, HardHat, ShieldCheck, BookOpen, Award, Lightbulb, Building2, GraduationCap,
+  DollarSign, Briefcase, TrendingUp,
 };
 
 type CourseGroup = { baseTitle: string; items: any[]; suffix: (item: any) => string };
