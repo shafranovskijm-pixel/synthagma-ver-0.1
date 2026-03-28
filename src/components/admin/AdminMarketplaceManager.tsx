@@ -125,11 +125,20 @@ function isGroup(entry: any): entry is CourseGroup {
 
 function renderCourseRow(
   item: any, h: any, navigate: any, onBulkGenerate: (item: any) => void,
-  validatedCourses: Record<string, 'ok' | 'error'>, onValidate: (courseId: string) => void, validatingId: string | null
+  validatedCourses: Record<string, 'ok' | 'error'>, onValidate: (courseId: string) => void, validatingId: string | null,
+  selectedCourses?: Set<string>, onToggleSelect?: (id: string) => void
 ) {
   const status = validatedCourses[item.course_id];
   return (
     <TableRow key={item.id} className={!item.is_active ? "opacity-60" : ""}>
+      {selectedCourses && onToggleSelect && (
+        <TableCell className="w-[40px] pr-0">
+          <Checkbox
+            checked={selectedCourses.has(item.course_id)}
+            onCheckedChange={() => onToggleSelect(item.course_id)}
+          />
+        </TableCell>
+      )}
       <TableCell>
         <button
           className="text-sm text-left hover:underline cursor-pointer inline-flex items-center gap-1.5"
