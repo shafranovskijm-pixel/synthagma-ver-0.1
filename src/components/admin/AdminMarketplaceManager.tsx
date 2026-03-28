@@ -181,11 +181,20 @@ function renderCourseRow(
 
 function renderVariantRow(
   item: any, suffix: string, h: any, navigate: any, onBulkGenerate: (item: any) => void,
-  validatedCourses: Record<string, 'ok' | 'error'>, onValidate: (courseId: string) => void, validatingId: string | null
+  validatedCourses: Record<string, 'ok' | 'error'>, onValidate: (courseId: string) => void, validatingId: string | null,
+  selectedCourses?: Set<string>, onToggleSelect?: (id: string) => void
 ) {
   const status = validatedCourses[item.course_id];
   return (
     <TableRow key={item.id} className={!item.is_active ? "opacity-60" : ""}>
+      {selectedCourses && onToggleSelect && (
+        <TableCell className="w-[40px] pr-0">
+          <Checkbox
+            checked={selectedCourses.has(item.course_id)}
+            onCheckedChange={() => onToggleSelect(item.course_id)}
+          />
+        </TableCell>
+      )}
       <TableCell>
         <button
           className="text-sm text-left hover:underline cursor-pointer inline-flex items-center gap-1.5 pl-2"
@@ -228,7 +237,8 @@ function renderVariantRow(
 
 function renderGroupedCourses(
   courses: any[], h: any, navigate: any, onBulkGenerate: (item: any) => void,
-  validatedCourses: Record<string, 'ok' | 'error'>, onValidate: (courseId: string) => void, validatingId: string | null
+  validatedCourses: Record<string, 'ok' | 'error'>, onValidate: (courseId: string) => void, validatingId: string | null,
+  selectedCourses?: Set<string>, onToggleSelect?: (id: string) => void
 ) {
   const grouped = groupSimilarCourses(courses);
   return (
@@ -239,7 +249,7 @@ function renderGroupedCourses(
             const g = entry as CourseGroup;
             return (
               <TableRow key={`group-${idx}`} className="hover:bg-transparent">
-                <TableCell colSpan={5} className="p-0">
+                <TableCell colSpan={selectedCourses ? 6 : 5} className="p-0">
                   <Collapsible>
                     <CollapsibleTrigger className="flex items-center gap-2 w-full px-4 py-2.5 hover:bg-secondary/30 transition-colors text-sm font-medium text-left">
                       <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform [&[data-state=closed]]:-rotate-90 shrink-0" />
@@ -251,7 +261,7 @@ function renderGroupedCourses(
                     <CollapsibleContent>
                       <Table>
                         <TableBody>
-                          {g.items.map(item => renderVariantRow(item, g.suffix(item), h, navigate, onBulkGenerate, validatedCourses, onValidate, validatingId))}
+                          {g.items.map(item => renderVariantRow(item, g.suffix(item), h, navigate, onBulkGenerate, validatedCourses, onValidate, validatingId, selectedCourses, onToggleSelect))}
                         </TableBody>
                       </Table>
                     </CollapsibleContent>
@@ -260,7 +270,7 @@ function renderGroupedCourses(
               </TableRow>
             );
           }
-          return renderCourseRow(entry, h, navigate, onBulkGenerate, validatedCourses, onValidate, validatingId);
+          return renderCourseRow(entry, h, navigate, onBulkGenerate, validatedCourses, onValidate, validatingId, selectedCourses, onToggleSelect);
         })}
       </TableBody>
     </Table>
