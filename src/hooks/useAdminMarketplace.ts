@@ -453,6 +453,31 @@ export function useAdminMarketplace() {
     }
   };
 
+  // Bulk move courses to a category
+  const handleBulkMoveToCategory = async (courseIds: string[], categoryIdOrName: string) => {
+    try {
+      let catId: string | null = null;
+      if (categoryIdOrName === "__none__") {
+        catId = null;
+      } else {
+        const dbCat = dbCategories.find(c => c.id === categoryIdOrName || c.name === categoryIdOrName);
+        catId = dbCat?.id || null;
+      }
+      
+      const { error } = await supabase
+        .from("courses")
+        .update({ category_id: catId })
+        .in("id", courseIds);
+      if (error) throw error;
+      toast.success(`Перемещено ${courseIds.length} курсов`);
+      setShowMoveCategoryDialog(false);
+      setMovingCourse(null);
+      fetchCourses();
+    } catch {
+      toast.error("Ошибка перемещения");
+    }
+  };
+
   // Reorder categories via order_index
   const handleReorderCategories = async (reorderedCategories: DbCategory[]) => {
     // Optimistic update
@@ -576,6 +601,7 @@ export function useAdminMarketplace() {
     movingCourse, setMovingCourse, targetCategory, setTargetCategory,
     newMoveCategoryInput, setNewMoveCategoryInput,
     handleMoveToCategory,
+    handleBulkMoveToCategory,
     handleReorderCategories,
     fetchDbCategories,
     handleAutoCategorize,

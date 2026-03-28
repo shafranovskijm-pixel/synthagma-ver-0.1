@@ -125,11 +125,20 @@ function isGroup(entry: any): entry is CourseGroup {
 
 function renderCourseRow(
   item: any, h: any, navigate: any, onBulkGenerate: (item: any) => void,
-  validatedCourses: Record<string, 'ok' | 'error'>, onValidate: (courseId: string) => void, validatingId: string | null
+  validatedCourses: Record<string, 'ok' | 'error'>, onValidate: (courseId: string) => void, validatingId: string | null,
+  selectedCourses?: Set<string>, onToggleSelect?: (id: string) => void
 ) {
   const status = validatedCourses[item.course_id];
   return (
     <TableRow key={item.id} className={!item.is_active ? "opacity-60" : ""}>
+      {selectedCourses && onToggleSelect && (
+        <TableCell className="w-[40px] pr-0">
+          <Checkbox
+            checked={selectedCourses.has(item.course_id)}
+            onCheckedChange={() => onToggleSelect(item.course_id)}
+          />
+        </TableCell>
+      )}
       <TableCell>
         <button
           className="text-sm text-left hover:underline cursor-pointer inline-flex items-center gap-1.5"
@@ -172,11 +181,20 @@ function renderCourseRow(
 
 function renderVariantRow(
   item: any, suffix: string, h: any, navigate: any, onBulkGenerate: (item: any) => void,
-  validatedCourses: Record<string, 'ok' | 'error'>, onValidate: (courseId: string) => void, validatingId: string | null
+  validatedCourses: Record<string, 'ok' | 'error'>, onValidate: (courseId: string) => void, validatingId: string | null,
+  selectedCourses?: Set<string>, onToggleSelect?: (id: string) => void
 ) {
   const status = validatedCourses[item.course_id];
   return (
     <TableRow key={item.id} className={!item.is_active ? "opacity-60" : ""}>
+      {selectedCourses && onToggleSelect && (
+        <TableCell className="w-[40px] pr-0">
+          <Checkbox
+            checked={selectedCourses.has(item.course_id)}
+            onCheckedChange={() => onToggleSelect(item.course_id)}
+          />
+        </TableCell>
+      )}
       <TableCell>
         <button
           className="text-sm text-left hover:underline cursor-pointer inline-flex items-center gap-1.5 pl-2"
@@ -219,7 +237,8 @@ function renderVariantRow(
 
 function renderGroupedCourses(
   courses: any[], h: any, navigate: any, onBulkGenerate: (item: any) => void,
-  validatedCourses: Record<string, 'ok' | 'error'>, onValidate: (courseId: string) => void, validatingId: string | null
+  validatedCourses: Record<string, 'ok' | 'error'>, onValidate: (courseId: string) => void, validatingId: string | null,
+  selectedCourses?: Set<string>, onToggleSelect?: (id: string) => void
 ) {
   const grouped = groupSimilarCourses(courses);
   return (
@@ -230,7 +249,7 @@ function renderGroupedCourses(
             const g = entry as CourseGroup;
             return (
               <TableRow key={`group-${idx}`} className="hover:bg-transparent">
-                <TableCell colSpan={5} className="p-0">
+                <TableCell colSpan={selectedCourses ? 6 : 5} className="p-0">
                   <Collapsible>
                     <CollapsibleTrigger className="flex items-center gap-2 w-full px-4 py-2.5 hover:bg-secondary/30 transition-colors text-sm font-medium text-left">
                       <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform [&[data-state=closed]]:-rotate-90 shrink-0" />
@@ -242,7 +261,7 @@ function renderGroupedCourses(
                     <CollapsibleContent>
                       <Table>
                         <TableBody>
-                          {g.items.map(item => renderVariantRow(item, g.suffix(item), h, navigate, onBulkGenerate, validatedCourses, onValidate, validatingId))}
+                          {g.items.map(item => renderVariantRow(item, g.suffix(item), h, navigate, onBulkGenerate, validatedCourses, onValidate, validatingId, selectedCourses, onToggleSelect))}
                         </TableBody>
                       </Table>
                     </CollapsibleContent>
@@ -251,7 +270,7 @@ function renderGroupedCourses(
               </TableRow>
             );
           }
-          return renderCourseRow(entry, h, navigate, onBulkGenerate, validatedCourses, onValidate, validatingId);
+          return renderCourseRow(entry, h, navigate, onBulkGenerate, validatedCourses, onValidate, validatingId, selectedCourses, onToggleSelect);
         })}
       </TableBody>
     </Table>
@@ -298,6 +317,26 @@ export function AdminMarketplaceManager() {
   const [validationReportOk, setValidationReportOk] = useState(0);
   const [valRules, setValRules] = useState<ValidationRules>({ minLessons: 3, minContentLength: 50, requireTest: true, requireText: true, checkDuplicateTitles: true });
   const [aiPrompts, setAiPrompts] = useState<AiPrompts>({});
+  const [selectedCourses, setSelectedCourses] = useState<Set<string>>(new Set());
+  const [showBulkMoveDialog, setShowBulkMoveDialog] = useState(false);
+  const [bulkMoveTargetCategory, setBulkMoveTargetCategory] = useState("");
+
+  const toggleCourseSelect = useCallback((courseId: string) => {
+    setSelectedCourses(prev => {
+      const next = new Set(prev);
+      if (next.has(courseId)) next.delete(courseId);
+      else next.add(courseId);
+      return next;
+    });
+  }, []);
+
+  const handleBulkMove = async () => {
+    if (selectedCourses.size === 0 || !bulkMoveTargetCategory) return;
+    await h.handleBulkMoveToCategory(Array.from(selectedCourses), bulkMoveTargetCategory);
+    setSelectedCourses(new Set());
+    setShowBulkMoveDialog(false);
+    setBulkMoveTargetCategory("");
+  };
 
   // AI settings for 3-slot routing
   const [aiProvider, setAiProvider] = useState("gigachat");
@@ -1371,7 +1410,36 @@ export function AdminMarketplaceManager() {
                 </div>
               </div>
 
-              {/* Nested accordions matching store structure */}
+              {/* Bulk selection toolbar */}
+              {selectedCourses.size > 0 && (
+                <div className="sticky top-0 z-10 flex items-center gap-3 bg-primary/10 border border-primary/20 rounded-lg p-3">
+                  <Checkbox
+                    checked={true}
+                    onCheckedChange={() => setSelectedCourses(new Set())}
+                  />
+                  <span className="text-sm font-medium">
+                    Выбрано: {selectedCourses.size} {selectedCourses.size === 1 ? 'курс' : selectedCourses.size < 5 ? 'курса' : 'курсов'}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="ml-auto gap-1.5"
+                    onClick={() => { setBulkMoveTargetCategory(""); setShowBulkMoveDialog(true); }}
+                  >
+                    <FolderInput className="w-3.5 h-3.5" />
+                    Переместить
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setSelectedCourses(new Set())}
+                  >
+                    <X className="w-3.5 h-3.5 mr-1" />
+                    Снять выделение
+                  </Button>
+                </div>
+              )}
+
               <div className="grid gap-6">
                 {h.groupedCourses.map((group) => {
                   const meta = programTypeMetaAdmin[group.category];
@@ -1459,7 +1527,7 @@ export function AdminMarketplaceManager() {
                                         {sub.courses.length === 0 ? (
                                           <p className="text-xs text-muted-foreground py-2 italic">Курсы ещё не добавлены</p>
                                         ) : (
-                                          renderGroupedCourses(sub.courses, h, navigate, handleBulkGenerate, validatedCourses, handleValidateCourse, validatingId)
+                                          renderGroupedCourses(sub.courses, h, navigate, handleBulkGenerate, validatedCourses, handleValidateCourse, validatingId, selectedCourses, toggleCourseSelect)
                                         )}
                                       </CollapsibleContent>
                                     </Collapsible>
@@ -1654,7 +1722,7 @@ export function AdminMarketplaceManager() {
                         {group.courses.length === 0 ? (
                           <p className="text-xs text-muted-foreground py-2 italic">Курсы ещё не добавлены</p>
                         ) : (
-                        renderGroupedCourses(group.courses, h, navigate, handleBulkGenerate, validatedCourses, handleValidateCourse, validatingId)
+                        renderGroupedCourses(group.courses, h, navigate, handleBulkGenerate, validatedCourses, handleValidateCourse, validatingId, selectedCourses, toggleCourseSelect)
                         )}
                         <Button
                           variant="ghost"
@@ -2108,6 +2176,46 @@ export function AdminMarketplaceManager() {
               onClick={() => h.movingCourse && h.handleMoveToCategory(h.movingCourse, h.targetCategory)}
             >
               <FolderInput className="w-4 h-4 mr-2" />Переместить
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Move Dialog */}
+      <Dialog open={showBulkMoveDialog} onOpenChange={setShowBulkMoveDialog}>
+        <DialogContent className="rounded-2xl max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Переместить {selectedCourses.size} {selectedCourses.size === 1 ? 'курс' : selectedCourses.size < 5 ? 'курса' : 'курсов'}</DialogTitle>
+            <DialogDescription>
+              Выберите категорию для перемещения выбранных курсов
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Категория</Label>
+              <Select value={bulkMoveTargetCategory} onValueChange={setBulkMoveTargetCategory}>
+                <SelectTrigger className="rounded-xl"><SelectValue placeholder="Выберите категорию" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Без категории</SelectItem>
+                  {h.dbCategories.map(cat => (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      <div className="flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: cat.color || '#888' }} />
+                        {cat.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              className="w-full btn-gradient rounded-xl"
+              disabled={!bulkMoveTargetCategory}
+              onClick={handleBulkMove}
+            >
+              <FolderInput className="w-4 h-4 mr-2" />Переместить ({selectedCourses.size})
             </Button>
           </DialogFooter>
         </DialogContent>
