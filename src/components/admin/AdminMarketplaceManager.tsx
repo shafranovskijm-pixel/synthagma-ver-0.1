@@ -317,6 +317,26 @@ export function AdminMarketplaceManager() {
   const [validationReportOk, setValidationReportOk] = useState(0);
   const [valRules, setValRules] = useState<ValidationRules>({ minLessons: 3, minContentLength: 50, requireTest: true, requireText: true, checkDuplicateTitles: true });
   const [aiPrompts, setAiPrompts] = useState<AiPrompts>({});
+  const [selectedCourses, setSelectedCourses] = useState<Set<string>>(new Set());
+  const [showBulkMoveDialog, setShowBulkMoveDialog] = useState(false);
+  const [bulkMoveTargetCategory, setBulkMoveTargetCategory] = useState("");
+
+  const toggleCourseSelect = useCallback((courseId: string) => {
+    setSelectedCourses(prev => {
+      const next = new Set(prev);
+      if (next.has(courseId)) next.delete(courseId);
+      else next.add(courseId);
+      return next;
+    });
+  }, []);
+
+  const handleBulkMove = async () => {
+    if (selectedCourses.size === 0 || !bulkMoveTargetCategory) return;
+    await h.handleBulkMoveToCategory(Array.from(selectedCourses), bulkMoveTargetCategory);
+    setSelectedCourses(new Set());
+    setShowBulkMoveDialog(false);
+    setBulkMoveTargetCategory("");
+  };
 
   // AI settings for 3-slot routing
   const [aiProvider, setAiProvider] = useState("gigachat");
