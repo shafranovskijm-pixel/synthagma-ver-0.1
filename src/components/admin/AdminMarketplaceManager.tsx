@@ -6,6 +6,7 @@ import {
   List, LayoutGrid, ChevronDown, FolderPlus, FolderInput, CheckCircle2, AlertTriangle,
   FolderOpen, Library, X, GripVertical, GraduationCap, Award, ShieldCheck, Wand2,
   Factory, Flame, Droplets, HardHat, Leaf, Zap, Lightbulb, MoveRight, Settings, History,
+  DollarSign, Briefcase, TrendingUp,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
