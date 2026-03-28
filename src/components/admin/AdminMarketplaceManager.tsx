@@ -1486,8 +1486,15 @@ export function AdminMarketplaceManager() {
                                         <SelectValue placeholder="Категория..." />
                                       </SelectTrigger>
                                       <SelectContent>
-                                        {group.subGroups?.map(sg => (
-                                          <SelectItem key={sg.categoryId} value={sg.categoryId || sg.category}>{sg.category}</SelectItem>
+                                        {h.groupedCourses.map(g => (
+                                          g.subGroups && g.subGroups.length > 0 ? (
+                                            <div key={g.category}>
+                                              <div className="px-2 py-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">{g.category}</div>
+                                              {g.subGroups.map(sg => (
+                                                <SelectItem key={sg.categoryId} value={sg.categoryId || sg.category}>{sg.category}</SelectItem>
+                                              ))}
+                                            </div>
+                                          ) : null
                                         ))}
                                       </SelectContent>
                                     </Select>
