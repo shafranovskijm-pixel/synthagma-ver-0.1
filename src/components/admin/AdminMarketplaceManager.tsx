@@ -1410,7 +1410,36 @@ export function AdminMarketplaceManager() {
                 </div>
               </div>
 
-              {/* Nested accordions matching store structure */}
+              {/* Bulk selection toolbar */}
+              {selectedCourses.size > 0 && (
+                <div className="sticky top-0 z-10 flex items-center gap-3 bg-primary/10 border border-primary/20 rounded-lg p-3">
+                  <Checkbox
+                    checked={true}
+                    onCheckedChange={() => setSelectedCourses(new Set())}
+                  />
+                  <span className="text-sm font-medium">
+                    Выбрано: {selectedCourses.size} {selectedCourses.size === 1 ? 'курс' : selectedCourses.size < 5 ? 'курса' : 'курсов'}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="ml-auto gap-1.5"
+                    onClick={() => { setBulkMoveTargetCategory(""); setShowBulkMoveDialog(true); }}
+                  >
+                    <FolderInput className="w-3.5 h-3.5" />
+                    Переместить
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setSelectedCourses(new Set())}
+                  >
+                    <X className="w-3.5 h-3.5 mr-1" />
+                    Снять выделение
+                  </Button>
+                </div>
+              )}
+
               <div className="grid gap-6">
                 {h.groupedCourses.map((group) => {
                   const meta = programTypeMetaAdmin[group.category];
