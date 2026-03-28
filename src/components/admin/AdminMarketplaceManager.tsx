@@ -2221,6 +2221,7 @@ export function AdminMarketplaceManager() {
         </DialogContent>
       </Dialog>
 
+      {bulkGenCourse && (
         <BulkContentGenerator
           open={!!bulkGenCourse}
           onOpenChange={(v) => { if (!v) setBulkGenCourse(null); }}
