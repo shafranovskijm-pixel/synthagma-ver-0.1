@@ -34,7 +34,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -1486,16 +1486,17 @@ export function AdminMarketplaceManager() {
                                         <SelectValue placeholder="Категория..." />
                                       </SelectTrigger>
                                       <SelectContent>
-                                        {h.groupedCourses.map(g => (
-                                          g.subGroups && g.subGroups.length > 0 ? (
-                                            <div key={g.category}>
-                                              <div className="px-2 py-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">{g.category}</div>
+                                        {h.groupedCourses.map(g => {
+                                          if (!g.subGroups || g.subGroups.length === 0) return null;
+                                          return (
+                                            <SelectGroup key={g.category}>
+                                              <SelectLabel className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">{g.category}</SelectLabel>
                                               {g.subGroups.map(sg => (
                                                 <SelectItem key={sg.categoryId} value={sg.categoryId || sg.category}>{sg.category}</SelectItem>
                                               ))}
-                                            </div>
-                                          ) : null
-                                        ))}
+                                            </SelectGroup>
+                                          );
+                                        })}
                                       </SelectContent>
                                     </Select>
                                     <Button
