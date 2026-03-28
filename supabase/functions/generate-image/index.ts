@@ -240,8 +240,8 @@ serve(async (req) => {
 
       for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
         if (attempt > 0) {
-          // Exponential backoff: 12s, 24s
-          const backoffMs = 12000 * Math.pow(2, attempt - 1);
+          // Exponential backoff: 20s, 45s
+          const backoffMs = 20000 * Math.pow(2, attempt - 1) + Math.floor(Math.random() * 5000);
           console.log(`[generate-image] Slot ${slotName} retry ${attempt + 1}/${MAX_RETRIES} after ${backoffMs}ms backoff`);
           await new Promise(r => setTimeout(r, backoffMs));
         }
