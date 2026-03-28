@@ -1,24 +1,17 @@
 
 
-## Добавить кнопку "Переместить" в список курсов (list view)
+## Подтверждение Google Search Console и обновление sitemap
 
-### Проблема
-Кнопка перемещения курса в другую категорию (`FolderInput`) есть только в режиме карточек (grid view). В табличном режиме (list view) — который вы используете — этой кнопки нет.
+### Что нужно сделать
 
-### Решение
-Добавить кнопку `FolderInput` ("Переместить в категорию") в обе функции рендеринга строк таблицы: `renderCourseRow` и `renderVariantRow`.
+1. **Добавить файл верификации Google** — скопировать `google4812de249c8bb9d5_3.html` в `public/` как `google4812de249c8bb9d5.html`, чтобы он был доступен по URL корня сайта.
 
-### Файл: `src/components/admin/AdminMarketplaceManager.tsx`
+2. **Обновить `public/sitemap.xml`** — заменить домен `synthagma-bloom.lovable.app` на `sintagma.com.ru` во всех URL, обновить даты `lastmod` на актуальные.
 
-**В `renderCourseRow` (строки 150-165)** — добавить кнопку перемещения между кнопками Eye и FolderOpen:
-```tsx
-<Button variant="ghost" size="icon" className="h-8 w-8" title="Переместить в категорию"
-  onClick={() => { h.setMovingCourse(item); h.setTargetCategory(h.extractCategory(item.course?.title)); h.setShowMoveCategoryDialog(true); }}>
-  <FolderInput className="w-3.5 h-3.5" />
-</Button>
-```
+### Файлы
 
-**В `renderVariantRow` (строки 194-208)** — аналогичная кнопка.
-
-Также расширить ширину колонки действий с `w-[130px]` до `w-[160px]` для размещения 5 кнопок.
+| Действие | Файл |
+|----------|------|
+| Создать | `public/google4812de249c8bb9d5.html` |
+| Обновить | `public/sitemap.xml` — домен → `https://sintagma.com.ru` |
 
