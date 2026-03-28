@@ -601,6 +601,7 @@ export function useAdminMarketplace() {
     movingCourse, setMovingCourse, targetCategory, setTargetCategory,
     newMoveCategoryInput, setNewMoveCategoryInput,
     handleMoveToCategory,
+    handleBulkMoveToCategory,
     handleReorderCategories,
     fetchDbCategories,
     handleAutoCategorize,
