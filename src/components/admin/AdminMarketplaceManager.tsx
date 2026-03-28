@@ -1486,16 +1486,17 @@ export function AdminMarketplaceManager() {
                                         <SelectValue placeholder="Категория..." />
                                       </SelectTrigger>
                                       <SelectContent>
-                                        {h.groupedCourses.map(g => (
-                                          g.subGroups && g.subGroups.length > 0 ? (
-                                            <div key={g.category}>
-                                              <div className="px-2 py-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">{g.category}</div>
+                                        {h.groupedCourses.map(g => {
+                                          if (!g.subGroups || g.subGroups.length === 0) return null;
+                                          return (
+                                            <SelectGroup key={g.category}>
+                                              <SelectLabel className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">{g.category}</SelectLabel>
                                               {g.subGroups.map(sg => (
                                                 <SelectItem key={sg.categoryId} value={sg.categoryId || sg.category}>{sg.category}</SelectItem>
                                               ))}
-                                            </div>
-                                          ) : null
-                                        ))}
+                                            </SelectGroup>
+                                          );
+                                        })}
                                       </SelectContent>
                                     </Select>
                                     <Button
