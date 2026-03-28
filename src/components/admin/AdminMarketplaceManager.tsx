@@ -147,10 +147,13 @@ function renderCourseRow(
       <TableCell className="w-[60px]">
         <Switch checked={item.is_active} onCheckedChange={() => h.handleToggleActive(item)} />
       </TableCell>
-      <TableCell className="w-[130px]">
+      <TableCell className="w-[160px]">
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="icon" className="h-8 w-8" title="Войти" onClick={() => navigate(`/course-builder/${item.course_id}`)}>
             <Eye className="w-3.5 h-3.5" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8" title="Переместить в категорию" onClick={() => { h.setMovingCourse(item); h.setTargetCategory(h.extractCategory(item.course?.title)); h.setShowMoveCategoryDialog(true); }}>
+            <FolderInput className="w-3.5 h-3.5" />
           </Button>
           <Button variant="ghost" size="icon" className="h-8 w-8" title="Просмотр" onClick={() => onBulkGenerate(item)}>
             <FolderOpen className="w-3.5 h-3.5" />
@@ -191,10 +194,13 @@ function renderVariantRow(
       <TableCell className="w-[60px]">
         <Switch checked={item.is_active} onCheckedChange={() => h.handleToggleActive(item)} />
       </TableCell>
-      <TableCell className="w-[130px]">
+      <TableCell className="w-[160px]">
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="icon" className="h-8 w-8" title="Войти" onClick={() => navigate(`/course-builder/${item.course_id}`)}>
             <Eye className="w-3.5 h-3.5" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8" title="Переместить в категорию" onClick={() => { h.setMovingCourse(item); h.setTargetCategory(h.extractCategory(item.course?.title)); h.setShowMoveCategoryDialog(true); }}>
+            <FolderInput className="w-3.5 h-3.5" />
           </Button>
           <Button variant="ghost" size="icon" className="h-8 w-8" title="Просмотр" onClick={() => onBulkGenerate(item)}>
             <FolderOpen className="w-3.5 h-3.5" />
