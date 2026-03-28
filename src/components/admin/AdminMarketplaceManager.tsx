@@ -952,7 +952,7 @@ export function AdminMarketplaceManager() {
           toast.loading(`Генерирую изображения: 0/${totalLessons}...`, { id: toastId });
 
           const BATCH_SIZE = 2; // Reduced to avoid 429 rate limits
-          const BATCH_COOLDOWN_MS = 20000; // 20s cooldown between batches
+          const BATCH_COOLDOWN_MS = 30000; // 30s cooldown between batches
 
           // Track which items still need images
           type PendingItem = typeof analysisResults[0];
