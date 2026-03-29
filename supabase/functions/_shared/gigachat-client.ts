@@ -660,6 +660,23 @@ export async function callAIRoundRobin(
       console.warn(`[AI-RR] ${channel.name} failed: ${msg}`);
       lastError = err instanceof Error ? err : new Error(msg);
       if (msg.includes("402")) count402++;
+
+      // Moderation: skip remaining GigaChat slots, jump to Lovable AI fallback
+      if (msg.includes("[MODERATION]")) {
+        console.warn(`[AI-RR] ${taskLabel} Moderation detected — skipping to Lovable AI fallback`);
+        // Find Lovable AI channel (last one) and try it directly
+        const lovableChannel = channels[channels.length - 1];
+        if (lovableChannel.name.includes("Lovable AI")) {
+          try {
+            console.log(`[AI-RR] ${taskLabel} → ${lovableChannel.name} (moderation fallback)`);
+            return await lovableChannel.call(messages, maxTokens);
+          } catch (lovErr) {
+            console.error(`[AI-RR] Lovable AI moderation fallback also failed:`, lovErr);
+            throw lovErr;
+          }
+        }
+        throw err;
+      }
     }
   }
   if (count402 === channels.length) {
