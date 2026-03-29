@@ -802,6 +802,12 @@ export async function callAIWithTools(
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         console.warn(`[callAIWithTools-RR] ${channel.name} failed: ${msg}`);
+
+        // Moderation: skip remaining GigaChat slots, go to Lovable AI
+        if (msg.includes("[MODERATION]")) {
+          console.warn(`[callAIWithTools-RR] ${taskLabel} Moderation detected — jumping to Lovable AI`);
+          break;
+        }
       }
     }
 
