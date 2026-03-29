@@ -382,6 +382,11 @@ export async function callGigaChat(
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
 
+    // Moderation: don't try other slots, propagate immediately for Lovable AI fallback
+    if (msg.includes("[MODERATION]")) {
+      throw err;
+    }
+
     // If all models on this slot are exhausted, try remaining slots
     if (msg.includes("exhausted") && slots.length > 1) {
       releaseSlot(slotIdx, 0);
