@@ -340,6 +340,12 @@ export async function callGigaChatOnSlot(
       const msg = err instanceof Error ? err.message : String(err);
       console.warn(`[GigaChat][${slot.name}] Model ${m} failed: ${msg}`);
 
+      // Moderation: don't try other models, immediately propagate
+      if (msg.includes("[MODERATION]")) {
+        console.warn(`[GigaChat][${slot.name}] Moderation detected — skipping all remaining GigaChat models`);
+        throw err;
+      }
+
       if (msg.includes("402")) {
         console.log(`[GigaChat][${slot.name}] Model ${m} has no tokens (402), trying next model...`);
         continue;
