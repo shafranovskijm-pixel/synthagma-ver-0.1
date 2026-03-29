@@ -241,6 +241,30 @@ async function getSlotToken(slot: GigaChatSlot): Promise<string> {
 // ═══════════════════════════════════════════════════════════
 // Raw GigaChat API call (uses a specific slot)
 // ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+// Moderation response detection
+// ═══════════════════════════════════════════════════════════
+const MODERATION_PATTERNS = [
+  "чувствительн",
+  "временно ограничен",
+  "языковая модель",
+  "генеративные языковые модели",
+  "некорректные ответы",
+  "неправильного толкования",
+  "не обладает собственным мнением",
+  "не могу помочь с этим",
+  "разговоры на некоторые темы",
+  "потенциально опасн",
+];
+
+function isModerationResponse(text: string): boolean {
+  if (!text || text.length < 20) return false;
+  const lower = text.toLowerCase();
+  const matchCount = MODERATION_PATTERNS.filter(p => lower.includes(p.toLowerCase())).length;
+  // 2+ pattern matches = moderation response
+  return matchCount >= 2;
+}
+
 async function _rawCallGigaChat(
   slot: GigaChatSlot,
   messages: Array<{ role: string; content: string }>,
@@ -278,7 +302,15 @@ async function _rawCallGigaChat(
   }
 
   const result = await response.json();
-  return result.choices?.[0]?.message?.content || "";
+  const content = result.choices?.[0]?.message?.content || "";
+
+  // Detect moderation responses (GigaChat returns HTTP 200 but with refusal text)
+  if (isModerationResponse(content)) {
+    console.warn(`[GigaChat][${slot.name}] [MODERATION] Detected moderation response for model ${model}: "${content.substring(0, 150)}..."`);
+    throw new Error("[MODERATION] GigaChat content moderation triggered");
+  }
+
+  return content;
 }
 
 // ═══════════════════════════════════════════════════════════
