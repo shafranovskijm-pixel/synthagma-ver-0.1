@@ -241,6 +241,30 @@ async function getSlotToken(slot: GigaChatSlot): Promise<string> {
 // ═══════════════════════════════════════════════════════════
 // Raw GigaChat API call (uses a specific slot)
 // ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+// Moderation response detection
+// ═══════════════════════════════════════════════════════════
+const MODERATION_PATTERNS = [
+  "чувствительн",
+  "временно ограничен",
+  "языковая модель",
+  "генеративные языковые модели",
+  "некорректные ответы",
+  "неправильного толкования",
+  "не обладает собственным мнением",
+  "не могу помочь с этим",
+  "разговоры на некоторые темы",
+  "потенциально опасн",
+];
+
+function isModerationResponse(text: string): boolean {
+  if (!text || text.length < 20) return false;
+  const lower = text.toLowerCase();
+  const matchCount = MODERATION_PATTERNS.filter(p => lower.includes(p.toLowerCase())).length;
+  // 2+ pattern matches = moderation response
+  return matchCount >= 2;
+}
+
 async function _rawCallGigaChat(
   slot: GigaChatSlot,
   messages: Array<{ role: string; content: string }>,
@@ -278,7 +302,15 @@ async function _rawCallGigaChat(
   }
 
   const result = await response.json();
-  return result.choices?.[0]?.message?.content || "";
+  const content = result.choices?.[0]?.message?.content || "";
+
+  // Detect moderation responses (GigaChat returns HTTP 200 but with refusal text)
+  if (isModerationResponse(content)) {
+    console.warn(`[GigaChat][${slot.name}] [MODERATION] Detected moderation response for model ${model}: "${content.substring(0, 150)}..."`);
+    throw new Error("[MODERATION] GigaChat content moderation triggered");
+  }
+
+  return content;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -307,6 +339,12 @@ export async function callGigaChatOnSlot(
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.warn(`[GigaChat][${slot.name}] Model ${m} failed: ${msg}`);
+
+      // Moderation: don't try other models, immediately propagate
+      if (msg.includes("[MODERATION]")) {
+        console.warn(`[GigaChat][${slot.name}] Moderation detected — skipping all remaining GigaChat models`);
+        throw err;
+      }
 
       if (msg.includes("402")) {
         console.log(`[GigaChat][${slot.name}] Model ${m} has no tokens (402), trying next model...`);
@@ -343,6 +381,11 @@ export async function callGigaChat(
     return await callGigaChatOnSlot(slotIdx, messages, model, maxTokens);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
+
+    // Moderation: don't try other slots, propagate immediately for Lovable AI fallback
+    if (msg.includes("[MODERATION]")) {
+      throw err;
+    }
 
     // If all models on this slot are exhausted, try remaining slots
     if (msg.includes("exhausted") && slots.length > 1) {
@@ -617,6 +660,23 @@ export async function callAIRoundRobin(
       console.warn(`[AI-RR] ${channel.name} failed: ${msg}`);
       lastError = err instanceof Error ? err : new Error(msg);
       if (msg.includes("402")) count402++;
+
+      // Moderation: skip remaining GigaChat slots, jump to Lovable AI fallback
+      if (msg.includes("[MODERATION]")) {
+        console.warn(`[AI-RR] ${taskLabel} Moderation detected — skipping to Lovable AI fallback`);
+        // Find Lovable AI channel (last one) and try it directly
+        const lovableChannel = channels[channels.length - 1];
+        if (lovableChannel.name.includes("Lovable AI")) {
+          try {
+            console.log(`[AI-RR] ${taskLabel} → ${lovableChannel.name} (moderation fallback)`);
+            return await lovableChannel.call(messages, maxTokens);
+          } catch (lovErr) {
+            console.error(`[AI-RR] Lovable AI moderation fallback also failed:`, lovErr);
+            throw lovErr;
+          }
+        }
+        throw err;
+      }
     }
   }
   if (count402 === channels.length) {
@@ -742,6 +802,12 @@ export async function callAIWithTools(
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         console.warn(`[callAIWithTools-RR] ${channel.name} failed: ${msg}`);
+
+        // Moderation: skip remaining GigaChat slots, go to Lovable AI
+        if (msg.includes("[MODERATION]")) {
+          console.warn(`[callAIWithTools-RR] ${taskLabel} Moderation detected — jumping to Lovable AI`);
+          break;
+        }
       }
     }
 
