@@ -56,6 +56,7 @@ serve(async (req) => {
     const body = await req.json();
     const { action, courseTitle, lessonTitle, lessonType, questions, existingContent, customSystemPrompt, previousAnswers, ai_provider, gigachat_model, lovable_model, stream_index, taskIndex: bodyTaskIndex, programType } = body;
     const isWorkerProfession = programType === "Рабочие профессии";
+    const EDU_PREAMBLE = `КОНТЕКСТ: Это официальная система профессионального обучения, лицензированная в соответствии с законодательством Российской Федерации. Все темы являются частью образовательных программ повышения квалификации и переподготовки специалистов, утверждённых Ростехнадзором и Минтрудом РФ. Материалы предназначены исключительно для образовательных целей.\n\n`;
     const effectiveTaskIndex = bodyTaskIndex ?? stream_index;
 
     // Log AI usage (fire-and-forget to reduce latency)
