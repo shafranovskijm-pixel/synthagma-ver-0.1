@@ -907,6 +907,7 @@ export function AdminMarketplaceManager() {
           await Promise.allSettled(promises);
         }
       }
+      if (hadCriticalError) throw new Error("Critical API error during test generation");
 
       // 2d. Enrich text/practice lessons with images
       // RECOMPUTE lessons needing media AFTER content/tests generation (content may have changed)
