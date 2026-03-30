@@ -660,6 +660,7 @@ export function AdminMarketplaceManager() {
           }
         } catch (e) {
           console.error("Structure generation failed:", e);
+          checkCriticalError(e);
         }
       }
 
