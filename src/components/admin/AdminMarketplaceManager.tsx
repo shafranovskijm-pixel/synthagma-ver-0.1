@@ -1005,6 +1005,7 @@ export function AdminMarketplaceManager() {
               }
             } catch (e) {
               console.error(`Enrichment analysis error for ${lesson.id}:`, e);
+              checkCriticalError(e);
             }
           });
           await Promise.allSettled(batchPromises);
