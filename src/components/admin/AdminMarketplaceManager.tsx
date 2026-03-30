@@ -1103,6 +1103,7 @@ export function AdminMarketplaceManager() {
                   }).then(() => {}, () => {});
                 } catch (e) {
                   console.error(`Auto-fix enrichment error for ${lesson.id}:`, e);
+                  checkCriticalError(e);
                   if (isLastWave) {
                     skipCount++;
                   } else {
