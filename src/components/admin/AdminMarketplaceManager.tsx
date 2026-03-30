@@ -831,6 +831,7 @@ export function AdminMarketplaceManager() {
               });
             } catch (e) {
               console.error(`Failed to generate questions for test ${test.id}:`, e);
+              checkCriticalError(e);
             }
           });
           await Promise.allSettled(promises);
