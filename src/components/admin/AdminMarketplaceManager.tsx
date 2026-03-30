@@ -381,7 +381,12 @@ export function AdminMarketplaceManager() {
     });
   }, [h.courses]);
 
-  const handleValidateCourse = async (courseId: string) => {
+  const handleValidateCourse = async (courseId: string, isAutoRetry = false) => {
+    if (!isAutoRetry) {
+      // Manual trigger — reset cycle counter and critical error flag
+      autoFixCycleCount.current.delete(courseId);
+      autoFixCriticalError.current.delete(courseId);
+    }
     setValidatingId(courseId);
     try {
       const { data: lessons } = await supabase
