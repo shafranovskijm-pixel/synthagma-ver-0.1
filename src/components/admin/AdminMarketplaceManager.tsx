@@ -1157,15 +1157,25 @@ export function AdminMarketplaceManager() {
         }
       }
 
+      if (hadCriticalError) {
+        toast.warning("Автоисправление прервано: ошибка API (402/429). Оставшиеся проблемы требуют ручного запуска.", { id: toastId, duration: 8000 });
+        return;
+      }
+
       toast.success(`Курс исправлен! Повторная проверка...`, { id: toastId, duration: 3000 });
       // Increment cycle counter before re-validation
       const prevCycles = autoFixCycleCount.current.get(courseId) || 0;
       autoFixCycleCount.current.set(courseId, prevCycles + 1);
       // Re-validate
       setTimeout(() => handleValidateCourse(courseId), 1000);
-    } catch (e) {
+    } catch (e: any) {
       console.error("Auto-fix error:", e);
-      toast.error("Ошибка автоисправления", { id: toastId, duration: 5000 });
+      checkCriticalError(e);
+      if (hadCriticalError) {
+        toast.warning("Автоисправление прервано: ошибка API. Запустите вручную позже.", { id: toastId, duration: 8000 });
+      } else {
+        toast.error("Ошибка автоисправления", { id: toastId, duration: 5000 });
+      }
     }
   };
 
