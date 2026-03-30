@@ -596,6 +596,15 @@ export function AdminMarketplaceManager() {
 
   const autoFixCourse = async (courseId: string, courseTitle: string) => {
     const toastId = toast.loading("Анализирую курс...", { duration: Infinity });
+    let hadCriticalError = false;
+
+    const checkCriticalError = (error: any) => {
+      const msg = String(error?.message || error || "");
+      if (msg.includes("402") || msg.includes("429") || msg.includes("Insufficient") || msg.includes("rate limit") || msg.includes("MODERATION")) {
+        hadCriticalError = true;
+        autoFixCriticalError.current.add(courseId);
+      }
+    };
 
     // Determine program type from course category
     let programType: string | undefined;
