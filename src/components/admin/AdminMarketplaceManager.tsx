@@ -464,9 +464,16 @@ export function AdminMarketplaceManager() {
       if (issues.length > 0) {
         const mpItem = h.courses.find((c: any) => c.course_id === courseId);
         const title = mpItem?.course?.title || "";
-        toast.info(`Найдены проблемы: ${issues.join(" • ")}. Запускаю исправление...`, { duration: 6000 });
-        // Auto-trigger fix
-        autoFixCourse(courseId, title);
+        const cycles = autoFixCycleCount.current.get(courseId) || 0;
+        const hadCritical = autoFixCriticalError.current.has(courseId);
+        if (hadCritical) {
+          toast.warning(`Проблемы: ${issues.join(" • ")}. Автоисправление остановлено — ошибка API (402/429). Запустите вручную.`, { duration: 8000 });
+        } else if (cycles >= 2) {
+          toast.warning(`Проблемы: ${issues.join(" • ")}. Лимит автоисправлений (${cycles}) достигнут. Запустите вручную.`, { duration: 8000 });
+        } else {
+          toast.info(`Найдены проблемы: ${issues.join(" • ")}. Запускаю исправление (${cycles + 1}/2)...`, { duration: 6000 });
+          autoFixCourse(courseId, title);
+        }
       } else {
         toast.success("Курс готов ✅");
       }
