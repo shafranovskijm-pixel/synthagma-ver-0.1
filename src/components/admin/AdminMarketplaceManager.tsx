@@ -891,6 +891,7 @@ export function AdminMarketplaceManager() {
                 }
               } catch (e) {
                 console.error(`Failed to solve test batch for lesson ${lessonId}:`, e);
+                checkCriticalError(e);
               }
             }
             await supabase.from("generation_history").insert({
