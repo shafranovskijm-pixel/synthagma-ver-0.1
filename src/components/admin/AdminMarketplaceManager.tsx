@@ -777,10 +777,12 @@ export function AdminMarketplaceManager() {
             });
           } catch (e) {
             console.error(`Failed to generate content for lesson ${lesson.id}:`, e);
+            checkCriticalError(e);
           }
         });
         await Promise.allSettled(promises);
       }
+      if (hadCriticalError) throw new Error("Critical API error during content generation");
 
       // 2b. Generate questions for empty tests (before media enrichment)
       if (emptyTests.length > 0) {
