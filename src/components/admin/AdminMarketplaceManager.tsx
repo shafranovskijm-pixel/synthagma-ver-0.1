@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Store, Plus, Search, Edit, Trash2, Eye, Loader2,
@@ -325,6 +325,8 @@ export function AdminMarketplaceManager() {
   const [selectedCourses, setSelectedCourses] = useState<Set<string>>(new Set());
   const [showBulkMoveDialog, setShowBulkMoveDialog] = useState(false);
   const [bulkMoveTargetCategory, setBulkMoveTargetCategory] = useState("");
+  const autoFixCycleCount = useRef<Map<string, number>>(new Map());
+  const autoFixCriticalError = useRef<Set<string>>(new Set());
 
   const toggleCourseSelect = useCallback((courseId: string) => {
     setSelectedCourses(prev => {
@@ -379,7 +381,12 @@ export function AdminMarketplaceManager() {
     });
   }, [h.courses]);
 
-  const handleValidateCourse = async (courseId: string) => {
+  const handleValidateCourse = async (courseId: string, isAutoRetry = false) => {
+    if (!isAutoRetry) {
+      // Manual trigger — reset cycle counter and critical error flag
+      autoFixCycleCount.current.delete(courseId);
+      autoFixCriticalError.current.delete(courseId);
+    }
     setValidatingId(courseId);
     try {
       const { data: lessons } = await supabase
@@ -464,9 +471,16 @@ export function AdminMarketplaceManager() {
       if (issues.length > 0) {
         const mpItem = h.courses.find((c: any) => c.course_id === courseId);
         const title = mpItem?.course?.title || "";
-        toast.info(`Найдены проблемы: ${issues.join(" • ")}. Запускаю исправление...`, { duration: 6000 });
-        // Auto-trigger fix
-        autoFixCourse(courseId, title);
+        const cycles = autoFixCycleCount.current.get(courseId) || 0;
+        const hadCritical = autoFixCriticalError.current.has(courseId);
+        if (hadCritical) {
+          toast.warning(`Проблемы: ${issues.join(" • ")}. Автоисправление остановлено — ошибка API (402/429). Запустите вручную.`, { duration: 8000 });
+        } else if (cycles >= 2) {
+          toast.warning(`Проблемы: ${issues.join(" • ")}. Лимит автоисправлений (${cycles}) достигнут. Запустите вручную.`, { duration: 8000 });
+        } else {
+          toast.info(`Найдены проблемы: ${issues.join(" • ")}. Запускаю исправление (${cycles + 1}/2)...`, { duration: 6000 });
+          autoFixCourse(courseId, title);
+        }
       } else {
         toast.success("Курс готов ✅");
       }
@@ -560,7 +574,6 @@ export function AdminMarketplaceManager() {
     }
   };
 
-
   const handleBulkAutoFix = async (courses: { courseId: string; title: string }[]) => {
     if (bulkFixing) return;
     setBulkFixing(true);
@@ -588,6 +601,15 @@ export function AdminMarketplaceManager() {
 
   const autoFixCourse = async (courseId: string, courseTitle: string) => {
     const toastId = toast.loading("Анализирую курс...", { duration: Infinity });
+    let hadCriticalError = false;
+
+    const checkCriticalError = (error: any) => {
+      const msg = String(error?.message || error || "");
+      if (msg.includes("402") || msg.includes("429") || msg.includes("Insufficient") || msg.includes("rate limit") || msg.includes("MODERATION")) {
+        hadCriticalError = true;
+        autoFixCriticalError.current.add(courseId);
+      }
+    };
 
     // Determine program type from course category
     let programType: string | undefined;
@@ -643,6 +665,7 @@ export function AdminMarketplaceManager() {
           }
         } catch (e) {
           console.error("Structure generation failed:", e);
+          checkCriticalError(e);
         }
       }
 
@@ -760,10 +783,12 @@ export function AdminMarketplaceManager() {
             });
           } catch (e) {
             console.error(`Failed to generate content for lesson ${lesson.id}:`, e);
+            checkCriticalError(e);
           }
         });
         await Promise.allSettled(promises);
       }
+      if (hadCriticalError) throw new Error("Critical API error during content generation");
 
       // 2b. Generate questions for empty tests (before media enrichment)
       if (emptyTests.length > 0) {
@@ -812,6 +837,7 @@ export function AdminMarketplaceManager() {
               });
             } catch (e) {
               console.error(`Failed to generate questions for test ${test.id}:`, e);
+              checkCriticalError(e);
             }
           });
           await Promise.allSettled(promises);
@@ -871,6 +897,7 @@ export function AdminMarketplaceManager() {
                 }
               } catch (e) {
                 console.error(`Failed to solve test batch for lesson ${lessonId}:`, e);
+                checkCriticalError(e);
               }
             }
             await supabase.from("generation_history").insert({
@@ -886,6 +913,7 @@ export function AdminMarketplaceManager() {
           await Promise.allSettled(promises);
         }
       }
+      if (hadCriticalError) throw new Error("Critical API error during test generation");
 
       // 2d. Enrich text/practice lessons with images
       // RECOMPUTE lessons needing media AFTER content/tests generation (content may have changed)
@@ -983,6 +1011,7 @@ export function AdminMarketplaceManager() {
               }
             } catch (e) {
               console.error(`Enrichment analysis error for ${lesson.id}:`, e);
+              checkCriticalError(e);
             }
           });
           await Promise.allSettled(batchPromises);
@@ -1080,6 +1109,7 @@ export function AdminMarketplaceManager() {
                   }).then(() => {}, () => {});
                 } catch (e) {
                   console.error(`Auto-fix enrichment error for ${lesson.id}:`, e);
+                  checkCriticalError(e);
                   if (isLastWave) {
                     skipCount++;
                   } else {
@@ -1140,12 +1170,25 @@ export function AdminMarketplaceManager() {
         }
       }
 
+      if (hadCriticalError) {
+        toast.warning("Автоисправление прервано: ошибка API (402/429). Оставшиеся проблемы требуют ручного запуска.", { id: toastId, duration: 8000 });
+        return;
+      }
+
       toast.success(`Курс исправлен! Повторная проверка...`, { id: toastId, duration: 3000 });
+      // Increment cycle counter before re-validation
+      const prevCycles = autoFixCycleCount.current.get(courseId) || 0;
+      autoFixCycleCount.current.set(courseId, prevCycles + 1);
       // Re-validate
-      setTimeout(() => handleValidateCourse(courseId), 1000);
-    } catch (e) {
+      setTimeout(() => handleValidateCourse(courseId, true), 1000);
+    } catch (e: any) {
       console.error("Auto-fix error:", e);
-      toast.error("Ошибка автоисправления", { id: toastId, duration: 5000 });
+      checkCriticalError(e);
+      if (hadCriticalError) {
+        toast.warning("Автоисправление прервано: ошибка API. Запустите вручную позже.", { id: toastId, duration: 8000 });
+      } else {
+        toast.error("Ошибка автоисправления", { id: toastId, duration: 5000 });
+      }
     }
   };
 
