@@ -1180,7 +1180,7 @@ export function AdminMarketplaceManager() {
       const prevCycles = autoFixCycleCount.current.get(courseId) || 0;
       autoFixCycleCount.current.set(courseId, prevCycles + 1);
       // Re-validate
-      setTimeout(() => handleValidateCourse(courseId), 1000);
+      setTimeout(() => handleValidateCourse(courseId, true), 1000);
     } catch (e: any) {
       console.error("Auto-fix error:", e);
       checkCriticalError(e);
