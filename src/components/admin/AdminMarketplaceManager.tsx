@@ -325,6 +325,8 @@ export function AdminMarketplaceManager() {
   const [selectedCourses, setSelectedCourses] = useState<Set<string>>(new Set());
   const [showBulkMoveDialog, setShowBulkMoveDialog] = useState(false);
   const [bulkMoveTargetCategory, setBulkMoveTargetCategory] = useState("");
+  const autoFixCycleCount = useRef<Map<string, number>>(new Map());
+  const autoFixCriticalError = useRef<Set<string>>(new Set());
 
   const toggleCourseSelect = useCallback((courseId: string) => {
     setSelectedCourses(prev => {
