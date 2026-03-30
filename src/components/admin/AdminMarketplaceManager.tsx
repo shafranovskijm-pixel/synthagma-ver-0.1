@@ -566,8 +566,6 @@ export function AdminMarketplaceManager() {
       toast.success(`Проверено ${total}: ✅ ${okCount} готово`);
     }
   };
-  const autoFixCycleCount = useRef<Map<string, number>>(new Map());
-  const autoFixCriticalError = useRef<Set<string>>(new Set());
 
   const handleBulkAutoFix = async (courses: { courseId: string; title: string }[]) => {
     if (bulkFixing) return;
