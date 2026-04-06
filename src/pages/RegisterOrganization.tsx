@@ -41,7 +41,7 @@ const RegisterOrganization = () => {
   const [promoApplied, setPromoApplied] = useState(false);
   const [isCheckingPromo, setIsCheckingPromo] = useState(false);
   
-  const { user, loading, refreshUserRole } = useAuth();
+  const { user, userRole, loading, refreshUserRole } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -97,10 +97,15 @@ const RegisterOrganization = () => {
 
   useEffect(() => {
     // Don't redirect while registration is in progress (race condition fix)
-    if (user && !loading && !isRegistering) {
-      navigate("/organization");
+    if (user && !loading && !isRegistering && userRole) {
+      const target = userRole === 'organization' ? '/organization'
+        : userRole === 'admin' ? '/admin'
+        : userRole === 'company' ? '/company'
+        : userRole === 'student' ? '/student'
+        : '/';
+      navigate(target, { replace: true });
     }
-  }, [user, loading, navigate, isRegistering]);
+  }, [user, userRole, loading, navigate, isRegistering]);
 
   const handleCheckPromo = async () => {
     if (!promoCode.trim()) return;
@@ -246,9 +251,18 @@ const RegisterOrganization = () => {
           throw new Error("Ошибка назначения роли организации: " + roleError.message);
         }
         
-        // Wait a bit for role to be set, then refresh
-        await new Promise(resolve => setTimeout(resolve, 500));
-        await refreshUserRole();
+        // Force refresh role with explicit userId (context may not have user yet)
+        let confirmedRole = await refreshUserRole(authData.user.id);
+        
+        // Retry up to 3 times if role hasn't updated yet
+        for (let i = 0; i < 3 && confirmedRole !== 'organization'; i++) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+          confirmedRole = await refreshUserRole(authData.user.id);
+        }
+        
+        if (confirmedRole !== 'organization') {
+          console.warn('[RegisterOrganization] Role not confirmed as organization, got:', confirmedRole);
+        }
 
         // Send Telegram notification (non-blocking)
         try {
@@ -282,8 +296,7 @@ const RegisterOrganization = () => {
         });
       }
       
-      // Navigate using React router instead of hard reload
-      await refreshUserRole();
+      // Navigate — role should already be refreshed above
       navigate("/organization", { replace: true });
       
     } catch (error: any) {

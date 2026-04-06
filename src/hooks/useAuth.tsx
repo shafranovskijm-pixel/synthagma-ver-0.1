@@ -11,7 +11,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
-  refreshUserRole: () => Promise<void>;
+  refreshUserRole: (userId?: string) => Promise<AuthContextType['userRole']>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -29,29 +29,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const hadSession = useRef(false);
   const recoveryInProgress = useRef(false);
 
-  const fetchUserRole = useCallback(async (userId: string) => {
-    if (roleFetchInFlight.current === userId) return;
+  const fetchUserRole = useCallback(async (userId: string): Promise<AuthContextType['userRole']> => {
+    if (roleFetchInFlight.current === userId) return null;
     roleFetchInFlight.current = userId;
     
     try {
       const { data, error } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId)
-        .single();
+        .rpc('get_user_role', { _user_id: userId });
       
       if (data && !error) {
-        console.log('Fetched user role:', data.role);
-        const role = data.role as 'admin' | 'organization' | 'student' | 'sales_manager' | 'company';
+        console.log('Fetched user role:', data);
+        const role = data as 'admin' | 'organization' | 'student' | 'sales_manager' | 'company';
         setUserRole(role);
         localStorage.setItem('user_role', role);
+        return role;
       } else {
         console.error('Error fetching user role:', error);
-        setUserRole('student');
+        // Don't fallback to 'student' — keep current role or null
+        // This prevents race conditions during org registration
+        return null;
       }
     } catch (error) {
       console.error('Error fetching user role:', error);
-      setUserRole('student');
+      return null;
     } finally {
       roleFetchInFlight.current = null;
     }
@@ -258,10 +258,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('user_role');
   };
 
-  const refreshUserRole = async () => {
-    if (user) {
-      await fetchUserRole(user.id);
+  const refreshUserRole = async (userId?: string): Promise<AuthContextType['userRole']> => {
+    const id = userId || user?.id;
+    if (id) {
+      return await fetchUserRole(id);
     }
+    return null;
   };
 
   return (
