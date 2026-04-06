@@ -382,6 +382,14 @@ export function OrganizationsManager() {
         supabase.from("testimonials").delete().eq("organization_id", orgId),
         supabase.from("student_consents").delete().eq("organization_id", orgId),
         supabase.from("program_categories").delete().eq("organization_id", orgId),
+        supabase.from("balance_transactions").delete().eq("organization_id", orgId),
+        supabase.from("ai_usage_log").delete().eq("organization_id", orgId),
+        supabase.from("admin_org_messages").delete().eq("organization_id", orgId),
+        supabase.from("course_access_log").delete().eq("organization_id", orgId),
+        supabase.from("course_requests").delete().eq("organization_id", orgId),
+        supabase.from("org_billing_documents").delete().eq("organization_id", orgId),
+        supabase.from("student_login_history").delete().eq("organization_id", orgId),
+        supabase.from("knowledge_bank").delete().eq("organization_id", orgId),
       ]);
 
       // 9. Finally delete the organization itself
