@@ -349,7 +349,9 @@ export function OrganizationsManager() {
         .eq("organization_id", orgId);
       const companyIds = (companies || []).map((c) => c.id);
       if (companyIds.length > 0) {
+        await supabase.from("company_requests").delete().in("company_id", companyIds);
         await supabase.from("company_documents").delete().in("company_id", companyIds);
+        await supabase.from("training_plans").delete().in("company_id", companyIds);
         await supabase.from("companies").delete().eq("organization_id", orgId);
       }
 
