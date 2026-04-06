@@ -313,16 +313,32 @@ export function OrganizationsManager() {
         .eq("organization_id", orgId);
       const courseIds = (courses || []).map((c) => c.id);
 
+      // 2. Delete marketplace orders referencing this org as buyer
+      await supabase.from("marketplace_orders").delete().eq("buyer_organization_id", orgId);
+
       if (courseIds.length > 0) {
-        // 2. Delete enrollments linked to these courses
+        // 3. Delete marketplace orders linked to marketplace_courses of this org
+        const { data: mpCourses } = await supabase
+          .from("marketplace_courses")
+          .select("id")
+          .eq("organization_id", orgId);
+        const mpCourseIds = (mpCourses || []).map((c) => c.id);
+        if (mpCourseIds.length > 0) {
+          await supabase.from("marketplace_orders").delete().in("marketplace_course_id", mpCourseIds);
+          await supabase.from("marketplace_course_comments").delete().in("marketplace_course_id", mpCourseIds);
+        }
+
+        // 4. Delete enrollments linked to these courses
         await supabase.from("enrollments").delete().in("course_id", courseIds);
-        // 3. Delete course_reminders linked to these courses
+        // 5. Delete course_reminders linked to these courses
         await supabase.from("course_reminders").delete().in("course_id", courseIds);
-        // 4. Delete course_documents linked to these courses
+        // 6. Delete course_documents linked to these courses
         await supabase.from("course_documents").delete().in("course_id", courseIds);
-        // 5. Delete lessons linked to these courses
+        // 7. Delete course_access_log linked to these courses
+        await supabase.from("course_access_log").delete().in("course_id", courseIds);
+        // 8. Delete lessons linked to these courses
         await supabase.from("lessons").delete().in("course_id", courseIds);
-        // 6. Delete courses
+        // 9. Delete courses
         await supabase.from("courses").delete().eq("organization_id", orgId);
       }
 
@@ -333,7 +349,9 @@ export function OrganizationsManager() {
         .eq("organization_id", orgId);
       const companyIds = (companies || []).map((c) => c.id);
       if (companyIds.length > 0) {
+        await supabase.from("company_requests").delete().in("company_id", companyIds);
         await supabase.from("company_documents").delete().in("company_id", companyIds);
+        await supabase.from("training_plans").delete().in("company_id", companyIds);
         await supabase.from("companies").delete().eq("organization_id", orgId);
       }
 
@@ -364,6 +382,14 @@ export function OrganizationsManager() {
         supabase.from("testimonials").delete().eq("organization_id", orgId),
         supabase.from("student_consents").delete().eq("organization_id", orgId),
         supabase.from("program_categories").delete().eq("organization_id", orgId),
+        supabase.from("balance_transactions").delete().eq("organization_id", orgId),
+        supabase.from("ai_usage_log").delete().eq("organization_id", orgId),
+        supabase.from("admin_org_messages").delete().eq("organization_id", orgId),
+        supabase.from("course_access_log").delete().eq("organization_id", orgId),
+        supabase.from("course_requests").delete().eq("organization_id", orgId),
+        supabase.from("org_billing_documents").delete().eq("organization_id", orgId),
+        supabase.from("student_login_history").delete().eq("organization_id", orgId),
+        supabase.from("knowledge_bank").delete().eq("organization_id", orgId),
       ]);
 
       // 9. Finally delete the organization itself
