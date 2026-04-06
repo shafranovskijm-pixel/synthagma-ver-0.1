@@ -313,16 +313,32 @@ export function OrganizationsManager() {
         .eq("organization_id", orgId);
       const courseIds = (courses || []).map((c) => c.id);
 
+      // 2. Delete marketplace orders referencing this org as buyer
+      await supabase.from("marketplace_orders").delete().eq("buyer_organization_id", orgId);
+
       if (courseIds.length > 0) {
-        // 2. Delete enrollments linked to these courses
+        // 3. Delete marketplace orders linked to marketplace_courses of this org
+        const { data: mpCourses } = await supabase
+          .from("marketplace_courses")
+          .select("id")
+          .eq("organization_id", orgId);
+        const mpCourseIds = (mpCourses || []).map((c) => c.id);
+        if (mpCourseIds.length > 0) {
+          await supabase.from("marketplace_orders").delete().in("marketplace_course_id", mpCourseIds);
+          await supabase.from("marketplace_course_comments").delete().in("marketplace_course_id", mpCourseIds);
+        }
+
+        // 4. Delete enrollments linked to these courses
         await supabase.from("enrollments").delete().in("course_id", courseIds);
-        // 3. Delete course_reminders linked to these courses
+        // 5. Delete course_reminders linked to these courses
         await supabase.from("course_reminders").delete().in("course_id", courseIds);
-        // 4. Delete course_documents linked to these courses
+        // 6. Delete course_documents linked to these courses
         await supabase.from("course_documents").delete().in("course_id", courseIds);
-        // 5. Delete lessons linked to these courses
+        // 7. Delete course_access_log linked to these courses
+        await supabase.from("course_access_log").delete().in("course_id", courseIds);
+        // 8. Delete lessons linked to these courses
         await supabase.from("lessons").delete().in("course_id", courseIds);
-        // 6. Delete courses
+        // 9. Delete courses
         await supabase.from("courses").delete().eq("organization_id", orgId);
       }
 
