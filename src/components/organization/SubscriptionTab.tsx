@@ -132,8 +132,12 @@ export function SubscriptionTab() {
   const [pendingRequest, setPendingRequest] = useState<{ requested_plan: string; created_at: string } | null>(null);
   const [billingDocs, setBillingDocs] = useState<BillingDoc[]>([]);
   const [orgContact, setOrgContact] = useState<{ email?: string; phone?: string; contact_name?: string }>({});
-
-  const currentPlan = subscriptionLimits.plan;
+  const [showActDialog, setShowActDialog] = useState(false);
+  const [actDate, setActDate] = useState<Date>(new Date());
+  const [actBasis, setActBasis] = useState("");
+  const [actAmount, setActAmount] = useState("");
+  const [actSubmitting, setActSubmitting] = useState(false);
+  const [orgDetails, setOrgDetails] = useState<{ inn?: string; director_name?: string; director_position?: string }>({});
   const currentPlanInfo = SUBSCRIPTION_PLANS[currentPlan];
   const currentPlanIndex = PLAN_ORDER.indexOf(currentPlan);
 
