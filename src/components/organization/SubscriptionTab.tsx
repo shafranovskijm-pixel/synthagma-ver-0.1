@@ -599,6 +599,65 @@ export function SubscriptionTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Act Generation Dialog */}
+      <Dialog open={showActDialog} onOpenChange={setShowActDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Сформировать акт</DialogTitle>
+            <DialogDescription>
+              Акт выполненных работ — предоставление доступа к платформе Sintagma
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Дата акта</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !actDate && "text-muted-foreground")}>
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {actDate ? format(actDate, "d MMMM yyyy", { locale: ru }) : "Выберите дату"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarComponent
+                    mode="single"
+                    selected={actDate}
+                    onSelect={(d) => d && setActDate(d)}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="space-y-2">
+              <Label>Основание (номер договора или счёта)</Label>
+              <Input
+                placeholder="Например: Договор №12 от 01.01.2025"
+                value={actBasis}
+                onChange={e => setActBasis(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Сумма, руб.</Label>
+              <Input
+                type="number"
+                placeholder="0.00"
+                value={actAmount}
+                onChange={e => setActAmount(e.target.value)}
+                min="0"
+                step="0.01"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowActDialog(false)}>Отмена</Button>
+            <Button onClick={handleGenerateAct} disabled={actSubmitting || !actBasis || !actAmount}>
+              {actSubmitting ? "Генерация..." : "Создать акт"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
