@@ -195,7 +195,6 @@ export function SubscriptionTab() {
       setMessage("");
       setSelectedPlan(null);
 
-      // Send Telegram notification
       const planInfo = SUBSCRIPTION_PLANS[selectedPlan];
       const orgDisplayName = d.organizationName || organizationId;
       try {
@@ -244,7 +243,6 @@ export function SubscriptionTab() {
     });
     if (result) {
       toast({ title: "Акт создан", description: result });
-      // Refresh billing docs
       const { data } = await supabase.from("org_billing_documents" as any)
         .select("*").eq("organization_id", organizationId).order("created_at", { ascending: false });
       if (data) setBillingDocs(data as any[]);
@@ -267,248 +265,8 @@ export function SubscriptionTab() {
 
   return (
     <div className="space-y-6">
-      {/* Current Plan Card */}
-      <Card className={`border-2 ${planBorders[currentPlan]} bg-gradient-to-br ${planGradients[currentPlan]}`}>
-        <CardContent className="p-6">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <Crown className={`w-6 h-6 ${planAccents[currentPlan]}`} />
-                <h2 className="text-2xl font-bold">{currentPlanInfo.name}</h2>
-                <Badge variant="secondary" className="ml-2">{currentPlanInfo.description}</Badge>
-              </div>
-              <p className="text-muted-foreground">
-                {currentPlanInfo.price === 0 ? "Бесплатный тариф" : `${currentPlanInfo.price.toLocaleString()} ₽/мес`}
-              </p>
-            </div>
-            <div className="flex flex-col items-end gap-1">
-              {paidUntil && currentPlan !== 'free' ? (
-                <div className={`flex items-center gap-2 ${urgencyColor}`}>
-                  {daysRemaining !== null && daysRemaining <= 7 && <AlertTriangle className="w-4 h-4" />}
-                  <Calendar className="w-4 h-4" />
-                  <span className="text-sm font-medium">
-                    {daysRemaining !== null && daysRemaining <= 0 
-                      ? "Тариф истёк" 
-                      : `Оплачен до ${format(new Date(paidUntil), "d MMMM yyyy", { locale: ru })}`}
-                  </span>
-                  {daysRemaining !== null && daysRemaining > 0 && (
-                    <Badge variant="outline" className={urgencyColor}>
-                      {daysRemaining} {daysRemaining === 1 ? "день" : daysRemaining < 5 ? "дня" : "дней"}
-                    </Badge>
-                  )}
-                </div>
-              ) : currentPlan === 'free' ? (
-                <span className="text-sm text-muted-foreground">Бессрочно</span>
-              ) : (
-                <span className="text-sm text-muted-foreground">Дата не указана</span>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Pending Request */}
-      {pendingRequest && (
-        <Card className="border-amber-500/30 bg-amber-500/5">
-          <CardContent className="p-4 flex items-center gap-3">
-            <Sparkles className="w-5 h-5 text-amber-500" />
-            <div>
-              <span className="font-medium">Ожидает рассмотрения: </span>
-              <span>переход на тариф «{SUBSCRIPTION_PLANS[pendingRequest.requested_plan as SubscriptionPlan]?.name}»</span>
-              <span className="text-muted-foreground text-sm ml-2">
-                от {format(new Date(pendingRequest.created_at), "d MMM yyyy", { locale: ru })}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Usage Meters */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4 space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <BookOpen className="w-4 h-4 text-primary" />
-                Курсы
-              </div>
-              <span className="text-sm text-muted-foreground">
-                {subscriptionLimits.usage.coursesCount} / {currentPlanInfo.limits.maxCourses === -1 ? "∞" : currentPlanInfo.limits.maxCourses}
-              </span>
-            </div>
-            <Progress value={currentPlanInfo.limits.maxCourses === -1 ? 0 : coursesPercent} className="h-2" />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <Users className="w-4 h-4 text-primary" />
-                Ученики
-              </div>
-              <span className="text-sm text-muted-foreground">
-                {subscriptionLimits.usage.studentsCount} / {currentPlanInfo.limits.maxStudents === -1 ? "∞" : currentPlanInfo.limits.maxStudents}
-              </span>
-            </div>
-            <Progress value={currentPlanInfo.limits.maxStudents === -1 ? 0 : studentsPercent} className="h-2" />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <Sparkles className="w-4 h-4 text-primary" />
-                Обучено в этом месяце
-              </div>
-              <span className="text-sm text-muted-foreground">
-                {subscriptionLimits.usage.trainedThisMonth || 0} / {currentPlanInfo.limits.maxTrainedPerMonth === -1 ? "∞" : currentPlanInfo.limits.maxTrainedPerMonth}
-              </span>
-            </div>
-            <Progress value={currentPlanInfo.limits.maxTrainedPerMonth === -1 ? 0 : trainedPercent} className="h-2" />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <HardDrive className="w-4 h-4 text-primary" />
-                Хранилище
-              </div>
-              <span className="text-sm text-muted-foreground">
-                {formatStorageSize(currentPlanInfo.limits.storageBytes)}
-              </span>
-            </div>
-            <Progress value={0} className="h-2" />
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Feature Highlights - accordion */}
-      {currentPlanIndex < PLAN_ORDER.length - 1 && (
-        <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="features" className="border rounded-lg">
-            <AccordionTrigger className="px-6 py-4 hover:no-underline">
-              <div className="flex items-center gap-2 text-base font-semibold">
-                <Sparkles className="w-5 h-5 text-amber-500" />
-                Возможности, доступные на старших тарифах
-              </div>
-            </AccordionTrigger>
-            <AccordionContent className="px-6 pb-4">
-              <p className="text-sm text-muted-foreground mb-4">Перейдите на более высокий тариф, чтобы разблокировать</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                {FEATURE_HIGHLIGHTS.filter(f => PLAN_ORDER.indexOf(f.minPlan) > currentPlanIndex).map((feature, i) => (
-                  <div key={i} className="p-4 rounded-xl border border-border bg-muted/30 space-y-2 relative overflow-hidden">
-                    <div className="absolute top-2 right-2">
-                      <Badge variant="outline" className={planAccents[feature.minPlan]}>
-                        {SUBSCRIPTION_PLANS[feature.minPlan].name}+
-                      </Badge>
-                    </div>
-                    <div className={`${planAccents[feature.minPlan]}`}>{feature.icon}</div>
-                    <h4 className="font-semibold text-sm">{feature.title}</h4>
-                    <p className="text-xs text-muted-foreground">{feature.description}</p>
-                  </div>
-                ))}
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
-      )}
-
-
-      {/* Plan Comparison Grid */}
+      {/* Billing Documents - always visible at top */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Сравнение тарифов</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr>
-                  <th className="text-left p-2 font-medium text-muted-foreground">Функция</th>
-                  {PLAN_ORDER.map(planId => {
-                    const plan = SUBSCRIPTION_PLANS[planId];
-                    const isCurrent = planId === currentPlan;
-                    return (
-                      <th key={planId} className={`p-2 text-center min-w-[120px] ${isCurrent ? `bg-primary/5 rounded-t-lg border-t-2 ${planBorders[planId]}` : ""}`}>
-                        <div className="space-y-1">
-                          <div className={`font-bold ${isCurrent ? planAccents[planId] : ""}`}>{plan.name}</div>
-                          <div className="text-xs text-muted-foreground font-normal">
-                            {plan.price === 0 ? "0 ₽" : `${plan.price.toLocaleString()} ₽`}
-                          </div>
-                          {isCurrent && <Badge variant="secondary" className="text-[10px]">Текущий</Badge>}
-                        </div>
-                      </th>
-                    );
-                  })}
-                </tr>
-              </thead>
-              <tbody>
-                {featureRows.map((row) => (
-                  <tr key={row.label} className="border-t border-border">
-                    <td className="p-2 font-medium">
-                      {row.link ? (
-                        <Link to={row.link} className="inline-flex items-center gap-1 hover:text-primary hover:underline transition-colors">
-                          {row.label}
-                          <ExternalLink className="w-3 h-3 text-muted-foreground" />
-                        </Link>
-                      ) : (
-                        row.label
-                      )}
-                    </td>
-                    {PLAN_ORDER.map(planId => {
-                      const plan = SUBSCRIPTION_PLANS[planId];
-                      const value = row.getValue ? row.getValue(plan) : row.key ? plan.limits[row.key] : null;
-                      const isCurrent = planId === currentPlan;
-                      const formatted = row.format ? (row.format as Function)(value) : value;
-                      return (
-                        <td key={planId} className={`p-2 text-center ${isCurrent ? "bg-primary/5" : ""}`}>
-                          {typeof formatted === "boolean" ? (
-                            formatted ? <Check className="w-4 h-4 text-emerald-500 mx-auto" /> : <X className="w-4 h-4 text-muted-foreground/30 mx-auto" />
-                          ) : (
-                            <span className="font-medium">{formatted}</span>
-                          )}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-                {/* Action row */}
-                <tr className="border-t border-border">
-                  <td className="p-2"></td>
-                  {PLAN_ORDER.map(planId => {
-                    const isCurrent = planId === currentPlan;
-                    const planIndex = PLAN_ORDER.indexOf(planId);
-                    const isUpgrade = planIndex > currentPlanIndex;
-                    return (
-                      <td key={planId} className={`p-2 text-center ${isCurrent ? "bg-primary/5 rounded-b-lg" : ""}`}>
-                        {isCurrent ? (
-                          <span className="text-xs text-muted-foreground">Активен</span>
-                        ) : (
-                          <Button
-                            size="sm"
-                            variant={isUpgrade ? "default" : "outline"}
-                            className="text-xs"
-                            onClick={() => { setSelectedPlan(planId); setShowUpgradeDialog(true); }}
-                            disabled={!!pendingRequest}
-                          >
-                            {isUpgrade ? (
-                              <>Перейти <ArrowRight className="w-3 h-3 ml-1" /></>
-                            ) : "Понизить"}
-                          </Button>
-                        )}
-                      </td>
-                    );
-                  })}
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Billing Documents - hidden for free plan */}
-      {currentPlan !== 'free' && <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle className="flex items-center gap-2 text-base">
@@ -552,7 +310,259 @@ export function SubscriptionTab() {
             </div>
           )}
         </CardContent>
-      </Card>}
+      </Card>
+
+      {/* Tariff Plan - collapsible accordion */}
+      <Accordion type="single" collapsible className="w-full">
+        <AccordionItem value="tariff" className="border rounded-lg">
+          <AccordionTrigger className="px-6 py-4 hover:no-underline">
+            <div className="flex items-center gap-2 text-base font-semibold">
+              <Crown className={`w-5 h-5 ${planAccents[currentPlan]}`} />
+              Тарифный план — {currentPlanInfo.name}
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="px-6 pb-6">
+            <div className="space-y-6">
+              {/* Current Plan Card */}
+              <Card className={`border-2 ${planBorders[currentPlan]} bg-gradient-to-br ${planGradients[currentPlan]}`}>
+                <CardContent className="p-6">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Crown className={`w-6 h-6 ${planAccents[currentPlan]}`} />
+                        <h2 className="text-2xl font-bold">{currentPlanInfo.name}</h2>
+                        <Badge variant="secondary" className="ml-2">{currentPlanInfo.description}</Badge>
+                      </div>
+                      <p className="text-muted-foreground">
+                        {currentPlanInfo.price === 0 ? "Бесплатный тариф" : `${currentPlanInfo.price.toLocaleString()} ₽/мес`}
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                      {paidUntil && currentPlan !== 'free' ? (
+                        <div className={`flex items-center gap-2 ${urgencyColor}`}>
+                          {daysRemaining !== null && daysRemaining <= 7 && <AlertTriangle className="w-4 h-4" />}
+                          <Calendar className="w-4 h-4" />
+                          <span className="text-sm font-medium">
+                            {daysRemaining !== null && daysRemaining <= 0 
+                              ? "Тариф истёк" 
+                              : `Оплачен до ${format(new Date(paidUntil), "d MMMM yyyy", { locale: ru })}`}
+                          </span>
+                          {daysRemaining !== null && daysRemaining > 0 && (
+                            <Badge variant="outline" className={urgencyColor}>
+                              {daysRemaining} {daysRemaining === 1 ? "день" : daysRemaining < 5 ? "дня" : "дней"}
+                            </Badge>
+                          )}
+                        </div>
+                      ) : currentPlan === 'free' ? (
+                        <span className="text-sm text-muted-foreground">Бессрочно</span>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">Дата не указана</span>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Pending Request */}
+              {pendingRequest && (
+                <Card className="border-amber-500/30 bg-amber-500/5">
+                  <CardContent className="p-4 flex items-center gap-3">
+                    <Sparkles className="w-5 h-5 text-amber-500" />
+                    <div>
+                      <span className="font-medium">Ожидает рассмотрения: </span>
+                      <span>переход на тариф «{SUBSCRIPTION_PLANS[pendingRequest.requested_plan as SubscriptionPlan]?.name}»</span>
+                      <span className="text-muted-foreground text-sm ml-2">
+                        от {format(new Date(pendingRequest.created_at), "d MMM yyyy", { locale: ru })}
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Usage Meters */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Card>
+                  <CardContent className="p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        <BookOpen className="w-4 h-4 text-primary" />
+                        Курсы
+                      </div>
+                      <span className="text-sm text-muted-foreground">
+                        {subscriptionLimits.usage.coursesCount} / {currentPlanInfo.limits.maxCourses === -1 ? "∞" : currentPlanInfo.limits.maxCourses}
+                      </span>
+                    </div>
+                    <Progress value={currentPlanInfo.limits.maxCourses === -1 ? 0 : coursesPercent} className="h-2" />
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        <Users className="w-4 h-4 text-primary" />
+                        Ученики
+                      </div>
+                      <span className="text-sm text-muted-foreground">
+                        {subscriptionLimits.usage.studentsCount} / {currentPlanInfo.limits.maxStudents === -1 ? "∞" : currentPlanInfo.limits.maxStudents}
+                      </span>
+                    </div>
+                    <Progress value={currentPlanInfo.limits.maxStudents === -1 ? 0 : studentsPercent} className="h-2" />
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        <Sparkles className="w-4 h-4 text-primary" />
+                        Обучено в этом месяце
+                      </div>
+                      <span className="text-sm text-muted-foreground">
+                        {subscriptionLimits.usage.trainedThisMonth || 0} / {currentPlanInfo.limits.maxTrainedPerMonth === -1 ? "∞" : currentPlanInfo.limits.maxTrainedPerMonth}
+                      </span>
+                    </div>
+                    <Progress value={currentPlanInfo.limits.maxTrainedPerMonth === -1 ? 0 : trainedPercent} className="h-2" />
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        <HardDrive className="w-4 h-4 text-primary" />
+                        Хранилище
+                      </div>
+                      <span className="text-sm text-muted-foreground">
+                        {formatStorageSize(currentPlanInfo.limits.storageBytes)}
+                      </span>
+                    </div>
+                    <Progress value={0} className="h-2" />
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Feature Highlights */}
+              {currentPlanIndex < PLAN_ORDER.length - 1 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Sparkles className="w-5 h-5 text-amber-500" />
+                      Возможности, доступные на старших тарифах
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground mb-4">Перейдите на более высокий тариф, чтобы разблокировать</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                      {FEATURE_HIGHLIGHTS.filter(f => PLAN_ORDER.indexOf(f.minPlan) > currentPlanIndex).map((feature, i) => (
+                        <div key={i} className="p-4 rounded-xl border border-border bg-muted/30 space-y-2 relative overflow-hidden">
+                          <div className="absolute top-2 right-2">
+                            <Badge variant="outline" className={planAccents[feature.minPlan]}>
+                              {SUBSCRIPTION_PLANS[feature.minPlan].name}+
+                            </Badge>
+                          </div>
+                          <div className={`${planAccents[feature.minPlan]}`}>{feature.icon}</div>
+                          <h4 className="font-semibold text-sm">{feature.title}</h4>
+                          <p className="text-xs text-muted-foreground">{feature.description}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Plan Comparison Grid */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Сравнение тарифов</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr>
+                          <th className="text-left p-2 font-medium text-muted-foreground">Функция</th>
+                          {PLAN_ORDER.map(planId => {
+                            const plan = SUBSCRIPTION_PLANS[planId];
+                            const isCurrent = planId === currentPlan;
+                            return (
+                              <th key={planId} className={`p-2 text-center min-w-[120px] ${isCurrent ? `bg-primary/5 rounded-t-lg border-t-2 ${planBorders[planId]}` : ""}`}>
+                                <div className="space-y-1">
+                                  <div className={`font-bold ${isCurrent ? planAccents[planId] : ""}`}>{plan.name}</div>
+                                  <div className="text-xs text-muted-foreground font-normal">
+                                    {plan.price === 0 ? "0 ₽" : `${plan.price.toLocaleString()} ₽`}
+                                  </div>
+                                  {isCurrent && <Badge variant="secondary" className="text-[10px]">Текущий</Badge>}
+                                </div>
+                              </th>
+                            );
+                          })}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {featureRows.map((row) => (
+                          <tr key={row.label} className="border-t border-border">
+                            <td className="p-2 font-medium">
+                              {row.link ? (
+                                <Link to={row.link} className="inline-flex items-center gap-1 hover:text-primary hover:underline transition-colors">
+                                  {row.label}
+                                  <ExternalLink className="w-3 h-3 text-muted-foreground" />
+                                </Link>
+                              ) : (
+                                row.label
+                              )}
+                            </td>
+                            {PLAN_ORDER.map(planId => {
+                              const plan = SUBSCRIPTION_PLANS[planId];
+                              const value = row.getValue ? row.getValue(plan) : row.key ? plan.limits[row.key] : null;
+                              const isCurrent = planId === currentPlan;
+                              const formatted = row.format ? (row.format as Function)(value) : value;
+                              return (
+                                <td key={planId} className={`p-2 text-center ${isCurrent ? "bg-primary/5" : ""}`}>
+                                  {typeof formatted === "boolean" ? (
+                                    formatted ? <Check className="w-4 h-4 text-emerald-500 mx-auto" /> : <X className="w-4 h-4 text-muted-foreground/30 mx-auto" />
+                                  ) : (
+                                    <span className="font-medium">{formatted}</span>
+                                  )}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                        {/* Action row */}
+                        <tr className="border-t border-border">
+                          <td className="p-2"></td>
+                          {PLAN_ORDER.map(planId => {
+                            const isCurrent = planId === currentPlan;
+                            const planIndex = PLAN_ORDER.indexOf(planId);
+                            const isUpgrade = planIndex > currentPlanIndex;
+                            return (
+                              <td key={planId} className={`p-2 text-center ${isCurrent ? "bg-primary/5 rounded-b-lg" : ""}`}>
+                                {isCurrent ? (
+                                  <span className="text-xs text-muted-foreground">Активен</span>
+                                ) : (
+                                  <Button
+                                    size="sm"
+                                    variant={isUpgrade ? "default" : "outline"}
+                                    className="text-xs"
+                                    onClick={() => { setSelectedPlan(planId); setShowUpgradeDialog(true); }}
+                                    disabled={!!pendingRequest}
+                                  >
+                                    {isUpgrade ? (
+                                      <>Перейти <ArrowRight className="w-3 h-3 ml-1" /></>
+                                    ) : "Понизить"}
+                                  </Button>
+                                )}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
 
       {/* Upgrade Request Dialog */}
       <Dialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog}>
