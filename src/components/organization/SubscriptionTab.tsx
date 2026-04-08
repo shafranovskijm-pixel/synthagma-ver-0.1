@@ -229,7 +229,35 @@ export function SubscriptionTab() {
     }
   };
 
-  const coursesPercent = currentPlanInfo.limits.maxCourses === -1 ? 0 :
+  const handleGenerateAct = async () => {
+    if (!organizationId || !actBasis || !actAmount) return;
+    setActSubmitting(true);
+    const result = await generateAct({
+      organizationId,
+      orgName: d.organizationName || "",
+      orgInn: orgDetails.inn || null,
+      directorName: orgDetails.director_name || null,
+      directorPosition: orgDetails.director_position || null,
+      actDate,
+      basis: actBasis,
+      amount: parseFloat(actAmount),
+    });
+    if (result) {
+      toast({ title: "Акт создан", description: result });
+      // Refresh billing docs
+      const { data } = await supabase.from("org_billing_documents" as any)
+        .select("*").eq("organization_id", organizationId).order("created_at", { ascending: false });
+      if (data) setBillingDocs(data as any[]);
+      setShowActDialog(false);
+      setActBasis("");
+      setActAmount("");
+      setActDate(new Date());
+    } else {
+      toast({ title: "Ошибка", description: "Не удалось сгенерировать акт", variant: "destructive" });
+    }
+    setActSubmitting(false);
+  };
+
     Math.round((subscriptionLimits.usage.coursesCount / currentPlanInfo.limits.maxCourses) * 100);
   const studentsPercent = currentPlanInfo.limits.maxStudents === -1 ? 0 :
     Math.round((subscriptionLimits.usage.studentsCount / currentPlanInfo.limits.maxStudents) * 100);
