@@ -148,13 +148,14 @@ export function SubscriptionTab() {
     
     const fetchOrgDetails = async () => {
       const [orgRes, reqRes, docsRes] = await Promise.all([
-        supabase.from("organizations").select("paid_until, email, phone, contact_name").eq("id", organizationId).single(),
+        supabase.from("organizations").select("paid_until, email, phone, contact_name, inn, director_name, director_position").eq("id", organizationId).single(),
         supabase.from("subscription_requests" as any).select("requested_plan, created_at").eq("organization_id", organizationId).eq("status", "pending").order("created_at", { ascending: false }).limit(1),
         supabase.from("org_billing_documents" as any).select("*").eq("organization_id", organizationId).order("created_at", { ascending: false }),
       ]);
       
       if (orgRes.data?.paid_until) setPaidUntil(orgRes.data.paid_until);
       setOrgContact({ email: orgRes.data?.email, phone: orgRes.data?.phone, contact_name: orgRes.data?.contact_name });
+      setOrgDetails({ inn: orgRes.data?.inn, director_name: orgRes.data?.director_name, director_position: orgRes.data?.director_position });
       if ((reqRes.data as any)?.[0]) setPendingRequest((reqRes.data as any)[0]);
       if (docsRes.data) setBillingDocs(docsRes.data as any[]);
     };
