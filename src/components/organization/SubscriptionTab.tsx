@@ -258,6 +258,7 @@ export function SubscriptionTab() {
     setActSubmitting(false);
   };
 
+  const coursesPercent = currentPlanInfo.limits.maxCourses === -1 ? 0 :
     Math.round((subscriptionLimits.usage.coursesCount / currentPlanInfo.limits.maxCourses) * 100);
   const studentsPercent = currentPlanInfo.limits.maxStudents === -1 ? 0 :
     Math.round((subscriptionLimits.usage.studentsCount / currentPlanInfo.limits.maxStudents) * 100);
