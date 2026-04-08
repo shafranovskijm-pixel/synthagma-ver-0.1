@@ -509,12 +509,18 @@ export function SubscriptionTab() {
 
       {/* Billing Documents - hidden for free plan */}
       {currentPlan !== 'free' && <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <FolderOpen className="w-5 h-5 text-primary" />
-            Закрывающие документы
-          </CardTitle>
-          <CardDescription>Счета, чеки и акты от платформы</CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <FolderOpen className="w-5 h-5 text-primary" />
+              Закрывающие документы
+            </CardTitle>
+            <CardDescription>Счета, чеки и акты от платформы</CardDescription>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => setShowActDialog(true)}>
+            <FileText className="w-4 h-4 mr-1" />
+            Сформировать акт
+          </Button>
         </CardHeader>
         <CardContent>
           {billingDocs.length === 0 ? (
