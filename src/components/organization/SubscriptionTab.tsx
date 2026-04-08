@@ -12,7 +12,13 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { getSignedStorageUrl } from "@/utils/storageHelpers";
+import { generateAct } from "@/utils/generateAct";
+import { cn } from "@/lib/utils";
 import {
   Crown, BookOpen, Users, HardDrive, Sparkles, Check, X,
   Palette, Video, FileCheck, Brain, FileSpreadsheet, ClipboardList,
