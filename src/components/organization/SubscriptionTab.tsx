@@ -615,7 +615,7 @@ export function SubscriptionTab() {
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !actDate && "text-muted-foreground")}>
-                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    <Calendar className="mr-2 h-4 w-4" />
                     {actDate ? format(actDate, "d MMMM yyyy", { locale: ru }) : "Выберите дату"}
                   </Button>
                 </PopoverTrigger>
