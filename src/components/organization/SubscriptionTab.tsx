@@ -138,6 +138,8 @@ export function SubscriptionTab() {
   const [actAmount, setActAmount] = useState("");
   const [actSubmitting, setActSubmitting] = useState(false);
   const [orgDetails, setOrgDetails] = useState<{ inn?: string; director_name?: string; director_position?: string }>({});
+
+  const currentPlan = subscriptionLimits.plan;
   const currentPlanInfo = SUBSCRIPTION_PLANS[currentPlan];
   const currentPlanIndex = PLAN_ORDER.indexOf(currentPlan);
 
