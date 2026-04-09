@@ -1,42 +1,45 @@
 
 
-## Исправление парсера SkillSpace — окончательное решение на основе реальных заголовков
+## Перенос видео и документов из SkillSpace в хранилище организации
 
-### Что показали данные из DevTools
+### Текущее поведение
 
-Браузер при обращении к school API отправляет:
-- `Cookie: ...; Auth-Token=eyJ...` — токен внутри cookie
-- `accept: application/json, text/plain, */*`
-- Стандартные sec-* заголовки
-- **НЕТ** заголовка `Authorization`
-- **НЕТ** заголовка `X-Requested-With`
+Парсер сохраняет в уроках только **ссылки** на файлы SkillSpace (`data.file.url`, `data.url`). Видео и документы остаются на серверах SkillSpace — при удалении курса оттуда ссылки перестанут работать.
 
-### Найденные баги в текущей функции
+### Что нужно сделать
 
-1. **`cookieMap` на уровне модуля** (строка 153) — `Map` живёт между вызовами на warm-инстансе Deno. При повторном импорте куки от предыдущего вызова смешиваются с новыми, создавая невалидную сессию
+Добавить в Edge Function `parse-skillspace-course` этап скачивания медиафайлов и загрузки в бакет `course-files` с заменой URL в блоках уроков.
 
-2. **Лишний `Authorization: Bearer` заголовок** (строка 309) — SkillSpace school API авторизует ТОЛЬКО по Cookie, не по Authorization header. Этот заголовок может ломать запрос
+### Техническое решение
 
-3. **Лишний `X-Requested-With: XMLHttpRequest`** (строка 306) — браузер его не отправляет
+**Файл:** `supabase/functions/parse-skillspace-course/index.ts`
 
-4. **Логика "deleted" в cookie** (строки 171-177) — текущий порядок: если `deleted` приходит первым, удаляем из Map, затем реальное значение перезаписывает. Но если `deleted` приходит последним — удаляем реальное значение. Нужно обрабатывать ВСЕ set-cookie по порядку и оставлять последнее значение
+1. **Функция `downloadAndReupload(url, courseId, orgId, supabaseClient)`**
+   - Скачивает файл с SkillSpace по URL (с текущими cookies для авторизации)
+   - Определяет тип (video/mp4, application/pdf, image и т.д.) по Content-Type
+   - Загружает в бакет `course-files` по пути `{orgId}/{courseId}/{uuid}.{ext}`
+   - Возвращает публичный URL из нашего хранилища
+   - При ошибке — оставляет оригинальный URL (graceful fallback)
 
-### Исправления
+2. **Обработка блоков после парсинга (между Step 4 и Step 5)**
+   - Проход по всем `jsonBlocks` каждого урока
+   - Для блоков типа `video` (поле `videoUrl`) — скачать и заменить URL
+   - Для блоков типа `image` (поле `imageSrc`) — скачать и заменить URL
+   - Для блоков типа `document` (поле `documentUrl`) — скачать и заменить URL
+   - Для ссылок в HTML-контенте (href на skillspace.ru) — скачать и заменить
 
-**`supabase/functions/parse-skillspace-course/index.ts`**:
+3. **Ограничения и защита**
+   - Максимальный размер файла для скачивания: 500 МБ (чтобы не упасть по памяти)
+   - Таймаут на скачивание одного файла: 60 секунд
+   - Логирование: "Downloaded video X.mp4 (25MB) → course-files/..."
+   - Счётчик: `filesTransferred` / `filesSkipped` в ответе
 
-1. Перенести `cookieMap` внутрь handler-функции (Deno.serve callback), чтобы каждый запрос начинался с чистого состояния
+4. **Использование service_role** — Edge Function уже использует `SUPABASE_SERVICE_ROLE_KEY`, поэтому загрузка в storage пройдёт без RLS-ограничений
 
-2. В `apiFetch` убрать `Authorization` и `X-Requested-With`, оставить только:
-   - `Accept: application/json, text/plain, */*`
-   - `Cookie: {all cookies}`
+### Ожидаемый результат
 
-3. В `mergeCookiesFromResponse` — просто перезаписывать значение по имени без специальной логики для "deleted" (последнее значение в порядке set-cookie всегда побеждает)
-
-4. Добавить sec-fetch-* заголовки для имитации браузерного запроса:
-   - `sec-fetch-dest: empty`
-   - `sec-fetch-mode: cors`  
-   - `sec-fetch-site: same-origin`
-
-Один файл, четыре точечных правки.
+- Видео, изображения и документы из SkillSpace копируются в бакет `course-files`
+- URL в блоках уроков указывают на наше хранилище
+- В ответе функции добавляются поля `filesTransferred` и `filesFailed`
+- При недоступности файла — оригинальная ссылка сохраняется
 
