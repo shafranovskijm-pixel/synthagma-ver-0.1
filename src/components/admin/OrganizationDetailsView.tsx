@@ -53,6 +53,7 @@ import {
   KeyRound,
   Download,
   Trash2,
+  RefreshCw,
 } from "lucide-react";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { format } from "date-fns";
@@ -145,6 +146,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("overview");
   const [showSkillspaceImport, setShowSkillspaceImport] = useState(false);
+  const [skillspaceUpdateCourse, setSkillspaceUpdateCourse] = useState<{ id: string; title: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [students, setStudents] = useState<Student[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
@@ -1168,6 +1170,15 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                         <Button
                           variant="ghost"
                           size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-primary"
+                          title="Обновить из SkillSpace (тесты + очистка контента)"
+                          onClick={() => setSkillspaceUpdateCourse({ id: course.id, title: course.title })}
+                        >
+                          <RefreshCw className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           className="h-8 w-8 text-muted-foreground hover:text-destructive"
                           onClick={async () => {
                             if (!confirm(`Удалить курс «${course.title}»? Это действие нельзя отменить.`)) return;
@@ -1583,6 +1594,16 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
           });
       }}
     />
+    {skillspaceUpdateCourse && (
+      <SkillspaceImportDialog
+        open={!!skillspaceUpdateCourse}
+        onOpenChange={(open) => { if (!open) setSkillspaceUpdateCourse(null); }}
+        organizationId={organization.id}
+        existingCourseId={skillspaceUpdateCourse.id}
+        existingCourseTitle={skillspaceUpdateCourse.title}
+        onSuccess={() => fetchCourses()}
+      />
+    )}
     </>
   );
 }

@@ -201,7 +201,8 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { url, login, password, organizationId } = await req.json();
+    const { url, login, password, organizationId, existingCourseId } = await req.json();
+    const isUpdateMode = !!existingCourseId;
 
     if (!url || !login || !password || !organizationId) {
       return new Response(
@@ -805,7 +806,128 @@ Deno.serve(async (req) => {
     log(`Media transfer complete: ${filesTransferred} transferred, ${filesFailed} failed`);
 
     // Step 5: Save to DB
+    let targetCourseId: string;
+    let lessonsUpdated = 0;
 
+    if (isUpdateMode) {
+      // UPDATE MODE: update existing course lessons
+      targetCourseId = existingCourseId;
+      log(`Update mode: updating course ${targetCourseId}`);
+
+      // Get existing lessons
+      const { data: existingLessons } = await supabaseClient
+        .from("lessons")
+        .select("id, order_index, title, type")
+        .eq("course_id", targetCourseId)
+        .order("order_index");
+
+      const existingMap = new Map<number, any>();
+      if (existingLessons) {
+        for (const el of existingLessons) existingMap.set(el.order_index, el);
+      }
+
+      let createdLessons = 0;
+      let totalTestQuestions = 0;
+
+      for (const lesson of lessonContents) {
+        const existing = existingMap.get(lesson.order);
+
+        if (existing) {
+          // Update content (cleaned)
+          const { error: updateErr } = await supabaseClient
+            .from("lessons")
+            .update({ content: lesson.content, title: lesson.title })
+            .eq("id", existing.id);
+
+          if (!updateErr) lessonsUpdated++;
+
+          // For test lessons: add questions if none exist
+          if (lesson.type === "test" && lesson.testQuestions && lesson.testQuestions.length > 0) {
+            const { count } = await supabaseClient
+              .from("test_questions")
+              .select("id", { count: "exact", head: true })
+              .eq("lesson_id", existing.id);
+
+            if ((count || 0) === 0) {
+              const questionsToInsert = lesson.testQuestions.map((q, qi) => ({
+                lesson_id: existing.id,
+                question: q.question,
+                options: q.options,
+                correct_answer: q.correct_answer,
+                order_index: qi,
+              }));
+
+              const { error: qError } = await supabaseClient
+                .from("test_questions")
+                .insert(questionsToInsert);
+
+              if (!qError) {
+                totalTestQuestions += questionsToInsert.length;
+                await supabaseClient
+                  .from("lessons")
+                  .update({ type: "test", test_questions_count: questionsToInsert.length, test_passing_score: 60 })
+                  .eq("id", existing.id);
+                log(`Added ${questionsToInsert.length} questions to existing lesson "${existing.title}"`);
+              }
+            }
+          }
+        } else {
+          // Create new lesson (not in existing course)
+          const { data: newLesson, error: lessonError } = await supabaseClient
+            .from("lessons")
+            .insert({
+              course_id: targetCourseId,
+              title: lesson.title,
+              content: lesson.content,
+              order_index: lesson.order,
+              type: lesson.type,
+              test_passing_score: lesson.type === "test" ? 60 : 0,
+            })
+            .select("id")
+            .single();
+
+          if (!lessonError) {
+            createdLessons++;
+            if (lesson.type === "test" && lesson.testQuestions && lesson.testQuestions.length > 0 && newLesson) {
+              const questionsToInsert = lesson.testQuestions.map((q, qi) => ({
+                lesson_id: newLesson.id,
+                question: q.question,
+                options: q.options,
+                correct_answer: q.correct_answer,
+                order_index: qi,
+              }));
+              const { error: qError } = await supabaseClient.from("test_questions").insert(questionsToInsert);
+              if (!qError) totalTestQuestions += questionsToInsert.length;
+            }
+          }
+        }
+      }
+
+      log(`Update complete: ${lessonsUpdated} updated, ${createdLessons} created, ${totalTestQuestions} test questions`);
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          updateMode: true,
+          courseId: targetCourseId,
+          courseTitle: courseName,
+          lessonsTotal: allLessons.length,
+          lessonsUpdated,
+          lessonsCreated: createdLessons,
+          lessonsWithContent: lessonsWithBlocks,
+          lessonsAccessDenied,
+          filesTransferred,
+          filesFailed,
+          testQuestionsCreated: totalTestQuestions,
+          importMode,
+          schoolApiAvailable,
+          debug: debugLog,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // CREATE MODE (original behavior)
     const { data: newCourse, error: courseError } = await supabaseClient
       .from("courses")
       .insert({
@@ -847,8 +969,6 @@ Deno.serve(async (req) => {
         log(`Failed to create lesson "${lesson.title}": ${lessonError.message}`);
       } else {
         createdLessons++;
-
-        // Insert test questions if this is a test lesson
         if (lesson.type === "test" && lesson.testQuestions && lesson.testQuestions.length > 0 && newLesson) {
           const questionsToInsert = lesson.testQuestions.map((q, qi) => ({
             lesson_id: newLesson.id,
@@ -866,7 +986,6 @@ Deno.serve(async (req) => {
             log(`Failed to insert ${questionsToInsert.length} questions for "${lesson.title}": ${qError.message}`);
           } else {
             totalTestQuestions += questionsToInsert.length;
-            // Update lesson with question count
             await supabaseClient
               .from("lessons")
               .update({ test_questions_count: questionsToInsert.length })

@@ -11,6 +11,8 @@ interface SkillspaceImportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   organizationId: string;
+  existingCourseId?: string;
+  existingCourseTitle?: string;
   onSuccess?: () => void;
 }
 
@@ -19,13 +21,17 @@ interface ImportResult {
   courseTitle: string;
   lessonsTotal: number;
   lessonsCreated: number;
+  lessonsUpdated?: number;
   lessonsWithContent: number;
   lessonsAccessDenied?: number;
   importMode?: "school" | "student";
   schoolApiAvailable?: boolean;
+  testQuestionsCreated?: number;
+  updateMode?: boolean;
 }
 
-export function SkillspaceImportDialog({ open, onOpenChange, organizationId, onSuccess }: SkillspaceImportDialogProps) {
+export function SkillspaceImportDialog({ open, onOpenChange, organizationId, existingCourseId, existingCourseTitle, onSuccess }: SkillspaceImportDialogProps) {
+  const isUpdateMode = !!existingCourseId;
   const [url, setUrl] = useState("");
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
@@ -58,7 +64,7 @@ export function SkillspaceImportDialog({ open, onOpenChange, organizationId, onS
           "Authorization": `Bearer ${supabaseKey}`,
           "apikey": supabaseKey,
         },
-        body: JSON.stringify({ url, login, password, organizationId }),
+        body: JSON.stringify({ url, login, password, organizationId, ...(existingCourseId ? { existingCourseId } : {}) }),
         signal: controller.signal,
       });
       
@@ -83,10 +89,13 @@ export function SkillspaceImportDialog({ open, onOpenChange, organizationId, onS
           courseTitle: data.courseTitle,
           lessonsTotal: data.lessonsTotal,
           lessonsCreated: data.lessonsCreated,
+          lessonsUpdated: data.lessonsUpdated,
           lessonsWithContent: data.lessonsWithContent,
           lessonsAccessDenied: data.lessonsAccessDenied,
           importMode: data.importMode,
           schoolApiAvailable: data.schoolApiAvailable,
+          testQuestionsCreated: data.testQuestionsCreated,
+          updateMode: data.updateMode,
         });
         onSuccess?.();
       }
@@ -120,10 +129,12 @@ export function SkillspaceImportDialog({ open, onOpenChange, organizationId, onS
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Download className="w-5 h-5" />
-            Импорт курса со SkillSpace
+            {isUpdateMode ? `Обновить курс из SkillSpace` : `Импорт курса со SkillSpace`}
           </DialogTitle>
           <DialogDescription>
-            Введите URL курса и учётные данные SkillSpace для автоматического импорта структуры и контента.
+            {isUpdateMode
+              ? `Обновление курса «${existingCourseTitle}»: очистка контента от артефактов и импорт тестовых вопросов.`
+              : `Введите URL курса и учётные данные SkillSpace для автоматического импорта структуры и контента.`}
           </DialogDescription>
         </DialogHeader>
 
@@ -214,12 +225,20 @@ export function SkillspaceImportDialog({ open, onOpenChange, organizationId, onS
             <Alert className="border-primary/20 bg-primary/5">
               <CheckCircle2 className="h-4 w-4 text-primary" />
               <AlertDescription className="text-foreground">
-                <p className="font-semibold">Курс импортирован!</p>
+                <p className="font-semibold">{result.updateMode ? "Курс обновлён!" : "Курс импортирован!"}</p>
                 <p className="mt-1">«{result.courseTitle}»</p>
                 <ul className="mt-2 text-sm space-y-1">
                   <li>Уроков найдено: {result.lessonsTotal}</li>
-                  <li>Уроков создано: {result.lessonsCreated}</li>
-                  <li>С контентом: {result.lessonsWithContent}</li>
+                  {result.updateMode ? (
+                    <li>Уроков обновлено: {result.lessonsUpdated || 0}</li>
+                  ) : null}
+                  {result.lessonsCreated > 0 ? (
+                    <li>Уроков создано: {result.lessonsCreated}</li>
+                  ) : null}
+                  {!result.updateMode && <li>С контентом: {result.lessonsWithContent}</li>}
+                  {result.testQuestionsCreated ? (
+                    <li className="text-primary">Тестовых вопросов добавлено: {result.testQuestionsCreated}</li>
+                  ) : null}
                   {result.lessonsAccessDenied ? (
                     <li className="text-yellow-600">Без доступа: {result.lessonsAccessDenied}</li>
                   ) : null}
