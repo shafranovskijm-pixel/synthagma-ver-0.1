@@ -508,46 +508,149 @@ Deno.serve(async (req) => {
         let lessonType = lesson.type;
         let jsonBlocks: any[] = [];
 
-        // EditorJS content in pagesPublished
-        const pages = lessonData.pagesPublished || lessonData.pages || [];
-        if (Array.isArray(pages) && pages.length > 0) {
-          for (const page of pages) {
-            // Add page title as heading if present
-            if (page.title) {
-              jsonBlocks.push({ id: makeId(), type: "heading2", content: page.title });
-            }
-            const blocks = page.content?.blocks || page.blocks || [];
-            if (blocks.length > 0) {
-              const converted = editorBlocksToJsonBlocks(blocks);
-              jsonBlocks.push(...converted);
+        if (lessonType === "test" || lesson.type === "test") {
+          lessonType = "test";
+          // Extract test questions from SkillSpace data
+          const extractedQuestions: TestQuestion[] = [];
+          
+          // Strategy 1: questions in pagesPublished blocks
+          const pages = lessonData.pagesPublished || lessonData.pages || [];
+          if (Array.isArray(pages)) {
+            for (const page of pages) {
+              const blocks = page.content?.blocks || page.blocks || [];
+              for (const block of blocks) {
+                if (block.type === "quiz" || block.type === "test" || block.type === "question") {
+                  const questions = block.data?.questions || block.data?.items || [];
+                  for (const q of questions) {
+                    const qText = cleanHtml(q.title || q.text || q.question || "");
+                    const opts = (q.answers || q.options || q.variants || []).map((a: any) => ({
+                      text: cleanHtml(typeof a === "string" ? a : (a.text || a.title || a.answer || String(a)))
+                    }));
+                    let correctIdx: number | null = null;
+                    if (typeof q.correctAnswer === "number") correctIdx = q.correctAnswer;
+                    else if (typeof q.correct === "number") correctIdx = q.correct;
+                    else if (Array.isArray(q.answers || q.options || q.variants)) {
+                      const arr = q.answers || q.options || q.variants || [];
+                      const ci = arr.findIndex((a: any) => a.correct === true || a.isCorrect === true || a.is_correct === true);
+                      if (ci >= 0) correctIdx = ci;
+                    }
+                    if (qText && opts.length > 0) {
+                      extractedQuestions.push({ lessonIndex: i, question: qText, options: opts, correct_answer: correctIdx });
+                    }
+                  }
+                }
+              }
             }
           }
-        }
 
-        // Fallback: legacy blocks format
-        if (jsonBlocks.length === 0 && Array.isArray(lessonData.blocks)) {
-          for (const block of lessonData.blocks) {
-            if (block.type === "text" && block.content) {
-              jsonBlocks.push({ id: makeId(), type: "paragraph", content: block.content });
-            } else if (block.type === "video") {
-              lessonType = "video";
-              const videoUrl = block.url || block.file?.url || block.src || "";
-              jsonBlocks.push({ id: makeId(), type: "paragraph", content: videoUrl ? `<a href="${videoUrl}" target="_blank">🎬 Видео: ${videoUrl}</a>` : "<em>[Видео — URL не найден]</em>" });
-            } else if (block.type === "test") {
-              lessonType = "test";
-              jsonBlocks.push({ id: makeId(), type: "paragraph", content: "<em>[Тест — требуется ручной перенос]</em>" });
+          // Strategy 2: direct questions field
+          const directQuestions = lessonData.questions || lessonData.test?.questions || lessonData.quiz?.questions || [];
+          if (Array.isArray(directQuestions) && extractedQuestions.length === 0) {
+            for (const q of directQuestions) {
+              const qText = cleanHtml(q.title || q.text || q.question || "");
+              const opts = (q.answers || q.options || q.variants || []).map((a: any) => ({
+                text: cleanHtml(typeof a === "string" ? a : (a.text || a.title || a.answer || String(a)))
+              }));
+              let correctIdx: number | null = null;
+              if (typeof q.correctAnswer === "number") correctIdx = q.correctAnswer;
+              else if (typeof q.correct === "number") correctIdx = q.correct;
+              else {
+                const arr = q.answers || q.options || q.variants || [];
+                if (Array.isArray(arr)) {
+                  const ci = arr.findIndex((a: any) => a.correct === true || a.isCorrect === true || a.is_correct === true);
+                  if (ci >= 0) correctIdx = ci;
+                }
+              }
+              if (qText && opts.length > 0) {
+                extractedQuestions.push({ lessonIndex: i, question: qText, options: opts, correct_answer: correctIdx });
+              }
             }
           }
+
+          // Strategy 3: legacy blocks with type "test"
+          if (Array.isArray(lessonData.blocks) && extractedQuestions.length === 0) {
+            for (const block of lessonData.blocks) {
+              if (block.type === "test" || block.type === "quiz") {
+                const questions = block.questions || block.data?.questions || [];
+                for (const q of questions) {
+                  const qText = cleanHtml(q.title || q.text || q.question || "");
+                  const opts = (q.answers || q.options || q.variants || []).map((a: any) => ({
+                    text: cleanHtml(typeof a === "string" ? a : (a.text || a.title || a.answer || String(a)))
+                  }));
+                  let correctIdx: number | null = null;
+                  const arr = q.answers || q.options || q.variants || [];
+                  if (Array.isArray(arr)) {
+                    const ci = arr.findIndex((a: any) => a.correct === true || a.isCorrect === true || a.is_correct === true);
+                    if (ci >= 0) correctIdx = ci;
+                  }
+                  if (qText && opts.length > 0) {
+                    extractedQuestions.push({ lessonIndex: i, question: qText, options: opts, correct_answer: correctIdx });
+                  }
+                }
+              }
+            }
+          }
+
+          log(`Lesson "${lessonTitle}" (test): ${extractedQuestions.length} questions extracted`);
+
+          // Log raw test data structure for debugging if no questions found
+          if (extractedQuestions.length === 0) {
+            const keys = Object.keys(lessonData).join(", ");
+            log(`Test lesson raw keys: ${keys}`);
+            if (lessonData.pagesPublished?.[0]?.content?.blocks) {
+              const blockTypes = lessonData.pagesPublished[0].content.blocks.map((b: any) => b.type).join(", ");
+              log(`Test page block types: ${blockTypes}`);
+            }
+          }
+
+          lessonContents.push({
+            title: lessonTitle,
+            content: JSON.stringify([]),
+            order: i,
+            type: "test",
+            testQuestions: extractedQuestions,
+          });
+        } else {
+          // Non-test lesson: extract content blocks
+          let jsonBlocks: any[] = [];
+
+          // EditorJS content in pagesPublished
+          const pages = lessonData.pagesPublished || lessonData.pages || [];
+          if (Array.isArray(pages) && pages.length > 0) {
+            for (const page of pages) {
+              if (page.title) {
+                jsonBlocks.push({ id: makeId(), type: "heading2", content: cleanHtml(page.title) });
+              }
+              const blocks = page.content?.blocks || page.blocks || [];
+              if (blocks.length > 0) {
+                const converted = editorBlocksToJsonBlocks(blocks);
+                jsonBlocks.push(...converted);
+              }
+            }
+          }
+
+          // Fallback: legacy blocks format
+          if (jsonBlocks.length === 0 && Array.isArray(lessonData.blocks)) {
+            for (const block of lessonData.blocks) {
+              if (block.type === "text" && block.content) {
+                jsonBlocks.push({ id: makeId(), type: "paragraph", content: cleanHtml(block.content) });
+              } else if (block.type === "video") {
+                lessonType = "video";
+                const videoUrl = block.url || block.file?.url || block.src || "";
+                jsonBlocks.push({ id: makeId(), type: "paragraph", content: videoUrl ? `<a href="${videoUrl}" target="_blank">🎬 Видео: ${videoUrl}</a>` : "<em>[Видео — URL не найден]</em>" });
+              }
+            }
+          }
+
+          if (jsonBlocks.length > 0) lessonsWithBlocks++;
+
+          lessonContents.push({
+            title: lessonTitle,
+            content: JSON.stringify(jsonBlocks.length > 0 ? jsonBlocks : [{ id: makeId(), type: "paragraph", content: "Пустой урок" }]),
+            order: i,
+            type: lessonType === "test" ? "test" : "text",
+          });
         }
-
-        if (jsonBlocks.length > 0) lessonsWithBlocks++;
-
-        lessonContents.push({
-          title: lessonTitle,
-          content: JSON.stringify(jsonBlocks.length > 0 ? jsonBlocks : [{ id: makeId(), type: "paragraph", content: "Пустой урок" }]),
-          order: i,
-          type: lessonType === "test" ? "test" : "text",
-        });
       } else {
         lessonsAccessDenied++;
         lessonContents.push({
