@@ -44,9 +44,28 @@ export function SkillspaceImportDialog({ open, onOpenChange, organizationId, onS
     setResult(null);
 
     try {
-      const { data, error: fnError } = await supabase.functions.invoke("parse-skillspace-course", {
-        body: { url, login, password, organizationId },
+      // Use direct fetch with extended timeout (5 min) — the function processes 80+ lessons sequentially
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minutes
+      
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      
+      const response = await fetch(`${supabaseUrl}/functions/v1/parse-skillspace-course`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${supabaseKey}`,
+          "apikey": supabaseKey,
+        },
+        body: JSON.stringify({ url, login, password, organizationId }),
+        signal: controller.signal,
       });
+      
+      clearTimeout(timeoutId);
+      
+      const data = await response.json();
+      const fnError = !response.ok ? { message: data?.error || `HTTP ${response.status}` } : null;
 
       if (fnError) {
         setError(fnError.message || "Ошибка при вызове функции");
