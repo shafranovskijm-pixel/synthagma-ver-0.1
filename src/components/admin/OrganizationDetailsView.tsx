@@ -51,6 +51,7 @@ import {
   Calendar,
   Copy,
   KeyRound,
+  Download,
 } from "lucide-react";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { format } from "date-fns";
@@ -63,6 +64,7 @@ import { OrgFeaturesTab } from "./OrgFeaturesTab";
 import { OrgAuditLogsTab } from "./OrgAuditLogsTab";
 import { OrgBalanceManager } from "./OrgBalanceManager";
 import { getPlanInfo, type SubscriptionPlan } from "@/constants/subscriptionPlans";
+import { SkillspaceImportDialog } from "./SkillspaceImportDialog";
 
 interface Organization {
   id: string;
