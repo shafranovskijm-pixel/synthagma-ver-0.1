@@ -24,7 +24,10 @@ export async function generateEnrollmentOrder({
   orderDate = new Date(),
 }: OrderParams): Promise<string | null> {
   try {
-    const orderNumber = `${orderType === "enrollment" ? "З" : "О"}-${Date.now().toString().slice(-6)}`;
+    const filePrefix = orderType === "enrollment" ? "Z" : "O";
+    const orderNumber = `${filePrefix}-${Date.now().toString().slice(-6)}`;
+    const displayPrefix = orderType === "enrollment" ? "З" : "О";
+    const displayNumber = `${displayPrefix}-${orderNumber.split("-")[1]}`;
     const formattedDate = format(orderDate, "dd MMMM yyyy", { locale: ru });
     
     const orderTitle = orderType === "enrollment" 
@@ -104,7 +107,9 @@ export async function generateEnrollmentOrder({
       .upload(fileName, blob);
 
     let fileUrl: string | null = null;
-    if (!uploadError) {
+    if (uploadError) {
+      console.error("Storage upload error:", uploadError);
+    } else {
       const { data: urlData } = supabase.storage
         .from("org-documents")
         .getPublicUrl(fileName);
@@ -113,7 +118,7 @@ export async function generateEnrollmentOrder({
 
     // Save to org_documents
     const docType = orderType === "enrollment" ? "enrollment_order" : "expulsion_order";
-    const docName = `${orderTitle} № ${orderNumber} от ${formattedDate} - ${courseName}`;
+    const docName = `${orderTitle} № ${displayNumber} от ${formattedDate} - ${courseName}`;
 
     const { error: dbError } = await supabase
       .from("org_documents")
