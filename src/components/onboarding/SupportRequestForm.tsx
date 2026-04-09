@@ -140,7 +140,7 @@ ${errorsText}${photoUrl ? `\n\n<b>Скриншот:</b> ${photoUrl}` : ""}`;
 
       // Non-blocking: don't fail the whole request if Telegram is down
       try {
-        await safeInvoke("send-telegram-notification", { body });
+        await supabase.functions.invoke("send-telegram-notification", { body });
       } catch (telegramErr) {
         console.warn("Telegram notification failed (non-blocking):", telegramErr);
       }
