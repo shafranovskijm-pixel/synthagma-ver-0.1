@@ -1,32 +1,44 @@
 
-## Исправление отображения печати и подписи в документах
 
-### Проблема
-На скриншоте видно: печать растянута (не круглая), подпись плохо видна. Причина — в CSS шаблонов изображения имеют жёсткие размеры (`width: 80px; height: 80px` для печати), что искажает пропорции круглой печати.
+## Парсер курсов со SkillSpace — кнопка в карточке организации (админка)
 
-### Решение
+### Где разместить
 
-#### 1. `src/utils/generateAct.ts` — блок подписи исполнителя (строки 88-93)
+На вкладке **"Курсы"** в `OrganizationDetailsView.tsx` — добавить кнопку "Импорт со SkillSpace" над таблицей курсов. При нажатии открывается диалог с формой (URL курса, логин, пароль SkillSpace). Результат — курс создаётся в этой организации.
 
-Заменить стили изображений:
-- **Печать**: убрать фиксированные `width/height`, использовать `width: 120px; height: auto;` — сохранит круглую форму
-- **Подпись**: увеличить размер, добавить `height: auto` для сохранения пропорций, поднять `opacity`
-- Контейнер `.sig-images`: увеличить, чтобы вместить оба изображения без обрезки
+### Что нужно сделать
 
-Новые стили:
-```css
-.sig-images { position: relative; width: 250px; height: 120px; }
-.sig-stamp { left: 0; top: 0; width: 120px; height: auto; opacity: 0.9; }
-.sig-sign { left: 50px; top: 20px; width: 160px; height: auto; opacity: 0.9; }
-```
+#### 1. Edge-функция `parse-skillspace-course/index.ts`
 
-#### 2. `src/utils/generateAttestationProtocol.ts` — блок stampSignatureHtml (строки 73-77)
+- Принимает `{ url, login, password, organizationId }`
+- Авторизуется на SkillSpace через fetch (POST на форму логина, сохраняет cookies)
+- Загружает страницу курса, парсит HTML: название, список уроков, контент (текст, HTML), тесты
+- Создаёт курс и уроки в базе через Supabase service role client
+- Возвращает результат (созданный курс, количество уроков)
 
-Аналогично: заменить `max-height: 80px; max-width: 80px` для печати на `width: 120px; height: auto;`, для подписи — `width: 160px; height: auto;`.
+#### 2. Диалог `SkillspaceImportDialog.tsx`
 
-### Файлы для изменения
+- Форма: URL курса SkillSpace, логин, пароль
+- Прогресс/статус парсинга
+- Результат: "Импортировано N уроков"
 
-| Файл | Что |
-|------|-----|
-| `src/utils/generateAct.ts` | CSS для `.sig-stamp`, `.sig-sign`, `.sig-images` |
-| `src/utils/generateAttestationProtocol.ts` | Inline стили для img печати и подписи |
+#### 3. Кнопка на вкладке "Курсы" в `OrganizationDetailsView.tsx`
+
+- Над таблицей курсов, рядом с заголовком
+- Иконка `Download` + текст "Импорт со SkillSpace"
+- Открывает `SkillspaceImportDialog`
+
+### Файлы
+
+| Файл | Действие |
+|------|----------|
+| `supabase/functions/parse-skillspace-course/index.ts` | Создать — парсинг и импорт |
+| `src/components/admin/SkillspaceImportDialog.tsx` | Создать — диалог импорта |
+| `src/components/admin/OrganizationDetailsView.tsx` | Добавить кнопку на вкладке "Курсы" |
+
+### Важные нюансы
+
+- Парсинг HTML SkillSpace ненадёжен — нужно сначала изучить структуру страниц через браузер, чтобы написать корректные селекторы
+- Edge Function имеет таймаут ~60с — для больших курсов может не хватить
+- Первая версия будет базовой (текстовые уроки), потом доработаем тесты и медиа
+
