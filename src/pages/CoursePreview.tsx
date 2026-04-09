@@ -30,7 +30,8 @@ import {
   FileSpreadsheet,
   File,
   FileText as FileTextIcon,
-  Presentation as PresentationIcon
+  Presentation as PresentationIcon,
+  MessageSquare
 } from "lucide-react";
 import { ContentBlock, jsonToBlocks, BlockRenderer } from "@/components/course-builder/BlockEditor";
 import { cn, getAdminAwareBackPath } from "@/lib/utils";
@@ -816,6 +817,34 @@ const CoursePreview = () => {
 
             {currentLesson?.type === 'slider' && (
               <SliderPreview content={currentLesson.content} title={currentLesson.title} />
+            )}
+
+            {currentLesson?.type === 'feedback' && (
+              <div className="space-y-6">
+                <div className="bg-gradient-to-r from-blue-500/10 to-primary/10 rounded-2xl p-6 border border-blue-500/20">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                      <MessageSquare className="w-6 h-6 text-blue-500" />
+                    </div>
+                    <div>
+                      <h3 className="font-display font-bold text-lg">Обратная связь</h3>
+                      <p className="text-sm text-muted-foreground">Ответ студента будет отправлен в чат организации</p>
+                    </div>
+                  </div>
+                </div>
+                {currentLesson.content && (
+                  <div className="bg-card rounded-2xl border border-border p-6">
+                    <p className="text-lg font-medium mb-6">{currentLesson.content}</p>
+                    <textarea
+                      disabled
+                      placeholder="Студент напишет ответ здесь..."
+                      className="flex min-h-[120px] w-full rounded-xl border border-input bg-muted/50 px-4 py-3 text-sm placeholder:text-muted-foreground opacity-60 cursor-not-allowed"
+                      rows={4}
+                    />
+                    <p className="text-xs text-muted-foreground mt-3">💬 В реальном курсе ответ будет отправлен в чат от лица студента</p>
+                  </div>
+                )}
+              </div>
             )}
 
             {currentLesson?.type === 'test' && (
