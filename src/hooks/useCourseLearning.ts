@@ -123,6 +123,11 @@ export function useCourseLearning() {
   // Video watch progress
   const [videoWatchProgress, setVideoWatchProgress] = useState(0);
 
+  // Feedback state
+  const [feedbackAnswer, setFeedbackAnswer] = useState('');
+  const [feedbackSent, setFeedbackSent] = useState(false);
+  const [feedbackSending, setFeedbackSending] = useState(false);
+
   // AI Chat state
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
@@ -369,6 +374,7 @@ export function useCourseLearning() {
 
   useEffect(() => {
     setTestSubmitted(false); setTestScore(null); setTestQuestions([]); setAnswers({});
+    setFeedbackAnswer(''); setFeedbackSent(false);
     if (currentLesson?.type === 'test') fetchTestQuestions(currentLesson.id);
   }, [currentLesson?.id]);
 
@@ -635,6 +641,33 @@ export function useCourseLearning() {
     };
   }, [user, enrollmentId, currentLesson?.id, saveLessonTime]);
 
+  const submitFeedback = async () => {
+    if (!currentLesson || !user || !feedbackAnswer.trim()) return;
+    setFeedbackSending(true);
+    try {
+      // Get organization_id from course
+      const { data: courseData } = await supabase.from('courses').select('organization_id').eq('id', courseId).single();
+      if (!courseData?.organization_id) { toast.error('Не удалось определить организацию'); setFeedbackSending(false); return; }
+
+      const messageContent = `📋 Обратная связь (урок "${currentLesson.title}"): ${feedbackAnswer.trim()}`;
+      const { error } = await supabase.from('org_student_messages').insert({
+        organization_id: courseData.organization_id,
+        student_user_id: user.id,
+        sender_user_id: user.id,
+        content: messageContent,
+      });
+      if (error) throw error;
+      setFeedbackSent(true);
+      toast.success('Ваш ответ отправлен');
+      await markLessonComplete(false);
+    } catch (err) {
+      console.error('Feedback submit error:', err);
+      toast.error('Ошибка отправки ответа');
+    } finally {
+      setFeedbackSending(false);
+    }
+  };
+
   const markLessonComplete = async (autoAdvance = true) => {
     if (!currentLesson || !user) return;
     if (isLessonCompleted(currentLesson.id)) { if (autoAdvance) goToNextLesson(); return; }
@@ -765,6 +798,9 @@ export function useCourseLearning() {
     // Test
     testQuestions, allBankQuestions, answers, setAnswers, testSubmitted,
     testScore, testPassingScore, testExplanations, submitTest, retryTest,
+
+    // Feedback
+    feedbackAnswer, setFeedbackAnswer, feedbackSent, feedbackSending, submitFeedback,
 
     // Video
     videoWatchProgress, setVideoWatchProgress, savedPosition,
