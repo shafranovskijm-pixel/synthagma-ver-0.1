@@ -185,6 +185,8 @@ function getAuthToken(cookieMap: Map<string, string>): string | null {
 
 // --- Main handler ---
 Deno.serve(async (req) => {
+  // Fresh cookie map per request — prevents warm-instance state leaks
+  const cookieMap = new Map<string, string>();
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
