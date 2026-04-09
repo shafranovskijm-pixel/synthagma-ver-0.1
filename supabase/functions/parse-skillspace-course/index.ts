@@ -805,6 +805,7 @@ Deno.serve(async (req) => {
         log(`Media processing: ${li + 1}/${lessonContents.length} lessons`);
       }
     }
+    } // end if !isUpdateMode
 
     log(`Media transfer complete: ${filesTransferred} transferred, ${filesFailed} failed`);
 
