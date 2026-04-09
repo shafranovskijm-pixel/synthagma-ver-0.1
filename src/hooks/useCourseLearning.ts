@@ -123,6 +123,11 @@ export function useCourseLearning() {
   // Video watch progress
   const [videoWatchProgress, setVideoWatchProgress] = useState(0);
 
+  // Feedback state
+  const [feedbackAnswer, setFeedbackAnswer] = useState('');
+  const [feedbackSent, setFeedbackSent] = useState(false);
+  const [feedbackSending, setFeedbackSending] = useState(false);
+
   // AI Chat state
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
