@@ -12,19 +12,12 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { getSignedStorageUrl } from "@/utils/storageHelpers";
-import { generateAct } from "@/utils/generateAct";
 import { cn } from "@/lib/utils";
 import {
   Crown, BookOpen, Users, HardDrive, Sparkles, Check, X,
   Palette, Video, FileCheck, Brain, FileSpreadsheet, ClipboardList,
   HardHat, Infinity, ArrowRight, Calendar, AlertTriangle,
-  ExternalLink, Building2, ShoppingCart, FolderOpen, Download,
-  FileText, Receipt, File
+  ExternalLink, Building2, ShoppingCart
 } from "lucide-react";
 import { differenceInDays, format } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -104,21 +97,6 @@ const featureRows: FeatureRow[] = [
   { label: "Хранилище файлов", getValue: (plan) => plan.enabledCategories.includes('library'), format: (v: boolean) => v },
 ];
 
-interface BillingDoc {
-  id: string;
-  name: string;
-  doc_type: string;
-  file_url: string;
-  created_at: string;
-}
-
-const docTypeLabels: Record<string, { label: string; icon: React.ReactNode }> = {
-  invoice: { label: "Счёт", icon: <FileText className="w-4 h-4 text-blue-500" /> },
-  receipt: { label: "Чек", icon: <Receipt className="w-4 h-4 text-emerald-500" /> },
-  act: { label: "Акт", icon: <File className="w-4 h-4 text-amber-500" /> },
-  other: { label: "Другое", icon: <File className="w-4 h-4 text-muted-foreground" /> },
-};
-
 export function SubscriptionTab() {
   const d = useOrgDashboard();
   const organizationId = d.organizationId;
@@ -130,14 +108,7 @@ export function SubscriptionTab() {
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [pendingRequest, setPendingRequest] = useState<{ requested_plan: string; created_at: string } | null>(null);
-  const [billingDocs, setBillingDocs] = useState<BillingDoc[]>([]);
   const [orgContact, setOrgContact] = useState<{ email?: string; phone?: string; contact_name?: string }>({});
-  const [showActDialog, setShowActDialog] = useState(false);
-  const [actDate, setActDate] = useState<Date>(new Date());
-  const [actBasis, setActBasis] = useState("");
-  const [actAmount, setActAmount] = useState("");
-  const [actSubmitting, setActSubmitting] = useState(false);
-  const [orgDetails, setOrgDetails] = useState<{ inn?: string; director_name?: string; director_position?: string }>({});
 
   const currentPlan = subscriptionLimits.plan;
   const currentPlanInfo = SUBSCRIPTION_PLANS[currentPlan];
@@ -147,17 +118,14 @@ export function SubscriptionTab() {
     if (!organizationId) return;
     
     const fetchOrgDetails = async () => {
-      const [orgRes, reqRes, docsRes] = await Promise.all([
-        supabase.from("organizations").select("paid_until, email, phone, contact_name, inn, director_name, director_position").eq("id", organizationId).single(),
+      const [orgRes, reqRes] = await Promise.all([
+        supabase.from("organizations").select("paid_until, email, phone, contact_name").eq("id", organizationId).single(),
         supabase.from("subscription_requests" as any).select("requested_plan, created_at").eq("organization_id", organizationId).eq("status", "pending").order("created_at", { ascending: false }).limit(1),
-        supabase.from("org_billing_documents" as any).select("*").eq("organization_id", organizationId).order("created_at", { ascending: false }),
       ]);
       
       if (orgRes.data?.paid_until) setPaidUntil(orgRes.data.paid_until);
       setOrgContact({ email: orgRes.data?.email, phone: orgRes.data?.phone, contact_name: orgRes.data?.contact_name });
-      setOrgDetails({ inn: orgRes.data?.inn, director_name: orgRes.data?.director_name, director_position: orgRes.data?.director_position });
       if ((reqRes.data as any)?.[0]) setPendingRequest((reqRes.data as any)[0]);
-      if (docsRes.data) setBillingDocs(docsRes.data as any[]);
     };
     fetchOrgDetails();
   }, [organizationId]);
@@ -219,43 +187,6 @@ export function SubscriptionTab() {
     setSubmitting(false);
   };
 
-  const handleDownloadDoc = async (doc: BillingDoc) => {
-    const url = await getSignedStorageUrl("billing-documents", doc.file_url);
-    if (url) {
-      window.open(url, "_blank");
-    } else {
-      toast({ title: "Ошибка", description: "Не удалось получить ссылку на файл", variant: "destructive" });
-    }
-  };
-
-  const handleGenerateAct = async () => {
-    if (!organizationId || !actBasis || !actAmount) return;
-    setActSubmitting(true);
-    const result = await generateAct({
-      organizationId,
-      orgName: d.organizationName || "",
-      orgInn: orgDetails.inn || null,
-      directorName: orgDetails.director_name || null,
-      directorPosition: orgDetails.director_position || null,
-      actDate,
-      basis: actBasis,
-      amount: parseFloat(actAmount),
-    });
-    if (result) {
-      toast({ title: "Акт создан", description: result });
-      const { data } = await supabase.from("org_billing_documents" as any)
-        .select("*").eq("organization_id", organizationId).order("created_at", { ascending: false });
-      if (data) setBillingDocs(data as any[]);
-      setShowActDialog(false);
-      setActBasis("");
-      setActAmount("");
-      setActDate(new Date());
-    } else {
-      toast({ title: "Ошибка", description: "Не удалось сгенерировать акт", variant: "destructive" });
-    }
-    setActSubmitting(false);
-  };
-
   const coursesPercent = currentPlanInfo.limits.maxCourses === -1 ? 0 :
     Math.round((subscriptionLimits.usage.coursesCount / currentPlanInfo.limits.maxCourses) * 100);
   const studentsPercent = currentPlanInfo.limits.maxStudents === -1 ? 0 :
@@ -265,55 +196,8 @@ export function SubscriptionTab() {
 
   return (
     <div className="space-y-6">
-      {/* Billing Documents - always visible at top */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <FolderOpen className="w-5 h-5 text-primary" />
-              Закрывающие документы
-            </CardTitle>
-            <CardDescription>Счета, чеки и акты от платформы</CardDescription>
-          </div>
-          <Button variant="outline" size="sm" onClick={() => setShowActDialog(true)}>
-            <FileText className="w-4 h-4 mr-1" />
-            Сформировать акт
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {billingDocs.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <FileText className="w-10 h-10 mx-auto mb-2 opacity-30" />
-              <p className="text-sm">Документов пока нет</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {billingDocs.map(doc => {
-                const docType = docTypeLabels[doc.doc_type] || docTypeLabels.other;
-                return (
-                  <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/30 transition-colors">
-                    <div className="flex items-center gap-3">
-                      {docType.icon}
-                      <div>
-                        <div className="text-sm font-medium">{doc.name}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {docType.label} · {format(new Date(doc.created_at), "d MMM yyyy", { locale: ru })}
-                        </div>
-                      </div>
-                    </div>
-                    <Button variant="ghost" size="sm" onClick={() => handleDownloadDoc(doc)}>
-                      <Download className="w-4 h-4" />
-                    </Button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Tariff Plan - collapsible accordion */}
-      <Accordion type="single" collapsible className="w-full">
+      {/* Tariff Plan - default open since it's the only content */}
+      <Accordion type="single" collapsible defaultValue="tariff" className="w-full">
         <AccordionItem value="tariff" className="border rounded-lg">
           <AccordionTrigger className="px-6 py-4 hover:no-underline">
             <div className="flex items-center gap-2 text-base font-semibold">
@@ -605,65 +489,6 @@ export function SubscriptionTab() {
             <Button variant="outline" onClick={() => setShowUpgradeDialog(false)}>Отмена</Button>
             <Button onClick={handleRequestUpgrade} disabled={submitting}>
               {submitting ? "Отправка..." : "Отправить заявку"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Act Generation Dialog */}
-      <Dialog open={showActDialog} onOpenChange={setShowActDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Сформировать акт</DialogTitle>
-            <DialogDescription>
-              Акт выполненных работ — предоставление доступа к платформе Sintagma
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Дата акта</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !actDate && "text-muted-foreground")}>
-                    <Calendar className="mr-2 h-4 w-4" />
-                    {actDate ? format(actDate, "d MMMM yyyy", { locale: ru }) : "Выберите дату"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <CalendarComponent
-                    mode="single"
-                    selected={actDate}
-                    onSelect={(d) => d && setActDate(d)}
-                    initialFocus
-                    className={cn("p-3 pointer-events-auto")}
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-            <div className="space-y-2">
-              <Label>Основание (номер договора или счёта)</Label>
-              <Input
-                placeholder="Например: Договор №12 от 01.01.2025"
-                value={actBasis}
-                onChange={e => setActBasis(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Сумма, руб.</Label>
-              <Input
-                type="number"
-                placeholder="0.00"
-                value={actAmount}
-                onChange={e => setActAmount(e.target.value)}
-                min="0"
-                step="0.01"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowActDialog(false)}>Отмена</Button>
-            <Button onClick={handleGenerateAct} disabled={actSubmitting || !actBasis || !actAmount}>
-              {actSubmitting ? "Генерация..." : "Создать акт"}
             </Button>
           </DialogFooter>
         </DialogContent>

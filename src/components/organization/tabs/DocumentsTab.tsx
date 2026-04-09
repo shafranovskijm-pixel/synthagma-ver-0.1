@@ -3,11 +3,19 @@ import { useNavigate } from "react-router-dom";
 import { 
   Users, ClipboardList, Award, GraduationCap, FileCheck, 
   FileText, Upload, BookOpen, Wrench, Building2, ScrollText,
-  UserCheck, Stamp, ExternalLink, Lock, ArrowUpRight
+  UserCheck, Stamp, ExternalLink, Lock, ArrowUpRight,
+  FolderOpen, Download, Receipt, File, Calendar, Lightbulb,
+  Info
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { OrgDocumentsManager } from "@/components/organization/OrgDocumentsManager";
 import { DocumentArchiveView } from "@/components/organization/DocumentArchiveView";
 import { EducationDocumentsJournal } from "@/components/organization/EducationDocumentsJournal";
@@ -23,8 +31,15 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { DocumentPreview } from "@/components/organization/DocumentPreview";
 import { Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
+import { getSignedStorageUrl } from "@/utils/storageHelpers";
+import { generateAct } from "@/utils/generateAct";
+import { toast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
+import { ru } from "date-fns/locale";
 
-type DocumentSubTab = "constructor" | "programs" | "org" | "orders" | "protocols" | "certificates" | "diplomas" | "testimonials";
+type DocumentSubTab = "constructor" | "programs" | "org" | "orders" | "protocols" | "certificates" | "diplomas" | "testimonials" | "billing";
 
 interface DocumentsTabProps {
   organizationId: string | null;
@@ -34,8 +49,88 @@ interface DocumentsTabProps {
   onNavigateToSubscription?: () => void;
 }
 
+interface BillingDoc {
+  id: string;
+  name: string;
+  doc_type: string;
+  file_url: string;
+  created_at: string;
+}
+
+const docTypeLabels: Record<string, { label: string; icon: React.ReactNode }> = {
+  invoice: { label: "Счёт", icon: <FileText className="w-4 h-4 text-blue-500" /> },
+  receipt: { label: "Чек", icon: <Receipt className="w-4 h-4 text-emerald-500" /> },
+  act: { label: "Акт", icon: <File className="w-4 h-4 text-amber-500" /> },
+  other: { label: "Другое", icon: <File className="w-4 h-4 text-muted-foreground" /> },
+};
+
+const HINT_CARDS: Record<DocumentSubTab, { icon: React.ReactNode; title: string; description: string } | null> = {
+  constructor: {
+    icon: <Wrench className="w-4 h-4 text-primary" />,
+    title: "Конструктор документов",
+    description: "Настройте шаблоны документов — реквизиты, печать и подпись будут автоматически подставляться во все генерируемые документы",
+  },
+  org: {
+    icon: <Building2 className="w-4 h-4 text-primary" />,
+    title: "Документы организации",
+    description: "Загрузите обязательные документы организации по 273-ФЗ. Система подскажет, каких документов не хватает",
+  },
+  orders: {
+    icon: <Users className="w-4 h-4 text-primary" />,
+    title: "Приказы",
+    description: "Здесь хранятся сгенерированные приказы о зачислении и отчислении учеников",
+  },
+  protocols: {
+    icon: <ClipboardList className="w-4 h-4 text-primary" />,
+    title: "Протоколы АК",
+    description: "Протоколы аттестационной комиссии, сформированные по результатам обучения",
+  },
+  certificates: {
+    icon: <Award className="w-4 h-4 text-primary" />,
+    title: "Удостоверения",
+    description: "Журнал выданных удостоверений о повышении квалификации с номерами и датами",
+  },
+  diplomas: {
+    icon: <GraduationCap className="w-4 h-4 text-primary" />,
+    title: "Дипломы",
+    description: "Журнал выданных дипломов о профессиональной переподготовке",
+  },
+  testimonials: {
+    icon: <FileCheck className="w-4 h-4 text-primary" />,
+    title: "Свидетельства",
+    description: "Журнал выданных свидетельств о квалификации",
+  },
+  programs: {
+    icon: <BookOpen className="w-4 h-4 text-primary" />,
+    title: "Программы",
+    description: "Управление образовательными программами организации",
+  },
+  billing: {
+    icon: <FolderOpen className="w-4 h-4 text-primary" />,
+    title: "Закрывающие документы",
+    description: "Счета, чеки и акты от платформы. Сформируйте акт выполненных работ для бухгалтерии",
+  },
+};
+
+function HintCard({ tab }: { tab: DocumentSubTab }) {
+  const hint = HINT_CARDS[tab];
+  if (!hint) return null;
+  return (
+    <div className="flex items-start gap-3 bg-muted/50 border border-border rounded-xl p-4 mb-4">
+      <div className="mt-0.5 shrink-0 w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+        {hint.icon}
+      </div>
+      <div>
+        <h4 className="text-sm font-medium">{hint.title}</h4>
+        <p className="text-xs text-muted-foreground mt-0.5">{hint.description}</p>
+      </div>
+    </div>
+  );
+}
+
 export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, organizationName, onShowBulkUploadDialog, isOrdersEnabled = true, onNavigateToSubscription }: DocumentsTabProps) {
   const navigate = useNavigate();
+  const d = useOrgDashboard();
   const [activeDocTab, setActiveDocTab] = useState<DocumentSubTab>("constructor");
   const [constructorTab, setConstructorTab] = useState("requisites");
   const [stampUrl, setStampUrl] = useState<string | null>(null);
@@ -43,19 +138,38 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
   const { plan } = useSubscriptionLimits(organizationId);
   const isFreePlan = plan === 'free';
 
-  // Load stamp/signature
+  // Billing docs state
+  const [billingDocs, setBillingDocs] = useState<BillingDoc[]>([]);
+  const [showActDialog, setShowActDialog] = useState(false);
+  const [actDate, setActDate] = useState<Date>(new Date());
+  const [actBasis, setActBasis] = useState("");
+  const [actAmount, setActAmount] = useState("");
+  const [actSubmitting, setActSubmitting] = useState(false);
+  const [orgDetails, setOrgDetails] = useState<{ inn?: string; director_name?: string; director_position?: string }>({});
+
+  // Load stamp/signature + billing docs
   useEffect(() => {
     if (!organizationId) return;
     supabase
       .from('organizations')
-      .select('stamp_url, signature_url')
+      .select('stamp_url, signature_url, inn, director_name, director_position')
       .eq('id', organizationId)
       .single()
       .then(({ data }) => {
         if (data) {
           setStampUrl(data.stamp_url);
           setSignatureUrl(data.signature_url);
+          setOrgDetails({ inn: data.inn, director_name: data.director_name, director_position: data.director_position });
         }
+      });
+
+    supabase
+      .from("org_billing_documents" as any)
+      .select("*")
+      .eq("organization_id", organizationId)
+      .order("created_at", { ascending: false })
+      .then(({ data }) => {
+        if (data) setBillingDocs(data as any[]);
       });
   }, [organizationId]);
 
@@ -74,6 +188,43 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
   const handleSignatureRemove = async () => {
     setSignatureUrl(null);
     await supabase.from('organizations').update({ signature_url: null }).eq('id', organizationId);
+  };
+
+  const handleDownloadDoc = async (doc: BillingDoc) => {
+    const url = await getSignedStorageUrl("billing-documents", doc.file_url);
+    if (url) {
+      window.open(url, "_blank");
+    } else {
+      toast({ title: "Ошибка", description: "Не удалось получить ссылку на файл", variant: "destructive" });
+    }
+  };
+
+  const handleGenerateAct = async () => {
+    if (!organizationId || !actBasis || !actAmount) return;
+    setActSubmitting(true);
+    const result = await generateAct({
+      organizationId,
+      orgName: d.organizationName || organizationName || "",
+      orgInn: orgDetails.inn || null,
+      directorName: orgDetails.director_name || null,
+      directorPosition: orgDetails.director_position || null,
+      actDate,
+      basis: actBasis,
+      amount: parseFloat(actAmount),
+    });
+    if (result) {
+      toast({ title: "Акт создан", description: result });
+      const { data } = await supabase.from("org_billing_documents" as any)
+        .select("*").eq("organization_id", organizationId).order("created_at", { ascending: false });
+      if (data) setBillingDocs(data as any[]);
+      setShowActDialog(false);
+      setActBasis("");
+      setActAmount("");
+      setActDate(new Date());
+    } else {
+      toast({ title: "Ошибка", description: "Не удалось сгенерировать акт", variant: "destructive" });
+    }
+    setActSubmitting(false);
   };
 
   if (!organizationId) {
@@ -123,6 +274,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
     { id: "diplomas", label: "Дипломы", shortLabel: "Дипломы", icon: <GraduationCap className="w-4 h-4" /> },
     { id: "testimonials", label: "Свидетельства", shortLabel: "Свид.", icon: <FileCheck className="w-4 h-4" /> },
     { id: "programs", label: "Программы", shortLabel: "Прогр.", icon: <BookOpen className="w-4 h-4" /> },
+    { id: "billing", label: "Закрывающие", shortLabel: "Закр.", icon: <FolderOpen className="w-4 h-4" /> },
   ];
 
   return (
@@ -174,6 +326,7 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
       <div className="mt-4">
         {activeDocTab === "constructor" && (
           <div className="bg-card rounded-xl lg:rounded-2xl border border-border p-4 lg:p-6 relative">
+            <HintCard tab="constructor" />
             <Tabs value={constructorTab} onValueChange={setConstructorTab}>
               <TabsList className="flex flex-wrap h-auto gap-1 bg-muted/50 p-1 rounded-xl">
                 <TabsTrigger value="requisites" className="rounded-lg text-xs gap-1.5 px-2.5 py-1.5">
@@ -293,55 +446,186 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
         )}
 
         {activeDocTab === "programs" && (
-          <ProgramsManager organizationId={organizationId} />
+          <>
+            <HintCard tab="programs" />
+            <ProgramsManager organizationId={organizationId} />
+          </>
         )}
 
         {activeDocTab === "org" && (
-          <OrgDocumentsManager organizationId={organizationId} />
+          <>
+            <HintCard tab="org" />
+            <OrgDocumentsManager organizationId={organizationId} />
+          </>
         )}
 
         {activeDocTab === "orders" && (
-          <DocumentArchiveView
-            organizationId={organizationId}
-            categoryId="enrollment_orders"
-            title="Приказы о зачислении / отчислении"
-            docTypes={["enrollment_order", "expulsion_order"]}
-          />
+          <>
+            <HintCard tab="orders" />
+            <DocumentArchiveView
+              organizationId={organizationId}
+              categoryId="enrollment_orders"
+              title="Приказы о зачислении / отчислении"
+              docTypes={["enrollment_order", "expulsion_order"]}
+            />
+          </>
         )}
 
         {activeDocTab === "protocols" && (
-          <DocumentArchiveView
-            organizationId={organizationId}
-            categoryId="attestation_protocols"
-            title="Протоколы аттестационной комиссии"
-            docTypes={["attestation_protocol"]}
-          />
+          <>
+            <HintCard tab="protocols" />
+            <DocumentArchiveView
+              organizationId={organizationId}
+              categoryId="attestation_protocols"
+              title="Протоколы аттестационной комиссии"
+              docTypes={["attestation_protocol"]}
+            />
+          </>
         )}
 
         {activeDocTab === "certificates" && (
-          <EducationDocumentsJournal
-            organizationId={organizationId}
-            onClose={() => setActiveDocTab("org")}
-            documentTypeFilter="certificate"
-          />
+          <>
+            <HintCard tab="certificates" />
+            <EducationDocumentsJournal
+              organizationId={organizationId}
+              onClose={() => setActiveDocTab("org")}
+              documentTypeFilter="certificate"
+            />
+          </>
         )}
 
         {activeDocTab === "diplomas" && (
-          <EducationDocumentsJournal
-            organizationId={organizationId}
-            onClose={() => setActiveDocTab("org")}
-            documentTypeFilter="diploma"
-          />
+          <>
+            <HintCard tab="diplomas" />
+            <EducationDocumentsJournal
+              organizationId={organizationId}
+              onClose={() => setActiveDocTab("org")}
+              documentTypeFilter="diploma"
+            />
+          </>
         )}
 
         {activeDocTab === "testimonials" && (
-          <EducationDocumentsJournal
-            organizationId={organizationId}
-            onClose={() => setActiveDocTab("org")}
-            documentTypeFilter="qualification"
-          />
+          <>
+            <HintCard tab="testimonials" />
+            <EducationDocumentsJournal
+              organizationId={organizationId}
+              onClose={() => setActiveDocTab("org")}
+              documentTypeFilter="qualification"
+            />
+          </>
+        )}
+
+        {activeDocTab === "billing" && (
+          <>
+            <HintCard tab="billing" />
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <FolderOpen className="w-5 h-5 text-primary" />
+                    Закрывающие документы
+                  </CardTitle>
+                  <CardDescription>Счета, чеки и акты от платформы</CardDescription>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => setShowActDialog(true)}>
+                  <FileText className="w-4 h-4 mr-1" />
+                  Сформировать акт
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {billingDocs.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <FileText className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                    <p className="text-sm">Документов пока нет</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {billingDocs.map(doc => {
+                      const docType = docTypeLabels[doc.doc_type] || docTypeLabels.other;
+                      return (
+                        <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/30 transition-colors">
+                          <div className="flex items-center gap-3">
+                            {docType.icon}
+                            <div>
+                              <div className="text-sm font-medium">{doc.name}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {docType.label} · {format(new Date(doc.created_at), "d MMM yyyy", { locale: ru })}
+                              </div>
+                            </div>
+                          </div>
+                          <Button variant="ghost" size="sm" onClick={() => handleDownloadDoc(doc)}>
+                            <Download className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </>
         )}
       </div>
+
+      {/* Act Generation Dialog */}
+      <Dialog open={showActDialog} onOpenChange={setShowActDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Сформировать акт</DialogTitle>
+            <DialogDescription>
+              Акт выполненных работ — предоставление доступа к платформе Sintagma
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Дата акта</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !actDate && "text-muted-foreground")}>
+                    <Calendar className="mr-2 h-4 w-4" />
+                    {actDate ? format(actDate, "d MMMM yyyy", { locale: ru }) : "Выберите дату"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarComponent
+                    mode="single"
+                    selected={actDate}
+                    onSelect={(d) => d && setActDate(d)}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="space-y-2">
+              <Label>Основание (номер договора или счёта)</Label>
+              <Input
+                placeholder="Например: Договор №12 от 01.01.2025"
+                value={actBasis}
+                onChange={e => setActBasis(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Сумма, руб.</Label>
+              <Input
+                type="number"
+                placeholder="0.00"
+                value={actAmount}
+                onChange={e => setActAmount(e.target.value)}
+                min="0"
+                step="0.01"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowActDialog(false)}>Отмена</Button>
+            <Button onClick={handleGenerateAct} disabled={actSubmitting || !actBasis || !actAmount}>
+              {actSubmitting ? "Генерация..." : "Создать акт"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 });
