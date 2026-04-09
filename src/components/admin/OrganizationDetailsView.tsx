@@ -1102,11 +1102,18 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-primary"
-                          title="Скачать медиа в хранилище"
+                          className={`h-8 w-8 ${
+                            migrationResult[course.id]?.status === 'success'
+                              ? 'text-emerald-500'
+                              : migrationResult[course.id]?.status === 'error'
+                              ? 'text-destructive'
+                              : 'text-muted-foreground hover:text-primary'
+                          }`}
+                          title={migrationResult[course.id]?.message || "Скачать медиа в хранилище"}
                           disabled={migratingCourseId === course.id}
                           onClick={async () => {
                             setMigratingCourseId(course.id);
+                            setMigrationResult(prev => { const next = { ...prev }; delete next[course.id]; return next; });
                             try {
                               const res = await fetch(
                                 `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/migrate-course-media`,
@@ -1122,19 +1129,38 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                               );
                               const data = await res.json();
                               if (data.success) {
-                                toast.success(`Перенесено ${data.filesTransferred} файлов${data.filesFailed ? `, ошибок: ${data.filesFailed}` : ""}${data.filesSkipped ? `, пропущено: ${data.filesSkipped}` : ""}`);
+                                const msg = `Перенесено: ${data.filesTransferred}, ошибок: ${data.filesFailed || 0}, пропущено: ${data.filesSkipped || 0}`;
+                                setMigrationResult(prev => ({ ...prev, [course.id]: { status: 'success', message: msg } }));
+                                toast.success(msg, { duration: 15000 });
                               } else {
-                                toast.error(data.error || "Ошибка миграции");
+                                const isWorkerLimit = data.error?.includes("WORKER_LIMIT") || data.code === "WORKER_LIMIT";
+                                const msg = isWorkerLimit
+                                  ? "Файлы слишком большие для автоматического переноса"
+                                  : (data.error || "Ошибка миграции");
+                                setMigrationResult(prev => ({ ...prev, [course.id]: { status: 'error', message: msg } }));
+                                toast.error(msg, { duration: 15000 });
                               }
                             } catch (e: any) {
-                              toast.error("Ошибка: " + e.message);
+                              const isTimeout = e.name === "TimeoutError" || e.name === "AbortError";
+                              const msg = isTimeout
+                                ? "Миграция заняла слишком много времени. Попробуйте ещё раз — уже перенесённые файлы не будут скачаны повторно"
+                                : "Ошибка: " + e.message;
+                              setMigrationResult(prev => ({ ...prev, [course.id]: { status: 'error', message: msg } }));
+                              toast.error(msg, { duration: 15000 });
                             } finally {
                               setMigratingCourseId(null);
+                              setTimeout(() => {
+                                setMigrationResult(prev => { const next = { ...prev }; delete next[course.id]; return next; });
+                              }, 10000);
                             }
                           }}
                         >
                           {migratingCourseId === course.id ? (
                             <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : migrationResult[course.id]?.status === 'success' ? (
+                            <CheckCircle2 className="w-4 h-4" />
+                          ) : migrationResult[course.id]?.status === 'error' ? (
+                            <XCircle className="w-4 h-4" />
                           ) : (
                             <HardDrive className="w-4 h-4" />
                           )}
