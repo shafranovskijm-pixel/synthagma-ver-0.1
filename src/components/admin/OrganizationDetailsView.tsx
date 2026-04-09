@@ -170,6 +170,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
   const [showPassword, setShowPassword] = useState(false);
   const [generatingCredentials, setGeneratingCredentials] = useState(false);
   const [resettingPassword, setResettingPassword] = useState(false);
+  const [migratingCourseId, setMigratingCourseId] = useState<string | null>(null);
 
   const planKey = (organization.subscription_plan as SubscriptionPlan) || 'free';
   const planInfo = getPlanInfo(planKey);
@@ -1096,7 +1097,47 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                           {course.is_published ? "Опубликован" : "Черновик"}
                         </Badge>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-primary"
+                          title="Скачать медиа в хранилище"
+                          disabled={migratingCourseId === course.id}
+                          onClick={async () => {
+                            setMigratingCourseId(course.id);
+                            try {
+                              const res = await fetch(
+                                `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/migrate-course-media`,
+                                {
+                                  method: "POST",
+                                  headers: {
+                                    "Content-Type": "application/json",
+                                    Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+                                  },
+                                  body: JSON.stringify({ courseId: course.id, organizationId: organization.id }),
+                                  signal: AbortSignal.timeout(300000),
+                                }
+                              );
+                              const data = await res.json();
+                              if (data.success) {
+                                toast.success(`Перенесено ${data.filesTransferred} файлов${data.filesFailed ? `, ошибок: ${data.filesFailed}` : ""}`);
+                              } else {
+                                toast.error(data.error || "Ошибка миграции");
+                              }
+                            } catch (e: any) {
+                              toast.error("Ошибка: " + e.message);
+                            } finally {
+                              setMigratingCourseId(null);
+                            }
+                          }}
+                        >
+                          {migratingCourseId === course.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <HardDrive className="w-4 h-4" />
+                          )}
+                        </Button>
                         <Button
                           variant="ghost"
                           size="icon"
