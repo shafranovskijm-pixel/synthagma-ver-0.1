@@ -4,7 +4,7 @@ import {
   Users, ClipboardList, Award, GraduationCap, FileCheck, 
   FileText, Upload, BookOpen, Wrench, Building2, ScrollText,
   UserCheck, Stamp, ExternalLink, Lock, ArrowUpRight,
-  FolderOpen, Download, Receipt, File, Calendar, Lightbulb,
+  FolderOpen, Download, Receipt, File, Calendar, Lightbulb, Trash2,
   Info
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -215,13 +215,27 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
       return;
     }
     try {
-      const res = await fetch(url);
-      const text = await res.text();
-      const { printHtmlContent } = await import("@/utils/printHtmlToPdf");
-      printHtmlContent(text, doc.name);
+      const { downloadHtmlFile } = await import("@/utils/downloadHtmlFile");
+      await downloadHtmlFile(url, doc.name);
     } catch (e) {
       console.error("Error downloading document:", e);
       toast({ title: "Ошибка", description: "Не удалось скачать файл", variant: "destructive" });
+    }
+  };
+
+  const handleDeleteBillingDoc = async (doc: BillingDoc) => {
+    if (!confirm("Удалить документ?")) return;
+    try {
+      // Delete from storage
+      await supabase.storage.from("billing-documents").remove([doc.file_url]);
+      // Delete from DB
+      const { error } = await supabase.from("org_billing_documents").delete().eq("id", doc.id);
+      if (error) throw error;
+      setBillingDocs(prev => prev.filter(d => d.id !== doc.id));
+      toast({ title: "Документ удалён" });
+    } catch (e) {
+      console.error("Error deleting document:", e);
+      toast({ title: "Ошибка", description: "Не удалось удалить документ", variant: "destructive" });
     }
   };
 
@@ -584,8 +598,11 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
                             <Button variant="ghost" size="sm" title="Просмотр" onClick={() => handleViewDoc(doc)}>
                               <Eye className="w-4 h-4" />
                             </Button>
-                            <Button variant="ghost" size="sm" title="Скачать PDF" onClick={() => handleDownloadDoc(doc)}>
+                            <Button variant="ghost" size="sm" title="Скачать" onClick={() => handleDownloadDoc(doc)}>
                               <Download className="w-4 h-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" title="Удалить" onClick={() => handleDeleteBillingDoc(doc)}>
+                              <Trash2 className="w-4 h-4" />
                             </Button>
                           </div>
                         </div>

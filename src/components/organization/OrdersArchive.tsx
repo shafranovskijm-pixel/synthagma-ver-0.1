@@ -247,15 +247,13 @@ export function OrdersArchive({ documents, onDelete, onView }: OrdersArchiveProp
                               const { supabase } = await import("@/integrations/supabase/client");
                               const { data } = await supabase.storage.from("org-documents").createSignedUrl(doc.file_url!, 3600);
                               if (!data?.signedUrl) return;
-                              const res = await fetch(data.signedUrl);
-                              const text = await res.text();
-                              const { printHtmlContent } = await import("@/utils/printHtmlToPdf");
-                              printHtmlContent(text, doc.name);
+                              const { downloadHtmlFile } = await import("@/utils/downloadHtmlFile");
+                              await downloadHtmlFile(data.signedUrl, doc.name);
                             } catch (e) {
                               console.error("Error downloading document:", e);
                             }
                           }}
-                          title="Скачать PDF"
+                          title="Скачать"
                         >
                           <Download className="w-4 h-4" />
                         </Button>
