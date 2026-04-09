@@ -180,7 +180,7 @@ export function BroadcastManager() {
               Если вам нужна помощь в настройке или консультация по работе с платформой — мы с радостью поможем! Нажмите кнопку ниже, и мы свяжемся с вами.
             </p>
             <p style="font-size: 14px; color: #888; line-height: 1.6; margin: 0 0 28px;">
-              Если платформа вам больше не нужна, ваш аккаунт может быть деактивирован через 7 дней.
+              Если платформа вам больше не нужна, ваш аккаунт может быть деактивирован через 30 дней.
             </p>
             <div style="text-align: center;">
               <a href="${actionUrl}" style="display: inline-block; background: #6366f1; color: white; padding: 14px 32px; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: 15px;">
