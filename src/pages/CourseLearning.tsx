@@ -48,6 +48,7 @@ const CourseLearning = () => {
     isChatOpen, setIsChatOpen, chatMessages, chatInput, setChatInput, isChatLoading, chatScrollRef, sendChatMessage,
     videoWatchProgress, setVideoWatchProgress, savedPosition, isVideoProgressLoading, saveVideoPosition,
     currentLesson, completedCount, progressPercent,
+    feedbackAnswer, setFeedbackAnswer, feedbackSent, feedbackSending, submitFeedback,
     isLessonAccessible, isLessonCompleted,
     goToNextLesson, goToPrevLesson, goToLesson, markLessonComplete, resetCourseProgress,
     submitTest, retryTest,
