@@ -170,6 +170,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
   const [showPassword, setShowPassword] = useState(false);
   const [generatingCredentials, setGeneratingCredentials] = useState(false);
   const [resettingPassword, setResettingPassword] = useState(false);
+  const [migratingCourseId, setMigratingCourseId] = useState<string | null>(null);
 
   const planKey = (organization.subscription_plan as SubscriptionPlan) || 'free';
   const planInfo = getPlanInfo(planKey);
