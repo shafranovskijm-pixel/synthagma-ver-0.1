@@ -52,6 +52,7 @@ import {
   Copy,
   KeyRound,
   Download,
+  Trash2,
 } from "lucide-react";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { format } from "date-fns";
