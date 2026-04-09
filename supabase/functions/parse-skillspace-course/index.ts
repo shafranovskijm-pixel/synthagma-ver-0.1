@@ -6,6 +6,15 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+// --- Clean HTML entities ---
+function cleanHtml(text: string): string {
+  if (!text) return text;
+  return text
+    .replace(/&nbsp;/gi, " ")
+    .replace(/\u00A0/g, " ")
+    .replace(/ {2,}/g, " ");
+}
+
 // --- EditorJS blocks → project JSON blocks converter ---
 function editorBlocksToJsonBlocks(blocks: any[]): any[] {
   if (!Array.isArray(blocks)) return [];
