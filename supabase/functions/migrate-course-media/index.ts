@@ -179,21 +179,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Run migration in background using waitUntil
-    const resultPromise = runMigration(courseId, organizationId);
-
-    // Use EdgeRuntime.waitUntil to keep the function alive in background
-    // @ts-ignore EdgeRuntime is a Deno Deploy global
-    if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) {
-      EdgeRuntime.waitUntil(resultPromise);
-      return new Response(
-        JSON.stringify({ success: true, message: "Миграция запущена в фоне", background: true }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Fallback: wait for result directly
-    const result = await resultPromise;
+    const result = await runMigration(courseId, organizationId);
     return new Response(
       JSON.stringify({ success: true, ...result }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
