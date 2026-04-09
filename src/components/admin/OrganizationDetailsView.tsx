@@ -1074,7 +1074,13 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <BookOpen className="w-4 h-4 text-primary" />
-                          <span className="font-medium">{course.title}</span>
+                          <button
+                            onClick={() => window.open(`/course/${course.id}/edit`, '_blank')}
+                            className="font-medium text-primary hover:underline cursor-pointer flex items-center gap-1"
+                          >
+                            {course.title}
+                            <ExternalLink className="w-3 h-3" />
+                          </button>
                         </div>
                       </TableCell>
                       <TableCell className="text-center">
