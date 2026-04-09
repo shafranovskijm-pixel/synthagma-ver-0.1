@@ -1,13 +1,11 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   const url = new URL(req.url);
   const token = url.searchParams.get("token");
 
   const htmlResponse = (title: string, message: string, success: boolean) => {
-    return new Response(
-      `<!DOCTYPE html>
+    const html = `<!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
@@ -23,14 +21,18 @@ serve(async (req) => {
 </head>
 <body>
   <div class="card">
-    <div class="icon">${success ? "✅" : "⚠️"}</div>
+    <div class="icon">${success ? "\u2705" : "\u26A0\uFE0F"}</div>
     <h1>${title}</h1>
     <p>${message}</p>
   </div>
 </body>
-</html>`,
-      { status: 200, headers: { "Content-Type": "text/html; charset=utf-8" } }
-    );
+</html>`;
+    return new Response(html, {
+      status: 200,
+      headers: {
+        "content-type": "text/html; charset=utf-8",
+      },
+    });
   };
 
   if (!token) {
@@ -42,7 +44,6 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Find the token
     const { data: tokenData, error: tokenError } = await supabase
       .from("email_action_tokens")
       .select("*")
@@ -57,13 +58,11 @@ serve(async (req) => {
       return htmlResponse("Уже обработано", "Ваш запрос уже был принят ранее. Мы свяжемся с вами в ближайшее время.", false);
     }
 
-    // Mark as used
     await supabase
       .from("email_action_tokens")
       .update({ used: true, used_at: new Date().toISOString() })
       .eq("id", token);
 
-    // Get organization name
     const { data: org } = await supabase
       .from("organizations")
       .select("name")
@@ -75,8 +74,6 @@ serve(async (req) => {
       ? "консультацию"
       : "помощь";
 
-    // Insert message into admin_org_messages
-    // Find any admin user to use as sender_user_id (the org is responding)
     const { data: orgProfile } = await supabase
       .from("profiles")
       .select("user_id")
@@ -94,7 +91,6 @@ serve(async (req) => {
       });
     }
 
-    // Send Telegram notification
     try {
       const telegramToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
       const chatId = Deno.env.get("TELEGRAM_SUPPORT_CHAT_ID");
