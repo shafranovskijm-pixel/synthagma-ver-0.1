@@ -123,7 +123,7 @@ const CourseLearning = () => {
               <button key={lesson.id} onClick={() => { goToLesson(index); onNavigate?.(); }} disabled={!isAccessible}
                 className={cn("w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all duration-200", isCurrent ? "bg-primary/10 text-primary shadow-sm" : isAccessible ? "hover:bg-muted" : "opacity-50 cursor-not-allowed")}>
                 {completed ? <div className="w-8 h-8 rounded-full bg-sigma-green/10 flex items-center justify-center shrink-0"><CheckCircle2 className="w-5 h-5 text-sigma-green" /></div> : !isAccessible ? <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0"><Lock className="w-4 h-4 text-muted-foreground" /></div> : <div className={cn("w-8 h-8 rounded-full flex items-center justify-center shrink-0", isCurrent ? "bg-primary/10" : "bg-muted")}><Circle className={cn("w-5 h-5", isCurrent ? "text-primary" : "text-muted-foreground")} /></div>}
-                <div className="flex-1 min-w-0"><div className="text-sm font-medium line-clamp-2">{lesson.title}</div><div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">{lesson.type === 'text' && 'Текст'}{lesson.type === 'video' && 'Видео'}{lesson.type === 'test' && 'Тест'}{lesson.type === 'audio' && 'Аудио'}{!isAccessible && <span className="ml-1">• Заблокировано</span>}</div></div>
+                <div className="flex-1 min-w-0"><div className="text-sm font-medium line-clamp-2">{lesson.title}</div><div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">{lesson.type === 'text' && 'Текст'}{lesson.type === 'video' && 'Видео'}{lesson.type === 'test' && 'Тест'}{lesson.type === 'audio' && 'Аудио'}{lesson.type === 'feedback' && 'Обратная связь'}{!isAccessible && <span className="ml-1">• Заблокировано</span>}</div></div>
               </button>
             );
           })}
@@ -235,6 +235,47 @@ const CourseLearning = () => {
                   {currentLesson.content && currentLesson.content.startsWith('http') ? (
                     <audio controls preload="auto" className="w-full"><source src={currentLesson.content} type="audio/mpeg" />Ваш браузер не поддерживает аудио.</audio>
                   ) : <div className="text-center text-muted-foreground py-8"><Headphones className={cn(isMobile ? "w-12 h-12" : "w-16 h-16", "mx-auto mb-4 opacity-50")} /><p>Аудио не загружено</p></div>}
+                </div>
+              </div>
+            )}
+
+            {currentLesson?.type === 'feedback' && (
+              <div className="space-y-4 md:space-y-6 animate-fade-in">
+                <div className="flex items-center gap-3 pb-3 md:pb-4 border-b border-border">
+                  <div className={cn("rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0", isMobile ? "w-8 h-8" : "w-10 h-10")}><MessageSquare className={cn(isMobile ? "w-4 h-4" : "w-5 h-5", "text-blue-500")} /></div>
+                  <div className="min-w-0"><h1 className={cn("font-bold line-clamp-2", isMobile ? "text-lg" : "text-2xl")}>{currentLesson.title}</h1><p className="text-xs md:text-sm text-muted-foreground">Обратная связь • Урок {currentLessonIndex + 1}</p></div>
+                </div>
+                <div className={cn("bg-card rounded-2xl border border-border", isMobile ? "p-4" : "p-6")}>
+                  {currentLesson.content && (
+                    <div className="mb-6">
+                      <p className="text-lg font-medium">{currentLesson.content}</p>
+                    </div>
+                  )}
+                  {feedbackSent ? (
+                    <div className="text-center py-8">
+                      <CheckCircle2 className="w-12 h-12 text-green-500 mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">Ваш ответ отправлен</h3>
+                      <p className="text-muted-foreground text-sm">Спасибо за обратную связь! Организация получит ваше сообщение в чате.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <textarea
+                        value={feedbackAnswer}
+                        onChange={(e) => setFeedbackAnswer(e.target.value)}
+                        placeholder="Напишите ваш ответ..."
+                        className="flex min-h-[120px] w-full rounded-xl border border-input bg-background px-4 py-3 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        rows={5}
+                      />
+                      <Button
+                        onClick={submitFeedback}
+                        disabled={!feedbackAnswer.trim() || feedbackSending}
+                        className="btn-gradient rounded-xl gap-2"
+                      >
+                        {feedbackSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                        {feedbackSending ? 'Отправка...' : 'Отправить ответ'}
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
