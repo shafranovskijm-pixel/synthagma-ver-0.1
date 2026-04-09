@@ -299,22 +299,21 @@ Deno.serve(async (req) => {
     // Helper for authenticated requests
     const apiFetch = async (path: string): Promise<{ ok: boolean; status: number; data: any; raw: string }> => {
       try {
-        const res = await fetch(`${baseUrl}${path}`, {
-          headers: {
-            Accept: "application/json",
-            Cookie: allCookies,
-            "X-Requested-With": "XMLHttpRequest",
-          },
-        });
+        const currentAuth = getAuthToken();
+        const headers: Record<string, string> = {
+          Accept: "application/json",
+          Cookie: getCookieHeader(),
+          "X-Requested-With": "XMLHttpRequest",
+        };
+        if (currentAuth) {
+          headers["Authorization"] = `Bearer ${currentAuth}`;
+        }
+        const res = await fetch(`${baseUrl}${path}`, { headers });
         const text = await res.text();
         let data = null;
         try { data = JSON.parse(text); } catch { /* not json */ }
         log(`${path} → ${res.status} (${text.length}b)`);
-        // Collect any new cookies
-        const newCookies = extractCookies(res);
-        if (newCookies) {
-          allCookies = `${allCookies}; ${newCookies}`;
-        }
+        mergeCookiesFromResponse(res);
         return { ok: res.ok, status: res.status, data, raw: text };
       } catch (err) {
         log(`${path} → ERROR: ${err}`);
