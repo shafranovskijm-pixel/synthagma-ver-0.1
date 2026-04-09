@@ -42,6 +42,7 @@ interface Lesson {
   type: string;
   content: string | null;
   order_index: number;
+  test_questions_count?: number | null;
 }
 
 interface Course {
