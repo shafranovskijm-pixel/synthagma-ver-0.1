@@ -32,7 +32,7 @@ function VideoPreview({ videoUrl }: { videoUrl: string }) {
     return content.trim().startsWith('<iframe') && content.includes('</iframe>');
   };
 
-  const getEmbedFromContent = (content: string): { type: 'iframe' | 'url' | null; value: string | null } => {
+  const getEmbedFromContent = (content: string): { type: 'iframe' | 'url' | 'direct' | null; value: string | null } => {
     if (!content) return { type: null, value: null };
     
     if (isIframeEmbed(content)) {
