@@ -252,7 +252,7 @@ export function BroadcastManager() {
           continue;
         }
 
-        const actionUrl = `https://sintagma.com.ru/email-response?token=${tokenData.id}`;
+        const actionUrl = `${supabaseUrl}/functions/v1/handle-email-action?token=${tokenData.id}`;
         const html = getEmailHtml(org.name, actionUrl);
         const subject = selectedTemplate === "inactive"
           ? "Мы заметили, что вы давно не заходили — Sintagma"
