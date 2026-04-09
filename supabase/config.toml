@@ -116,3 +116,6 @@ verify_jwt = false
 
 [functions.parse-skillspace-course]
 verify_jwt = false
+
+[functions.handle-email-action]
+verify_jwt = false
