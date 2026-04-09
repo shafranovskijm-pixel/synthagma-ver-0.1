@@ -229,8 +229,6 @@ Deno.serve(async (req) => {
     formData.append("password", password);
     formData.append("fingerprint", crypto.randomUUID());
 
-    let allCookies = "";
-
     // First request — login
     const authRes = await fetch(`${baseUrl}/api/user/auth`, {
       method: "POST",
@@ -238,9 +236,8 @@ Deno.serve(async (req) => {
       redirect: "manual",
     });
 
-    const authCookies = extractCookies(authRes);
-    allCookies = authCookies;
-    log(`Auth response: ${authRes.status}, cookies: ${authCookies.length > 0 ? "yes" : "none"}`);
+    mergeCookiesFromResponse(authRes);
+    log(`Auth response: ${authRes.status}, cookies: ${cookieMap.size > 0 ? "yes" : "none"}`);
 
     // If redirect, follow it to collect session cookies
     if (authRes.status >= 300 && authRes.status < 400) {
@@ -249,29 +246,22 @@ Deno.serve(async (req) => {
         const redirectUrl = location.startsWith("http") ? location : `${baseUrl}${location}`;
         log(`Following redirect to: ${redirectUrl}`);
         const redirectRes = await fetch(redirectUrl, {
-          headers: { Cookie: allCookies },
+          headers: { Cookie: getCookieHeader() },
           redirect: "manual",
         });
-        const redirectCookies = extractCookies(redirectRes);
-        if (redirectCookies) {
-          allCookies = allCookies ? `${allCookies}; ${redirectCookies}` : redirectCookies;
-        }
-        log(`Redirect response: ${redirectRes.status}, extra cookies: ${redirectCookies.length > 0 ? "yes" : "none"}`);
+        mergeCookiesFromResponse(redirectRes);
+        log(`Redirect response: ${redirectRes.status}`);
 
         // Follow second redirect if any
         if (redirectRes.status >= 300 && redirectRes.status < 400) {
           const loc2 = redirectRes.headers.get("location");
           if (loc2) {
             const rUrl2 = loc2.startsWith("http") ? loc2 : `${baseUrl}${loc2}`;
-            log(`Following second redirect to: ${rUrl2}`);
             const rRes2 = await fetch(rUrl2, {
-              headers: { Cookie: allCookies },
+              headers: { Cookie: getCookieHeader() },
               redirect: "manual",
             });
-            const rCookies2 = extractCookies(rRes2);
-            if (rCookies2) {
-              allCookies = allCookies ? `${allCookies}; ${rCookies2}` : rCookies2;
-            }
+            mergeCookiesFromResponse(rRes2);
           }
         }
       }
@@ -283,26 +273,24 @@ Deno.serve(async (req) => {
       );
     }
 
-    if (!allCookies) {
-      log("No cookies received from auth");
+    const authToken = getAuthToken();
+    if (!authToken) {
+      log("No Auth-Token received from auth");
       return new Response(
-        JSON.stringify({ error: "Авторизация не вернула cookie сессии. Проверьте учётные данные.", debug: debugLog }),
+        JSON.stringify({ error: "Авторизация не вернула токен сессии. Проверьте учётные данные.", debug: debugLog }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    log(`Auth successful, cookies: ${allCookies.substring(0, 80)}...`);
+    log(`Auth successful, Auth-Token: ${authToken.substring(0, 20)}...`);
 
     // Also try to get CSRF / additional session by hitting the school admin page
     try {
       const adminPageRes = await fetch(`${baseUrl}/school/constructor/course/${courseId}`, {
-        headers: { Cookie: allCookies },
+        headers: { Cookie: getCookieHeader(), Authorization: `Bearer ${authToken}` },
         redirect: "manual",
       });
-      const adminPageCookies = extractCookies(adminPageRes);
-      if (adminPageCookies) {
-        allCookies = `${allCookies}; ${adminPageCookies}`;
-      }
+      mergeCookiesFromResponse(adminPageRes);
       log(`Admin page probe: ${adminPageRes.status}`);
     } catch (e) {
       log(`Admin page probe failed: ${e}`);
