@@ -149,31 +149,42 @@ function renderTableHtml(data: any): string {
   return `<table>${rows}</table>`;
 }
 
-// --- Cookie helper: robust extraction from multiple set-cookie headers ---
-function extractCookies(response: Response): string {
-  const cookies: string[] = [];
+// --- Cookie helper: deduplicating cookie map ---
+const cookieMap = new Map<string, string>();
 
-  // Method 1: getSetCookie (Deno supports this)
+function mergeCookiesFromResponse(response: Response) {
+  const setCookies: string[] = [];
   if (typeof response.headers.getSetCookie === "function") {
-    const setCookies = response.headers.getSetCookie();
-    for (const c of setCookies) {
-      const pair = c.split(";")[0].trim();
-      if (pair) cookies.push(pair);
-    }
-  }
-
-  // Method 2: fallback to raw set-cookie header
-  if (cookies.length === 0) {
+    setCookies.push(...response.headers.getSetCookie());
+  } else {
     const raw = response.headers.get("set-cookie");
-    if (raw) {
-      // Multiple cookies may be comma-separated (but cookie values can contain commas)
-      // Split by known pattern: ", name=" is unreliable, so just take the whole thing
-      const pair = raw.split(";")[0].trim();
-      if (pair) cookies.push(pair);
+    if (raw) setCookies.push(raw);
+  }
+  for (const header of setCookies) {
+    // Each set-cookie header: "Name=Value; Path=/; ..."
+    const pair = header.split(";")[0].trim();
+    const eqIdx = pair.indexOf("=");
+    if (eqIdx > 0) {
+      const name = pair.substring(0, eqIdx).trim();
+      const value = pair.substring(eqIdx + 1).trim();
+      // Skip "deleted" values — they clear old cookies
+      if (value && value !== "deleted") {
+        cookieMap.set(name, value);
+      } else if (value === "deleted") {
+        // Only delete if we don't already have a real value queued after this
+        // Since we process in order, a later real value will overwrite
+        cookieMap.delete(name);
+      }
     }
   }
+}
 
-  return cookies.join("; ");
+function getCookieHeader(): string {
+  return Array.from(cookieMap.entries()).map(([k, v]) => `${k}=${v}`).join("; ");
+}
+
+function getAuthToken(): string | null {
+  return cookieMap.get("Auth-Token") || null;
 }
 
 // --- Main handler ---
