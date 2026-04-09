@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Building2, Search, Crown, Users, BookOpen, HardDrive, AlertTriangle, Clock, CheckCircle, XCircle, Calendar, Bell, Upload, FileText, Receipt, File, Trash2, Download, FolderOpen } from "lucide-react";
+import { Building2, Search, Crown, Users, BookOpen, HardDrive, AlertTriangle, Clock, CheckCircle, XCircle, Calendar, Bell, Upload, FileText, Receipt, File, Trash2, Download, FolderOpen, Eye } from "lucide-react";
 import { differenceInDays, format } from "date-fns";
 import { ru } from "date-fns/locale";
 
