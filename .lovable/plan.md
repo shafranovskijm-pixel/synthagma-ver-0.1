@@ -1,45 +1,36 @@
 
 
-## Перенос видео и документов из SkillSpace в хранилище организации
+## Кнопка «Скачать медиа» для существующих курсов
 
-### Текущее поведение
+### Что нужно
 
-Парсер сохраняет в уроках только **ссылки** на файлы SkillSpace (`data.file.url`, `data.url`). Видео и документы остаются на серверах SkillSpace — при удалении курса оттуда ссылки перестанут работать.
-
-### Что нужно сделать
-
-Добавить в Edge Function `parse-skillspace-course` этап скачивания медиафайлов и загрузки в бакет `course-files` с заменой URL в блоках уроков.
+Добавить кнопку в таблице курсов (рядом с кнопкой удаления) для миграции медиафайлов уже импортированных курсов — скачать видео/изображения/документы с внешних серверов (selstorage.ru, skillspace.ru) в наше хранилище `course-files`.
 
 ### Техническое решение
 
-**Файл:** `supabase/functions/parse-skillspace-course/index.ts`
+**1. Новая Edge Function `migrate-course-media`**
 
-1. **Функция `downloadAndReupload(url, courseId, orgId, supabaseClient)`**
-   - Скачивает файл с SkillSpace по URL (с текущими cookies для авторизации)
-   - Определяет тип (video/mp4, application/pdf, image и т.д.) по Content-Type
-   - Загружает в бакет `course-files` по пути `{orgId}/{courseId}/{uuid}.{ext}`
-   - Возвращает публичный URL из нашего хранилища
-   - При ошибке — оставляет оригинальный URL (graceful fallback)
+Отдельная функция, которая:
+- Принимает `courseId` и `organizationId`
+- Загружает все уроки курса из БД
+- Проходит по JSON-блокам каждого урока
+- Для блоков `video`, `image`, `document` с внешними URL — скачивает файл и загружает в `course-files/{orgId}/{courseId}/{uuid}.{ext}`
+- Заменяет URL в контенте урока и обновляет запись в БД
+- Пропускает файлы, которые уже на нашем хранилище (URL содержит `supabase`)
+- Возвращает статистику: `filesTransferred`, `filesFailed`, `filesSkipped`
 
-2. **Обработка блоков после парсинга (между Step 4 и Step 5)**
-   - Проход по всем `jsonBlocks` каждого урока
-   - Для блоков типа `video` (поле `videoUrl`) — скачать и заменить URL
-   - Для блоков типа `image` (поле `imageSrc`) — скачать и заменить URL
-   - Для блоков типа `document` (поле `documentUrl`) — скачать и заменить URL
-   - Для ссылок в HTML-контенте (href на skillspace.ru) — скачать и заменить
+Логика скачивания/загрузки — копия из `parse-skillspace-course` (тот же `downloadAndReupload` паттерн), но без авторизации SkillSpace (файлы на selstorage.ru доступны публично).
 
-3. **Ограничения и защита**
-   - Максимальный размер файла для скачивания: 500 МБ (чтобы не упасть по памяти)
-   - Таймаут на скачивание одного файла: 60 секунд
-   - Логирование: "Downloaded video X.mp4 (25MB) → course-files/..."
-   - Счётчик: `filesTransferred` / `filesSkipped` в ответе
+**2. UI — кнопка в таблице курсов**
 
-4. **Использование service_role** — Edge Function уже использует `SUPABASE_SERVICE_ROLE_KEY`, поэтому загрузка в storage пройдёт без RLS-ограничений
+В `OrganizationDetailsView.tsx`:
+- Добавить кнопку с иконкой `HardDrive` (или `CloudDownload`) в каждой строке курса
+- По клику — вызов `migrate-course-media` с `fetch` (таймаут 5 минут, как в SkillSpace импорте)
+- Показывать `Loader2` во время миграции
+- Toast с результатом: «Перенесено X файлов, ошибок Y»
 
-### Ожидаемый результат
+**3. Файлы для изменения**
 
-- Видео, изображения и документы из SkillSpace копируются в бакет `course-files`
-- URL в блоках уроков указывают на наше хранилище
-- В ответе функции добавляются поля `filesTransferred` и `filesFailed`
-- При недоступности файла — оригинальная ссылка сохраняется
+- `supabase/functions/migrate-course-media/index.ts` — новая Edge Function
+- `src/components/admin/OrganizationDetailsView.tsx` — кнопка в таблице курсов
 
