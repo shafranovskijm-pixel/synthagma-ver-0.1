@@ -201,7 +201,8 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { url, login, password, organizationId } = await req.json();
+    const { url, login, password, organizationId, existingCourseId } = await req.json();
+    const isUpdateMode = !!existingCourseId;
 
     if (!url || !login || !password || !organizationId) {
       return new Response(
