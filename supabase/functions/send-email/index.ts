@@ -105,26 +105,43 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     let response = await readResponse();
-    console.log("Server greeting:", response.substring(0, 50));
+    console.log("Server greeting:", response.trim());
 
     response = await sendCommand("EHLO localhost");
+    console.log("EHLO response:", response.trim());
+
     response = await sendCommand("AUTH LOGIN");
+    console.log("AUTH LOGIN response:", response.trim());
+
     response = await sendCommand(btoa(SMTP_USER));
+    console.log("AUTH user response:", response.trim());
+
     response = await sendCommand(btoa(SMTP_PASS));
+    console.log("AUTH pass response:", response.trim());
 
     const emailMatch = senderFrom.match(/<([^>]+)>/) || [null, senderFrom];
     const fromEmail = emailMatch[1] || senderFrom;
 
     response = await sendCommand(`MAIL FROM:<${fromEmail}>`);
+    console.log("MAIL FROM response:", response.trim());
+
     response = await sendCommand(`RCPT TO:<${to}>`);
+    console.log("RCPT TO response:", response.trim());
+
     response = await sendCommand("DATA");
+    console.log("DATA response:", response.trim());
 
     await conn.write(encoder.encode(rawEmail + "\r\n.\r\n"));
     response = await readResponse();
-    console.log("Email data response:", response.substring(0, 50));
+    console.log("Email data response:", response.trim());
 
     await sendCommand("QUIT");
     conn.close();
+
+    const statusCode = response.match(/^(\d+)/)?.[1];
+    if (statusCode && parseInt(statusCode) >= 400) {
+      throw new Error(`SMTP error: ${response.trim()}`);
+    }
 
     console.log("Email sent successfully to:", to);
 
