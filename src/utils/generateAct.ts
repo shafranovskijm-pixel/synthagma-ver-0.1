@@ -47,7 +47,7 @@ export async function generateAct({
   amount,
 }: ActParams): Promise<string | null> {
   try {
-    const actNumber = `А-${Date.now().toString().slice(-6)}`;
+    const actNumber = `A-${Date.now().toString().slice(-6)}`;
     const formattedDate = format(actDate, "dd MMMM yyyy", { locale: ru });
 
     // Convert images to base64 for embedding
