@@ -4,7 +4,7 @@ import {
   Users, ClipboardList, Award, GraduationCap, FileCheck, 
   FileText, Upload, BookOpen, Wrench, Building2, ScrollText,
   UserCheck, Stamp, ExternalLink, Lock, ArrowUpRight,
-  FolderOpen, Download, Receipt, File, Calendar, Lightbulb,
+  FolderOpen, Download, Receipt, File, Calendar, Lightbulb, Trash2,
   Info
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
