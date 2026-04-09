@@ -276,7 +276,7 @@ const RegisterOrganization = () => {
 <b>ИНН:</b> ${inn || "—"}
 <b>Тариф:</b> ${planLabel}${promoCode ? `\n<b>Промокод:</b> ${promoCode}` : ""}`;
 
-          await safeInvoke("send-telegram-notification", {
+          await supabase.functions.invoke("send-telegram-notification", {
             body: { message: telegramMessage },
           });
         } catch (tgErr) {
