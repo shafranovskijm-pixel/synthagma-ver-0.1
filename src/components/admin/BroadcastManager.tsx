@@ -252,7 +252,8 @@ export function BroadcastManager() {
           continue;
         }
 
-        const actionUrl = `${supabaseUrl}/functions/v1/handle-email-action?token=${tokenData.id}`;
+        const publishedUrl = "https://synthagma-bloom.lovable.app";
+        const actionUrl = `${publishedUrl}/email-response?token=${tokenData.id}`;
         const html = getEmailHtml(org.name, actionUrl);
         const subject = selectedTemplate === "inactive"
           ? "Мы заметили, что вы давно не заходили — Sintagma"
