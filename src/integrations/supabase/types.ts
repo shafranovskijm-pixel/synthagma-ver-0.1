@@ -1324,6 +1324,47 @@ export type Database = {
           },
         ]
       }
+      email_action_tokens: {
+        Row: {
+          action_type: string
+          created_at: string
+          id: string
+          organization_email: string
+          organization_id: string
+          template_name: string
+          used: boolean
+          used_at: string | null
+        }
+        Insert: {
+          action_type?: string
+          created_at?: string
+          id?: string
+          organization_email: string
+          organization_id: string
+          template_name?: string
+          used?: boolean
+          used_at?: string | null
+        }
+        Update: {
+          action_type?: string
+          created_at?: string
+          id?: string
+          organization_email?: string
+          organization_id?: string
+          template_name?: string
+          used?: boolean
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_action_tokens_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       enrollment_history: {
         Row: {
           action: string
