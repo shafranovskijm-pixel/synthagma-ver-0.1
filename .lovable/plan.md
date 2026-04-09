@@ -1,21 +1,36 @@
 
 
-## Fix: Edge Function returns raw HTML instead of rendered page
+## Fix: Duplicate Telegram Notifications on Organization Registration
 
 ### Root Cause
 
-The `handle-email-action` function is **not listed** in `supabase/config.toml` with `verify_jwt = false`. By default, Supabase requires a valid JWT for Edge Function calls. When a user clicks the link from an email, they have no JWT -- so the Supabase gateway intercepts the request and returns an error response, which the browser displays as raw text/source code.
+The `safeInvoke` utility has built-in retry logic (up to 3 attempts with delays of 0s, 2s, 5s). When the Telegram notification call encounters a transient network issue or gets flagged by security software detection, `safeInvoke` retries — but the Telegram API already processed the first request successfully. Each retry sends a new, independent Telegram message, resulting in 2-3 duplicate notifications.
+
+This is a non-idempotent side effect (sending a message) wrapped in a retry mechanism designed for idempotent reads — a classic bug.
 
 ### Fix
 
-**File: `supabase/config.toml`** -- Add:
+**File: `src/pages/RegisterOrganization.tsx`** (line ~279)
 
-```toml
-[functions.handle-email-action]
-verify_jwt = false
+Replace `safeInvoke` with a direct `supabase.functions.invoke()` call (no retries) for the Telegram notification. This is a fire-and-forget notification — if it fails once, we should not retry and risk duplicates.
+
+```typescript
+// Instead of:
+await safeInvoke("send-telegram-notification", {
+  body: { message: telegramMessage },
+});
+
+// Use direct invoke (no retry):
+await supabase.functions.invoke("send-telegram-notification", {
+  body: { message: telegramMessage },
+});
 ```
 
-Then **redeploy** the `handle-email-action` function so the new config takes effect.
+Additionally, audit the other two places that send Telegram notifications via `safeInvoke` and apply the same fix:
+- `src/components/organization/SubscriptionTab.tsx` (line ~169)
+- `src/components/onboarding/SupportRequestForm.tsx` (line ~143)
 
-After that, send a fresh test email to verify the form renders correctly in the browser.
+### Why not fix safeInvoke itself?
+
+`safeInvoke` is used across many other calls (student registration, course import, password reset) where retries ARE appropriate. The fix should be targeted: only Telegram notifications should skip retries since they are non-idempotent side effects.
 
