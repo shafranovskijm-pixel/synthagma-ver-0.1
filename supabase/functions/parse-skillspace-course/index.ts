@@ -75,6 +75,7 @@ Deno.serve(async (req) => {
     const formData = new FormData();
     formData.append("email", login);
     formData.append("password", password);
+    formData.append("fingerprint", crypto.randomUUID());
 
     const authRes = await fetch(`${baseUrl}/api/user/auth`, {
       method: "POST",
