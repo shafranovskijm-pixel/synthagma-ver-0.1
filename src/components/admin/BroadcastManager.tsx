@@ -263,7 +263,7 @@ export function BroadcastManager() {
             to: org.email,
             subject,
             html,
-            from: "Sintagma <noreply@sintagma.com.ru>",
+            from: "Sintagma <support@sintagma.com.ru>",
           },
         });
 
