@@ -828,8 +828,9 @@ Deno.serve(async (req) => {
     log(`Created course ${newCourse.id}`);
 
     let createdLessons = 0;
+    let totalTestQuestions = 0;
     for (const lesson of lessonContents) {
-      const { error: lessonError } = await supabaseClient
+      const { data: newLesson, error: lessonError } = await supabaseClient
         .from("lessons")
         .insert({
           course_id: newCourse.id,
@@ -837,16 +838,46 @@ Deno.serve(async (req) => {
           content: lesson.content,
           order_index: lesson.order,
           type: lesson.type,
-        });
+          test_passing_score: lesson.type === "test" ? 60 : 0,
+        })
+        .select("id")
+        .single();
 
       if (lessonError) {
         log(`Failed to create lesson "${lesson.title}": ${lessonError.message}`);
       } else {
         createdLessons++;
+
+        // Insert test questions if this is a test lesson
+        if (lesson.type === "test" && lesson.testQuestions && lesson.testQuestions.length > 0 && newLesson) {
+          const questionsToInsert = lesson.testQuestions.map((q, qi) => ({
+            lesson_id: newLesson.id,
+            question: q.question,
+            options: q.options,
+            correct_answer: q.correct_answer,
+            order_index: qi,
+          }));
+
+          const { error: qError } = await supabaseClient
+            .from("test_questions")
+            .insert(questionsToInsert);
+
+          if (qError) {
+            log(`Failed to insert ${questionsToInsert.length} questions for "${lesson.title}": ${qError.message}`);
+          } else {
+            totalTestQuestions += questionsToInsert.length;
+            // Update lesson with question count
+            await supabaseClient
+              .from("lessons")
+              .update({ test_questions_count: questionsToInsert.length })
+              .eq("id", newLesson.id);
+            log(`Inserted ${questionsToInsert.length} test questions for "${lesson.title}"`);
+          }
+        }
       }
     }
 
-    log(`Created ${createdLessons}/${lessonContents.length} lessons`);
+    log(`Created ${createdLessons}/${lessonContents.length} lessons, ${totalTestQuestions} test questions`);
 
     return new Response(
       JSON.stringify({
