@@ -149,31 +149,42 @@ function renderTableHtml(data: any): string {
   return `<table>${rows}</table>`;
 }
 
-// --- Cookie helper: robust extraction from multiple set-cookie headers ---
-function extractCookies(response: Response): string {
-  const cookies: string[] = [];
+// --- Cookie helper: deduplicating cookie map ---
+const cookieMap = new Map<string, string>();
 
-  // Method 1: getSetCookie (Deno supports this)
+function mergeCookiesFromResponse(response: Response) {
+  const setCookies: string[] = [];
   if (typeof response.headers.getSetCookie === "function") {
-    const setCookies = response.headers.getSetCookie();
-    for (const c of setCookies) {
-      const pair = c.split(";")[0].trim();
-      if (pair) cookies.push(pair);
-    }
-  }
-
-  // Method 2: fallback to raw set-cookie header
-  if (cookies.length === 0) {
+    setCookies.push(...response.headers.getSetCookie());
+  } else {
     const raw = response.headers.get("set-cookie");
-    if (raw) {
-      // Multiple cookies may be comma-separated (but cookie values can contain commas)
-      // Split by known pattern: ", name=" is unreliable, so just take the whole thing
-      const pair = raw.split(";")[0].trim();
-      if (pair) cookies.push(pair);
+    if (raw) setCookies.push(raw);
+  }
+  for (const header of setCookies) {
+    // Each set-cookie header: "Name=Value; Path=/; ..."
+    const pair = header.split(";")[0].trim();
+    const eqIdx = pair.indexOf("=");
+    if (eqIdx > 0) {
+      const name = pair.substring(0, eqIdx).trim();
+      const value = pair.substring(eqIdx + 1).trim();
+      // Skip "deleted" values — they clear old cookies
+      if (value && value !== "deleted") {
+        cookieMap.set(name, value);
+      } else if (value === "deleted") {
+        // Only delete if we don't already have a real value queued after this
+        // Since we process in order, a later real value will overwrite
+        cookieMap.delete(name);
+      }
     }
   }
+}
 
-  return cookies.join("; ");
+function getCookieHeader(): string {
+  return Array.from(cookieMap.entries()).map(([k, v]) => `${k}=${v}`).join("; ");
+}
+
+function getAuthToken(): string | null {
+  return cookieMap.get("Auth-Token") || null;
 }
 
 // --- Main handler ---
@@ -218,8 +229,6 @@ Deno.serve(async (req) => {
     formData.append("password", password);
     formData.append("fingerprint", crypto.randomUUID());
 
-    let allCookies = "";
-
     // First request — login
     const authRes = await fetch(`${baseUrl}/api/user/auth`, {
       method: "POST",
@@ -227,9 +236,8 @@ Deno.serve(async (req) => {
       redirect: "manual",
     });
 
-    const authCookies = extractCookies(authRes);
-    allCookies = authCookies;
-    log(`Auth response: ${authRes.status}, cookies: ${authCookies.length > 0 ? "yes" : "none"}`);
+    mergeCookiesFromResponse(authRes);
+    log(`Auth response: ${authRes.status}, cookies: ${cookieMap.size > 0 ? "yes" : "none"}`);
 
     // If redirect, follow it to collect session cookies
     if (authRes.status >= 300 && authRes.status < 400) {
@@ -238,29 +246,22 @@ Deno.serve(async (req) => {
         const redirectUrl = location.startsWith("http") ? location : `${baseUrl}${location}`;
         log(`Following redirect to: ${redirectUrl}`);
         const redirectRes = await fetch(redirectUrl, {
-          headers: { Cookie: allCookies },
+          headers: { Cookie: getCookieHeader() },
           redirect: "manual",
         });
-        const redirectCookies = extractCookies(redirectRes);
-        if (redirectCookies) {
-          allCookies = allCookies ? `${allCookies}; ${redirectCookies}` : redirectCookies;
-        }
-        log(`Redirect response: ${redirectRes.status}, extra cookies: ${redirectCookies.length > 0 ? "yes" : "none"}`);
+        mergeCookiesFromResponse(redirectRes);
+        log(`Redirect response: ${redirectRes.status}`);
 
         // Follow second redirect if any
         if (redirectRes.status >= 300 && redirectRes.status < 400) {
           const loc2 = redirectRes.headers.get("location");
           if (loc2) {
             const rUrl2 = loc2.startsWith("http") ? loc2 : `${baseUrl}${loc2}`;
-            log(`Following second redirect to: ${rUrl2}`);
             const rRes2 = await fetch(rUrl2, {
-              headers: { Cookie: allCookies },
+              headers: { Cookie: getCookieHeader() },
               redirect: "manual",
             });
-            const rCookies2 = extractCookies(rRes2);
-            if (rCookies2) {
-              allCookies = allCookies ? `${allCookies}; ${rCookies2}` : rCookies2;
-            }
+            mergeCookiesFromResponse(rRes2);
           }
         }
       }
@@ -272,26 +273,24 @@ Deno.serve(async (req) => {
       );
     }
 
-    if (!allCookies) {
-      log("No cookies received from auth");
+    const authToken = getAuthToken();
+    if (!authToken) {
+      log("No Auth-Token received from auth");
       return new Response(
-        JSON.stringify({ error: "Авторизация не вернула cookie сессии. Проверьте учётные данные.", debug: debugLog }),
+        JSON.stringify({ error: "Авторизация не вернула токен сессии. Проверьте учётные данные.", debug: debugLog }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    log(`Auth successful, cookies: ${allCookies.substring(0, 80)}...`);
+    log(`Auth successful, Auth-Token: ${authToken.substring(0, 20)}...`);
 
     // Also try to get CSRF / additional session by hitting the school admin page
     try {
       const adminPageRes = await fetch(`${baseUrl}/school/constructor/course/${courseId}`, {
-        headers: { Cookie: allCookies },
+        headers: { Cookie: getCookieHeader(), Authorization: `Bearer ${authToken}` },
         redirect: "manual",
       });
-      const adminPageCookies = extractCookies(adminPageRes);
-      if (adminPageCookies) {
-        allCookies = `${allCookies}; ${adminPageCookies}`;
-      }
+      mergeCookiesFromResponse(adminPageRes);
       log(`Admin page probe: ${adminPageRes.status}`);
     } catch (e) {
       log(`Admin page probe failed: ${e}`);
@@ -300,22 +299,21 @@ Deno.serve(async (req) => {
     // Helper for authenticated requests
     const apiFetch = async (path: string): Promise<{ ok: boolean; status: number; data: any; raw: string }> => {
       try {
-        const res = await fetch(`${baseUrl}${path}`, {
-          headers: {
-            Accept: "application/json",
-            Cookie: allCookies,
-            "X-Requested-With": "XMLHttpRequest",
-          },
-        });
+        const currentAuth = getAuthToken();
+        const headers: Record<string, string> = {
+          Accept: "application/json",
+          Cookie: getCookieHeader(),
+          "X-Requested-With": "XMLHttpRequest",
+        };
+        if (currentAuth) {
+          headers["Authorization"] = `Bearer ${currentAuth}`;
+        }
+        const res = await fetch(`${baseUrl}${path}`, { headers });
         const text = await res.text();
         let data = null;
         try { data = JSON.parse(text); } catch { /* not json */ }
         log(`${path} → ${res.status} (${text.length}b)`);
-        // Collect any new cookies
-        const newCookies = extractCookies(res);
-        if (newCookies) {
-          allCookies = `${allCookies}; ${newCookies}`;
-        }
+        mergeCookiesFromResponse(res);
         return { ok: res.ok, status: res.status, data, raw: text };
       } catch (err) {
         log(`${path} → ERROR: ${err}`);
@@ -509,7 +507,8 @@ Deno.serve(async (req) => {
               jsonBlocks.push({ id: makeId(), type: "paragraph", content: block.content });
             } else if (block.type === "video") {
               lessonType = "video";
-              jsonBlocks.push({ id: makeId(), type: "paragraph", content: "<em>[Видео — требуется ручной перенос]</em>" });
+              const videoUrl = block.url || block.file?.url || block.src || "";
+              jsonBlocks.push({ id: makeId(), type: "paragraph", content: videoUrl ? `<a href="${videoUrl}" target="_blank">🎬 Видео: ${videoUrl}</a>` : "<em>[Видео — URL не найден]</em>" });
             } else if (block.type === "test") {
               lessonType = "test";
               jsonBlocks.push({ id: makeId(), type: "paragraph", content: "<em>[Тест — требуется ручной перенос]</em>" });
