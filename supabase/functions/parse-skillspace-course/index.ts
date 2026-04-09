@@ -737,6 +737,8 @@ Deno.serve(async (req) => {
         lessonsCreated: createdLessons,
         lessonsWithContent: lessonsWithBlocks,
         lessonsAccessDenied,
+        filesTransferred,
+        filesFailed,
         importMode,
         schoolApiAvailable,
         debug: debugLog,
