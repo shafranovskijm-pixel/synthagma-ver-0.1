@@ -1067,6 +1067,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                     <TableHead className="text-center">Уроков</TableHead>
                     <TableHead className="text-center">Учеников</TableHead>
                     <TableHead>Статус</TableHead>
+                    <TableHead className="w-10"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1094,6 +1095,25 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                         <Badge variant={course.is_published ? "default" : "outline"}>
                           {course.is_published ? "Опубликован" : "Черновик"}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                          onClick={async () => {
+                            if (!confirm(`Удалить курс «${course.title}»? Это действие нельзя отменить.`)) return;
+                            const { error } = await supabase.from("courses").delete().eq("id", course.id);
+                            if (error) {
+                              toast.error("Ошибка удаления: " + error.message);
+                            } else {
+                              toast.success("Курс удалён");
+                              fetchCourses();
+                            }
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
