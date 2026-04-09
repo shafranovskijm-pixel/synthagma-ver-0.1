@@ -210,10 +210,12 @@ export function OrgSidebar() {
               </button>
             )}
 
-            <button onClick={() => handleTabClick("subscription")} className={tabButtonClass("subscription")} aria-label="Тариф">
-              <CreditCard className="w-5 h-5" aria-hidden="true" />
-              Тариф
-            </button>
+            {menuSettings.showSubscription !== false && (
+              <button onClick={() => handleTabClick("subscription")} className={tabButtonClass("subscription")} aria-label="Тариф">
+                <CreditCard className="w-5 h-5" aria-hidden="true" />
+                Тариф
+              </button>
+            )}
             
             {(
               <button data-onboarding="settings" onClick={() => handleTabClick("settings")} className={tabButtonClass("settings", isLocked("settings"))}>

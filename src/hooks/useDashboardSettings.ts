@@ -18,6 +18,7 @@ interface MenuSettings {
   showStudents?: boolean;
   showJournals?: boolean;
   showFrdo?: boolean;
+  showSubscription?: boolean;
 }
 
 const defaultMenuSettings: MenuSettings = {
@@ -31,6 +32,7 @@ const defaultMenuSettings: MenuSettings = {
   showStudents: true,
   showJournals: true,
   showFrdo: true,
+  showSubscription: true,
 };
 
 /** Ensures critical menu items are never accidentally hidden */
@@ -48,6 +50,7 @@ function normalizeMenuSettings(raw: Record<string, unknown> | null | undefined):
     showStudents: raw.showStudents !== false,
     showJournals: raw.showJournals !== false,
     showFrdo: raw.showFrdo !== false,
+    showSubscription: raw.showSubscription !== false,
   };
 }
 

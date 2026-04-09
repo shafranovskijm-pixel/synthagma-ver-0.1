@@ -12,6 +12,7 @@ interface MenuSettings {
   showStudents?: boolean;
   showJournals?: boolean;
   showFrdo?: boolean;
+  showSubscription?: boolean;
 }
 
 interface UseTabNavigationProps {
@@ -51,7 +52,7 @@ export function useTabNavigation({
     if (isEnabled("labor_safety")) baseTabs.push("labor-safety");
     
     if (isFrdoEnabled && isEnabled("frdo")) baseTabs.push("frdo");
-    baseTabs.push("subscription");
+    if (menuSettings.showSubscription !== false) baseTabs.push("subscription");
     baseTabs.push("chats");
     if (menuSettings.showServices && isEnabled("services")) baseTabs.push("services");
     if (isEnabled("settings")) baseTabs.push("settings");
