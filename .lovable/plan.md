@@ -1,74 +1,32 @@
 
-
-## Скачивание документов в PDF вместо HTML
+## Исправление отображения печати и подписи в документах
 
 ### Проблема
-Сейчас `downloadHtmlFile` скачивает файл как `.html`. Пользователь ожидает получить PDF.
+На скриншоте видно: печать растянута (не круглая), подпись плохо видна. Причина — в CSS шаблонов изображения имеют жёсткие размеры (`width: 80px; height: 80px` для печати), что искажает пропорции круглой печати.
 
 ### Решение
-Библиотеки `jspdf` и `html2canvas` уже установлены в проекте. Заменю `downloadHtmlFile` на новую функцию `downloadHtmlAsPdf`, которая:
 
-1. Fetch HTML по signed URL
-2. Создаёт временный `div`, вставляет HTML
-3. Рендерит через `html2canvas` в canvas
-4. Конвертирует canvas в PDF через `jsPDF` (A4, с разбивкой на страницы)
-5. Скачивает как `.pdf`
+#### 1. `src/utils/generateAct.ts` — блок подписи исполнителя (строки 88-93)
+
+Заменить стили изображений:
+- **Печать**: убрать фиксированные `width/height`, использовать `width: 120px; height: auto;` — сохранит круглую форму
+- **Подпись**: увеличить размер, добавить `height: auto` для сохранения пропорций, поднять `opacity`
+- Контейнер `.sig-images`: увеличить, чтобы вместить оба изображения без обрезки
+
+Новые стили:
+```css
+.sig-images { position: relative; width: 250px; height: 120px; }
+.sig-stamp { left: 0; top: 0; width: 120px; height: auto; opacity: 0.9; }
+.sig-sign { left: 50px; top: 20px; width: 160px; height: auto; opacity: 0.9; }
+```
+
+#### 2. `src/utils/generateAttestationProtocol.ts` — блок stampSignatureHtml (строки 73-77)
+
+Аналогично: заменить `max-height: 80px; max-width: 80px` для печати на `width: 120px; height: auto;`, для подписи — `width: 160px; height: auto;`.
 
 ### Файлы для изменения
 
-| Файл | Изменение |
-|------|-----------|
-| `src/utils/downloadHtmlFile.ts` | Переписать: fetch HTML → html2canvas → jsPDF → `.pdf` скачивание |
-| `src/components/organization/tabs/DocumentsTab.tsx` | Обновить имя импорта (если изменится) |
-| `src/components/admin/TariffsManager.tsx` | Аналогично |
-| `src/components/organization/DocumentArchiveView.tsx` | Аналогично |
-| `src/components/organization/OrdersArchive.tsx` | Аналогично |
-
-### Техническая реализация
-
-```typescript
-// downloadHtmlFile.ts → downloadHtmlAsPdf
-import { jsPDF } from "jspdf";
-import html2canvas from "html2canvas";
-
-export async function downloadHtmlAsPdf(url: string, fileName: string) {
-  const res = await fetch(url);
-  const html = await res.text();
-  
-  // Создаём временный контейнер с фиксированной шириной A4
-  const container = document.createElement("div");
-  container.style.width = "794px"; // A4 at 96dpi
-  container.style.position = "fixed";
-  container.style.left = "-9999px";
-  container.innerHTML = html;
-  // Извлекаем стили из HTML и применяем
-  document.body.appendChild(container);
-  
-  const canvas = await html2canvas(container, { scale: 2, useCORS: true });
-  document.body.removeChild(container);
-  
-  const pdf = new jsPDF("p", "mm", "a4");
-  const imgWidth = 190;
-  const imgHeight = (canvas.height * imgWidth) / canvas.width;
-  const pageHeight = 277;
-  
-  let position = 10;
-  let heightLeft = imgHeight;
-  
-  pdf.addImage(canvas.toDataURL("image/png"), "PNG", 10, position, imgWidth, imgHeight);
-  heightLeft -= pageHeight;
-  
-  while (heightLeft > 0) {
-    position = heightLeft - imgHeight + 10;
-    pdf.addPage();
-    pdf.addImage(canvas.toDataURL("image/png"), "PNG", 10, position, imgWidth, imgHeight);
-    heightLeft -= pageHeight;
-  }
-  
-  const safeName = fileName.replace(/\.html$/, "") + ".pdf";
-  pdf.save(safeName);
-}
-```
-
-Во всех 4 компонентах заменю `downloadHtmlFile` на `downloadHtmlAsPdf`.
-
+| Файл | Что |
+|------|-----|
+| `src/utils/generateAct.ts` | CSS для `.sig-stamp`, `.sig-sign`, `.sig-images` |
+| `src/utils/generateAttestationProtocol.ts` | Inline стили для img печати и подписи |
