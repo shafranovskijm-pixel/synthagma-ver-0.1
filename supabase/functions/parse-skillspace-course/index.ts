@@ -6,6 +6,79 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+// --- EditorJS blocks → HTML converter ---
+function editorBlocksToHtml(blocks: any[]): string {
+  if (!Array.isArray(blocks)) return "";
+  return blocks.map(blockToHtml).join("\n");
+}
+
+function blockToHtml(block: any): string {
+  const { type, data } = block;
+  if (!data) return "";
+
+  switch (type) {
+    case "paragraph":
+      return `<p>${data.text || ""}</p>`;
+    case "header":
+      const lvl = Math.min(Math.max(data.level || 2, 1), 6);
+      return `<h${lvl}>${data.text || ""}</h${lvl}>`;
+    case "image":
+      const src = data.file?.url || data.url || "";
+      const caption = data.caption ? `<figcaption>${data.caption}</figcaption>` : "";
+      return src ? `<figure><img src="${src}" alt="${data.caption || ""}" />${caption}</figure>` : "";
+    case "list":
+    case "nestedList":
+      return renderList(data);
+    case "delimiter":
+      return "<hr />";
+    case "quote":
+      return `<blockquote><p>${data.text || ""}</p>${data.caption ? `<cite>${data.caption}</cite>` : ""}</blockquote>`;
+    case "table":
+      return renderTable(data);
+    case "video":
+      return `<p><em>[Видео: ${data.url || data.file?.url || "требуется ручной перенос"}]</em></p>`;
+    case "embed":
+      return `<p><em>[Embed: ${data.source || data.embed || ""}]</em></p>`;
+    case "attaches":
+    case "file":
+      return `<p><em>[Файл: ${data.title || data.file?.name || "вложение"}]</em></p>`;
+    case "warning":
+      return `<div class="warning"><strong>${data.title || ""}</strong><p>${data.message || ""}</p></div>`;
+    case "code":
+      return `<pre><code>${data.code || ""}</code></pre>`;
+    case "raw":
+      return data.html || "";
+    default:
+      // Unknown block — try to extract text
+      if (data.text) return `<p>${data.text}</p>`;
+      return "";
+  }
+}
+
+function renderList(data: any): string {
+  const tag = data.style === "ordered" ? "ol" : "ul";
+  const items = data.items || [];
+  const lis = items.map((item: any) => {
+    if (typeof item === "string") return `<li>${item}</li>`;
+    // Nested list item: { content, items }
+    const content = item.content || item.text || "";
+    const nested = item.items && item.items.length > 0 ? renderList({ ...data, items: item.items }) : "";
+    return `<li>${content}${nested}</li>`;
+  }).join("");
+  return `<${tag}>${lis}</${tag}>`;
+}
+
+function renderTable(data: any): string {
+  if (!data.content || !Array.isArray(data.content)) return "";
+  const rows = data.content.map((row: string[], i: number) => {
+    const tag = data.withHeadings && i === 0 ? "th" : "td";
+    const cells = row.map((c: string) => `<${tag}>${c}</${tag}>`).join("");
+    return `<tr>${cells}</tr>`;
+  }).join("");
+  return `<table>${rows}</table>`;
+}
+
+// --- Main handler ---
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -66,8 +139,8 @@ Deno.serve(async (req) => {
     const cookieHeader = setCookies.map((c: string) => c.split(";")[0]).join("; ");
     log("Auth successful");
 
-    // Helper to make authenticated GET requests with logging
-    const apiFetch = async (path: string): Promise<{ ok: boolean; status: number; data: any; text: string }> => {
+    // Helper for authenticated requests
+    const apiFetch = async (path: string): Promise<{ ok: boolean; status: number; data: any }> => {
       try {
         const res = await fetch(`${baseUrl}${path}`, {
           headers: { Accept: "application/json", Cookie: cookieHeader },
@@ -75,29 +148,38 @@ Deno.serve(async (req) => {
         const text = await res.text();
         let data = null;
         try { data = JSON.parse(text); } catch { /* not json */ }
-        log(`${path} → ${res.status} (${text.length} bytes, keys: ${data ? Object.keys(data).join(",") : "non-json"})`);
-        return { ok: res.ok, status: res.status, data, text };
+        log(`${path} → ${res.status} (${text.length}b)`);
+        return { ok: res.ok, status: res.status, data };
       } catch (err) {
         log(`${path} → ERROR: ${err}`);
-        return { ok: false, status: 0, data: null, text: "" };
+        return { ok: false, status: 0, data: null };
       }
     };
 
     // Step 2: Get course metadata
-    const courseRes = await apiFetch(`/api/rest/student/course/${courseId}`);
-    if (!courseRes.ok || !courseRes.data?.course) {
-      return new Response(
-        JSON.stringify({ error: `Не удалось загрузить курс (статус ${courseRes.status})`, debug: debugLog }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    let courseName = "Импортированный курс";
+    let courseDescription: string | null = null;
+
+    const schoolCourseRes = await apiFetch(`/api/rest/school/course/${courseId}`);
+    if (schoolCourseRes.ok && schoolCourseRes.data) {
+      const c = schoolCourseRes.data.course || schoolCourseRes.data;
+      courseName = c.name || c.title || courseName;
+      courseDescription = c.shortDescription || c.description || null;
+      log(`Course: "${courseName}"`);
+    } else {
+      // Fallback to student API
+      const studentCourseRes = await apiFetch(`/api/rest/student/course/${courseId}`);
+      if (studentCourseRes.ok && studentCourseRes.data?.course) {
+        courseName = studentCourseRes.data.course.name || courseName;
+        courseDescription = studentCourseRes.data.course.shortDescription || null;
+        log(`Course (student API): "${courseName}"`);
+      }
     }
 
-    const course = courseRes.data.course;
-    log(`Course: "${course.name}", groups: ${course.groupsCount}, lessons: ${course.lessonsQuantity}`);
-
-    // Step 3: Try multiple API paths to discover lessons
+    // Step 3: Get lessons list
     interface LessonInfo {
       id: string | number;
+      uuid: string;
       title: string;
       order: number;
       type: string;
@@ -106,192 +188,79 @@ Deno.serve(async (req) => {
 
     let allLessons: LessonInfo[] = [];
 
-    // Strategy A: Constructor API (admin/owner accounts)
-    const constructorPaths = [
-      `/api/rest/constructor/course/${courseId}`,
-      `/api/rest/constructor/course/${courseId}/groups`,
-      `/api/rest/constructor/course/${courseId}/lessons`,
-      `/api/rest/course/${courseId}/constructor`,
-      `/api/rest/course/${courseId}/groups`,
-    ];
-
-    for (const path of constructorPaths) {
-      if (allLessons.length > 0) break;
-      const res = await apiFetch(path);
-      if (!res.ok || !res.data) continue;
-
-      // Try to extract lessons from various response shapes
-      const data = res.data;
-      
-      // Shape: { groups: [{ name, lessons: [{ id, title, ... }] }] }
-      const groups = data.groups || data.course?.groups;
-      if (Array.isArray(groups)) {
-        let idx = 0;
-        for (const g of groups) {
-          const lessons = g.lessons || g.items || [];
-          if (Array.isArray(lessons)) {
-            for (const l of lessons) {
-              allLessons.push({
-                id: l.uuid || l.id,
-                title: l.title || l.name || `Урок ${idx + 1}`,
-                order: idx++,
-                type: l.type || "default",
-                groupName: g.name || g.title || "Модуль",
-              });
-            }
-          }
-        }
-        if (allLessons.length > 0) {
-          log(`Found ${allLessons.length} lessons from constructor groups at ${path}`);
+    // Strategy A: School API — step/list (owner/admin)
+    const stepListRes = await apiFetch(`/api/rest/school/course/${courseId}/step/list`);
+    if (stepListRes.ok && Array.isArray(stepListRes.data)) {
+      let idx = 0;
+      for (const group of stepListRes.data) {
+        const groupName = group.name || group.title || "Модуль";
+        const lessons = group.lessons || group.steps || [];
+        for (const l of lessons) {
+          allLessons.push({
+            id: l.id,
+            uuid: l.uuid || String(l.id),
+            title: l.name || l.title || `Урок ${idx + 1}`,
+            order: idx++,
+            type: l.type === "test" ? "test" : "default",
+            groupName,
+          });
         }
       }
-
-      // Shape: { lessons: [{ id, title, ... }] }
-      const lessonsList = data.lessons || data.course?.lessons;
-      if (allLessons.length === 0 && Array.isArray(lessonsList)) {
-        allLessons = lessonsList.map((l: any, i: number) => ({
-          id: l.uuid || l.id,
-          title: l.title || l.name || `Урок ${i + 1}`,
-          order: i,
-          type: l.type || "default",
-          groupName: "Основной модуль",
-        }));
-        if (allLessons.length > 0) {
-          log(`Found ${allLessons.length} lessons from lessons array at ${path}`);
-        }
-      }
+      log(`Strategy A (school/step/list): ${allLessons.length} lessons in ${stepListRes.data.length} groups`);
     }
 
-    // Strategy B: Extract lesson IDs from all flows in course response
+    // Strategy B: Fallback — extract lesson IDs from student course flows
     if (allLessons.length === 0) {
-      log("Constructor APIs failed, extracting lessons from flows...");
-      const lessonIds = new Set<number>();
-
-      // Recursively scan the course object for lesson ID arrays
-      const extractLessonIds = (obj: any, path = "") => {
-        if (!obj || typeof obj !== "object") return;
-        if (Array.isArray(obj)) {
-          // Check if it's an array of numbers (lesson IDs)
-          if (obj.length > 0 && obj.every((v: any) => typeof v === "number")) {
-            if (path.toLowerCase().includes("lesson")) {
+      log("School API unavailable, falling back to student flow extraction...");
+      const studentCourseRes = await apiFetch(`/api/rest/student/course/${courseId}`);
+      if (studentCourseRes.ok && studentCourseRes.data) {
+        const lessonIds = new Set<number>();
+        const extractIds = (obj: any, path = "") => {
+          if (!obj || typeof obj !== "object") return;
+          if (Array.isArray(obj)) {
+            if (obj.length > 0 && obj.every((v: any) => typeof v === "number") && path.toLowerCase().includes("lesson")) {
               obj.forEach((id: number) => lessonIds.add(id));
-              log(`Found ${obj.length} lesson IDs at ${path}`);
+            }
+            obj.forEach((item, i) => extractIds(item, `${path}[${i}]`));
+            return;
+          }
+          for (const [key, val] of Object.entries(obj)) {
+            extractIds(val, `${path}.${key}`);
+          }
+        };
+        extractIds(studentCourseRes.data, "courseData");
+
+        const flows = studentCourseRes.data.course?.flows || studentCourseRes.data.flows;
+        if (Array.isArray(flows)) {
+          for (const flow of flows) {
+            if (flow?.access?.lessons) {
+              const ids = Array.isArray(flow.access.lessons)
+                ? flow.access.lessons
+                : Object.keys(flow.access.lessons).map(Number);
+              ids.forEach((id: number) => lessonIds.add(id));
             }
           }
-          obj.forEach((item, i) => extractLessonIds(item, `${path}[${i}]`));
-          return;
         }
-        for (const [key, val] of Object.entries(obj)) {
-          extractLessonIds(val, `${path}.${key}`);
+
+        if (lessonIds.size > 0) {
+          const sorted = Array.from(lessonIds).sort((a, b) => a - b);
+          allLessons = sorted.map((id, i) => ({
+            id,
+            uuid: String(id),
+            title: `Урок ${i + 1}`,
+            order: i,
+            type: "default",
+            groupName: "Извлечённые уроки",
+          }));
+          log(`Strategy B (flow extraction): ${allLessons.length} lesson IDs`);
         }
-      };
-
-      extractLessonIds(courseRes.data, "courseResponse");
-
-      // Also try the flow endpoint
-      const flowRes = await apiFetch(`/api/rest/student/course/${courseId}/flow`);
-      if (flowRes.ok && flowRes.data) {
-        extractLessonIds(flowRes.data, "flowResponse");
-      }
-
-      // Also check all flow objects in the course response for lesson access
-      const flows = course.flows || courseRes.data.flows;
-      if (Array.isArray(flows)) {
-        for (const flow of flows) {
-          if (flow?.access?.lessons) {
-            const ids = Array.isArray(flow.access.lessons)
-              ? flow.access.lessons
-              : Object.keys(flow.access.lessons).map(Number);
-            ids.forEach((id: number) => lessonIds.add(id));
-            log(`Flow "${flow.name || flow.uuid}": found ${ids.length} lesson IDs`);
-          }
-        }
-      }
-
-      if (lessonIds.size > 0) {
-        const sortedIds = Array.from(lessonIds).sort((a, b) => a - b);
-        allLessons = sortedIds.map((id, i) => ({
-          id,
-          title: `Урок ${i + 1}`,
-          order: i,
-          type: "default",
-          groupName: "Извлечённые уроки",
-        }));
-        log(`Total unique lesson IDs from flows: ${lessonIds.size}`);
-      }
-    }
-
-    // Strategy C: Parse HTML constructor page as last resort
-    if (allLessons.length === 0) {
-      log("Trying HTML constructor page...");
-      try {
-        const htmlRes = await fetch(`${baseUrl}/course/${courseId}/constructor`, {
-          headers: { Cookie: cookieHeader },
-        });
-        if (htmlRes.ok) {
-          const html = await htmlRes.text();
-          log(`Constructor HTML: ${html.length} bytes`);
-          
-          // Try to find __NEXT_DATA__ or similar JSON embedded in HTML
-          const nextDataMatch = html.match(/<script[^>]*id="__NEXT_DATA__"[^>]*>(.*?)<\/script>/s);
-          if (nextDataMatch) {
-            try {
-              const nextData = JSON.parse(nextDataMatch[1]);
-              log(`Found __NEXT_DATA__, keys: ${Object.keys(nextData).join(",")}`);
-              // Extract lessons from Next.js data
-              const extractFromNext = (obj: any): any[] => {
-                if (!obj || typeof obj !== "object") return [];
-                if (Array.isArray(obj)) return obj.flatMap(extractFromNext);
-                if (obj.lessons && Array.isArray(obj.lessons)) return obj.lessons;
-                if (obj.groups && Array.isArray(obj.groups)) {
-                  return obj.groups.flatMap((g: any) => g.lessons || []);
-                }
-                return Object.values(obj).flatMap(extractFromNext);
-              };
-              const found = extractFromNext(nextData);
-              if (found.length > 0) {
-                allLessons = found.map((l: any, i: number) => ({
-                  id: l.uuid || l.id,
-                  title: l.title || l.name || `Урок ${i + 1}`,
-                  order: i,
-                  type: l.type || "default",
-                  groupName: "Из конструктора",
-                }));
-                log(`Found ${allLessons.length} lessons from HTML`);
-              }
-            } catch { /* parse error */ }
-          }
-
-          // Fallback: look for lesson data in any script tag
-          const scriptMatches = html.matchAll(/"lessons"\s*:\s*(\[.*?\])/gs);
-          for (const match of scriptMatches) {
-            if (allLessons.length > 0) break;
-            try {
-              const lessons = JSON.parse(match[1]);
-              if (Array.isArray(lessons) && lessons.length > 0) {
-                allLessons = lessons.map((l: any, i: number) => ({
-                  id: l.uuid || l.id,
-                  title: l.title || l.name || `Урок ${i + 1}`,
-                  order: i,
-                  type: l.type || "default",
-                  groupName: "Из HTML",
-                }));
-                log(`Found ${allLessons.length} lessons from HTML script`);
-              }
-            } catch { /* parse error */ }
-          }
-        } else {
-          log(`Constructor HTML returned ${htmlRes.status}`);
-        }
-      } catch (err) {
-        log(`HTML fetch error: ${err}`);
       }
     }
 
     if (allLessons.length === 0) {
       return new Response(
         JSON.stringify({
-          error: "Не удалось найти уроки. Возможно, аккаунт не имеет доступа к содержимому курса. Попробуйте использовать аккаунт владельца школы.",
+          error: "Не удалось найти уроки. Попробуйте использовать аккаунт владельца школы.",
           debug: debugLog,
         }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -308,44 +277,60 @@ Deno.serve(async (req) => {
 
     for (let i = 0; i < allLessons.length; i++) {
       const lesson = allLessons[i];
-      
-      // Try multiple lesson endpoints
       let lessonData: any = null;
-      const lessonPaths = [
-        `/api/rest/student/lesson/${lesson.id}`,
-        `/api/rest/constructor/lesson/${lesson.id}`,
-        `/api/rest/lesson/${lesson.id}`,
-      ];
 
-      for (const path of lessonPaths) {
+      // Try school API first (uses uuid), then student API
+      const paths = [
+        `/api/rest/school/lesson/${lesson.uuid}`,
+        `/api/rest/student/lesson/${lesson.uuid}`,
+      ];
+      // If uuid differs from id, also try with id
+      if (String(lesson.id) !== lesson.uuid) {
+        paths.push(`/api/rest/school/lesson/${lesson.id}`);
+        paths.push(`/api/rest/student/lesson/${lesson.id}`);
+      }
+
+      for (const path of paths) {
         if (lessonData) break;
         const res = await apiFetch(path);
-        if (res.ok && res.data?.lesson) {
-          lessonData = res.data;
+        if (res.ok && res.data) {
+          lessonData = res.data.lesson || res.data;
         }
       }
 
-      if (lessonData?.lesson) {
-        const blocks = lessonData.lesson.blocks || [];
+      if (lessonData) {
         let htmlContent = "";
-        let lessonType = "text";
+        const lessonTitle = lessonData.name || lessonData.title || lesson.title;
+        let lessonType = lesson.type;
 
-        for (const block of blocks) {
-          if (block.type === "text" && block.content) {
-            htmlContent += block.content;
-          } else if (block.type === "video") {
-            lessonType = "video";
-            htmlContent += `<p><em>[Видео — требуется ручной перенос]</em></p>`;
-          } else if (block.type === "test") {
-            lessonType = "test";
-            htmlContent += `<p><em>[Тест — требуется ручной перенос]</em></p>`;
-          } else if (block.type === "file" && block.content) {
-            htmlContent += `<p><em>[Файл: ${block.content}]</em></p>`;
+        // EditorJS content in pagesPublished
+        const pages = lessonData.pagesPublished || lessonData.pages || [];
+        if (Array.isArray(pages) && pages.length > 0) {
+          for (const page of pages) {
+            const blocks = page.content?.blocks || page.blocks || [];
+            if (blocks.length > 0) {
+              htmlContent += editorBlocksToHtml(blocks);
+            }
+          }
+        }
+
+        // Fallback: legacy blocks format
+        if (!htmlContent && Array.isArray(lessonData.blocks)) {
+          for (const block of lessonData.blocks) {
+            if (block.type === "text" && block.content) {
+              htmlContent += block.content;
+            } else if (block.type === "video") {
+              lessonType = "video";
+              htmlContent += `<p><em>[Видео — требуется ручной перенос]</em></p>`;
+            } else if (block.type === "test") {
+              lessonType = "test";
+              htmlContent += `<p><em>[Тест — требуется ручной перенос]</em></p>`;
+            }
           }
         }
 
         lessonContents.push({
-          title: lessonData.lesson.title || lesson.title,
+          title: lessonTitle,
           content: htmlContent || "<p>Пустой урок</p>",
           order: i,
           type: lessonType === "test" ? "test" : "text",
@@ -359,7 +344,6 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Log progress every 10 lessons
       if ((i + 1) % 10 === 0 || i === allLessons.length - 1) {
         log(`Lessons fetched: ${i + 1}/${allLessons.length}`);
       }
@@ -373,8 +357,8 @@ Deno.serve(async (req) => {
     const { data: newCourse, error: courseError } = await supabaseClient
       .from("courses")
       .insert({
-        title: course.name || "Импортированный курс",
-        description: course.shortDescription || null,
+        title: courseName,
+        description: courseDescription,
         organization_id: organizationId,
         is_published: false,
       })
@@ -420,7 +404,7 @@ Deno.serve(async (req) => {
       JSON.stringify({
         success: true,
         courseId: newCourse.id,
-        courseTitle: course.name,
+        courseTitle: courseName,
         lessonsTotal: allLessons.length,
         lessonsCreated: createdLessons,
         lessonsWithContent,
