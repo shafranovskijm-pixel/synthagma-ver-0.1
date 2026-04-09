@@ -171,6 +171,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
   const [generatingCredentials, setGeneratingCredentials] = useState(false);
   const [resettingPassword, setResettingPassword] = useState(false);
   const [migratingCourseId, setMigratingCourseId] = useState<string | null>(null);
+  const [migrationResult, setMigrationResult] = useState<Record<string, { status: 'success' | 'error'; message: string }>>({});
 
   const planKey = (organization.subscription_plan as SubscriptionPlan) || 'free';
   const planInfo = getPlanInfo(planKey);
