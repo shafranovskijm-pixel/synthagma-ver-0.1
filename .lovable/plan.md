@@ -1,19 +1,21 @@
 
 
-## Деплой и тестовая отправка
+## Fix: Edge Function returns raw HTML instead of rendered page
 
-### Шаг 1: Задеплоить Edge Function
-Деплой `handle-email-action` через инструмент деплоя.
+### Root Cause
 
-### Шаг 2: Найти или создать организацию для теста
-Найти любую организацию в БД, чтобы создать токен для тестового письма.
+The `handle-email-action` function is **not listed** in `supabase/config.toml` with `verify_jwt = false`. By default, Supabase requires a valid JWT for Edge Function calls. When a user clicks the link from an email, they have no JWT -- so the Supabase gateway intercepts the request and returns an error response, which the browser displays as raw text/source code.
 
-### Шаг 3: Создать токен в `email_action_tokens`
-Вставить запись с `action_type = 'consultation_request'`, `template_name = 'welcome'`, `organization_email = '24@24zxc.ru'` и ID найденной организации.
+### Fix
 
-### Шаг 4: Отправить письмо
-Вызвать Edge Function `send-email` с HTML-шаблоном «Приветствие», содержащим кнопку «Запросить консультацию» со ссылкой на `handle-email-action?token=<uuid>`, на адрес `24@24zxc.ru`.
+**File: `supabase/config.toml`** -- Add:
 
-### Шаг 5: Проверить логи
-Убедиться, что письмо отправлено успешно через логи `send-email`.
+```toml
+[functions.handle-email-action]
+verify_jwt = false
+```
+
+Then **redeploy** the `handle-email-action` function so the new config takes effect.
+
+After that, send a fresh test email to verify the form renders correctly in the browser.
 
