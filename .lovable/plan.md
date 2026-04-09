@@ -1,41 +1,42 @@
 
 
-## Исправление просмотра и скачивания приказов
+## Исправление отображения акта при скачивании
 
 ### Проблема
 
-Все 34 приказов в базе имеют `file_url = null`. Код генерации (`generateEnrollmentOrder.ts`) содержит ту же ошибку, что была в актах: кириллические символы `З` и `О` попадают в имя файла Storage, Storage отклоняет загрузку с ошибкой "Invalid key", но ошибка проглатывается — приказ сохраняется в БД без ссылки на файл. В UI кнопки просмотра/скачивания показываются только при наличии `file_url`.
+Две причины:
+1. **Кодировка**: Blob создаётся без указания `charset=utf-8`, Supabase Storage отдаёт файл без правильного Content-Type → кириллица превращается в кракозябры.
+2. **Отображение**: Браузер показывает сырой HTML-код вместо отрендеренной страницы, потому что Storage отдаёт `Content-Disposition: attachment` или неверный MIME-тип.
 
 ### Исправление
 
-**Файл: `src/utils/generateEnrollmentOrder.ts`**
+#### 1. `src/utils/generateAct.ts` — правильная кодировка при загрузке
 
-1. Заменить кириллические буквы в `orderNumber` (строка 27) на латинские для имени файла:
-   - `З` → `Z` (зачисление)
-   - `О` → `O` (отчисление)
-
-   При этом в `docName` (отображаемое имя, строка 116) кириллический номер сохраняется — он идёт в БД, не в Storage.
-
+- Указать `contentType` явно при upload:
 ```ts
-// Для Storage — латиница
-const filePrefix = orderType === "enrollment" ? "Z" : "O";
-const orderNumber = `${filePrefix}-${Date.now().toString().slice(-6)}`;
+const blob = new Blob([html], { type: "text/html;charset=utf-8" });
 
-// Для отображения — кириллица
-const displayPrefix = orderType === "enrollment" ? "З" : "О";
-const displayNumber = `${displayPrefix}-${orderNumber.split("-")[1]}`;
+await supabase.storage
+  .from("billing-documents")
+  .upload(fileName, blob, { contentType: "text/html;charset=utf-8" });
 ```
 
-Имя файла (строка 100) использует `orderNumber` (латиница), а `docName` (строка 116) использует `displayNumber` (кириллица).
+#### 2. `src/components/organization/tabs/DocumentsTab.tsx` — скачивание через Blob URL
 
-2. Добавить логирование ошибки загрузки, чтобы в будущем не терять файлы молча:
+Вместо `window.open(url)` — fetch HTML, создать локальный Blob и открыть:
+
 ```ts
-if (uploadError) {
-  console.error("Storage upload error:", uploadError);
-}
+const handleDownloadDoc = async (doc: BillingDoc) => {
+  const url = await getSignedStorageUrl("billing-documents", doc.file_url);
+  if (!url) { toast({...}); return; }
+  
+  const res = await fetch(url);
+  const text = await res.text();
+  const blob = new Blob([text], { type: "text/html;charset=utf-8" });
+  const blobUrl = URL.createObjectURL(blob);
+  window.open(blobUrl, "_blank");
+};
 ```
 
-### Что насчёт существующих 34 приказов?
-
-Существующие приказы без `file_url` так и останутся без файла — данные для регенерации (список студентов, курс) не сохранены в документе. Новые приказы будут корректно загружаться и отображаться с кнопками просмотра/скачивания.
+Это гарантирует, что браузер отрендерит HTML с правильной кодировкой.
 
