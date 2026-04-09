@@ -150,9 +150,9 @@ function renderTableHtml(data: any): string {
 }
 
 // --- Cookie helper: deduplicating cookie map ---
-const cookieMap = new Map<string, string>();
+// cookieMap is now created per-request inside handler to avoid warm-instance leaks
 
-function mergeCookiesFromResponse(response: Response) {
+function mergeCookiesFromResponse(response: Response, cookieMap: Map<string, string>) {
   const setCookies: string[] = [];
   if (typeof response.headers.getSetCookie === "function") {
     setCookies.push(...response.headers.getSetCookie());
@@ -161,34 +161,32 @@ function mergeCookiesFromResponse(response: Response) {
     if (raw) setCookies.push(raw);
   }
   for (const header of setCookies) {
-    // Each set-cookie header: "Name=Value; Path=/; ..."
     const pair = header.split(";")[0].trim();
     const eqIdx = pair.indexOf("=");
     if (eqIdx > 0) {
       const name = pair.substring(0, eqIdx).trim();
       const value = pair.substring(eqIdx + 1).trim();
-      // Skip "deleted" values — they clear old cookies
-      if (value && value !== "deleted") {
-        cookieMap.set(name, value);
-      } else if (value === "deleted") {
-        // Only delete if we don't already have a real value queued after this
-        // Since we process in order, a later real value will overwrite
-        cookieMap.delete(name);
-      }
+      // Simply overwrite — last value wins (handles deleted → real token sequence)
+      cookieMap.set(name, value);
     }
   }
 }
 
-function getCookieHeader(): string {
-  return Array.from(cookieMap.entries()).map(([k, v]) => `${k}=${v}`).join("; ");
+function getCookieHeader(cookieMap: Map<string, string>): string {
+  return Array.from(cookieMap.entries())
+    .filter(([_, v]) => v && v !== "deleted")
+    .map(([k, v]) => `${k}=${v}`).join("; ");
 }
 
-function getAuthToken(): string | null {
-  return cookieMap.get("Auth-Token") || null;
+function getAuthToken(cookieMap: Map<string, string>): string | null {
+  const t = cookieMap.get("Auth-Token");
+  return (t && t !== "deleted") ? t : null;
 }
 
 // --- Main handler ---
 Deno.serve(async (req) => {
+  // Fresh cookie map per request — prevents warm-instance state leaks
+  const cookieMap = new Map<string, string>();
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -236,7 +234,7 @@ Deno.serve(async (req) => {
       redirect: "manual",
     });
 
-    mergeCookiesFromResponse(authRes);
+    mergeCookiesFromResponse(authRes, cookieMap);
     log(`Auth response: ${authRes.status}, cookies: ${cookieMap.size > 0 ? "yes" : "none"}`);
 
     // If redirect, follow it to collect session cookies
@@ -246,10 +244,10 @@ Deno.serve(async (req) => {
         const redirectUrl = location.startsWith("http") ? location : `${baseUrl}${location}`;
         log(`Following redirect to: ${redirectUrl}`);
         const redirectRes = await fetch(redirectUrl, {
-          headers: { Cookie: getCookieHeader() },
+          headers: { Cookie: getCookieHeader(cookieMap) },
           redirect: "manual",
         });
-        mergeCookiesFromResponse(redirectRes);
+        mergeCookiesFromResponse(redirectRes, cookieMap);
         log(`Redirect response: ${redirectRes.status}`);
 
         // Follow second redirect if any
@@ -258,10 +256,10 @@ Deno.serve(async (req) => {
           if (loc2) {
             const rUrl2 = loc2.startsWith("http") ? loc2 : `${baseUrl}${loc2}`;
             const rRes2 = await fetch(rUrl2, {
-              headers: { Cookie: getCookieHeader() },
+              headers: { Cookie: getCookieHeader(cookieMap) },
               redirect: "manual",
             });
-            mergeCookiesFromResponse(rRes2);
+            mergeCookiesFromResponse(rRes2, cookieMap);
           }
         }
       }
@@ -273,7 +271,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const authToken = getAuthToken();
+    const authToken = getAuthToken(cookieMap);
     if (!authToken) {
       log("No Auth-Token received from auth");
       return new Response(
@@ -287,10 +285,10 @@ Deno.serve(async (req) => {
     // Also try to get CSRF / additional session by hitting the school admin page
     try {
       const adminPageRes = await fetch(`${baseUrl}/school/constructor/course/${courseId}`, {
-        headers: { Cookie: getCookieHeader(), Authorization: `Bearer ${authToken}` },
+        headers: { Cookie: getCookieHeader(cookieMap) },
         redirect: "manual",
       });
-      mergeCookiesFromResponse(adminPageRes);
+      mergeCookiesFromResponse(adminPageRes, cookieMap);
       log(`Admin page probe: ${adminPageRes.status}`);
     } catch (e) {
       log(`Admin page probe failed: ${e}`);
@@ -299,21 +297,19 @@ Deno.serve(async (req) => {
     // Helper for authenticated requests
     const apiFetch = async (path: string): Promise<{ ok: boolean; status: number; data: any; raw: string }> => {
       try {
-        const currentAuth = getAuthToken();
         const headers: Record<string, string> = {
-          Accept: "application/json",
-          Cookie: getCookieHeader(),
-          "X-Requested-With": "XMLHttpRequest",
+          "Accept": "application/json, text/plain, */*",
+          "Cookie": getCookieHeader(cookieMap),
+          "sec-fetch-dest": "empty",
+          "sec-fetch-mode": "cors",
+          "sec-fetch-site": "same-origin",
         };
-        if (currentAuth) {
-          headers["Authorization"] = `Bearer ${currentAuth}`;
-        }
         const res = await fetch(`${baseUrl}${path}`, { headers });
         const text = await res.text();
         let data = null;
         try { data = JSON.parse(text); } catch { /* not json */ }
         log(`${path} → ${res.status} (${text.length}b)`);
-        mergeCookiesFromResponse(res);
+        mergeCookiesFromResponse(res, cookieMap);
         return { ok: res.ok, status: res.status, data, raw: text };
       } catch (err) {
         log(`${path} → ERROR: ${err}`);
