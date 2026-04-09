@@ -1,55 +1,74 @@
 
-Сделаю два связанных исправления в документообороте.
 
-### Что нужно изменить
+## Скачивание документов в PDF вместо HTML
 
-1. **Сделать настоящее скачивание вместо печати**
-   - Сейчас кнопка «Скачать» вызывает `printHtmlContent(...)`, поэтому сразу открывается системное окно печати.
-   - Заменю это поведение на обычное скачивание файла через `fetch` → `Blob` → временный `<a download>`.
-   - Для актов и других HTML-документов файл будет скачиваться как `.html`, а не уходить в печать.
-   - Это изменение нужно в:
-     - `src/components/organization/tabs/DocumentsTab.tsx`
-     - `src/components/admin/TariffsManager.tsx`
-     - `src/components/organization/DocumentArchiveView.tsx`
-     - `src/components/organization/OrdersArchive.tsx`
+### Проблема
+Сейчас `downloadHtmlFile` скачивает файл как `.html`. Пользователь ожидает получить PDF.
 
-2. **Добавить удаление актов в разделе организации**
-   - В блоке «Закрывающие документы» добавлю кнопку-корзину рядом с просмотром и скачиванием.
-   - При удалении нужно:
-     - удалить файл из хранилища `billing-documents`
-     - удалить запись из `org_billing_documents`
-     - убрать документ из локального списка без перезагрузки страницы
-   - Для безопасности оставлю подтверждение перед удалением.
+### Решение
+Библиотеки `jspdf` и `html2canvas` уже установлены в проекте. Заменю `downloadHtmlFile` на новую функцию `downloadHtmlAsPdf`, которая:
 
-### По текущему коду
+1. Fetch HTML по signed URL
+2. Создаёт временный `div`, вставляет HTML
+3. Рендерит через `html2canvas` в canvas
+4. Конвертирует canvas в PDF через `jsPDF` (A4, с разбивкой на страницы)
+5. Скачивает как `.pdf`
 
-- В архиве приказов и протоколов удаление уже есть.
-- В админке для закрывающих документов удаление уже есть.
-- Не хватает именно удаления в пользовательском разделе организации для актов/счетов/чеков.
-- Права на удаление файлов в хранилище уже настроены, отдельные изменения в базе не нужны.
+### Файлы для изменения
 
-### Как будет выглядеть результат
+| Файл | Изменение |
+|------|-----------|
+| `src/utils/downloadHtmlFile.ts` | Переписать: fetch HTML → html2canvas → jsPDF → `.pdf` скачивание |
+| `src/components/organization/tabs/DocumentsTab.tsx` | Обновить имя импорта (если изменится) |
+| `src/components/admin/TariffsManager.tsx` | Аналогично |
+| `src/components/organization/DocumentArchiveView.tsx` | Аналогично |
+| `src/components/organization/OrdersArchive.tsx` | Аналогично |
 
-Для закрывающих документов справа будут три действия:
+### Техническая реализация
 
-```text
-[глаз] [скачать] [корзина]
+```typescript
+// downloadHtmlFile.ts → downloadHtmlAsPdf
+import { jsPDF } from "jspdf";
+import html2canvas from "html2canvas";
+
+export async function downloadHtmlAsPdf(url: string, fileName: string) {
+  const res = await fetch(url);
+  const html = await res.text();
+  
+  // Создаём временный контейнер с фиксированной шириной A4
+  const container = document.createElement("div");
+  container.style.width = "794px"; // A4 at 96dpi
+  container.style.position = "fixed";
+  container.style.left = "-9999px";
+  container.innerHTML = html;
+  // Извлекаем стили из HTML и применяем
+  document.body.appendChild(container);
+  
+  const canvas = await html2canvas(container, { scale: 2, useCORS: true });
+  document.body.removeChild(container);
+  
+  const pdf = new jsPDF("p", "mm", "a4");
+  const imgWidth = 190;
+  const imgHeight = (canvas.height * imgWidth) / canvas.width;
+  const pageHeight = 277;
+  
+  let position = 10;
+  let heightLeft = imgHeight;
+  
+  pdf.addImage(canvas.toDataURL("image/png"), "PNG", 10, position, imgWidth, imgHeight);
+  heightLeft -= pageHeight;
+  
+  while (heightLeft > 0) {
+    position = heightLeft - imgHeight + 10;
+    pdf.addPage();
+    pdf.addImage(canvas.toDataURL("image/png"), "PNG", 10, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+  }
+  
+  const safeName = fileName.replace(/\.html$/, "") + ".pdf";
+  pdf.save(safeName);
+}
 ```
 
-- **Глаз** — открыть документ
-- **Скачать** — скачать файл
-- **Корзина** — удалить документ
-
-### Технически
-
-- Уберу зависимость кнопки «Скачать» от `printHtmlToPdf.ts` в местах, где пользователь ожидает именно загрузку файла.
-- Добавлю маленький helper/общую логику для безопасного имени файла:
-  - брать `doc.name`
-  - подставлять расширение `.html`, если его нет
-- Для удаления буду удалять и storage-объект, и запись в таблице, чтобы не оставались «висячие» файлы.
-
-### Что важно учесть
-
-- Если позже понадобится именно **PDF-файл на скачивание**, это уже отдельная задача: нужно не печатать HTML, а реально генерировать PDF на клиенте или через backend.
-- В рамках этой правки я приведу кнопку «Скачать» к ожидаемому поведению: нажал — файл скачался.
+Во всех 4 компонентах заменю `downloadHtmlFile` на `downloadHtmlAsPdf`.
 
