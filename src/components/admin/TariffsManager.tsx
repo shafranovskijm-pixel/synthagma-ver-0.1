@@ -256,10 +256,8 @@ export function TariffsManager() {
       return;
     }
     try {
-      const res = await fetch(data.signedUrl);
-      const text = await res.text();
-      const { printHtmlContent } = await import("@/utils/printHtmlToPdf");
-      printHtmlContent(text, doc.name);
+      const { downloadHtmlFile } = await import("@/utils/downloadHtmlFile");
+      await downloadHtmlFile(data.signedUrl, doc.name);
     } catch (e) {
       console.error("Error downloading document:", e);
       toast({ title: "Ошибка", description: "Не удалось скачать файл", variant: "destructive" });
