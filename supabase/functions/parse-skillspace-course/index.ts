@@ -460,11 +460,19 @@ Deno.serve(async (req) => {
     }
 
     // Step 4: Fetch each lesson's content
+    interface TestQuestion {
+      lessonIndex: number;
+      question: string;
+      options: { text: string }[];
+      correct_answer: number | null;
+    }
+
     const lessonContents: Array<{
       title: string;
-      content: string; // JSON stringified array of blocks
+      content: string;
       order: number;
       type: string;
+      testQuestions?: TestQuestion[];
     }> = [];
 
     let lessonsAccessDenied = 0;
