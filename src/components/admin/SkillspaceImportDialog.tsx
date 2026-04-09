@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, CheckCircle2, AlertTriangle, Download } from "lucide-react";
+import { Loader2, CheckCircle2, AlertTriangle, Download, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface SkillspaceImportDialogProps {
@@ -20,6 +20,9 @@ interface ImportResult {
   lessonsTotal: number;
   lessonsCreated: number;
   lessonsWithContent: number;
+  lessonsAccessDenied?: number;
+  importMode?: "school" | "student";
+  schoolApiAvailable?: boolean;
 }
 
 export function SkillspaceImportDialog({ open, onOpenChange, organizationId, onSuccess }: SkillspaceImportDialogProps) {
@@ -62,6 +65,9 @@ export function SkillspaceImportDialog({ open, onOpenChange, organizationId, onS
           lessonsTotal: data.lessonsTotal,
           lessonsCreated: data.lessonsCreated,
           lessonsWithContent: data.lessonsWithContent,
+          lessonsAccessDenied: data.lessonsAccessDenied,
+          importMode: data.importMode,
+          schoolApiAvailable: data.schoolApiAvailable,
         });
         onSuccess?.();
       }
@@ -82,6 +88,12 @@ export function SkillspaceImportDialog({ open, onOpenChange, organizationId, onS
       onOpenChange(false);
     }
   };
+
+  const isPartialImport = result && (
+    result.importMode === "student" ||
+    (result.lessonsAccessDenied && result.lessonsAccessDenied > 0) ||
+    result.lessonsWithContent === 0
+  );
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -148,16 +160,56 @@ export function SkillspaceImportDialog({ open, onOpenChange, organizationId, onS
           </div>
         ) : (
           <div className="space-y-4">
+            {isPartialImport && (
+              <Alert className="border-yellow-500/30 bg-yellow-50 dark:bg-yellow-900/10">
+                <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                <AlertDescription className="text-yellow-800 dark:text-yellow-200">
+                  {result.importMode === "student" && !result.schoolApiAvailable ? (
+                    <>
+                      <p className="font-semibold">Импорт выполнен в ограниченном режиме</p>
+                      <p className="text-sm mt-1">
+                        Административный API SkillSpace недоступен для этого аккаунта. 
+                        Импортированы только уроки, доступные студенту. 
+                        Для полного импорта используйте аккаунт владельца школы.
+                      </p>
+                    </>
+                  ) : result.lessonsWithContent === 0 ? (
+                    <>
+                      <p className="font-semibold">Уроки созданы, но без контента</p>
+                      <p className="text-sm mt-1">
+                        Не удалось извлечь содержимое уроков. Возможно, у аккаунта нет доступа к контенту.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="font-semibold">Частичный импорт</p>
+                      <p className="text-sm mt-1">
+                        Некоторые уроки были пропущены из-за ограничений доступа ({result.lessonsAccessDenied} уроков).
+                      </p>
+                    </>
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
+
             <Alert className="border-primary/20 bg-primary/5">
               <CheckCircle2 className="h-4 w-4 text-primary" />
               <AlertDescription className="text-foreground">
-                <p className="font-semibold">Курс успешно импортирован!</p>
+                <p className="font-semibold">Курс импортирован!</p>
                 <p className="mt-1">«{result.courseTitle}»</p>
                 <ul className="mt-2 text-sm space-y-1">
                   <li>Уроков найдено: {result.lessonsTotal}</li>
                   <li>Уроков создано: {result.lessonsCreated}</li>
                   <li>С контентом: {result.lessonsWithContent}</li>
+                  {result.lessonsAccessDenied ? (
+                    <li className="text-yellow-600">Без доступа: {result.lessonsAccessDenied}</li>
+                  ) : null}
                 </ul>
+                {result.importMode && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Режим: {result.importMode === "school" ? "Администратор" : "Студент"}
+                  </p>
+                )}
               </AlertDescription>
             </Alert>
           </div>

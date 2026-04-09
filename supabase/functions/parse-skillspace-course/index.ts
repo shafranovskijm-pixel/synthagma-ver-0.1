@@ -6,76 +6,174 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-// --- EditorJS blocks → HTML converter ---
-function editorBlocksToHtml(blocks: any[]): string {
-  if (!Array.isArray(blocks)) return "";
-  return blocks.map(blockToHtml).join("\n");
+// --- EditorJS blocks → project JSON blocks converter ---
+function editorBlocksToJsonBlocks(blocks: any[]): any[] {
+  if (!Array.isArray(blocks)) return [];
+  const result: any[] = [];
+  for (const block of blocks) {
+    const converted = convertBlock(block);
+    if (converted) result.push(converted);
+  }
+  return result;
 }
 
-function blockToHtml(block: any): string {
+function makeId(): string {
+  return crypto.randomUUID().replace(/-/g, "").slice(0, 8);
+}
+
+function convertBlock(block: any): any | null {
   const { type, data } = block;
-  if (!data) return "";
+  if (!data) return null;
 
   switch (type) {
     case "paragraph":
-      return `<p>${data.text || ""}</p>`;
-    case "header":
-      const lvl = Math.min(Math.max(data.level || 2, 1), 6);
-      return `<h${lvl}>${data.text || ""}</h${lvl}>`;
-    case "image":
+      if (!data.text) return null;
+      return { id: makeId(), type: "paragraph", content: data.text };
+
+    case "header": {
+      const level = data.level || 2;
+      return {
+        id: makeId(),
+        type: level <= 1 ? "heading1" : "heading2",
+        content: data.text || "",
+      };
+    }
+
+    case "image": {
       const src = data.file?.url || data.url || "";
-      const caption = data.caption ? `<figcaption>${data.caption}</figcaption>` : "";
-      return src ? `<figure><img src="${src}" alt="${data.caption || ""}" />${caption}</figure>` : "";
+      if (!src) return null;
+      return {
+        id: makeId(),
+        type: "image",
+        content: data.caption || "",
+        imageSrc: src,
+        imageAlt: data.caption || "",
+      };
+    }
+
     case "list":
-    case "nestedList":
-      return renderList(data);
+    case "nestedList": {
+      const style = data.style === "ordered" ? "numberedList" : "bulletList";
+      const text = flattenListItems(data.items || []);
+      return { id: makeId(), type: style, content: text };
+    }
+
     case "delimiter":
-      return "<hr />";
+      return { id: makeId(), type: "divider", content: "" };
+
     case "quote":
-      return `<blockquote><p>${data.text || ""}</p>${data.caption ? `<cite>${data.caption}</cite>` : ""}</blockquote>`;
-    case "table":
-      return renderTable(data);
+      return {
+        id: makeId(),
+        type: "quote",
+        content: (data.text || "") + (data.caption ? `\n— ${data.caption}` : ""),
+      };
+
+    case "table": {
+      if (!data.content || !Array.isArray(data.content)) return null;
+      const html = renderTableHtml(data);
+      return { id: makeId(), type: "paragraph", content: html };
+    }
+
     case "video":
-      return `<p><em>[Видео: ${data.url || data.file?.url || "требуется ручной перенос"}]</em></p>`;
+      return {
+        id: makeId(),
+        type: "video",
+        content: "",
+        videoUrl: data.url || data.file?.url || "",
+      };
+
     case "embed":
-      return `<p><em>[Embed: ${data.source || data.embed || ""}]</em></p>`;
+      return {
+        id: makeId(),
+        type: "paragraph",
+        content: `<em>[Embed: ${data.source || data.embed || ""}]</em>`,
+      };
+
     case "attaches":
     case "file":
-      return `<p><em>[Файл: ${data.title || data.file?.name || "вложение"}]</em></p>`;
+      return {
+        id: makeId(),
+        type: "document",
+        content: data.title || data.file?.name || "Вложение",
+        documentUrl: data.file?.url || "",
+        documentName: data.title || data.file?.name || "Вложение",
+      };
+
     case "warning":
-      return `<div class="warning"><strong>${data.title || ""}</strong><p>${data.message || ""}</p></div>`;
+      return {
+        id: makeId(),
+        type: "callout-warning",
+        content: `<strong>${data.title || ""}</strong>\n${data.message || ""}`,
+      };
+
     case "code":
-      return `<pre><code>${data.code || ""}</code></pre>`;
+      return {
+        id: makeId(),
+        type: "paragraph",
+        content: `<pre><code>${data.code || ""}</code></pre>`,
+      };
+
     case "raw":
-      return data.html || "";
+      if (!data.html) return null;
+      return { id: makeId(), type: "paragraph", content: data.html };
+
     default:
-      // Unknown block — try to extract text
-      if (data.text) return `<p>${data.text}</p>`;
-      return "";
+      if (data.text) return { id: makeId(), type: "paragraph", content: data.text };
+      return null;
   }
 }
 
-function renderList(data: any): string {
-  const tag = data.style === "ordered" ? "ol" : "ul";
-  const items = data.items || [];
-  const lis = items.map((item: any) => {
-    if (typeof item === "string") return `<li>${item}</li>`;
-    // Nested list item: { content, items }
-    const content = item.content || item.text || "";
-    const nested = item.items && item.items.length > 0 ? renderList({ ...data, items: item.items }) : "";
-    return `<li>${content}${nested}</li>`;
-  }).join("");
-  return `<${tag}>${lis}</${tag}>`;
+function flattenListItems(items: any[]): string {
+  return items
+    .map((item: any) => {
+      if (typeof item === "string") return `<li>${item}</li>`;
+      const content = item.content || item.text || "";
+      const nested =
+        item.items && item.items.length > 0
+          ? `<ul>${flattenListItems(item.items)}</ul>`
+          : "";
+      return `<li>${content}${nested}</li>`;
+    })
+    .join("");
 }
 
-function renderTable(data: any): string {
+function renderTableHtml(data: any): string {
   if (!data.content || !Array.isArray(data.content)) return "";
-  const rows = data.content.map((row: string[], i: number) => {
-    const tag = data.withHeadings && i === 0 ? "th" : "td";
-    const cells = row.map((c: string) => `<${tag}>${c}</${tag}>`).join("");
-    return `<tr>${cells}</tr>`;
-  }).join("");
+  const rows = data.content
+    .map((row: string[], i: number) => {
+      const tag = data.withHeadings && i === 0 ? "th" : "td";
+      const cells = row.map((c: string) => `<${tag}>${c}</${tag}>`).join("");
+      return `<tr>${cells}</tr>`;
+    })
+    .join("");
   return `<table>${rows}</table>`;
+}
+
+// --- Cookie helper: robust extraction from multiple set-cookie headers ---
+function extractCookies(response: Response): string {
+  const cookies: string[] = [];
+
+  // Method 1: getSetCookie (Deno supports this)
+  if (typeof response.headers.getSetCookie === "function") {
+    const setCookies = response.headers.getSetCookie();
+    for (const c of setCookies) {
+      const pair = c.split(";")[0].trim();
+      if (pair) cookies.push(pair);
+    }
+  }
+
+  // Method 2: fallback to raw set-cookie header
+  if (cookies.length === 0) {
+    const raw = response.headers.get("set-cookie");
+    if (raw) {
+      // Multiple cookies may be comma-separated (but cookie values can contain commas)
+      // Split by known pattern: ", name=" is unreliable, so just take the whole thing
+      const pair = raw.split(";")[0].trim();
+      if (pair) cookies.push(pair);
+    }
+  }
+
+  return cookies.join("; ");
 }
 
 // --- Main handler ---
@@ -114,51 +212,121 @@ Deno.serve(async (req) => {
 
     log(`Parsing course ${courseId} from ${baseUrl}`);
 
-    // Step 1: Authenticate
+    // Step 1: Authenticate — follow redirects manually to collect all cookies
     const formData = new FormData();
     formData.append("email", login);
     formData.append("password", password);
     formData.append("fingerprint", crypto.randomUUID());
 
+    let allCookies = "";
+
+    // First request — login
     const authRes = await fetch(`${baseUrl}/api/user/auth`, {
       method: "POST",
       body: formData,
       redirect: "manual",
     });
 
-    if (!authRes.ok && authRes.status !== 302) {
-      const authText = await authRes.text();
-      log(`Auth failed: ${authRes.status} ${authText.substring(0, 300)}`);
+    const authCookies = extractCookies(authRes);
+    allCookies = authCookies;
+    log(`Auth response: ${authRes.status}, cookies: ${authCookies.length > 0 ? "yes" : "none"}`);
+
+    // If redirect, follow it to collect session cookies
+    if (authRes.status >= 300 && authRes.status < 400) {
+      const location = authRes.headers.get("location");
+      if (location) {
+        const redirectUrl = location.startsWith("http") ? location : `${baseUrl}${location}`;
+        log(`Following redirect to: ${redirectUrl}`);
+        const redirectRes = await fetch(redirectUrl, {
+          headers: { Cookie: allCookies },
+          redirect: "manual",
+        });
+        const redirectCookies = extractCookies(redirectRes);
+        if (redirectCookies) {
+          allCookies = allCookies ? `${allCookies}; ${redirectCookies}` : redirectCookies;
+        }
+        log(`Redirect response: ${redirectRes.status}, extra cookies: ${redirectCookies.length > 0 ? "yes" : "none"}`);
+
+        // Follow second redirect if any
+        if (redirectRes.status >= 300 && redirectRes.status < 400) {
+          const loc2 = redirectRes.headers.get("location");
+          if (loc2) {
+            const rUrl2 = loc2.startsWith("http") ? loc2 : `${baseUrl}${loc2}`;
+            log(`Following second redirect to: ${rUrl2}`);
+            const rRes2 = await fetch(rUrl2, {
+              headers: { Cookie: allCookies },
+              redirect: "manual",
+            });
+            const rCookies2 = extractCookies(rRes2);
+            if (rCookies2) {
+              allCookies = allCookies ? `${allCookies}; ${rCookies2}` : rCookies2;
+            }
+          }
+        }
+      }
+    } else if (!authRes.ok) {
+      log(`Auth failed: ${authRes.status}`);
       return new Response(
         JSON.stringify({ error: "Не удалось авторизоваться. Проверьте логин и пароль.", debug: debugLog }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const setCookies = authRes.headers.getSetCookie?.() || [];
-    const cookieHeader = setCookies.map((c: string) => c.split(";")[0]).join("; ");
-    log("Auth successful");
+    if (!allCookies) {
+      log("No cookies received from auth");
+      return new Response(
+        JSON.stringify({ error: "Авторизация не вернула cookie сессии. Проверьте учётные данные.", debug: debugLog }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    log(`Auth successful, cookies: ${allCookies.substring(0, 80)}...`);
+
+    // Also try to get CSRF / additional session by hitting the school admin page
+    try {
+      const adminPageRes = await fetch(`${baseUrl}/school/constructor/course/${courseId}`, {
+        headers: { Cookie: allCookies },
+        redirect: "manual",
+      });
+      const adminPageCookies = extractCookies(adminPageRes);
+      if (adminPageCookies) {
+        allCookies = `${allCookies}; ${adminPageCookies}`;
+      }
+      log(`Admin page probe: ${adminPageRes.status}`);
+    } catch (e) {
+      log(`Admin page probe failed: ${e}`);
+    }
 
     // Helper for authenticated requests
-    const apiFetch = async (path: string): Promise<{ ok: boolean; status: number; data: any }> => {
+    const apiFetch = async (path: string): Promise<{ ok: boolean; status: number; data: any; raw: string }> => {
       try {
         const res = await fetch(`${baseUrl}${path}`, {
-          headers: { Accept: "application/json", Cookie: cookieHeader },
+          headers: {
+            Accept: "application/json",
+            Cookie: allCookies,
+            "X-Requested-With": "XMLHttpRequest",
+          },
         });
         const text = await res.text();
         let data = null;
         try { data = JSON.parse(text); } catch { /* not json */ }
         log(`${path} → ${res.status} (${text.length}b)`);
-        return { ok: res.ok, status: res.status, data };
+        // Collect any new cookies
+        const newCookies = extractCookies(res);
+        if (newCookies) {
+          allCookies = `${allCookies}; ${newCookies}`;
+        }
+        return { ok: res.ok, status: res.status, data, raw: text };
       } catch (err) {
         log(`${path} → ERROR: ${err}`);
-        return { ok: false, status: 0, data: null };
+        return { ok: false, status: 0, data: null, raw: "" };
       }
     };
 
     // Step 2: Get course metadata
     let courseName = "Импортированный курс";
     let courseDescription: string | null = null;
+    let importMode: "school" | "student" = "school";
 
     const schoolCourseRes = await apiFetch(`/api/rest/school/course/${courseId}`);
     if (schoolCourseRes.ok && schoolCourseRes.data) {
@@ -167,7 +335,8 @@ Deno.serve(async (req) => {
       courseDescription = c.shortDescription || c.description || null;
       log(`Course: "${courseName}"`);
     } else {
-      // Fallback to student API
+      log(`School course API returned ${schoolCourseRes.status}, trying student API...`);
+      importMode = "student";
       const studentCourseRes = await apiFetch(`/api/rest/student/course/${courseId}`);
       if (studentCourseRes.ok && studentCourseRes.data?.course) {
         courseName = studentCourseRes.data.course.name || courseName;
@@ -187,10 +356,12 @@ Deno.serve(async (req) => {
     }
 
     let allLessons: LessonInfo[] = [];
+    let schoolApiAvailable = false;
 
     // Strategy A: School API — step/list (owner/admin)
     const stepListRes = await apiFetch(`/api/rest/school/course/${courseId}/step/list`);
     if (stepListRes.ok && Array.isArray(stepListRes.data)) {
+      schoolApiAvailable = true;
       let idx = 0;
       for (const group of stepListRes.data) {
         const groupName = group.name || group.title || "Модуль";
@@ -209,12 +380,29 @@ Deno.serve(async (req) => {
       log(`Strategy A (school/step/list): ${allLessons.length} lessons in ${stepListRes.data.length} groups`);
     }
 
-    // Strategy B: Fallback — extract lesson IDs from student course flows
-    if (allLessons.length === 0) {
-      log("School API unavailable, falling back to student flow extraction...");
+    // If school API failed, DO NOT silently fall back — report the issue
+    if (allLessons.length === 0 && !schoolApiAvailable) {
+      // Try student fallback but warn
+      log("School API unavailable (401). Trying student flow extraction as fallback...");
+      importMode = "student";
+      
       const studentCourseRes = await apiFetch(`/api/rest/student/course/${courseId}`);
       if (studentCourseRes.ok && studentCourseRes.data) {
         const lessonIds = new Set<number>();
+        
+        const flows = studentCourseRes.data.course?.flows || studentCourseRes.data.flows;
+        if (Array.isArray(flows)) {
+          for (const flow of flows) {
+            if (flow?.access?.lessons) {
+              const ids = Array.isArray(flow.access.lessons)
+                ? flow.access.lessons
+                : Object.keys(flow.access.lessons).map(Number);
+              ids.forEach((id: number) => lessonIds.add(id));
+            }
+          }
+        }
+
+        // Also try extracting from course data
         const extractIds = (obj: any, path = "") => {
           if (!obj || typeof obj !== "object") return;
           if (Array.isArray(obj)) {
@@ -229,18 +417,6 @@ Deno.serve(async (req) => {
           }
         };
         extractIds(studentCourseRes.data, "courseData");
-
-        const flows = studentCourseRes.data.course?.flows || studentCourseRes.data.flows;
-        if (Array.isArray(flows)) {
-          for (const flow of flows) {
-            if (flow?.access?.lessons) {
-              const ids = Array.isArray(flow.access.lessons)
-                ? flow.access.lessons
-                : Object.keys(flow.access.lessons).map(Number);
-              ids.forEach((id: number) => lessonIds.add(id));
-            }
-          }
-        }
 
         if (lessonIds.size > 0) {
           const sorted = Array.from(lessonIds).sort((a, b) => a - b);
@@ -260,7 +436,9 @@ Deno.serve(async (req) => {
     if (allLessons.length === 0) {
       return new Response(
         JSON.stringify({
-          error: "Не удалось найти уроки. Попробуйте использовать аккаунт владельца школы.",
+          error: "Не удалось найти уроки. School API вернул 401 — возможно, аккаунт не является владельцем/администратором школы.",
+          importMode,
+          schoolApiAvailable,
           debug: debugLog,
         }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -270,23 +448,28 @@ Deno.serve(async (req) => {
     // Step 4: Fetch each lesson's content
     const lessonContents: Array<{
       title: string;
-      content: string;
+      content: string; // JSON stringified array of blocks
       order: number;
       type: string;
     }> = [];
+
+    let lessonsAccessDenied = 0;
+    let lessonsWithBlocks = 0;
 
     for (let i = 0; i < allLessons.length; i++) {
       const lesson = allLessons[i];
       let lessonData: any = null;
 
-      // Try school API first (uses uuid), then student API
+      // Try school API first (uuid), then student API
       const paths = [
         `/api/rest/school/lesson/${lesson.uuid}`,
-        `/api/rest/student/lesson/${lesson.uuid}`,
       ];
-      // If uuid differs from id, also try with id
       if (String(lesson.id) !== lesson.uuid) {
         paths.push(`/api/rest/school/lesson/${lesson.id}`);
+      }
+      // Student fallback paths
+      paths.push(`/api/rest/student/lesson/${lesson.uuid}`);
+      if (String(lesson.id) !== lesson.uuid) {
         paths.push(`/api/rest/student/lesson/${lesson.id}`);
       }
 
@@ -299,46 +482,54 @@ Deno.serve(async (req) => {
       }
 
       if (lessonData) {
-        let htmlContent = "";
         const lessonTitle = lessonData.name || lessonData.title || lesson.title;
         let lessonType = lesson.type;
+        let jsonBlocks: any[] = [];
 
         // EditorJS content in pagesPublished
         const pages = lessonData.pagesPublished || lessonData.pages || [];
         if (Array.isArray(pages) && pages.length > 0) {
           for (const page of pages) {
+            // Add page title as heading if present
+            if (page.title) {
+              jsonBlocks.push({ id: makeId(), type: "heading2", content: page.title });
+            }
             const blocks = page.content?.blocks || page.blocks || [];
             if (blocks.length > 0) {
-              htmlContent += editorBlocksToHtml(blocks);
+              const converted = editorBlocksToJsonBlocks(blocks);
+              jsonBlocks.push(...converted);
             }
           }
         }
 
         // Fallback: legacy blocks format
-        if (!htmlContent && Array.isArray(lessonData.blocks)) {
+        if (jsonBlocks.length === 0 && Array.isArray(lessonData.blocks)) {
           for (const block of lessonData.blocks) {
             if (block.type === "text" && block.content) {
-              htmlContent += block.content;
+              jsonBlocks.push({ id: makeId(), type: "paragraph", content: block.content });
             } else if (block.type === "video") {
               lessonType = "video";
-              htmlContent += `<p><em>[Видео — требуется ручной перенос]</em></p>`;
+              jsonBlocks.push({ id: makeId(), type: "paragraph", content: "<em>[Видео — требуется ручной перенос]</em>" });
             } else if (block.type === "test") {
               lessonType = "test";
-              htmlContent += `<p><em>[Тест — требуется ручной перенос]</em></p>`;
+              jsonBlocks.push({ id: makeId(), type: "paragraph", content: "<em>[Тест — требуется ручной перенос]</em>" });
             }
           }
         }
 
+        if (jsonBlocks.length > 0) lessonsWithBlocks++;
+
         lessonContents.push({
           title: lessonTitle,
-          content: htmlContent || "<p>Пустой урок</p>",
+          content: JSON.stringify(jsonBlocks.length > 0 ? jsonBlocks : [{ id: makeId(), type: "paragraph", content: "Пустой урок" }]),
           order: i,
           type: lessonType === "test" ? "test" : "text",
         });
       } else {
+        lessonsAccessDenied++;
         lessonContents.push({
           title: lesson.title,
-          content: `<p><em>Нет доступа к уроку (ID: ${lesson.id})</em></p>`,
+          content: JSON.stringify([{ id: makeId(), type: "paragraph", content: `<em>Нет доступа к уроку (ID: ${lesson.id})</em>` }]),
           order: i,
           type: "text",
         });
@@ -396,10 +587,6 @@ Deno.serve(async (req) => {
 
     log(`Created ${createdLessons}/${lessonContents.length} lessons`);
 
-    const lessonsWithContent = lessonContents.filter(
-      (l) => !l.content.includes("Нет доступа") && l.content !== "<p>Пустой урок</p>"
-    ).length;
-
     return new Response(
       JSON.stringify({
         success: true,
@@ -407,7 +594,10 @@ Deno.serve(async (req) => {
         courseTitle: courseName,
         lessonsTotal: allLessons.length,
         lessonsCreated: createdLessons,
-        lessonsWithContent,
+        lessonsWithContent: lessonsWithBlocks,
+        lessonsAccessDenied,
+        importMode,
+        schoolApiAvailable,
         debug: debugLog,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
