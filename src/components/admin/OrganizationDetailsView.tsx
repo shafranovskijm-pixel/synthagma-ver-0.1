@@ -1119,7 +1119,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                   ))}
                   {courses.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                         Нет курсов
                       </TableCell>
                     </TableRow>
