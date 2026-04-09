@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Building2, Search, Crown, Users, BookOpen, HardDrive, AlertTriangle, Clock, CheckCircle, XCircle, Calendar, Bell, Upload, FileText, Receipt, File, Trash2, Download, FolderOpen } from "lucide-react";
+import { Building2, Search, Crown, Users, BookOpen, HardDrive, AlertTriangle, Clock, CheckCircle, XCircle, Calendar, Bell, Upload, FileText, Receipt, File, Trash2, Download, FolderOpen, Eye } from "lucide-react";
 import { differenceInDays, format } from "date-fns";
 import { ru } from "date-fns/locale";
 
@@ -227,7 +227,7 @@ export function TariffsManager() {
     }
   };
 
-  const handleDownloadDoc = async (doc: BillingDoc) => {
+  const handleViewDoc = async (doc: BillingDoc) => {
     const { data, error } = await supabase.storage
       .from("billing-documents")
       .createSignedUrl(doc.file_url, 3600);
@@ -244,6 +244,32 @@ export function TariffsManager() {
     } catch (e) {
       console.error("Error opening document:", e);
       window.open(data.signedUrl, "_blank");
+    }
+  };
+
+  const handleDownloadDoc = async (doc: BillingDoc) => {
+    const { data, error } = await supabase.storage
+      .from("billing-documents")
+      .createSignedUrl(doc.file_url, 3600);
+    if (!data?.signedUrl) {
+      toast({ title: "Ошибка", description: "Не удалось получить ссылку", variant: "destructive" });
+      return;
+    }
+    try {
+      const res = await fetch(data.signedUrl);
+      const text = await res.text();
+      const blob = new Blob([text], { type: "text/html;charset=utf-8" });
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = `${doc.name || "document"}.html`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    } catch (e) {
+      console.error("Error downloading document:", e);
+      toast({ title: "Ошибка", description: "Не удалось скачать файл", variant: "destructive" });
     }
   };
 
@@ -543,7 +569,10 @@ export function TariffsManager() {
                       </div>
                     </div>
                     <div className="flex gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => handleDownloadDoc(doc)}>
+                      <Button variant="ghost" size="sm" title="Просмотр" onClick={() => handleViewDoc(doc)}>
+                        <Eye className="w-4 h-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm" title="Скачать" onClick={() => handleDownloadDoc(doc)}>
                         <Download className="w-4 h-4" />
                       </Button>
                       <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleDeleteBillingDoc(doc)}>
