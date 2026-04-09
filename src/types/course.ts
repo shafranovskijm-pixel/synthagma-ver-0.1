@@ -36,7 +36,6 @@ export interface Lesson {
   content: string | null;
   order_index: number;
   test_questions_count: number | null;
-  test_passing_score?: number;
   created_at: string;
   updated_at: string;
 }
