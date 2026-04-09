@@ -4,39 +4,19 @@ Deno.serve(async (req) => {
   const url = new URL(req.url);
   const token = url.searchParams.get("token");
 
-  const htmlResponse = (title: string, message: string, success: boolean) => {
-    const html = `<!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title}</title>
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #f8f9fa; }
-    .card { background: white; border-radius: 16px; padding: 48px; max-width: 480px; text-align: center; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
-    .icon { font-size: 48px; margin-bottom: 16px; }
-    h1 { font-size: 22px; color: #1a1a1a; margin: 0 0 12px; }
-    p { font-size: 15px; color: #666; line-height: 1.6; margin: 0; }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <div class="icon">${success ? "\u2705" : "\u26A0\uFE0F"}</div>
-    <h1>${title}</h1>
-    <p>${message}</p>
-  </div>
-</body>
-</html>`;
-    return new Response(html, {
-      status: 200,
-      headers: {
-        "content-type": "text/html; charset=utf-8",
-      },
+  // Get the app URL for redirects
+  const appUrl = Deno.env.get("APP_URL") || "https://sintagma.com.ru";
+
+  const redirect = (status: string, message: string) => {
+    const redirectUrl = `${appUrl}/email-response?status=${encodeURIComponent(status)}&message=${encodeURIComponent(message)}`;
+    return new Response(null, {
+      status: 302,
+      headers: { "Location": redirectUrl },
     });
   };
 
   if (!token) {
-    return htmlResponse("Ошибка", "Неверная ссылка. Токен не указан.", false);
+    return redirect("error", "Неверная ссылка. Токен не указан.");
   }
 
   try {
@@ -51,11 +31,11 @@ Deno.serve(async (req) => {
       .single();
 
     if (tokenError || !tokenData) {
-      return htmlResponse("Ошибка", "Ссылка недействительна или срок действия истёк.", false);
+      return redirect("error", "Ссылка недействительна или срок действия истёк.");
     }
 
     if (tokenData.used) {
-      return htmlResponse("Уже обработано", "Ваш запрос уже был принят ранее. Мы свяжемся с вами в ближайшее время.", false);
+      return redirect("already", "Ваш запрос уже был принят ранее. Мы свяжемся с вами в ближайшее время.");
     }
 
     await supabase
@@ -106,13 +86,9 @@ Deno.serve(async (req) => {
       console.error("Telegram notification error:", tgErr);
     }
 
-    return htmlResponse(
-      "Запрос принят!",
-      "Спасибо за ответ! Мы свяжемся с вами в ближайшее время для консультации.",
-      true
-    );
+    return redirect("success", "Спасибо за ответ! Мы свяжемся с вами в ближайшее время для консультации.");
   } catch (error) {
     console.error("Error handling email action:", error);
-    return htmlResponse("Ошибка", "Произошла ошибка при обработке запроса. Попробуйте позже.", false);
+    return redirect("error", "Произошла ошибка при обработке запроса. Попробуйте позже.");
   }
 });
