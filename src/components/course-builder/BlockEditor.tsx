@@ -2383,9 +2383,40 @@ function RenderBlock({ block, quizAnswer, quizSubmitted, onQuizAnswer, onQuizSub
       );
     case "image":
       return block.imageSrc ? <img src={block.imageSrc} alt={block.imageAlt || ""} className="rounded-lg max-w-full h-auto not-prose" /> : null;
-    case "video":
-      const embedUrl = block.videoUrl?.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1];
-      return embedUrl ? <div className="aspect-video not-prose"><iframe src={`https://www.youtube.com/embed/${embedUrl}`} className="w-full h-full rounded-lg" allowFullScreen /></div> : null;
+    case "video": {
+      if (!block.videoUrl) return null;
+      const vid = block.videoUrl;
+      // Direct video file URLs → HTML5 video player
+      if (vid.match(/\.(mp4|webm|ogg|mov)(\?.*)?$/i) || vid.includes("selstorage.ru")) {
+        return (
+          <div className="aspect-video not-prose">
+            <video src={vid} controls className="w-full h-full rounded-lg bg-black" controlsList="nodownload" />
+          </div>
+        );
+      }
+      // YouTube
+      const ytId = vid.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1];
+      if (ytId) return <div className="aspect-video not-prose"><iframe src={`https://www.youtube.com/embed/${ytId}`} className="w-full h-full rounded-lg" allowFullScreen /></div>;
+      // Vimeo
+      const vimeoId = vid.match(/vimeo\.com\/(\d+)/)?.[1];
+      if (vimeoId) return <div className="aspect-video not-prose"><iframe src={`https://player.vimeo.com/video/${vimeoId}`} className="w-full h-full rounded-lg" allowFullScreen /></div>;
+      // Rutube
+      const rutubeId = vid.match(/rutube\.ru\/video\/([a-zA-Z0-9]+)/)?.[1];
+      if (rutubeId) return <div className="aspect-video not-prose"><iframe src={`https://rutube.ru/play/embed/${rutubeId}`} className="w-full h-full rounded-lg" allowFullScreen /></div>;
+      // Iframe embed
+      if (vid.includes("<iframe")) {
+        return <div className="aspect-video not-prose [&>iframe]:w-full [&>iframe]:h-full [&>iframe]:border-0" dangerouslySetInnerHTML={{ __html: vid }} />;
+      }
+      // Fallback: try as direct video
+      if (vid.startsWith("http")) {
+        return (
+          <div className="aspect-video not-prose">
+            <video src={vid} controls className="w-full h-full rounded-lg bg-black" controlsList="nodownload" />
+          </div>
+        );
+      }
+      return null;
+    }
     case "slider":
       const slides = block.sliderSlides || [];
       const currentIdx = sliderIndex ?? 0;
