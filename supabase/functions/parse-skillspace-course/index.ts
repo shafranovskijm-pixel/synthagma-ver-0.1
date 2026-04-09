@@ -150,9 +150,9 @@ function renderTableHtml(data: any): string {
 }
 
 // --- Cookie helper: deduplicating cookie map ---
-const cookieMap = new Map<string, string>();
+// cookieMap is now created per-request inside handler to avoid warm-instance leaks
 
-function mergeCookiesFromResponse(response: Response) {
+function mergeCookiesFromResponse(response: Response, cookieMap: Map<string, string>) {
   const setCookies: string[] = [];
   if (typeof response.headers.getSetCookie === "function") {
     setCookies.push(...response.headers.getSetCookie());
@@ -161,30 +161,26 @@ function mergeCookiesFromResponse(response: Response) {
     if (raw) setCookies.push(raw);
   }
   for (const header of setCookies) {
-    // Each set-cookie header: "Name=Value; Path=/; ..."
     const pair = header.split(";")[0].trim();
     const eqIdx = pair.indexOf("=");
     if (eqIdx > 0) {
       const name = pair.substring(0, eqIdx).trim();
       const value = pair.substring(eqIdx + 1).trim();
-      // Skip "deleted" values — they clear old cookies
-      if (value && value !== "deleted") {
-        cookieMap.set(name, value);
-      } else if (value === "deleted") {
-        // Only delete if we don't already have a real value queued after this
-        // Since we process in order, a later real value will overwrite
-        cookieMap.delete(name);
-      }
+      // Simply overwrite — last value wins (handles deleted → real token sequence)
+      cookieMap.set(name, value);
     }
   }
 }
 
-function getCookieHeader(): string {
-  return Array.from(cookieMap.entries()).map(([k, v]) => `${k}=${v}`).join("; ");
+function getCookieHeader(cookieMap: Map<string, string>): string {
+  return Array.from(cookieMap.entries())
+    .filter(([_, v]) => v && v !== "deleted")
+    .map(([k, v]) => `${k}=${v}`).join("; ");
 }
 
-function getAuthToken(): string | null {
-  return cookieMap.get("Auth-Token") || null;
+function getAuthToken(cookieMap: Map<string, string>): string | null {
+  const t = cookieMap.get("Auth-Token");
+  return (t && t !== "deleted") ? t : null;
 }
 
 // --- Main handler ---
