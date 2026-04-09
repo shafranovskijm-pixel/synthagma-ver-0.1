@@ -890,6 +890,7 @@ Deno.serve(async (req) => {
         lessonsAccessDenied,
         filesTransferred,
         filesFailed,
+        testQuestionsCreated: totalTestQuestions,
         importMode,
         schoolApiAvailable,
         debug: debugLog,
