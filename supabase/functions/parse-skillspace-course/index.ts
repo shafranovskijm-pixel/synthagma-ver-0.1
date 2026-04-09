@@ -750,7 +750,10 @@ Deno.serve(async (req) => {
       }
     };
 
-    // Process all lesson blocks to download and reupload media
+    // Process all lesson blocks to download and reupload media (skip in update mode — already done)
+    if (isUpdateMode) {
+      log(`Step 4.5: Skipping media download in update mode`);
+    } else {
     log(`Step 4.5: Downloading media files...`);
     for (let li = 0; li < lessonContents.length; li++) {
       const lesson = lessonContents[li];
@@ -802,6 +805,7 @@ Deno.serve(async (req) => {
         log(`Media processing: ${li + 1}/${lessonContents.length} lessons`);
       }
     }
+    } // end if !isUpdateMode
 
     log(`Media transfer complete: ${filesTransferred} transferred, ${filesFailed} failed`);
 
