@@ -86,10 +86,10 @@ export async function generateAct({
     .sig-block { width: 45%; }
     .sig-block h4 { font-size: 12pt; margin-bottom: 15px; border-bottom: 1px solid #000; padding-bottom: 5px; }
     .sig-line { display: flex; align-items: flex-end; gap: 10px; margin-top: 30px; position: relative; min-height: 80px; }
-    .sig-images { position: relative; width: 200px; height: 80px; }
+    .sig-images { position: relative; width: 250px; height: 120px; }
     .sig-images img { position: absolute; }
-    .sig-stamp { left: 0; top: -10px; width: 80px; height: 80px; opacity: 0.85; }
-    .sig-sign { left: 40px; top: 5px; width: 150px; height: 60px; }
+    .sig-stamp { left: 0; top: 0; width: 120px; height: auto; opacity: 0.9; }
+    .sig-sign { left: 50px; top: 20px; width: 160px; height: auto; opacity: 0.9; }
     .no-print { display: none; }
   </style>
 </head>

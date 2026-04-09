@@ -72,8 +72,8 @@ export async function generateAttestationProtocol({
     // Build stamp/signature HTML
     const stampSignatureHtml = (stampUrl || signatureUrl) ? `
       <div style="display: flex; gap: 40px; margin-top: 20px; align-items: flex-end;">
-        ${signatureUrl ? `<img src="${signatureUrl}" alt="Подпись" style="max-height: 60px; max-width: 150px; object-fit: contain;" />` : ''}
-        ${stampUrl ? `<img src="${stampUrl}" alt="Печать" style="max-height: 80px; max-width: 80px; object-fit: contain;" />` : ''}
+        ${signatureUrl ? `<img src="${signatureUrl}" alt="Подпись" style="width: 160px; height: auto; opacity: 0.9;" />` : ''}
+        ${stampUrl ? `<img src="${stampUrl}" alt="Печать" style="width: 120px; height: auto; opacity: 0.9;" />` : ''}
       </div>` : '';
 
     const chairmanName = chairman?.name || directorName || "_________________";
