@@ -1,51 +1,42 @@
 
 
-## Починка парсера SkillSpace — правильная авторизация
+## Исправление парсера SkillSpace — окончательное решение на основе реальных заголовков
 
-### Корневая причина
+### Что показали данные из DevTools
 
-Логи функции показывают:
-```text
-Auth-Token=deleted; Refresh-Token=deleted; Auth-Token=eyJhbGciOiJIUzI1Ni...
-```
+Браузер при обращении к school API отправляет:
+- `Cookie: ...; Auth-Token=eyJ...` — токен внутри cookie
+- `accept: application/json, text/plain, */*`
+- Стандартные sec-* заголовки
+- **НЕТ** заголовка `Authorization`
+- **НЕТ** заголовка `X-Requested-With`
 
-Две проблемы:
-1. **Дублирование cookies** — сервер SkillSpace при логине сначала шлёт `Auth-Token=deleted` (сброс старой сессии), затем новый `Auth-Token=eyJ...`. Текущий код складывает оба, и сервер видит первый — "deleted"
-2. **School API требует `Authorization: Bearer`** — REST API SkillSpace для эндпоинтов `/api/rest/school/*` ожидает JWT-токен не только в cookie, но и в заголовке `Authorization: Bearer {token}`. Без этого — 401
+### Найденные баги в текущей функции
 
-Из-за этого `step/list` → 401, функция падает в студенческий fallback, а студенческий API тоже возвращает 403 на все уроки.
+1. **`cookieMap` на уровне модуля** (строка 153) — `Map` живёт между вызовами на warm-инстансе Deno. При повторном импорте куки от предыдущего вызова смешиваются с новыми, создавая невалидную сессию
 
-### Что исправить
+2. **Лишний `Authorization: Bearer` заголовок** (строка 309) — SkillSpace school API авторизует ТОЛЬКО по Cookie, не по Authorization header. Этот заголовок может ломать запрос
+
+3. **Лишний `X-Requested-With: XMLHttpRequest`** (строка 306) — браузер его не отправляет
+
+4. **Логика "deleted" в cookie** (строки 171-177) — текущий порядок: если `deleted` приходит первым, удаляем из Map, затем реальное значение перезаписывает. Но если `deleted` приходит последним — удаляем реальное значение. Нужно обрабатывать ВСЕ set-cookie по порядку и оставлять последнее значение
+
+### Исправления
 
 **`supabase/functions/parse-skillspace-course/index.ts`**:
 
-1. **Дедупликация cookies** — при склейке cookies проверять имена: если есть `Auth-Token=deleted` и потом `Auth-Token=eyJ...`, оставлять только последний (актуальный). Реализовать как Map по имени cookie, где каждый следующий перезаписывает предыдущий
+1. Перенести `cookieMap` внутрь handler-функции (Deno.serve callback), чтобы каждый запрос начинался с чистого состояния
 
-2. **Добавить `Authorization: Bearer` заголовок** — извлечь JWT из cookie `Auth-Token` и передавать его во все API-запросы через заголовок `Authorization: Bearer {jwt}`. Это стандарт SkillSpace для школьного API
+2. В `apiFetch` убрать `Authorization` и `X-Requested-With`, оставить только:
+   - `Accept: application/json, text/plain, */*`
+   - `Cookie: {all cookies}`
 
-3. **Улучшить обработку video-блоков** — при конвертации EditorJS в JSON-блоки, для типа `video` извлекать URL и сохранять как `paragraph` с кликабельной ссылкой, а не placeholder "требуется ручной перенос"
+3. В `mergeCookiesFromResponse` — просто перезаписывать значение по имени без специальной логики для "deleted" (последнее значение в порядке set-cookie всегда побеждает)
 
-### Технические детали
+4. Добавить sec-fetch-* заголовки для имитации браузерного запроса:
+   - `sec-fetch-dest: empty`
+   - `sec-fetch-mode: cors`  
+   - `sec-fetch-site: same-origin`
 
-Изменения в `extractCookies` / `apiFetch`:
-
-```text
-extractCookies → mergeCookies:
-  Вместо простого join всех пар, использовать Map<string, string>
-  Каждый новый set-cookie перезаписывает предыдущее значение с тем же именем
-  "Auth-Token=deleted" + "Auth-Token=eyJ..." → "Auth-Token=eyJ..."
-
-apiFetch:
-  Из cookieMap извлечь значение Auth-Token
-  Добавить заголовок: Authorization: Bearer {authToken}
-  Оставить Cookie header для совместимости
-```
-
-Один файл: `supabase/functions/parse-skillspace-course/index.ts`
-
-### Ожидаемый результат
-
-- School API `/step/list` → 200, все модули и уроки
-- School API `/lesson/{uuid}` → 200, полный контент с текстом и ссылками на видео
-- Импорт всех ~80+ уроков с содержимым
+Один файл, четыре точечных правки.
 
