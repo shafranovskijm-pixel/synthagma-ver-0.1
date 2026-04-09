@@ -234,7 +234,7 @@ Deno.serve(async (req) => {
       redirect: "manual",
     });
 
-    mergeCookiesFromResponse(authRes);
+    mergeCookiesFromResponse(authRes, cookieMap);
     log(`Auth response: ${authRes.status}, cookies: ${cookieMap.size > 0 ? "yes" : "none"}`);
 
     // If redirect, follow it to collect session cookies
@@ -244,10 +244,10 @@ Deno.serve(async (req) => {
         const redirectUrl = location.startsWith("http") ? location : `${baseUrl}${location}`;
         log(`Following redirect to: ${redirectUrl}`);
         const redirectRes = await fetch(redirectUrl, {
-          headers: { Cookie: getCookieHeader() },
+          headers: { Cookie: getCookieHeader(cookieMap) },
           redirect: "manual",
         });
-        mergeCookiesFromResponse(redirectRes);
+        mergeCookiesFromResponse(redirectRes, cookieMap);
         log(`Redirect response: ${redirectRes.status}`);
 
         // Follow second redirect if any
@@ -256,10 +256,10 @@ Deno.serve(async (req) => {
           if (loc2) {
             const rUrl2 = loc2.startsWith("http") ? loc2 : `${baseUrl}${loc2}`;
             const rRes2 = await fetch(rUrl2, {
-              headers: { Cookie: getCookieHeader() },
+              headers: { Cookie: getCookieHeader(cookieMap) },
               redirect: "manual",
             });
-            mergeCookiesFromResponse(rRes2);
+            mergeCookiesFromResponse(rRes2, cookieMap);
           }
         }
       }
@@ -271,7 +271,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const authToken = getAuthToken();
+    const authToken = getAuthToken(cookieMap);
     if (!authToken) {
       log("No Auth-Token received from auth");
       return new Response(
@@ -285,10 +285,10 @@ Deno.serve(async (req) => {
     // Also try to get CSRF / additional session by hitting the school admin page
     try {
       const adminPageRes = await fetch(`${baseUrl}/school/constructor/course/${courseId}`, {
-        headers: { Cookie: getCookieHeader(), Authorization: `Bearer ${authToken}` },
+        headers: { Cookie: getCookieHeader(cookieMap) },
         redirect: "manual",
       });
-      mergeCookiesFromResponse(adminPageRes);
+      mergeCookiesFromResponse(adminPageRes, cookieMap);
       log(`Admin page probe: ${adminPageRes.status}`);
     } catch (e) {
       log(`Admin page probe failed: ${e}`);
@@ -297,21 +297,19 @@ Deno.serve(async (req) => {
     // Helper for authenticated requests
     const apiFetch = async (path: string): Promise<{ ok: boolean; status: number; data: any; raw: string }> => {
       try {
-        const currentAuth = getAuthToken();
         const headers: Record<string, string> = {
-          Accept: "application/json",
-          Cookie: getCookieHeader(),
-          "X-Requested-With": "XMLHttpRequest",
+          "Accept": "application/json, text/plain, */*",
+          "Cookie": getCookieHeader(cookieMap),
+          "sec-fetch-dest": "empty",
+          "sec-fetch-mode": "cors",
+          "sec-fetch-site": "same-origin",
         };
-        if (currentAuth) {
-          headers["Authorization"] = `Bearer ${currentAuth}`;
-        }
         const res = await fetch(`${baseUrl}${path}`, { headers });
         const text = await res.text();
         let data = null;
         try { data = JSON.parse(text); } catch { /* not json */ }
         log(`${path} → ${res.status} (${text.length}b)`);
-        mergeCookiesFromResponse(res);
+        mergeCookiesFromResponse(res, cookieMap);
         return { ok: res.ok, status: res.status, data, raw: text };
       } catch (err) {
         log(`${path} → ERROR: ${err}`);
