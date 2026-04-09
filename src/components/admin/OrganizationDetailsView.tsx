@@ -1170,6 +1170,15 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                         <Button
                           variant="ghost"
                           size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-primary"
+                          title="Обновить из SkillSpace (тесты + очистка контента)"
+                          onClick={() => setSkillspaceUpdateCourse({ id: course.id, title: course.title })}
+                        >
+                          <RefreshCw className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           className="h-8 w-8 text-muted-foreground hover:text-destructive"
                           onClick={async () => {
                             if (!confirm(`Удалить курс «${course.title}»? Это действие нельзя отменить.`)) return;
@@ -1585,6 +1594,16 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
           });
       }}
     />
+    {skillspaceUpdateCourse && (
+      <SkillspaceImportDialog
+        open={!!skillspaceUpdateCourse}
+        onOpenChange={(open) => { if (!open) setSkillspaceUpdateCourse(null); }}
+        organizationId={organization.id}
+        existingCourseId={skillspaceUpdateCourse.id}
+        existingCourseTitle={skillspaceUpdateCourse.title}
+        onSuccess={() => fetchCourses()}
+      />
+    )}
     </>
   );
 }
