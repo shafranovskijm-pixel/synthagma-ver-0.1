@@ -113,3 +113,6 @@ verify_jwt = false
 
 [functions.check-secrets-status]
 verify_jwt = false
+
+[functions.parse-skillspace-course]
+verify_jwt = false
