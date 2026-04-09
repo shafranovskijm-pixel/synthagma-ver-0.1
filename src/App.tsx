@@ -56,6 +56,7 @@ const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 const ProposalPublic = lazyWithRetry(() => import("./pages/ProposalPublic"));
 const ContractEditor = lazyWithRetry(() => import("./pages/ContractEditor"));
 const PlatformPresentation = lazyWithRetry(() => import("./pages/PlatformPresentation"));
+const EmailResponse = lazyWithRetry(() => import("./pages/EmailResponse"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -152,6 +153,7 @@ const App = () => (
                     <Route path="/public-offer" element={<PublicOffer />} />
                     <Route path="/privacy" element={<PrivacyPolicy />} />
                     <Route path="/personal-data" element={<PersonalDataPolicy />} />
+                    <Route path="/email-response" element={<EmailResponse />} />
                     <Route path="/course-import" element={
                       <ProtectedRoute requiredRole="organization">
                         <CourseImport />
