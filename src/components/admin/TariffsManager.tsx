@@ -231,10 +231,19 @@ export function TariffsManager() {
     const { data, error } = await supabase.storage
       .from("billing-documents")
       .createSignedUrl(doc.file_url, 3600);
-    if (data?.signedUrl) {
-      window.open(data.signedUrl, "_blank");
-    } else {
+    if (!data?.signedUrl) {
       toast({ title: "Ошибка", description: "Не удалось получить ссылку", variant: "destructive" });
+      return;
+    }
+    try {
+      const res = await fetch(data.signedUrl);
+      const text = await res.text();
+      const blob = new Blob([text], { type: "text/html;charset=utf-8" });
+      const blobUrl = URL.createObjectURL(blob);
+      window.open(blobUrl, "_blank");
+    } catch (e) {
+      console.error("Error opening document:", e);
+      window.open(data.signedUrl, "_blank");
     }
   };
 
