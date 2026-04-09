@@ -67,6 +67,10 @@ export async function generateAct({
 <head>
   <meta charset="UTF-8">
   <style>
+    @page { size: A4; margin: 15mm 20mm; }
+    @media print {
+      body { padding: 0; margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
     body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.4; padding: 40px 50px; color: #000; }
     .header { text-align: center; margin-bottom: 20px; }
     .act-title { font-weight: bold; font-size: 16pt; text-align: center; margin: 20px 0 5px; }
@@ -87,7 +91,6 @@ export async function generateAct({
     .sig-stamp { left: 0; top: -10px; width: 80px; height: 80px; opacity: 0.85; }
     .sig-sign { left: 40px; top: 5px; width: 150px; height: 60px; }
     .no-print { display: none; }
-    @media print { body { padding: 20px; } }
   </style>
 </head>
 <body>

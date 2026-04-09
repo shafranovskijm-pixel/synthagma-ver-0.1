@@ -84,6 +84,8 @@ export async function generateAttestationProtocol({
 <head>
   <meta charset="UTF-8">
   <style>
+    @page { size: A4; margin: 15mm 20mm; }
+    @media print { body { padding: 0; margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
     body { font-family: 'Times New Roman', Times, serif; font-size: 14pt; line-height: 1.5; padding: 40px; }
     .header { text-align: center; margin-bottom: 30px; }
     .org-name { font-weight: bold; font-size: 16pt; }
@@ -94,7 +96,6 @@ export async function generateAttestationProtocol({
     .table th, .table td { border: 1px solid #000; padding: 10px; text-align: left; }
     .table th { background-color: #f5f5f5; }
     .signature { margin-top: 50px; }
-    @media print { body { padding: 0; } }
   </style>
 </head>
 <body>

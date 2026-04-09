@@ -52,6 +52,8 @@ export async function generateEnrollmentOrder({
 <head>
   <meta charset="UTF-8">
   <style>
+    @page { size: A4; margin: 15mm 20mm; }
+    @media print { body { padding: 0; margin: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
     body { font-family: 'Times New Roman', Times, serif; font-size: 14pt; line-height: 1.5; padding: 40px; }
     .header { text-align: center; margin-bottom: 30px; }
     .org-name { font-weight: bold; font-size: 16pt; }
