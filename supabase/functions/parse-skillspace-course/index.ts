@@ -507,7 +507,8 @@ Deno.serve(async (req) => {
               jsonBlocks.push({ id: makeId(), type: "paragraph", content: block.content });
             } else if (block.type === "video") {
               lessonType = "video";
-              jsonBlocks.push({ id: makeId(), type: "paragraph", content: "<em>[Видео — требуется ручной перенос]</em>" });
+              const videoUrl = block.url || block.file?.url || block.src || "";
+              jsonBlocks.push({ id: makeId(), type: "paragraph", content: videoUrl ? `<a href="${videoUrl}" target="_blank">🎬 Видео: ${videoUrl}</a>` : "<em>[Видео — URL не найден]</em>" });
             } else if (block.type === "test") {
               lessonType = "test";
               jsonBlocks.push({ id: makeId(), type: "paragraph", content: "<em>[Тест — требуется ручной перенос]</em>" });
