@@ -225,12 +225,20 @@ export function SkillspaceImportDialog({ open, onOpenChange, organizationId, exi
             <Alert className="border-primary/20 bg-primary/5">
               <CheckCircle2 className="h-4 w-4 text-primary" />
               <AlertDescription className="text-foreground">
-                <p className="font-semibold">Курс импортирован!</p>
+                <p className="font-semibold">{result.updateMode ? "Курс обновлён!" : "Курс импортирован!"}</p>
                 <p className="mt-1">«{result.courseTitle}»</p>
                 <ul className="mt-2 text-sm space-y-1">
                   <li>Уроков найдено: {result.lessonsTotal}</li>
-                  <li>Уроков создано: {result.lessonsCreated}</li>
-                  <li>С контентом: {result.lessonsWithContent}</li>
+                  {result.updateMode ? (
+                    <li>Уроков обновлено: {result.lessonsUpdated || 0}</li>
+                  ) : null}
+                  {result.lessonsCreated > 0 ? (
+                    <li>Уроков создано: {result.lessonsCreated}</li>
+                  ) : null}
+                  {!result.updateMode && <li>С контентом: {result.lessonsWithContent}</li>}
+                  {result.testQuestionsCreated ? (
+                    <li className="text-primary">Тестовых вопросов добавлено: {result.testQuestionsCreated}</li>
+                  ) : null}
                   {result.lessonsAccessDenied ? (
                     <li className="text-yellow-600">Без доступа: {result.lessonsAccessDenied}</li>
                   ) : null}
