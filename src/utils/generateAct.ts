@@ -152,12 +152,12 @@ export async function generateAct({
 </body>
 </html>`.trim();
 
-    const blob = new Blob([html], { type: "text/html" });
+    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
     const fileName = `${organizationId}/acts/act_${actNumber}_${Date.now()}.html`;
 
     const { error: uploadError } = await supabase.storage
       .from("billing-documents")
-      .upload(fileName, blob);
+      .upload(fileName, blob, { contentType: "text/html;charset=utf-8" });
 
     if (uploadError) {
       console.error("Upload error:", uploadError);

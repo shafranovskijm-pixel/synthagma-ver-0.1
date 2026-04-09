@@ -192,10 +192,19 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
 
   const handleDownloadDoc = async (doc: BillingDoc) => {
     const url = await getSignedStorageUrl("billing-documents", doc.file_url);
-    if (url) {
-      window.open(url, "_blank");
-    } else {
+    if (!url) {
       toast({ title: "Ошибка", description: "Не удалось получить ссылку на файл", variant: "destructive" });
+      return;
+    }
+    try {
+      const res = await fetch(url);
+      const text = await res.text();
+      const blob = new Blob([text], { type: "text/html;charset=utf-8" });
+      const blobUrl = URL.createObjectURL(blob);
+      window.open(blobUrl, "_blank");
+    } catch (e) {
+      console.error("Error opening document:", e);
+      window.open(url, "_blank");
     }
   };
 
