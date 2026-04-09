@@ -1121,7 +1121,11 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                               );
                               const data = await res.json();
                               if (data.success) {
-                                toast.success(`Перенесено ${data.filesTransferred} файлов${data.filesFailed ? `, ошибок: ${data.filesFailed}` : ""}`);
+                                if (data.background) {
+                                  toast.success("Миграция медиа запущена в фоне. Файлы до 50 МБ будут перенесены.");
+                                } else {
+                                  toast.success(`Перенесено ${data.filesTransferred} файлов${data.filesFailed ? `, ошибок: ${data.filesFailed}` : ""}${data.filesSkipped ? `, пропущено: ${data.filesSkipped}` : ""}`);
+                                }
                               } else {
                                 toast.error(data.error || "Ошибка миграции");
                               }
