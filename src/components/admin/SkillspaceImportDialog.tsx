@@ -148,9 +148,9 @@ export function SkillspaceImportDialog({ open, onOpenChange, organizationId, onS
           </div>
         ) : (
           <div className="space-y-4">
-            <Alert className="border-green-200 bg-green-50">
-              <CheckCircle2 className="h-4 w-4 text-green-600" />
-              <AlertDescription className="text-green-800">
+            <Alert className="border-primary/20 bg-primary/5">
+              <CheckCircle2 className="h-4 w-4 text-primary" />
+              <AlertDescription className="text-foreground">
                 <p className="font-semibold">Курс успешно импортирован!</p>
                 <p className="mt-1">«{result.courseTitle}»</p>
                 <ul className="mt-2 text-sm space-y-1">
