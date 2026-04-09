@@ -225,7 +225,18 @@ export function DocumentArchiveView({
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => window.open(doc.file_url!, "_blank")}
+                          onClick={async () => {
+                            try {
+                              const { data } = await supabase.storage.from("org-documents").createSignedUrl(doc.file_url!, 3600);
+                              if (!data?.signedUrl) return;
+                              const res = await fetch(data.signedUrl);
+                              const text = await res.text();
+                              const blob = new Blob([text], { type: "text/html;charset=utf-8" });
+                              window.open(URL.createObjectURL(blob), "_blank");
+                            } catch (e) {
+                              console.error("Error viewing document:", e);
+                            }
+                          }}
                           title="Просмотр"
                         >
                           <Eye className="w-4 h-4" />
@@ -233,13 +244,19 @@ export function DocumentArchiveView({
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => {
-                            const link = document.createElement("a");
-                            link.href = doc.file_url!;
-                            link.download = doc.name;
-                            link.click();
+                          onClick={async () => {
+                            try {
+                              const { data } = await supabase.storage.from("org-documents").createSignedUrl(doc.file_url!, 3600);
+                              if (!data?.signedUrl) return;
+                              const res = await fetch(data.signedUrl);
+                              const text = await res.text();
+                              const { printHtmlContent } = await import("@/utils/printHtmlToPdf");
+                              printHtmlContent(text, doc.name);
+                            } catch (e) {
+                              console.error("Error downloading document:", e);
+                            }
                           }}
-                          title="Скачать"
+                          title="Скачать PDF"
                         >
                           <Download className="w-4 h-4" />
                         </Button>

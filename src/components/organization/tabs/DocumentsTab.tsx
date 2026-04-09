@@ -217,15 +217,8 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
     try {
       const res = await fetch(url);
       const text = await res.text();
-      const blob = new Blob([text], { type: "text/html;charset=utf-8" });
-      const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = blobUrl;
-      a.download = `${doc.name || "document"}.html`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(blobUrl);
+      const { printHtmlContent } = await import("@/utils/printHtmlToPdf");
+      printHtmlContent(text, doc.name);
     } catch (e) {
       console.error("Error downloading document:", e);
       toast({ title: "Ошибка", description: "Не удалось скачать файл", variant: "destructive" });
@@ -587,12 +580,14 @@ export const DocumentsTab = React.memo(function DocumentsTab({ organizationId, o
                               </div>
                             </div>
                           </div>
-                          <Button variant="ghost" size="sm" title="Просмотр" onClick={() => handleViewDoc(doc)}>
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm" title="Скачать" onClick={() => handleDownloadDoc(doc)}>
-                            <Download className="w-4 h-4" />
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            <Button variant="ghost" size="sm" title="Просмотр" onClick={() => handleViewDoc(doc)}>
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" title="Скачать PDF" onClick={() => handleDownloadDoc(doc)}>
+                              <Download className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </div>
                       );
                     })}

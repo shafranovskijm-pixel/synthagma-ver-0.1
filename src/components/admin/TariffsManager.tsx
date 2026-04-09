@@ -258,15 +258,8 @@ export function TariffsManager() {
     try {
       const res = await fetch(data.signedUrl);
       const text = await res.text();
-      const blob = new Blob([text], { type: "text/html;charset=utf-8" });
-      const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = blobUrl;
-      a.download = `${doc.name || "document"}.html`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(blobUrl);
+      const { printHtmlContent } = await import("@/utils/printHtmlToPdf");
+      printHtmlContent(text, doc.name);
     } catch (e) {
       console.error("Error downloading document:", e);
       toast({ title: "Ошибка", description: "Не удалось скачать файл", variant: "destructive" });
