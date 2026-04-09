@@ -32,7 +32,7 @@ function VideoPreview({ videoUrl }: { videoUrl: string }) {
     return content.trim().startsWith('<iframe') && content.includes('</iframe>');
   };
 
-  const getEmbedFromContent = (content: string): { type: 'iframe' | 'url' | null; value: string | null } => {
+  const getEmbedFromContent = (content: string): { type: 'iframe' | 'url' | 'direct' | null; value: string | null } => {
     if (!content) return { type: null, value: null };
     
     if (isIframeEmbed(content)) {
@@ -75,6 +75,11 @@ function VideoPreview({ videoUrl }: { videoUrl: string }) {
     const yandexMatch = content.match(/yandex\.ru\/video\/preview\/(\d+)/);
     if (yandexMatch) return { type: 'url', value: `https://yandex.ru/video/preview/${yandexMatch[1]}` };
     
+    // Direct video file URLs
+    if (content.match(/\.(mp4|webm|ogg|mov)(\?.*)?$/i) || content.includes("selstorage.ru")) {
+      return { type: 'direct' as any, value: content };
+    }
+
     // Generic video URLs - try direct embed for recording services
     if (content.match(/^https?:\/\/.*\/recordings?\//i) || content.match(/^https?:\/\/.*\/video\//i)) {
       return { type: 'url', value: content };
@@ -92,6 +97,14 @@ function VideoPreview({ videoUrl }: { videoUrl: string }) {
           <Video className="w-12 h-12 text-muted-foreground/30 mx-auto mb-2" />
           <p className="text-sm text-muted-foreground">Превью недоступно</p>
         </div>
+      </div>
+    );
+  }
+
+  if (embedResult.type === 'direct') {
+    return (
+      <div className="aspect-video bg-black rounded-xl overflow-hidden">
+        <video src={embedResult.value || ''} controls className="w-full h-full" controlsList="nodownload" />
       </div>
     );
   }
