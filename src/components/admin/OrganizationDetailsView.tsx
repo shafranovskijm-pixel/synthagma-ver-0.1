@@ -51,6 +51,7 @@ import {
   Calendar,
   Copy,
   KeyRound,
+  Download,
 } from "lucide-react";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { format } from "date-fns";
@@ -63,6 +64,7 @@ import { OrgFeaturesTab } from "./OrgFeaturesTab";
 import { OrgAuditLogsTab } from "./OrgAuditLogsTab";
 import { OrgBalanceManager } from "./OrgBalanceManager";
 import { getPlanInfo, type SubscriptionPlan } from "@/constants/subscriptionPlans";
+import { SkillspaceImportDialog } from "./SkillspaceImportDialog";
 
 interface Organization {
   id: string;
@@ -141,6 +143,7 @@ const cardClass = "shadow-sm hover:shadow-md transition-shadow duration-200";
 export function OrganizationDetailsView({ organization, onBack }: OrganizationDetailsViewProps) {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("overview");
+  const [showSkillspaceImport, setShowSkillspaceImport] = useState(false);
   const [loading, setLoading] = useState(true);
   const [students, setStudents] = useState<Student[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
@@ -519,6 +522,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
   }
 
   return (
+    <>
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-start gap-4">
@@ -1047,6 +1051,12 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
 
         {/* Courses Tab */}
         <TabsContent value="courses" className="space-y-4">
+          <div className="flex justify-end">
+            <Button variant="outline" size="sm" onClick={() => setShowSkillspaceImport(true)}>
+              <Download className="w-4 h-4 mr-2" />
+              Импорт со SkillSpace
+            </Button>
+          </div>
           <Card className={cardClass}>
             <CardContent className="p-0">
               <Table>
@@ -1454,5 +1464,30 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
         </TabsContent>
       </Tabs>
     </div>
+
+    <SkillspaceImportDialog
+      open={showSkillspaceImport}
+      onOpenChange={setShowSkillspaceImport}
+      organizationId={organization.id}
+      onSuccess={() => {
+        // Refresh courses
+        supabase
+          .from("courses")
+          .select("id, title, is_published, lessons(id), enrollments(id)")
+          .eq("organization_id", organization.id)
+          .then(({ data }) => {
+            if (data) {
+              setCourses(data.map((c: any) => ({
+                id: c.id,
+                title: c.title,
+                is_published: c.is_published,
+                lessons_count: c.lessons?.length || 0,
+                students_count: c.enrollments?.length || 0,
+              })));
+            }
+          });
+      }}
+    />
+    </>
   );
 }
