@@ -440,7 +440,7 @@ const CoursePreview = () => {
     if (currentLesson?.type === 'test') {
       fetchTestQuestions(currentLesson.id);
     }
-  }, [currentLesson?.id]);
+  }, [currentLesson?.id, currentLesson?.type]);
 
   // Scroll to top on lesson change
   useEffect(() => {
@@ -836,8 +836,22 @@ const CoursePreview = () => {
                 {testQuestions.length === 0 ? (
                   <div className="text-center py-12 text-muted-foreground">
                     <ClipboardList className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>Вопросы не добавлены</p>
-                    <p className="text-sm">Добавьте вопросы в редакторе</p>
+                    {currentLesson.test_questions_count && currentLesson.test_questions_count > 0 ? (
+                      <>
+                        <p>Вопросы загружаются...</p>
+                        <button
+                          onClick={() => fetchTestQuestions(currentLesson.id)}
+                          className="mt-3 text-sm text-primary hover:underline"
+                        >
+                          Обновить вопросы
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <p>Вопросы не добавлены</p>
+                        <p className="text-sm">Добавьте вопросы в редакторе</p>
+                      </>
+                    )}
                   </div>
                 ) : (
                   <div className="space-y-6">
