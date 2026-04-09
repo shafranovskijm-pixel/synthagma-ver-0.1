@@ -6,6 +6,15 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+// --- Clean HTML entities ---
+function cleanHtml(text: string): string {
+  if (!text) return text;
+  return text
+    .replace(/&nbsp;/gi, " ")
+    .replace(/\u00A0/g, " ")
+    .replace(/ {2,}/g, " ");
+}
+
 // --- EditorJS blocks → project JSON blocks converter ---
 function editorBlocksToJsonBlocks(blocks: any[]): any[] {
   if (!Array.isArray(blocks)) return [];
@@ -28,14 +37,14 @@ function convertBlock(block: any): any | null {
   switch (type) {
     case "paragraph":
       if (!data.text) return null;
-      return { id: makeId(), type: "paragraph", content: data.text };
+      return { id: makeId(), type: "paragraph", content: cleanHtml(data.text) };
 
     case "header": {
       const level = data.level || 2;
       return {
         id: makeId(),
         type: level <= 1 ? "heading1" : "heading2",
-        content: data.text || "",
+        content: cleanHtml(data.text || ""),
       };
     }
 
@@ -45,16 +54,16 @@ function convertBlock(block: any): any | null {
       return {
         id: makeId(),
         type: "image",
-        content: data.caption || "",
+        content: cleanHtml(data.caption || ""),
         imageSrc: src,
-        imageAlt: data.caption || "",
+        imageAlt: cleanHtml(data.caption || ""),
       };
     }
 
     case "list":
     case "nestedList": {
       const style = data.style === "ordered" ? "numberedList" : "bulletList";
-      const text = flattenListItems(data.items || []);
+      const text = cleanHtml(flattenListItems(data.items || []));
       return { id: makeId(), type: style, content: text };
     }
 
@@ -65,13 +74,13 @@ function convertBlock(block: any): any | null {
       return {
         id: makeId(),
         type: "quote",
-        content: (data.text || "") + (data.caption ? `\n— ${data.caption}` : ""),
+        content: cleanHtml((data.text || "") + (data.caption ? `\n— ${data.caption}` : "")),
       };
 
     case "table": {
       if (!data.content || !Array.isArray(data.content)) return null;
       const html = renderTableHtml(data);
-      return { id: makeId(), type: "paragraph", content: html };
+      return { id: makeId(), type: "paragraph", content: cleanHtml(html) };
     }
 
     case "video":
@@ -94,16 +103,16 @@ function convertBlock(block: any): any | null {
       return {
         id: makeId(),
         type: "document",
-        content: data.title || data.file?.name || "Вложение",
+        content: cleanHtml(data.title || data.file?.name || "Вложение"),
         documentUrl: data.file?.url || "",
-        documentName: data.title || data.file?.name || "Вложение",
+        documentName: cleanHtml(data.title || data.file?.name || "Вложение"),
       };
 
     case "warning":
       return {
         id: makeId(),
         type: "callout-warning",
-        content: `<strong>${data.title || ""}</strong>\n${data.message || ""}`,
+        content: cleanHtml(`<strong>${data.title || ""}</strong>\n${data.message || ""}`),
       };
 
     case "code":
@@ -115,10 +124,10 @@ function convertBlock(block: any): any | null {
 
     case "raw":
       if (!data.html) return null;
-      return { id: makeId(), type: "paragraph", content: data.html };
+      return { id: makeId(), type: "paragraph", content: cleanHtml(data.html) };
 
     default:
-      if (data.text) return { id: makeId(), type: "paragraph", content: data.text };
+      if (data.text) return { id: makeId(), type: "paragraph", content: cleanHtml(data.text) };
       return null;
   }
 }
@@ -451,11 +460,19 @@ Deno.serve(async (req) => {
     }
 
     // Step 4: Fetch each lesson's content
+    interface TestQuestion {
+      lessonIndex: number;
+      question: string;
+      options: { text: string }[];
+      correct_answer: number | null;
+    }
+
     const lessonContents: Array<{
       title: string;
-      content: string; // JSON stringified array of blocks
+      content: string;
       order: number;
       type: string;
+      testQuestions?: TestQuestion[];
     }> = [];
 
     let lessonsAccessDenied = 0;
@@ -491,46 +508,149 @@ Deno.serve(async (req) => {
         let lessonType = lesson.type;
         let jsonBlocks: any[] = [];
 
-        // EditorJS content in pagesPublished
-        const pages = lessonData.pagesPublished || lessonData.pages || [];
-        if (Array.isArray(pages) && pages.length > 0) {
-          for (const page of pages) {
-            // Add page title as heading if present
-            if (page.title) {
-              jsonBlocks.push({ id: makeId(), type: "heading2", content: page.title });
-            }
-            const blocks = page.content?.blocks || page.blocks || [];
-            if (blocks.length > 0) {
-              const converted = editorBlocksToJsonBlocks(blocks);
-              jsonBlocks.push(...converted);
+        if (lessonType === "test" || lesson.type === "test") {
+          lessonType = "test";
+          // Extract test questions from SkillSpace data
+          const extractedQuestions: TestQuestion[] = [];
+          
+          // Strategy 1: questions in pagesPublished blocks
+          const pages = lessonData.pagesPublished || lessonData.pages || [];
+          if (Array.isArray(pages)) {
+            for (const page of pages) {
+              const blocks = page.content?.blocks || page.blocks || [];
+              for (const block of blocks) {
+                if (block.type === "quiz" || block.type === "test" || block.type === "question") {
+                  const questions = block.data?.questions || block.data?.items || [];
+                  for (const q of questions) {
+                    const qText = cleanHtml(q.title || q.text || q.question || "");
+                    const opts = (q.answers || q.options || q.variants || []).map((a: any) => ({
+                      text: cleanHtml(typeof a === "string" ? a : (a.text || a.title || a.answer || String(a)))
+                    }));
+                    let correctIdx: number | null = null;
+                    if (typeof q.correctAnswer === "number") correctIdx = q.correctAnswer;
+                    else if (typeof q.correct === "number") correctIdx = q.correct;
+                    else if (Array.isArray(q.answers || q.options || q.variants)) {
+                      const arr = q.answers || q.options || q.variants || [];
+                      const ci = arr.findIndex((a: any) => a.correct === true || a.isCorrect === true || a.is_correct === true);
+                      if (ci >= 0) correctIdx = ci;
+                    }
+                    if (qText && opts.length > 0) {
+                      extractedQuestions.push({ lessonIndex: i, question: qText, options: opts, correct_answer: correctIdx });
+                    }
+                  }
+                }
+              }
             }
           }
-        }
 
-        // Fallback: legacy blocks format
-        if (jsonBlocks.length === 0 && Array.isArray(lessonData.blocks)) {
-          for (const block of lessonData.blocks) {
-            if (block.type === "text" && block.content) {
-              jsonBlocks.push({ id: makeId(), type: "paragraph", content: block.content });
-            } else if (block.type === "video") {
-              lessonType = "video";
-              const videoUrl = block.url || block.file?.url || block.src || "";
-              jsonBlocks.push({ id: makeId(), type: "paragraph", content: videoUrl ? `<a href="${videoUrl}" target="_blank">🎬 Видео: ${videoUrl}</a>` : "<em>[Видео — URL не найден]</em>" });
-            } else if (block.type === "test") {
-              lessonType = "test";
-              jsonBlocks.push({ id: makeId(), type: "paragraph", content: "<em>[Тест — требуется ручной перенос]</em>" });
+          // Strategy 2: direct questions field
+          const directQuestions = lessonData.questions || lessonData.test?.questions || lessonData.quiz?.questions || [];
+          if (Array.isArray(directQuestions) && extractedQuestions.length === 0) {
+            for (const q of directQuestions) {
+              const qText = cleanHtml(q.title || q.text || q.question || "");
+              const opts = (q.answers || q.options || q.variants || []).map((a: any) => ({
+                text: cleanHtml(typeof a === "string" ? a : (a.text || a.title || a.answer || String(a)))
+              }));
+              let correctIdx: number | null = null;
+              if (typeof q.correctAnswer === "number") correctIdx = q.correctAnswer;
+              else if (typeof q.correct === "number") correctIdx = q.correct;
+              else {
+                const arr = q.answers || q.options || q.variants || [];
+                if (Array.isArray(arr)) {
+                  const ci = arr.findIndex((a: any) => a.correct === true || a.isCorrect === true || a.is_correct === true);
+                  if (ci >= 0) correctIdx = ci;
+                }
+              }
+              if (qText && opts.length > 0) {
+                extractedQuestions.push({ lessonIndex: i, question: qText, options: opts, correct_answer: correctIdx });
+              }
             }
           }
+
+          // Strategy 3: legacy blocks with type "test"
+          if (Array.isArray(lessonData.blocks) && extractedQuestions.length === 0) {
+            for (const block of lessonData.blocks) {
+              if (block.type === "test" || block.type === "quiz") {
+                const questions = block.questions || block.data?.questions || [];
+                for (const q of questions) {
+                  const qText = cleanHtml(q.title || q.text || q.question || "");
+                  const opts = (q.answers || q.options || q.variants || []).map((a: any) => ({
+                    text: cleanHtml(typeof a === "string" ? a : (a.text || a.title || a.answer || String(a)))
+                  }));
+                  let correctIdx: number | null = null;
+                  const arr = q.answers || q.options || q.variants || [];
+                  if (Array.isArray(arr)) {
+                    const ci = arr.findIndex((a: any) => a.correct === true || a.isCorrect === true || a.is_correct === true);
+                    if (ci >= 0) correctIdx = ci;
+                  }
+                  if (qText && opts.length > 0) {
+                    extractedQuestions.push({ lessonIndex: i, question: qText, options: opts, correct_answer: correctIdx });
+                  }
+                }
+              }
+            }
+          }
+
+          log(`Lesson "${lessonTitle}" (test): ${extractedQuestions.length} questions extracted`);
+
+          // Log raw test data structure for debugging if no questions found
+          if (extractedQuestions.length === 0) {
+            const keys = Object.keys(lessonData).join(", ");
+            log(`Test lesson raw keys: ${keys}`);
+            if (lessonData.pagesPublished?.[0]?.content?.blocks) {
+              const blockTypes = lessonData.pagesPublished[0].content.blocks.map((b: any) => b.type).join(", ");
+              log(`Test page block types: ${blockTypes}`);
+            }
+          }
+
+          lessonContents.push({
+            title: lessonTitle,
+            content: JSON.stringify([]),
+            order: i,
+            type: "test",
+            testQuestions: extractedQuestions,
+          });
+        } else {
+          // Non-test lesson: extract content blocks
+          let jsonBlocks: any[] = [];
+
+          // EditorJS content in pagesPublished
+          const pages = lessonData.pagesPublished || lessonData.pages || [];
+          if (Array.isArray(pages) && pages.length > 0) {
+            for (const page of pages) {
+              if (page.title) {
+                jsonBlocks.push({ id: makeId(), type: "heading2", content: cleanHtml(page.title) });
+              }
+              const blocks = page.content?.blocks || page.blocks || [];
+              if (blocks.length > 0) {
+                const converted = editorBlocksToJsonBlocks(blocks);
+                jsonBlocks.push(...converted);
+              }
+            }
+          }
+
+          // Fallback: legacy blocks format
+          if (jsonBlocks.length === 0 && Array.isArray(lessonData.blocks)) {
+            for (const block of lessonData.blocks) {
+              if (block.type === "text" && block.content) {
+                jsonBlocks.push({ id: makeId(), type: "paragraph", content: cleanHtml(block.content) });
+              } else if (block.type === "video") {
+                lessonType = "video";
+                const videoUrl = block.url || block.file?.url || block.src || "";
+                jsonBlocks.push({ id: makeId(), type: "paragraph", content: videoUrl ? `<a href="${videoUrl}" target="_blank">🎬 Видео: ${videoUrl}</a>` : "<em>[Видео — URL не найден]</em>" });
+              }
+            }
+          }
+
+          if (jsonBlocks.length > 0) lessonsWithBlocks++;
+
+          lessonContents.push({
+            title: lessonTitle,
+            content: JSON.stringify(jsonBlocks.length > 0 ? jsonBlocks : [{ id: makeId(), type: "paragraph", content: "Пустой урок" }]),
+            order: i,
+            type: lessonType === "test" ? "test" : "text",
+          });
         }
-
-        if (jsonBlocks.length > 0) lessonsWithBlocks++;
-
-        lessonContents.push({
-          title: lessonTitle,
-          content: JSON.stringify(jsonBlocks.length > 0 ? jsonBlocks : [{ id: makeId(), type: "paragraph", content: "Пустой урок" }]),
-          order: i,
-          type: lessonType === "test" ? "test" : "text",
-        });
       } else {
         lessonsAccessDenied++;
         lessonContents.push({
@@ -708,8 +828,9 @@ Deno.serve(async (req) => {
     log(`Created course ${newCourse.id}`);
 
     let createdLessons = 0;
+    let totalTestQuestions = 0;
     for (const lesson of lessonContents) {
-      const { error: lessonError } = await supabaseClient
+      const { data: newLesson, error: lessonError } = await supabaseClient
         .from("lessons")
         .insert({
           course_id: newCourse.id,
@@ -717,16 +838,46 @@ Deno.serve(async (req) => {
           content: lesson.content,
           order_index: lesson.order,
           type: lesson.type,
-        });
+          test_passing_score: lesson.type === "test" ? 60 : 0,
+        })
+        .select("id")
+        .single();
 
       if (lessonError) {
         log(`Failed to create lesson "${lesson.title}": ${lessonError.message}`);
       } else {
         createdLessons++;
+
+        // Insert test questions if this is a test lesson
+        if (lesson.type === "test" && lesson.testQuestions && lesson.testQuestions.length > 0 && newLesson) {
+          const questionsToInsert = lesson.testQuestions.map((q, qi) => ({
+            lesson_id: newLesson.id,
+            question: q.question,
+            options: q.options,
+            correct_answer: q.correct_answer,
+            order_index: qi,
+          }));
+
+          const { error: qError } = await supabaseClient
+            .from("test_questions")
+            .insert(questionsToInsert);
+
+          if (qError) {
+            log(`Failed to insert ${questionsToInsert.length} questions for "${lesson.title}": ${qError.message}`);
+          } else {
+            totalTestQuestions += questionsToInsert.length;
+            // Update lesson with question count
+            await supabaseClient
+              .from("lessons")
+              .update({ test_questions_count: questionsToInsert.length })
+              .eq("id", newLesson.id);
+            log(`Inserted ${questionsToInsert.length} test questions for "${lesson.title}"`);
+          }
+        }
       }
     }
 
-    log(`Created ${createdLessons}/${lessonContents.length} lessons`);
+    log(`Created ${createdLessons}/${lessonContents.length} lessons, ${totalTestQuestions} test questions`);
 
     return new Response(
       JSON.stringify({
@@ -739,6 +890,7 @@ Deno.serve(async (req) => {
         lessonsAccessDenied,
         filesTransferred,
         filesFailed,
+        testQuestionsCreated: totalTestQuestions,
         importMode,
         schoolApiAvailable,
         debug: debugLog,
