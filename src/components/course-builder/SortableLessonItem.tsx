@@ -403,6 +403,22 @@ export function SortableLessonItem({
           {/* Slider */}
           {lesson.type === "slider" && <SliderLessonEditor lesson={lesson} courseId={courseId} onUpdate={onUpdate} />}
 
+          {/* Feedback */}
+          {lesson.type === "feedback" && (
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Вопрос для студента</Label>
+              <Textarea
+                value={lesson.content}
+                onChange={(e) => onUpdate({ content: e.target.value })}
+                placeholder="Введите вопрос, на который студент должен ответить. Его ответ будет отправлен в чат организации."
+                className="rounded-xl min-h-[120px]"
+              />
+              <p className="text-xs text-muted-foreground">
+                💬 Ответ студента автоматически отправится в чат от его лица. Организация увидит сообщение в разделе «Чат» карточки студента.
+              </p>
+            </div>
+          )}
+
           {/* Attachments for all lesson types */}
           <LessonAttachments
             lessonId={lesson.id}
