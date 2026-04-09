@@ -1,42 +1,33 @@
 
 
-## Исправление отображения акта при скачивании
+## Две кнопки: «Просмотр» и «Скачать PDF» для закрывающих документов
 
-### Проблема
+### Что будет сделано
 
-Две причины:
-1. **Кодировка**: Blob создаётся без указания `charset=utf-8`, Supabase Storage отдаёт файл без правильного Content-Type → кириллица превращается в кракозябры.
-2. **Отображение**: Браузер показывает сырой HTML-код вместо отрендеренной страницы, потому что Storage отдаёт `Content-Disposition: attachment` или неверный MIME-тип.
+1. **Разделение действий** — вместо одной кнопки «Download» появятся две:
+   - 👁 **Просмотр** (Eye) — открывает HTML в новой вкладке (текущее поведение)
+   - ⬇ **Скачать** (Download) — скачивает файл как `.html` с атрибутом `download`
 
-### Исправление
+2. **Логика скачивания** — новая функция `handleViewDoc` сохраняет текущее поведение (fetch → blob → window.open), а `handleDownloadDoc` будет fetch → blob → создать `<a download="...">` → click → revoke URL.
 
-#### 1. `src/utils/generateAct.ts` — правильная кодировка при загрузке
+### Файлы
 
-- Указать `contentType` явно при upload:
-```ts
-const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+**`src/components/organization/tabs/DocumentsTab.tsx`**
 
-await supabase.storage
-  .from("billing-documents")
-  .upload(fileName, blob, { contentType: "text/html;charset=utf-8" });
+- Переименовать текущий `handleDownloadDoc` → `handleViewDoc` (открытие в браузере)
+- Новый `handleDownloadDoc`: fetch blob, создать anchor с `download` атрибутом, имя файла из `doc.name` с расширением `.html`
+- В UI (строки 566-568): две кнопки — Eye и Download
+
+**`src/components/admin/TariffsManager.tsx`**
+
+- Аналогичное разделение на View/Download для админской панели
+
+### UI каждого документа
+
+```text
+┌─────────────────────────────────────────────────────────┐
+│ 📄 Акт № A-678253 от 09 апреля 2026          👁  ⬇   │
+│    Акт · 9 апр 2026                                     │
+└─────────────────────────────────────────────────────────┘
 ```
-
-#### 2. `src/components/organization/tabs/DocumentsTab.tsx` — скачивание через Blob URL
-
-Вместо `window.open(url)` — fetch HTML, создать локальный Blob и открыть:
-
-```ts
-const handleDownloadDoc = async (doc: BillingDoc) => {
-  const url = await getSignedStorageUrl("billing-documents", doc.file_url);
-  if (!url) { toast({...}); return; }
-  
-  const res = await fetch(url);
-  const text = await res.text();
-  const blob = new Blob([text], { type: "text/html;charset=utf-8" });
-  const blobUrl = URL.createObjectURL(blob);
-  window.open(blobUrl, "_blank");
-};
-```
-
-Это гарантирует, что браузер отрендерит HTML с правильной кодировкой.
 
