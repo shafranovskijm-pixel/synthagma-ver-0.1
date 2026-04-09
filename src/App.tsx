@@ -153,6 +153,7 @@ const App = () => (
                     <Route path="/public-offer" element={<PublicOffer />} />
                     <Route path="/privacy" element={<PrivacyPolicy />} />
                     <Route path="/personal-data" element={<PersonalDataPolicy />} />
+                    <Route path="/email-response" element={<EmailResponse />} />
                     <Route path="/course-import" element={
                       <ProtectedRoute requiredRole="organization">
                         <CourseImport />
