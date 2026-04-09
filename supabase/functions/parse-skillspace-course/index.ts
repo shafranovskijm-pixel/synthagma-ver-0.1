@@ -294,27 +294,38 @@ Deno.serve(async (req) => {
       log(`Admin page probe failed: ${e}`);
     }
 
-    // Helper for authenticated requests
-    const apiFetch = async (path: string): Promise<{ ok: boolean; status: number; data: any; raw: string }> => {
-      try {
-        const headers: Record<string, string> = {
-          "Accept": "application/json, text/plain, */*",
-          "Cookie": getCookieHeader(cookieMap),
-          "sec-fetch-dest": "empty",
-          "sec-fetch-mode": "cors",
-          "sec-fetch-site": "same-origin",
-        };
-        const res = await fetch(`${baseUrl}${path}`, { headers });
-        const text = await res.text();
-        let data = null;
-        try { data = JSON.parse(text); } catch { /* not json */ }
-        log(`${path} → ${res.status} (${text.length}b)`);
-        mergeCookiesFromResponse(res, cookieMap);
-        return { ok: res.ok, status: res.status, data, raw: text };
-      } catch (err) {
-        log(`${path} → ERROR: ${err}`);
-        return { ok: false, status: 0, data: null, raw: "" };
+    // Helper for authenticated requests with retry on HTTP/2 errors
+    const apiFetch = async (path: string, maxRetries = 3): Promise<{ ok: boolean; status: number; data: any; raw: string }> => {
+      const headers: Record<string, string> = {
+        "Accept": "application/json, text/plain, */*",
+        "Cookie": getCookieHeader(cookieMap),
+        "sec-fetch-dest": "empty",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-site": "same-origin",
+      };
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+          const res = await fetch(`${baseUrl}${path}`, { headers });
+          const text = await res.text();
+          let data = null;
+          try { data = JSON.parse(text); } catch { /* not json */ }
+          log(`${path} → ${res.status} (${text.length}b)`);
+          mergeCookiesFromResponse(res, cookieMap);
+          return { ok: res.ok, status: res.status, data, raw: text };
+        } catch (err) {
+          const errStr = String(err);
+          const isRetryable = errStr.includes("http2") || errStr.includes("connection error") || errStr.includes("SendRequest");
+          if (isRetryable && attempt < maxRetries - 1) {
+            const delay = (attempt + 1) * 1000;
+            log(`${path} → RETRY ${attempt + 1}/${maxRetries} after ${delay}ms (${errStr.substring(0, 80)})`);
+            await new Promise(r => setTimeout(r, delay));
+            continue;
+          }
+          log(`${path} → ERROR: ${err}`);
+          return { ok: false, status: 0, data: null, raw: "" };
+        }
       }
+      return { ok: false, status: 0, data: null, raw: "" };
     };
 
     // Step 2: Get course metadata
