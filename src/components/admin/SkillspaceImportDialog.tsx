@@ -129,10 +129,12 @@ export function SkillspaceImportDialog({ open, onOpenChange, organizationId, exi
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Download className="w-5 h-5" />
-            Импорт курса со SkillSpace
+            {isUpdateMode ? `Обновить курс из SkillSpace` : `Импорт курса со SkillSpace`}
           </DialogTitle>
           <DialogDescription>
-            Введите URL курса и учётные данные SkillSpace для автоматического импорта структуры и контента.
+            {isUpdateMode
+              ? `Обновление курса «${existingCourseTitle}»: очистка контента от артефактов и импорт тестовых вопросов.`
+              : `Введите URL курса и учётные данные SkillSpace для автоматического импорта структуры и контента.`}
           </DialogDescription>
         </DialogHeader>
 
