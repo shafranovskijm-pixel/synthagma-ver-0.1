@@ -37,14 +37,14 @@ function convertBlock(block: any): any | null {
   switch (type) {
     case "paragraph":
       if (!data.text) return null;
-      return { id: makeId(), type: "paragraph", content: data.text };
+      return { id: makeId(), type: "paragraph", content: cleanHtml(data.text) };
 
     case "header": {
       const level = data.level || 2;
       return {
         id: makeId(),
         type: level <= 1 ? "heading1" : "heading2",
-        content: data.text || "",
+        content: cleanHtml(data.text || ""),
       };
     }
 
@@ -54,16 +54,16 @@ function convertBlock(block: any): any | null {
       return {
         id: makeId(),
         type: "image",
-        content: data.caption || "",
+        content: cleanHtml(data.caption || ""),
         imageSrc: src,
-        imageAlt: data.caption || "",
+        imageAlt: cleanHtml(data.caption || ""),
       };
     }
 
     case "list":
     case "nestedList": {
       const style = data.style === "ordered" ? "numberedList" : "bulletList";
-      const text = flattenListItems(data.items || []);
+      const text = cleanHtml(flattenListItems(data.items || []));
       return { id: makeId(), type: style, content: text };
     }
 
@@ -74,13 +74,13 @@ function convertBlock(block: any): any | null {
       return {
         id: makeId(),
         type: "quote",
-        content: (data.text || "") + (data.caption ? `\n— ${data.caption}` : ""),
+        content: cleanHtml((data.text || "") + (data.caption ? `\n— ${data.caption}` : "")),
       };
 
     case "table": {
       if (!data.content || !Array.isArray(data.content)) return null;
       const html = renderTableHtml(data);
-      return { id: makeId(), type: "paragraph", content: html };
+      return { id: makeId(), type: "paragraph", content: cleanHtml(html) };
     }
 
     case "video":
@@ -103,16 +103,16 @@ function convertBlock(block: any): any | null {
       return {
         id: makeId(),
         type: "document",
-        content: data.title || data.file?.name || "Вложение",
+        content: cleanHtml(data.title || data.file?.name || "Вложение"),
         documentUrl: data.file?.url || "",
-        documentName: data.title || data.file?.name || "Вложение",
+        documentName: cleanHtml(data.title || data.file?.name || "Вложение"),
       };
 
     case "warning":
       return {
         id: makeId(),
         type: "callout-warning",
-        content: `<strong>${data.title || ""}</strong>\n${data.message || ""}`,
+        content: cleanHtml(`<strong>${data.title || ""}</strong>\n${data.message || ""}`),
       };
 
     case "code":
@@ -124,10 +124,10 @@ function convertBlock(block: any): any | null {
 
     case "raw":
       if (!data.html) return null;
-      return { id: makeId(), type: "paragraph", content: data.html };
+      return { id: makeId(), type: "paragraph", content: cleanHtml(data.html) };
 
     default:
-      if (data.text) return { id: makeId(), type: "paragraph", content: data.text };
+      if (data.text) return { id: makeId(), type: "paragraph", content: cleanHtml(data.text) };
       return null;
   }
 }
