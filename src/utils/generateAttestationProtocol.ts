@@ -47,7 +47,8 @@ export async function generateAttestationProtocol({
     const commissionMembers = (branding?.commissionMembers as CommissionMember[]) || [];
     const protocolTemplate = branding?.protocolTemplate as string | null;
 
-    const protocolNumber = `ПАК-${Date.now().toString().slice(-6)}`;
+    const protocolNumber = `PAK-${Date.now().toString().slice(-6)}`;
+    const displayProtocolNumber = `ПАК-${protocolNumber.split("-")[1]}`;
     const formattedDate = format(completedAt, "dd MMMM yyyy", { locale: ru });
     
     const scoreText = testScore !== undefined && testMaxScore !== undefined
@@ -104,7 +105,7 @@ export async function generateAttestationProtocol({
   <div class="protocol-title">ПРОТОКОЛ ЗАСЕДАНИЯ АТТЕСТАЦИОННОЙ КОМИССИИ</div>
   
   <div class="protocol-number">
-    № ${protocolNumber} от ${formattedDate} г.
+    № ${displayProtocolNumber} от ${formattedDate} г.
   </div>
   
   <div class="content">
@@ -154,12 +155,13 @@ export async function generateAttestationProtocol({
     `.trim();
 
     // Create blob and upload to storage
-    const blob = new Blob([protocolHtml], { type: "text/html" });
+    const blob = new Blob([protocolHtml], { type: "text/html;charset=utf-8" });
     const fileName = `${organizationId}/protocols/attestation_${protocolNumber}_${Date.now()}.html`;
 
     const { error: uploadError } = await supabase.storage
       .from("org-documents")
-      .upload(fileName, blob);
+      .upload(fileName, blob, { contentType: "text/html;charset=utf-8" });
+    if (uploadError) console.error("Storage upload error:", uploadError);
 
     let fileUrl: string | null = null;
     if (!uploadError) {
@@ -170,7 +172,7 @@ export async function generateAttestationProtocol({
     }
 
     // Save to org_documents with attestation_protocol type
-    const docName = `Протокол АК № ${protocolNumber} от ${formattedDate} - ${studentName} - ${courseName}`;
+    const docName = `Протокол АК № ${displayProtocolNumber} от ${formattedDate} - ${studentName} - ${courseName}`;
 
     const { error: dbError } = await supabase
       .from("org_documents")

@@ -99,12 +99,12 @@ export async function generateEnrollmentOrder({
     `.trim();
 
     // Create blob and upload to storage
-    const blob = new Blob([orderHtml], { type: "text/html" });
+    const blob = new Blob([orderHtml], { type: "text/html;charset=utf-8" });
     const fileName = `${organizationId}/orders/${orderType}_${orderNumber}_${Date.now()}.html`;
 
     const { error: uploadError } = await supabase.storage
       .from("org-documents")
-      .upload(fileName, blob);
+      .upload(fileName, blob, { contentType: "text/html;charset=utf-8" });
 
     let fileUrl: string | null = null;
     if (uploadError) {

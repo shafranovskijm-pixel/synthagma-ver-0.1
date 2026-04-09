@@ -242,13 +242,20 @@ export function OrdersArchive({ documents, onDelete, onView }: OrdersArchiveProp
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8"
-                          onClick={() => {
-                            const link = document.createElement("a");
-                            link.href = doc.file_url!;
-                            link.download = doc.name;
-                            link.click();
+                          onClick={async () => {
+                            try {
+                              const { supabase } = await import("@/integrations/supabase/client");
+                              const { data } = await supabase.storage.from("org-documents").createSignedUrl(doc.file_url!, 3600);
+                              if (!data?.signedUrl) return;
+                              const res = await fetch(data.signedUrl);
+                              const text = await res.text();
+                              const { printHtmlContent } = await import("@/utils/printHtmlToPdf");
+                              printHtmlContent(text, doc.name);
+                            } catch (e) {
+                              console.error("Error downloading document:", e);
+                            }
                           }}
-                          title="Скачать"
+                          title="Скачать PDF"
                         >
                           <Download className="w-4 h-4" />
                         </Button>
