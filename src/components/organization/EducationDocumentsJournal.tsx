@@ -494,7 +494,7 @@ export function EducationDocumentsJournal({
               </>
             )}
           </div>
-          <DialogFooter>
+          <DialogFooter className="shrink-0">
             <Button variant="outline" onClick={() => setShowSelectStudentsDialog(false)} className="rounded-xl">Отмена</Button>
             <Button onClick={handleCreateFromStudents} disabled={saving || selectedStudents.size === 0} className="rounded-xl">
               {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
