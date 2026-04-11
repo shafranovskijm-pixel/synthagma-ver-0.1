@@ -21,65 +21,127 @@ const navItems: { id: StudentTab; icon: typeof BookOpen; label: string }[] = [
   { id: "chat", icon: MessageCircle, label: "Чат" },
 ];
 
+function hexToHsl(hex: string): string | null {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  if (!result) return null;
+
+  let r = parseInt(result[1], 16) / 255;
+  let g = parseInt(result[2], 16) / 255;
+  let b = parseInt(result[3], 16) / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  let h = 0;
+  let s = 0;
+  const l = (max + min) / 2;
+
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+
+    switch (max) {
+      case r:
+        h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+        break;
+      case g:
+        h = ((b - r) / d + 2) / 6;
+        break;
+      case b:
+        h = ((r - g) / d + 4) / 6;
+        break;
+    }
+  }
+
+  return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
+}
+
+function normalizeBrandColor(color?: string): string {
+  if (!color) return "174 72% 46%";
+
+  const trimmed = color.trim();
+  if (trimmed.startsWith("#")) {
+    return hexToHsl(trimmed) ?? "174 72% 46%";
+  }
+
+  if (trimmed.startsWith("hsl(")) {
+    return trimmed.replace(/^hsl\((.*)\)$/i, "$1");
+  }
+
+  return trimmed;
+}
+
 export function StudentSidebar({
   activeTab, setActiveTab, branding, orgName, showAiChat,
   isPreviewMode, isAdminView,
 }: StudentSidebarProps) {
-  const primaryColor = branding?.primaryColor || "174 72% 46%";
+  const brandHsl = normalizeBrandColor(branding?.primaryColor);
 
   return (
     <aside
       className={cn(
-        "sticky top-0 h-screen flex flex-col w-[80px] border-r border-border items-center py-4 shrink-0",
-        (isPreviewMode || isAdminView) && "pt-14"
+        "sticky top-0 h-screen w-[88px] shrink-0 border-r border-border/60",
+        (isPreviewMode || isAdminView) && "top-10 h-[calc(100vh-40px)]"
       )}
-      style={{ backgroundColor: `hsl(${primaryColor} / 0.06)` }}
+      style={{ backgroundColor: `hsl(${brandHsl} / 0.07)` }}
     >
-      {/* Logo */}
-      <div className="mb-6">
-        {branding?.logoUrl ? (
-          <img src={branding.logoUrl} alt="Logo" className="w-10 h-10 object-contain rounded-lg" />
-        ) : (
-          <SigmaLogo size="sm" />
-        )}
-      </div>
+      <div className="flex h-full flex-col items-center px-2 py-4">
+        <div className="mb-4 flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl border border-border/60 bg-card/80 shadow-sm">
+          {branding?.logoUrl ? (
+            <img
+              src={branding.logoUrl}
+              alt={orgName ? `Логотип ${orgName}` : "Логотип"}
+              className="h-10 w-10 object-contain"
+            />
+          ) : (
+            <SigmaLogo size="sm" />
+          )}
+        </div>
 
-      {/* Navigation buttons — fixed near top, not flex-1 centered */}
-      <nav className="flex flex-col gap-2 items-center">
-        {navItems.map((item) => {
-          if (item.id === "chat" && !showAiChat) return null;
-          const isActive = activeTab === item.id;
-          return (
-            <Tooltip key={item.id}>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => setActiveTab(item.id)}
-                  className={cn(
-                    "w-[60px] rounded-xl flex flex-col items-center justify-center gap-1 py-2.5 transition-all",
-                    isActive
-                      ? "text-primary-foreground shadow-md"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                  style={
-                    isActive
-                      ? { backgroundColor: `hsl(${primaryColor})` }
-                      : { backgroundColor: `hsl(${primaryColor} / 0.15)` }
-                  }
-                >
-                  <item.icon className="w-5 h-5" />
-                  <span className={cn(
-                    "text-[10px] font-medium leading-tight",
-                    isActive ? "text-primary-foreground" : "text-muted-foreground"
-                  )}>
-                    {item.label}
-                  </span>
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="right">{item.label}</TooltipContent>
-            </Tooltip>
-          );
-        })}
-      </nav>
+        <div className="flex flex-1 items-center justify-center w-full">
+          <div
+            className="rounded-[28px] border border-border/60 p-2 shadow-sm backdrop-blur-sm"
+            style={{ backgroundColor: `hsl(${brandHsl} / 0.14)` }}
+          >
+            <nav className="flex flex-col items-center gap-2">
+              {navItems.map((item) => {
+                if (item.id === "chat" && !showAiChat) return null;
+                const isActive = activeTab === item.id;
+
+                return (
+                  <Tooltip key={item.id}>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => setActiveTab(item.id)}
+                        className={cn(
+                          "flex min-h-[64px] w-[64px] flex-col items-center justify-center gap-1 rounded-2xl px-1 py-2.5 transition-all duration-200",
+                          isActive
+                            ? "text-primary-foreground shadow-md"
+                            : "text-foreground/80 hover:text-foreground"
+                        )}
+                        style={{
+                          backgroundColor: isActive
+                            ? `hsl(${brandHsl})`
+                            : `hsl(${brandHsl} / 0.18)`,
+                        }}
+                      >
+                        <item.icon className="h-5 w-5 shrink-0" />
+                        <span
+                          className={cn(
+                            "text-[10px] font-medium leading-tight text-center",
+                            isActive ? "text-primary-foreground" : "text-foreground/80"
+                          )}
+                        >
+                          {item.label}
+                        </span>
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">{item.label}</TooltipContent>
+                  </Tooltip>
+                );
+              })}
+            </nav>
+          </div>
+        </div>
+      </div>
     </aside>
   );
 }
