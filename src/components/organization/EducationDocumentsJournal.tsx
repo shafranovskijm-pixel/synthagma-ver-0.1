@@ -452,7 +452,7 @@ export function EducationDocumentsJournal({
 
       {/* Select Students Dialog */}
       <Dialog open={showSelectStudentsDialog} onOpenChange={setShowSelectStudentsDialog}>
-        <DialogContent className="max-w-2xl max-h-[80vh]">
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden">
           <DialogHeader>
             <DialogTitle>Выбор выпускников для добавления</DialogTitle>
           </DialogHeader>
@@ -476,10 +476,10 @@ export function EducationDocumentsJournal({
                 <ScrollArea className="h-[400px] pr-4">
                   <div className="space-y-2">
                     {filteredStudents.map((student) => (
-                      <div key={student.enrollment_id} className={cn("flex items-center gap-3 p-3 rounded-xl border transition-colors", student.already_added ? "opacity-50 bg-muted/30" : "hover:bg-secondary/30 cursor-pointer", selectedStudents.has(student.enrollment_id) && "border-primary/50 bg-primary/5")} onClick={() => !student.already_added && toggleStudentSelection(student.enrollment_id)}>
-                        <Checkbox checked={student.already_added || selectedStudents.has(student.enrollment_id)} disabled={student.already_added} />
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium text-sm">{student.full_name}</div>
+                      <div key={student.enrollment_id} className={cn("flex items-center gap-3 p-3 rounded-xl border transition-colors overflow-hidden", student.already_added ? "opacity-50 bg-muted/30" : "hover:bg-secondary/30 cursor-pointer", selectedStudents.has(student.enrollment_id) && "border-primary/50 bg-primary/5")} onClick={() => !student.already_added && toggleStudentSelection(student.enrollment_id)}>
+                        <Checkbox checked={student.already_added || selectedStudents.has(student.enrollment_id)} disabled={student.already_added} className="shrink-0" />
+                        <div className="flex-1 min-w-0 overflow-hidden">
+                          <div className="font-medium text-sm truncate">{student.full_name}</div>
                           <div className="text-xs text-muted-foreground truncate">{student.course_title}</div>
                         </div>
                         {student.already_added ? (
