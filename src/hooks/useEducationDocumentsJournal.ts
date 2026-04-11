@@ -184,9 +184,10 @@ export function useEducationDocumentsJournal({
           });
           if (branding) {
             setDocSettings({
-            certificateSettings: branding.certificateSettings as any,
-            diplomaSettings: branding.diplomaSettings as any,
-          });
+              certificateSettings: branding.certificateSettings as any,
+              diplomaSettings: branding.diplomaSettings as any,
+            });
+          }
         }
       } catch (error) {
         console.error("Error loading records:", error);
