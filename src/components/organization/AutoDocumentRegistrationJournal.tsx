@@ -536,6 +536,7 @@ export function AutoDocumentRegistrationJournal({
         notes: insertedDoc.send_method ? `Примечание: ${insertedDoc.send_method}` : null,
         source: "issuance_log",
         is_editable: true,
+        file_url: null,
       };
       
       setRecords((prev) => [newRecord, ...prev]);
