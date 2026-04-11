@@ -1,6 +1,6 @@
 import { 
   BarChart3, Building2, Users, Crown, 
-  LogOut, Shield, Settings, FileText, Terminal, Store, HeadphonesIcon, Briefcase, Bot, Megaphone, MessageSquare
+  LogOut, Shield, Settings, FileText, Terminal, Store, HeadphonesIcon, Briefcase, Bot, Megaphone, MessageSquare, Gift
 } from "lucide-react";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { HelpButton } from "@/components/onboarding/HelpButton";
@@ -17,6 +17,7 @@ export type AdminTabType =
   | "ai"
   | "broadcast"
   | "chats"
+  | "referrals"
   | "support"
   | "devtools"
   | "settings";
@@ -133,6 +134,12 @@ export function AdminSidebar({
           <button onClick={() => handleTabClick("broadcast")} className={tabButtonClass("broadcast")}>
             <Megaphone className="w-5 h-5" />
             Рассылка
+          </button>
+
+          {/* Referrals */}
+          <button onClick={() => handleTabClick("referrals")} className={tabButtonClass("referrals")}>
+            <Gift className="w-5 h-5" />
+            Партнёры
           </button>
 
           {/* Chats */}

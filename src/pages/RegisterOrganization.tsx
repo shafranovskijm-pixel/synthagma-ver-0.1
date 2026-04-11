@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { SUBSCRIPTION_PLANS, YEARLY_DISCOUNT, type SubscriptionPlan } from "@/constants/subscriptionPlans";
+import { getRefCode, clearRefCode, captureRefFromUrl } from "@/utils/referralCookie";
 
 const planKeys: SubscriptionPlan[] = ['free', 'start', 'standard', 'professional', 'maximum'];
 
@@ -44,6 +45,11 @@ const RegisterOrganization = () => {
   const { user, userRole, loading, refreshUserRole } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Capture ref code from URL on mount
+  useEffect(() => {
+    captureRefFromUrl();
+  }, []);
 
   const loadCompanyByInn = async () => {
     if (!inn || inn.length < 10) {
@@ -223,6 +229,13 @@ const RegisterOrganization = () => {
             promo_code: promoApplied ? promoCode.trim().toUpperCase() : null
           } as any)
           .eq('id', orgId);
+
+        // 2b2. Register referral if ref cookie exists
+        const refCode = getRefCode();
+        if (refCode) {
+          await supabase.rpc('register_referral', { p_ref_code: refCode, p_organization_id: orgId });
+          clearRefCode();
+        }
 
         // 2c. Increment promo code usage if applied
         if (promoApplied && promoCode) {

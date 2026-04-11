@@ -54,6 +54,9 @@ const StudentAgreement = lazyWithRetry(() => import("./pages/StudentAgreement"))
 const PrivacyPolicy = lazyWithRetry(() => import("./pages/PrivacyPolicy"));
 const PersonalDataPolicy = lazyWithRetry(() => import("./pages/PersonalDataPolicy"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
+const PartnerLanding = lazyWithRetry(() => import("./pages/PartnerLanding"));
+const PartnerDashboard = lazyWithRetry(() => import("./pages/PartnerDashboard"));
+const PartnerOffer = lazyWithRetry(() => import("./pages/PartnerOffer"));
 const ProposalPublic = lazyWithRetry(() => import("./pages/ProposalPublic"));
 const ContractEditor = lazyWithRetry(() => import("./pages/ContractEditor"));
 const PlatformPresentation = lazyWithRetry(() => import("./pages/PlatformPresentation"));
@@ -187,6 +190,9 @@ const App = () => (
                       </ProtectedRoute>
                     } />
                     <Route path="/presentation" element={<PlatformPresentation />} />
+                    <Route path="/partner" element={<PartnerLanding />} />
+                    <Route path="/partner/dashboard" element={<PartnerDashboard />} />
+                    <Route path="/partner/offer" element={<PartnerOffer />} />
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                     <Route path="*" element={<NotFound />} />
                   </Routes>
