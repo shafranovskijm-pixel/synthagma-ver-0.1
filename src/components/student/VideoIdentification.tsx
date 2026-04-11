@@ -59,13 +59,13 @@ export function VideoIdentification({
   };
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen || embedded) {
       loadVerificationHistory();
     }
     return () => {
       stopCamera();
     };
-  }, [isOpen, userId]);
+  }, [isOpen, embedded, userId]);
 
   const loadVerificationHistory = async () => {
     setIsLoading(true);
