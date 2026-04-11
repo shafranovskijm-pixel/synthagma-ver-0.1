@@ -22,6 +22,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
@@ -37,12 +43,32 @@ import {
   Trophy,
   GraduationCap,
   Clock,
+  Eye,
+  CheckCircle2,
 } from "lucide-react";
 import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 import { ru } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { getXLSX } from "@/utils/xlsxHelper";
 import { Badge } from "@/components/ui/badge";
+
+interface AttemptQuestion {
+  id: string;
+  question: string;
+  options: (string | { text: string })[];
+  correct_answer: number | null;
+  explanation?: string | null;
+}
+
+interface AttemptDetails {
+  answers: Record<string, number>;
+  shown_question_ids: string[];
+  questions: AttemptQuestion[];
+  score: number;
+  max_score: number;
+  student_name: string;
+  course_title: string;
+}
 
 interface FinalAttestationRecord {
   id: string;
