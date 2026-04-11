@@ -360,12 +360,16 @@ export function VideoIdentification({
   };
 
   if (isLoading) {
+    const loadingContent = (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+    if (embedded) return loadingContent;
     return (
       <Dialog open={isOpen} onOpenChange={handleClose}>
         <DialogContent className="max-w-lg rounded-2xl">
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          </div>
+          {loadingContent}
         </DialogContent>
       </Dialog>
     );
