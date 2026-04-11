@@ -42,6 +42,11 @@ export function StudentHeader({
       </div>
 
       <div className="flex items-center gap-2">
+        {/* Help */}
+        <Button variant="ghost" size="icon" className="rounded-xl" onClick={() => window.open('https://synthagma-bloom.lovable.app/blog', '_blank')}>
+          <HelpCircle className="w-5 h-5 text-muted-foreground" />
+        </Button>
+
         {/* Notifications bell */}
         <Button variant="ghost" size="icon" className="rounded-xl relative">
           <Bell className="w-5 h-5 text-muted-foreground" />
