@@ -1,4 +1,4 @@
-import { User, LogOut, Sun, Moon, Monitor, Bell, Video, FileCheck, FileText, Trophy, Sparkles } from "lucide-react";
+import { User, LogOut, Sun, Moon, Monitor, Bell, Video, FileCheck, FileText, Trophy, Sparkles, HelpCircle } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
