@@ -243,6 +243,20 @@ export function AutoDocumentRegistrationJournal({
           });
         }
 
+        // 3. Fetch org_documents for file URLs (orders saved here)
+        const { data: orgDocs } = await supabase
+          .from("org_documents")
+          .select("id, name, file_url, type")
+          .eq("organization_id", organizationId);
+
+        // Build a map: doc name -> file_url for quick lookup
+        const orgDocFileMap = new Map<string, string>();
+        for (const od of orgDocs || []) {
+          if (od.file_url) {
+            orgDocFileMap.set(od.name.toLowerCase(), od.file_url);
+          }
+        }
+
         // 3. Fetch enrollment history for orders
         const { data: enrollmentHistory } = await supabase
           .from("enrollment_history")
@@ -269,36 +283,43 @@ export function AutoDocumentRegistrationJournal({
           const studentName = profile?.full_name || profile?.email || "Неизвестный";
 
           if (entry.action === "enrolled") {
+            const docName = `Приказ о зачислении на курс "${course.title}"`;
+            // Try to find file in org_documents
+            const fileUrl = orgDocFileMap.get(docName.toLowerCase()) || null;
             documentRecords.push({
               id: `enrollment_${entry.id}`,
               original_id: entry.id,
               reg_number: entry.enrollment_id ? `ПР-${entry.enrollment_id.slice(0, 8).toUpperCase()}` : null,
               document_type: "enrollment_order",
-              document_name: `Приказ о зачислении на курс "${course.title}"`,
+              document_name: docName,
               direction: "outgoing",
               date: entry.created_at,
               related_entity: studentName,
               related_entity_type: "student",
               notes: null,
               source: "enrollment",
-              is_editable: false, // enrollment_history has no reg_number field
+              is_editable: false,
+              file_url: fileUrl,
             });
           } else if (entry.action === "completed" || entry.action === "expelled") {
+            const docName = entry.action === "completed" 
+              ? `Завершение обучения на курсе "${course.title}"`
+              : `Приказ об отчислении с курса "${course.title}"`;
+            const fileUrl = orgDocFileMap.get(docName.toLowerCase()) || null;
             documentRecords.push({
               id: `expulsion_${entry.id}`,
               original_id: entry.id,
               reg_number: entry.enrollment_id ? `ПР-${entry.enrollment_id.slice(0, 8).toUpperCase()}` : null,
               document_type: entry.action === "completed" ? "certificate" : "expulsion_order",
-              document_name: entry.action === "completed" 
-                ? `Завершение обучения на курсе "${course.title}"`
-                : `Приказ об отчислении с курса "${course.title}"`,
+              document_name: docName,
               direction: "outgoing",
               date: entry.created_at,
               related_entity: studentName,
               related_entity_type: "student",
               notes: null,
               source: "enrollment",
-              is_editable: false, // enrollment_history has no reg_number field
+              is_editable: false,
+              file_url: fileUrl,
             });
           }
         }
