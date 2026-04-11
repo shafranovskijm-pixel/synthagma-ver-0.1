@@ -16,6 +16,7 @@ interface VideoIdentificationProps {
   onVerified?: () => void;
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
+  embedded?: boolean;
 }
 
 interface VerificationRecord {
@@ -35,6 +36,7 @@ export function VideoIdentification({
   onVerified,
   isOpen = false,
   onOpenChange,
+  embedded = false,
 }: VideoIdentificationProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -57,13 +59,13 @@ export function VideoIdentification({
   };
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen || embedded) {
       loadVerificationHistory();
     }
     return () => {
       stopCamera();
     };
-  }, [isOpen, userId]);
+  }, [isOpen, embedded, userId]);
 
   const loadVerificationHistory = async () => {
     setIsLoading(true);
@@ -358,43 +360,46 @@ export function VideoIdentification({
   };
 
   if (isLoading) {
+    const loadingContent = (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+    if (embedded) return loadingContent;
     return (
       <Dialog open={isOpen} onOpenChange={handleClose}>
         <DialogContent className="max-w-lg rounded-2xl">
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          </div>
+          {loadingContent}
         </DialogContent>
       </Dialog>
     );
   }
 
-  return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-lg rounded-2xl">
-        <DialogHeader>
-          <DialogTitle className="font-display flex items-center gap-2">
-            <Shield className="w-5 h-5 text-primary" />
-            Видеоидентификация (ЭИОС)
-          </DialogTitle>
-          <DialogDescription>
-            Подтверждение личности в соответствии с требованиями законодательства об электронной информационно-образовательной среде
-          </DialogDescription>
-        </DialogHeader>
+  const mainContent = (
+    <>
+      <div className="mb-4">
+        <h3 className="font-display flex items-center gap-2 text-lg font-semibold">
+          <Shield className="w-5 h-5 text-primary" />
+          Видеоидентификация (ЭИОС)
+        </h3>
+        <p className="text-sm text-muted-foreground mt-1">
+          Подтверждение личности в соответствии с требованиями законодательства об электронной информационно-образовательной среде
+        </p>
+      </div>
 
-        <div className="py-4">
-          {/* History button */}
-          {verificationHistory.length > 0 && step !== "history" && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="mb-4 gap-2"
-              onClick={() => setStep("history")}
-            >
-              <History className="w-4 h-4" />
-              История идентификаций ({verificationHistory.length})
-            </Button>
-          )}
+      <div className="py-4">
+        {/* History button */}
+        {verificationHistory.length > 0 && step !== "history" && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="mb-4 gap-2"
+            onClick={() => setStep("history")}
+          >
+            <History className="w-4 h-4" />
+            История идентификаций ({verificationHistory.length})
+          </Button>
+        )}
 
           {/* Progress indicator */}
           {step !== "success" && step !== "history" && (
@@ -677,6 +682,15 @@ export function VideoIdentification({
 
         {/* Hidden canvas for capturing photo */}
         <canvas ref={canvasRef} className="hidden" />
+      </>
+    );
+
+  if (embedded) return mainContent;
+
+  return (
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent className="max-w-lg rounded-2xl">
+        {mainContent}
       </DialogContent>
     </Dialog>
   );

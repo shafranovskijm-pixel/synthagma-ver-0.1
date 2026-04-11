@@ -37,6 +37,7 @@ interface AchievementsPanelProps {
   userId: string;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  embedded?: boolean;
 }
 
 const rarityColors: Record<Rarity, string> = {
@@ -83,7 +84,7 @@ const getRarity = (rarity: string): Rarity => {
   return "common";
 };
 
-export function AchievementsPanel({ userId, isOpen, onOpenChange }: AchievementsPanelProps) {
+export function AchievementsPanel({ userId, isOpen, onOpenChange, embedded = false }: AchievementsPanelProps) {
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [userAchievements, setUserAchievements] = useState<UserAchievement[]>([]);
   const [loading, setLoading] = useState(true);
@@ -92,10 +93,10 @@ export function AchievementsPanel({ userId, isOpen, onOpenChange }: Achievements
   const [celebratingAchievement, setCelebratingAchievement] = useState<UserAchievement | null>(null);
 
   useEffect(() => {
-    if (isOpen && userId) {
+    if ((isOpen || embedded) && userId) {
       loadAchievements();
     }
-  }, [isOpen, userId]);
+  }, [isOpen, embedded, userId]);
 
   const loadAchievements = async () => {
     setLoading(true);
@@ -279,10 +280,10 @@ export function AchievementsPanel({ userId, isOpen, onOpenChange }: Achievements
       </AnimatePresence>
 
       {/* Main Achievements Panel */}
-      <Dialog open={isOpen} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-3 font-display text-xl">
+      {(() => {
+        const panelContent = (
+          <div>
+            <div className="flex items-center gap-3 font-display text-xl mb-4">
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
                 <Trophy className="w-5 h-5 text-white" />
               </div>
@@ -290,92 +291,101 @@ export function AchievementsPanel({ userId, isOpen, onOpenChange }: Achievements
               <Badge variant="secondary" className="ml-auto">
                 {earnedCount} / {totalCount}
               </Badge>
-            </DialogTitle>
-          </DialogHeader>
-
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-              >
-                <Trophy className="w-8 h-8 text-primary" />
-              </motion.div>
             </div>
-          ) : (
-            <div className="space-y-8 mt-4">
-              {Object.entries(groupedAchievements).map(([category, categoryAchievements]) => (
-                <div key={category}>
-                  <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                    {categoryLabels[category] || category}
-                    <span className="text-sm text-muted-foreground font-normal">
-                      ({categoryAchievements.filter(a => earnedIds.has(a.id)).length}/{categoryAchievements.filter(a => !a.is_secret || earnedIds.has(a.id)).length})
-                    </span>
-                  </h3>
-                  
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                    {categoryAchievements.map((achievement) => {
-                      const isEarned = earnedIds.has(achievement.id);
-                      const isHidden = achievement.is_secret && !isEarned;
 
-                      return (
-                        <motion.div
-                          key={achievement.id}
-                          whileHover={{ scale: isEarned ? 1.05 : 1 }}
-                          className={`relative rounded-xl p-4 text-center transition-all ${
-                            isEarned 
-                              ? rarityBgColors[getRarity(achievement.rarity)]
-                              : "bg-muted/50 opacity-50"
-                          } ${isEarned ? "cursor-pointer" : ""}`}
-                        >
-                          {/* Rarity glow for earned */}
-                          {isEarned && achievement.rarity !== "common" && (
-                            <div className={`absolute inset-0 rounded-xl bg-gradient-to-br ${rarityColors[getRarity(achievement.rarity)]} opacity-10`} />
-                          )}
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                >
+                  <Trophy className="w-8 h-8 text-primary" />
+                </motion.div>
+              </div>
+            ) : (
+              <div className="space-y-8 mt-4">
+                {Object.entries(groupedAchievements).map(([category, categoryAchievements]) => (
+                  <div key={category}>
+                    <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                      {categoryLabels[category] || category}
+                      <span className="text-sm text-muted-foreground font-normal">
+                        ({categoryAchievements.filter(a => earnedIds.has(a.id)).length}/{categoryAchievements.filter(a => !a.is_secret || earnedIds.has(a.id)).length})
+                      </span>
+                    </h3>
+                    
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                      {categoryAchievements.map((achievement) => {
+                        const isEarned = earnedIds.has(achievement.id);
+                        const isHidden = achievement.is_secret && !isEarned;
 
-                          <div className={`relative z-10 text-4xl mb-2 ${!isEarned ? "grayscale" : ""}`}>
-                            {isHidden ? (
-                              <div className="w-12 h-12 mx-auto rounded-full bg-muted flex items-center justify-center">
-                                <Lock className="w-6 h-6 text-muted-foreground" />
-                              </div>
-                            ) : (
-                              achievement.icon
+                        return (
+                          <motion.div
+                            key={achievement.id}
+                            whileHover={{ scale: isEarned ? 1.05 : 1 }}
+                            className={`relative rounded-xl p-4 text-center transition-all ${
+                              isEarned 
+                                ? rarityBgColors[getRarity(achievement.rarity)]
+                                : "bg-muted/50 opacity-50"
+                            } ${isEarned ? "cursor-pointer" : ""}`}
+                          >
+                            {isEarned && achievement.rarity !== "common" && (
+                              <div className={`absolute inset-0 rounded-xl bg-gradient-to-br ${rarityColors[getRarity(achievement.rarity)]} opacity-10`} />
                             )}
-                          </div>
 
-                          <h4 className="font-medium text-sm mb-1 relative z-10">
-                            {isHidden ? "???" : achievement.name}
-                          </h4>
+                            <div className={`relative z-10 text-4xl mb-2 ${!isEarned ? "grayscale" : ""}`}>
+                              {isHidden ? (
+                                <div className="w-12 h-12 mx-auto rounded-full bg-muted flex items-center justify-center">
+                                  <Lock className="w-6 h-6 text-muted-foreground" />
+                                </div>
+                              ) : (
+                                achievement.icon
+                              )}
+                            </div>
 
-                          {!isHidden && (
-                            <p className="text-xs text-muted-foreground line-clamp-2 relative z-10">
-                              {achievement.description}
-                            </p>
-                          )}
+                            <h4 className="font-medium text-sm mb-1 relative z-10">
+                              {isHidden ? "???" : achievement.name}
+                            </h4>
 
-                          {isEarned && (
-                            <Badge 
-                              className={`mt-2 text-xs ${
-                                achievement.rarity === "legendary" ? "bg-gradient-to-r from-amber-400 to-orange-500 text-white border-0" :
-                                achievement.rarity === "epic" ? "bg-purple-500 text-white border-0" :
-                                achievement.rarity === "rare" ? "bg-blue-500 text-white border-0" :
-                                ""
-                              }`}
-                              variant={rarityBadgeVariants[getRarity(achievement.rarity)]}
-                            >
-                              {rarityLabels[getRarity(achievement.rarity)]}
-                            </Badge>
-                          )}
-                        </motion.div>
-                      );
-                    })}
+                            {!isHidden && (
+                              <p className="text-xs text-muted-foreground line-clamp-2 relative z-10">
+                                {achievement.description}
+                              </p>
+                            )}
+
+                            {isEarned && (
+                              <Badge 
+                                className={`mt-2 text-xs ${
+                                  achievement.rarity === "legendary" ? "bg-gradient-to-r from-amber-400 to-orange-500 text-white border-0" :
+                                  achievement.rarity === "epic" ? "bg-purple-500 text-white border-0" :
+                                  achievement.rarity === "rare" ? "bg-blue-500 text-white border-0" :
+                                  ""
+                                }`}
+                                variant={rarityBadgeVariants[getRarity(achievement.rarity)]}
+                              >
+                                {rarityLabels[getRarity(achievement.rarity)]}
+                              </Badge>
+                            )}
+                          </motion.div>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+
+        if (embedded) return panelContent;
+
+        return (
+          <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+              {panelContent}
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
     </>
   );
 }

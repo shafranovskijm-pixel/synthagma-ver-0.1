@@ -164,8 +164,7 @@ export default function StudentProfile() {
                     userId={user.id}
                     userName={profile?.full_name || "Ученик"}
                     organizationId={profile?.organization_id || undefined}
-                    isOpen={true}
-                    onOpenChange={() => {}}
+                    embedded={true}
                   />
                 )}
               </CardContent>
@@ -181,8 +180,7 @@ export default function StudentProfile() {
                     userId={user.id}
                     userName={profile?.full_name || "Ученик"}
                     organizationId={profile.organization_id}
-                    isOpen={true}
-                    onOpenChange={() => {}}
+                    embedded={true}
                   />
                 )}
               </CardContent>
@@ -197,8 +195,9 @@ export default function StudentProfile() {
                   <StudentDocumentsUpload
                     userId={user.id}
                     organizationId={profile.organization_id}
-                    isOpen={true}
+                    isOpen={false}
                     onOpenChange={() => {}}
+                    embedded={true}
                   />
                 )}
               </CardContent>
@@ -213,8 +212,9 @@ export default function StudentProfile() {
                   {user && (
                     <AchievementsPanel
                       userId={user.id}
-                      isOpen={true}
+                      isOpen={false}
                       onOpenChange={() => {}}
+                      embedded={true}
                     />
                   )}
                 </CardContent>
