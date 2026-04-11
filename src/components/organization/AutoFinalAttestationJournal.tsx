@@ -22,6 +22,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
@@ -37,12 +43,32 @@ import {
   Trophy,
   GraduationCap,
   Clock,
+  Eye,
+  CheckCircle2,
 } from "lucide-react";
 import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 import { ru } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { getXLSX } from "@/utils/xlsxHelper";
 import { Badge } from "@/components/ui/badge";
+
+interface AttemptQuestion {
+  id: string;
+  question: string;
+  options: (string | { text: string })[];
+  correct_answer: number | null;
+  explanation?: string | null;
+}
+
+interface AttemptDetails {
+  answers: Record<string, number>;
+  shown_question_ids: string[];
+  questions: AttemptQuestion[];
+  score: number;
+  max_score: number;
+  student_name: string;
+  course_title: string;
+}
 
 interface FinalAttestationRecord {
   id: string;
@@ -60,6 +86,7 @@ interface FinalAttestationRecord {
   final_test_passed: boolean;
   final_test_date: string | null;
   total_time_spent: number;
+  test_attempt_id: string | null;
 }
 
 interface Course {
@@ -89,8 +116,48 @@ export function AutoFinalAttestationJournal({
     from: startOfMonth(new Date()),
     to: endOfMonth(new Date()),
   });
+  const [attemptDetails, setAttemptDetails] = useState<AttemptDetails | null>(null);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
-  // Fetch all data
+  const handleViewAttempt = async (record: FinalAttestationRecord) => {
+    if (!record.test_attempt_id) return;
+    setDetailsLoading(true);
+    setDetailsOpen(true);
+    try {
+      const { data: attempt } = await supabase
+        .from("test_attempts")
+        .select("id, answers, shown_question_ids, score, max_score")
+        .eq("id", record.test_attempt_id)
+        .single();
+
+      if (!attempt) throw new Error("Attempt not found");
+
+      const shownIds = (attempt.shown_question_ids as string[]) || [];
+      const { data: questions } = await supabase
+        .from("test_questions")
+        .select("id, question, options, correct_answer, explanation")
+        .in("id", shownIds);
+
+      setAttemptDetails({
+        answers: (attempt.answers as Record<string, number>) || {},
+        shown_question_ids: shownIds,
+        questions: (questions || []) as AttemptQuestion[],
+        score: attempt.score,
+        max_score: attempt.max_score,
+        student_name: record.student_name,
+        course_title: record.course_title,
+      });
+    } catch (err) {
+      console.error("Error loading attempt details:", err);
+      toast.error("Ошибка при загрузке деталей теста");
+      setDetailsOpen(false);
+    } finally {
+      setDetailsLoading(false);
+    }
+  };
+
+
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -211,6 +278,7 @@ export function AutoFinalAttestationJournal({
             final_test_passed: finalTestPassed,
             final_test_date: finalAttempt?.completed_at ?? null,
             total_time_spent: enrollment.time_spent || 0,
+            test_attempt_id: finalAttempt?.id ?? null,
           });
         }
 
@@ -534,6 +602,7 @@ export function AutoFinalAttestationJournal({
                   <TableHead className="text-center">Результат</TableHead>
                   <TableHead className="text-center">Дата аттестации</TableHead>
                   <TableHead className="text-center">Время</TableHead>
+                  <TableHead className="text-center w-[60px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -631,6 +700,19 @@ export function AutoFinalAttestationJournal({
                         {formatTime(record.total_time_spent)}
                       </span>
                     </TableCell>
+                    <TableCell className="text-center">
+                      {record.test_attempt_id ? (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => handleViewAttempt(record)}
+                          title="Просмотр ответов"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                      ) : null}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -653,6 +735,68 @@ export function AutoFinalAttestationJournal({
           </p>
         </div>
       )}
+
+      {/* Test attempt details dialog */}
+      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Детали тестирования</DialogTitle>
+            {attemptDetails && (
+              <p className="text-sm text-muted-foreground">
+                {attemptDetails.student_name} · {attemptDetails.course_title} · Результат: {attemptDetails.score}/{attemptDetails.max_score} ({attemptDetails.max_score > 0 ? Math.round((attemptDetails.score / attemptDetails.max_score) * 100) : 0}%)
+              </p>
+            )}
+          </DialogHeader>
+          <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1">
+            {detailsLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+              </div>
+            ) : attemptDetails ? (
+              attemptDetails.shown_question_ids
+                .map((qId) => attemptDetails.questions.find((q) => q.id === qId))
+                .filter(Boolean)
+                .map((q, idx) => {
+                  const question = q!;
+                  const studentAnswer = attemptDetails.answers[question.id];
+                  const isCorrect = studentAnswer === question.correct_answer;
+                  return (
+                    <div key={question.id} className="rounded-lg border border-border p-3 space-y-2">
+                      <div className="text-sm font-medium">
+                        {idx + 1}. {question.question}
+                      </div>
+                      <div className="space-y-1">
+                        {question.options.map((opt, optIdx) => {
+                          const optText = typeof opt === "object" && opt !== null ? (opt as { text: string }).text : String(opt);
+                          const isStudentChoice = studentAnswer === optIdx;
+                          const isCorrectOption = question.correct_answer === optIdx;
+                          let bg = "";
+                          if (isStudentChoice && isCorrect) bg = "bg-green-500/10 border-green-500/30 text-green-700";
+                          else if (isStudentChoice && !isCorrect) bg = "bg-destructive/10 border-destructive/30 text-destructive";
+                          else if (isCorrectOption) bg = "bg-green-500/5 border-green-500/20 text-green-600";
+
+                          return (
+                            <div key={optIdx} className={`text-sm px-3 py-1.5 rounded-md border ${bg || "border-transparent"}`}>
+                              {isStudentChoice && isCorrect && <CheckCircle2 className="w-3.5 h-3.5 inline mr-1.5" />}
+                              {isStudentChoice && !isCorrect && <XCircle className="w-3.5 h-3.5 inline mr-1.5" />}
+                              {!isStudentChoice && isCorrectOption && <CheckCircle2 className="w-3.5 h-3.5 inline mr-1.5 opacity-50" />}
+                              {optText}
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {question.explanation && (
+                        <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
+                          💡 {question.explanation}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+            ) : null}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
