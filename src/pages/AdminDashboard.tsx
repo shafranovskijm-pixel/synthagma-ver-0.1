@@ -19,6 +19,7 @@ import { AISettingsManager } from "@/components/admin/AISettingsManager";
 import { BroadcastManager } from "@/components/admin/BroadcastManager";
 import { AdminChatsManager } from "@/components/admin/AdminChatsManager";
 import { ReferralsManager } from "@/components/admin/ReferralsManager";
+import { PlatformUpdatesManager } from "@/components/admin/PlatformUpdatesManager";
 
 const AdminDashboard = () => {
   const { user, signOut } = useAuth();
@@ -47,6 +48,7 @@ const AdminDashboard = () => {
       case "content": return "Контент";
       case "support": return "Поддержка";
       case "devtools": return "Developer Tools";
+      case "updates": return "Обновления";
       case "settings": return "Настройки";
       default: return "";
     }
@@ -110,6 +112,7 @@ const AdminDashboard = () => {
           {activeTab === "chats" && <AdminChatsManager />}
           {activeTab === "referrals" && <ReferralsManager />}
           {activeTab === "devtools" && <DevToolsPanel />}
+          {activeTab === "updates" && <PlatformUpdatesManager />}
           {activeTab === "settings" && <AdminSettings />}
         </div>
       </main>

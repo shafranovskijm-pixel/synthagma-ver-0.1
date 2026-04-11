@@ -1,8 +1,9 @@
-import { User, LogOut, Sun, Moon, Monitor, Bell, Video, FileCheck, FileText, Trophy } from "lucide-react";
+import { User, LogOut, Sun, Moon, Monitor, Bell, Video, FileCheck, FileText, Trophy, Sparkles } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 
 interface StudentHeaderProps {
   fullName: string | null;
@@ -24,6 +25,7 @@ export function StudentHeader({
   pendingCount, isVideoIdentified, showAchievements,
   onShowVideoId, onShowConsent, onShowDocs, onShowAchievements,
 }: StudentHeaderProps) {
+  const navigate = useNavigate();
   const initials = fullName
     ? fullName.split(" ").slice(0, 2).map(n => n[0]).join("").toUpperCase()
     : "У";
@@ -92,6 +94,13 @@ export function StudentHeader({
                 Достижения
               </DropdownMenuItem>
             )}
+
+            <DropdownMenuSeparator />
+
+            <DropdownMenuItem onClick={() => navigate("/whats-new")}>
+              <Sparkles className="w-4 h-4 mr-2" />
+              Что нового?
+            </DropdownMenuItem>
 
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => setTheme('light')}><Sun className="w-4 h-4 mr-2" />Светлая тема</DropdownMenuItem>

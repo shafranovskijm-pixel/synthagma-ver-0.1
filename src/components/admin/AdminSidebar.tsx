@@ -1,6 +1,6 @@
 import { 
   BarChart3, Building2, Users, Crown, 
-  LogOut, Shield, Settings, FileText, Terminal, Store, HeadphonesIcon, Briefcase, Bot, Megaphone, MessageSquare, Gift
+  LogOut, Shield, Settings, FileText, Terminal, Store, HeadphonesIcon, Briefcase, Bot, Megaphone, MessageSquare, Gift, Sparkles
 } from "lucide-react";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { HelpButton } from "@/components/onboarding/HelpButton";
@@ -20,6 +20,7 @@ export type AdminTabType =
   | "referrals"
   | "support"
   | "devtools"
+  | "updates"
   | "settings";
 
 interface AdminSidebarProps {
@@ -157,6 +158,12 @@ export function AdminSidebar({
           <button onClick={() => handleTabClick("devtools")} className={tabButtonClass("devtools")}>
             <Terminal className="w-5 h-5" />
             Dev Tools
+          </button>
+
+          {/* Platform Updates */}
+          <button onClick={() => handleTabClick("updates")} className={tabButtonClass("updates")}>
+            <Sparkles className="w-5 h-5" />
+            Обновления
           </button>
           
           {/* Settings - always visible */}
