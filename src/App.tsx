@@ -50,6 +50,7 @@ const RoadmapPage = lazyWithRetry(() => import("./pages/RoadmapPage"));
 const RostechnadzorCoursesPage = lazyWithRetry(() => import("./pages/RostechnadzorCoursesPage"));
 const CompanyDashboard = lazyWithRetry(() => import("./pages/CompanyDashboard"));
 const PublicOffer = lazyWithRetry(() => import("./pages/PublicOffer"));
+const StudentAgreement = lazyWithRetry(() => import("./pages/StudentAgreement"));
 const PrivacyPolicy = lazyWithRetry(() => import("./pages/PrivacyPolicy"));
 const PersonalDataPolicy = lazyWithRetry(() => import("./pages/PersonalDataPolicy"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
@@ -154,6 +155,7 @@ const App = () => (
                     <Route path="/roadmap" element={<RoadmapPage />} />
                     <Route path="/rostechnadzor-courses" element={<RostechnadzorCoursesPage />} />
                     <Route path="/public-offer" element={<PublicOffer />} />
+                    <Route path="/student-agreement" element={<StudentAgreement />} />
                     <Route path="/privacy" element={<PrivacyPolicy />} />
                     <Route path="/personal-data" element={<PersonalDataPolicy />} />
                     <Route path="/email-response" element={<EmailResponse />} />

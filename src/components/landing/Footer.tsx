@@ -133,6 +133,9 @@ export function Footer() {
             <Link to="/public-offer" className="hover:text-background/60 transition-colors">
               Условия использования
             </Link>
+            <Link to="/student-agreement" className="hover:text-background/60 transition-colors">
+              Соглашение для слушателей
+            </Link>
             <Link to="/privacy" className="hover:text-background/60 transition-colors">
               Конфиденциальность
             </Link>
