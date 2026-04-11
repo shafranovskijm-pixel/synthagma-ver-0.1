@@ -30,8 +30,6 @@ const planOrder: SubscriptionPlan[] = ['free', 'start', 'standard', 'professiona
 const featureRows: { label: string; getValue: (p: SubscriptionPlan) => string | boolean }[] = [
   { label: "Курсы", getValue: (p) => { const l = SUBSCRIPTION_PLANS[p].limits; return l.maxCourses === -1 ? "∞" : String(l.maxCourses); }},
   { label: "Ученики", getValue: (p) => { const l = SUBSCRIPTION_PLANS[p].limits; return l.maxStudents === -1 ? "∞" : String(l.maxStudents); }},
-  { label: "Обученных/мес", getValue: (p) => { const l = SUBSCRIPTION_PLANS[p].limits; return l.maxTrainedPerMonth === -1 ? "∞" : String(l.maxTrainedPerMonth); }},
-  { label: "Хранилище", getValue: (p) => formatStorageSize(SUBSCRIPTION_PLANS[p].limits.storageBytes) },
   { label: "Настройки курсов", getValue: (p) => SUBSCRIPTION_PLANS[p].limits.courseSettings },
   { label: "Магазин курсов", getValue: () => true },
   { label: "Чек-лист документов", getValue: (p) => SUBSCRIPTION_PLANS[p].limits.documentChecklist },
