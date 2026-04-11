@@ -20,8 +20,8 @@ export interface ContractData {
   prepaymentAmount: number;
   customServices: ContractCustomService[];
   notes: string;
-  maxStudents: number;
-  maxNewStudentsPerMonth: number;
+  maxStudents: string;
+  maxNewStudentsPerMonth: string;
   storageLimit: string;
 }
 
