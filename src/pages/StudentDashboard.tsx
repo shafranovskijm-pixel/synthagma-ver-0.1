@@ -26,8 +26,64 @@ import { OrgBanner } from "@/components/student/OrgBanner";
 import { CourseCatalog } from "@/components/student/CourseCatalog";
 import { StudentLibrary } from "@/components/student/StudentLibrary";
 import { cn } from "@/lib/utils";
+import { Video } from "lucide-react";
 
-export default function StudentDashboard() {
+function CatalogContent({ catalogCourses, categories, profile, branding, handleCourseClick }: any) {
+  const [contentTab, setContentTab] = useState<"courses" | "webinars">("courses");
+
+  return (
+    <div className="p-6 space-y-6 max-w-[1400px] mx-auto flex-1">
+      <OrgBanner
+        orgName={profile?.organization_name || null}
+        orgDescription={profile?.org_description}
+        coverUrl={branding?.coverUrl}
+        logoUrl={branding?.logoUrl}
+        primaryColor={branding?.primaryColor}
+        secondaryColor={branding?.secondaryColor}
+      />
+
+      {/* Courses / Webinars toggle */}
+      <div className="flex gap-1 bg-muted rounded-lg p-1 w-fit">
+        <button
+          onClick={() => setContentTab("courses")}
+          className={cn(
+            "px-5 py-2 rounded-md text-sm font-medium transition-all",
+            contentTab === "courses"
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          Курсы
+        </button>
+        <button
+          onClick={() => setContentTab("webinars")}
+          className={cn(
+            "px-5 py-2 rounded-md text-sm font-medium transition-all",
+            contentTab === "webinars"
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          Вебинары
+        </button>
+      </div>
+
+      {contentTab === "courses" ? (
+        <CourseCatalog
+          courses={catalogCourses}
+          categories={categories}
+          onCourseClick={(id: string, enrolled: boolean) => handleCourseClick(id, enrolled)}
+        />
+      ) : (
+        <div className="text-center py-16 text-muted-foreground">
+          <Video className="w-12 h-12 mx-auto mb-4 opacity-40" />
+          <p className="text-lg font-medium">Вебинары пока не запланированы</p>
+          <p className="text-sm">Здесь будут отображаться предстоящие вебинары организации</p>
+        </div>
+      )}
+    </div>
+  );
+}
   const [chatMode, setChatMode] = useState<'select' | 'org' | 'ai'>('select');
   const { userRole } = useAuth();
 
