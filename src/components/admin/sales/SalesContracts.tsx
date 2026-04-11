@@ -284,7 +284,23 @@ export function SalesContracts() {
               <div><Label>Дата договора</Label><Input type="date" value={form.contract_date} onChange={e => setForm({ ...form, contract_date: e.target.value })} /></div>
             </div>
 
-            <div className="col-span-2"><h4 className="font-semibold text-sm border-b pb-1">Данные заказчика</h4></div>
+            <div className="col-span-2">
+              <h4 className="font-semibold text-sm border-b pb-1">Данные заказчика</h4>
+              <div className="mt-2">
+                <Label>Выбрать организацию</Label>
+                <Select value={selectedOrgId} onValueChange={handleOrgSelect}>
+                  <SelectTrigger><SelectValue placeholder="Выберите организацию или введите вручную" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="manual">Ввести вручную</SelectItem>
+                    {organizations.map(org => (
+                      <SelectItem key={org.id} value={org.id}>
+                        {org.name}{org.inn ? ` (ИНН: ${org.inn})` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
             <div><Label>Название компании *</Label><Input value={form.company_name} onChange={e => setForm({ ...form, company_name: e.target.value })} /></div>
             <div><Label>Директор</Label><Input value={form.company_director} onChange={e => setForm({ ...form, company_director: e.target.value })} placeholder="Ф.И.О." /></div>
             <div><Label>ИНН</Label><Input value={form.company_inn} onChange={e => setForm({ ...form, company_inn: e.target.value })} /></div>
