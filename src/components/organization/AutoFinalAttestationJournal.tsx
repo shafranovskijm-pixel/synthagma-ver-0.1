@@ -602,6 +602,7 @@ export function AutoFinalAttestationJournal({
                   <TableHead className="text-center">Результат</TableHead>
                   <TableHead className="text-center">Дата аттестации</TableHead>
                   <TableHead className="text-center">Время</TableHead>
+                  <TableHead className="text-center w-[60px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
