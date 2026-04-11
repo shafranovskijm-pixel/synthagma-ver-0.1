@@ -30,6 +30,15 @@ import { AvailablePaidCourses } from "@/components/student/AvailablePaidCourses"
 export default function StudentDashboard() {
   const [chatMode, setChatMode] = useState<'select' | 'org' | 'ai'>('select');
   const { userRole } = useAuth();
+
+  // Read localStorage SYNCHRONOUSLY before any redirect logic to prevent race conditions
+  const isAdminViewFromStorage = (() => {
+    try { return !!localStorage.getItem('adminViewAsStudent'); } catch { return false; }
+  })();
+  const isPreviewFromStorage = (() => {
+    try { return localStorage.getItem('previewStudentDashboard') === 'true'; } catch { return false; }
+  })();
+
   const {
     user, navigate, isMobile, theme, setTheme,
     activeTab, setActiveTab, messages, inputValue, setInputValue, isAiLoading, handleSendMessage,
@@ -46,7 +55,8 @@ export default function StudentDashboard() {
   const isFreePlan = orgPlan === 'free';
 
   // Redirect non-student users to their dashboards
-  if (userRole && userRole !== 'student' && !isAdminView && !isPreviewMode) {
+  // Use both hook state AND direct localStorage check to prevent race conditions
+  if (userRole && userRole !== 'student' && !isAdminView && !isAdminViewFromStorage && !isPreviewMode && !isPreviewFromStorage) {
     if (userRole === 'organization') return <Navigate to="/organization" replace />;
     if (userRole === 'company') return <Navigate to="/company" replace />;
     if (userRole === 'admin') return <Navigate to="/admin" replace />;
