@@ -25,12 +25,22 @@ export default function StudentProfile() {
     queryKey: ["student-profile-page", user?.id],
     queryFn: async () => {
       if (!user?.id) return null;
-      const { data } = await supabase
+      const { data: p } = await supabase
         .from("profiles")
-        .select("full_name, organization_id, organization_name")
+        .select("full_name, organization_id")
         .eq("user_id", user.id)
         .maybeSingle();
-      return data;
+      if (!p) return null;
+      let orgName: string | null = null;
+      if (p.organization_id) {
+        const { data: org } = await supabase
+          .from("organizations")
+          .select("name")
+          .eq("id", p.organization_id)
+          .maybeSingle();
+        orgName = org?.name || null;
+      }
+      return { full_name: p.full_name, organization_id: p.organization_id, organization_name: orgName };
     },
     enabled: !!user?.id,
   });
@@ -56,10 +66,10 @@ export default function StudentProfile() {
       if (!profile?.organization_id) return null;
       const { data } = await supabase
         .from("organizations")
-        .select("dashboard_settings")
+        .select("student_dashboard_settings")
         .eq("id", profile.organization_id)
         .maybeSingle();
-      const s = data?.dashboard_settings as any;
+      const s = data?.student_dashboard_settings as any;
       return { showAchievements: s?.showAchievements ?? false };
     },
     enabled: !!profile?.organization_id,
