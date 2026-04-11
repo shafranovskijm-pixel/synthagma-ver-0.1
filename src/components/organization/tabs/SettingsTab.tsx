@@ -19,6 +19,7 @@ import { SystemFeaturesReport } from "@/components/organization/SystemFeaturesRe
 
 import { LoginBrandingSettings } from "@/components/organization/LoginBrandingSettings";
 import { OrgCredentialsSettings } from "@/components/organization/OrgCredentialsSettings";
+import { RobokassaSettings } from "@/components/organization/RobokassaSettings";
 import { ThemePersonalization } from "@/components/ui/ThemePersonalization";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 
