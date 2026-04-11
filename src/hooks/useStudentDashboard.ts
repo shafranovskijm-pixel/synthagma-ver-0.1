@@ -337,6 +337,7 @@ export function useStudentDashboard() {
         setCatalogCourses(catalogData);
       }
 
+      if (effectiveOrgId) {
         const { data: identityDocs } = await supabase.from("student_identity_documents").select("type").eq("user_id", uid).eq("organization_id", effectiveOrgId);
         if (identityDocs) {
           const hasPassport = identityDocs.some(d => d.type === "passport" || d.type === "birth_certificate");
