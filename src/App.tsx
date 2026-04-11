@@ -15,6 +15,10 @@ import { ScrollToTop } from "./components/ScrollToTop";
 import { OfflineIndicator } from "./components/OfflineIndicator";
 import { useThemePersonalization } from "@/components/ui/ThemePersonalization";
 import { lazyWithRetry } from "@/utils/lazyWithRetry";
+import { captureRefFromUrl } from "@/utils/referralCookie";
+
+// Capture referral code from URL on any page load
+captureRefFromUrl();
 
 // Lazy-loaded pages with automatic retry + reload on chunk failures
 const Index = lazyWithRetry(() => import("./pages/Index"));
