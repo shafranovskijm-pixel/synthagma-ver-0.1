@@ -609,7 +609,7 @@ export function useEducationDocumentsJournal({
     // State
     loading, saving, records, searchQuery, setSearchQuery,
     selectedDocType, setSelectedDocType, selectedStatus, setSelectedStatus,
-    dateRange, setDateRange,
+    dateRange, setDateRange, orgData,
     showAddDialog, setShowAddDialog, showSelectStudentsDialog, setShowSelectStudentsDialog,
     editingRecord, setEditingRecord, deletingRecord, setDeletingRecord,
     completedStudents, loadingStudents, selectedStudents,

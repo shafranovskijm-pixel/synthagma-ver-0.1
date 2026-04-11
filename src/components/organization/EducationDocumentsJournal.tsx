@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   ArrowLeft, Calendar as CalendarIcon, Search, Loader2, FileSpreadsheet, FileText,
-  Plus, Pencil, Trash2, Hash, User, GraduationCap, Award, Mail, Users, CheckCircle2, Sparkles,
+  Plus, Pencil, Trash2, Hash, User, GraduationCap, Award, Mail, Users, CheckCircle2, Sparkles, Printer,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
