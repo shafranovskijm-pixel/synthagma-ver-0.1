@@ -163,16 +163,27 @@ export function useEducationDocumentsJournal({
             .order("created_at", { ascending: false }),
           supabase
             .from("organizations")
-            .select("branding")
+            .select("name, branding, license_number, stamp_url, signature_url, director_name, director_position")
             .eq("id", organizationId)
             .single(),
         ]);
         if (recordsRes.error) throw recordsRes.error;
         setRecords((recordsRes.data || []).map(mapDbRecord));
 
-        const branding = orgRes.data?.branding as Record<string, unknown> | null;
-        if (branding) {
-          setDocSettings({
+        if (orgRes.data) {
+          const o = orgRes.data as any;
+          const branding = o.branding as Record<string, unknown> | null;
+          setOrgData({
+            name: o.name || "",
+            license_number: o.license_number,
+            city: (branding?.city as string) || null,
+            stamp_url: o.stamp_url,
+            signature_url: o.signature_url,
+            director_name: o.director_name,
+            director_position: o.director_position,
+          });
+          if (branding) {
+            setDocSettings({
             certificateSettings: branding.certificateSettings as any,
             diplomaSettings: branding.diplomaSettings as any,
           });
