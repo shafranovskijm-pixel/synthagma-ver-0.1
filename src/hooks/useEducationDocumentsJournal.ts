@@ -113,6 +113,16 @@ export function useEducationDocumentsJournal({
   const [studentSearchQuery, setStudentSearchQuery] = useState("");
 
   // Document settings from branding
+  const [orgData, setOrgData] = useState<{
+    name: string;
+    license_number?: string | null;
+    city?: string | null;
+    stamp_url?: string | null;
+    signature_url?: string | null;
+    director_name?: string | null;
+    director_position?: string | null;
+  }>({ name: "" });
+
   const [docSettings, setDocSettings] = useState<{
     certificateSettings?: { series: string; startNumber: number; city: string; regNumberFormat: string };
     diplomaSettings?: { series: string; startNumber: number; city: string; regNumberFormat: string };
