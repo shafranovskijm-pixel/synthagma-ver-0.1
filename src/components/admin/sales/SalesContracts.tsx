@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Plus, Eye, Download, Trash2, X, FileText } from 'lucide-react';
+import { Plus, Eye, Download, Trash2, X, FileText, Stamp } from 'lucide-react';
 import { generateSintagmaContract, type ContractCustomService, type ContractData } from '@/constants/contractTemplates';
 
 interface SalesContract {
@@ -201,17 +201,27 @@ export function SalesContracts() {
     }
   };
 
-  const handleDownloadWord = (contract: SalesContract) => {
+  const stripStampFromHtml = (html: string): string => {
+    // Remove the stamp/signature table, replace with sig-line
+    return html.replace(
+      /<table style="margin:12px 0;border:none;border-collapse:collapse;">[\s\S]*?<\/table>/,
+      '<div class="sig-line" style="border-bottom:1px solid #000;height:30px;margin:12px 0;"></div>'
+    );
+  };
+
+  const handleDownloadWord = (contract: SalesContract, withStamp: boolean = true) => {
     if (!contract.html_content) return;
+    const content = withStamp ? contract.html_content : stripStampFromHtml(contract.html_content);
     const wordHtml = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
 <head><meta charset="UTF-8"><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View></w:WordDocument></xml><![endif]-->
-</head><body>${contract.html_content}</body></html>`;
+</head><body>${content}</body></html>`;
     const blob = new Blob(['\ufeff', wordHtml], { type: 'application/msword' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Договор_${contract.contract_number || contract.id}.doc`;
+    const suffix = withStamp ? '' : '_без_печати';
+    a.download = `Договор_${contract.contract_number || contract.id}${suffix}.doc`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -271,7 +281,8 @@ export function SalesContracts() {
                 <div className="flex gap-1">
                   <Button size="icon" variant="ghost" onClick={() => handleView(c)} disabled={!c.html_content} title="Просмотр"><Eye className="w-4 h-4" /></Button>
                   <Button size="icon" variant="ghost" onClick={() => handleDownloadPdf(c)} disabled={!c.html_content} title="Скачать PDF"><Download className="w-4 h-4" /></Button>
-                  <Button size="icon" variant="ghost" onClick={() => handleDownloadWord(c)} disabled={!c.html_content} title="Скачать Word"><FileText className="w-4 h-4" /></Button>
+                  <Button size="icon" variant="ghost" onClick={() => handleDownloadWord(c, true)} disabled={!c.html_content} title="Скачать Word (с печатью)"><FileText className="w-4 h-4" /></Button>
+                  <Button size="icon" variant="ghost" onClick={() => handleDownloadWord(c, false)} disabled={!c.html_content} title="Скачать Word (без печати)"><Stamp className="w-4 h-4" /></Button>
                   <Button size="icon" variant="ghost" onClick={() => handleDelete(c.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                 </div>
               </TableCell>
