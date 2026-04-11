@@ -1,3 +1,5 @@
+import { CONTRACT_SIGNATURE_B64, CONTRACT_STAMP_B64 } from './contractAssets';
+
 export interface ContractCustomService {
   name: string;
   price: number;
@@ -66,7 +68,7 @@ export function generateSintagmaContract(data: ContractData): string {
 <p class="center">на предоставление доступа к платформе «Синтагма»<br>и оказание услуг по миграции и доработке</p>
 <div class="header-info">г. Москва &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ${formatDate(data.contractDate)}</div>
 
-<p><strong>Индивидуальный предприниматель Сидоренко Антон Андреевич</strong>, действующий на основании свидетельства о государственной регистрации, именуемый в дальнейшем «Исполнитель», с одной стороны, и</p>
+<p><strong>Индивидуальный предприниматель Шафрановский Максим Михайлович</strong>, ИНН 253615392404, ОГРНИП 324253600042754, действующий на основании свидетельства о государственной регистрации, именуемый в дальнейшем «Исполнитель», с одной стороны, и</p>
 
 <p><strong>${data.companyName || '_______________'}</strong>, ИНН ${data.companyInn || '___________'}, КПП ${data.companyKpp || '___________'}, в лице ${data.companyDirector || '_______________'}, действующего на основании Устава, именуемый в дальнейшем «Заказчик», с другой стороны, совместно именуемые «Стороны», заключили настоящий Договор о нижеследующем:</p>
 
@@ -151,13 +153,15 @@ export function generateSintagmaContract(data: ContractData): string {
 <div class="signatures">
   <div class="sig-block">
     <h3>ИСПОЛНИТЕЛЬ</h3>
-    <p>ИП Сидоренко Антон Андреевич</p>
-    <p>ИНН: ___________</p>
-    <p>ОГРНИП: ___________</p>
-    <p>Р/с: ___________</p>
-    <p>Банк: ___________</p>
-    <p>БИК: ___________</p>
-    <div class="sig-line"></div>
+    <p>ИП Шафрановский Максим Михайлович</p>
+    <p>ИНН: 253615392404</p>
+    <p>ОГРНИП: 324253600042754</p>
+    <p>Адрес: г. Владивосток</p>
+    <p>Email: shafranovskij.m@gmail.com</p>
+    <div style="position:relative;height:80px;margin:12px 0;">
+      <img src="data:image/png;base64,${CONTRACT_STAMP_B64}" style="position:absolute;left:0;top:-20px;height:100px;opacity:0.85;" />
+      <img src="data:image/png;base64,${CONTRACT_SIGNATURE_B64}" style="position:absolute;left:60px;top:0;height:60px;opacity:0.9;" />
+    </div>
     <p>Подпись / М.П.</p>
   </div>
   <div class="sig-block">
