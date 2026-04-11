@@ -28,6 +28,7 @@ const BrandedLogin = lazyWithRetry(() => import("./pages/BrandedLogin"));
 const ResetPassword = lazyWithRetry(() => import("./pages/ResetPassword"));
 const RegisterOrganization = lazyWithRetry(() => import("./pages/RegisterOrganization"));
 const StudentDashboard = lazyWithRetry(() => import("./pages/StudentDashboard"));
+const StudentProfile = lazyWithRetry(() => import("./pages/StudentProfile"));
 const OrganizationDashboard = lazyWithRetry(() => import("./pages/OrganizationDashboard"));
 const CourseEditor = lazyWithRetry(() => import("./pages/CourseEditor"));
 const CourseBuilder = lazyWithRetry(() => import("./pages/CourseBuilder"));
@@ -116,6 +117,11 @@ const App = () => (
                     <Route path="/student" element={
                       <ProtectedRoute>
                         <StudentDashboard />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/student/profile" element={
+                      <ProtectedRoute>
+                        <StudentProfile />
                       </ProtectedRoute>
                     } />
                     <Route path="/organization" element={
