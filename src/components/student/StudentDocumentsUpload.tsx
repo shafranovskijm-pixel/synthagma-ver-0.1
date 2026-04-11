@@ -71,6 +71,7 @@ export function StudentDocumentsUpload({
   organizationId,
   isOpen,
   onOpenChange,
+  embedded = false,
 }: StudentDocumentsUploadProps) {
   const [documents, setDocuments] = useState<IdentityDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);

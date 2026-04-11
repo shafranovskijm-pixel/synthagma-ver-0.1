@@ -86,6 +86,7 @@ export function StudentConsentForm({
   isOpen = false,
   onOpenChange,
   onConsent,
+  embedded = false,
 }: StudentConsentFormProps) {
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [isLoading, setIsLoading] = useState(false);

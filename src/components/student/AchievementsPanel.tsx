@@ -84,7 +84,7 @@ const getRarity = (rarity: string): Rarity => {
   return "common";
 };
 
-export function AchievementsPanel({ userId, isOpen, onOpenChange }: AchievementsPanelProps) {
+export function AchievementsPanel({ userId, isOpen, onOpenChange, embedded = false }: AchievementsPanelProps) {
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [userAchievements, setUserAchievements] = useState<UserAchievement[]>([]);
   const [loading, setLoading] = useState(true);
