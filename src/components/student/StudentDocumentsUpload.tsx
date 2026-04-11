@@ -245,34 +245,13 @@ export function StudentDocumentsUpload({
   ).length;
   const requiredCount = DOCUMENT_TYPES.filter((dt) => dt.required).length;
 
-  return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent 
-        className="max-w-2xl rounded-2xl overflow-hidden"
-        style={{ 
-          transform: swipeOffset > 0 ? `translateY(${swipeOffset}px)` : undefined,
-          opacity: swipeOffset > 0 ? 1 - (swipeOffset / 300) : 1,
-          transition: swipeOffset === 0 ? 'transform 0.2s ease-out, opacity 0.2s ease-out' : 'none'
-        }}
-      >
-        {/* Swipe area wrapper */}
-        <div 
-          ref={swipeRef}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-          className="contents"
-        >
-          {/* Swipe indicator */}
-          <div className="flex justify-center pt-1 pb-2 md:hidden touch-none">
-            <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
+  const mainContent = (
+    <div>
+      <div className="mb-4">
+        <h3 className="font-display flex items-center gap-3 text-lg font-semibold">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+            <FileText className="w-5 h-5 text-primary" />
           </div>
-        
-        <DialogHeader>
-          <DialogTitle className="font-display flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-              <FileText className="w-5 h-5 text-primary" />
-            </div>
             <div>
               <div>Документы для обучения</div>
               <div className="text-sm font-normal text-muted-foreground">
