@@ -44,8 +44,8 @@ export function StudentSidebar({
         )}
       </div>
 
-      {/* Main nav */}
-      <nav className="flex flex-col gap-2 flex-1">
+      {/* Main nav — centered vertically */}
+      <nav className="flex flex-col gap-2 items-center justify-center flex-1">
         {navItems.map((item) => {
           if (item.id === "chat" && !showAiChat) return null;
           const isActive = activeTab === item.id;
@@ -60,7 +60,11 @@ export function StudentSidebar({
                       ? "text-primary-foreground shadow-md"
                       : "text-muted-foreground hover:text-foreground"
                   )}
-                  style={isActive ? { backgroundColor: `hsl(${primaryColor})` } : { }}
+                  style={
+                    isActive
+                      ? { backgroundColor: `hsl(${primaryColor})` }
+                      : { backgroundColor: `hsl(${primaryColor} / 0.08)` }
+                  }
                 >
                   <item.icon className="w-5 h-5" />
                   <span className={cn(
