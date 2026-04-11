@@ -16,6 +16,7 @@ interface VideoIdentificationProps {
   onVerified?: () => void;
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
+  embedded?: boolean;
 }
 
 interface VerificationRecord {
@@ -35,6 +36,7 @@ export function VideoIdentification({
   onVerified,
   isOpen = false,
   onOpenChange,
+  embedded = false,
 }: VideoIdentificationProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
