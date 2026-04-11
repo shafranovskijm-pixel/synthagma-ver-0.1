@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { X, Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +9,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 const STORAGE_KEY = "special_offer_dismissed";
 const DELAY_MS = 30000;
+const PRIVATE_PREFIXES = ["/student", "/organization", "/admin", "/company", "/sales", "/course/", "/partner/dashboard"];
 
 export function SpecialOfferPopup() {
   const [show, setShow] = useState(false);
@@ -15,12 +17,15 @@ export function SpecialOfferPopup() {
   const [phone, setPhone] = useState("");
   const [sending, setSending] = useState(false);
   const { toast } = useToast();
+  const location = useLocation();
+
+  const isPrivatePage = PRIVATE_PREFIXES.some(p => location.pathname.startsWith(p));
 
   useEffect(() => {
-    if (localStorage.getItem(STORAGE_KEY)) return;
+    if (isPrivatePage || localStorage.getItem(STORAGE_KEY)) return;
     const timer = setTimeout(() => setShow(true), DELAY_MS);
     return () => clearTimeout(timer);
-  }, []);
+  }, [isPrivatePage]);
 
   const dismiss = () => {
     setShow(false);
