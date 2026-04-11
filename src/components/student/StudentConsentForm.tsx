@@ -234,12 +234,16 @@ _________________________ / ${userName} /
   };
 
   if (isLoadingHistory) {
+    const loadingEl = (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+    if (embedded) return loadingEl;
     return (
       <Dialog open={isOpen} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-2xl rounded-2xl">
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          </div>
+          {loadingEl}
         </DialogContent>
       </Dialog>
     );
