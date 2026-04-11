@@ -31,11 +31,6 @@ const featureRows: { label: string; link?: string; getValue: (p: SubscriptionPla
     const l = SUBSCRIPTION_PLANS[p].limits;
     return l.maxStudents === -1 ? "Безлимит" : String(l.maxStudents);
   }},
-  { label: "Обученных/мес", getValue: (p: SubscriptionPlan) => {
-    const l = SUBSCRIPTION_PLANS[p].limits;
-    return l.maxTrainedPerMonth === -1 ? "Безлимит" : String(l.maxTrainedPerMonth);
-  }},
-  { label: "Хранилище", getValue: (p: SubscriptionPlan) => formatStorageSize(SUBSCRIPTION_PLANS[p].limits.storageBytes) },
   { label: "Настройки курсов", link: "/feature/course-settings", getValue: () => true },
   { label: "Магазин курсов", link: "/feature/course-store", getValue: () => true },
   { label: "Чек-лист документов", link: "/feature/document-checklist", getValue: () => true },

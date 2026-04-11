@@ -80,8 +80,6 @@ interface FeatureRow {
 const featureRows: FeatureRow[] = [
   { label: "Курсы", key: "maxCourses", format: (v: number) => v === -1 ? "∞" : String(v) },
   { label: "Ученики", key: "maxStudents", format: (v: number) => v === -1 ? "∞" : String(v) },
-  { label: "Обучаемых / мес", key: "maxTrainedPerMonth", format: (v: number) => v === -1 ? "∞" : String(v) },
-  { label: "Хранилище", key: "storageBytes", format: formatStorageSize },
   { label: "Настройки курсов", key: "courseSettings", format: (v: boolean) => v, link: "/feature/course-settings" },
   { label: "Чек-лист документов", key: "documentChecklist", format: (v: boolean) => v, link: "/feature/document-checklist" },
   { label: "Видео-идентификация", key: "videoIdentification", format: (v: boolean) => v, link: "/feature/video-id" },
