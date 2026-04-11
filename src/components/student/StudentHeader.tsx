@@ -1,4 +1,4 @@
-import { User, LogOut, Sun, Moon, Monitor, Bell, Video, FileCheck, FileText, Trophy, Sparkles } from "lucide-react";
+import { User, LogOut, Sun, Moon, Monitor, Bell, Video, FileCheck, FileText, Trophy, Sparkles, HelpCircle } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -42,6 +42,11 @@ export function StudentHeader({
       </div>
 
       <div className="flex items-center gap-2">
+        {/* Help */}
+        <Button variant="ghost" size="icon" className="rounded-xl" onClick={() => window.open('https://synthagma-bloom.lovable.app/blog', '_blank')}>
+          <HelpCircle className="w-5 h-5 text-muted-foreground" />
+        </Button>
+
         {/* Notifications bell */}
         <Button variant="ghost" size="icon" className="rounded-xl relative">
           <Bell className="w-5 h-5 text-muted-foreground" />
