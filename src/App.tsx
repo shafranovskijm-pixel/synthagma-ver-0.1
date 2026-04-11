@@ -102,6 +102,7 @@ const App = () => (
               <TooltipProvider>
                 <Toaster />
                 <Sonner />
+                <SpecialOfferPopup />
                 <Suspense fallback={<LazyLoadFallback />}>
                   <Routes>
                     <Route path="/" element={<Index />} />
