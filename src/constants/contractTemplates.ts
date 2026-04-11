@@ -25,6 +25,7 @@ export interface ContractData {
   maxStudents: string;
   maxNewStudentsPerMonth: string;
   storageLimit: string;
+  skillspaceBonusDays: number;
 }
 
 function formatMoney(n: number) {
@@ -93,6 +94,7 @@ export function generateSintagmaContract(data: ContractData): string {
 </table>
 
 <p>1.3. Срок действия доступа к Платформе: <strong>${data.durationMonths} (${data.durationMonths === 12 ? 'двенадцать' : data.durationMonths}) месяцев</strong> с момента предоставления доступа.</p>
+${data.skillspaceBonusDays > 0 ? `<p>1.4. Исполнитель предоставляет Заказчику дополнительно <strong>${data.skillspaceBonusDays} календарных дней</strong> доступа к Платформе в счёт неиспользованного оплаченного периода на платформе SkillSpace.</p>` : ''}
 
 <h2>2. ОБЯЗАННОСТИ ИСПОЛНИТЕЛЯ</h2>
 <p>2.1. Предоставить Заказчику доступ к Платформе в течение 3 (трёх) рабочих дней после получения предоплаты.</p>

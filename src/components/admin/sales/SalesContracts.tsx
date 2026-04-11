@@ -75,6 +75,7 @@ export function SalesContracts() {
     tariff_plan: 'Стандартный', contract_duration_months: 12,
     total_amount: 0, prepayment_amount: 0, notes: '',
     maxStudents: '200', maxNewStudentsPerMonth: '50', storageLimit: 'Безлимит',
+    skillspace_bonus_days: 0,
   });
   const [customServices, setCustomServices] = useState<ContractCustomService[]>([]);
 
@@ -121,6 +122,7 @@ export function SalesContracts() {
       tariff_plan: 'Стандартный', contract_duration_months: 12,
       total_amount: 0, prepayment_amount: 0, notes: '',
       maxStudents: '200', maxNewStudentsPerMonth: '50', storageLimit: 'Безлимит',
+      skillspace_bonus_days: 0,
     });
     setSelectedOrgId('manual');
     setCustomServices([]);
@@ -149,12 +151,16 @@ export function SalesContracts() {
       maxStudents: form.maxStudents,
       maxNewStudentsPerMonth: form.maxNewStudentsPerMonth,
       storageLimit: form.storageLimit,
+      skillspaceBonusDays: form.skillspace_bonus_days,
     };
 
     const html = generateSintagmaContract(contractData);
 
+    // Exclude template-only fields that don't exist in the DB table
+    const { maxStudents, maxNewStudentsPerMonth, storageLimit, skillspace_bonus_days, ...dbFields } = form;
+
     const { error } = await supabase.from('sales_contracts').insert({
-      ...form,
+      ...dbFields,
       custom_services: customServices,
       html_content: html,
     } as any);
@@ -321,6 +327,7 @@ export function SalesContracts() {
               </Select>
             </div>
             <div><Label>Срок (мес.)</Label><Input type="number" value={form.contract_duration_months} onChange={e => setForm({ ...form, contract_duration_months: Number(e.target.value) })} /></div>
+            <div><Label>Бонусные дни SkillSpace</Label><Input type="number" value={form.skillspace_bonus_days} onChange={e => setForm({ ...form, skillspace_bonus_days: Number(e.target.value) })} placeholder="0" /></div>
 
             <div className="col-span-2"><h4 className="font-semibold text-sm border-b pb-1">Индивидуальные лимиты тарифа</h4></div>
             <div><Label>Кол-во учеников</Label><Input value={form.maxStudents} onChange={e => setForm({ ...form, maxStudents: e.target.value })} placeholder="200 или Безлимит" /></div>
