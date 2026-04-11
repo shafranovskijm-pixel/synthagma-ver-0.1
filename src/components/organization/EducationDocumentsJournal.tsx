@@ -452,11 +452,11 @@ export function EducationDocumentsJournal({
 
       {/* Select Students Dialog */}
       <Dialog open={showSelectStudentsDialog} onOpenChange={setShowSelectStudentsDialog}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden">
-          <DialogHeader>
+        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col overflow-hidden">
+          <DialogHeader className="shrink-0">
             <DialogTitle>Выбор выпускников для добавления</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 flex-1 min-h-0 overflow-y-auto">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input placeholder="Поиск по ФИО или курсу..." value={studentSearchQuery} onChange={(e) => setStudentSearchQuery(e.target.value)} className="pl-10 rounded-xl" />
@@ -494,7 +494,7 @@ export function EducationDocumentsJournal({
               </>
             )}
           </div>
-          <DialogFooter>
+          <DialogFooter className="shrink-0">
             <Button variant="outline" onClick={() => setShowSelectStudentsDialog(false)} className="rounded-xl">Отмена</Button>
             <Button onClick={handleCreateFromStudents} disabled={saving || selectedStudents.size === 0} className="rounded-xl">
               {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
