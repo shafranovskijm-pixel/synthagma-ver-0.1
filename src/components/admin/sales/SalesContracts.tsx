@@ -202,20 +202,54 @@ export function SalesContracts() {
   };
 
   const stripStampFromHtml = (html: string): string => {
-    // Remove the stamp/signature table, replace with sig-line
-    return html.replace(
-      /<table style="margin:12px 0;border:none;border-collapse:collapse;">[\s\S]*?<\/table>/,
-      '<div class="sig-line" style="border-bottom:1px solid #000;height:30px;margin:12px 0;"></div>'
-    );
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    // Remove stamp tables by data attribute (new contracts)
+    doc.querySelectorAll('table[data-contract-stamp="true"]').forEach(el => {
+      const sigLine = doc.createElement('div');
+      sigLine.className = 'sig-line';
+      sigLine.style.cssText = 'border-bottom:1px solid #000;height:30px;margin:12px 0;';
+      el.parentNode?.replaceChild(sigLine, el);
+    });
+    // Fallback for old contracts: remove stamp tables by class
+    doc.querySelectorAll('table.stamp-table').forEach(el => {
+      const sigLine = doc.createElement('div');
+      sigLine.className = 'sig-line';
+      sigLine.style.cssText = 'border-bottom:1px solid #000;height:30px;margin:12px 0;';
+      el.parentNode?.replaceChild(sigLine, el);
+    });
+    // Fallback: remove any remaining base64 stamp/signature images
+    doc.querySelectorAll('img[src^="data:image"]').forEach(img => {
+      const parent = img.closest('table');
+      if (parent && !parent.classList.contains('contract-table')) {
+        const sigLine = doc.createElement('div');
+        sigLine.className = 'sig-line';
+        sigLine.style.cssText = 'border-bottom:1px solid #000;height:30px;margin:12px 0;';
+        parent.parentNode?.replaceChild(sigLine, parent);
+      }
+    });
+    return doc.documentElement.outerHTML;
   };
 
   const handleDownloadWord = (contract: SalesContract, withStamp: boolean = true) => {
     if (!contract.html_content) return;
-    const content = withStamp ? contract.html_content : stripStampFromHtml(contract.html_content);
+    
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(
+      withStamp ? contract.html_content : stripStampFromHtml(contract.html_content),
+      'text/html'
+    );
+    
+    // Extract styles and body content separately to avoid nested <html>
+    const styleEl = doc.querySelector('style');
+    const styleContent = styleEl ? styleEl.outerHTML : '';
+    const bodyContent = doc.body ? doc.body.innerHTML : contract.html_content;
+    
     const wordHtml = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
 <head><meta charset="UTF-8"><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View></w:WordDocument></xml><![endif]-->
-</head><body>${content}</body></html>`;
+${styleContent}
+</head><body>${bodyContent}</body></html>`;
     const blob = new Blob(['\ufeff', wordHtml], { type: 'application/msword' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
