@@ -57,6 +57,7 @@ const ProposalPublic = lazyWithRetry(() => import("./pages/ProposalPublic"));
 const ContractEditor = lazyWithRetry(() => import("./pages/ContractEditor"));
 const PlatformPresentation = lazyWithRetry(() => import("./pages/PlatformPresentation"));
 const EmailResponse = lazyWithRetry(() => import("./pages/EmailResponse"));
+const PaymentResult = lazyWithRetry(() => import("./pages/PaymentResult"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -98,6 +99,8 @@ const App = () => (
                     <Route path="/reset-password" element={<ResetPassword />} />
                     <Route path="/register" element={<RegisterOrganization />} />
                     <Route path="/register-organization" element={<RegisterOrganization />} />
+                    <Route path="/payment-success" element={<PaymentResult success={true} />} />
+                    <Route path="/payment-fail" element={<PaymentResult success={false} />} />
                     <Route path="/student" element={
                       <ProtectedRoute>
                         <StudentDashboard />

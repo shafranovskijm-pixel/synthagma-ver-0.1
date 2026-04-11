@@ -119,3 +119,9 @@ verify_jwt = false
 
 [functions.handle-email-action]
 verify_jwt = false
+
+[functions.robokassa-init]
+verify_jwt = false
+
+[functions.robokassa-result]
+verify_jwt = false
