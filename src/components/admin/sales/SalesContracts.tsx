@@ -47,11 +47,25 @@ const STATUS_MAP: Record<string, { label: string; variant: 'default' | 'secondar
 
 const TARIFFS = ['Бесплатный', 'Старт', 'Стандартный', 'Профессиональный', 'Максимальный'];
 
+interface OrgOption {
+  id: string;
+  name: string;
+  inn: string | null;
+  kpp: string | null;
+  legal_address: string | null;
+  director_name: string | null;
+  contact_name: string | null;
+  email: string;
+  phone: string | null;
+}
+
 export function SalesContracts() {
   const [contracts, setContracts] = useState<SalesContract[]>([]);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [organizations, setOrganizations] = useState<OrgOption[]>([]);
+  const [selectedOrgId, setSelectedOrgId] = useState<string>('manual');
 
   // Form state
   const [form, setForm] = useState({
@@ -71,7 +85,33 @@ export function SalesContracts() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { fetchContracts(); }, [fetchContracts]);
+  const fetchOrganizations = useCallback(async () => {
+    const { data } = await supabase
+      .from('organizations')
+      .select('id, name, inn, kpp, legal_address, director_name, contact_name, email, phone')
+      .order('name');
+    if (data) setOrganizations(data as OrgOption[]);
+  }, []);
+
+  useEffect(() => { fetchContracts(); fetchOrganizations(); }, [fetchContracts, fetchOrganizations]);
+
+  const handleOrgSelect = (orgId: string) => {
+    setSelectedOrgId(orgId);
+    if (orgId === 'manual') return;
+    const org = organizations.find(o => o.id === orgId);
+    if (!org) return;
+    setForm(prev => ({
+      ...prev,
+      company_name: org.name || '',
+      company_inn: org.inn || '',
+      company_kpp: org.kpp || '',
+      company_address: org.legal_address || '',
+      company_director: org.director_name || '',
+      contact_person: org.contact_name || '',
+      contact_email: org.email || '',
+      contact_phone: org.phone || '',
+    }));
+  };
 
   const resetForm = () => {
     setForm({
@@ -82,6 +122,7 @@ export function SalesContracts() {
       total_amount: 0, prepayment_amount: 0, notes: '',
       maxStudents: '200', maxNewStudentsPerMonth: '50', storageLimit: 'Безлимит',
     });
+    setSelectedOrgId('manual');
     setCustomServices([]);
   };
 
@@ -243,7 +284,23 @@ export function SalesContracts() {
               <div><Label>Дата договора</Label><Input type="date" value={form.contract_date} onChange={e => setForm({ ...form, contract_date: e.target.value })} /></div>
             </div>
 
-            <div className="col-span-2"><h4 className="font-semibold text-sm border-b pb-1">Данные заказчика</h4></div>
+            <div className="col-span-2">
+              <h4 className="font-semibold text-sm border-b pb-1">Данные заказчика</h4>
+              <div className="mt-2">
+                <Label>Выбрать организацию</Label>
+                <Select value={selectedOrgId} onValueChange={handleOrgSelect}>
+                  <SelectTrigger><SelectValue placeholder="Выберите организацию или введите вручную" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="manual">Ввести вручную</SelectItem>
+                    {organizations.map(org => (
+                      <SelectItem key={org.id} value={org.id}>
+                        {org.name}{org.inn ? ` (ИНН: ${org.inn})` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
             <div><Label>Название компании *</Label><Input value={form.company_name} onChange={e => setForm({ ...form, company_name: e.target.value })} /></div>
             <div><Label>Директор</Label><Input value={form.company_director} onChange={e => setForm({ ...form, company_director: e.target.value })} placeholder="Ф.И.О." /></div>
             <div><Label>ИНН</Label><Input value={form.company_inn} onChange={e => setForm({ ...form, company_inn: e.target.value })} /></div>
