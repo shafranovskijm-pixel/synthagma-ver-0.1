@@ -17,11 +17,11 @@ import { StudentDocumentsUpload } from "@/components/student/StudentDocumentsUpl
 import { AchievementsPanel } from "@/components/student/AchievementsPanel";
 import { useStudentDashboard } from "@/hooks/useStudentDashboard";
 import { toast } from "sonner";
-import { StudentCourseStore } from "@/components/student/StudentCourseStore";
 import { StudentOrgChat } from "@/components/student/StudentOrgChat";
 import { AvailablePaidCourses } from "@/components/student/AvailablePaidCourses";
 import { StudentSidebar, type StudentTab } from "@/components/student/StudentSidebar";
 import { StudentHeader } from "@/components/student/StudentHeader";
+import { StudentFooter } from "@/components/student/StudentFooter";
 import { OrgBanner } from "@/components/student/OrgBanner";
 import { CourseCatalog } from "@/components/student/CourseCatalog";
 import { StudentLibrary } from "@/components/student/StudentLibrary";
@@ -40,7 +40,7 @@ export default function StudentDashboard() {
 
   const {
     user, navigate, isMobile, theme, setTheme,
-    activeTab, setActiveTab, messages, inputValue, setInputValue, isAiLoading, handleSendMessage,
+    activeTab, setActiveTab: setActiveTabRaw, messages, inputValue, setInputValue, isAiLoading, handleSendMessage,
     courses, catalogCourses, categories, profile, branding, dashboardSettings, loading,
     totalTimeSpent, totalCompletedLessons, totalProgress, firstName, formatTime,
     isPreviewMode, showVideoIdentification, setShowVideoIdentification,
@@ -50,6 +50,12 @@ export default function StudentDashboard() {
     handleLogout, pullToRefreshRef, pullDistance, isRefreshing, canRefresh, orgPlan,
     isAdminView, adminViewStudentName,
   } = useStudentDashboard();
+
+  // Narrow the tab type (hook may still have "store" internally)
+  const setActiveTab = (tab: StudentTab) => setActiveTabRaw(tab as any);
+  const currentTab: StudentTab = (activeTab === "store" ? "catalog" : activeTab) as StudentTab;
+
+  const pendingDocsCount = documentsProgress.total - documentsProgress.completed;
 
   if (userRole && userRole !== 'student' && !isAdminView && !isAdminViewFromStorage && !isPreviewMode && !isPreviewFromStorage) {
     if (userRole === 'organization') return <Navigate to="/organization" replace />;
@@ -75,7 +81,7 @@ export default function StudentDashboard() {
     }
   };
 
-  // Mobile sidebar content (full nav)
+  // Mobile sidebar content
   const MobileSidebarContent = ({ onNavigate }: { onNavigate?: () => void }) => (
     <div className="flex flex-col h-full">
       <div className="p-4 border-b border-border">
@@ -94,7 +100,7 @@ export default function StudentDashboard() {
             onClick={() => { setActiveTab(item.id); onNavigate?.(); }}
             className={cn(
               "w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors",
-              activeTab === item.id ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary"
+              currentTab === item.id ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary"
             )}
           >
             <item.icon className="w-5 h-5" />{item.label}
@@ -130,22 +136,13 @@ export default function StudentDashboard() {
         </div>
       )}
 
-      {/* Desktop sidebar (icon-only) */}
+      {/* Desktop sidebar */}
       <StudentSidebar
-        activeTab={activeTab}
+        activeTab={currentTab}
         setActiveTab={setActiveTab}
         branding={branding}
         orgName={profile?.organization_name || null}
         showAiChat={dashboardSettings.showAiChat}
-        showAchievements={dashboardSettings.showAchievements}
-        isVideoIdentified={isVideoIdentified}
-        documentsProgress={documentsProgress}
-        onShowVideoId={() => setShowVideoIdentification(true)}
-        onShowConsent={() => setShowConsentForm(true)}
-        onShowDocs={() => setShowDocumentsUpload(true)}
-        onShowAchievements={() => setShowAchievements(true)}
-        onLogout={handleLogout}
-        setTheme={setTheme}
         isPreviewMode={isPreviewMode}
         isAdminView={isAdminView}
       />
@@ -170,18 +167,25 @@ export default function StudentDashboard() {
             logoUrl={branding?.logoUrl}
             onLogout={handleLogout}
             setTheme={setTheme}
+            pendingCount={pendingDocsCount}
+            isVideoIdentified={isVideoIdentified}
+            showAchievements={dashboardSettings.showAchievements}
+            onShowVideoId={() => setShowVideoIdentification(true)}
+            onShowConsent={() => setShowConsentForm(true)}
+            onShowDocs={() => setShowDocumentsUpload(true)}
+            onShowAchievements={() => setShowAchievements(true)}
           />
         </div>
 
         <main
           ref={isMobile ? pullToRefreshRef : undefined}
-          className="flex-1 overflow-auto pt-14 md:pt-0"
+          className="flex-1 overflow-auto pt-14 md:pt-0 flex flex-col"
         >
           {isMobile && <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} canRefresh={canRefresh} threshold={80} />}
 
           {/* Catalog tab */}
-          {activeTab === "catalog" && (
-            <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
+          {currentTab === "catalog" && (
+            <div className="p-6 space-y-6 max-w-[1400px] mx-auto flex-1">
               <OrgBanner
                 orgName={profile?.organization_name || null}
                 orgDescription={profile?.org_description}
@@ -199,8 +203,8 @@ export default function StudentDashboard() {
           )}
 
           {/* Library tab */}
-          {activeTab === "library" && (
-            <div className="p-6 max-w-[1400px] mx-auto">
+          {currentTab === "library" && (
+            <div className="p-6 max-w-[1400px] mx-auto flex-1">
               <StudentLibrary
                 courses={courses}
                 totalProgress={totalProgress}
@@ -220,8 +224,8 @@ export default function StudentDashboard() {
           )}
 
           {/* Chat tab */}
-          {activeTab === "chat" && chatMode === "select" && (
-            <div className="flex flex-col items-center justify-center h-full p-8">
+          {currentTab === "chat" && chatMode === "select" && (
+            <div className="flex flex-col items-center justify-center h-full p-8 flex-1">
               <MessageCircle className="w-12 h-12 text-primary mb-6" />
               <h2 className="font-bold text-xl mb-2">Выберите чат</h2>
               <p className="text-muted-foreground mb-8 text-center">С кем вы хотите пообщаться?</p>
@@ -238,8 +242,8 @@ export default function StudentDashboard() {
             </div>
           )}
 
-          {activeTab === "chat" && chatMode === "org" && user && profile?.organization_id && (
-            <div className="flex flex-col h-full">
+          {currentTab === "chat" && chatMode === "org" && user && profile?.organization_id && (
+            <div className="flex flex-col h-full flex-1">
               <div className="p-4 border-b border-border">
                 <Button variant="ghost" size="sm" onClick={() => setChatMode("select")} className="gap-1"><ArrowLeft className="w-4 h-4" />Назад</Button>
               </div>
@@ -247,8 +251,8 @@ export default function StudentDashboard() {
             </div>
           )}
 
-          {activeTab === "chat" && chatMode === "ai" && (
-            <div className="flex flex-col h-full">
+          {currentTab === "chat" && chatMode === "ai" && (
+            <div className="flex flex-col h-full flex-1">
               <div className="p-4 border-b border-border">
                 <Button variant="ghost" size="sm" onClick={() => setChatMode("select")} className="gap-1"><ArrowLeft className="w-4 h-4" />Назад</Button>
               </div>
@@ -273,11 +277,13 @@ export default function StudentDashboard() {
             </div>
           )}
 
-          {/* Store tab */}
-          {activeTab === "store" && user && profile?.organization_id && (
-            <div className="p-6">
-              <StudentCourseStore userId={user.id} organizationId={profile.organization_id} />
-            </div>
+          {/* Footer — show on catalog and library tabs */}
+          {(currentTab === "catalog" || currentTab === "library") && (
+            <StudentFooter
+              orgName={profile?.organization_name || null}
+              logoUrl={branding?.logoUrl}
+              orgDescription={profile?.org_description}
+            />
           )}
         </main>
       </div>
