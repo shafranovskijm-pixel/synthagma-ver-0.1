@@ -53,7 +53,7 @@ const PartnerLanding = () => {
     hidden: { opacity: 0, y: 30, rotateX: -90 },
     visible: (i: number) => ({
       opacity: 1, y: 0, rotateX: 0,
-      transition: { delay: 0.8 + i * 0.08, type: "spring", damping: 12, stiffness: 200 }
+      transition: { delay: 0.8 + i * 0.08, type: "spring" as const, damping: 12, stiffness: 200 }
     }),
   };
 

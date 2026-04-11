@@ -33,11 +33,10 @@ export function SpecialOfferPopup() {
     setSending(true);
     try {
       const { error } = await supabase.from("plan_requests").insert({
-        organization_name: name.trim(),
-        contact_name: name.trim(),
+        full_name: name.trim(),
         phone: phone.trim(),
+        email: `${phone.trim()}@lead.local`,
         plan: "special_offer",
-        status: "new",
       });
       if (error) throw error;
       toast({ title: "Заявка отправлена!", description: "Мы свяжемся с вами в ближайшее время." });
