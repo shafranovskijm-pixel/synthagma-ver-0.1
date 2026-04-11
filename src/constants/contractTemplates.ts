@@ -20,8 +20,8 @@ export interface ContractData {
   prepaymentAmount: number;
   customServices: ContractCustomService[];
   notes: string;
-  maxStudents: number;
-  maxNewStudentsPerMonth: number;
+  maxStudents: string;
+  maxNewStudentsPerMonth: string;
   storageLimit: string;
 }
 
@@ -77,8 +77,8 @@ export function generateSintagmaContract(data: ContractData): string {
 <table>
   <tr><th>Функция</th><th>Описание / Лимит</th></tr>
   <tr><td>Курсы</td><td>До 30 курсов</td></tr>
-  <tr><td>Ученики</td><td>До <strong>${data.maxStudents}</strong> учеников</td></tr>
-  <tr><td>Новые ученики</td><td>До <strong>${data.maxNewStudentsPerMonth}</strong> новых учеников в месяц</td></tr>
+  <tr><td>Ученики</td><td>${isNaN(Number(data.maxStudents)) ? '<strong>' + data.maxStudents + '</strong>' : 'До <strong>' + data.maxStudents + '</strong> учеников'}</td></tr>
+  <tr><td>Новые ученики</td><td>${isNaN(Number(data.maxNewStudentsPerMonth)) ? '<strong>' + data.maxNewStudentsPerMonth + '</strong>' : 'До <strong>' + data.maxNewStudentsPerMonth + '</strong> новых учеников в месяц'}</td></tr>
   <tr><td>Свободное место</td><td><strong>${data.storageLimit}</strong></td></tr>
   <tr><td>ИИ-генерация</td><td>Генерация курсов и озвучка с помощью ИИ</td></tr>
   <tr><td>Настройки курсов</td><td>Запрет перемотки видео, последовательное прохождение уроков</td></tr>

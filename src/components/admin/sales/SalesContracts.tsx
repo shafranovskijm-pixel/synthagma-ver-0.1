@@ -60,7 +60,7 @@ export function SalesContracts() {
     contract_number: '', contract_date: new Date().toISOString().slice(0, 10),
     tariff_plan: 'Стандартный', contract_duration_months: 12,
     total_amount: 0, prepayment_amount: 0, notes: '',
-    maxStudents: 200, maxNewStudentsPerMonth: 50, storageLimit: 'Безлимит',
+    maxStudents: '200', maxNewStudentsPerMonth: '50', storageLimit: 'Безлимит',
   });
   const [customServices, setCustomServices] = useState<ContractCustomService[]>([]);
 
@@ -80,7 +80,7 @@ export function SalesContracts() {
       contract_number: '', contract_date: new Date().toISOString().slice(0, 10),
       tariff_plan: 'Стандартный', contract_duration_months: 12,
       total_amount: 0, prepayment_amount: 0, notes: '',
-      maxStudents: 200, maxNewStudentsPerMonth: 50, storageLimit: 'Безлимит',
+      maxStudents: '200', maxNewStudentsPerMonth: '50', storageLimit: 'Безлимит',
     });
     setCustomServices([]);
   };
@@ -250,8 +250,8 @@ export function SalesContracts() {
             <div><Label>Срок (мес.)</Label><Input type="number" value={form.contract_duration_months} onChange={e => setForm({ ...form, contract_duration_months: Number(e.target.value) })} /></div>
 
             <div className="col-span-2"><h4 className="font-semibold text-sm border-b pb-1">Индивидуальные лимиты тарифа</h4></div>
-            <div><Label>Кол-во учеников</Label><Input type="number" value={form.maxStudents} onChange={e => setForm({ ...form, maxStudents: Number(e.target.value) })} /></div>
-            <div><Label>Новых учеников в месяц</Label><Input type="number" value={form.maxNewStudentsPerMonth} onChange={e => setForm({ ...form, maxNewStudentsPerMonth: Number(e.target.value) })} /></div>
+            <div><Label>Кол-во учеников</Label><Input value={form.maxStudents} onChange={e => setForm({ ...form, maxStudents: e.target.value })} placeholder="200 или Безлимит" /></div>
+            <div><Label>Новых учеников в месяц</Label><Input value={form.maxNewStudentsPerMonth} onChange={e => setForm({ ...form, maxNewStudentsPerMonth: e.target.value })} placeholder="50 или Безлимит" /></div>
             <div><Label>Свободное место</Label><Input value={form.storageLimit} onChange={e => setForm({ ...form, storageLimit: e.target.value })} placeholder="Безлимит" /></div>
 
             <div className="col-span-2"><h4 className="font-semibold text-sm border-b pb-1">Оплата</h4></div>
