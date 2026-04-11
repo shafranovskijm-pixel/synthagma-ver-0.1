@@ -38,7 +38,7 @@ function formatDate(d: string) {
   return date.toLocaleDateString('ru-RU', { day: '2-digit', month: 'long', year: 'numeric' });
 }
 
-export function generateSintagmaContract(data: ContractData): string {
+export function generateSintagmaContract(data: ContractData, withStamp: boolean = true): string {
   const customServicesRows = data.customServices.length > 0
     ? data.customServices.map((s, i) => `<tr><td>${i + 1}</td><td>${s.name}</td><td>${formatMoney(s.price)} руб.</td></tr>`).join('')
     : '<tr><td colspan="3" style="text-align:center;">Доработки не предусмотрены</td></tr>';
@@ -160,7 +160,7 @@ ${data.skillspaceBonusDays > 0 ? `<p>1.4. Исполнитель предост�
     <p>ОГРНИП: 324253600042754</p>
     <p>Адрес: г. Владивосток</p>
     <p>Email: shafranovskij.m@gmail.com</p>
-    <table style="margin:12px 0;border:none;border-collapse:collapse;">
+    ${withStamp ? `<table style="margin:12px 0;border:none;border-collapse:collapse;">
       <tr>
         <td style="border:none;padding:0;vertical-align:bottom;">
           <img src="data:image/png;base64,${CONTRACT_STAMP_B64}" width="100" height="100" style="height:100px;width:auto;opacity:0.85;" />
@@ -169,7 +169,7 @@ ${data.skillspaceBonusDays > 0 ? `<p>1.4. Исполнитель предост�
           <img src="data:image/png;base64,${CONTRACT_SIGNATURE_B64}" width="80" height="60" style="height:60px;width:auto;opacity:0.9;" />
         </td>
       </tr>
-    </table>
+    </table>` : '<div class="sig-line"></div>'}
     <p>Подпись / М.П.</p>
   </div>
   <div class="sig-block">
