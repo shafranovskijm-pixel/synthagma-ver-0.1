@@ -160,10 +160,16 @@ ${data.skillspaceBonusDays > 0 ? `<p>1.4. Исполнитель предост�
     <p>ОГРНИП: 324253600042754</p>
     <p>Адрес: г. Владивосток</p>
     <p>Email: shafranovskij.m@gmail.com</p>
-    <div style="position:relative;height:80px;margin:12px 0;">
-      <img src="data:image/png;base64,${CONTRACT_STAMP_B64}" style="position:absolute;left:0;top:-20px;height:100px;opacity:0.85;" />
-      <img src="data:image/png;base64,${CONTRACT_SIGNATURE_B64}" style="position:absolute;left:60px;top:0;height:60px;opacity:0.9;" />
-    </div>
+    <table style="margin:12px 0;border:none;border-collapse:collapse;">
+      <tr>
+        <td style="border:none;padding:0;vertical-align:bottom;">
+          <img src="data:image/png;base64,${CONTRACT_STAMP_B64}" width="100" height="100" style="height:100px;width:auto;opacity:0.85;" />
+        </td>
+        <td style="border:none;padding:0 0 0 10px;vertical-align:bottom;">
+          <img src="data:image/png;base64,${CONTRACT_SIGNATURE_B64}" width="80" height="60" style="height:60px;width:auto;opacity:0.9;" />
+        </td>
+      </tr>
+    </table>
     <p>Подпись / М.П.</p>
   </div>
   <div class="sig-block">
