@@ -93,10 +93,10 @@ export function AchievementsPanel({ userId, isOpen, onOpenChange, embedded = fal
   const [celebratingAchievement, setCelebratingAchievement] = useState<UserAchievement | null>(null);
 
   useEffect(() => {
-    if (isOpen && userId) {
+    if ((isOpen || embedded) && userId) {
       loadAchievements();
     }
-  }, [isOpen, userId]);
+  }, [isOpen, embedded, userId]);
 
   const loadAchievements = async () => {
     setLoading(true);

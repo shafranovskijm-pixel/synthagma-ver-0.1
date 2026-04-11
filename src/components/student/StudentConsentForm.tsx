@@ -97,11 +97,11 @@ export function StudentConsentForm({
   const [showHistory, setShowHistory] = useState(false);
 
   useEffect(() => {
-    if (isOpen && organizationId) {
+    if ((isOpen || embedded) && organizationId) {
       loadOrganization();
       loadConsentHistory();
     }
-  }, [isOpen, organizationId, userId]);
+  }, [isOpen, embedded, organizationId, userId]);
 
   const loadOrganization = async () => {
     try {

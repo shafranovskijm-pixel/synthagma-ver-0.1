@@ -134,10 +134,10 @@ export function StudentDocumentsUpload({
   }, [onOpenChange]);
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen || embedded) {
       loadDocuments();
     }
-  }, [isOpen]);
+  }, [isOpen, embedded]);
 
   const loadDocuments = async () => {
     setIsLoading(true);
