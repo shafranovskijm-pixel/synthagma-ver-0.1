@@ -70,6 +70,7 @@ export function Footer() {
                 { label: "Возможности", href: "#features" },
                 { label: "Дорожная карта", to: "/roadmap" },
                 { label: "Стоимость", href: "#calculator" },
+                { label: "Партнёрам", to: "/partner" },
                 { label: "Блог", to: "/blog" },
               ].map((link) => (
                 <li key={link.label}>
