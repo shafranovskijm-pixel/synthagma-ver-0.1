@@ -47,11 +47,25 @@ const STATUS_MAP: Record<string, { label: string; variant: 'default' | 'secondar
 
 const TARIFFS = ['Бесплатный', 'Старт', 'Стандартный', 'Профессиональный', 'Максимальный'];
 
+interface OrgOption {
+  id: string;
+  name: string;
+  inn: string | null;
+  kpp: string | null;
+  legal_address: string | null;
+  director_name: string | null;
+  contact_name: string | null;
+  email: string;
+  phone: string | null;
+}
+
 export function SalesContracts() {
   const [contracts, setContracts] = useState<SalesContract[]>([]);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [organizations, setOrganizations] = useState<OrgOption[]>([]);
+  const [selectedOrgId, setSelectedOrgId] = useState<string>('manual');
 
   // Form state
   const [form, setForm] = useState({
@@ -71,7 +85,33 @@ export function SalesContracts() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { fetchContracts(); }, [fetchContracts]);
+  const fetchOrganizations = useCallback(async () => {
+    const { data } = await supabase
+      .from('organizations')
+      .select('id, name, inn, kpp, legal_address, director_name, contact_name, email, phone')
+      .order('name');
+    if (data) setOrganizations(data as OrgOption[]);
+  }, []);
+
+  useEffect(() => { fetchContracts(); fetchOrganizations(); }, [fetchContracts, fetchOrganizations]);
+
+  const handleOrgSelect = (orgId: string) => {
+    setSelectedOrgId(orgId);
+    if (orgId === 'manual') return;
+    const org = organizations.find(o => o.id === orgId);
+    if (!org) return;
+    setForm(prev => ({
+      ...prev,
+      company_name: org.name || '',
+      company_inn: org.inn || '',
+      company_kpp: org.kpp || '',
+      company_address: org.legal_address || '',
+      company_director: org.director_name || '',
+      contact_person: org.contact_name || '',
+      contact_email: org.email || '',
+      contact_phone: org.phone || '',
+    }));
+  };
 
   const resetForm = () => {
     setForm({
