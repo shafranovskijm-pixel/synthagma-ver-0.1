@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Plus, Eye, Download, Trash2, X } from 'lucide-react';
+import { Plus, Eye, Download, Trash2, X, FileText } from 'lucide-react';
 import { generateSintagmaContract, type ContractCustomService, type ContractData } from '@/constants/contractTemplates';
 
 interface SalesContract {
@@ -143,15 +143,30 @@ export function SalesContracts() {
     }
   };
 
-  const handleDownload = (contract: SalesContract) => {
+  const handleDownloadPdf = (contract: SalesContract) => {
     if (!contract.html_content) return;
-    const printHtml = `<!DOCTYPE html><html><head><title>Договор ${contract.contract_number || ''}</title></head><body>${contract.html_content}</body></html>`;
+    const printHtml = contract.html_content;
     const blob = new Blob([printHtml], { type: 'text/html; charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const w = window.open(url);
     if (w) {
       w.onload = () => { setTimeout(() => { w.print(); }, 500); };
     }
+  };
+
+  const handleDownloadWord = (contract: SalesContract) => {
+    if (!contract.html_content) return;
+    const wordHtml = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="UTF-8"><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View></w:WordDocument></xml><![endif]-->
+</head><body>${contract.html_content}</body></html>`;
+    const blob = new Blob(['\ufeff', wordHtml], { type: 'application/msword' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Договор_${contract.contract_number || contract.id}.doc`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const addCustomService = () => setCustomServices([...customServices, { name: '', price: 0 }]);
@@ -207,8 +222,9 @@ export function SalesContracts() {
               <TableCell>{c.contract_date ? new Date(c.contract_date).toLocaleDateString('ru-RU') : '—'}</TableCell>
               <TableCell>
                 <div className="flex gap-1">
-                  <Button size="icon" variant="ghost" onClick={() => handleView(c)} disabled={!c.html_content}><Eye className="w-4 h-4" /></Button>
-                  <Button size="icon" variant="ghost" onClick={() => handleDownload(c)} disabled={!c.html_content}><Download className="w-4 h-4" /></Button>
+                  <Button size="icon" variant="ghost" onClick={() => handleView(c)} disabled={!c.html_content} title="Просмотр"><Eye className="w-4 h-4" /></Button>
+                  <Button size="icon" variant="ghost" onClick={() => handleDownloadPdf(c)} disabled={!c.html_content} title="Скачать PDF"><Download className="w-4 h-4" /></Button>
+                  <Button size="icon" variant="ghost" onClick={() => handleDownloadWord(c)} disabled={!c.html_content} title="Скачать Word"><FileText className="w-4 h-4" /></Button>
                   <Button size="icon" variant="ghost" onClick={() => handleDelete(c.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                 </div>
               </TableCell>
