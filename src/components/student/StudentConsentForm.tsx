@@ -252,18 +252,17 @@ _________________________ / ${userName} /
   const isConsentValid = currentConsent?.status === "signed" && 
     (!currentConsent.expires_at || new Date(currentConsent.expires_at) > new Date());
 
-  return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] rounded-2xl">
-        <DialogHeader>
-          <DialogTitle className="font-display flex items-center gap-2">
-            <Shield className="w-5 h-5 text-primary" />
-            Согласие на обработку персональных данных
-          </DialogTitle>
-          <DialogDescription>
-            В соответствии с требованиями Федерального закона № 152-ФЗ
-          </DialogDescription>
-        </DialogHeader>
+  const mainContent = (
+    <div className="space-y-4">
+      <div className="mb-4">
+        <h3 className="font-display flex items-center gap-2 text-lg font-semibold">
+          <Shield className="w-5 h-5 text-primary" />
+          Согласие на обработку персональных данных
+        </h3>
+        <p className="text-sm text-muted-foreground mt-1">
+          В соответствии с требованиями Федерального закона № 152-ФЗ
+        </p>
+      </div>
 
         {/* History button */}
         {consentHistory.length > 0 && !showHistory && (
@@ -394,6 +393,15 @@ _________________________ / ${userName} /
             </Button>
           </div>
         )}
+    </div>
+  );
+
+  if (embedded) return mainContent;
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[90vh] rounded-2xl">
+        {mainContent}
       </DialogContent>
     </Dialog>
   );
