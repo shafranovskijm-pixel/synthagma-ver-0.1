@@ -56,10 +56,12 @@ import { ru } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { getXLSX } from "@/utils/xlsxHelper";
 import { Badge } from "@/components/ui/badge";
+import { downloadHtmlFile } from "@/utils/downloadHtmlFile";
+import { getSignedStorageUrl, extractStoragePath } from "@/utils/storageHelpers";
 
 interface DocumentRecord {
   id: string;
-  original_id: string; // ID without prefixes for DB updates
+  original_id: string;
   reg_number: string | null;
   document_type: string;
   document_name: string;
@@ -69,7 +71,8 @@ interface DocumentRecord {
   related_entity_type: "student" | "company" | "organization" | null;
   notes: string | null;
   source: "issuance_log" | "company_document" | "enrollment";
-  is_editable: boolean; // Can this record's reg_number be edited in DB
+  is_editable: boolean;
+  file_url: string | null;
 }
 
 interface AutoDocumentRegistrationJournalProps {
