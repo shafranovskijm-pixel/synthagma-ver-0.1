@@ -682,6 +682,15 @@ export function VideoIdentification({
 
         {/* Hidden canvas for capturing photo */}
         <canvas ref={canvasRef} className="hidden" />
+      </>
+    );
+
+  if (embedded) return mainContent;
+
+  return (
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent className="max-w-lg rounded-2xl">
+        {mainContent}
       </DialogContent>
     </Dialog>
   );
