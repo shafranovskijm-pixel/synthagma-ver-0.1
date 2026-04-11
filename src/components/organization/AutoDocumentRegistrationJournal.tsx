@@ -193,6 +193,7 @@ export function AutoDocumentRegistrationJournal({
             notes: doc.send_method ? `Отправлено: ${doc.send_method}` : null,
             source: "issuance_log",
             is_editable: true,
+            file_url: doc.file_url || null,
           });
         }
 
@@ -238,6 +239,7 @@ export function AutoDocumentRegistrationJournal({
             notes: doc.amount ? `Сумма: ${doc.amount} ₽` : null,
             source: "company_document",
             is_editable: true,
+            file_url: doc.file_url || null,
           });
         }
 
