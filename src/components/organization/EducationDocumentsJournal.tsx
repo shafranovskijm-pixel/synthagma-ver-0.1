@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   ArrowLeft, Calendar as CalendarIcon, Search, Loader2, FileSpreadsheet, FileText,
-  Plus, Pencil, Trash2, Hash, User, GraduationCap, Award, Mail, Users, CheckCircle2, Sparkles,
+  Plus, Pencil, Trash2, Hash, User, GraduationCap, Award, Mail, Users, CheckCircle2, Sparkles, Printer,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ru } from "date-fns/locale";
@@ -33,6 +33,8 @@ import {
   DOCUMENT_TYPES,
   DELIVERY_METHODS,
 } from "@/hooks/useEducationDocumentsJournal";
+import { generateEducationDocumentHtml } from "@/utils/generateEducationDocument";
+import { printHtmlContent } from "@/utils/printHtmlToPdf";
 
 interface EducationDocumentsJournalProps {
   organizationId: string;
@@ -48,7 +50,7 @@ export function EducationDocumentsJournal({
   const {
     loading, saving, searchQuery, setSearchQuery,
     selectedDocType, setSelectedDocType, selectedStatus, setSelectedStatus,
-    dateRange, setDateRange,
+    dateRange, setDateRange, orgData,
     showAddDialog, setShowAddDialog, showSelectStudentsDialog, setShowSelectStudentsDialog,
     editingRecord, setEditingRecord, deletingRecord, setDeletingRecord,
     loadingStudents, selectedStudents,
@@ -244,6 +246,7 @@ export function EducationDocumentsJournal({
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="icon" className="rounded-lg h-8 w-8" title="Печать документа" onClick={() => { const html = generateEducationDocumentHtml(record, orgData); printHtmlContent(html, `${record.document_type === "certificate" ? "Удостоверение" : record.document_type === "diploma" ? "Диплом" : "Свидетельство"} ${record.document_number}`); }}><Printer className="w-4 h-4" /></Button>
                         <Button variant="ghost" size="icon" className="rounded-lg h-8 w-8" onClick={() => handleOpenEdit(record)}><Pencil className="w-4 h-4" /></Button>
                         <Button variant="ghost" size="icon" className="rounded-lg h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setDeletingRecord(record)}><Trash2 className="w-4 h-4" /></Button>
                       </div>

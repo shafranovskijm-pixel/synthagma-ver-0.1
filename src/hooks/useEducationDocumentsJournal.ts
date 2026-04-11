@@ -113,6 +113,16 @@ export function useEducationDocumentsJournal({
   const [studentSearchQuery, setStudentSearchQuery] = useState("");
 
   // Document settings from branding
+  const [orgData, setOrgData] = useState<{
+    name: string;
+    license_number?: string | null;
+    city?: string | null;
+    stamp_url?: string | null;
+    signature_url?: string | null;
+    director_name?: string | null;
+    director_position?: string | null;
+  }>({ name: "" });
+
   const [docSettings, setDocSettings] = useState<{
     certificateSettings?: { series: string; startNumber: number; city: string; regNumberFormat: string };
     diplomaSettings?: { series: string; startNumber: number; city: string; regNumberFormat: string };
@@ -153,19 +163,31 @@ export function useEducationDocumentsJournal({
             .order("created_at", { ascending: false }),
           supabase
             .from("organizations")
-            .select("branding")
+            .select("name, branding, license_number, stamp_url, signature_url, director_name, director_position")
             .eq("id", organizationId)
             .single(),
         ]);
         if (recordsRes.error) throw recordsRes.error;
         setRecords((recordsRes.data || []).map(mapDbRecord));
 
-        const branding = orgRes.data?.branding as Record<string, unknown> | null;
-        if (branding) {
-          setDocSettings({
-            certificateSettings: branding.certificateSettings as any,
-            diplomaSettings: branding.diplomaSettings as any,
+        if (orgRes.data) {
+          const o = orgRes.data as any;
+          const branding = o.branding as Record<string, unknown> | null;
+          setOrgData({
+            name: o.name || "",
+            license_number: o.license_number,
+            city: (branding?.city as string) || null,
+            stamp_url: o.stamp_url,
+            signature_url: o.signature_url,
+            director_name: o.director_name,
+            director_position: o.director_position,
           });
+          if (branding) {
+            setDocSettings({
+              certificateSettings: branding.certificateSettings as any,
+              diplomaSettings: branding.diplomaSettings as any,
+            });
+          }
         }
       } catch (error) {
         console.error("Error loading records:", error);
@@ -587,7 +609,7 @@ export function useEducationDocumentsJournal({
     // State
     loading, saving, records, searchQuery, setSearchQuery,
     selectedDocType, setSelectedDocType, selectedStatus, setSelectedStatus,
-    dateRange, setDateRange,
+    dateRange, setDateRange, orgData,
     showAddDialog, setShowAddDialog, showSelectStudentsDialog, setShowSelectStudentsDialog,
     editingRecord, setEditingRecord, deletingRecord, setDeletingRecord,
     completedStudents, loadingStudents, selectedStudents,
