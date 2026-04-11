@@ -31,6 +31,7 @@ const OrganizationDashboard = lazyWithRetry(() => import("./pages/OrganizationDa
 const CourseEditor = lazyWithRetry(() => import("./pages/CourseEditor"));
 const CourseBuilder = lazyWithRetry(() => import("./pages/CourseBuilder"));
 const CourseLearning = lazyWithRetry(() => import("./pages/CourseLearning"));
+const CourseLanding = lazyWithRetry(() => import("./pages/CourseLanding"));
 const CoursePreview = lazyWithRetry(() => import("./pages/CoursePreview"));
 const JoinByLink = lazyWithRetry(() => import("./pages/JoinByLink"));
 const AdminDashboard = lazyWithRetry(() => import("./pages/AdminDashboard"));
