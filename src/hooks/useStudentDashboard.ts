@@ -79,6 +79,8 @@ export function useStudentDashboard() {
   const [inputValue, setInputValue] = useState("");
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [courses, setCourses] = useState<StudentCourse[]>([]);
+  const [catalogCourses, setCatalogCourses] = useState<CatalogCourse[]>([]);
+  const [categories, setCategories] = useState<{ id: string; name: string; color: string | null }[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [branding, setBranding] = useState<Branding | null>(null);
   const [dashboardSettings, setDashboardSettings] = useState<DashboardSettings>({ showLibrary: true, showAchievements: true, showAiChat: true });
