@@ -243,7 +243,7 @@ export default function StudentDashboard() {
               <div className="p-4 border-b border-border">
                 <Button variant="ghost" size="sm" onClick={() => setChatMode("select")} className="gap-1"><ArrowLeft className="w-4 h-4" />Назад</Button>
               </div>
-              <StudentOrgChat userId={user.id} organizationId={profile.organization_id} />
+              <StudentOrgChat studentUserId={user.id} organizationId={profile.organization_id} organizationName={profile.organization_name || "Организация"} />
             </div>
           )}
 
@@ -276,18 +276,48 @@ export default function StudentDashboard() {
           {/* Store tab */}
           {activeTab === "store" && user && profile?.organization_id && (
             <div className="p-6">
-              <StudentCourseStore userId={user.id} organizationId={profile.organization_id} userEmail={user.email} />
+              <StudentCourseStore userId={user.id} organizationId={profile.organization_id} />
             </div>
           )}
         </main>
       </div>
 
       {/* Dialogs */}
-      {showVideoIdentification && <VideoIdentification open={showVideoIdentification} onClose={() => setShowVideoIdentification(false)} onVerified={() => setIsVideoIdentified(true)} />}
-      {showConsentForm && <StudentConsentForm open={showConsentForm} onClose={() => setShowConsentForm(false)} />}
-      {showDocumentsUpload && <StudentDocumentsUpload open={showDocumentsUpload} onClose={() => setShowDocumentsUpload(false)} />}
-      {showAchievements && user && <AchievementsPanel open={showAchievements} onClose={() => setShowAchievements(false)} userId={user.id} />}
-      {showOnboarding && <OnboardingDialog open={showOnboarding} onClose={handleOnboardingClose} steps={studentOnboardingSteps} storageKey="student-onboarding" />}
+      {showVideoIdentification && user && (
+        <VideoIdentification
+          userId={user.id}
+          userName={profile?.full_name || "Ученик"}
+          organizationId={profile?.organization_id || undefined}
+          isOpen={showVideoIdentification}
+          onOpenChange={setShowVideoIdentification}
+          onVerified={() => setIsVideoIdentified(true)}
+        />
+      )}
+      {showConsentForm && user && profile?.organization_id && (
+        <StudentConsentForm
+          userId={user.id}
+          userName={profile?.full_name || "Ученик"}
+          organizationId={profile.organization_id}
+          isOpen={showConsentForm}
+          onOpenChange={setShowConsentForm}
+        />
+      )}
+      {showDocumentsUpload && user && profile?.organization_id && (
+        <StudentDocumentsUpload
+          userId={user.id}
+          organizationId={profile.organization_id}
+          isOpen={showDocumentsUpload}
+          onOpenChange={setShowDocumentsUpload}
+        />
+      )}
+      {showAchievements && user && (
+        <AchievementsPanel
+          userId={user.id}
+          isOpen={showAchievements}
+          onOpenChange={setShowAchievements}
+        />
+      )}
+      {showOnboarding && <OnboardingDialog open={showOnboarding} onClose={handleOnboardingClose} steps={studentOnboardingSteps} />}
     </div>
   );
 }
