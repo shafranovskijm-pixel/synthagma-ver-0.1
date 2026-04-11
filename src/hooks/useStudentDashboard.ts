@@ -21,10 +21,28 @@ export interface StudentCourse {
   skip_video_identification?: boolean;
 }
 
+export interface CatalogCourse {
+  id: string;
+  title: string;
+  description: string | null;
+  cover_image_url?: string | null;
+  duration?: string | null;
+  price?: number;
+  category_id?: string | null;
+  category_name?: string | null;
+  category_color?: string | null;
+  total_lessons?: number;
+  is_enrolled?: boolean;
+  progress?: number;
+  completed_lessons?: number;
+  status?: "in_progress" | "completed" | "not_enrolled";
+}
+
 interface Profile {
   full_name: string | null;
   organization_name: string | null;
   organization_id: string | null;
+  org_description?: string | null;
 }
 
 interface Branding {
