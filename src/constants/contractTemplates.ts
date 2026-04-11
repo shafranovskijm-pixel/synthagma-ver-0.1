@@ -53,13 +53,15 @@ export function generateSintagmaContract(data: ContractData, withStamp: boolean 
   h2 { font-size: 15px; margin-top: 24px; margin-bottom: 8px; }
   .center { text-align: center; }
   .header-info { text-align: center; margin-bottom: 24px; color: #555; font-size: 13px; }
-  table { width: 100%; border-collapse: collapse; margin: 12px 0; }
-  table td, table th { border: 1px solid #333; padding: 6px 10px; font-size: 13px; }
-  table th { background: #f0f0f0; }
-  .signatures { display: flex; justify-content: space-between; margin-top: 40px; gap: 40px; }
-  .sig-block { width: 45%; }
-  .sig-block h3 { font-size: 14px; margin-bottom: 8px; border-bottom: 1px solid #000; padding-bottom: 4px; }
+  table.contract-table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+  table.contract-table td, table.contract-table th { border: 1px solid #333; padding: 6px 10px; font-size: 13px; }
+  table.contract-table th { background: #f0f0f0; }
+  .sig-outer-table { width: 100%; border-collapse: collapse; margin-top: 40px; }
+  .sig-outer-table td { border: none; padding: 10px; vertical-align: top; width: 50%; }
+  .sig-outer-table h3 { font-size: 14px; margin-bottom: 8px; border-bottom: 1px solid #000; padding-bottom: 4px; }
   .sig-line { border-bottom: 1px solid #000; height: 30px; margin: 12px 0; }
+  table.stamp-table { border: none; border-collapse: collapse; margin: 12px 0; }
+  table.stamp-table td { border: none; padding: 0; }
   p { margin: 6px 0; text-align: justify; }
   @media print { body { padding: 10mm; } }
 </style></head>
@@ -77,7 +79,7 @@ export function generateSintagmaContract(data: ContractData, withStamp: boolean 
 <p>1.1. Исполнитель обязуется предоставить Заказчику доступ к облачной платформе «Синтагма» (далее — Платформа) для организации дистанционного обучения, а также оказать услуги по миграции данных из системы SkillSpace и доработке функционала Платформы в соответствии с условиями настоящего Договора.</p>
 <p>1.2. Тарифный план: <strong>${data.tariffPlan || 'Стандартный'}</strong>. В рамках выбранного тарифа Заказчику предоставляется следующий функционал:</p>
 
-<table>
+<table class="contract-table">
   <tr><th>Функция</th><th>Описание / Лимит</th></tr>
   <tr><td>Курсы</td><td>До 30 курсов</td></tr>
   <tr><td>Ученики</td><td>${isNaN(Number(data.maxStudents)) ? '<strong>' + data.maxStudents + '</strong>' : 'До <strong>' + data.maxStudents + '</strong> учеников'}</td></tr>
@@ -123,7 +125,7 @@ ${data.skillspaceBonusDays > 0 ? `<p>1.4. Исполнитель предост�
 <p>4.4. Исполнитель не является плательщиком НДС (УСН).</p>
 
 <h2>5. ПЕРЕЧЕНЬ ДОРАБОТОК</h2>
-<table>
+<table class="contract-table">
   <tr><th>№</th><th>Наименование доработки</th><th>Стоимость</th></tr>
   ${customServicesRows}
   <tr><td colspan="2" style="text-align:right;"><strong>Итого доработки:</strong></td><td><strong>${formatMoney(customServicesTotal)} руб.</strong></td></tr>
@@ -152,37 +154,39 @@ ${data.skillspaceBonusDays > 0 ? `<p>1.4. Исполнитель предост�
 <p>10.2. Договор составлен в двух экземплярах, имеющих равную юридическую силу.</p>
 <p>10.3. Все изменения и дополнения действительны в письменной форме, подписанной обеими Сторонами.</p>
 
-<div class="signatures">
-  <div class="sig-block">
-    <h3>ИСПОЛНИТЕЛЬ</h3>
-    <p>ИП Шафрановский Максим Михайлович</p>
-    <p>ИНН: 253615392404</p>
-    <p>ОГРНИП: 324253600042754</p>
-    <p>Адрес: г. Владивосток</p>
-    <p>Email: shafranovskij.m@gmail.com</p>
-    ${withStamp ? `<table style="margin:12px 0;border:none;border-collapse:collapse;">
-      <tr>
-        <td style="border:none;padding:0;vertical-align:bottom;">
-          <img src="data:image/png;base64,${CONTRACT_STAMP_B64}" width="100" height="100" style="height:100px;width:auto;opacity:0.85;" />
-        </td>
-        <td style="border:none;padding:0 0 0 10px;vertical-align:bottom;">
-          <img src="data:image/png;base64,${CONTRACT_SIGNATURE_B64}" width="80" height="60" style="height:60px;width:auto;opacity:0.9;" />
-        </td>
-      </tr>
-    </table>` : '<div class="sig-line"></div>'}
-    <p>Подпись / М.П.</p>
-  </div>
-  <div class="sig-block">
-    <h3>ЗАКАЗЧИК</h3>
-    <p>${data.companyName || '_______________'}</p>
-    <p>ИНН: ${data.companyInn || '___________'}</p>
-    <p>КПП: ${data.companyKpp || '___________'}</p>
-    <p>Адрес: ${data.companyAddress || '___________'}</p>
-    <p>В лице: ${data.companyDirector || '___________'}</p>
-    <div class="sig-line"></div>
-    <p>Подпись / М.П.</p>
-  </div>
-</div>
+<table class="sig-outer-table">
+  <tr>
+    <td>
+      <h3>ИСПОЛНИТЕЛЬ</h3>
+      <p>ИП Шафрановский Максим Михайлович</p>
+      <p>ИНН: 253615392404</p>
+      <p>ОГРНИП: 324253600042754</p>
+      <p>Адрес: г. Владивосток</p>
+      <p>Email: shafranovskij.m@gmail.com</p>
+      ${withStamp ? `<table class="stamp-table" data-contract-stamp="true">
+        <tr>
+          <td style="padding:0;vertical-align:bottom;">
+            <img src="data:image/png;base64,${CONTRACT_STAMP_B64}" width="100" height="100" style="height:100px;width:100px;" />
+          </td>
+          <td style="padding:0 0 0 10px;vertical-align:bottom;">
+            <img src="data:image/png;base64,${CONTRACT_SIGNATURE_B64}" width="80" height="60" style="height:60px;width:80px;" />
+          </td>
+        </tr>
+      </table>` : '<div class="sig-line"></div>'}
+      <p>Подпись / М.П.</p>
+    </td>
+    <td>
+      <h3>ЗАКАЗЧИК</h3>
+      <p>${data.companyName || '_______________'}</p>
+      <p>ИНН: ${data.companyInn || '___________'}</p>
+      <p>КПП: ${data.companyKpp || '___________'}</p>
+      <p>Адрес: ${data.companyAddress || '___________'}</p>
+      <p>В лице: ${data.companyDirector || '___________'}</p>
+      <div class="sig-line"></div>
+      <p>Подпись / М.П.</p>
+    </td>
+  </tr>
+</table>
 
 </body></html>`;
 }
