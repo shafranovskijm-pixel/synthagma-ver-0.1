@@ -164,8 +164,7 @@ export default function StudentProfile() {
                     userId={user.id}
                     userName={profile?.full_name || "Ученик"}
                     organizationId={profile?.organization_id || undefined}
-                    isOpen={true}
-                    onOpenChange={() => {}}
+                    embedded={true}
                   />
                 )}
               </CardContent>
