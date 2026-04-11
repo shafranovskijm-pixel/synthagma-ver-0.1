@@ -689,6 +689,9 @@ export function SettingsTab() {
         </div>
       </details>
 
+      {/* Robokassa Payment Settings */}
+      {organizationId && <RobokassaSettings organizationId={organizationId} />}
+
       {/* System Diagnostics */}
 
       {/* System Info */}
