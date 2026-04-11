@@ -1,39 +1,18 @@
 
+## Исправление: кнопка «Добавить» обрезается в диалоге выбора выпускников
 
-## Автоматическое добавление выпускников в журнал документов
+### Проблема
 
-### Что сейчас
-При завершении курса студент получает статус `completed`, но в журнал документов (удостоверения/дипломы/свидетельства) он попадает только вручную — через кнопку «Из выпускников». Нет связи между `frdo_program_type` курса и типом документа.
+`DialogContent` имеет `max-h-[80vh] overflow-hidden`, но внутренняя структура не использует flex-layout — контент со скроллом и футер расположены последовательно, и футер выпадает за пределы видимой области.
 
-### Что будет сделано
+### Исправление
 
-**1. Создать триггер БД для автоматического создания записи в журнале документов**
+**Файл: `src/components/organization/EducationDocumentsJournal.tsx`** (строка ~455)
 
-При изменении `enrollments.status` на `completed` — триггер проверяет `frdo_program_type` курса и автоматически создаёт запись в `education_document_records` с правильным типом документа:
+Добавить `flex flex-col` на `DialogContent` и ограничить прокручиваемую область, чтобы `DialogFooter` всегда оставался видимым:
 
-```text
-qualification_upgrade     → certificate    (Удостоверение)
-professional_retraining   → diploma        (Диплом)
-professional_training     → qualification  (Свидетельство)
-```
+1. `DialogContent`: добавить `flex flex-col`
+2. Обёртка `div.space-y-4` (строка 459): добавить `flex-1 min-h-0 overflow-y-auto` для прокрутки списка
+3. `DialogFooter` останется фиксированным внизу диалога
 
-Если у курса не настроен `frdo_program_type` — запись НЕ создаётся автоматически (остаётся ручной режим через кнопку).
-
-Триггер автоматически заполнит: ФИО, дату рождения (из `student_frdo_data`), название курса, дату выдачи, регистрационный номер, номер документа.
-
-**2. Фильтрация выпускников по типу документа в диалоге**
-
-В `loadCompletedStudents` — дополнительно загружать `frdo_program_type` из курсов. В `filteredStudents` и в `handleAutoAddAllGraduates` / `handleCreateFromStudents` — фильтровать по соответствию типа программы и текущей вкладки. Автоматически выставлять правильный `document_type`.
-
-**3. Исправление визуализации диалога «Из выпускников»**
-
-Добавить `overflow-hidden` и `truncate` для длинных названий курсов в диалоге выбора.
-
-### Технические детали
-
-- Новая SQL-миграция: функция `auto_create_education_document()` + триггер `AFTER UPDATE ON enrollments`
-- Триггер срабатывает ПОСЛЕ `auto_complete_enrollment` (который BEFORE UPDATE), поэтому `status` уже будет `completed`
-- Защита от дублей: проверка `NOT EXISTS` по `enrollment_id` в `education_document_records`
-- Изменения в `useEducationDocumentsJournal.ts`: расширение `CompletedStudent`, фильтрация, маппинг типов
-- Изменения в `EducationDocumentsJournal.tsx`: CSS-фикс диалога
-
+Это 3-строчное CSS-исправление, без изменения логики.
