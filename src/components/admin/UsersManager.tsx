@@ -543,15 +543,16 @@ export function UsersManager() {
                       {format(new Date(user.created_at), "d MMM yyyy", { locale: ru })}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
+                      <div className="flex items-center justify-end gap-2">
                         {user.role === 'student' && (
                           <Button
-                            variant="ghost"
-                            size="icon"
-                            title="Войти как ученик"
+                            variant="outline"
+                            size="sm"
+                            className="gap-1.5 text-xs"
                             onClick={(e) => { e.stopPropagation(); viewAsStudent(user); }}
                           >
-                            <ExternalLink className="w-4 h-4" />
+                            <ExternalLink className="w-3.5 h-3.5" />
+                            Войти как ученик
                           </Button>
                         )}
                         <Button
