@@ -20,6 +20,9 @@ export interface ContractData {
   prepaymentAmount: number;
   customServices: ContractCustomService[];
   notes: string;
+  maxStudents: number;
+  maxNewStudentsPerMonth: number;
+  storageLimit: string;
 }
 
 function formatMoney(n: number) {
@@ -69,7 +72,24 @@ export function generateSintagmaContract(data: ContractData): string {
 
 <h2>1. ПРЕДМЕТ ДОГОВОРА</h2>
 <p>1.1. Исполнитель обязуется предоставить Заказчику доступ к облачной платформе «Синтагма» (далее — Платформа) для организации дистанционного обучения, а также оказать услуги по миграции данных из системы SkillSpace и доработке функционала Платформы в соответствии с условиями настоящего Договора.</p>
-<p>1.2. Тарифный план: <strong>${data.tariffPlan || 'Стандартный'}</strong>.</p>
+<p>1.2. Тарифный план: <strong>${data.tariffPlan || 'Стандартный'}</strong>. В рамках выбранного тарифа Заказчику предоставляется следующий функционал:</p>
+
+<table>
+  <tr><th>Функция</th><th>Описание / Лимит</th></tr>
+  <tr><td>Курсы</td><td>До 30 курсов</td></tr>
+  <tr><td>Ученики</td><td>До <strong>${data.maxStudents}</strong> учеников</td></tr>
+  <tr><td>Новые ученики</td><td>До <strong>${data.maxNewStudentsPerMonth}</strong> новых учеников в месяц</td></tr>
+  <tr><td>Свободное место</td><td><strong>${data.storageLimit}</strong></td></tr>
+  <tr><td>ИИ-генерация</td><td>Генерация курсов и озвучка с помощью ИИ</td></tr>
+  <tr><td>Настройки курсов</td><td>Запрет перемотки видео, последовательное прохождение уроков</td></tr>
+  <tr><td>Документы и журналы</td><td>Автоматическое формирование документов, журналы учёта</td></tr>
+  <tr><td>ФРДО</td><td>Интеграция с реестром ФРДО</td></tr>
+  <tr><td>Видеоидентификация</td><td>Идентификация личности при прохождении курса</td></tr>
+  <tr><td>Брендирование</td><td>Настройка логотипа, цветов и названия организации</td></tr>
+  <tr><td>Библиотека и маркетплейс</td><td>Доступ к библиотеке документов и маркетплейсу курсов</td></tr>
+  <tr><td>Техническая поддержка</td><td>В рабочие дни с 9:00 до 18:00 (МСК)</td></tr>
+</table>
+
 <p>1.3. Срок действия доступа к Платформе: <strong>${data.durationMonths} (${data.durationMonths === 12 ? 'двенадцать' : data.durationMonths}) месяцев</strong> с момента предоставления доступа.</p>
 
 <h2>2. ОБЯЗАННОСТИ ИСПОЛНИТЕЛЯ</h2>
