@@ -122,6 +122,7 @@ export function SalesContracts() {
       total_amount: 0, prepayment_amount: 0, notes: '',
       maxStudents: '200', maxNewStudentsPerMonth: '50', storageLimit: 'Безлимит',
     });
+    setSelectedOrgId('manual');
     setCustomServices([]);
   };
 
