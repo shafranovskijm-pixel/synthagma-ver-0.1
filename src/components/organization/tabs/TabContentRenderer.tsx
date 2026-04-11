@@ -14,6 +14,7 @@ import { JournalsManager } from "@/components/organization/JournalsManager";
 import { LaborSafetyManager } from "@/components/organization/LaborSafetyManager";
 import { OrgChatsTab } from "@/components/organization/OrgChatsTab";
 import { SubscriptionTab } from "@/components/organization/SubscriptionTab";
+import { PaymentsTab } from "@/components/organization/PaymentsTab";
 
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 
@@ -31,6 +32,7 @@ export function TabContentRenderer() {
     activeTab !== "journals" && 
     activeTab !== "labor-safety" &&
     activeTab !== "subscription" &&
+    activeTab !== "payments" &&
     activeTab !== "chats" &&
     !activeTab.startsWith("documents");
 
@@ -163,6 +165,9 @@ export function TabContentRenderer() {
           refreshBalance={d.orgBalance?.refresh}
         />
       )}
+
+      {/* Payments Tab */}
+      {activeTab === "payments" && <PaymentsTab />}
 
       {/* Subscription Tab */}
       {activeTab === "subscription" && <SubscriptionTab />}

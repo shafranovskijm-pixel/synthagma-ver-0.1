@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo } from "react";
 import { 
   BookOpen, Users, BarChart3, Settings, LogOut, 
   Link, FileText, FileSpreadsheet, ShoppingBag, 
-  Building2, ClipboardList, HardHat, HardDrive, CreditCard, Lock, MessageCircle
+  Building2, ClipboardList, HardHat, HardDrive, CreditCard, Lock, MessageCircle, Wallet
 } from "lucide-react";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { HelpButton } from "@/components/onboarding/HelpButton";
@@ -36,6 +36,7 @@ export type TabType =
   | "journals" 
   | "labor-safety"
   | "subscription"
+  | "payments"
   | "services" 
   | "settings" 
   | "frdo";
@@ -209,6 +210,11 @@ export function OrgSidebar() {
                 {isLocked("frdo") && <Lock className="w-3.5 h-3.5 ml-auto text-muted-foreground/40" />}
               </button>
             )}
+
+            <button onClick={() => handleTabClick("payments")} className={tabButtonClass("payments")} aria-label="Финансы">
+              <Wallet className="w-5 h-5" aria-hidden="true" />
+              Финансы
+            </button>
 
             {menuSettings.showSubscription !== false && (
               <button onClick={() => handleTabClick("subscription")} className={tabButtonClass("subscription")} aria-label="Тариф">

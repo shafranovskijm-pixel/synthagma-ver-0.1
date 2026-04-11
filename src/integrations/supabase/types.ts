@@ -901,6 +901,63 @@ export type Database = {
           },
         ]
       }
+      course_payments: {
+        Row: {
+          amount: number
+          course_id: string
+          created_at: string
+          email: string | null
+          id: string
+          organization_id: string
+          paid_at: string | null
+          payment_method: string | null
+          robokassa_inv_id: number | null
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          amount: number
+          course_id: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          organization_id: string
+          paid_at?: string | null
+          payment_method?: string | null
+          robokassa_inv_id?: number | null
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          amount?: number
+          course_id?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          organization_id?: string
+          paid_at?: string | null
+          payment_method?: string | null
+          robokassa_inv_id?: number | null
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_payments_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_payments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_reminders: {
         Row: {
           company_id: string | null
@@ -1065,6 +1122,7 @@ export type Database = {
           is_published: boolean
           notify_on_completion: boolean
           organization_id: string
+          price: number
           reminder_advance_days: number
           retraining_period_months: number | null
           sequential_lessons: boolean
@@ -1096,6 +1154,7 @@ export type Database = {
           is_published?: boolean
           notify_on_completion?: boolean
           organization_id: string
+          price?: number
           reminder_advance_days?: number
           retraining_period_months?: number | null
           sequential_lessons?: boolean
@@ -1127,6 +1186,7 @@ export type Database = {
           is_published?: boolean
           notify_on_completion?: boolean
           organization_id?: string
+          price?: number
           reminder_advance_days?: number
           retraining_period_months?: number | null
           sequential_lessons?: boolean
@@ -2588,6 +2648,47 @@ export type Database = {
             foreignKeyName: "organization_offer_acceptances_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_payment_settings: {
+        Row: {
+          created_at: string
+          id: string
+          is_test_mode: boolean
+          merchant_login: string
+          organization_id: string
+          password1_encrypted: string
+          password2_encrypted: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_test_mode?: boolean
+          merchant_login?: string
+          organization_id: string
+          password1_encrypted?: string
+          password2_encrypted?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_test_mode?: boolean
+          merchant_login?: string
+          organization_id?: string
+          password1_encrypted?: string
+          password2_encrypted?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_payment_settings_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -4736,6 +4837,15 @@ export type Database = {
         Returns: {
           login_email: string
           login_password: string
+        }[]
+      }
+      get_decrypted_payment_settings: {
+        Args: { p_organization_id: string }
+        Returns: {
+          is_test_mode: boolean
+          merchant_login: string
+          password1: string
+          password2: string
         }[]
       }
       get_decrypted_student_password: {

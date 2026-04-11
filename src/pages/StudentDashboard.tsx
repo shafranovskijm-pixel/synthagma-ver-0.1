@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { StudentCourseStore } from "@/components/student/StudentCourseStore";
 import { StudentOrgChat } from "@/components/student/StudentOrgChat";
+import { AvailablePaidCourses } from "@/components/student/AvailablePaidCourses";
 
 
 export default function StudentDashboard() {
@@ -178,6 +179,15 @@ export default function StudentDashboard() {
                     </motion.div>
                   ))}
                 </div>
+              )}
+
+              {/* Available paid courses */}
+              {user && profile?.organization_id && (
+                <AvailablePaidCourses
+                  userId={user.id}
+                  organizationId={profile.organization_id}
+                  userEmail={user.email}
+                />
               )}
             </div>
           </>
