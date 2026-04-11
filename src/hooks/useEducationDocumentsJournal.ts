@@ -36,7 +36,14 @@ export interface CompletedStudent {
   course_title: string;
   completed_at: string;
   already_added: boolean;
+  frdo_program_type: string | null;
 }
+
+const PROGRAM_TYPE_TO_DOC_TYPE: Record<string, string> = {
+  qualification_upgrade: "certificate",
+  professional_retraining: "diploma",
+  professional_training: "qualification",
+};
 
 export const DOCUMENT_TYPES = [
   { value: "certificate", label: "Удостоверение" },
@@ -175,13 +182,14 @@ export function useEducationDocumentsJournal({
     try {
       const { data: courses, error: coursesError } = await supabase
         .from("courses")
-        .select("id, title")
+        .select("id, title, frdo_program_type")
         .eq("organization_id", organizationId);
       if (coursesError) throw coursesError;
       if (!courses || courses.length === 0) { setCompletedStudents([]); return; }
 
       const courseIds = courses.map((c) => c.id);
       const courseMap = new Map(courses.map((c) => [c.id, c.title]));
+      const courseProgramMap = new Map(courses.map((c) => [c.id, c.frdo_program_type]));
 
       const { data: enrollments, error: enrollmentsError } = await supabase
         .from("enrollments")
@@ -221,6 +229,7 @@ export function useEducationDocumentsJournal({
           course_title: courseMap.get(enrollment.course_id) || "Неизвестный курс",
           completed_at: enrollment.completed_at!,
           already_added: addedEnrollmentIds.has(enrollment.id),
+          frdo_program_type: courseProgramMap.get(enrollment.course_id) || null,
         };
       });
       students.sort((a, b) => new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime());
@@ -237,7 +246,16 @@ export function useEducationDocumentsJournal({
     if (!loading) { loadCompletedStudents(); }
   }, [loading, organizationId]);
 
-  const newGraduatesCount = useMemo(() => completedStudents.filter((s) => !s.already_added).length, [completedStudents]);
+  const newGraduatesCount = useMemo(() => {
+    let students = completedStudents;
+    if (documentTypeFilter) {
+      students = students.filter((s) => {
+        if (!s.frdo_program_type) return true;
+        return PROGRAM_TYPE_TO_DOC_TYPE[s.frdo_program_type] === documentTypeFilter;
+      });
+    }
+    return students.filter((s) => !s.already_added).length;
+  }, [completedStudents, documentTypeFilter]);
 
   const filteredRecords = useMemo(() => {
     return records.filter((record) => {
@@ -265,10 +283,20 @@ export function useEducationDocumentsJournal({
   }, [filteredRecords]);
 
   const filteredStudents = useMemo(() => {
-    if (!studentSearchQuery) return completedStudents;
-    const query = studentSearchQuery.toLowerCase();
-    return completedStudents.filter((s) => s.full_name.toLowerCase().includes(query) || s.course_title.toLowerCase().includes(query));
-  }, [completedStudents, studentSearchQuery]);
+    let filtered = completedStudents;
+    // Filter by document type tab: only show students whose course program type matches
+    if (documentTypeFilter) {
+      filtered = filtered.filter((s) => {
+        if (!s.frdo_program_type) return true; // courses without program type show in all tabs
+        return PROGRAM_TYPE_TO_DOC_TYPE[s.frdo_program_type] === documentTypeFilter;
+      });
+    }
+    if (studentSearchQuery) {
+      const query = studentSearchQuery.toLowerCase();
+      filtered = filtered.filter((s) => s.full_name.toLowerCase().includes(query) || s.course_title.toLowerCase().includes(query));
+    }
+    return filtered;
+  }, [completedStudents, studentSearchQuery, documentTypeFilter]);
 
   const getJournalTitle = () => {
     if (documentTypeFilter === "certificate") return "Журнал регистрации удостоверений";
@@ -358,7 +386,13 @@ export function useEducationDocumentsJournal({
   };
 
   const handleAutoAddAllGraduates = async () => {
-    const newStudents = completedStudents.filter((s) => !s.already_added);
+    let newStudents = completedStudents.filter((s) => !s.already_added);
+    if (documentTypeFilter) {
+      newStudents = newStudents.filter((s) => {
+        if (!s.frdo_program_type) return true;
+        return PROGRAM_TYPE_TO_DOC_TYPE[s.frdo_program_type] === documentTypeFilter;
+      });
+    }
     if (newStudents.length === 0) { toast.info("Все выпускники уже добавлены в журнал"); return; }
     setSaving(true);
     try {
@@ -366,11 +400,14 @@ export function useEducationDocumentsJournal({
       let existingCount = records.filter((r) => parseISO(r.issue_date).getFullYear() === year).length;
       const recordsToInsert = newStudents.map((student, index) => {
         existingCount += 1;
+        const docType = student.frdo_program_type
+          ? (PROGRAM_TYPE_TO_DOC_TYPE[student.frdo_program_type] || documentTypeFilter || "certificate")
+          : (documentTypeFilter || "certificate");
         const docNumber = `${year}/${(existingCount + index).toString().padStart(6, "0")}`;
         return {
           organization_id: organizationId, reg_number: `ДОК-${year}/${existingCount.toString().padStart(4, "0")}`,
           full_name: student.full_name, birth_date: student.birth_date || null,
-          document_type: documentTypeFilter || "certificate", document_series: "",
+          document_type: docType, document_series: "",
           document_number: docNumber, issue_date: new Date().toISOString().split("T")[0],
           specialty_name: student.course_title, qualification_name: "", protocol_number: "",
           protocol_date: null, order_number: "", order_date: null, document_status: "original",
@@ -401,10 +438,13 @@ export function useEducationDocumentsJournal({
       let existingCount = records.filter((r) => parseISO(r.issue_date).getFullYear() === year).length;
       const recordsToInsert = selectedList.map((student, index) => {
         existingCount += 1;
+        const docType = student.frdo_program_type
+          ? (PROGRAM_TYPE_TO_DOC_TYPE[student.frdo_program_type] || documentTypeFilter || "certificate")
+          : (documentTypeFilter || "certificate");
         return {
           organization_id: organizationId, reg_number: `ДОК-${year}/${existingCount.toString().padStart(4, "0")}`,
           full_name: student.full_name, birth_date: student.birth_date || null,
-          document_type: documentTypeFilter || "certificate", document_series: "",
+          document_type: docType, document_series: "",
           document_number: generateDocumentNumber(index), issue_date: new Date().toISOString().split("T")[0],
           specialty_name: student.course_title, qualification_name: "", protocol_number: "",
           protocol_date: null, order_number: "", order_date: null, document_status: "original",
