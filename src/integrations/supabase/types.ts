@@ -3279,6 +3279,206 @@ export type Database = {
         }
         Relationships: []
       }
+      referral_commissions: {
+        Row: {
+          amount: number
+          commission_amount: number
+          created_at: string
+          id: string
+          organization_id: string
+          partner_id: string
+          payment_source: string
+          status: string
+        }
+        Insert: {
+          amount: number
+          commission_amount: number
+          created_at?: string
+          id?: string
+          organization_id: string
+          partner_id: string
+          payment_source?: string
+          status?: string
+        }
+        Update: {
+          amount?: number
+          commission_amount?: number
+          created_at?: string
+          id?: string
+          organization_id?: string
+          partner_id?: string
+          payment_source?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referral_commissions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referral_commissions_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "referral_partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      referral_partners: {
+        Row: {
+          balance: number
+          bank_details: string | null
+          code: string
+          commission_percent: number
+          created_at: string
+          id: string
+          status: string
+          total_earned: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          bank_details?: string | null
+          code: string
+          commission_percent?: number
+          created_at?: string
+          id?: string
+          status?: string
+          total_earned?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          bank_details?: string | null
+          code?: string
+          commission_percent?: number
+          created_at?: string
+          id?: string
+          status?: string
+          total_earned?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      referral_payouts: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          paid_at: string | null
+          partner_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          paid_at?: string | null
+          partner_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          paid_at?: string | null
+          partner_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referral_payouts_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "referral_partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      referral_promo_materials: {
+        Row: {
+          created_at: string
+          description: string | null
+          html_code: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean
+          size: string | null
+          title: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          html_code?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          size?: string | null
+          title: string
+          type?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          html_code?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          size?: string | null
+          title?: string
+          type?: string
+        }
+        Relationships: []
+      }
+      referral_registrations: {
+        Row: {
+          expires_at: string
+          id: string
+          organization_id: string
+          partner_id: string
+          registered_at: string
+        }
+        Insert: {
+          expires_at?: string
+          id?: string
+          organization_id: string
+          partner_id: string
+          registered_at?: string
+        }
+        Update: {
+          expires_at?: string
+          id?: string
+          organization_id?: string
+          partner_id?: string
+          registered_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referral_registrations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referral_registrations_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "referral_partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       registration_links: {
         Row: {
           company_id: string | null
@@ -4762,6 +4962,7 @@ export type Database = {
         Args: { p_achievement_code: string; p_user_id: string }
         Returns: undefined
       }
+      become_referral_partner: { Args: never; Returns: string }
       count_org_completions_this_month: {
         Args: { org_id: string }
         Returns: number
@@ -4935,6 +5136,10 @@ export type Database = {
       }
       recalc_enrollment_time: {
         Args: { p_enrollment_id: string }
+        Returns: undefined
+      }
+      register_referral: {
+        Args: { p_organization_id: string; p_ref_code: string }
         Returns: undefined
       }
       show_limit: { Args: never; Returns: number }
