@@ -116,8 +116,48 @@ export function AutoFinalAttestationJournal({
     from: startOfMonth(new Date()),
     to: endOfMonth(new Date()),
   });
+  const [attemptDetails, setAttemptDetails] = useState<AttemptDetails | null>(null);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
-  // Fetch all data
+  const handleViewAttempt = async (record: FinalAttestationRecord) => {
+    if (!record.test_attempt_id) return;
+    setDetailsLoading(true);
+    setDetailsOpen(true);
+    try {
+      const { data: attempt } = await supabase
+        .from("test_attempts")
+        .select("id, answers, shown_question_ids, score, max_score")
+        .eq("id", record.test_attempt_id)
+        .single();
+
+      if (!attempt) throw new Error("Attempt not found");
+
+      const shownIds = (attempt.shown_question_ids as string[]) || [];
+      const { data: questions } = await supabase
+        .from("test_questions")
+        .select("id, question, options, correct_answer, explanation")
+        .in("id", shownIds);
+
+      setAttemptDetails({
+        answers: (attempt.answers as Record<string, number>) || {},
+        shown_question_ids: shownIds,
+        questions: (questions || []) as AttemptQuestion[],
+        score: attempt.score,
+        max_score: attempt.max_score,
+        student_name: record.student_name,
+        course_title: record.course_title,
+      });
+    } catch (err) {
+      console.error("Error loading attempt details:", err);
+      toast.error("Ошибка при загрузке деталей теста");
+      setDetailsOpen(false);
+    } finally {
+      setDetailsLoading(false);
+    }
+  };
+
+
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
