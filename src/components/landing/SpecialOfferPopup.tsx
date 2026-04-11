@@ -56,57 +56,74 @@ export function SpecialOfferPopup() {
   return (
     <AnimatePresence>
       {show && (
-        <motion.div
-          initial={{ opacity: 0, y: 40, scale: 0.95 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 40, scale: 0.95 }}
-          transition={{ type: "spring", damping: 25, stiffness: 300 }}
-          className="fixed bottom-6 right-6 z-[100] w-[380px] max-w-[calc(100vw-3rem)] bg-card border border-border rounded-2xl shadow-2xl overflow-hidden"
-        >
-          {/* Gradient top bar */}
-          <div className="h-1.5 bg-gradient-to-r from-primary via-primary/70 to-accent" />
-          
-          <div className="p-6">
-            <button onClick={dismiss} className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors">
-              <X className="w-4 h-4" />
-            </button>
+        <>
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[99] bg-black/30 backdrop-blur-sm"
+            onClick={dismiss}
+          />
 
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Gift className="w-5 h-5 text-primary" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-sm">Специальные условия</h3>
-                <p className="text-xs text-muted-foreground">для новых клиентов</p>
+          {/* Centered popup */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+          >
+            <div className="w-[400px] max-w-full bg-card rounded-2xl shadow-2xl overflow-hidden">
+              {/* Gradient top accent */}
+              <div className="h-1 bg-gradient-to-r from-primary via-primary/70 to-accent" />
+
+              <div className="p-6 relative">
+                <button
+                  onClick={dismiss}
+                  className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center">
+                    <Gift className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-base">Специальные условия</h3>
+                    <p className="text-xs text-muted-foreground">для новых клиентов</p>
+                  </div>
+                </div>
+
+                <p className="text-sm text-muted-foreground mb-5">
+                  Оставьте заявку и получите персональное предложение с выгодой до 30%.
+                </p>
+
+                <form onSubmit={handleSubmit} className="space-y-3">
+                  <Input
+                    placeholder="Ваше имя"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="h-11 rounded-xl"
+                    required
+                  />
+                  <Input
+                    placeholder="Телефон"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="h-11 rounded-xl"
+                    type="tel"
+                    required
+                  />
+                  <Button type="submit" className="w-full h-11 rounded-xl font-medium" disabled={sending}>
+                    {sending ? "Отправка..." : "Получить предложение"}
+                  </Button>
+                </form>
               </div>
             </div>
-
-            <p className="text-sm text-muted-foreground mb-4">
-              Оставьте заявку и получите персональное предложение с выгодой до 30%.
-            </p>
-
-            <form onSubmit={handleSubmit} className="space-y-3">
-              <Input
-                placeholder="Ваше имя"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="h-10"
-                required
-              />
-              <Input
-                placeholder="Телефон"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="h-10"
-                type="tel"
-                required
-              />
-              <Button type="submit" className="w-full" disabled={sending}>
-                {sending ? "Отправка..." : "Получить предложение"}
-              </Button>
-            </form>
-          </div>
-        </motion.div>
+          </motion.div>
+        </>
       )}
     </AnimatePresence>
   );
