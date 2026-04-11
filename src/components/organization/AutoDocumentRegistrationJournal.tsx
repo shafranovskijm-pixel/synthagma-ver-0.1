@@ -411,7 +411,52 @@ export function AutoDocumentRegistrationJournal({
     return { incoming, outgoing, contracts, orders, total: filteredRecords.length };
   }, [filteredRecords]);
 
-  // Open edit dialog
+  // View document in new tab
+  const handleViewDocument = async (record: DocumentRecord) => {
+    if (!record.file_url) return;
+    try {
+      if (record.file_url.startsWith("http")) {
+        window.open(record.file_url, "_blank");
+      } else {
+        // It's a storage path — get signed URL
+        const signedUrl = await getSignedStorageUrl("org-documents", record.file_url);
+        if (signedUrl) {
+          // Fetch HTML and open as blob
+          const res = await fetch(signedUrl);
+          const html = await res.text();
+          const blob = new Blob([html], { type: "text/html" });
+          window.open(URL.createObjectURL(blob), "_blank");
+        } else {
+          toast.error("Не удалось открыть документ");
+        }
+      }
+    } catch (error) {
+      console.error("Error viewing document:", error);
+      toast.error("Ошибка при открытии документа");
+    }
+  };
+
+  // Download document as PDF
+  const handleDownloadDocument = async (record: DocumentRecord) => {
+    if (!record.file_url) return;
+    try {
+      let url = record.file_url;
+      if (!url.startsWith("http")) {
+        const signedUrl = await getSignedStorageUrl("org-documents", url);
+        if (!signedUrl) {
+          toast.error("Не удалось скачать документ");
+          return;
+        }
+        url = signedUrl;
+      }
+      await downloadHtmlFile(url, record.document_name);
+      toast.success("Документ скачан");
+    } catch (error) {
+      console.error("Error downloading document:", error);
+      toast.error("Ошибка при скачивании документа");
+    }
+  };
+
   const handleEditClick = (record: DocumentRecord) => {
     if (!record.is_editable) {
       toast.info("Этот документ нельзя редактировать");
@@ -812,6 +857,7 @@ export function AutoDocumentRegistrationJournal({
                   <TableHead className="text-center">Направление</TableHead>
                   <TableHead>Контрагент / Лицо</TableHead>
                   <TableHead className="text-center">Дата</TableHead>
+                  <TableHead className="text-center w-24">Действия</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -920,6 +966,32 @@ export function AutoDocumentRegistrationJournal({
                         <span className="text-sm">
                           {format(parseISO(record.date), "dd.MM.yyyy", { locale: ru })}
                         </span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {record.file_url ? (
+                          <div className="flex items-center justify-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => handleViewDocument(record)}
+                              title="Просмотр"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => handleDownloadDocument(record)}
+                              title="Скачать PDF"
+                            >
+                              <Download className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
                       </TableCell>
                     </TableRow>
                   );
