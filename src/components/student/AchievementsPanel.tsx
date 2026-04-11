@@ -37,6 +37,7 @@ interface AchievementsPanelProps {
   userId: string;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  embedded?: boolean;
 }
 
 const rarityColors: Record<Rarity, string> = {

@@ -24,6 +24,7 @@ interface StudentDocumentsUploadProps {
   organizationId: string;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  embedded?: boolean;
 }
 
 interface IdentityDocument {

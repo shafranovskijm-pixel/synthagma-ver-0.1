@@ -17,6 +17,7 @@ interface StudentConsentFormProps {
   isOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
   onConsent?: () => void;
+  embedded?: boolean;
 }
 
 interface Organization {
