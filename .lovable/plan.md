@@ -1,39 +1,46 @@
 
-## Печать документов (удостоверений, дипломов, свидетельств) из журнала
 
-### Что будет сделано
+## Журнал посещаемости не работает — отсутствует RLS-доступ для администраторов
 
-Добавить кнопку «Печать» (иконка принтера) в каждую строку таблицы журнала документов. При нажатии — генерируется HTML-документ формата A4 с данными записи и открывается диалог печати браузера (через существующий `printHtmlContent`).
+### Проблема
 
-### Реализация
+Журнал посещаемости показывает «0 записей» потому что:
 
-**1. Новый файл: `src/utils/generateEducationDocument.ts`**
+1. Текущий пользователь (`24@24zxc.ru`) — **администратор** через таблицу `user_roles`, но **не имеет записи в `profiles`**
+2. Функция `current_organization_id()` возвращает `NULL` (она ищет в `profiles`)
+3. RLS-политика на `lesson_progress` **не содержит fallback для админов** (`has_role('admin', ...)`)
+4. Запрос возвращает пустой массив — все 4790 записей скрыты
 
-Функция `generateEducationDocumentHtml(record, orgData)` — генерирует полноценный HTML для печати на A4 в стиле Times New Roman:
+Другие журналы (документооборот) работают, потому что их RLS-политики **содержат** `OR has_role('admin', auth.uid())`.
 
-- **Удостоверение** (certificate): заголовок «УДОСТОВЕРЕНИЕ О ПОВЫШЕНИИ КВАЛИФИКАЦИИ», серия, номер, рег. номер, ФИО, программа, часы, дата, город, подпись, М.П.
-- **Диплом** (diploma): заголовок «ДИПЛОМ О ПРОФЕССИОНАЛЬНОЙ ПЕРЕПОДГОТОВКЕ», + присвоенная квалификация
-- **Свидетельство** (qualification): заголовок «СВИДЕТЕЛЬСТВО О ПРОФЕССИИ РАБОЧЕГО, ДОЛЖНОСТИ СЛУЖАЩЕГО», + присвоенная квалификация/разряд
+### Что нужно сделать
 
-Все три шаблона используют данные из `EducationDocumentRecord` + данные организации (название, лицензия, город). Стили: `@page { size: A4; margin: 15mm 20mm; }`, шрифт Times New Roman.
+**1. SQL-миграция: добавить admin-доступ в RLS `lesson_progress`**
 
-Если у организации загружены печать/подпись (из `StampSignatureUploader` → Storage), они вставляются как `<img>` с opacity 0.9.
+Обновить политику `"Org users can view progress for their courses"` — добавить `OR has_role('admin', auth.uid())`:
 
-**2. Изменения в `src/hooks/useEducationDocumentsJournal.ts`**
-
-- Добавить загрузку данных организации (`name`, `branding`, `license_number`) при инициализации — уже загружается в `loadData`, просто сохранить в state и вернуть из хука как `orgData`.
-
-**3. Изменения в `src/components/organization/EducationDocumentsJournal.tsx`**
-
-- Импортировать `Printer` из lucide-react и `generateEducationDocumentHtml` + `printHtmlContent`
-- В строке таблицы (строка ~247), рядом с кнопками редактирования и удаления, добавить кнопку печати:
-```tsx
-<Button variant="ghost" size="icon" onClick={() => handlePrint(record)}>
-  <Printer className="w-4 h-4" />
-</Button>
+```sql
+DROP POLICY IF EXISTS "Org users can view progress for their courses" ON public.lesson_progress;
+CREATE POLICY "Org users can view progress for their courses" 
+  ON public.lesson_progress FOR SELECT 
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.lessons l 
+      JOIN public.courses c ON c.id = l.course_id 
+      WHERE l.id = lesson_id 
+      AND c.organization_id = current_organization_id()
+    )
+    OR has_role('admin', auth.uid())
+  );
 ```
-- Функция `handlePrint`: вызывает `generateEducationDocumentHtml(record, orgData)` → `printHtmlContent(html, "Документ")`
+
+**2. Также проверить и исправить RLS на связанных таблицах**, если у них тоже нет admin-fallback:
+- `enrollments` — проверить SELECT-политику
+- `profiles` — проверить SELECT-политику (нужна для получения имён студентов)
+
+**3. Создать профиль для admin-пользователя** (опционально, но рекомендуется) — чтобы `current_organization_id()` работало корректно и для остальных RLS-политик.
 
 ### Результат
 
-Менеджер нажимает иконку принтера → открывается стандартный диалог печати браузера с документом на бланке A4. Можно сразу печатать или сохранить как PDF.
+После миграции администратор сможет видеть все записи о посещаемости во всех организациях, и журнал начнёт отображать данные.
+
