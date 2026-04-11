@@ -238,6 +238,7 @@ export function AutoFinalAttestationJournal({
             final_test_passed: finalTestPassed,
             final_test_date: finalAttempt?.completed_at ?? null,
             total_time_spent: enrollment.time_spent || 0,
+            test_attempt_id: finalAttempt?.id ?? null,
           });
         }
 
