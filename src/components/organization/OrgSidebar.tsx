@@ -212,7 +212,7 @@ export function OrgSidebar() {
             )}
 
             <button onClick={() => handleTabClick("payments")} className={tabButtonClass("payments")} aria-label="Финансы">
-              <CreditCard className="w-5 h-5" aria-hidden="true" />
+              <Wallet className="w-5 h-5" aria-hidden="true" />
               Финансы
             </button>
 
