@@ -1,36 +1,66 @@
 
 
-## Fix: Duplicate Telegram Notifications on Organization Registration
+## Проблема: Кнопка «Из выпускников» не находит студентов
 
-### Root Cause
+### Диагностика
 
-The `safeInvoke` utility has built-in retry logic (up to 3 attempts with delays of 0s, 2s, 5s). When the Telegram notification call encounters a transient network issue or gets flagged by security software detection, `safeInvoke` retries — but the Telegram API already processed the first request successfully. Each retry sends a new, independent Telegram message, resulting in 2-3 duplicate notifications.
+Функция «Из выпускников» в журнале дипломов/удостоверений/свидетельств ищет записи в таблице `enrollments` с условиями:
+- `status = 'completed'`
+- `completed_at IS NOT NULL`
 
-This is a non-idempotent side effect (sending a message) wrapped in a retry mechanism designed for idempotent reads — a classic bug.
+**Результат проверки базы данных:**
+- Все 465 записей в `enrollments` имеют `status = 'active'`
+- Ни одна запись не имеет `completed_at`
+- При этом есть студенты с `progress >= 100` (некоторые даже 233%)
 
-### Fix
+**Причина:** В системе отсутствует механизм автоматического завершения курса. Нигде — ни в клиентском коде, ни в триггерах базы данных, ни в edge-функциях — нет логики, которая обновляла бы `status` на `completed` и выставляла бы `completed_at`, когда студент достигает 100% прогресса.
 
-**File: `src/pages/RegisterOrganization.tsx`** (line ~279)
+Существующие триггеры (достижения, напоминания, трудовая безопасность) срабатывают *после* изменения статуса на `completed`, но ничего не инициирует это изменение.
 
-Replace `safeInvoke` with a direct `supabase.functions.invoke()` call (no retries) for the Telegram notification. This is a fire-and-forget notification — if it fails once, we should not retry and risk duplicates.
+### План исправления
 
-```typescript
-// Instead of:
-await safeInvoke("send-telegram-notification", {
-  body: { message: telegramMessage },
-});
+**1. Создать триггер в БД для автоматического завершения курса**
 
-// Use direct invoke (no retry):
-await supabase.functions.invoke("send-telegram-notification", {
-  body: { message: telegramMessage },
-});
+SQL-миграция: при обновлении `progress` в таблице `enrollments`, если `progress >= 100` и текущий `status != 'completed'`, автоматически выставить:
+- `status = 'completed'`
+- `completed_at = now()`
+
+```sql
+CREATE OR REPLACE FUNCTION public.auto_complete_enrollment()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.progress >= 100 AND NEW.status != 'completed' THEN
+    NEW.status := 'completed';
+    NEW.completed_at := now();
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_auto_complete_enrollment
+  BEFORE UPDATE ON public.enrollments
+  FOR EACH ROW
+  WHEN (NEW.progress >= 100 AND NEW.status != 'completed')
+  EXECUTE FUNCTION public.auto_complete_enrollment();
 ```
 
-Additionally, audit the other two places that send Telegram notifications via `safeInvoke` and apply the same fix:
-- `src/components/organization/SubscriptionTab.tsx` (line ~169)
-- `src/components/onboarding/SupportRequestForm.tsx` (line ~143)
+**2. Исправить текущие данные — привести существующие записи в порядок**
 
-### Why not fix safeInvoke itself?
+Одноразовый UPDATE для всех записей, у которых `progress >= 100`:
 
-`safeInvoke` is used across many other calls (student registration, course import, password reset) where retries ARE appropriate. The fix should be targeted: only Telegram notifications should skip retries since they are non-idempotent side effects.
+```sql
+UPDATE public.enrollments
+SET status = 'completed', completed_at = now()
+WHERE progress >= 100 AND status != 'completed';
+```
+
+**3. Добавить кнопку ручного завершения курса менеджером**
+
+В карточке студента (вкладка «Курсы», файл `src/components/organization/student-detail/CoursesTab.tsx`) добавить кнопку «Завершить курс» для активных зачислений, чтобы менеджер мог вручную отметить завершение.
+
+### Результат
+
+- Студенты с прогрессом ≥100% автоматически получат статус `completed`
+- Кнопка «Из выпускников» в журналах дипломов/удостоверений/свидетельств начнёт находить выпускников
+- Все связанные триггеры (достижения, напоминания о переподготовке, обновление планов обучения) начнут корректно срабатывать
 
