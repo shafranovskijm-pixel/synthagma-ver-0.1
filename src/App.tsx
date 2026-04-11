@@ -12,6 +12,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LazyLoadFallback } from "@/components/LazyLoadFallback";
 import { ScrollToTop } from "./components/ScrollToTop";
+import { SpecialOfferPopup } from "./components/landing/SpecialOfferPopup";
 import { OfflineIndicator } from "./components/OfflineIndicator";
 import { useThemePersonalization } from "@/components/ui/ThemePersonalization";
 import { lazyWithRetry } from "@/utils/lazyWithRetry";
@@ -67,6 +68,7 @@ const ContractEditor = lazyWithRetry(() => import("./pages/ContractEditor"));
 const PlatformPresentation = lazyWithRetry(() => import("./pages/PlatformPresentation"));
 const EmailResponse = lazyWithRetry(() => import("./pages/EmailResponse"));
 const PaymentResult = lazyWithRetry(() => import("./pages/PaymentResult"));
+const WhatsNew = lazyWithRetry(() => import("./pages/WhatsNew"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -199,6 +201,7 @@ const App = () => (
                     <Route path="/partner" element={<PartnerLanding />} />
                     <Route path="/partner/dashboard" element={<PartnerDashboard />} />
                     <Route path="/partner/offer" element={<PartnerOffer />} />
+                    <Route path="/whats-new" element={<WhatsNew />} />
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                     <Route path="*" element={<NotFound />} />
                   </Routes>
