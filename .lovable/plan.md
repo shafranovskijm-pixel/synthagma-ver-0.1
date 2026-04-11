@@ -1,31 +1,31 @@
 
 
-## Иконка «глаз» не появляется — RLS блокирует `test_attempts` для администратора
+## Добавить просмотр и скачивание документов в журнале регистрации
 
-### Причина
+### Проблема
+В `AutoDocumentRegistrationJournal` отображаются все документы (приказы, договоры, акты и т.д.), но нет кнопок «Просмотр» и «Скачать» — только текстовая информация.
 
-Та же проблема, что была с `lesson_progress`: RLS-политика на таблице `test_attempts` использует `current_organization_id()`, которая возвращает `NULL` для admin-пользователя без профиля. Результат — запрос к `test_attempts` возвращает пустой массив, `test_attempt_id` остаётся `null`, иконка глаза не отображается, а столбцы показывают «Не сдан» / «Ожидается».
+### Что будет сделано
 
-В БД данные есть: у Палухина попытка 7/8 (87.5%) по финальному тесту — но RLS их скрывает.
+Добавить столбец «Действия» с кнопками Eye (просмотр) и Download (скачивание) в каждую строку таблицы журнала.
 
-### Исправление
+### Реализация
 
-**SQL-миграция**: добавить admin-bypass в SELECT-политику `test_attempts`:
+**Файл: `src/components/organization/AutoDocumentRegistrationJournal.tsx`**
 
-```sql
-DROP POLICY IF EXISTS "Org users can view attempts for their courses" ON public.test_attempts;
-CREATE POLICY "Org users can view attempts for their courses" 
-  ON public.test_attempts FOR SELECT 
-  USING (
-    EXISTS (
-      SELECT 1 FROM lessons l 
-      JOIN courses c ON c.id = l.course_id 
-      WHERE l.id = test_attempts.lesson_id 
-      AND c.organization_id = current_organization_id()
-    )
-    OR has_role('admin'::app_role, auth.uid())
-  );
-```
+1. **Добавить `file_url` в интерфейс `DocumentRecord`** — новое поле `file_url: string | null`
 
-Одна SQL-миграция, без изменений в коде. После этого данные тестов станут видны администратору — иконка глаза появится, баллы и статус отобразятся корректно.
+2. **Заполнять `file_url` из всех источников данных:**
+   - `document_issuance_log` → поле `file_url` уже есть в таблице
+   - `company_documents` → поле `file_url` уже есть
+   - `enrollment_history` → подгрузить `file_url` из `org_documents` (приказы сохраняются туда при генерации)
+
+3. **Добавить столбец «Действия» в таблицу** — кнопки:
+   - **Eye** — открыть HTML-документ в новой вкладке через Blob URL (для storage-файлов — signed URL)
+   - **Download** — скачать файл как PDF через `downloadHtmlFile` (уже используется в `OrdersArchive`)
+
+4. **Для документов без файла** — кнопки скрыты (не все записи имеют физический файл)
+
+### Результат
+В каждой строке журнала регистрации, где есть физический документ, появятся кнопки просмотра и скачивания — как уже работает в архиве приказов (`OrdersArchive`).
 
