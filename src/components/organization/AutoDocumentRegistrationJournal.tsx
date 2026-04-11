@@ -48,6 +48,8 @@ import {
   Hash,
   Pencil,
   Plus,
+  Eye,
+  Download,
 } from "lucide-react";
 import { format, parseISO, startOfYear, endOfYear, isWithinInterval } from "date-fns";
 import { ru } from "date-fns/locale";
