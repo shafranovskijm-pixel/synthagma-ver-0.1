@@ -66,6 +66,7 @@ interface Course {
   is_published: boolean;
   sequential_lessons: boolean;
   allow_video_seek: boolean;
+  price?: number;
 }
 
 interface Lesson {
@@ -106,6 +107,7 @@ const CourseEditor = () => {
   const [durationHours, setDurationHours] = useState<number | null>(null);
   const [sequentialLessons, setSequentialLessons] = useState(false);
   const [allowVideoSeek, setAllowVideoSeek] = useState(true);
+  const [price, setPrice] = useState<number>(0);
 
   // Lesson editor
   const [isLessonEditorOpen, setIsLessonEditorOpen] = useState(false);
@@ -151,6 +153,7 @@ const CourseEditor = () => {
       setDurationHours(courseResult.data.frdo_duration_hours ?? null);
       setSequentialLessons(courseResult.data.sequential_lessons ?? false);
       setAllowVideoSeek(courseResult.data.allow_video_seek ?? true);
+      setPrice(courseResult.data.price ?? 0);
     }
 
     if (lessonsResult.data) {
@@ -173,6 +176,7 @@ const CourseEditor = () => {
         frdo_duration_hours: durationHours,
         sequential_lessons: sequentialLessons,
         allow_video_seek: allowVideoSeek,
+        price: price || 0,
       })
       .eq("id", courseId);
 
@@ -545,6 +549,17 @@ const CourseEditor = () => {
                 onChange={(e) => setDurationHours(e.target.value ? parseInt(e.target.value) : null)}
                 placeholder="Например: 40"
               />
+            </div>
+            <div className="space-y-2">
+              <Label>Стоимость (₽)</Label>
+              <Input
+                type="number"
+                min="0"
+                value={price || ""}
+                onChange={(e) => setPrice(e.target.value ? parseFloat(e.target.value) : 0)}
+                placeholder="0 — бесплатный"
+              />
+              <p className="text-xs text-muted-foreground">Оставьте 0 для бесплатного курса</p>
             </div>
             <div className="space-y-2">
               <Label>Статус</Label>
