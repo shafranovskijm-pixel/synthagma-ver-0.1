@@ -48,16 +48,20 @@ import {
   Hash,
   Pencil,
   Plus,
+  Eye,
+  Download,
 } from "lucide-react";
 import { format, parseISO, startOfYear, endOfYear, isWithinInterval } from "date-fns";
 import { ru } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { getXLSX } from "@/utils/xlsxHelper";
 import { Badge } from "@/components/ui/badge";
+import { downloadHtmlFile } from "@/utils/downloadHtmlFile";
+import { getSignedStorageUrl, extractStoragePath } from "@/utils/storageHelpers";
 
 interface DocumentRecord {
   id: string;
-  original_id: string; // ID without prefixes for DB updates
+  original_id: string;
   reg_number: string | null;
   document_type: string;
   document_name: string;
@@ -67,7 +71,8 @@ interface DocumentRecord {
   related_entity_type: "student" | "company" | "organization" | null;
   notes: string | null;
   source: "issuance_log" | "company_document" | "enrollment";
-  is_editable: boolean; // Can this record's reg_number be edited in DB
+  is_editable: boolean;
+  file_url: string | null;
 }
 
 interface AutoDocumentRegistrationJournalProps {
@@ -188,6 +193,7 @@ export function AutoDocumentRegistrationJournal({
             notes: doc.send_method ? `Отправлено: ${doc.send_method}` : null,
             source: "issuance_log",
             is_editable: true,
+            file_url: doc.file_url || null,
           });
         }
 
@@ -233,7 +239,22 @@ export function AutoDocumentRegistrationJournal({
             notes: doc.amount ? `Сумма: ${doc.amount} ₽` : null,
             source: "company_document",
             is_editable: true,
+            file_url: doc.file_url || null,
           });
+        }
+
+        // 3. Fetch org_documents for file URLs (orders saved here)
+        const { data: orgDocs } = await supabase
+          .from("org_documents")
+          .select("id, name, file_url, type")
+          .eq("organization_id", organizationId);
+
+        // Build a map: doc name -> file_url for quick lookup
+        const orgDocFileMap = new Map<string, string>();
+        for (const od of orgDocs || []) {
+          if (od.file_url) {
+            orgDocFileMap.set(od.name.toLowerCase(), od.file_url);
+          }
         }
 
         // 3. Fetch enrollment history for orders
@@ -262,36 +283,43 @@ export function AutoDocumentRegistrationJournal({
           const studentName = profile?.full_name || profile?.email || "Неизвестный";
 
           if (entry.action === "enrolled") {
+            const docName = `Приказ о зачислении на курс "${course.title}"`;
+            // Try to find file in org_documents
+            const fileUrl = orgDocFileMap.get(docName.toLowerCase()) || null;
             documentRecords.push({
               id: `enrollment_${entry.id}`,
               original_id: entry.id,
               reg_number: entry.enrollment_id ? `ПР-${entry.enrollment_id.slice(0, 8).toUpperCase()}` : null,
               document_type: "enrollment_order",
-              document_name: `Приказ о зачислении на курс "${course.title}"`,
+              document_name: docName,
               direction: "outgoing",
               date: entry.created_at,
               related_entity: studentName,
               related_entity_type: "student",
               notes: null,
               source: "enrollment",
-              is_editable: false, // enrollment_history has no reg_number field
+              is_editable: false,
+              file_url: fileUrl,
             });
           } else if (entry.action === "completed" || entry.action === "expelled") {
+            const docName = entry.action === "completed" 
+              ? `Завершение обучения на курсе "${course.title}"`
+              : `Приказ об отчислении с курса "${course.title}"`;
+            const fileUrl = orgDocFileMap.get(docName.toLowerCase()) || null;
             documentRecords.push({
               id: `expulsion_${entry.id}`,
               original_id: entry.id,
               reg_number: entry.enrollment_id ? `ПР-${entry.enrollment_id.slice(0, 8).toUpperCase()}` : null,
               document_type: entry.action === "completed" ? "certificate" : "expulsion_order",
-              document_name: entry.action === "completed" 
-                ? `Завершение обучения на курсе "${course.title}"`
-                : `Приказ об отчислении с курса "${course.title}"`,
+              document_name: docName,
               direction: "outgoing",
               date: entry.created_at,
               related_entity: studentName,
               related_entity_type: "student",
               notes: null,
               source: "enrollment",
-              is_editable: false, // enrollment_history has no reg_number field
+              is_editable: false,
+              file_url: fileUrl,
             });
           }
         }
@@ -383,7 +411,52 @@ export function AutoDocumentRegistrationJournal({
     return { incoming, outgoing, contracts, orders, total: filteredRecords.length };
   }, [filteredRecords]);
 
-  // Open edit dialog
+  // View document in new tab
+  const handleViewDocument = async (record: DocumentRecord) => {
+    if (!record.file_url) return;
+    try {
+      if (record.file_url.startsWith("http")) {
+        window.open(record.file_url, "_blank");
+      } else {
+        // It's a storage path — get signed URL
+        const signedUrl = await getSignedStorageUrl("org-documents", record.file_url);
+        if (signedUrl) {
+          // Fetch HTML and open as blob
+          const res = await fetch(signedUrl);
+          const html = await res.text();
+          const blob = new Blob([html], { type: "text/html" });
+          window.open(URL.createObjectURL(blob), "_blank");
+        } else {
+          toast.error("Не удалось открыть документ");
+        }
+      }
+    } catch (error) {
+      console.error("Error viewing document:", error);
+      toast.error("Ошибка при открытии документа");
+    }
+  };
+
+  // Download document as PDF
+  const handleDownloadDocument = async (record: DocumentRecord) => {
+    if (!record.file_url) return;
+    try {
+      let url = record.file_url;
+      if (!url.startsWith("http")) {
+        const signedUrl = await getSignedStorageUrl("org-documents", url);
+        if (!signedUrl) {
+          toast.error("Не удалось скачать документ");
+          return;
+        }
+        url = signedUrl;
+      }
+      await downloadHtmlFile(url, record.document_name);
+      toast.success("Документ скачан");
+    } catch (error) {
+      console.error("Error downloading document:", error);
+      toast.error("Ошибка при скачивании документа");
+    }
+  };
+
   const handleEditClick = (record: DocumentRecord) => {
     if (!record.is_editable) {
       toast.info("Этот документ нельзя редактировать");
@@ -508,6 +581,7 @@ export function AutoDocumentRegistrationJournal({
         notes: insertedDoc.send_method ? `Примечание: ${insertedDoc.send_method}` : null,
         source: "issuance_log",
         is_editable: true,
+        file_url: null,
       };
       
       setRecords((prev) => [newRecord, ...prev]);
@@ -783,6 +857,7 @@ export function AutoDocumentRegistrationJournal({
                   <TableHead className="text-center">Направление</TableHead>
                   <TableHead>Контрагент / Лицо</TableHead>
                   <TableHead className="text-center">Дата</TableHead>
+                  <TableHead className="text-center w-24">Действия</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -891,6 +966,32 @@ export function AutoDocumentRegistrationJournal({
                         <span className="text-sm">
                           {format(parseISO(record.date), "dd.MM.yyyy", { locale: ru })}
                         </span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {record.file_url ? (
+                          <div className="flex items-center justify-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => handleViewDocument(record)}
+                              title="Просмотр"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => handleDownloadDocument(record)}
+                              title="Скачать PDF"
+                            >
+                              <Download className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
                       </TableCell>
                     </TableRow>
                   );
