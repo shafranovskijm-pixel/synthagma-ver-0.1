@@ -185,21 +185,13 @@ export default function StudentDashboard() {
 
           {/* Catalog tab */}
           {currentTab === "catalog" && (
-            <div className="p-6 space-y-6 max-w-[1400px] mx-auto flex-1">
-              <OrgBanner
-                orgName={profile?.organization_name || null}
-                orgDescription={profile?.org_description}
-                coverUrl={branding?.coverUrl}
-                logoUrl={branding?.logoUrl}
-                primaryColor={branding?.primaryColor}
-                secondaryColor={branding?.secondaryColor}
-              />
-              <CourseCatalog
-                courses={catalogCourses}
-                categories={categories}
-                onCourseClick={(id, enrolled) => handleCourseClick(id, enrolled)}
-              />
-            </div>
+            <CatalogContent
+              catalogCourses={catalogCourses}
+              categories={categories}
+              profile={profile}
+              branding={branding}
+              handleCourseClick={handleCourseClick}
+            />
           )}
 
           {/* Library tab */}
