@@ -30,8 +30,8 @@ export function StudentSidebar({
   return (
     <aside
       className={cn(
-        "flex flex-col w-[80px] border-r border-border items-center py-4 gap-1 shrink-0",
-        (isPreviewMode || isAdminView) && "mt-10"
+        "sticky top-0 h-screen flex flex-col w-[80px] border-r border-border items-center py-4 shrink-0",
+        (isPreviewMode || isAdminView) && "pt-14"
       )}
       style={{ backgroundColor: `hsl(${primaryColor} / 0.06)` }}
     >
@@ -44,8 +44,8 @@ export function StudentSidebar({
         )}
       </div>
 
-      {/* Main nav — centered vertically */}
-      <nav className="flex flex-col gap-2 items-center justify-center flex-1">
+      {/* Navigation buttons — fixed near top, not flex-1 centered */}
+      <nav className="flex flex-col gap-2 items-center">
         {navItems.map((item) => {
           if (item.id === "chat" && !showAiChat) return null;
           const isActive = activeTab === item.id;
@@ -63,7 +63,7 @@ export function StudentSidebar({
                   style={
                     isActive
                       ? { backgroundColor: `hsl(${primaryColor})` }
-                      : { backgroundColor: `hsl(${primaryColor} / 0.08)` }
+                      : { backgroundColor: `hsl(${primaryColor} / 0.15)` }
                   }
                 >
                   <item.icon className="w-5 h-5" />
