@@ -3239,6 +3239,89 @@ export type Database = {
           },
         ]
       }
+      sales_contracts: {
+        Row: {
+          company_address: string | null
+          company_director: string | null
+          company_inn: string | null
+          company_kpp: string | null
+          company_name: string
+          contact_email: string | null
+          contact_person: string | null
+          contact_phone: string | null
+          contract_date: string | null
+          contract_duration_months: number
+          contract_number: string | null
+          created_at: string
+          custom_services: Json | null
+          html_content: string | null
+          id: string
+          manager_id: string | null
+          notes: string | null
+          prepayment_amount: number
+          status: string
+          tariff_plan: string | null
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          company_address?: string | null
+          company_director?: string | null
+          company_inn?: string | null
+          company_kpp?: string | null
+          company_name: string
+          contact_email?: string | null
+          contact_person?: string | null
+          contact_phone?: string | null
+          contract_date?: string | null
+          contract_duration_months?: number
+          contract_number?: string | null
+          created_at?: string
+          custom_services?: Json | null
+          html_content?: string | null
+          id?: string
+          manager_id?: string | null
+          notes?: string | null
+          prepayment_amount?: number
+          status?: string
+          tariff_plan?: string | null
+          total_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          company_address?: string | null
+          company_director?: string | null
+          company_inn?: string | null
+          company_kpp?: string | null
+          company_name?: string
+          contact_email?: string | null
+          contact_person?: string | null
+          contact_phone?: string | null
+          contract_date?: string | null
+          contract_duration_months?: number
+          contract_number?: string | null
+          created_at?: string
+          custom_services?: Json | null
+          html_content?: string | null
+          id?: string
+          manager_id?: string | null
+          notes?: string | null
+          prepayment_amount?: number
+          status?: string
+          tariff_plan?: string | null
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_contracts_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "sales_managers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sales_lead_activities: {
         Row: {
           activity_type: string
