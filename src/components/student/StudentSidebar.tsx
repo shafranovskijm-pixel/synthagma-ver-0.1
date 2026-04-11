@@ -30,7 +30,7 @@ export function StudentSidebar({
   return (
     <aside
       className={cn(
-        "hidden md:flex flex-col w-[80px] border-r border-border items-center py-4 gap-1 shrink-0",
+        "flex flex-col w-[80px] border-r border-border items-center py-4 gap-1 shrink-0",
         (isPreviewMode || isAdminView) && "mt-10"
       )}
       style={{ backgroundColor: `hsl(${primaryColor} / 0.06)` }}
