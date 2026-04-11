@@ -300,25 +300,23 @@ const PartnerDashboard = () => {
 
           <TabsContent value="materials">
             <div className="grid md:grid-cols-2 gap-6">
-              {/* Pre-built social media texts */}
+              {/* Social media / messenger texts */}
               <Card>
-                <CardHeader><CardTitle className="text-lg">Тексты для соцсетей</CardTitle></CardHeader>
+                <CardHeader><CardTitle className="text-lg">Тексты для мессенджеров и соцсетей</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
                   {[
                     `🎓 Рекомендую платформу СИНТАГМА для дистанционного обучения! Документооборот, тесты, видеоидентификация — всё в одном месте.\n\nРегистрация: ${refLink}`,
                     `🚀 Ищете систему для обучения сотрудников? СИНТАГМА — современная LMS с ФРДО, онлайн-кассой и ИИ-генерацией курсов.\n\nПопробуйте бесплатно: ${refLink}`,
                     `💡 Автоматизируйте обучение с СИНТАГМА! Курсы, тесты, документы, охрана труда — единая платформа для учебных центров.\n\nПодробнее: ${refLink}`,
+                    `📚 Как учебному центру сэкономить 80% времени на документообороте? Перейти на СИНТАГМА — платформу с ИИ, ФРДО и электронной подписью.\n\nУзнать больше: ${refLink}`,
+                    `🏆 Уже 100+ организаций используют СИНТАГМА для дистанционного обучения. Присоединяйтесь!\n\n👉 ${refLink}`,
                   ].map((text, i) => (
                     <div key={i} className="bg-muted rounded-lg p-4">
-                      <pre className="text-sm whitespace-pre-wrap mb-3">{text}</pre>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          navigator.clipboard.writeText(text);
-                          toast({ title: "Текст скопирован!" });
-                        }}
-                      >
+                      <pre className="text-sm whitespace-pre-wrap mb-3 font-sans">{text}</pre>
+                      <Button size="sm" variant="outline" onClick={() => {
+                        navigator.clipboard.writeText(text);
+                        toast({ title: "Текст скопирован!" });
+                      }}>
                         <Copy className="w-3 h-3 mr-1" /> Копировать
                       </Button>
                     </div>
@@ -326,57 +324,25 @@ const PartnerDashboard = () => {
                 </CardContent>
               </Card>
 
-              {/* HTML banner codes */}
+              {/* Email templates */}
               <Card>
-                <CardHeader><CardTitle className="text-lg">HTML-баннеры</CardTitle></CardHeader>
+                <CardHeader><CardTitle className="text-lg">Тексты для email-рассылки</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
                   {[
-                    { size: "728×90", w: 728, h: 90 },
-                    { size: "300×250", w: 300, h: 250 },
-                    { size: "160×600", w: 160, h: 600 },
-                  ].map((banner) => {
-                    const code = `<a href="${refLink}" target="_blank" rel="noopener" style="display:inline-block;width:${banner.w}px;height:${banner.h}px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:12px;text-decoration:none;color:#fff;font-family:sans-serif;text-align:center;line-height:${banner.h}px;font-size:${banner.h > 100 ? 18 : 14}px;font-weight:600;">СИНТАГМА — СДО нового поколения</a>`;
-                    return (
-                      <div key={banner.size} className="bg-muted rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm font-medium">{banner.size}</span>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              navigator.clipboard.writeText(code);
-                              toast({ title: "HTML скопирован!" });
-                            }}
-                          >
-                            <Copy className="w-3 h-3 mr-1" /> Копировать код
-                          </Button>
-                        </div>
-                        <code className="text-xs block bg-background p-2 rounded overflow-x-auto">{code.slice(0, 100)}...</code>
-                      </div>
-                    );
-                  })}
-
-                  {/* Admin-uploaded materials */}
-                  {promoMaterials.length > 0 && (
-                    <div className="border-t border-border pt-4 mt-4">
-                      <h4 className="text-sm font-medium mb-3">Дополнительные материалы</h4>
-                      {promoMaterials.map((m) => (
-                        <div key={m.id} className="flex items-center justify-between py-2">
-                          <div>
-                            <div className="text-sm font-medium">{m.title}</div>
-                            {m.size && <div className="text-xs text-muted-foreground">{m.size}</div>}
-                          </div>
-                          {m.image_url && (
-                            <Button size="sm" variant="outline" asChild>
-                              <a href={m.image_url} target="_blank" rel="noopener">
-                                <Download className="w-3 h-3 mr-1" /> Скачать
-                              </a>
-                            </Button>
-                          )}
-                        </div>
-                      ))}
+                    `Тема: Платформа для дистанционного обучения — бесплатный старт\n\nЗдравствуйте!\n\nХочу рассказать вам о платформе СИНТАГМА — это современная система дистанционного обучения для учебных центров и организаций.\n\nЧто входит:\n• Создание курсов с ИИ-помощником\n• Тесты и видеоидентификация\n• Интеграция с ФРДО\n• Электронный документооборот\n• Охрана труда\n\nНачать можно бесплатно: ${refLink}\n\nС уважением`,
+                    `Тема: Сэкономьте 80% времени на обучении сотрудников\n\nДобрый день!\n\nЕсли ваша организация проводит обучение — обратите внимание на СИНТАГМА. Платформа автоматизирует:\n\n✅ Создание и назначение курсов\n✅ Тестирование и аттестацию\n✅ Выдачу документов об образовании\n✅ Выгрузку в ФРДО\n\nПопробуйте бесплатно: ${refLink}`,
+                    `Тема: Новая LMS-платформа с ИИ — СИНТАГМА\n\nПриветствую!\n\nСИНТАГМА — платформа нового поколения для учебных центров:\n\n🤖 ИИ генерирует курсы за минуты\n📄 Автоматический документооборот\n🎥 Видеоидентификация учеников\n📊 Аналитика и журналы\n\nРегистрация бесплатна: ${refLink}`,
+                  ].map((text, i) => (
+                    <div key={i} className="bg-muted rounded-lg p-4">
+                      <pre className="text-sm whitespace-pre-wrap mb-3 font-sans">{text}</pre>
+                      <Button size="sm" variant="outline" onClick={() => {
+                        navigator.clipboard.writeText(text);
+                        toast({ title: "Текст скопирован!" });
+                      }}>
+                        <Copy className="w-3 h-3 mr-1" /> Копировать
+                      </Button>
                     </div>
-                  )}
+                  ))}
                 </CardContent>
               </Card>
             </div>
