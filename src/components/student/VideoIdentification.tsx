@@ -375,32 +375,31 @@ export function VideoIdentification({
     );
   }
 
-  return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-lg rounded-2xl">
-        <DialogHeader>
-          <DialogTitle className="font-display flex items-center gap-2">
-            <Shield className="w-5 h-5 text-primary" />
-            Видеоидентификация (ЭИОС)
-          </DialogTitle>
-          <DialogDescription>
-            Подтверждение личности в соответствии с требованиями законодательства об электронной информационно-образовательной среде
-          </DialogDescription>
-        </DialogHeader>
+  const mainContent = (
+    <>
+      <div className="mb-4">
+        <h3 className="font-display flex items-center gap-2 text-lg font-semibold">
+          <Shield className="w-5 h-5 text-primary" />
+          Видеоидентификация (ЭИОС)
+        </h3>
+        <p className="text-sm text-muted-foreground mt-1">
+          Подтверждение личности в соответствии с требованиями законодательства об электронной информационно-образовательной среде
+        </p>
+      </div>
 
-        <div className="py-4">
-          {/* History button */}
-          {verificationHistory.length > 0 && step !== "history" && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="mb-4 gap-2"
-              onClick={() => setStep("history")}
-            >
-              <History className="w-4 h-4" />
-              История идентификаций ({verificationHistory.length})
-            </Button>
-          )}
+      <div className="py-4">
+        {/* History button */}
+        {verificationHistory.length > 0 && step !== "history" && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="mb-4 gap-2"
+            onClick={() => setStep("history")}
+          >
+            <History className="w-4 h-4" />
+            История идентификаций ({verificationHistory.length})
+          </Button>
+        )}
 
           {/* Progress indicator */}
           {step !== "success" && step !== "history" && (
