@@ -204,6 +204,11 @@ Deno.serve(async (req) => {
       params.set("Email", email);
     }
 
+    // Return URLs
+    const siteUrl = "https://sintagma.com.ru";
+    params.set("SuccessUrl", `${siteUrl}/payment-success`);
+    params.set("FailUrl", `${siteUrl}/payment-fail`);
+
     // Pass user_id and course_id as Shp parameters
     if (user_id) {
       params.set("Shp_user_id", user_id);
