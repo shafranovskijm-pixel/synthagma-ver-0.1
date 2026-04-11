@@ -1105,6 +1105,7 @@ export type Database = {
           allow_video_seek: boolean
           category_id: string | null
           completion_notify_emails: string | null
+          cover_image_url: string | null
           created_at: string
           description: string | null
           duration: string | null
@@ -1120,6 +1121,7 @@ export type Database = {
           frdo_specialty_group: string | null
           id: string
           is_published: boolean
+          landing_content: Json | null
           notify_on_completion: boolean
           organization_id: string
           price: number
@@ -1137,6 +1139,7 @@ export type Database = {
           allow_video_seek?: boolean
           category_id?: string | null
           completion_notify_emails?: string | null
+          cover_image_url?: string | null
           created_at?: string
           description?: string | null
           duration?: string | null
@@ -1152,6 +1155,7 @@ export type Database = {
           frdo_specialty_group?: string | null
           id?: string
           is_published?: boolean
+          landing_content?: Json | null
           notify_on_completion?: boolean
           organization_id: string
           price?: number
@@ -1169,6 +1173,7 @@ export type Database = {
           allow_video_seek?: boolean
           category_id?: string | null
           completion_notify_emails?: string | null
+          cover_image_url?: string | null
           created_at?: string
           description?: string | null
           duration?: string | null
@@ -1184,6 +1189,7 @@ export type Database = {
           frdo_specialty_group?: string | null
           id?: string
           is_published?: boolean
+          landing_content?: Json | null
           notify_on_completion?: boolean
           organization_id?: string
           price?: number
@@ -2799,6 +2805,7 @@ export type Database = {
           branding: Json | null
           contact_name: string | null
           created_at: string
+          description: string | null
           director_gender: string | null
           director_name: string | null
           director_position: string | null
@@ -2844,6 +2851,7 @@ export type Database = {
           branding?: Json | null
           contact_name?: string | null
           created_at?: string
+          description?: string | null
           director_gender?: string | null
           director_name?: string | null
           director_position?: string | null
@@ -2889,6 +2897,7 @@ export type Database = {
           branding?: Json | null
           contact_name?: string | null
           created_at?: string
+          description?: string | null
           director_gender?: string | null
           director_name?: string | null
           director_position?: string | null

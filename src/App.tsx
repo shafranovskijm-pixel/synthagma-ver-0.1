@@ -31,6 +31,7 @@ const OrganizationDashboard = lazyWithRetry(() => import("./pages/OrganizationDa
 const CourseEditor = lazyWithRetry(() => import("./pages/CourseEditor"));
 const CourseBuilder = lazyWithRetry(() => import("./pages/CourseBuilder"));
 const CourseLearning = lazyWithRetry(() => import("./pages/CourseLearning"));
+const CourseLanding = lazyWithRetry(() => import("./pages/CourseLanding"));
 const CoursePreview = lazyWithRetry(() => import("./pages/CoursePreview"));
 const JoinByLink = lazyWithRetry(() => import("./pages/JoinByLink"));
 const AdminDashboard = lazyWithRetry(() => import("./pages/AdminDashboard"));
@@ -145,6 +146,7 @@ const App = () => (
                       </ProtectedRoute>
                     } />
                     <Route path="/join/:token" element={<JoinByLink />} />
+                    <Route path="/course/:courseId/landing" element={<CourseLanding />} />
                     <Route path="/features" element={<Features />} />
                     <Route path="/about" element={<About />} />
                     <Route path="/blog" element={<Blog />} />

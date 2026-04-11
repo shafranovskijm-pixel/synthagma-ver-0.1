@@ -21,10 +21,28 @@ export interface StudentCourse {
   skip_video_identification?: boolean;
 }
 
+export interface CatalogCourse {
+  id: string;
+  title: string;
+  description: string | null;
+  cover_image_url?: string | null;
+  duration?: string | null;
+  price?: number;
+  category_id?: string | null;
+  category_name?: string | null;
+  category_color?: string | null;
+  total_lessons?: number;
+  is_enrolled?: boolean;
+  progress?: number;
+  completed_lessons?: number;
+  status?: "in_progress" | "completed" | "not_enrolled";
+}
+
 interface Profile {
   full_name: string | null;
   organization_name: string | null;
   organization_id: string | null;
+  org_description?: string | null;
 }
 
 interface Branding {
@@ -56,11 +74,13 @@ export function useStudentDashboard() {
   const isMobile = useIsMobile();
   const { theme, setTheme } = useTheme();
 
-  const [activeTab, setActiveTab] = useState<"courses" | "chat" | "store">("courses");
+  const [activeTab, setActiveTab] = useState<"catalog" | "library" | "chat" | "store">("catalog");
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [inputValue, setInputValue] = useState("");
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [courses, setCourses] = useState<StudentCourse[]>([]);
+  const [catalogCourses, setCatalogCourses] = useState<CatalogCourse[]>([]);
+  const [categories, setCategories] = useState<{ id: string; name: string; color: string | null }[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [branding, setBranding] = useState<Branding | null>(null);
   const [dashboardSettings, setDashboardSettings] = useState<DashboardSettings>({ showLibrary: true, showAchievements: true, showAiChat: true });
@@ -187,7 +207,7 @@ export function useStudentDashboard() {
     }, 15000);
 
     try {
-      const { data: profileData } = await supabase.from("profiles").select("full_name, organization_id, organizations(name, branding, student_dashboard_settings, subscription_plan)").eq("user_id", uid).maybeSingle();
+      const { data: profileData } = await supabase.from("profiles").select("full_name, organization_id, organizations(name, description, branding, student_dashboard_settings, subscription_plan)").eq("user_id", uid).maybeSingle();
       let effectiveOrgId: string | null = profileData?.organization_id || null;
       let effectiveOrgName: string | null = null;
       let effectiveBranding: any = null;
@@ -199,7 +219,7 @@ export function useStudentDashboard() {
         effectiveBranding = org?.branding;
         effectiveDashboardSettings = org?.student_dashboard_settings;
         if (org?.subscription_plan) setOrgPlan(org.subscription_plan);
-        setProfile({ full_name: profileData.full_name, organization_name: effectiveOrgName, organization_id: profileData.organization_id });
+        setProfile({ full_name: profileData.full_name, organization_name: effectiveOrgName, organization_id: profileData.organization_id, org_description: (org as any)?.description || null });
       }
 
       const { data: laborProfile } = await supabase.from("labor_safety_profiles").select("organization_id, full_name, organizations(name, branding, student_dashboard_settings, subscription_plan)").eq("user_id", uid).order("created_at", { ascending: false }).limit(1).maybeSingle();
@@ -275,6 +295,46 @@ export function useStudentDashboard() {
         setCourses(cachedCoursesData);
         setTotalTimeSpent(cachedTotalTime);
         setTotalCompletedLessons(cachedCompletedLessonsTotal);
+      }
+
+      // Load catalog: all published courses for this org + categories
+      if (effectiveOrgId) {
+        const [coursesRes, catsRes] = await Promise.all([
+          supabase.from("courses").select("id, title, description, duration, price, category_id, cover_image_url, is_published").eq("organization_id", effectiveOrgId).eq("is_published", true),
+          supabase.from("course_categories").select("id, name, color").eq("organization_id", effectiveOrgId),
+        ]);
+        const allOrgCourses = coursesRes.data || [];
+        const cats = catsRes.data || [];
+        setCategories(cats);
+        const catMap = new Map(cats.map(c => [c.id, c]));
+        const enrolledIds = new Set(cachedCoursesData.map(c => c.id));
+
+        // Count lessons per course
+        const courseIds = allOrgCourses.map(c => c.id);
+        const { data: lessonCounts } = courseIds.length > 0
+          ? await supabase.from("lessons").select("course_id").in("course_id", courseIds)
+          : { data: [] as { course_id: string }[] };
+        const lessonCountMap = new Map<string, number>();
+        for (const l of lessonCounts || []) {
+          lessonCountMap.set(l.course_id, (lessonCountMap.get(l.course_id) || 0) + 1);
+        }
+
+        const catalogData: CatalogCourse[] = allOrgCourses.map(c => {
+          const enrolled = cachedCoursesData.find(ec => ec.id === c.id);
+          const cat = c.category_id ? catMap.get(c.category_id) : null;
+          return {
+            id: c.id, title: c.title, description: c.description,
+            cover_image_url: (c as any).cover_image_url || null,
+            duration: c.duration, price: c.price,
+            category_id: c.category_id, category_name: cat?.name || null, category_color: cat?.color || null,
+            total_lessons: lessonCountMap.get(c.id) || 0,
+            is_enrolled: enrolledIds.has(c.id),
+            progress: enrolled?.progress,
+            completed_lessons: enrolled?.completedLessons,
+            status: enrolled ? (enrolled.status === "completed" ? "completed" : "in_progress") : "not_enrolled",
+          };
+        });
+        setCatalogCourses(catalogData);
       }
 
       if (effectiveOrgId) {
@@ -362,7 +422,7 @@ export function useStudentDashboard() {
   return {
     user, navigate, isMobile, theme, setTheme,
     activeTab, setActiveTab, messages, inputValue, setInputValue, isAiLoading, handleSendMessage,
-    courses, profile, branding, dashboardSettings, loading,
+    courses, catalogCourses, categories, profile, branding, dashboardSettings, loading,
     totalTimeSpent, totalCompletedLessons, totalProgress, firstName, formatTime,
     isPreviewMode, showVideoIdentification, setShowVideoIdentification,
     showConsentForm, setShowConsentForm, showDocumentsUpload, setShowDocumentsUpload,
