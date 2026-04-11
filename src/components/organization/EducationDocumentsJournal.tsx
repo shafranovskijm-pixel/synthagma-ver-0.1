@@ -33,6 +33,8 @@ import {
   DOCUMENT_TYPES,
   DELIVERY_METHODS,
 } from "@/hooks/useEducationDocumentsJournal";
+import { generateEducationDocumentHtml } from "@/utils/generateEducationDocument";
+import { printHtmlContent } from "@/utils/printHtmlToPdf";
 
 interface EducationDocumentsJournalProps {
   organizationId: string;
