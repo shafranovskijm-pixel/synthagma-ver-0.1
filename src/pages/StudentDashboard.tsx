@@ -186,7 +186,7 @@ export default function StudentDashboard() {
                 <AvailablePaidCourses
                   userId={user.id}
                   organizationId={profile.organization_id}
-                  userEmail={profile.email || user.email}
+                  userEmail={user.email}
                 />
               )}
             </div>
