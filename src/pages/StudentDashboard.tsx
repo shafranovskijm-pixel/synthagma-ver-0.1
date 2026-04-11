@@ -84,6 +84,8 @@ function CatalogContent({ catalogCourses, categories, profile, branding, handleC
     </div>
   );
 }
+
+export default function StudentDashboard() {
   const [chatMode, setChatMode] = useState<'select' | 'org' | 'ai'>('select');
   const { userRole } = useAuth();
 
