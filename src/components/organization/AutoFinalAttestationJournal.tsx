@@ -86,6 +86,7 @@ interface FinalAttestationRecord {
   final_test_passed: boolean;
   final_test_date: string | null;
   total_time_spent: number;
+  test_attempt_id: string | null;
 }
 
 interface Course {
