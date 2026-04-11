@@ -36,6 +36,7 @@ export type TabType =
   | "journals" 
   | "labor-safety"
   | "subscription"
+  | "payments"
   | "services" 
   | "settings" 
   | "frdo";
@@ -209,6 +210,11 @@ export function OrgSidebar() {
                 {isLocked("frdo") && <Lock className="w-3.5 h-3.5 ml-auto text-muted-foreground/40" />}
               </button>
             )}
+
+            <button onClick={() => handleTabClick("payments")} className={tabButtonClass("payments")} aria-label="Финансы">
+              <CreditCard className="w-5 h-5" aria-hidden="true" />
+              Финансы
+            </button>
 
             {menuSettings.showSubscription !== false && (
               <button onClick={() => handleTabClick("subscription")} className={tabButtonClass("subscription")} aria-label="Тариф">
