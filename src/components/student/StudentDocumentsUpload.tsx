@@ -392,7 +392,7 @@ export function StudentDocumentsUpload({
             PDF, JPG, PNG. Максимальный размер файла: 10 МБ.
           </div>
         </div>
-        </div>
+      </div>
     </div>
   );
 
