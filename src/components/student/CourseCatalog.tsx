@@ -3,7 +3,6 @@ import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { CourseCardNew } from "./CourseCardNew";
-import { cn } from "@/lib/utils";
 
 interface CatalogCourse {
   id: string;
@@ -39,6 +38,27 @@ export function CourseCatalog({ courses, categories, onCourseClick }: CourseCata
       return true;
     });
   }, [courses, search, selectedCategory]);
+
+  // Group filtered courses by category
+  const grouped = useMemo(() => {
+    const groups: { name: string; color: string | null; courses: CatalogCourse[] }[] = [];
+    const catMap = new Map<string, { name: string; color: string | null; courses: CatalogCourse[] }>();
+
+    for (const course of filtered) {
+      const catName = course.category_name || "Другое";
+      const catColor = course.category_color || null;
+      const key = course.category_id || "__other__";
+
+      if (!catMap.has(key)) {
+        const group = { name: catName, color: catColor, courses: [] as CatalogCourse[] };
+        catMap.set(key, group);
+        groups.push(group);
+      }
+      catMap.get(key)!.courses.push(course);
+    }
+
+    return groups;
+  }, [filtered]);
 
   return (
     <div className="space-y-6">
@@ -79,31 +99,48 @@ export function CourseCatalog({ courses, categories, onCourseClick }: CourseCata
         </div>
       )}
 
-      {/* Grid */}
+      {/* Grouped grid */}
       {filtered.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           <p className="text-lg font-medium">Курсы не найдены</p>
           <p className="text-sm">Попробуйте изменить параметры поиска</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-          {filtered.map(course => (
-            <CourseCardNew
-              key={course.id}
-              id={course.id}
-              title={course.title}
-              description={course.description}
-              coverImageUrl={course.cover_image_url}
-              categoryName={course.category_name}
-              categoryColor={course.category_color}
-              duration={course.duration}
-              price={course.price}
-              progress={course.progress}
-              totalLessons={course.total_lessons}
-              completedLessons={course.completed_lessons}
-              status={course.status || "not_enrolled"}
-              onClick={() => onCourseClick(course.id, !!course.is_enrolled)}
-            />
+        <div className="space-y-8">
+          {grouped.map((group, idx) => (
+            <div key={group.name + idx}>
+              {/* Category header with colored dot and divider */}
+              <div className="flex items-center gap-3 mb-4">
+                <div
+                  className="w-3 h-3 rounded-full shrink-0"
+                  style={{ backgroundColor: group.color || "hsl(var(--muted-foreground))" }}
+                />
+                <h3 className="text-lg font-semibold text-foreground">{group.name}</h3>
+                <div className="flex-1 h-px bg-border" />
+                <span className="text-xs text-muted-foreground">{group.courses.length}</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                {group.courses.map(course => (
+                  <CourseCardNew
+                    key={course.id}
+                    id={course.id}
+                    title={course.title}
+                    description={course.description}
+                    coverImageUrl={course.cover_image_url}
+                    categoryName={course.category_name}
+                    categoryColor={course.category_color}
+                    duration={course.duration}
+                    price={course.price}
+                    progress={course.progress}
+                    totalLessons={course.total_lessons}
+                    completedLessons={course.completed_lessons}
+                    status={course.status || "not_enrolled"}
+                    onClick={() => onCourseClick(course.id, !!course.is_enrolled)}
+                  />
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       )}

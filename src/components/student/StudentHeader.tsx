@@ -1,4 +1,4 @@
-import { User, LogOut, Sun, Moon, Monitor, Bell, Video, FileCheck, FileText, Trophy, Sparkles, HelpCircle } from "lucide-react";
+import { User, LogOut, Bell, Sparkles, HelpCircle } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
@@ -31,7 +31,7 @@ export function StudentHeader({
     : "У";
 
   return (
-    <header className="h-14 bg-card border-b border-border flex items-center justify-between px-6 shrink-0">
+    <header className="h-16 bg-card border-b border-border flex items-center justify-between px-6 shrink-0">
       <div className="flex items-center gap-3">
         {logoUrl ? (
           <img src={logoUrl} alt="Logo" className="h-8 object-contain" />
@@ -41,30 +41,30 @@ export function StudentHeader({
         {orgName && <span className="text-sm font-medium text-muted-foreground hidden sm:block">{orgName}</span>}
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3">
         {/* Help */}
-        <Button variant="ghost" size="icon" className="rounded-xl" onClick={() => window.open('https://synthagma-bloom.lovable.app/blog', '_blank')}>
-          <HelpCircle className="w-5 h-5 text-muted-foreground" />
+        <Button variant="ghost" size="icon" className="rounded-xl w-10 h-10" onClick={() => window.open('https://synthagma-bloom.lovable.app/blog', '_blank')}>
+          <HelpCircle className="w-6 h-6 text-muted-foreground" />
         </Button>
 
         {/* Notifications bell */}
-        <Button variant="ghost" size="icon" className="rounded-xl relative">
-          <Bell className="w-5 h-5 text-muted-foreground" />
+        <Button variant="ghost" size="icon" className="rounded-xl w-10 h-10 relative">
+          <Bell className="w-6 h-6 text-muted-foreground" />
         </Button>
 
         {/* Profile dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-2 hover:bg-secondary rounded-lg px-2 py-1 transition-colors relative">
-              <Avatar className="w-8 h-8">
-                <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">{initials}</AvatarFallback>
+            <button className="flex items-center gap-3 hover:bg-secondary rounded-lg px-3 py-2 transition-colors relative">
+              <Avatar className="w-10 h-10">
+                <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">{initials}</AvatarFallback>
               </Avatar>
               {pendingCount > 0 && (
-                <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-destructive text-destructive-foreground text-[10px] flex items-center justify-center font-bold">
+                <div className="absolute top-0 left-7 w-5 h-5 rounded-full bg-destructive text-destructive-foreground text-[10px] flex items-center justify-center font-bold">
                   {pendingCount}
                 </div>
               )}
-              <span className="text-sm font-medium hidden sm:block">{fullName || "Ученик"}</span>
+              <span className="text-base font-medium hidden sm:block">{fullName || "Ученик"}</span>
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
@@ -74,18 +74,9 @@ export function StudentHeader({
             </div>
             <DropdownMenuSeparator />
 
-            <DropdownMenuItem onClick={onShowVideoId}>
-              <Video className="w-4 h-4 mr-2" />
-              Идентификация
-              {isVideoIdentified && <span className="ml-auto text-green-500 text-xs">✓</span>}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={onShowConsent}>
-              <FileCheck className="w-4 h-4 mr-2" />
-              Согласие на ПД
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={onShowDocs}>
-              <FileText className="w-4 h-4 mr-2" />
-              Документы
+            <DropdownMenuItem onClick={() => navigate("/student/profile")}>
+              <User className="w-4 h-4 mr-2" />
+              Мой профиль
               {pendingCount > 0 && (
                 <span className="ml-auto w-5 h-5 rounded-full bg-amber-500 text-white text-[10px] flex items-center justify-center font-bold">
                   {pendingCount}
@@ -93,26 +84,16 @@ export function StudentHeader({
               )}
             </DropdownMenuItem>
 
-            {showAchievements && (
-              <DropdownMenuItem onClick={onShowAchievements}>
-                <Trophy className="w-4 h-4 mr-2" />
-                Достижения
-              </DropdownMenuItem>
-            )}
-
-            <DropdownMenuSeparator />
-
             <DropdownMenuItem onClick={() => navigate("/whats-new")}>
               <Sparkles className="w-4 h-4 mr-2" />
               Что нового?
             </DropdownMenuItem>
 
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => setTheme('light')}><Sun className="w-4 h-4 mr-2" />Светлая тема</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setTheme('dark')}><Moon className="w-4 h-4 mr-2" />Тёмная тема</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setTheme('system')}><Monitor className="w-4 h-4 mr-2" />Системная</DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={onLogout} className="text-destructive"><LogOut className="w-4 h-4 mr-2" />Выйти</DropdownMenuItem>
+            <DropdownMenuItem onClick={onLogout} className="text-destructive">
+              <LogOut className="w-4 h-4 mr-2" />
+              Выйти
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
