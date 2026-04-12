@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { 
-  BarChart3, Building2, Users, Crown, 
+  BarChart3, Building2, Users, 
   LogOut, Shield, Settings, FileText, Terminal, Store, HeadphonesIcon, Briefcase, Bot, Megaphone, MessageSquare, Gift, Sparkles, Wrench, ChevronDown
 } from "lucide-react";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
