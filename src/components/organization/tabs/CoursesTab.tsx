@@ -1213,118 +1213,46 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
           ))}
         </div>
       ) : (
-        <div className="bg-card rounded-2xl border border-border overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="w-12 px-4 py-4">
-                  <Checkbox 
-                    checked={selectedCourseIds.size === filteredCourses.length && filteredCourses.length > 0}
-                    onCheckedChange={toggleAllCourses}
-                  />
-                </th>
-                <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Курс</th>
-                <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Категория</th>
-                <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Статус</th>
-                <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Ученики</th>
-                <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Уроки</th>
-                <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Действия</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredCourses.map(course => (
-                <tr 
-                  key={course.id} 
-                  className={`border-b border-border last:border-0 hover:bg-secondary/50 transition-colors cursor-pointer ${
-                    selectedCourseIds.has(course.id) ? 'bg-primary/5' : ''
-                  }`}
-                  onClick={() => handleCourseClick(course)}
-                >
-                  <td className="px-4 py-4" onClick={e => e.stopPropagation()}>
+        <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <div className="bg-card rounded-2xl border border-border overflow-hidden">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="w-10 px-2 py-4"></th>
+                  <th className="w-12 px-4 py-4">
                     <Checkbox 
-                      checked={selectedCourseIds.has(course.id)}
-                      onCheckedChange={() => toggleCourseSelection(course.id, { stopPropagation: () => {} } as React.MouseEvent)}
+                      checked={selectedCourseIds.size === filteredCourses.length && filteredCourses.length > 0}
+                      onCheckedChange={toggleAllCourses}
                     />
-                  </td>
-                  <td className="px-6 py-4">
-                    <div>
-                      <div className="font-medium">{course.title}</div>
-                      {course.description && (
-                        <div className="text-sm text-muted-foreground line-clamp-1">{course.description}</div>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    {getCategoryById(course.category_id) ? (
-                      <div className="flex items-center gap-2">
-                        <div 
-                          className="w-3 h-3 rounded-full" 
-                          style={{ backgroundColor: getCategoryById(course.category_id)?.color }} 
-                        />
-                        <span className="text-sm">{getCategoryById(course.category_id)?.name}</span>
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
-                      course.is_published ? 'bg-sigma-green/10 text-sigma-green' : 'bg-muted text-muted-foreground'
-                    }`}>
-                      {course.is_published ? 'Опубликован' : 'Черновик'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
-                      <Users className="w-3 h-3" />
-                      {course.studentsCount || 0}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-accent/10 text-accent">
-                      <BookOpen className="w-3 h-3" />
-                      {course.lessonsCount || 0}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex gap-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="rounded-lg" 
-                        onClick={e => {
-                          e.stopPropagation();
-                          navigate(`/course-builder/${course.id}`);
-                        }}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="rounded-lg" 
-                        onClick={e => {
-                          e.stopPropagation();
-                          navigate(`/course-preview/${course.id}`);
-                        }}
-                      >
-                        <Eye className="w-4 h-4" />
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="rounded-lg" 
-                        onClick={e => openMoveCourseDialog(course, e)}
-                      >
-                        <MoveRight className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </td>
+                  </th>
+                  <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Курс</th>
+                  <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Категория</th>
+                  <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Статус</th>
+                  <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Ученики</th>
+                  <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Уроки</th>
+                  <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Действия</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                <SortableContext items={filteredCourses.map(c => c.id)} strategy={verticalListSortingStrategy}>
+                  {filteredCourses.map(course => (
+                    <SortableCourseListRow
+                      key={course.id}
+                      course={course}
+                      isSelected={selectedCourseIds.has(course.id)}
+                      onToggleSelect={() => toggleCourseSelection(course.id, { stopPropagation: () => {} } as React.MouseEvent)}
+                      onClick={() => handleCourseClick(course)}
+                      onEdit={e => { e.stopPropagation(); navigate(`/course-builder/${course.id}`); }}
+                      onPreview={e => { e.stopPropagation(); navigate(`/course-preview/${course.id}`); }}
+                      onMove={e => openMoveCourseDialog(course, e)}
+                      category={getCategoryById(course.category_id)}
+                    />
+                  ))}
+                </SortableContext>
+              </tbody>
+            </table>
+          </div>
+        </DndContext>
       )}
 
       {/* Category Dialog */}
