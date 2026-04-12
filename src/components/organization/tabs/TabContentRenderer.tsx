@@ -15,6 +15,8 @@ import { LaborSafetyManager } from "@/components/organization/LaborSafetyManager
 import { OrgChatsTab } from "@/components/organization/OrgChatsTab";
 import { SubscriptionTab } from "@/components/organization/SubscriptionTab";
 import { PaymentsTab } from "@/components/organization/PaymentsTab";
+import { HomeworkReviewTab } from "@/components/organization/HomeworkReviewTab";
+import { StaffManager } from "@/components/organization/StaffManager";
 
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 
@@ -35,6 +37,8 @@ export function TabContentRenderer() {
     activeTab !== "payments" &&
     activeTab !== "chats" &&
     activeTab !== "courses" &&
+    activeTab !== "homework-review" &&
+    activeTab !== "staff" &&
     !activeTab.startsWith("documents");
 
   return (
@@ -152,6 +156,14 @@ export function TabContentRenderer() {
       {/* FRDO Tab */}
       {activeTab === "frdo" && organizationId && (
         <FRDOManager organizationId={organizationId} />
+      )}
+
+      {/* Homework Review Tab */}
+      {activeTab === "homework-review" && <HomeworkReviewTab />}
+
+      {/* Staff Tab */}
+      {activeTab === ("staff" as any) && organizationId && (
+        <StaffManager organizationId={organizationId} />
       )}
 
 

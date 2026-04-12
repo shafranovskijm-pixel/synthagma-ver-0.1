@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Save, Loader2, Eye, Plus, FileUp, Wand2, Check, AlertCircle, FileText, Video, CheckSquare, Sparkles, Presentation, Headphones, BookOpen, Layers, MessageSquare } from "lucide-react";
+import { ArrowLeft, Save, Loader2, Eye, Plus, FileUp, Wand2, Check, AlertCircle, FileText, Video, CheckSquare, Sparkles, Presentation, Headphones, BookOpen, Layers, MessageSquare, BookCheck } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { DndContext, closestCenter, useSensor, useSensors, PointerSensor, KeyboardSensor } from "@dnd-kit/core";
@@ -205,6 +205,11 @@ export default function CourseBuilder() {
                   <div className="p-1.5 sm:p-2 rounded-full bg-blue-500/10"><MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" /></div>
                   <span className="text-[10px] sm:text-xs font-semibold">Обратная связь</span>
                   <span className="text-[9px] sm:text-[10px] text-muted-foreground leading-tight text-center hidden sm:block">Вопрос → чат</span>
+                </Button>
+                <Button variant="outline" className="h-auto py-3 sm:py-4 flex flex-col gap-1 sm:gap-2 rounded-xl hover:shadow-md hover:-translate-y-0.5 transition-all hover:border-indigo-400/30" onClick={() => addLesson('homework')}>
+                  <div className="p-1.5 sm:p-2 rounded-full bg-indigo-500/10"><BookCheck className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500" /></div>
+                  <span className="text-[10px] sm:text-xs font-semibold">Задание</span>
+                  <span className="text-[9px] sm:text-[10px] text-muted-foreground leading-tight text-center hidden sm:block">Домашняя работа</span>
                 </Button>
               </div>
             </div>

@@ -1610,6 +1610,79 @@ export type Database = {
           },
         ]
       }
+      homework_submissions: {
+        Row: {
+          attachments: Json | null
+          content: string | null
+          course_id: string
+          created_at: string
+          id: string
+          lesson_id: string
+          organization_id: string
+          reviewed_at: string | null
+          reviewer_comment: string | null
+          reviewer_id: string | null
+          score: number | null
+          status: string
+          student_id: string
+          submitted_at: string
+        }
+        Insert: {
+          attachments?: Json | null
+          content?: string | null
+          course_id: string
+          created_at?: string
+          id?: string
+          lesson_id: string
+          organization_id: string
+          reviewed_at?: string | null
+          reviewer_comment?: string | null
+          reviewer_id?: string | null
+          score?: number | null
+          status?: string
+          student_id: string
+          submitted_at?: string
+        }
+        Update: {
+          attachments?: Json | null
+          content?: string | null
+          course_id?: string
+          created_at?: string
+          id?: string
+          lesson_id?: string
+          organization_id?: string
+          reviewed_at?: string | null
+          reviewer_comment?: string | null
+          reviewer_id?: string | null
+          score?: number | null
+          status?: string
+          student_id?: string
+          submitted_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "homework_submissions_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "homework_submissions_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "homework_submissions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       journal_entries: {
         Row: {
           created_at: string
@@ -2472,6 +2545,53 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "org_notifications_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      org_staff: {
+        Row: {
+          bio: string | null
+          created_at: string
+          display_name: string
+          id: string
+          organization_id: string
+          role: string
+          sections_access: Json | null
+          updated_at: string
+          user_id: string
+          visibility: string
+        }
+        Insert: {
+          bio?: string | null
+          created_at?: string
+          display_name?: string
+          id?: string
+          organization_id: string
+          role?: string
+          sections_access?: Json | null
+          updated_at?: string
+          user_id: string
+          visibility?: string
+        }
+        Update: {
+          bio?: string | null
+          created_at?: string
+          display_name?: string
+          id?: string
+          organization_id?: string
+          role?: string
+          sections_access?: Json | null
+          updated_at?: string
+          user_id?: string
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_staff_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"

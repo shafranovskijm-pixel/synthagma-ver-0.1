@@ -1,9 +1,9 @@
 import {
-  FileText, Video, Image, FileQuestion, Headphones, Presentation, ClipboardList, MessageSquare,
+  FileText, Video, Image, FileQuestion, Headphones, Presentation, ClipboardList, MessageSquare, BookCheck,
 } from "lucide-react";
 import type { ContentBlock } from "@/components/course-builder/BlockEditor";
 
-export type LessonType = "text" | "video" | "image" | "test" | "audio" | "lesson" | "slider" | "practice" | "feedback";
+export type LessonType = "text" | "video" | "image" | "test" | "audio" | "lesson" | "slider" | "practice" | "feedback" | "homework";
 
 export interface TestQuestionLocal {
   id: string;
@@ -63,6 +63,7 @@ export const lessonIcons: Record<LessonType, any> = {
   slider: Presentation,
   practice: ClipboardList,
   feedback: MessageSquare,
+  homework: BookCheck,
 };
 
 export const lessonColors: Record<LessonType, string> = {
@@ -75,4 +76,5 @@ export const lessonColors: Record<LessonType, string> = {
   slider: "text-amber-500 bg-amber-500/10",
   practice: "text-rose-500 bg-rose-500/10",
   feedback: "text-blue-500 bg-blue-500/10",
+  homework: "text-indigo-500 bg-indigo-500/10",
 };

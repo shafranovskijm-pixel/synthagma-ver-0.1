@@ -1,4 +1,4 @@
-import { FileText, ChevronRight, ClipboardList, FileSpreadsheet } from "lucide-react";
+import { FileText, ChevronRight, ClipboardList, FileSpreadsheet, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 
@@ -7,6 +7,29 @@ export function SettingsTab() {
 
   return (
     <div className="max-w-2xl space-y-4 lg:space-y-6">
+      {/* Staff Section */}
+      <details className="bg-card rounded-xl lg:rounded-2xl border border-border group">
+        <summary className="p-4 lg:p-6 cursor-pointer list-none flex items-center justify-between">
+          <h3 className="font-display font-semibold text-base lg:text-lg flex items-center gap-2">
+            <Users className="w-4 h-4 lg:w-5 lg:h-5" />
+            Сотрудники
+          </h3>
+          <ChevronRight className="w-5 h-5 text-muted-foreground transition-transform group-open:rotate-90" />
+        </summary>
+        <div className="px-4 lg:px-6 pb-4 lg:pb-6">
+          <p className="text-xs lg:text-sm text-muted-foreground mb-4">
+            Управление ролями и доступом сотрудников организации
+          </p>
+          <Button
+            className="btn-gradient rounded-xl gap-2 text-sm"
+            onClick={() => d.tabNavigation.setActiveTab("staff" as any)}
+          >
+            <Users className="w-4 h-4" />
+            Перейти к сотрудникам
+          </Button>
+        </div>
+      </details>
+
       {/* Documents Section */}
       <details className="bg-card rounded-xl lg:rounded-2xl border border-border group">
         <summary className="p-4 lg:p-6 cursor-pointer list-none flex items-center justify-between">
