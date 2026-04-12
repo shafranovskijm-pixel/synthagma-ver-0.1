@@ -8,7 +8,7 @@ import {
   ChevronRight, Loader2, Upload,
   X, ExternalLink, Image, Eye, Lock, ArrowUpRight, LogIn, KeyRound,
   RefreshCw, RotateCcw, Trophy, MessageCircle,
-  BarChart3, Link, HardHat, FileText, ShoppingBag
+  BarChart3, Link, HardHat, FileText, ShoppingBag, Building2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +42,7 @@ interface MenuSettings {
   showLaborSafety: boolean;
   showDocuments: boolean;
   showServices: boolean;
+  showCompanies: boolean;
   [key: string]: boolean;
 }
 
@@ -68,6 +69,7 @@ const DEFAULT_MENU: MenuSettings = {
   showLaborSafety: true,
   showDocuments: true,
   showServices: true,
+  showCompanies: true,
 };
 
 const DEFAULT_STUDENT: StudentDashboardSettings = {
@@ -126,6 +128,7 @@ export function OrgProfileSettings({ organizationId, userId }: OrgProfileSetting
         showLaborSafety: m.showLaborSafety ?? true,
         showDocuments: m.showDocuments ?? true,
         showServices: m.showServices ?? true,
+        showCompanies: m.showCompanies ?? true,
       });
     }
     
@@ -238,6 +241,7 @@ export function OrgProfileSettings({ organizationId, userId }: OrgProfileSetting
         showLaborSafety: m.showLaborSafety ?? true,
         showDocuments: m.showDocuments ?? true,
         showServices: m.showServices ?? true,
+        showCompanies: m.showCompanies ?? true,
       });
     }
   };
@@ -387,6 +391,44 @@ export function OrgProfileSettings({ organizationId, userId }: OrgProfileSetting
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ${menuSettings.showDocuments ? 'bg-primary' : 'bg-muted'}`}
               >
                 <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${menuSettings.showDocuments ? 'translate-x-6' : 'translate-x-1'}`} />
+              </button>
+            </div>
+
+            {/* Companies */}
+            <div className="flex items-center justify-between py-2 lg:py-3 border-b border-border">
+              <div className="flex items-center gap-2 lg:gap-3">
+                <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-lg lg:rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Building2 className="w-4 h-4 lg:w-5 lg:h-5 text-primary" />
+                </div>
+                <div>
+                  <p className="font-medium text-sm lg:text-base">Компании</p>
+                  <p className="text-xs lg:text-sm text-muted-foreground hidden sm:block">Управление корпоративными клиентами</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setMenuSettings(prev => ({ ...prev, showCompanies: !prev.showCompanies }))}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ${menuSettings.showCompanies ? 'bg-primary' : 'bg-muted'}`}
+              >
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${menuSettings.showCompanies ? 'translate-x-6' : 'translate-x-1'}`} />
+              </button>
+            </div>
+
+            {/* Services */}
+            <div className="flex items-center justify-between py-2 lg:py-3">
+              <div className="flex items-center gap-2 lg:gap-3">
+                <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-lg lg:rounded-xl bg-primary/10 flex items-center justify-center">
+                  <ShoppingBag className="w-4 h-4 lg:w-5 lg:h-5 text-primary" />
+                </div>
+                <div>
+                  <p className="font-medium text-sm lg:text-base">Маркетплейс</p>
+                  <p className="text-xs lg:text-sm text-muted-foreground hidden sm:block">Магазин курсов</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setMenuSettings(prev => ({ ...prev, showServices: !prev.showServices }))}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ${menuSettings.showServices ? 'bg-primary' : 'bg-muted'}`}
+              >
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${menuSettings.showServices ? 'translate-x-6' : 'translate-x-1'}`} />
               </button>
             </div>
           </div>

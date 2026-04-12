@@ -1,10 +1,11 @@
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Building2, Plus, Search, Users, FileText, Loader2,
   ChevronRight, CheckCircle2, Clock, LayoutGrid, List,
-  CreditCard, Upload, RefreshCw,
+  CreditCard, Upload, RefreshCw, ExternalLink,
 } from "lucide-react";
 
 import { useCompaniesManager } from "@/hooks/useCompaniesManager";
@@ -48,10 +49,17 @@ const StatsGrid = ({ cm }: { cm: any }) => (
 );
 
 export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
+  const navigate = useNavigate();
   const cm = useCompaniesManager(organizationId);
   const dm = useCompanyDetailManager(organizationId);
   const sm = useCompanyStudentsManager(organizationId);
   const lg = useCompanyLinksAndGenerators(organizationId);
+
+  const handleViewAsCompany = (e: React.MouseEvent, companyId: string) => {
+    e.stopPropagation();
+    localStorage.setItem('orgViewAsCompany', companyId);
+    navigate('/company');
+  };
 
   const handleDocumentCreated = () => {
     if (dm.selectedCompanyForDetail) dm.refreshDocuments(dm.selectedCompanyForDetail.id);
@@ -167,7 +175,12 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
                 <button key={company.id} className="bg-card rounded-xl p-5 border border-border hover:border-primary/50 transition-all text-left group" onClick={() => dm.openCompanyDetail(company)}>
                   <div className="flex items-start justify-between mb-3">
                     <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center"><Building2 className="w-6 h-6 text-primary" /></div>
-                    <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity" title="Войти как компания" onClick={(e) => handleViewAsCompany(e, company.id)}>
+                        <ExternalLink className="w-4 h-4 text-muted-foreground hover:text-primary" />
+                      </Button>
+                      <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                    </div>
                   </div>
                   <h3 className="font-semibold text-lg line-clamp-1">{company.name}</h3>
                   <div className="text-sm text-muted-foreground mt-1 space-y-1">
@@ -203,7 +216,14 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
                       <td className="p-4 text-muted-foreground hidden sm:table-cell">{company.kpp || '—'}</td>
                       <td className="p-4"><div className="flex items-center gap-1 text-muted-foreground"><Users className="w-3 h-3" />{company.studentsCount}</div></td>
                       <td className="p-4 text-muted-foreground hidden lg:table-cell line-clamp-1">{company.director || '—'}</td>
-                      <td className="p-4"><ChevronRight className="w-4 h-4 text-muted-foreground" /></td>
+                      <td className="p-4">
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg" title="Войти как компания" onClick={(e) => handleViewAsCompany(e, company.id)}>
+                            <ExternalLink className="w-3.5 h-3.5 text-muted-foreground hover:text-primary" />
+                          </Button>
+                          <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
