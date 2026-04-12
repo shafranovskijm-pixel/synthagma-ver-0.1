@@ -321,7 +321,8 @@ Deno.serve(async (req) => {
           try { data = JSON.parse(text); } catch { /* not json */ }
           log(`${path} → ${res.status} (${text.length}b)`);
           mergeCookiesFromResponse(res, cookieMap);
-          return { ok: res.ok, status: res.status, data, raw: text };
+          // Don't store raw text in return to save memory
+          return { ok: res.ok, status: res.status, data, raw: "" };
         } catch (err) {
           const errStr = String(err);
           const isRetryable = errStr.includes("http2") || errStr.includes("connection error") || errStr.includes("SendRequest");
@@ -699,12 +700,11 @@ Deno.serve(async (req) => {
       if (!fileUrl || !fileUrl.startsWith("http")) return null;
       try {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 60000);
+        const timeout = setTimeout(() => controller.abort(), 30000);
 
         const headers: Record<string, string> = {
           "Cookie": getCookieHeader(cookieMap),
         };
-        // Add cookie-based auth for SkillSpace URLs
         if (fileUrl.includes("skillspace.ru")) {
           headers["sec-fetch-dest"] = "empty";
           headers["sec-fetch-mode"] = "cors";
@@ -720,13 +720,31 @@ Deno.serve(async (req) => {
         }
 
         const contentLength = parseInt(res.headers.get("content-length") || "0", 10);
-        if (contentLength > 500 * 1024 * 1024) {
-          log(`File too large (${(contentLength / 1024 / 1024).toFixed(1)}MB), skipping: ${fileUrl.substring(0, 80)}`);
+        // Skip files larger than 50MB to avoid memory issues
+        const MAX_FILE_SIZE = 50 * 1024 * 1024;
+        if (contentLength > MAX_FILE_SIZE) {
+          log(`File too large (${(contentLength / 1024 / 1024).toFixed(1)}MB), keeping original URL: ${fileUrl.substring(0, 80)}`);
           return null;
         }
 
-        const blob = await res.blob();
         const ct = res.headers.get("content-type") || "application/octet-stream";
+        
+        // Skip video files entirely — they are too large for edge function memory
+        if (ct.startsWith("video/") || fileUrl.match(/\.(mp4|webm|mov|avi|mkv)(\?|$)/i)) {
+          log(`Skipping video file (memory constraint): ${fileUrl.substring(0, 80)}`);
+          // Don't consume the body to free memory
+          try { res.body?.cancel(); } catch {}
+          return null;
+        }
+
+        const arrayBuf = await res.arrayBuffer();
+        // Double-check actual size
+        if (arrayBuf.byteLength > MAX_FILE_SIZE) {
+          log(`File actually ${(arrayBuf.byteLength / 1024 / 1024).toFixed(1)}MB, skipping`);
+          return null;
+        }
+
+        const blob = new Blob([arrayBuf], { type: ct });
         const ext = extFromUrl(fileUrl) || extFromContentType(ct);
         const storagePath = `${organizationId}/${crypto.randomUUID()}.${ext}`;
 
