@@ -248,7 +248,13 @@ export function OrgNotifications({ organizationId }: OrgNotificationsProps) {
                 <div
                   key={n.id}
                   className={`px-5 py-3.5 hover:bg-muted/50 transition-colors cursor-pointer ${!n.is_read ? "bg-primary/5" : ""}`}
-                  onClick={() => markAsRead(n.id)}
+                  onClick={() => {
+                    markAsRead(n.id);
+                    if (n.type === "subscription_expiry" && n.related_id) {
+                      setIsOpen(false);
+                      navigate(`/invoice/${n.related_id}`);
+                    }
+                  }}
                 >
                   <div className="flex items-start gap-3">
                     <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold ${getAvatarColor(n.id)}`}>
