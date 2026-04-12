@@ -304,7 +304,8 @@ export function useCourseBuilder() {
   const addLesson = (type: LessonType) => {
     const typeNames: Record<LessonType, string> = { text: "урок", video: "видеоурок", image: "материал", test: "тест", audio: "аудиолекция", lesson: "урок", slider: "презентация", practice: "ситуационное задание", feedback: "обратная связь", homework: "задание" };
     const newLesson: Lesson = { id: crypto.randomUUID(), type, title: `Новый ${typeNames[type]}`, content: "", expanded: true, blocks: (type === "text" || type === "practice") ? [] : undefined };
-    updateLessons([...lessons, newLesson]);
+    setLessons(prev => [...prev, newLesson]);
+    markAsChanged();
   };
 
   const handleGenerateStructure = async () => {
@@ -415,7 +416,8 @@ export function useCourseBuilder() {
     }
 
     await aiLimit.increment();
-    updateLessons([...lessons, newLesson]);
+    setLessons(prev => [...prev, newLesson]);
+    markAsChanged();
     // Autosave after AI generation
     setTimeout(() => { saveCourse(true); }, 500);
   };
@@ -430,24 +432,33 @@ export function useCourseBuilder() {
     lesson.content = JSON.stringify(slides);
   };
 
-  const updateLesson = (id: string, updates: Partial<Lesson>) => { setLessons(lessons.map(l => l.id === id ? { ...l, ...updates } : l)); markAsChanged(); };
-  const deleteLesson = (id: string) => {
-    setLessons(lessons.filter(l => l.id !== id));
+  const updateLesson = useCallback((id: string, updates: Partial<Lesson>) => {
+    setLessons(prev => prev.map(l => l.id === id ? { ...l, ...updates } : l));
+    markAsChanged();
+  }, [markAsChanged]);
+
+  const deleteLesson = useCallback((id: string) => {
+    setLessons(prev => prev.filter(l => l.id !== id));
     markAsChanged();
     // Autosave after delete with debounce
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     autoSaveTimerRef.current = setTimeout(() => { saveCourse(true); }, 500);
-  };
-  const toggleLesson = (id: string) => { setLessons(lessons.map(l => l.id === id ? { ...l, expanded: !l.expanded } : l)); };
+  }, [markAsChanged]);
+
+  const toggleLesson = useCallback((id: string) => {
+    setLessons(prev => prev.map(l => l.id === id ? { ...l, expanded: !l.expanded } : l));
+  }, []);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (over && active.id !== over.id) {
-      const oldIndex = lessons.findIndex(l => l.id === active.id);
-      const newIndex = lessons.findIndex(l => l.id === over.id);
-      setLessons(arrayMove(lessons, oldIndex, newIndex));
+      setLessons(prev => {
+        const oldIndex = prev.findIndex(l => l.id === active.id);
+        const newIndex = prev.findIndex(l => l.id === over.id);
+        return arrayMove(prev, oldIndex, newIndex);
+      });
       markAsChanged();
       // Autosave after reorder
       setTimeout(() => { saveCourse(true); }, 500);
