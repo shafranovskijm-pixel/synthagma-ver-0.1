@@ -115,7 +115,12 @@ export function SkillspaceImportDialog({ open, onOpenChange, organizationId, exi
         onSuccess?.();
       }
     } catch (err) {
-      setError("Непредвиденная ошибка: " + (err instanceof Error ? err.message : String(err)));
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes("Failed to fetch") || msg.includes("NetworkError") || msg.includes("ERR_BLOCKED")) {
+        setError("Не удалось подключиться к серверу. Возможно, запрос блокируется антивирусом или VPN. Добавьте *.supabase.co в исключения и попробуйте снова.");
+      } else {
+        setError("Непредвиденная ошибка: " + msg);
+      }
     } finally {
       setLoading(false);
     }
