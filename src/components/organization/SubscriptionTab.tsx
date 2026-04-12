@@ -101,6 +101,7 @@ export function SubscriptionTab() {
   const subscriptionLimits = d.subscriptionLimits;
   
   const [paidUntil, setPaidUntil] = useState<string | null>(null);
+  const [tariffCustomLabel, setTariffCustomLabel] = useState<string | null>(null);
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
   const [message, setMessage] = useState("");
