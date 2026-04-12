@@ -4414,33 +4414,63 @@ export type Database = {
       }
       student_groups: {
         Row: {
+          block_resubmit: boolean
+          block_student_dialogs: boolean
           color: string | null
           created_at: string
+          curator_id: string | null
+          enable_channel: boolean
+          enable_group_chat: boolean
           end_date: string | null
           id: string
+          limit_access_time: boolean
+          max_seats: number | null
           name: string
           organization_id: string
+          schedule_access: boolean
+          show_locked_lessons: boolean
           start_date: string | null
+          strict_order: boolean
           updated_at: string
         }
         Insert: {
+          block_resubmit?: boolean
+          block_student_dialogs?: boolean
           color?: string | null
           created_at?: string
+          curator_id?: string | null
+          enable_channel?: boolean
+          enable_group_chat?: boolean
           end_date?: string | null
           id?: string
+          limit_access_time?: boolean
+          max_seats?: number | null
           name: string
           organization_id: string
+          schedule_access?: boolean
+          show_locked_lessons?: boolean
           start_date?: string | null
+          strict_order?: boolean
           updated_at?: string
         }
         Update: {
+          block_resubmit?: boolean
+          block_student_dialogs?: boolean
           color?: string | null
           created_at?: string
+          curator_id?: string | null
+          enable_channel?: boolean
+          enable_group_chat?: boolean
           end_date?: string | null
           id?: string
+          limit_access_time?: boolean
+          max_seats?: number | null
           name?: string
           organization_id?: string
+          schedule_access?: boolean
+          show_locked_lessons?: boolean
           start_date?: string | null
+          strict_order?: boolean
           updated_at?: string
         }
         Relationships: [
