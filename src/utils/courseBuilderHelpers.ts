@@ -61,9 +61,30 @@ export const canEmbedInIframe = (url: string): boolean => {
   return !noEmbedPatterns.some(pattern => pattern.test(url));
 };
 
+// Check if content is a Kinescope video reference
+export const isKinescopeVideo = (content: string): boolean => {
+  return content.startsWith('kinescope:');
+};
+
+// Extract Kinescope video ID from content
+export const getKinescopeVideoId = (content: string): string | null => {
+  if (content.startsWith('kinescope:')) return content.replace('kinescope:', '');
+  const match = content.match(/kinescope\.io\/embed\/([a-zA-Z0-9-]+)/);
+  return match ? match[1] : null;
+};
+
+// Get Kinescope embed URL
+export const getKinescopeEmbedUrl = (videoId: string): string => {
+  return `https://kinescope.io/embed/${videoId}`;
+};
+
 // Helper function to get embed URL from video content
 export const getVideoEmbedUrl = (content: string): { url: string; canEmbed: boolean } | null => {
   if (!content) return null;
+
+  // Kinescope
+  const kinescopeId = getKinescopeVideoId(content);
+  if (kinescopeId) return { url: getKinescopeEmbedUrl(kinescopeId), canEmbed: true };
 
   const iframeSrcMatch = content.match(/<iframe[^>]*src=["']([^"']+)["']/i);
   if (iframeSrcMatch) return { url: iframeSrcMatch[1], canEmbed: true };
