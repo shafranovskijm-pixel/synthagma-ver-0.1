@@ -2,9 +2,10 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Save, ExternalLink, Loader2 } from "lucide-react";
+import { ArrowLeft, Save, ExternalLink, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { LandingHeroSection } from "@/components/course-landing/LandingHeroSection";
+import { LandingAIGenerateDialog } from "@/components/course-landing/LandingAIGenerateDialog";
 import { LandingAudienceSection, AudienceItem } from "@/components/course-landing/LandingAudienceSection";
 import { LandingProgramSection } from "@/components/course-landing/LandingProgramSection";
 import { LandingBenefitsSection, BenefitItem } from "@/components/course-landing/LandingBenefitsSection";
@@ -109,6 +110,8 @@ export function CourseLandingEditorContent({ courseId, embedded = false }: Cours
   const [orgName, setOrgName] = useState("");
   const [landing, setLanding] = useState<LandingData>(defaultLanding);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [aiDialogOpen, setAiDialogOpen] = useState(false);
+  const [aiDialogSection, setAiDialogSection] = useState<string | null>(null);
 
   useEffect(() => {
     if (courseId) loadData();
@@ -353,6 +356,47 @@ export function CourseLandingEditorContent({ courseId, embedded = false }: Cours
     setLanding((l) => ({ ...l, faq: { ...l.faq, items: l.faq.items.filter((_, i) => i !== index) } }));
   };
 
+  // AI generation handlers
+  const openAIDialog = (sectionId: string | null) => {
+    setAiDialogSection(sectionId);
+    setAiDialogOpen(true);
+  };
+
+  const handleAITextGenerated = (sectionId: string, data: any) => {
+    setLanding((l) => {
+      switch (sectionId) {
+        case "hero":
+          return { ...l, hero: { ...l.hero, subtitle: typeof data === "string" ? data : l.hero.subtitle } };
+        case "audience":
+          return Array.isArray(data)
+            ? { ...l, audience: { ...l.audience, items: data } }
+            : l;
+        case "learn":
+          return Array.isArray(data)
+            ? { ...l, learn: { ...l.learn, items: data } }
+            : l;
+        case "benefits":
+          return Array.isArray(data) ? { ...l, benefits: data } : l;
+        case "faq":
+          return Array.isArray(data) ? { ...l, faq: { ...l.faq, items: data } } : l;
+        case "cta":
+          return typeof data === "object" && data.title
+            ? { ...l, cta: { title: data.title, subtitle: data.subtitle || l.cta.subtitle } }
+            : l;
+        case "process":
+          return typeof data === "string"
+            ? { ...l, process: { ...l.process, content: data } }
+            : l;
+        default:
+          return l;
+      }
+    });
+  };
+
+  const handleAIImageGenerated = (url: string) => {
+    setLanding((l) => ({ ...l, hero: { ...l.hero, background_url: url } }));
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -377,6 +421,7 @@ export function CourseLandingEditorContent({ courseId, embedded = false }: Cours
         onMoveUp={() => moveSection(sectionId, -1)}
         onMoveDown={() => moveSection(sectionId, 1)}
         onToggleVisibility={() => toggleSection(sectionId)}
+        onAIGenerate={sectionId !== "program" ? () => openAIDialog(sectionId) : undefined}
         label={SECTION_LABELS[sectionId] || sectionId}
       />
     );
@@ -572,12 +617,29 @@ export function CourseLandingEditorContent({ courseId, embedded = false }: Cours
     }
   };
 
+  const aiDialog = (
+    <LandingAIGenerateDialog
+      open={aiDialogOpen}
+      onOpenChange={setAiDialogOpen}
+      sectionId={aiDialogSection}
+      courseTitle={course.title}
+      courseDescription={course.description}
+      courseId={courseId}
+      onTextGenerated={handleAITextGenerated}
+      onImageGenerated={handleAIImageGenerated}
+    />
+  );
+
   if (embedded) {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="font-semibold">Редактор страницы курса</h3>
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => openAIDialog(null)} className="gap-1.5">
+              <Sparkles className="w-4 h-4" />
+              ИИ
+            </Button>
             <Button variant="outline" size="sm" onClick={() => window.open(publicUrl, "_blank")} className="gap-1.5">
               <ExternalLink className="w-4 h-4" />
               Просмотр
@@ -592,6 +654,7 @@ export function CourseLandingEditorContent({ courseId, embedded = false }: Cours
         <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleBackgroundUpload} />
 
         {landing.sections_order.map((sectionId, index) => renderSection(sectionId, index))}
+        {aiDialog}
       </div>
     );
   }
@@ -609,6 +672,10 @@ export function CourseLandingEditorContent({ courseId, embedded = false }: Cours
             <span className="text-sm font-medium text-muted-foreground hidden sm:block">{course.title}</span>
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => openAIDialog(null)} className="gap-1.5">
+              <Sparkles className="w-4 h-4" />
+              <span className="hidden sm:inline">Сгенерировать с ИИ</span>
+            </Button>
             <Button variant="outline" size="sm" onClick={() => window.open(publicUrl, "_blank")} className="gap-1.5">
               <ExternalLink className="w-4 h-4" />
               <span className="hidden sm:inline">Просмотр</span>
@@ -625,6 +692,7 @@ export function CourseLandingEditorContent({ courseId, embedded = false }: Cours
 
       {/* Sections in order */}
       {landing.sections_order.map((sectionId, index) => renderSection(sectionId, index))}
+      {aiDialog}
     </div>
   );
 }

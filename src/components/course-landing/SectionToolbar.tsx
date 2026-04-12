@@ -1,4 +1,4 @@
-import { ArrowUp, ArrowDown, Eye, EyeOff, Trash2 } from "lucide-react";
+import { ArrowUp, ArrowDown, Eye, EyeOff, Trash2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface Props {
@@ -10,6 +10,7 @@ interface Props {
   onMoveDown: () => void;
   onToggleVisibility: () => void;
   onDelete?: () => void;
+  onAIGenerate?: () => void;
   label: string;
 }
 
@@ -22,6 +23,7 @@ export function SectionToolbar({
   onMoveDown,
   onToggleVisibility,
   onDelete,
+  onAIGenerate,
   label,
 }: Props) {
   return (
@@ -29,6 +31,11 @@ export function SectionToolbar({
       <div className="flex items-center gap-1 bg-background border border-border rounded-lg shadow-lg px-2 py-1">
         <span className="text-xs font-medium text-muted-foreground px-2">{label}</span>
         <div className="w-px h-4 bg-border" />
+        {onAIGenerate && (
+          <Button variant="ghost" size="icon" className="h-7 w-7 text-primary hover:text-primary" onClick={onAIGenerate} title="Сгенерировать с ИИ">
+            <Sparkles className="w-3.5 h-3.5" />
+          </Button>
+        )}
         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onMoveUp} disabled={!canMoveUp}>
           <ArrowUp className="w-3.5 h-3.5" />
         </Button>
