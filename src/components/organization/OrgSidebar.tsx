@@ -134,7 +134,7 @@ export function OrgSidebar() {
   if (menuSettings.showCourses !== false) navItems.push({ id: "courses", icon: BookOpen, label: "Курсы", category: "courses" });
   if (menuSettings.showCompanies !== false) navItems.push({ id: "organizations", icon: Building2, label: "Компании", category: "companies" });
   if (menuSettings.showStudents !== false) navItems.push({ id: "students", icon: Users, label: "Ученики", category: "students" });
-  if (menuSettings.showLibrary) navItems.push({ id: "library", icon: HardDrive, label: "Хранилище", category: "library" });
+  
   if (menuSettings.showStats) navItems.push({ id: "stats", icon: BarChart3, label: "Статистика" });
   if (menuSettings.showLinks) navItems.push({ id: "links", icon: Link, label: "Ссылки", category: "links" });
   
