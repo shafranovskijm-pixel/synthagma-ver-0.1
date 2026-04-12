@@ -11,7 +11,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { OrgNotifications } from "@/components/organization/OrgNotifications";
 import { useState } from "react";
 
 export function OrgDashboardHeader() {
@@ -22,6 +21,8 @@ export function OrgDashboardHeader() {
   const organizationName = d.organizationName;
   const customName = d.branding.brandingSettings.customName;
   const logoUrl = d.branding.brandingSettings.logoUrl;
+  const coverUrl = d.branding.brandingSettings.coverUrl;
+  const coverPosition = d.branding.brandingSettings.coverPosition;
 
   const [showNotifications, setShowNotifications] = useState(false);
 
@@ -34,7 +35,6 @@ export function OrgDashboardHeader() {
     action();
   };
 
-  // Page title based on active tab
   const getPageTitle = () => {
     switch (activeTab) {
       case "courses": return "Курсы";
@@ -57,9 +57,10 @@ export function OrgDashboardHeader() {
   };
 
   return (
-    <header className="sticky top-0 z-30 bg-card/95 backdrop-blur-sm border-b border-border">
-      <div className="flex items-center justify-between px-4 lg:px-8 h-16">
-        {/* Left: Mobile menu + Page title */}
+    <header className="sticky top-0 z-30 bg-card border-b border-border">
+      {/* Top bar */}
+      <div className="flex items-center justify-between px-4 lg:px-6 h-14">
+        {/* Left: Mobile menu + Logo + Org name */}
         <div className="flex items-center gap-3">
           <button 
             onClick={() => d.setIsMobileSidebarOpen(true)} 
@@ -68,65 +69,22 @@ export function OrgDashboardHeader() {
             <Menu className="w-5 h-5" />
           </button>
           
-          <div className="hidden lg:flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5">
             {logoUrl ? (
-              <img src={logoUrl} alt="Logo" className="w-8 h-8 object-contain rounded-lg" />
+              <img src={logoUrl} alt="Logo" className="w-7 h-7 object-contain rounded-lg" />
             ) : (
               <SigmaLogo size="sm" showText={false} />
             )}
-            <span className="font-display font-bold text-base">{customName || organizationName || "СИНТАГМА"}</span>
+            <span className="font-display font-bold text-sm">{customName || organizationName || "СИНТАГМА"}</span>
           </div>
-
-          <div className="hidden lg:block h-6 w-px bg-border mx-1" />
-          
-          <h1 className="font-display text-lg font-semibold text-foreground/80">
-            {getPageTitle()}
-          </h1>
         </div>
 
-        {/* Right: Actions + Tariff + Notifications + Profile */}
-        <div className="flex items-center gap-2 lg:gap-3">
-          {/* Tab-specific action buttons */}
-          {activeTab === "links" && (
-            <Button className="btn-gradient rounded-xl gap-2 text-xs lg:text-sm" size="sm" onClick={() => d.registrationLinks.setShowCreateLinkDialog(true)}>
-              <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">Создать ссылку</span>
-            </Button>
-          )}
-          {activeTab === "students" && (
-            <>
-              <Button variant="outline" className="rounded-xl gap-2 text-xs" size="sm" onClick={() => handleStudentAction(() => d.setShowImportDialog(true))}>
-                <FileSpreadsheet className="w-4 h-4" />
-                <span className="hidden sm:inline">Импорт</span>
-              </Button>
-              <Button className="btn-gradient rounded-xl gap-2 text-xs" size="sm" onClick={() => handleStudentAction(() => d.studentManagement.setShowAddStudentDialog(true))}>
-                <Plus className="w-4 h-4" />
-                <span className="hidden sm:inline">Добавить</span>
-              </Button>
-            </>
-          )}
-          {activeTab === "courses" && (
-            <Button className="btn-gradient rounded-xl gap-2 text-xs lg:text-sm" size="sm" onClick={() => navigate("/course-builder")}>
-              <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">Создать курс</span>
-            </Button>
-          )}
-
-          {/* Partner program */}
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="hidden lg:flex rounded-xl gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-            onClick={() => navigate("/partner")}
-          >
-            <Handshake className="w-4 h-4" />
-            Партнёрам
-          </Button>
-
+        {/* Right: Tariff + Partner + Notifications + Profile */}
+        <div className="flex items-center gap-2">
           {/* Tariff badge */}
           <button
             onClick={() => d.tabNavigation.setActiveTab("subscription" as any)}
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 rounded-xl border border-primary/20 hover:bg-primary/15 transition-colors"
+            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 rounded-full border border-primary/20 hover:bg-primary/15 transition-colors"
           >
             <CreditCard className="w-3.5 h-3.5 text-primary" />
             <span className="text-xs font-semibold text-primary">
@@ -134,12 +92,23 @@ export function OrgDashboardHeader() {
             </span>
           </button>
 
+          {/* Partner program */}
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="hidden lg:flex rounded-full gap-1.5 text-xs text-muted-foreground hover:text-foreground h-8 px-3"
+            onClick={() => navigate("/partner")}
+          >
+            <Handshake className="w-4 h-4" />
+            Партнёрам
+          </Button>
+
           {/* Notifications */}
           <div className="relative">
             <Button
               variant="ghost"
               size="icon"
-              className="rounded-xl h-9 w-9"
+              className="rounded-full h-8 w-8"
               onClick={() => setShowNotifications(!showNotifications)}
             >
               <Bell className="w-4 h-4" />
@@ -157,7 +126,7 @@ export function OrgDashboardHeader() {
           {/* Profile dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
+              <button className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
                 <User className="w-4 h-4" />
               </button>
             </DropdownMenuTrigger>
@@ -177,6 +146,64 @@ export function OrgDashboardHeader() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+        </div>
+      </div>
+
+      {/* Hero banner with cover image */}
+      {coverUrl && (
+        <div className="relative w-full h-36 lg:h-52 overflow-hidden">
+          <img 
+            src={coverUrl} 
+            alt="Обложка организации" 
+            className="w-full h-full"
+            style={{
+              objectFit: coverPosition === 'contain' ? 'contain' : 'cover',
+              objectPosition: 
+                coverPosition === 'top' ? 'center top' 
+                : coverPosition === 'bottom' ? 'center bottom' 
+                : 'center center',
+              backgroundColor: 'hsl(var(--muted))'
+            }}
+          />
+          {/* Gradient overlay with org info */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+          <div className="absolute bottom-4 left-6 text-white">
+            <h2 className="text-xl lg:text-2xl font-bold drop-shadow-md">{customName || organizationName}</h2>
+          </div>
+        </div>
+      )}
+
+      {/* Sub-header: page title + action buttons */}
+      <div className="flex items-center justify-between px-4 lg:px-6 h-12 border-t border-border/50 bg-card/95 backdrop-blur-sm">
+        <h1 className="font-display text-base font-semibold text-foreground/80">
+          {getPageTitle()}
+        </h1>
+
+        <div className="flex items-center gap-2">
+          {activeTab === "links" && (
+            <Button className="btn-gradient rounded-xl gap-2 text-xs" size="sm" onClick={() => d.registrationLinks.setShowCreateLinkDialog(true)}>
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline">Создать ссылку</span>
+            </Button>
+          )}
+          {activeTab === "students" && (
+            <>
+              <Button variant="outline" className="rounded-xl gap-2 text-xs" size="sm" onClick={() => handleStudentAction(() => d.setShowImportDialog(true))}>
+                <FileSpreadsheet className="w-4 h-4" />
+                <span className="hidden sm:inline">Импорт</span>
+              </Button>
+              <Button className="btn-gradient rounded-xl gap-2 text-xs" size="sm" onClick={() => handleStudentAction(() => d.studentManagement.setShowAddStudentDialog(true))}>
+                <Plus className="w-4 h-4" />
+                <span className="hidden sm:inline">Добавить</span>
+              </Button>
+            </>
+          )}
+          {activeTab === "courses" && (
+            <Button className="btn-gradient rounded-xl gap-2 text-xs" size="sm" onClick={() => navigate("/course-builder")}>
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline">Создать курс</span>
+            </Button>
+          )}
         </div>
       </div>
     </header>

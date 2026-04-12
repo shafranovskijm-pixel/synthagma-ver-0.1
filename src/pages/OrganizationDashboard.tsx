@@ -6,7 +6,7 @@ import { TabContentRenderer } from "@/components/organization/tabs/TabContentRen
 import { DialogsContainer } from "@/components/organization/dialogs/DialogsContainer";
 import { OrgDashboardHeader } from "@/components/organization/OrgDashboardHeader";
 import { OrgDashboardFooter } from "@/components/organization/OrgDashboardFooter";
-import { OrgSupportChat } from "@/components/organization/OrgSupportChat";
+
 import { Button } from "@/components/ui/button";
 import { Eye, X } from "lucide-react";
 import { OnboardingDialog } from "@/components/onboarding/OnboardingDialog";
@@ -50,27 +50,7 @@ function OrganizationDashboardContent() {
         ref={d.swipeRef} 
         className={`flex-1 flex flex-col min-w-0 lg:ml-[88px] ${d.isAdminView ? 'mt-10' : ''}`}
       >
-        {/* Cover Image */}
-        {d.branding.brandingSettings.coverUrl && (
-          <div className="relative w-full h-32 lg:h-48 overflow-hidden">
-            <img 
-              src={d.branding.brandingSettings.coverUrl} 
-              alt="Обложка организации" 
-              className="w-full h-full"
-              style={{
-                objectFit: d.branding.brandingSettings.coverPosition === 'contain' ? 'contain' : 'cover',
-                objectPosition: 
-                  d.branding.brandingSettings.coverPosition === 'top' ? 'center top' 
-                  : d.branding.brandingSettings.coverPosition === 'bottom' ? 'center bottom' 
-                  : d.branding.brandingSettings.coverPosition === 'contain' ? 'center center'
-                  : 'center center',
-                backgroundColor: 'hsl(var(--muted))'
-              }}
-            />
-          </div>
-        )}
-        
-        {/* Header */}
+        {/* Header with hero banner */}
         <OrgDashboardHeader />
 
         <div className="flex-1 p-4 lg:p-8 overflow-hidden">
@@ -85,8 +65,6 @@ function OrganizationDashboardContent() {
         <OrgDashboardFooter />
       </main>
 
-      {/* Floating support chat */}
-      <OrgSupportChat />
 
       {/* All Dialogs */}
       <DialogsContainer />
