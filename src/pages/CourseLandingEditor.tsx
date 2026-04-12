@@ -95,8 +95,12 @@ function migrateAudienceItems(items: any[]): AudienceItem[] {
   return items as AudienceItem[];
 }
 
-export default function CourseLandingEditor() {
-  const { courseId } = useParams<{ courseId: string }>();
+interface CourseLandingEditorContentProps {
+  courseId: string;
+  embedded?: boolean;
+}
+
+export function CourseLandingEditorContent({ courseId, embedded = false }: CourseLandingEditorContentProps) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
