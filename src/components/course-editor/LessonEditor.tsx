@@ -23,7 +23,7 @@ import { TestImportDialog } from "@/components/course-builder/TestImportDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { useToast } from "@/hooks/use-toast";
-import { useExternalStorage } from "@/hooks/useExternalStorage";
+import { useExternalStorageWithProgress } from "@/hooks/useExternalStorageWithProgress";
 import { Badge } from "@/components/ui/badge";
 import { MediaLibraryDialog } from "@/components/course-builder/MediaLibraryDialog";
 // Video preview component for lesson editor
@@ -188,7 +188,9 @@ export const LessonEditor = ({
   // Video upload
   const videoInputRef = useRef<HTMLInputElement>(null);
   const [showMediaLibrary, setShowMediaLibrary] = useState(false);
-  const { uploadFile, isUploading, isExternalConfigured } = useExternalStorage();
+  const [videoUploadProgress, setVideoUploadProgress] = useState<number | null>(null);
+  const { uploadWithProgress, abortUpload } = useExternalStorageWithProgress();
+  const isUploading = videoUploadProgress !== null;
   // Parse content to blocks or use as video URL
   const parseContent = useCallback((content: string | null, lessonType: string) => {
     if (!content) {
@@ -460,12 +462,6 @@ export const LessonEditor = ({
                       <p className="text-xs text-muted-foreground">YouTube, Vimeo, Rutube, VK, Дзен, OK.ru, Mail.ru или &lt;iframe&gt;</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      {isExternalConfigured && (
-                        <Badge variant="outline" className="text-xs">
-                          <Cloud className="w-3 h-3 mr-1" />
-                          Внешнее хранилище
-                        </Badge>
-                      )}
                       <Button
                         type="button"
                         variant="outline"
@@ -501,14 +497,29 @@ export const LessonEditor = ({
                           if (!file) return;
                           
                           const fileName = `${courseId}/${Date.now()}-${file.name}`;
-                          const result = await uploadFile(file, 'course-files', fileName);
-                          
-                          if (result) {
-                            setVideoUrl(result.url);
-                            toast({
-                              title: "Видео загружено",
-                              description: `Файл успешно загружен в ${result.storage === 'external' ? 'внешнее' : 'внутреннее'} хранилище`,
+                          setVideoUploadProgress(0);
+                          try {
+                            const result = await uploadWithProgress(file, 'course-files', fileName, (percent) => {
+                              setVideoUploadProgress(percent);
                             });
+                            
+                            if (result) {
+                              setVideoUrl(result.url);
+                              toast({
+                                title: "Видео загружено",
+                                description: "Файл успешно загружен",
+                              });
+                            }
+                          } catch (err: any) {
+                            if (err.message !== 'Загрузка отменена') {
+                              toast({
+                                title: "Ошибка загрузки",
+                                description: err.message || "Не удалось загрузить видео",
+                                variant: "destructive",
+                              });
+                            }
+                          } finally {
+                            setVideoUploadProgress(null);
                           }
                           
                           // Reset input
@@ -522,6 +533,23 @@ export const LessonEditor = ({
                         filter="video"
                       />
                     </div>
+                    {videoUploadProgress !== null && (
+                      <div className="space-y-2 pt-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-2">
+                            <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                            <span className="font-medium">Загрузка видео...</span>
+                          </div>
+                          <span className="text-muted-foreground font-mono">{videoUploadProgress}%</span>
+                        </div>
+                        <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                          <div className="h-full bg-primary transition-all duration-300 ease-out rounded-full" style={{ width: `${videoUploadProgress}%` }} />
+                        </div>
+                        <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => { abortUpload(); setVideoUploadProgress(null); }}>
+                          <Trash2 className="w-3 h-3 mr-1" />Отменить
+                        </Button>
+                      </div>
+                    )}
                   </div>
                   <Textarea
                     placeholder="https://youtube.com/watch?v=... или <iframe>...</iframe>"
