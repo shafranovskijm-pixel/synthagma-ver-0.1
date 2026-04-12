@@ -224,14 +224,24 @@ export function OrgDashboardHeader() {
           </div>
         </div>
 
-        {/* Edit cover button */}
-        <button
-          onClick={() => coverInputRef.current?.click()}
-          className="absolute top-3 right-3 flex items-center gap-1.5 px-3 py-1.5 bg-black/40 hover:bg-black/60 backdrop-blur-sm text-white text-xs font-medium rounded-lg transition-colors"
-        >
-          <ImagePlus className="w-3.5 h-3.5" />
-          Изменить обложку
-        </button>
+        {/* Cover action buttons */}
+        <div className="absolute top-3 right-3 flex items-center gap-1.5">
+          <button
+            onClick={handleGenerateAICover}
+            disabled={isGeneratingCover}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-black/40 hover:bg-black/60 backdrop-blur-sm text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
+          >
+            {isGeneratingCover ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />}
+            {isGeneratingCover ? "Генерация..." : "Сгенерировать с ИИ"}
+          </button>
+          <button
+            onClick={() => coverInputRef.current?.click()}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-black/40 hover:bg-black/60 backdrop-blur-sm text-white text-xs font-medium rounded-lg transition-colors"
+          >
+            <ImagePlus className="w-3.5 h-3.5" />
+            Изменить обложку
+          </button>
+        </div>
         <input
           ref={coverInputRef}
           type="file"
