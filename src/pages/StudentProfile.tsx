@@ -24,6 +24,41 @@ export default function StudentProfile() {
   const { theme, setTheme } = useTheme();
   const [activeTab, setActiveTab] = useState("profile");
 
+  const NOTIFICATION_TYPES = [
+    { key: "course_updates", label: "Обновление курса и доступов", hint: "Уведомления об изменениях в курсах и доступах" },
+    { key: "webinar_reminder", label: "Напоминание о предстоящем вебинаре", hint: "Напоминание за день и за час до вебинара" },
+    { key: "homework", label: "Уведомления по домашним заданиям", hint: "Оценки и комментарии к домашним заданиям" },
+    { key: "deadline_reminder", label: "Напоминание о сроках дедлайнов", hint: "Предупреждение о приближающихся сроках" },
+    { key: "partner_changes", label: "Изменения и транзакции партнёра", hint: "Начисления и изменения в партнёрской программе" },
+  ];
+
+  const CHANNELS = [
+    { key: "platform", label: "Платформа", hint: "Уведомления внутри платформы" },
+    { key: "browser", label: "Браузер", hint: "Push-уведомления в браузере" },
+    { key: "email", label: "Email", hint: "Уведомления на email" },
+    { key: "telegram", label: "Телеграм", hint: "Уведомления в Telegram" },
+    { key: "app", label: "Приложение", hint: "Push в мобильном приложении" },
+  ];
+
+  const [notifSettings, setNotifSettings] = useState<Record<string, Record<string, boolean>>>(() => {
+    const defaults: Record<string, Record<string, boolean>> = {};
+    NOTIFICATION_TYPES.forEach(t => {
+      defaults[t.key] = {};
+      CHANNELS.forEach(c => {
+        defaults[t.key][c.key] = c.key === "platform";
+      });
+    });
+    defaults["webinar_reminder"]["email"] = true;
+    return defaults;
+  });
+
+  const toggleNotif = (type: string, channel: string) => {
+    setNotifSettings(prev => ({
+      ...prev,
+      [type]: { ...prev[type], [channel]: !prev[type][channel] },
+    }));
+  };
+
   const { data: profile, isLoading } = useQuery({
     queryKey: ["student-profile-page", user?.id],
     queryFn: async () => {
@@ -105,42 +140,6 @@ export default function StudentProfile() {
     { id: "theme", label: "Тема", icon: Palette },
     { id: "partner", label: "Партнёрская программа", icon: Users },
   ];
-
-  const NOTIFICATION_TYPES = [
-    { key: "course_updates", label: "Обновление курса и доступов", hint: "Уведомления об изменениях в курсах и доступах" },
-    { key: "webinar_reminder", label: "Напоминание о предстоящем вебинаре", hint: "Напоминание за день и за час до вебинара" },
-    { key: "homework", label: "Уведомления по домашним заданиям", hint: "Оценки и комментарии к домашним заданиям" },
-    { key: "deadline_reminder", label: "Напоминание о сроках дедлайнов", hint: "Предупреждение о приближающихся сроках" },
-    { key: "partner_changes", label: "Изменения и транзакции партнёра", hint: "Начисления и изменения в партнёрской программе" },
-  ];
-
-  const CHANNELS = [
-    { key: "platform", label: "Платформа", hint: "Уведомления внутри платформы" },
-    { key: "browser", label: "Браузер", hint: "Push-уведомления в браузере" },
-    { key: "email", label: "Email", hint: "Уведомления на email" },
-    { key: "telegram", label: "Телеграм", hint: "Уведомления в Telegram" },
-    { key: "app", label: "Приложение", hint: "Push в мобильном приложении" },
-  ];
-
-  const [notifSettings, setNotifSettings] = useState<Record<string, Record<string, boolean>>>(() => {
-    const defaults: Record<string, Record<string, boolean>> = {};
-    NOTIFICATION_TYPES.forEach(t => {
-      defaults[t.key] = {};
-      CHANNELS.forEach(c => {
-        defaults[t.key][c.key] = c.key === "platform";
-      });
-    });
-    // webinar_reminder email on by default
-    defaults["webinar_reminder"]["email"] = true;
-    return defaults;
-  });
-
-  const toggleNotif = (type: string, channel: string) => {
-    setNotifSettings(prev => ({
-      ...prev,
-      [type]: { ...prev[type], [channel]: !prev[type][channel] },
-    }));
-  };
 
   return (
     <div className="min-h-screen bg-background">
