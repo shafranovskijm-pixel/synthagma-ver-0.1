@@ -196,7 +196,17 @@ const CourseLearning = () => {
 
         {isOfflineMode && <OfflineBanner cachedAt={offlineCachedAt} />}
         <ScrollArea className="flex-1" ref={contentRef}>
-          <div ref={swipeRef} className={cn("max-w-4xl mx-auto transition-all duration-300 min-h-full", isMobile ? "p-4" : "p-8", isTransitioning ? "opacity-0 translate-y-4" : "opacity-100 translate-y-0")}>
+          <div 
+            ref={swipeRef} 
+            className={cn(
+              "max-w-4xl mx-auto transition-all duration-300 min-h-full", 
+              isMobile ? "p-4" : "p-8", 
+              isTransitioning ? "opacity-0 translate-y-4" : "opacity-100 translate-y-0",
+              (course as any)?.landing_content?.copy_protection && "select-none"
+            )}
+            onContextMenu={(course as any)?.landing_content?.copy_protection ? (e: React.MouseEvent) => e.preventDefault() : undefined}
+            onCopy={(course as any)?.landing_content?.copy_protection ? (e: React.ClipboardEvent) => e.preventDefault() : undefined}
+          >
             {currentLesson?.type === 'text' && (
               <div className="space-y-4 md:space-y-6 animate-fade-in">
                 <div className="flex items-center gap-3 pb-3 md:pb-4 border-b border-border">
