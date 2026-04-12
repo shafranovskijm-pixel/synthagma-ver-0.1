@@ -901,7 +901,6 @@ export function CourseDetailsModal({
 
             <TabsContent value="settings" className="mt-0 h-full">
               <div className="space-y-6">
-                {/* Landing page banner */}
                 <div 
                   className="bg-gradient-to-r from-primary/10 to-accent/10 rounded-xl p-4 border border-primary/20 cursor-pointer hover:shadow-md transition-all"
                   onClick={() => navigate(`/course/${course.id}/landing-editor`)}
