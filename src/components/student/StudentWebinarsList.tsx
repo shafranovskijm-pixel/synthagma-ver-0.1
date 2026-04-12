@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Video, Calendar, Radio, Loader2, Clock } from "lucide-react";
+import { buildKinescopeEmbedUrl } from "@/components/organization/WebinarPlayerSettings";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 
@@ -20,6 +21,7 @@ interface Webinar {
   external_url: string | null;
   kinescope_video_id: string | null;
   cover_url: string | null;
+  player_settings: Record<string, any> | null;
 }
 
 export function StudentWebinarsList() {
@@ -81,7 +83,7 @@ export function StudentWebinarsList() {
   };
 
   const getEmbedUrl = (w: Webinar) => {
-    if (w.kinescope_video_id) return `https://kinescope.io/embed/${w.kinescope_video_id}`;
+    if (w.kinescope_video_id) return buildKinescopeEmbedUrl(w.kinescope_video_id, w.player_settings || {});
     if (w.embed_url) return w.embed_url;
     return null;
   };

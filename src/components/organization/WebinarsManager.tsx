@@ -8,12 +8,13 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Plus, Radio, Video, Calendar, Users, Copy, ExternalLink, Square, Loader2, Trash2, RefreshCw, Pencil, CopyPlus, Link, Search, Clock } from "lucide-react";
+import { Plus, Radio, Video, Calendar, Users, Copy, ExternalLink, Square, Loader2, Trash2, RefreshCw, Pencil, CopyPlus, Link, Search, Clock, Settings } from "lucide-react";
 import { CreateWebinarDialog } from "./CreateWebinarDialog";
 import { WebinarParticipantsDialog } from "./WebinarParticipantsDialog";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { WebinarPlayerSettings, buildKinescopeEmbedUrl } from "./WebinarPlayerSettings";
 
 interface Webinar {
   id: string;
@@ -48,6 +49,7 @@ export function WebinarsManager({ organizationId }: Props) {
   const [deleteTarget, setDeleteTarget] = useState<Webinar | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [embedWebinar, setEmbedWebinar] = useState<Webinar | null>(null);
+  const [playerSettingsWebinar, setPlayerSettingsWebinar] = useState<Webinar | null>(null);
   const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
 
@@ -197,8 +199,9 @@ export function WebinarsManager({ organizationId }: Props) {
     }
   };
 
-  const getEmbedUrl = (w: Webinar) => {
-    if (w.kinescope_video_id) return `https://kinescope.io/embed/${w.kinescope_video_id}`;
+  const getEmbedUrl = (w: Webinar & { player_settings?: any }) => {
+    const ps = w.player_settings || {};
+    if (w.kinescope_video_id) return buildKinescopeEmbedUrl(w.kinescope_video_id, ps);
     if (w.embed_url) return w.embed_url;
     return null;
   };
@@ -339,6 +342,11 @@ export function WebinarsManager({ organizationId }: Props) {
                 <Button size="sm" variant="ghost" onClick={() => copyWebinarLink(w)} title="Скопировать ссылку">
                   <Link className="w-3 h-3" />
                 </Button>
+                {w.kinescope_video_id && (
+                  <Button size="sm" variant="ghost" onClick={() => setPlayerSettingsWebinar(w)} title="Настройки плеера">
+                    <Settings className="w-3 h-3" />
+                  </Button>
+                )}
                 <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setDeleteTarget(w)}>
                   <Trash2 className="w-3 h-3" />
                 </Button>
@@ -384,6 +392,16 @@ export function WebinarsManager({ organizationId }: Props) {
           )}
         </DialogContent>
       </Dialog>
+
+      {playerSettingsWebinar && (
+        <WebinarPlayerSettings
+          open={!!playerSettingsWebinar}
+          onOpenChange={(o) => !o && setPlayerSettingsWebinar(null)}
+          webinarId={playerSettingsWebinar.id}
+          initialSettings={(playerSettingsWebinar as any).player_settings || {}}
+          onSaved={fetchWebinars}
+        />
+      )}
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
         <AlertDialogContent>
