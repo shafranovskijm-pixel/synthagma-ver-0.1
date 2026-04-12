@@ -322,8 +322,9 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
   const fetchCourses = async () => {
     const { data: coursesData, error } = await supabase
       .from("courses")
-      .select("id, title, is_published")
-      .eq("organization_id", organization.id);
+      .select("id, title, is_published, catalog_order")
+      .eq("organization_id", organization.id)
+      .order("catalog_order", { ascending: true });
 
     if (error) {
       console.error("Error fetching courses:", error);
