@@ -595,6 +595,7 @@ export function useCourseBuilder() {
       }
       if (!silent) toast.success(courseId ? "Курс обновлён" : "Курс создан");
       setHasUnsavedChanges(false);
+      clearDraftFromLocal(courseId);
       setAutoSaveStatus('saved');
       if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
       autoSaveTimerRef.current = setTimeout(() => setAutoSaveStatus('idle'), 3000);
@@ -603,6 +604,7 @@ export function useCourseBuilder() {
       if (error?.name === 'AbortError' || error?.message?.includes('AbortError')) {
         if (!silent) toast.success(courseId ? "Курс обновлён" : "Курс создан");
         setHasUnsavedChanges(false);
+        clearDraftFromLocal(courseId);
         setAutoSaveStatus('saved');
         if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
         autoSaveTimerRef.current = setTimeout(() => setAutoSaveStatus('idle'), 3000);
