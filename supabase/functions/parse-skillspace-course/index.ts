@@ -569,7 +569,8 @@ Deno.serve(async (req) => {
           const extractedQuestions: TestQuestion[] = [];
           
           // Strategy 1: questions in pagesPublished blocks
-          const pages = lessonData.pagesPublished || lessonData.pages || [];
+          const pagesPublished = Array.isArray(lessonData.pagesPublished) && lessonData.pagesPublished.length > 0 ? lessonData.pagesPublished : null;
+          const pages = pagesPublished || lessonData.pages || [];
           if (Array.isArray(pages)) {
             for (const page of pages) {
               const blocks = page.content?.blocks || page.blocks || [];
@@ -670,7 +671,8 @@ Deno.serve(async (req) => {
           let jsonBlocks: any[] = [];
 
           // EditorJS content in pagesPublished
-          const pages = lessonData.pagesPublished || lessonData.pages || [];
+          const pagesPublished2 = Array.isArray(lessonData.pagesPublished) && lessonData.pagesPublished.length > 0 ? lessonData.pagesPublished : null;
+          const pages = pagesPublished2 || lessonData.pages || [];
           if (Array.isArray(pages) && pages.length > 0) {
             for (const page of pages) {
               if (page.title) {
