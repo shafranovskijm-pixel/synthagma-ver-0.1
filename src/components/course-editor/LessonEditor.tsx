@@ -533,6 +533,23 @@ export const LessonEditor = ({
                         filter="video"
                       />
                     </div>
+                    {videoUploadProgress !== null && (
+                      <div className="space-y-2 pt-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-2">
+                            <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                            <span className="font-medium">Загрузка видео...</span>
+                          </div>
+                          <span className="text-muted-foreground font-mono">{videoUploadProgress}%</span>
+                        </div>
+                        <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                          <div className="h-full bg-primary transition-all duration-300 ease-out rounded-full" style={{ width: `${videoUploadProgress}%` }} />
+                        </div>
+                        <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => { abortUpload(); setVideoUploadProgress(null); }}>
+                          <Trash2 className="w-3 h-3 mr-1" />Отменить
+                        </Button>
+                      </div>
+                    )}
                   </div>
                   <Textarea
                     placeholder="https://youtube.com/watch?v=... или <iframe>...</iframe>"
