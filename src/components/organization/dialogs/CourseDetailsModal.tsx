@@ -204,6 +204,11 @@ export function CourseDetailsModal({
         frdo_financing_source: course.frdo_financing_source || null,
         frdo_education_form: course.frdo_education_form || null,
       });
+      // Load extended settings from landing_content
+      const lc = (course as any).landing_content as any;
+      setCopyProtection(lc?.copy_protection || false);
+      setVideoWatermark(lc?.video_watermark || false);
+      setExternalCardUrl(lc?.external_card_url || "");
     }
   }, [course]);
 
