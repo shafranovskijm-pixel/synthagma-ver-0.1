@@ -37,6 +37,7 @@ export function LandingHeroSection({
   onSubtitleChange,
   onBackgroundChange,
   enrollButton,
+  onShowPriceChange,
 }: LandingHeroProps) {
   const bg = backgroundUrl || coverImageUrl;
   const accent = accentColor || "hsl(var(--primary))";
