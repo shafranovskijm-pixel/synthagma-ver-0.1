@@ -451,9 +451,9 @@ const PartnerLanding = () => {
               <h3 className="font-display text-lg font-semibold mb-4 text-center text-white/80">Дополнительные материалы для скачивания</h3>
               <div className="grid sm:grid-cols-3 gap-4">
                 {[
-                  { name: "Возможности и тарифы СИНТАГМА (для организаций).pdf", type: "PDF", color: "bg-red-500/15 text-red-400" },
-                  { name: "Возможности и тарифы СИНТАГМА (для онлайн-школ).pdf", type: "PDF", color: "bg-red-500/15 text-red-400" },
-                  { name: "Рекламные баннеры СИНТАГМА.zip", type: "ZIP", color: "bg-amber-500/15 text-amber-400" },
+                  { name: "Возможности и тарифы СИНТАГМА (для организаций).pdf", type: "PDF", color: "bg-red-500/15 text-red-400", href: "/promo/tariffs-organizations.pdf" },
+                  { name: "Возможности и тарифы СИНТАГМА (для онлайн-школ).pdf", type: "PDF", color: "bg-red-500/15 text-red-400", href: "/promo/tariffs-online-schools.pdf" },
+                  { name: "Рекламные баннеры СИНТАГМА.zip", type: "ZIP", color: "bg-amber-500/15 text-amber-400", href: "/promo/banners-sintagma.zip" },
                 ].map((file, i) => (
                   <a
                     key={i}
