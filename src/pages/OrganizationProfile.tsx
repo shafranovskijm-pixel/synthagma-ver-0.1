@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, User, Bell, Handshake, Save, Eye, EyeOff, Settings } from "lucide-react";
+import { ArrowLeft, User, Bell, Handshake, Save, Eye, EyeOff, Settings, Upload, X, Loader2, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import { PartnerCabinet } from "@/components/organization/PartnerCabinet";
 
@@ -72,10 +72,17 @@ export default function OrganizationProfile() {
   const [notifs, setNotifs] = useState<NotifRow[]>(DEFAULT_NOTIFS);
   const [soundEnabled, setSoundEnabled] = useState(false);
 
+  // Org icon state
+  const [orgLogoUrl, setOrgLogoUrl] = useState<string>("");
+  const [isUploadingIcon, setIsUploadingIcon] = useState(false);
+  const [organizationId, setOrganizationId] = useState<string | null>(null);
+  const iconInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     if (!user) return;
     loadProfile();
     loadNotificationPrefs();
+    loadOrgIcon();
   }, [user]);
 
   const loadProfile = async () => {
@@ -114,6 +121,80 @@ export default function OrganizationProfile() {
       const soundRow = data.find((d: any) => d.notification_type === "sound" && d.channel === "platform");
       if (soundRow) setSoundEnabled(soundRow.enabled ?? false);
     }
+  };
+
+  const loadOrgIcon = async () => {
+    const { data: prof } = await supabase
+      .from("profiles")
+      .select("organization_id")
+      .eq("user_id", user!.id)
+      .single();
+    if (!prof?.organization_id) return;
+    setOrganizationId(prof.organization_id);
+
+    const { data: org } = await supabase
+      .from("organizations")
+      .select("branding")
+      .eq("id", prof.organization_id)
+      .single();
+    if (org?.branding) {
+      const b = org.branding as any;
+      setOrgLogoUrl(b.logoUrl || b.logo_url || "");
+    }
+  };
+
+  const handleIconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !organizationId) return;
+    setIsUploadingIcon(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const filePath = `${organizationId}/logo_${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from("organization-assets")
+        .upload(filePath, file, { upsert: true });
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from("organization-assets")
+        .getPublicUrl(filePath);
+      const publicUrl = urlData.publicUrl;
+
+      const { data: org } = await supabase
+        .from("organizations")
+        .select("branding")
+        .eq("id", organizationId)
+        .single();
+      const current = (org?.branding as Record<string, unknown>) || {};
+      await supabase
+        .from("organizations")
+        .update({ branding: { ...current, logoUrl: publicUrl } })
+        .eq("id", organizationId);
+
+      setOrgLogoUrl(publicUrl);
+      toast.success("Значок организации обновлён");
+    } catch (err: any) {
+      toast.error("Ошибка загрузки: " + err.message);
+    } finally {
+      setIsUploadingIcon(false);
+      if (e.target) e.target.value = "";
+    }
+  };
+
+  const handleRemoveIcon = async () => {
+    if (!organizationId) return;
+    const { data: org } = await supabase
+      .from("organizations")
+      .select("branding")
+      .eq("id", organizationId)
+      .single();
+    const current = (org?.branding as Record<string, unknown>) || {};
+    await supabase
+      .from("organizations")
+      .update({ branding: { ...current, logoUrl: "" } })
+      .eq("id", organizationId);
+    setOrgLogoUrl("");
+    toast.success("Значок удалён");
   };
 
   const handleSaveProfile = async () => {
@@ -256,8 +337,62 @@ export default function OrganizationProfile() {
                 </CardContent>
               </Card>
 
-              {/* Right: Email + Password */}
+              {/* Right: Icon + Email + Password */}
               <div className="space-y-6">
+                {/* Org Icon */}
+                <Card className="rounded-2xl">
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <ImageIcon className="w-4 h-4" />
+                      Значок организации
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      Отображается в боковом меню вместо стандартного логотипа
+                    </p>
+                    <input
+                      ref={iconInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleIconUpload}
+                    />
+                    <div className="flex items-center gap-4">
+                      <button
+                        onClick={() => iconInputRef.current?.click()}
+                        className="relative w-16 h-16 rounded-xl border-2 border-dashed border-border flex items-center justify-center overflow-hidden hover:border-primary/50 hover:bg-primary/5 transition-all group/icon"
+                      >
+                        {isUploadingIcon ? (
+                          <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                        ) : orgLogoUrl ? (
+                          <>
+                            <img src={orgLogoUrl} alt="Значок" className="w-14 h-14 object-contain" />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/icon:opacity-100 transition-opacity flex items-center justify-center rounded-xl">
+                              <Upload className="w-4 h-4 text-white" />
+                            </div>
+                          </>
+                        ) : (
+                          <div className="flex flex-col items-center gap-1">
+                            <Upload className="w-5 h-5 text-muted-foreground" />
+                            <span className="text-[10px] text-muted-foreground">Загрузить</span>
+                          </div>
+                        )}
+                      </button>
+                      {orgLogoUrl && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10 rounded-lg gap-1"
+                          onClick={handleRemoveIcon}
+                        >
+                          <X className="w-4 h-4" />
+                          Удалить
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
                 <Card className="rounded-2xl">
                   <CardHeader>
                     <CardTitle className="text-base">Изменить email</CardTitle>
