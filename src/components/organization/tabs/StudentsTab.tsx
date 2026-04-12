@@ -9,8 +9,9 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/comp
 import { 
   Users, Search, BookOpen, Filter, FileCheck, FileSpreadsheet, 
   GraduationCap, Key, Mail, XCircle, X, Loader2, Copy, Trash2, 
-  CheckCircle2, ChevronRight, AlertCircle, FileText, FolderOpen, Plus, Pencil, MessageCircle, Eye
+  CheckCircle2, ChevronRight, AlertCircle, FileText, FolderOpen, Plus, Pencil, MessageCircle, Eye, Settings
 } from "lucide-react";
+import { GroupSettingsDialog } from "@/components/organization/GroupSettingsDialog";
 import { useStudents } from "@/hooks/useStudents";
 import { toast } from "sonner";
 import type { Student, Course, StudentFRDOStatus } from "@/types";
@@ -107,6 +108,7 @@ export const StudentsTab = React.memo(function StudentsTab({
   const [newGroupStartDate, setNewGroupStartDate] = useState<string>("");
   const [newGroupEndDate, setNewGroupEndDate] = useState<string>("");
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
+  const [settingsGroupId, setSettingsGroupId] = useState<string | null>(null);
   const [showSendConfirm, setShowSendConfirm] = useState(false);
   const [showLoginsConfirm, setShowLoginsConfirm] = useState(false);
   const [showRemindConfirm, setShowRemindConfirm] = useState(false);
@@ -556,25 +558,35 @@ export const StudentsTab = React.memo(function StudentsTab({
             {studentGroups.map(group => {
               const count = Array.from(studentGroupMap.values()).filter(v => v === group.id).length;
               return (
-                <button
+                <div
                   key={group.id}
-                  onClick={() => setGroupFilter(group.id)}
-                  className="text-left p-3 lg:p-4 rounded-xl border border-border hover:border-primary/30 hover:bg-primary/5 transition-colors"
+                  className="relative text-left p-3 lg:p-4 rounded-xl border border-border hover:border-primary/30 hover:bg-primary/5 transition-colors group/card"
                 >
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: group.color }} />
-                    <span className="font-medium text-sm truncate">{group.name}</span>
-                  </div>
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <Users className="w-3 h-3" />
-                      {count}
-                    </span>
-                    <span>
-                      {format(new Date(group.created_at), "dd.MM.yyyy", { locale: ru })}
-                    </span>
-                  </div>
-                </button>
+                  <button
+                    onClick={() => setGroupFilter(group.id)}
+                    className="w-full text-left"
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: group.color }} />
+                      <span className="font-medium text-sm truncate">{group.name}</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <Users className="w-3 h-3" />
+                        {count}
+                      </span>
+                      <span>
+                        {format(new Date(group.created_at), "dd.MM.yyyy", { locale: ru })}
+                      </span>
+                    </div>
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setSettingsGroupId(group.id); }}
+                    className="absolute top-2 right-2 p-1.5 rounded-lg opacity-0 group-hover/card:opacity-100 transition-opacity hover:bg-muted"
+                  >
+                    <Settings className="w-3.5 h-3.5 text-muted-foreground" />
+                  </button>
+                </div>
               );
             })}
           </div>
