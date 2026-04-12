@@ -163,6 +163,11 @@ export function TabContentRenderer() {
       {/* Homework Review Tab */}
       {activeTab === "homework-review" && <HomeworkReviewTab />}
 
+      {/* Webinars Tab */}
+      {activeTab === "webinars" && organizationId && (
+        <WebinarsManager organizationId={organizationId} />
+      )}
+
       {/* Staff Tab */}
       {activeTab === ("staff" as any) && organizationId && (
         <StaffManager organizationId={organizationId} />
