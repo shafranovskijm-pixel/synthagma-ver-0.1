@@ -77,6 +77,7 @@ import { getPlanInfo, type SubscriptionPlan } from "@/constants/subscriptionPlan
 import { SkillspaceImportDialog } from "./SkillspaceImportDialog";
 import { SkillspaceBatchImportDialog } from "./SkillspaceBatchImportDialog";
 import { StudentBulkImportDialog } from "./StudentBulkImportDialog";
+import { SortableCourseRow } from "./SortableCourseRow";
 
 interface Organization {
   id: string;
