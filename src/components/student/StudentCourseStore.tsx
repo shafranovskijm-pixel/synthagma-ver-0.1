@@ -332,72 +332,97 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
       </div>
     );
   }
-  const renderCourseCard = (item: MarketplaceCourse) => (
-    <Card
-      key={item.id}
-      className="flex flex-col hover:shadow-md transition-shadow cursor-pointer group"
-      onClick={() => openPreview(item)}
-    >
-      {item.preview_image_url && (
-        <div className="h-36 overflow-hidden rounded-t-lg">
-          <img
-            src={item.preview_image_url}
-            alt={item.course?.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          />
+  const VISIBLE_CARDS = 4;
+
+  const getCourseImage = (item: MarketplaceCourse) =>
+    item.preview_image_url || (item.course as any)?.cover_image_url || null;
+
+  const renderVisualCard = (item: MarketplaceCourse) => {
+    const img = getCourseImage(item);
+    return (
+      <Card
+        key={item.id}
+        className="flex flex-col hover:shadow-md transition-shadow cursor-pointer group overflow-hidden"
+        onClick={() => openPreview(item)}
+      >
+        <div className="h-40 overflow-hidden bg-muted">
+          {img ? (
+            <img
+              src={img}
+              alt={item.course?.title}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-primary/20 via-primary/10 to-accent/10 flex items-center justify-center">
+              <BookOpen className="w-10 h-10 text-primary/30" />
+            </div>
+          )}
         </div>
-      )}
-      <CardHeader className="pb-2">
-        <h3 className="font-semibold text-base leading-tight line-clamp-2">
-          {item.course?.title}
-        </h3>
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
-          <Building2 className="w-3.5 h-3.5 shrink-0" />
-          <span className="truncate">{item.organization?.name || "Организация"}</span>
-        </div>
-      </CardHeader>
-      <CardContent className="flex-1 pb-3">
-        {(item.description_short || item.course?.description) && (
-          <p className="text-sm text-muted-foreground line-clamp-3 mb-3">
-            {item.description_short || item.course?.description}
-          </p>
-        )}
-        {item.course?.duration && (
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Clock className="w-3.5 h-3.5" />
-            {item.course.duration}
-          </div>
-        )}
-      </CardContent>
-      <CardFooter className="flex items-center justify-between border-t border-border pt-4">
-        {item.price_student > 0 ? (
-          <span className="text-lg font-bold text-primary">
-            {formatPrice(item.price_student)}
-          </span>
-        ) : (
-          <Badge className="bg-green-500/10 text-green-600 border-green-500/20 text-sm px-3 py-1">Бесплатно</Badge>
-        )}
-        <div className="flex gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            className="rounded-xl gap-1.5"
-            onClick={(e) => { e.stopPropagation(); openPreview(item); }}
-          >
-            <Eye className="w-4 h-4" />
+        <CardContent className="flex-1 p-4 pb-2">
+          <h4 className="font-semibold text-sm leading-tight line-clamp-2 mb-1">
+            {item.course?.title}
+          </h4>
+          {(item.description_short || item.course?.description) && (
+            <p className="text-xs text-muted-foreground line-clamp-2">
+              {item.description_short || item.course?.description}
+            </p>
+          )}
+        </CardContent>
+        <CardFooter className="p-4 pt-2 flex items-center justify-between">
+          {item.price_student > 0 ? (
+            <span className="text-sm font-bold text-primary">{formatPrice(item.price_student)}</span>
+          ) : (
+            <Badge className="bg-green-500/10 text-green-600 border-green-500/20 text-xs px-2 py-0.5">Бесплатно</Badge>
+          )}
+          <Button size="sm" variant="outline" className="rounded-lg text-xs h-7 px-2.5 gap-1"
+            onClick={(e) => { e.stopPropagation(); openPreview(item); }}>
+            <Eye className="w-3.5 h-3.5" />
             Подробнее
           </Button>
-          <Button
-            size="sm"
-            className={`rounded-xl gap-1.5 ${item.price_student === 0 ? 'bg-green-600 hover:bg-green-700 text-white' : ''}`}
-            onClick={(e) => { e.stopPropagation(); setSelectedCourse(item); }}
-          >
-            {item.price_student > 0 ? <><ShoppingCart className="w-4 h-4" />Купить</> : <><Gift className="w-4 h-4" />Получить</>}
-          </Button>
+        </CardFooter>
+      </Card>
+    );
+  };
+
+  const renderCourseSection = (courses: MarketplaceCourse[]) => {
+    if (courses.length === 0) {
+      return <p className="text-xs text-muted-foreground py-2 italic">Курсы ещё не добавлены</p>;
+    }
+    const visible = courses.slice(0, VISIBLE_CARDS);
+    const hidden = courses.slice(VISIBLE_CARDS);
+
+    return (
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {visible.map(renderVisualCard)}
         </div>
-      </CardFooter>
-    </Card>
-  );
+        {hidden.length > 0 && (
+          <Collapsible>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground hover:text-foreground">
+                <ChevronDown className="w-4 h-4" />
+                Ещё {hidden.length} {hidden.length === 1 ? 'курс' : hidden.length < 5 ? 'курса' : 'курсов'}
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-3">
+              <div className="grid sm:grid-cols-2 gap-x-6 gap-y-2">
+                {hidden.map((item) => (
+                  <button
+                    key={item.id}
+                    className="flex items-start gap-2 py-1 text-left hover:text-accent transition-colors group/item"
+                    onClick={() => openPreview(item)}
+                  >
+                    <CheckCircle2 className="w-4 h-4 text-accent shrink-0 mt-0.5" />
+                    <span className="text-sm text-foreground/75 group-hover/item:text-accent">{item.course?.title}</span>
+                  </button>
+                ))}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-8">
