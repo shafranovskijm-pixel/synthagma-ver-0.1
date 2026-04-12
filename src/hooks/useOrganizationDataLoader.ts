@@ -370,6 +370,7 @@ export function useOrganizationDataLoader({ userId, onCategoriesLoaded }: UseOrg
             studentsCount: uniqueStudentIds.size,
             duration: course.duration || "—",
             category_id: course.category_id,
+            cover_image_url: course.cover_image_url || null,
             skip_video_identification: course.skip_video_identification ?? false,
             sequential_lessons: course.sequential_lessons ?? false,
             allow_video_seek: course.allow_video_seek ?? true,
