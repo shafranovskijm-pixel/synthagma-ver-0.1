@@ -3,13 +3,16 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "next-themes";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, User, Video, FileCheck, FileText, Trophy, Palette, Users, LogOut, Sun, Moon, Monitor, Loader2, Bell } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, User, Video, FileCheck, FileText, Trophy, Palette, Users, LogOut, Sun, Moon, Monitor, Loader2, Bell, Eye, EyeOff, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { HelpCircle, AlertCircle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { VideoIdentification } from "@/components/student/VideoIdentification";
@@ -24,7 +27,27 @@ export default function StudentProfile() {
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("profile");
+
+  // Profile form state
+  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [city, setCity] = useState("");
+  const [bio, setBio] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [profileSaving, setProfileSaving] = useState(false);
+
+  // Change email state
+  const [newEmail, setNewEmail] = useState("");
+  const [emailSaving, setEmailSaving] = useState(false);
+
+  // Change password state
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [passwordSaving, setPasswordSaving] = useState(false);
 
   const NOTIFICATION_TYPES = [
     { key: "course_updates", label: "Обновление курса и доступов", hint: "Уведомления об изменениях в курсах и доступах" },
@@ -96,7 +119,6 @@ export default function StudentProfile() {
       }, { onConflict: "user_id,notification_type,channel" });
 
     if (error) {
-      // revert
       setNotifSettings(prev => ({
         ...prev,
         [type]: { ...prev[type], [channel]: !newValue },
@@ -109,11 +131,11 @@ export default function StudentProfile() {
     queryKey: ["student-profile-page", user?.id],
     queryFn: async () => {
       if (!user?.id) return null;
-      const { data: p } = await supabase
+      const { data: p } = await (supabase
         .from("profiles")
-        .select("full_name, organization_id")
+        .select("full_name, organization_id, phone, city, bio, avatar_url")
         .eq("user_id", user.id)
-        .maybeSingle();
+        .maybeSingle() as any);
       if (!p) return null;
       let orgName: string | null = null;
       if (p.organization_id) {
@@ -124,10 +146,32 @@ export default function StudentProfile() {
           .maybeSingle();
         orgName = org?.name || null;
       }
-      return { full_name: p.full_name, organization_id: p.organization_id, organization_name: orgName };
+      return {
+        full_name: p.full_name,
+        organization_id: p.organization_id,
+        organization_name: orgName,
+        phone: (p as any).phone || "",
+        city: (p as any).city || "",
+        bio: (p as any).bio || "",
+        avatar_url: (p as any).avatar_url || null,
+      };
     },
     enabled: !!user?.id,
   });
+
+  // Sync profile data to form state
+  useEffect(() => {
+    if (profile) {
+      setFullName(profile.full_name || "");
+      setPhone(profile.phone || "");
+      setCity(profile.city || "");
+      setBio(profile.bio || "");
+      setAvatarUrl(profile.avatar_url || null);
+    }
+    if (user?.email) {
+      setNewEmail(user.email);
+    }
+  }, [profile, user?.email]);
 
   const { data: branding } = useQuery({
     queryKey: ["student-profile-branding", profile?.organization_id],
@@ -158,6 +202,80 @@ export default function StudentProfile() {
     },
     enabled: !!profile?.organization_id,
   });
+
+  const handleSaveProfile = async () => {
+    if (!user?.id) return;
+    setProfileSaving(true);
+    try {
+      const { error } = await (supabase
+        .from("profiles")
+        .update({ full_name: fullName, phone, city, bio } as any)
+        .eq("user_id", user.id) as any);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["student-profile-page"] });
+      toast({ title: "Профиль сохранён" });
+    } catch {
+      toast({ title: "Ошибка", description: "Не удалось сохранить профиль", variant: "destructive" });
+    } finally {
+      setProfileSaving(false);
+    }
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user?.id) return;
+    const ext = file.name.split(".").pop();
+    const path = `avatars/${user.id}.${ext}`;
+    const { error: uploadError } = await supabase.storage.from("student-documents").upload(path, file, { upsert: true });
+    if (uploadError) {
+      toast({ title: "Ошибка загрузки", description: uploadError.message, variant: "destructive" });
+      return;
+    }
+    const { data: urlData } = supabase.storage.from("student-documents").getPublicUrl(path);
+    const url = urlData.publicUrl;
+    await (supabase.from("profiles").update({ avatar_url: url } as any).eq("user_id", user.id) as any);
+    setAvatarUrl(url);
+    queryClient.invalidateQueries({ queryKey: ["student-profile-page"] });
+    toast({ title: "Аватар обновлён" });
+  };
+
+  const handleChangeEmail = async () => {
+    if (!newEmail || newEmail === user?.email) return;
+    setEmailSaving(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ email: newEmail });
+      if (error) throw error;
+      toast({ title: "Письмо отправлено", description: "Подтвердите новый email по ссылке в письме" });
+    } catch (err: any) {
+      toast({ title: "Ошибка", description: err.message, variant: "destructive" });
+    } finally {
+      setEmailSaving(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!newPassword) return;
+    if (newPassword !== confirmPassword) {
+      toast({ title: "Ошибка", description: "Пароли не совпадают", variant: "destructive" });
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast({ title: "Ошибка", description: "Пароль должен быть не менее 6 символов", variant: "destructive" });
+      return;
+    }
+    setPasswordSaving(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      setNewPassword("");
+      setConfirmPassword("");
+      toast({ title: "Пароль изменён" });
+    } catch (err: any) {
+      toast({ title: "Ошибка", description: err.message, variant: "destructive" });
+    } finally {
+      setPasswordSaving(false);
+    }
+  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -197,16 +315,48 @@ export default function StudentProfile() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Top bar */}
-      <div className="border-b border-border bg-card px-6 py-4 flex items-center gap-4">
+      {/* Top banner */}
+      <div className="relative h-28 bg-gradient-to-r from-primary/80 to-primary overflow-hidden">
+        {branding?.logoUrl && (
+          <img src={branding.logoUrl} alt="" className="absolute right-6 top-1/2 -translate-y-1/2 h-16 opacity-30" />
+        )}
+        <div className="absolute bottom-4 left-6 flex items-center gap-4">
+          <div className="relative group">
+            <Avatar className="w-16 h-16 border-2 border-background shadow-lg">
+              {avatarUrl ? (
+                <AvatarImage src={avatarUrl} alt={fullName} />
+              ) : null}
+              <AvatarFallback className="bg-background text-primary text-xl font-semibold">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+            <label className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
+              <Camera className="w-5 h-5 text-white" />
+              <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+            </label>
+          </div>
+          <div>
+            <p className="text-lg font-semibold text-primary-foreground">{profile?.full_name || "Ученик"}</p>
+            {profile?.organization_name && (
+              <p className="text-sm text-primary-foreground/80">{profile.organization_name}</p>
+            )}
+          </div>
+        </div>
+        <Button variant="outline" size="sm" onClick={handleLogout} className="absolute top-4 right-6 gap-2 bg-background/80 hover:bg-background">
+          <LogOut className="w-4 h-4" />
+          Выйти
+        </Button>
+      </div>
+
+      {/* Back button */}
+      <div className="px-6 py-3">
         <Button variant="ghost" size="sm" onClick={() => navigate("/student")} className="gap-2">
           <ArrowLeft className="w-4 h-4" />
           Назад
         </Button>
-        <h1 className="text-lg font-semibold">Мой профиль</h1>
       </div>
 
-      <div className="max-w-5xl mx-auto p-6">
+      <div className="max-w-5xl mx-auto px-6 pb-12">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="flex flex-wrap h-auto gap-1 bg-muted/50 p-1">
             {tabs.map(tab => (
@@ -219,33 +369,127 @@ export default function StudentProfile() {
 
           {/* Profile tab */}
           <TabsContent value="profile">
-            <Card>
-              <CardHeader>
-                <CardTitle>Мой профиль</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="flex items-center gap-4">
-                  <Avatar className="w-16 h-16">
-                    <AvatarFallback className="bg-primary/10 text-primary text-xl font-semibold">
-                      {initials}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="text-xl font-semibold">{profile?.full_name || "Ученик"}</p>
-                    <p className="text-sm text-muted-foreground">{user?.email}</p>
-                    {profile?.organization_name && (
-                      <p className="text-sm text-muted-foreground mt-1">{profile.organization_name}</p>
-                    )}
-                  </div>
-                </div>
-                <div className="pt-4 border-t border-border">
-                  <Button variant="destructive" onClick={handleLogout} className="gap-2">
-                    <LogOut className="w-4 h-4" />
-                    Выйти из аккаунта
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Left column — profile settings */}
+              <div className="lg:col-span-2">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Настройки профиля</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-5">
+                    <div className="space-y-2">
+                      <Label>Email</Label>
+                      <Input value={user?.email || ""} disabled className="bg-muted/50" />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Аватар</Label>
+                      <div className="flex items-center gap-4">
+                        <div className="relative group">
+                          <Avatar className="w-16 h-16">
+                            {avatarUrl ? <AvatarImage src={avatarUrl} alt={fullName} /> : null}
+                            <AvatarFallback className="bg-primary/10 text-primary text-xl font-semibold">{initials}</AvatarFallback>
+                          </Avatar>
+                          <label className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
+                            <Camera className="w-5 h-5 text-white" />
+                            <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+                          </label>
+                        </div>
+                        <p className="text-sm text-muted-foreground">Нажмите на аватар, чтобы загрузить фото</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Имя и Фамилия</Label>
+                      <Input value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Введите имя" />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Телефон</Label>
+                      <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+7 999 123-45-67" />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Город</Label>
+                      <Input value={city} onChange={e => setCity(e.target.value)} placeholder="Введите город" />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>О себе</Label>
+                      <Textarea
+                        value={bio}
+                        onChange={e => setBio(e.target.value)}
+                        placeholder="Опишите карьеру и достижения"
+                        rows={4}
+                      />
+                    </div>
+
+                    <Button onClick={handleSaveProfile} disabled={profileSaving}>
+                      {profileSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                      Сохранить
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Right column — email & password */}
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Изменить email</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <Input value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="Новый email" />
+                    <Button onClick={handleChangeEmail} disabled={emailSaving || newEmail === user?.email} size="sm" className="w-full">
+                      {emailSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                      Сохранить
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Смена пароля</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="relative">
+                      <Input
+                        type={showPassword ? "text" : "password"}
+                        value={newPassword}
+                        onChange={e => setNewPassword(e.target.value)}
+                        placeholder="Новый пароль"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <Input
+                        type={showConfirm ? "text" : "password"}
+                        value={confirmPassword}
+                        onChange={e => setConfirmPassword(e.target.value)}
+                        placeholder="Повторите пароль"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirm(!showConfirm)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    <Button onClick={handleChangePassword} disabled={passwordSaving || !newPassword} size="sm" className="w-full">
+                      {passwordSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                      Сменить пароль
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
           </TabsContent>
 
           {/* Notifications tab */}

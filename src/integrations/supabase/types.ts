@@ -3103,6 +3103,8 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          bio: string | null
+          city: string | null
           company_id: string | null
           created_at: string
           email: string | null
@@ -3113,12 +3115,15 @@ export type Database = {
           login: string | null
           onboarding_completed: boolean
           organization_id: string | null
+          phone: string | null
           student_group_id: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           avatar_url?: string | null
+          bio?: string | null
+          city?: string | null
           company_id?: string | null
           created_at?: string
           email?: string | null
@@ -3129,12 +3134,15 @@ export type Database = {
           login?: string | null
           onboarding_completed?: boolean
           organization_id?: string | null
+          phone?: string | null
           student_group_id?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           avatar_url?: string | null
+          bio?: string | null
+          city?: string | null
           company_id?: string | null
           created_at?: string
           email?: string | null
@@ -3145,6 +3153,7 @@ export type Database = {
           login?: string | null
           onboarding_completed?: boolean
           organization_id?: string | null
+          phone?: string | null
           student_group_id?: string | null
           updated_at?: string
           user_id?: string
