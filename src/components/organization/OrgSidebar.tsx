@@ -190,7 +190,7 @@ export function OrgSidebar() {
                 </div>
               </button>
             </TooltipTrigger>
-            <TooltipContent side="right">Нажмите, чтобы изменить значок</TooltipContent>
+            <TooltipContent side="right" className="z-[100]">Нажмите, чтобы изменить значок</TooltipContent>
           </Tooltip>
         </div>
 
@@ -266,7 +266,7 @@ export function OrgSidebar() {
                 <LogOut className="h-5 w-5" />
               </button>
             </TooltipTrigger>
-            <TooltipContent side="right">Выйти</TooltipContent>
+            <TooltipContent side="right" className="z-[100]">Выйти</TooltipContent>
           </Tooltip>
         </div>
       </aside>
