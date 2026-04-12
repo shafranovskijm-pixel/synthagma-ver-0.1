@@ -952,6 +952,21 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
             <Badge variant="outline" className="text-sm">
               Всего: {students.length}
             </Badge>
+            {pendingEnrollmentsCount > 0 && (
+              <Badge variant="secondary" className="text-sm gap-1">
+                <Clock className="w-3 h-3" />
+                Ожидают зачисления: {pendingEnrollmentsCount}
+              </Badge>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={() => setShowStudentBulkImport(true)}
+            >
+              <Upload className="w-4 h-4" />
+              Импорт из Excel
+            </Button>
             <Button
               variant="outline"
               size="sm"
