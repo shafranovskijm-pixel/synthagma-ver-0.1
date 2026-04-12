@@ -201,9 +201,11 @@ export function SkillspaceBatchImportDialog({
                 disabled={loading}
                 rows={6}
               />
-              <p className="text-xs text-muted-foreground">
-                {urls.split("\n").filter((u) => u.trim()).length} ссылок
-              </p>
+              {urls.trim().length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  {urls.split("\n").filter((u) => u.trim()).length} ссылок
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <Label>Email / Логин</Label>
