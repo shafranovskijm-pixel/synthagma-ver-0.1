@@ -421,6 +421,7 @@ export function CourseLandingEditorContent({ courseId, embedded = false }: Cours
         onMoveUp={() => moveSection(sectionId, -1)}
         onMoveDown={() => moveSection(sectionId, 1)}
         onToggleVisibility={() => toggleSection(sectionId)}
+        onAIGenerate={sectionId !== "program" ? () => openAIDialog(sectionId) : undefined}
         label={SECTION_LABELS[sectionId] || sectionId}
       />
     );
