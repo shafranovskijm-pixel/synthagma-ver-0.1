@@ -47,23 +47,22 @@ export function SkillspaceImportDialog({ open, onOpenChange, organizationId, exi
     const prefill = async () => {
       setPrefilling(true);
       try {
-        // Find URL from previous import job for this course
+        // Find URL from previous import job that created this course
         const { data: jobs } = await supabase
           .from("skillspace_import_jobs")
-          .select("url")
+          .select("url, result")
           .eq("organization_id", organizationId)
           .eq("status", "done")
           .order("created_at", { ascending: false });
 
         if (jobs && jobs.length > 0) {
-          // Try to match by courseId in result, or just use first job's URL pattern
+          // Try to match by courseId in result JSON
           const matchingJob = jobs.find(j => {
-            // The result JSON contains courseId
-            return true; // We can't easily filter by result->courseId in select, so use first available
+            const res = j.result as any;
+            return res?.courseId === existingCourseId;
           });
-          if (matchingJob?.url) {
-            setUrl(matchingJob.url);
-          }
+          const jobUrl = matchingJob?.url || jobs[0]?.url;
+          if (jobUrl) setUrl(jobUrl);
         }
 
         // Get credentials
