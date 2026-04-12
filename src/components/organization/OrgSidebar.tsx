@@ -238,7 +238,7 @@ export function OrgSidebar() {
                     <TooltipContent
                       side="right"
                       sideOffset={12}
-                      className="rounded-xl px-4 py-2 text-sm font-medium shadow-lg border-border/60 backdrop-blur-sm"
+                      className="z-[100] rounded-xl px-4 py-2 text-sm font-medium shadow-lg border-border/60 backdrop-blur-sm"
                       style={{
                         backgroundColor: `hsl(${brandHsl})`,
                         color: 'white',
