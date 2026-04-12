@@ -56,6 +56,7 @@ import {
   RefreshCw,
   CreditCard,
   Image,
+  Upload,
 } from "lucide-react";
 import { safeInvoke } from "@/utils/safeInvoke";
 import { format } from "date-fns";
