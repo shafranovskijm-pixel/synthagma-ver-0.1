@@ -308,9 +308,28 @@ export function SkillspaceBatchImportDialog({
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-mono text-xs">{job.url}</p>
                     {job.status === "done" && job.result?.courseTitle && (
-                      <p className="text-xs text-green-600 mt-0.5">
-                        {job.result.courseTitle} — {job.result.lessonsCreated} уроков
-                      </p>
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <p className="text-xs text-green-600">
+                          {job.result.courseTitle} — {job.result.lessonsCreated} уроков
+                          {job.result.reparseSuccess && ` (обновлено: ${job.result.lessonsUpdated})`}
+                        </p>
+                        {job.result?.courseId && login && password && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-5 px-1 text-xs"
+                            disabled={reparsingJobId === job.id}
+                            onClick={() => handleReparseContent(job)}
+                            title="Перепарсить контент уроков"
+                          >
+                            {reparsingJobId === job.id ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <RefreshCw className="w-3 h-3" />
+                            )}
+                          </Button>
+                        )}
+                      </div>
                     )}
                     {job.status === "error" && job.error_message && (
                       <p className="text-xs text-destructive mt-0.5">{job.error_message}</p>
