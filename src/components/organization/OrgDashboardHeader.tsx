@@ -245,10 +245,16 @@ export function OrgDashboardHeader() {
             </>
           )}
           {activeTab === "courses" && (
-            <Button className="btn-gradient rounded-xl gap-2 text-xs" size="sm" onClick={() => navigate("/course-builder")}>
-              <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">Создать курс</span>
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" className="rounded-xl gap-2 text-xs" onClick={() => onTabChange?.("services")}>
+                <ShoppingBag className="w-4 h-4" />
+                <span className="hidden sm:inline">Добавить из магазина</span>
+              </Button>
+              <Button className="btn-gradient rounded-xl gap-2 text-xs" size="sm" onClick={() => navigate("/course-builder")}>
+                <Plus className="w-4 h-4" />
+                <span className="hidden sm:inline">Создать курс</span>
+              </Button>
+            </div>
           )}
         </div>
       </div>
