@@ -90,14 +90,14 @@ export default function OrganizationProfile() {
         return;
       }
       // Fallback: check if user is owner of an organization
-      const { data: org } = await supabase
+      const orgRes: any = await supabase
         .from("organizations")
         .select("id")
         .eq("owner_id", user.id)
         .limit(1)
-        .maybeSingle() as { data: { id: string } | null };
-      if (org?.id) {
-        setOrganizationId(org.id);
+        .maybeSingle();
+      if (orgRes.data?.id) {
+        setOrganizationId(orgRes.data.id);
       }
     };
     loadOrganizationId();
