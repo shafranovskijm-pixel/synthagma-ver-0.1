@@ -491,23 +491,8 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
                             </span>
                             <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
                           </CollapsibleTrigger>
-                          <CollapsibleContent className="pt-2 pl-11">
-                            {sub.courses.length === 0 ? (
-                              <p className="text-xs text-muted-foreground py-2 italic">Курсы ещё не добавлены</p>
-                            ) : (
-                              <div className="grid sm:grid-cols-2 gap-x-6 gap-y-2">
-                                {sub.courses.map((item) => (
-                                  <button
-                                    key={item.id}
-                                    className="flex items-start gap-2 py-1 text-left hover:text-accent transition-colors group/item"
-                                    onClick={() => openPreview(item)}
-                                  >
-                                    <CheckCircle2 className="w-4 h-4 text-accent shrink-0 mt-0.5" />
-                                    <span className="text-sm text-foreground/75 group-hover/item:text-accent">{item.course?.title}</span>
-                                  </button>
-                                ))}
-                              </div>
-                            )}
+                          <CollapsibleContent className="pt-3 pl-11">
+                            {renderCourseSection(sub.courses)}
                           </CollapsibleContent>
                         </Collapsible>
                       );
@@ -531,22 +516,7 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
                   <ChevronDown className="w-5 h-5 text-muted-foreground transition-transform group-data-[state=closed]:-rotate-90" />
                 </CollapsibleTrigger>
                 <CollapsibleContent className="pt-3 pl-13">
-                  {group.courses.length === 0 ? (
-                    <p className="text-xs text-muted-foreground py-2 italic">Курсы ещё не добавлены</p>
-                  ) : (
-                    <div className="grid sm:grid-cols-2 gap-x-6 gap-y-2">
-                      {group.courses.map((item) => (
-                        <button
-                          key={item.id}
-                          className="flex items-start gap-2 py-1 text-left hover:text-accent transition-colors group/item"
-                          onClick={() => openPreview(item)}
-                        >
-                          <CheckCircle2 className="w-4 h-4 text-accent shrink-0 mt-0.5" />
-                          <span className="text-sm text-foreground/75 group-hover/item:text-accent">{item.course?.title}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                  {renderCourseSection(group.courses)}
                 </CollapsibleContent>
               </Collapsible>
             );
