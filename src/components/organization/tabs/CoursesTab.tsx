@@ -199,17 +199,18 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
 
   // Initialize view modes from persisted menu_settings
   const initializedRef = React.useRef(false);
-  React.useEffect(() => {
-    if (menuSettings && !initializedRef.current) {
-      initializedRef.current = true;
-      if (menuSettings.courseViewMode) setViewMode(menuSettings.courseViewMode as CourseViewMode);
-      if (menuSettings.courseFolderMode) setFolderViewMode(menuSettings.courseFolderMode as "folders" | "flat");
-    }
-  }, [menuSettings]);
 
   const [folderViewMode, setFolderViewModeLocal] = useState<"folders" | "flat">(
     (menuSettings?.courseFolderMode as "folders" | "flat") || "folders"
   );
+
+  React.useEffect(() => {
+    if (menuSettings && !initializedRef.current) {
+      initializedRef.current = true;
+      if (menuSettings.courseViewMode) setViewMode(menuSettings.courseViewMode as CourseViewMode);
+      if (menuSettings.courseFolderMode) setFolderViewModeLocal(menuSettings.courseFolderMode as "folders" | "flat");
+    }
+  }, [menuSettings]);
 
   // Save view mode to DB
   const saveViewPrefs = React.useCallback(async (courseViewMode: string, courseFolderMode: string) => {
@@ -221,10 +222,13 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
         .eq('id', organizationId)
         .single();
       const current = (data?.menu_settings as Record<string, unknown>) || {};
-      await supabase
+      const { error } = await supabase
         .from('organizations')
         .update({ menu_settings: { ...current, courseViewMode, courseFolderMode } as any })
         .eq('id', organizationId);
+      if (error) {
+        console.error('Error saving view prefs:', error);
+      }
     } catch (e) {
       console.error('Error saving view prefs:', e);
     }
