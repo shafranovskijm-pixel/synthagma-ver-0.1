@@ -49,6 +49,7 @@ interface MarketplaceCourse {
     title: string;
     description?: string | null;
     duration?: string | null;
+    cover_image_url?: string | null;
   };
   organization?: { name: string };
 }
@@ -140,7 +141,7 @@ export function StudentCourseStore({ userId, organizationId }: StudentCourseStor
       .from("marketplace_courses")
       .select(`
         *,
-        course:courses(id, title, description, duration, category_id),
+        course:courses(id, title, description, duration, category_id, cover_image_url),
         organization:organizations(name)
       `)
       .eq("is_active", true);
