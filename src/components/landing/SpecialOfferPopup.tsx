@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import specialOfferBg from "@/assets/special-offer-bg.jpg";
 
 const STORAGE_KEY = "special_offer_dismissed";
-const DELAY_MS = 30000;
+const DELAY_MS = 300000;
 const PRIVATE_PREFIXES = ["/student", "/organization", "/admin", "/company", "/sales", "/course/", "/partner/dashboard"];
 
 export function SpecialOfferPopup() {
@@ -24,7 +24,13 @@ export function SpecialOfferPopup() {
 
   useEffect(() => {
     if (isPrivatePage || localStorage.getItem(STORAGE_KEY)) return;
-    const timer = setTimeout(() => setShow(true), DELAY_MS);
+
+    let timer: ReturnType<typeof setTimeout>;
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) return; // Don't show for authenticated users
+      timer = setTimeout(() => setShow(true), DELAY_MS);
+    });
+
     return () => clearTimeout(timer);
   }, [isPrivatePage]);
 
@@ -123,6 +129,7 @@ export function SpecialOfferPopup() {
                   </button>
 
                   <h3 className="text-lg font-bold mb-1">Специальные условия</h3>
+                  <p className="text-[11px] font-medium text-primary/80 mb-1">Только для новых клиентов</p>
                   <p className="text-xs text-muted-foreground mb-4">
                     Оставьте заявку и получите персональное предложение для вашей организации
                   </p>
