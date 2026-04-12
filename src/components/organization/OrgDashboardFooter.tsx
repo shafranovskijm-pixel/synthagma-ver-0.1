@@ -17,7 +17,7 @@ export function OrgDashboardFooter() {
               ) : (
                 <SigmaLogo size="sm" />
               )}
-              {orgName && <span className="font-semibold text-sm">{orgName}</span>}
+              
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed max-w-xs">
               Платформа дополнительного профессионального образования
@@ -42,7 +42,7 @@ export function OrgDashboardFooter() {
         </div>
 
         <div className="mt-8 pt-4 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-2">
-          <p className="text-xs text-muted-foreground">© {new Date().getFullYear()} {orgName || "Синтагма"}. Все права защищены.</p>
+          <p className="text-xs text-muted-foreground">© {new Date().getFullYear()} Синтагма. Все права защищены.</p>
           <a href="/partner" className="text-xs font-medium text-primary hover:underline">
             Стань партнёром — зарабатывай до 25%
           </a>
