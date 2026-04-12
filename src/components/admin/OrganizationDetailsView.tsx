@@ -1651,13 +1651,14 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
           .eq("organization_id", organization.id)
           .then(({ data }) => {
             if (data) {
-              setCourses(data.map((c: any) => ({
-                id: c.id,
-                title: c.title,
-                is_published: c.is_published,
-                lessons_count: c.lessons?.length || 0,
-                students_count: c.enrollments?.length || 0,
-              })));
+               setCourses(data.map((c: any) => ({
+                 id: c.id,
+                 title: c.title,
+                 is_published: c.is_published,
+                 lessons_count: c.lessons?.length || 0,
+                 students_count: c.enrollments?.length || 0,
+                 catalog_order: c.catalog_order || 0,
+               })));
             }
           });
       }}
