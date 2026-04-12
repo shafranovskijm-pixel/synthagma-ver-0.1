@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { showLimitToast } from "@/utils/limitToast";
 import type { Course, CourseCategory, CourseFilter, CourseViewMode } from "@/types";
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from "@dnd-kit/core";
+import { SortableContext, verticalListSortingStrategy, useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 interface CoursesTabProps {
   organizationId: string;
