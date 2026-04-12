@@ -130,7 +130,7 @@ export function OrgDashboardHeader() {
           >
             <CreditCard className="w-3.5 h-3.5 text-primary" />
             <span className="text-xs font-semibold text-primary">
-              {d.subscriptionLimits?.plan === 'free' ? 'Бесплатный' : d.subscriptionLimits?.plan === 'start' ? 'Старт' : d.subscriptionLimits?.plan === 'standard' ? 'Стандарт' : d.subscriptionLimits?.plan === 'premium' ? 'Премиум' : 'Тариф'}
+              {d.subscriptionLimits?.plan === 'free' ? 'Бесплатный' : d.subscriptionLimits?.plan === 'start' ? 'Старт' : d.subscriptionLimits?.plan === 'standard' ? 'Стандарт' : 'Тариф'}
             </span>
           </button>
 
