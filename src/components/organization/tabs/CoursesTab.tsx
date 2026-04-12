@@ -17,7 +17,7 @@ import {
   BookOpen, Users, Edit, Eye, Trash2, FolderOpen, Folder,
   ChevronDown, ChevronRight, MoreVertical, FolderPlus, 
   MoveRight, Pencil, Video, VideoOff, Lock, Unlock, FastForward,
-  Sparkles, ShoppingCart, GripVertical, CheckCircle, Palette, Play, Copy, ImagePlus
+  Sparkles, ShoppingCart, GripVertical, CheckCircle, Palette, Play, Copy, ImagePlus, Wand2
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { useCourses } from "@/hooks/useCourses";
@@ -276,6 +276,27 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
   const [isDuplicating, setIsDuplicating] = useState(false);
   const coverInputRef = React.useRef<HTMLInputElement>(null);
   const [coverUploadCourseId, setCoverUploadCourseId] = useState<string | null>(null);
+  const [generatingCoverForCourse, setGeneratingCoverForCourse] = useState<string | null>(null);
+
+  const handleGenerateCourseCover = useCallback(async (courseId: string) => {
+    if (generatingCoverForCourse) return;
+    setGeneratingCoverForCourse(courseId);
+    toast.info("Генерируем обложку с ИИ...", { duration: 10000 });
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-cover", {
+        body: { courseId, type: "course" },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success("Обложка курса сгенерирована!");
+      refresh();
+    } catch (e: any) {
+      console.error("AI course cover error:", e);
+      toast.error(e?.message || "Ошибка генерации обложки");
+    } finally {
+      setGeneratingCoverForCourse(null);
+    }
+  }, [generatingCoverForCourse, refresh]);
 
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
