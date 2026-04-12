@@ -1671,6 +1671,12 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
       organizationId={organization.id}
       onSuccess={() => fetchCourses()}
     />
+    <StudentBulkImportDialog
+      open={showStudentBulkImport}
+      onOpenChange={setShowStudentBulkImport}
+      organizationId={organization.id}
+      onImportComplete={() => { fetchStudents(); fetchPendingEnrollmentsCount(); }}
+    />
     </>
   );
 }
