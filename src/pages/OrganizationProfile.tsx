@@ -8,9 +8,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, User, Bell, Handshake, Save, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, User, Bell, Handshake, Save, Eye, EyeOff, Settings } from "lucide-react";
 import { toast } from "sonner";
 import { PartnerCabinet } from "@/components/organization/PartnerCabinet";
+import { SettingsTab } from "@/components/organization/tabs/SettingsTab";
 
 interface ProfileData {
   full_name: string;
