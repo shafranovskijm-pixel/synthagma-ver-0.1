@@ -108,7 +108,17 @@ export function LandingHeroSection({
             )
           )}
           {enrollButton}
-        </div>
+          {isEditing && onShowPriceChange && (
+            <label className="flex items-center gap-2 text-white/70 text-sm cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={showPrice}
+                onChange={(e) => onShowPriceChange(e.target.checked)}
+                className="rounded"
+              />
+              Показывать цену
+            </label>
+          )}
 
         <div className="flex gap-6 mt-6 text-white/60 text-sm">
           {duration && <span>⏱ {duration}</span>}
