@@ -116,6 +116,7 @@ interface Course {
   is_published: boolean;
   students_count: number;
   lessons_count: number;
+  catalog_order: number;
 }
 
 interface OrgDocument {
