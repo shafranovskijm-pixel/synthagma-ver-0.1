@@ -1068,7 +1068,7 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
                     variant={folderViewMode === "folders" ? "secondary" : "ghost"} 
                     size="icon" 
                     className="h-8 w-8" 
-                    onClick={() => setViewAndFolder(viewMode, "folders")}}
+                    onClick={() => setViewAndFolder(viewMode, "folders")}
                   >
                     <Folder className="w-4 h-4" />
                   </Button>
