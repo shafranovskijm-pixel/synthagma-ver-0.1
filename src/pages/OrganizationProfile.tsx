@@ -195,7 +195,7 @@ export default function OrganizationProfile() {
       .eq("id", organizationId);
     setOrgLogoUrl("");
     toast.success("Значок удалён");
-  
+  };
 
   const handleSaveProfile = async () => {
     setSaving(true);
