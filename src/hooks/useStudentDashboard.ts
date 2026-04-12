@@ -242,7 +242,7 @@ export function useStudentDashboard() {
 
       if (effectiveBranding && typeof effectiveBranding === 'object') {
         const b = effectiveBranding as Record<string, unknown>;
-        setBranding({ coverUrl: (b.coverUrl as string) || '', primaryColor: (b.primaryColor as string) || '#6366f1', secondaryColor: (b.secondaryColor as string) || '#8b5cf6', logoUrl: (b.logoUrl as string) || '', showOrgName: b.showOrgName !== false });
+        setBranding({ coverUrl: (b.coverUrl as string) || '', primaryColor: (b.primaryColor as string) || '#0d9488', secondaryColor: (b.secondaryColor as string) || '#14b8a6', logoUrl: (b.logoUrl as string) || '', showOrgName: b.showOrgName !== false });
       }
       if (effectiveDashboardSettings && typeof effectiveDashboardSettings === 'object') {
         const s = effectiveDashboardSettings as Record<string, unknown>;
