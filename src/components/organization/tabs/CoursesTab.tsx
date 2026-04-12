@@ -228,9 +228,13 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
         .eq('id', organizationId);
       if (error) {
         console.error('Error saving view prefs:', error);
+        toast.error("Ошибка сохранения вида");
+      } else {
+        toast.success("Вид отображения сохранён");
       }
     } catch (e) {
       console.error('Error saving view prefs:', e);
+      toast.error("Ошибка сохранения вида");
     }
   }, [organizationId]);
 
