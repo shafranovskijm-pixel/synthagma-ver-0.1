@@ -193,9 +193,12 @@ export default function OrganizationProfile() {
 
       <div className="max-w-5xl mx-auto px-4 py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-6 bg-muted/50 p-1 rounded-xl">
+          <TabsList className="mb-6 bg-muted/50 p-1 rounded-xl flex-wrap">
             <TabsTrigger value="profile" className="rounded-lg gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2">
               <User className="w-4 h-4" /> Мой профиль
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="rounded-lg gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2">
+              <Settings className="w-4 h-4" /> Настройки
             </TabsTrigger>
             <TabsTrigger value="notifications" className="rounded-lg gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2">
               <Bell className="w-4 h-4" /> Настройки уведомлений
