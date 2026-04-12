@@ -1099,7 +1099,7 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-muted text-sm text-muted-foreground">
               <BookOpen className="w-4 h-4" />
-              <span>Всего курсов: <span className="font-semibold text-foreground">{orgCourses.length}</span></span>
+              <span>Всего курсов: <span className="font-semibold text-foreground">{courses.length}</span></span>
             </div>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={() => setShowSkillspaceBatchImport(true)}>
