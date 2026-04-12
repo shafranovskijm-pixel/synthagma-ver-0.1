@@ -97,6 +97,14 @@ export function SkillspaceBatchImportDialog({
     setError(null);
 
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      if (!accessToken) {
+        setError("Не удалось получить токен авторизации. Перелогиньтесь.");
+        setLoading(false);
+        return;
+      }
+
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
@@ -106,7 +114,7 @@ export function SkillspaceBatchImportDialog({
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${supabaseKey}`,
+            Authorization: `Bearer ${accessToken}`,
             apikey: supabaseKey,
           },
           body: JSON.stringify({
