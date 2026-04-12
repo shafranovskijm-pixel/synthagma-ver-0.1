@@ -1,0 +1,1 @@
+UPDATE public.promo_codes SET is_active = false WHERE code = 'SYNTASALE';
