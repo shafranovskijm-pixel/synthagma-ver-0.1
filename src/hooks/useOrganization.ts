@@ -78,8 +78,8 @@ export function useOrganization(): UseOrganizationReturn {
   
   const [brandingSettings, setBrandingSettings] = useState<BrandingSettings>({
     coverUrl: '',
-    primaryColor: '#6366f1',
-    secondaryColor: '#8b5cf6',
+    primaryColor: '#0d9488',
+    secondaryColor: '#14b8a6',
     logoUrl: '',
     showOrgName: true
   });
@@ -134,8 +134,8 @@ export function useOrganization(): UseOrganizationReturn {
             const branding = org.branding as Record<string, unknown>;
             setBrandingSettings({
               coverUrl: branding.coverUrl as string || '',
-              primaryColor: branding.primaryColor as string || '#6366f1',
-              secondaryColor: branding.secondaryColor as string || '#8b5cf6',
+              primaryColor: branding.primaryColor as string || '#0d9488',
+              secondaryColor: branding.secondaryColor as string || '#14b8a6',
               logoUrl: branding.logoUrl as string || '',
               showOrgName: branding.showOrgName !== false
             });

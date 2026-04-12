@@ -213,11 +213,13 @@
 
   /* Elegant button gradient */
   .btn-gradient {
-    @apply font-medium relative overflow-hidden bg-primary text-primary-foreground transition-all duration-200;
+    @apply font-medium relative overflow-hidden text-white transition-all duration-200;
+    background-color: hsl(var(--accent));
   }
 
   .btn-gradient:hover {
-    @apply bg-primary/90 scale-[1.02] shadow-lg;
+    @apply scale-[1.02] shadow-lg;
+    background-color: hsl(var(--accent) / 0.9);
   }
 
   .btn-gradient:active {

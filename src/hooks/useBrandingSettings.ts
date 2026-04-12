@@ -17,8 +17,8 @@ interface BrandingSettings {
 export function useBrandingSettings(organizationId: string | null, userId: string | undefined) {
   const [brandingSettings, setBrandingSettings] = useState<BrandingSettings>({
     coverUrl: '',
-    primaryColor: '#6366f1',
-    secondaryColor: '#8b5cf6',
+    primaryColor: '#0d9488',
+    secondaryColor: '#14b8a6',
     logoUrl: '',
     showOrgName: true,
     coverPosition: 'center',
@@ -44,8 +44,8 @@ export function useBrandingSettings(organizationId: string | null, userId: strin
           const branding = data.branding as Record<string, unknown>;
           setBrandingSettings({
             coverUrl: branding.coverUrl as string || '',
-            primaryColor: branding.primaryColor as string || '#6366f1',
-            secondaryColor: branding.secondaryColor as string || '#8b5cf6',
+            primaryColor: branding.primaryColor as string || '#0d9488',
+            secondaryColor: branding.secondaryColor as string || '#14b8a6',
             logoUrl: branding.logoUrl as string || '',
             showOrgName: branding.showOrgName !== false,
             coverPosition: (branding.coverPosition as BrandingSettings['coverPosition']) || 'cover',

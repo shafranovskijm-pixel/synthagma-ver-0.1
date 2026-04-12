@@ -169,8 +169,8 @@ const BrandedLogin = () => {
   }
 
   const branding = organization?.login_branding;
-  const primaryColor = branding?.primaryColor || '#6366f1';
-  const secondaryColor = branding?.secondaryColor || '#8b5cf6';
+  const primaryColor = branding?.primaryColor || '#0d9488';
+  const secondaryColor = branding?.secondaryColor || '#14b8a6';
   const welcomeText = branding?.welcomeText || `Добро пожаловать в ${organization?.name}`;
   const description = branding?.description || 'Войдите в личный кабинет для доступа к курсам';
 

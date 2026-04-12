@@ -35,8 +35,8 @@ export function LoginBrandingSettings({
   const [branding, setBranding] = useState<LoginBranding>({
     backgroundUrl: '',
     logoUrl: '',
-    primaryColor: '#6366f1',
-    secondaryColor: '#8b5cf6',
+    primaryColor: '#0d9488',
+    secondaryColor: '#14b8a6',
     welcomeText: '',
     description: ''
   });
@@ -65,8 +65,8 @@ export function LoginBrandingSettings({
           setBranding({
             backgroundUrl: (b.backgroundUrl as string) || '',
             logoUrl: (b.logoUrl as string) || '',
-            primaryColor: (b.primaryColor as string) || '#6366f1',
-            secondaryColor: (b.secondaryColor as string) || '#8b5cf6',
+            primaryColor: (b.primaryColor as string) || '#0d9488',
+            secondaryColor: (b.secondaryColor as string) || '#14b8a6',
             welcomeText: (b.welcomeText as string) || '',
             description: (b.description as string) || ''
           });
