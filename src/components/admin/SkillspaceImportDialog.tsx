@@ -50,25 +50,40 @@ export function SkillspaceImportDialog({ open, onOpenChange, organizationId, exi
     setResult(null);
 
     try {
-      // Use direct fetch with extended timeout (5 min) — the function processes 80+ lessons sequentially
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minutes
-      
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const requestBody = JSON.stringify({ url, login, password, organizationId, ...(existingCourseId ? { existingCourseId } : {}) });
+      const requestHeaders = {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${supabaseKey}`,
+        "apikey": supabaseKey,
+      };
       
-      const response = await fetch(`${supabaseUrl}/functions/v1/parse-skillspace-course`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${supabaseKey}`,
-          "apikey": supabaseKey,
-        },
-        body: JSON.stringify({ url, login, password, organizationId, ...(existingCourseId ? { existingCourseId } : {}) }),
-        signal: controller.signal,
-      });
+      // Retry logic for network errors (antivirus/VPN blocks)
+      let response: Response | null = null;
+      const delays = [0, 2000, 5000];
+      for (let attempt = 0; attempt < delays.length; attempt++) {
+        if (attempt > 0) {
+          await new Promise(r => setTimeout(r, delays[attempt]));
+        }
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 300000);
+          response = await fetch(`${supabaseUrl}/functions/v1/parse-skillspace-course`, {
+            method: "POST",
+            headers: requestHeaders,
+            body: requestBody,
+            signal: controller.signal,
+          });
+          clearTimeout(timeoutId);
+          break; // success
+        } catch (fetchErr: any) {
+          console.warn(`Import fetch attempt ${attempt + 1} failed:`, fetchErr.message);
+          if (attempt === delays.length - 1) throw fetchErr;
+        }
+      }
       
-      clearTimeout(timeoutId);
+      if (!response) throw new Error("Не удалось подключиться к серверу");
       
       const data = await response.json();
       const fnError = !response.ok ? { message: data?.error || `HTTP ${response.status}` } : null;
@@ -100,7 +115,12 @@ export function SkillspaceImportDialog({ open, onOpenChange, organizationId, exi
         onSuccess?.();
       }
     } catch (err) {
-      setError("Непредвиденная ошибка: " + (err instanceof Error ? err.message : String(err)));
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes("Failed to fetch") || msg.includes("NetworkError") || msg.includes("ERR_BLOCKED")) {
+        setError("Не удалось подключиться к серверу. Возможно, запрос блокируется антивирусом или VPN. Добавьте *.supabase.co в исключения и попробуйте снова.");
+      } else {
+        setError("Непредвиденная ошибка: " + msg);
+      }
     } finally {
       setLoading(false);
     }
