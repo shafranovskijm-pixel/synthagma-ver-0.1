@@ -17,7 +17,7 @@ export function OrgDashboardFooter() {
               ) : (
                 <SigmaLogo size="sm" />
               )}
-              {orgName && <span className="font-semibold text-sm">{orgName}</span>}
+              
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed max-w-xs">
               Платформа дополнительного профессионального образования
