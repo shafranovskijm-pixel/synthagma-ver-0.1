@@ -1,10 +1,12 @@
+import { useState } from "react";
 import { 
   BarChart3, Building2, Users, Crown, 
-  LogOut, Shield, Settings, FileText, Terminal, Store, HeadphonesIcon, Briefcase, Bot, Megaphone, MessageSquare, Gift, Sparkles
+  LogOut, Shield, Settings, FileText, Terminal, Store, HeadphonesIcon, Briefcase, Bot, Megaphone, MessageSquare, Gift, Sparkles, Wrench, ChevronDown
 } from "lucide-react";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { HelpButton } from "@/components/onboarding/HelpButton";
 import { useAdminUnreadChats } from "@/hooks/useAdminUnreadChats";
+import { cn } from "@/lib/utils";
 
 export type AdminTabType = 
   | "analytics" 
@@ -22,6 +24,8 @@ export type AdminTabType =
   | "devtools"
   | "updates"
   | "settings";
+
+const PLATFORM_TABS: AdminTabType[] = ["content", "ai", "devtools"];
 
 interface AdminSidebarProps {
   activeTab: AdminTabType;
@@ -42,6 +46,7 @@ export function AdminSidebar({
 }: AdminSidebarProps) {
   
   const unreadChats = useAdminUnreadChats();
+  const [platformOpen, setPlatformOpen] = useState(() => PLATFORM_TABS.includes(activeTab));
 
   const handleTabClick = (tab: AdminTabType) => {
     setActiveTab(tab);
@@ -50,6 +55,12 @@ export function AdminSidebar({
 
   const tabButtonClass = (tab: AdminTabType) => {
     return `w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
+      activeTab === tab ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary"
+    }`;
+  };
+
+  const subTabButtonClass = (tab: AdminTabType) => {
+    return `w-full flex items-center gap-3 pl-8 pr-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
       activeTab === tab ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-secondary"
     }`;
   };
@@ -77,73 +88,51 @@ export function AdminSidebar({
       {/* Navigation */}
       <nav className="flex-1 p-4 overflow-y-auto scrollbar-hide">
         <div className="space-y-2">
-          {/* Organizations */}
           <button onClick={() => handleTabClick("organizations")} className={tabButtonClass("organizations")}>
             <Building2 className="w-5 h-5" />
             Организации
           </button>
           
-          {/* Tariffs */}
           <button onClick={() => handleTabClick("tariffs")} className={tabButtonClass("tariffs")}>
             <Crown className="w-5 h-5" />
             Тарифы
           </button>
           
-          {/* Users */}
           <button onClick={() => handleTabClick("users")} className={tabButtonClass("users")}>
             <Users className="w-5 h-5" />
             Пользователи
           </button>
-          
-          {/* Content (Blog + Subscribers + Testimonials) */}
-          <button onClick={() => handleTabClick("content")} className={tabButtonClass("content")}>
-            <FileText className="w-5 h-5" />
-            Контент
-          </button>
 
-          {/* Marketplace */}
           <button onClick={() => handleTabClick("marketplace")} className={tabButtonClass("marketplace")}>
             <Store className="w-5 h-5" />
             Маркетплейс
           </button>
 
-          {/* Sales */}
           <button onClick={() => handleTabClick("sales")} className={tabButtonClass("sales")}>
             <Briefcase className="w-5 h-5" />
             Продажи
           </button>
 
-          {/* AI */}
-          <button onClick={() => handleTabClick("ai")} className={tabButtonClass("ai")}>
-            <Bot className="w-5 h-5" />
-            ИИ-провайдеры
-          </button>
-
-          {/* Analytics */}
           <button onClick={() => handleTabClick("analytics")} className={tabButtonClass("analytics")}>
             <BarChart3 className="w-5 h-5" />
             Аналитика
           </button>
 
-          {/* Support */}
           <button onClick={() => handleTabClick("support")} className={tabButtonClass("support")}>
             <HeadphonesIcon className="w-5 h-5" />
             Поддержка
           </button>
 
-          {/* Broadcast */}
           <button onClick={() => handleTabClick("broadcast")} className={tabButtonClass("broadcast")}>
             <Megaphone className="w-5 h-5" />
             Рассылка
           </button>
 
-          {/* Referrals */}
           <button onClick={() => handleTabClick("referrals")} className={tabButtonClass("referrals")}>
             <Gift className="w-5 h-5" />
             Партнёры
           </button>
 
-          {/* Chats */}
           <button onClick={() => handleTabClick("chats")} className={tabButtonClass("chats")}>
             <MessageSquare className="w-5 h-5" />
             Чаты
@@ -154,19 +143,44 @@ export function AdminSidebar({
             )}
           </button>
 
-          {/* Dev Tools */}
-          <button onClick={() => handleTabClick("devtools")} className={tabButtonClass("devtools")}>
-            <Terminal className="w-5 h-5" />
-            Dev Tools
-          </button>
+          {/* Platform group: Контент, ИИ-провайдеры, Dev Tools */}
+          <div>
+            <button
+              onClick={() => setPlatformOpen(prev => !prev)}
+              className={cn(
+                "w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors",
+                PLATFORM_TABS.includes(activeTab)
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-secondary"
+              )}
+            >
+              <Wrench className="w-5 h-5" />
+              Платформа
+              <ChevronDown className={cn("w-4 h-4 ml-auto transition-transform", platformOpen && "rotate-180")} />
+            </button>
+            {platformOpen && (
+              <div className="mt-1 space-y-1">
+                <button onClick={() => handleTabClick("content")} className={subTabButtonClass("content")}>
+                  <FileText className="w-4 h-4" />
+                  Контент
+                </button>
+                <button onClick={() => handleTabClick("ai")} className={subTabButtonClass("ai")}>
+                  <Bot className="w-4 h-4" />
+                  ИИ-провайдеры
+                </button>
+                <button onClick={() => handleTabClick("devtools")} className={subTabButtonClass("devtools")}>
+                  <Terminal className="w-4 h-4" />
+                  Dev Tools
+                </button>
+              </div>
+            )}
+          </div>
 
-          {/* Platform Updates */}
           <button onClick={() => handleTabClick("updates")} className={tabButtonClass("updates")}>
             <Sparkles className="w-5 h-5" />
             Обновления
           </button>
           
-          {/* Settings - always visible */}
           <button onClick={() => handleTabClick("settings")} className={tabButtonClass("settings")}>
             <Settings className="w-5 h-5" />
             Настройки
