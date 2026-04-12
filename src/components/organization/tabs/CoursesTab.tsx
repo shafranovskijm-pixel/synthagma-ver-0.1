@@ -1108,58 +1108,33 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
           )}
         </div>
       ) : viewMode === "grid" ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
-          {filteredCourses.map(course => (
-            <div 
-              key={course.id} 
-              className={`bg-card rounded-2xl border overflow-hidden hover:shadow-lg transition-shadow cursor-pointer relative ${
-                selectedCourseIds.has(course.id) ? 'border-primary ring-2 ring-primary/20' : 'border-border'
-              }`}
-              onClick={() => handleCourseClick(course)}
-            >
-              {/* Selection Checkbox */}
-              <div 
-                className="absolute top-3 left-3 z-10"
-                onClick={e => toggleCourseSelection(course.id, e)}
-              >
-                <Checkbox 
-                  checked={selectedCourseIds.has(course.id)}
-                  className="bg-background/80 backdrop-blur-sm"
-                />
-              </div>
-              <div className="h-32 bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
-                <BookOpen className="w-12 h-12 text-primary/50" />
-              </div>
-              <div className="p-5">
-                <div className="flex items-start justify-between mb-2">
-                  <h3 className="font-semibold text-lg line-clamp-1">{course.title}</h3>
-                  <span className={`text-xs px-2 py-1 rounded-full ${
-                    course.is_published ? 'bg-sigma-green/10 text-sigma-green' : 'bg-muted text-muted-foreground'
-                  }`}>
-                    {course.is_published ? 'Опубликован' : 'Черновик'}
-                  </span>
+        <div className="space-y-8">
+          {catalogCoursesByCategory.map(({ category, courses: groupCourses }) => (
+            <div key={category?.id || "uncategorized"}>
+              {/* Category header */}
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2.5">
+                  {category && (
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: category.color }} />
+                  )}
+                  <h3 className="font-semibold text-lg">{category?.name || "Без категории"}</h3>
+                  <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{groupCourses.length}</span>
                 </div>
-                {course.description && (
-                  <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{course.description}</p>
-                )}
-                {getCategoryById(course.category_id) && (
-                  <span 
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium text-white mb-3" 
-                    style={{ backgroundColor: getCategoryById(course.category_id)?.color }}
-                  >
-                    {getCategoryById(course.category_id)?.name}
-                  </span>
-                )}
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-1">
-                    <Users className="w-4 h-4" />
-                    {course.studentsCount || 0} учеников
+                {category && (
+                  <div className="flex items-center gap-1.5">
+                    <Button variant="ghost" size="sm" className="text-xs rounded-lg gap-1" onClick={() => openEditCategory(category)}>
+                      <Pencil className="w-3.5 h-3.5" />
+                      Порядок курсов
+                    </Button>
+                    <Button variant="ghost" size="sm" className="text-xs rounded-lg gap-1 text-destructive hover:text-destructive" onClick={() => handleDeleteCategory(category.id)}>
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Удалить категорию
+                    </Button>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <BookOpen className="w-4 h-4" />
-                    {course.lessonsCount || 0} уроков
-                  </div>
-                </div>
+                )}
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                {groupCourses.map(course => renderCatalogCard(course))}
               </div>
             </div>
           ))}
