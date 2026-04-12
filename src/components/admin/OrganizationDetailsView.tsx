@@ -1259,6 +1259,11 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
           <OrgRemindersTab organizationId={organization.id} />
         </TabsContent>
 
+        {/* Billing Documents Tab */}
+        <TabsContent value="billing-docs">
+          <OrgBillingDocsTab organizationId={organization.id} />
+        </TabsContent>
+
         {/* Settings Tab */}
         <TabsContent value="settings" className="space-y-6">
           <Card className={`${cardClass} border-primary/20`}>
