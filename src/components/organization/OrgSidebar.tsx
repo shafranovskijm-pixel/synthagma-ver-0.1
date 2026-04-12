@@ -190,7 +190,7 @@ export function OrgSidebar() {
                 </div>
               </button>
             </TooltipTrigger>
-            <TooltipContent side="right">Нажмите, чтобы изменить значок</TooltipContent>
+            <TooltipContent side="right" className="z-[100]">Нажмите, чтобы изменить значок</TooltipContent>
           </Tooltip>
         </div>
 
@@ -238,7 +238,7 @@ export function OrgSidebar() {
                     <TooltipContent
                       side="right"
                       sideOffset={12}
-                      className="rounded-xl px-4 py-2 text-sm font-medium shadow-lg border-border/60 backdrop-blur-sm"
+                      className="z-[100] rounded-xl px-4 py-2 text-sm font-medium shadow-lg border-border/60 backdrop-blur-sm"
                       style={{
                         backgroundColor: `hsl(${brandHsl})`,
                         color: 'white',
@@ -266,7 +266,7 @@ export function OrgSidebar() {
                 <LogOut className="h-5 w-5" />
               </button>
             </TooltipTrigger>
-            <TooltipContent side="right">Выйти</TooltipContent>
+            <TooltipContent side="right" className="z-[100]">Выйти</TooltipContent>
           </Tooltip>
         </div>
       </aside>
