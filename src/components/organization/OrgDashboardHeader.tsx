@@ -1,12 +1,13 @@
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, FileSpreadsheet, Menu, CreditCard, HelpCircle, User, LogOut, Handshake, Sparkles, ImagePlus, ShoppingBag } from "lucide-react";
+import { Plus, FileSpreadsheet, Menu, CreditCard, HelpCircle, User, LogOut, Handshake, Sparkles, ImagePlus, ShoppingBag, Wand2, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { showLimitToast } from "@/utils/limitToast";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { OrgNotifications } from "./OrgNotifications";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { differenceInDays } from "date-fns";
 import defaultCoverImg from "@/assets/default-org-cover.jpg";
 import {
@@ -31,6 +32,7 @@ export function OrgDashboardHeader() {
   const navigate = useNavigate();
   const d = useOrgDashboard();
   const coverInputRef = useRef<HTMLInputElement>(null);
+  const [isGeneratingCover, setIsGeneratingCover] = useState(false);
 
   const activeTab = d.tabNavigation.activeTab;
   const organizationName = d.organizationName;
@@ -40,6 +42,26 @@ export function OrgDashboardHeader() {
   const logoUrl = d.branding.brandingSettings.logoUrl;
   const coverUrl = d.branding.brandingSettings.coverUrl;
   const coverPosition = d.branding.brandingSettings.coverPosition;
+
+  const handleGenerateAICover = useCallback(async () => {
+    if (!organizationId || isGeneratingCover) return;
+    setIsGeneratingCover(true);
+    toast.info("Генерируем обложку с ИИ...", { duration: 10000 });
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-cover", {
+        body: { organizationId, type: "org" },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success("Обложка сгенерирована!");
+      window.location.reload();
+    } catch (e: any) {
+      console.error("AI cover generation error:", e);
+      toast.error(e?.message || "Ошибка генерации обложки");
+    } finally {
+      setIsGeneratingCover(false);
+    }
+  }, [organizationId, isGeneratingCover]);
 
   // Tariff info
   const [paidUntil, setPaidUntil] = useState<string | null>(null);
@@ -202,14 +224,24 @@ export function OrgDashboardHeader() {
           </div>
         </div>
 
-        {/* Edit cover button */}
-        <button
-          onClick={() => coverInputRef.current?.click()}
-          className="absolute top-3 right-3 flex items-center gap-1.5 px-3 py-1.5 bg-black/40 hover:bg-black/60 backdrop-blur-sm text-white text-xs font-medium rounded-lg transition-colors"
-        >
-          <ImagePlus className="w-3.5 h-3.5" />
-          Изменить обложку
-        </button>
+        {/* Cover action buttons */}
+        <div className="absolute top-3 right-3 flex items-center gap-1.5">
+          <button
+            onClick={handleGenerateAICover}
+            disabled={isGeneratingCover}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-black/40 hover:bg-black/60 backdrop-blur-sm text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
+          >
+            {isGeneratingCover ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />}
+            {isGeneratingCover ? "Генерация..." : "Сгенерировать с ИИ"}
+          </button>
+          <button
+            onClick={() => coverInputRef.current?.click()}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-black/40 hover:bg-black/60 backdrop-blur-sm text-white text-xs font-medium rounded-lg transition-colors"
+          >
+            <ImagePlus className="w-3.5 h-3.5" />
+            Изменить обложку
+          </button>
+        </div>
         <input
           ref={coverInputRef}
           type="file"
