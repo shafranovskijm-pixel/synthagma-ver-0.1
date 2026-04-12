@@ -496,17 +496,19 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
   const saveTariffSettings = async () => {
     setIsSavingTariff(true);
     try {
+      const updatePayload: Record<string, unknown> = {
+        tariff_custom_label: tariffCustomLabel || null,
+        paid_until: tariffPaidUntil || null,
+        custom_max_courses: customLimits.maxCourses,
+        custom_max_students: customLimits.maxStudents,
+        custom_max_trained_per_month: customLimits.maxTrainedPerMonth,
+        custom_ai_generations_limit: customLimits.aiGenerationsLimit,
+        custom_storage_limit_bytes: customLimits.storageLimitBytes,
+      };
+      console.log("Saving tariff settings:", updatePayload);
       const { error } = await supabase
         .from("organizations")
-        .update({
-          tariff_custom_label: tariffCustomLabel || null,
-          paid_until: tariffPaidUntil || null,
-          custom_max_courses: customLimits.maxCourses,
-          custom_max_students: customLimits.maxStudents,
-          custom_max_trained_per_month: customLimits.maxTrainedPerMonth,
-          custom_ai_generations_limit: customLimits.aiGenerationsLimit,
-          custom_storage_limit_bytes: customLimits.storageLimitBytes,
-        } as any)
+        .update(updatePayload as any)
         .eq("id", organization.id);
       if (error) throw error;
       toast.success("Тарифные настройки сохранены");
@@ -1657,86 +1659,51 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
               {/* Editable Limits */}
               <div className="space-y-3">
                 <Label>Лимиты ресурсов</Label>
-                <p className="text-sm text-muted-foreground">Оставьте пустым — будет использован лимит из тарифа. Введите -1 для безлимита.</p>
+                <p className="text-sm text-muted-foreground">Оставьте пустым — будет использован лимит из тарифа. Нажмите ∞ для безлимита.</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-1.5 text-sm font-medium">
-                      <BookOpen className="w-3.5 h-3.5" /> Курсы
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        placeholder={String(planInfo.limits.maxCourses === -1 ? "∞" : planInfo.limits.maxCourses)}
-                        value={customLimits.maxCourses === null ? "" : customLimits.maxCourses}
-                        onChange={(e) => setCustomLimits(prev => ({ ...prev, maxCourses: e.target.value === "" ? null : Number(e.target.value) }))}
-                        className="w-28"
-                      />
-                      <span className="text-sm text-muted-foreground">использовано: {stats.totalCourses}</span>
-                    </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-1.5 text-sm font-medium">
-                      <Users className="w-3.5 h-3.5" /> Ученики
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        placeholder={String(planInfo.limits.maxStudents === -1 ? "∞" : planInfo.limits.maxStudents)}
-                        value={customLimits.maxStudents === null ? "" : customLimits.maxStudents}
-                        onChange={(e) => setCustomLimits(prev => ({ ...prev, maxStudents: e.target.value === "" ? null : Number(e.target.value) }))}
-                        className="w-28"
-                      />
-                      <span className="text-sm text-muted-foreground">использовано: {stats.totalStudents}</span>
-                    </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-1.5 text-sm font-medium">
-                      <Users className="w-3.5 h-3.5" /> Регистраций в месяц
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        placeholder={String(planInfo.limits.maxTrainedPerMonth === -1 ? "∞" : planInfo.limits.maxTrainedPerMonth)}
-                        value={customLimits.maxTrainedPerMonth === null ? "" : customLimits.maxTrainedPerMonth}
-                        onChange={(e) => setCustomLimits(prev => ({ ...prev, maxTrainedPerMonth: e.target.value === "" ? null : Number(e.target.value) }))}
-                        className="w-28"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-1.5 text-sm font-medium">
-                      <Sparkles className="w-3.5 h-3.5" /> ИИ-генерации
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        placeholder={aiGenerationsLimit === Infinity ? "∞" : String(aiGenerationsLimit)}
-                        value={customLimits.aiGenerationsLimit === null ? "" : customLimits.aiGenerationsLimit}
-                        onChange={(e) => setCustomLimits(prev => ({ ...prev, aiGenerationsLimit: e.target.value === "" ? null : Number(e.target.value) }))}
-                        className="w-28"
-                      />
-                      <span className="text-sm text-muted-foreground">использовано: {usage.ai_generations_count}</span>
-                    </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-1.5 text-sm font-medium">
-                      <HardDrive className="w-3.5 h-3.5" /> Хранилище (ГБ)
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        placeholder={String(Math.round(settings.storage_limit_bytes / 1073741824))}
-                        value={customLimits.storageLimitBytes === null ? "" : customLimits.storageLimitBytes === -1 ? -1 : Math.round(customLimits.storageLimitBytes / 1073741824)}
-                        onChange={(e) => {
-                          const val = e.target.value === "" ? null : Number(e.target.value);
-                          setCustomLimits(prev => ({ ...prev, storageLimitBytes: val === null ? null : val === -1 ? -1 : val * 1073741824 }));
-                        }}
-                        className="w-28"
-                      />
-                      <span className="text-sm text-muted-foreground">использовано: {formatBytes(usage.storage_bytes)}</span>
-                    </div>
-                  </div>
+                  {([
+                    { key: 'maxCourses' as const, label: 'Курсы', icon: <BookOpen className="w-3.5 h-3.5" />, planDefault: planInfo.limits.maxCourses, usage: `использовано: ${stats.totalCourses}`, isBytes: false },
+                    { key: 'maxStudents' as const, label: 'Ученики', icon: <Users className="w-3.5 h-3.5" />, planDefault: planInfo.limits.maxStudents, usage: `использовано: ${stats.totalStudents}`, isBytes: false },
+                    { key: 'maxTrainedPerMonth' as const, label: 'Регистраций в месяц', icon: <Users className="w-3.5 h-3.5" />, planDefault: planInfo.limits.maxTrainedPerMonth, usage: null, isBytes: false },
+                    { key: 'aiGenerationsLimit' as const, label: 'ИИ-генерации', icon: <Sparkles className="w-3.5 h-3.5" />, planDefault: aiGenerationsLimit === Infinity ? -1 : aiGenerationsLimit, usage: `использовано: ${usage.ai_generations_count}`, isBytes: false },
+                    { key: 'storageLimitBytes' as const, label: 'Хранилище (ГБ)', icon: <HardDrive className="w-3.5 h-3.5" />, planDefault: settings.storage_limit_bytes, usage: `использовано: ${formatBytes(usage.storage_bytes)}`, isBytes: true },
+                  ]).map(({ key, label, icon, planDefault, usage: usageStr, isBytes }) => {
+                    const rawVal = customLimits[key];
+                    const isUnlimited = rawVal === -1;
+                    const displayVal = isUnlimited ? "∞" : rawVal === null ? "" : isBytes ? String(Math.round(rawVal / 1073741824)) : String(rawVal);
+                    const placeholderVal = planDefault === -1 ? "∞" : isBytes ? String(Math.round(planDefault / 1073741824)) : String(planDefault);
+                    return (
+                      <div key={key} className="space-y-1.5">
+                        <div className="flex items-center gap-1.5 text-sm font-medium">{icon} {label}</div>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="text"
+                            inputMode="numeric"
+                            placeholder={placeholderVal}
+                            value={displayVal}
+                            disabled={isUnlimited}
+                            onChange={(e) => {
+                              const v = e.target.value.replace(/[^0-9]/g, '');
+                              const num = v === '' ? null : isBytes ? Number(v) * 1073741824 : Number(v);
+                              setCustomLimits(prev => ({ ...prev, [key]: num }));
+                            }}
+                            className="w-28"
+                          />
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant={isUnlimited ? "default" : "outline"}
+                            className="px-2 text-base"
+                            onClick={() => setCustomLimits(prev => ({ ...prev, [key]: isUnlimited ? null : -1 }))}
+                            title={isUnlimited ? "Убрать безлимит" : "Безлимит"}
+                          >∞</Button>
+                          {usageStr && <span className="text-sm text-muted-foreground">{usageStr}</span>}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
+              </div>
               </div>
 
               <Button onClick={saveTariffSettings} disabled={isSavingTariff} className="gap-2">
