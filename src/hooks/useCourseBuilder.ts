@@ -18,6 +18,30 @@ import {
 } from "@/components/course-builder/LessonTypeConfig";
 import { AIGenerateType } from "@/components/course-builder/AIGenerateDialog";
 
+// --- Local draft helpers ---
+const DRAFT_PREFIX = 'course_draft_';
+
+function saveDraftToLocal(courseId: string | undefined, title: string, description: string, lessons: Lesson[]) {
+  try {
+    const key = `${DRAFT_PREFIX}${courseId || 'new'}`;
+    const draft = { title, description, lessons, savedAt: Date.now() };
+    localStorage.setItem(key, JSON.stringify(draft));
+  } catch { /* quota exceeded — ignore */ }
+}
+
+function loadDraftFromLocal(courseId: string | undefined): { title: string; description: string; lessons: Lesson[]; savedAt: number } | null {
+  try {
+    const key = `${DRAFT_PREFIX}${courseId || 'new'}`;
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch { return null; }
+}
+
+function clearDraftFromLocal(courseId: string | undefined) {
+  try { localStorage.removeItem(`${DRAFT_PREFIX}${courseId || 'new'}`); } catch {}
+}
+
 export function useCourseBuilder() {
   const navigate = useNavigate();
   const { courseId: paramCourseId } = useParams();
