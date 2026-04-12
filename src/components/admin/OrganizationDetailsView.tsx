@@ -159,7 +159,7 @@ const cardClass = "shadow-sm hover:shadow-md transition-shadow duration-200";
 
 export function OrganizationDetailsView({ organization, onBack }: OrganizationDetailsViewProps) {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState("courses");
   const [showSkillspaceImport, setShowSkillspaceImport] = useState(false);
   const [showSkillspaceBatchImport, setShowSkillspaceBatchImport] = useState(false);
   const [showStudentBulkImport, setShowStudentBulkImport] = useState(false);
