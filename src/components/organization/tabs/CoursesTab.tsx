@@ -17,7 +17,8 @@ import {
   BookOpen, Users, Edit, Eye, Trash2, FolderOpen, Folder,
   ChevronDown, ChevronRight, MoreVertical, FolderPlus, 
   MoveRight, Pencil, Video, VideoOff, Lock, Unlock, FastForward,
-  Sparkles, ShoppingCart, GripVertical, CheckCircle, Palette, Play, Copy, ImagePlus, Wand2
+  Sparkles, ShoppingCart, GripVertical, CheckCircle, Palette, Play, Copy, ImagePlus, Wand2,
+  Radio, Box
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { useCourses } from "@/hooks/useCourses";
@@ -1163,9 +1164,77 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
     </div>
   );
 
+  const [contentTab, setContentTab] = useState<"courses" | "webinars" | "3d">("courses");
+
   return (
     <div className="space-y-4 lg:space-y-6">
       <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
+
+      {/* Content type tabs */}
+      <div className="flex items-center gap-1 bg-muted rounded-xl p-1 w-fit">
+        <button
+          onClick={() => setContentTab("courses")}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            contentTab === "courses"
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <BookOpen className="w-4 h-4 inline-block mr-2" />
+          Курсы
+        </button>
+        <button
+          onClick={() => setContentTab("webinars")}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            contentTab === "webinars"
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Radio className="w-4 h-4 inline-block mr-2" />
+          Вебинары
+        </button>
+        <button
+          onClick={() => setContentTab("3d")}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            contentTab === "3d"
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Box className="w-4 h-4 inline-block mr-2" />
+          3D-тренажёры
+        </button>
+      </div>
+
+      {/* Webinars stub */}
+      {contentTab === "webinars" && (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
+            <Radio className="w-8 h-8 text-primary" />
+          </div>
+          <h3 className="text-xl font-semibold text-foreground mb-2">Вебинары</h3>
+          <p className="text-muted-foreground max-w-md">
+            Раздел вебинаров скоро будет доступен. Вы сможете проводить онлайн-трансляции, записывать вебинары и делиться ими с учениками.
+          </p>
+        </div>
+      )}
+
+      {/* 3D trainers stub */}
+      {contentTab === "3d" && (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
+            <Box className="w-8 h-8 text-primary" />
+          </div>
+          <h3 className="text-xl font-semibold text-foreground mb-2">3D-тренажёры</h3>
+          <p className="text-muted-foreground max-w-md">
+            Раздел 3D-тренажёров на Unity скоро будет доступен. Создавайте интерактивные симуляции и практические задания в трёхмерном пространстве.
+          </p>
+        </div>
+      )}
+
+      {/* Courses content */}
+      {contentTab === "courses" && <>
       {/* Filters */}
       <div className="bg-card rounded-xl lg:rounded-2xl border border-border p-3 lg:p-4">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 lg:gap-4">
@@ -1619,6 +1688,7 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      </>}
     </div>
   );
 });
