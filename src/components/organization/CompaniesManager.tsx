@@ -211,7 +211,7 @@ export function CompaniesManager({ organizationId }: CompaniesManagerProps) {
                   <div className="flex items-start justify-between mb-3">
                     <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center"><Building2 className="w-6 h-6 text-primary" /></div>
                     <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity" title="Войти как компания" onClick={(e) => handleViewAsCompany(e, company.id)}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity" title="Войти как компания" onClick={(e) => handleViewAsCompany(e, company)}>
                         <ExternalLink className="w-4 h-4 text-muted-foreground hover:text-primary" />
                       </Button>
                       <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
