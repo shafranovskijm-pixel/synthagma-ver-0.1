@@ -71,6 +71,7 @@ import { OrgBillingDocsTab } from "./OrgBillingDocsTab";
 import { getPlanInfo, type SubscriptionPlan } from "@/constants/subscriptionPlans";
 import { SkillspaceImportDialog } from "./SkillspaceImportDialog";
 import { SkillspaceBatchImportDialog } from "./SkillspaceBatchImportDialog";
+import { StudentBulkImportDialog } from "./StudentBulkImportDialog";
 
 interface Organization {
   id: string;
@@ -153,6 +154,8 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
   const [activeTab, setActiveTab] = useState("overview");
   const [showSkillspaceImport, setShowSkillspaceImport] = useState(false);
   const [showSkillspaceBatchImport, setShowSkillspaceBatchImport] = useState(false);
+  const [showStudentBulkImport, setShowStudentBulkImport] = useState(false);
+  const [pendingEnrollmentsCount, setPendingEnrollmentsCount] = useState(0);
   const [skillspaceUpdateCourse, setSkillspaceUpdateCourse] = useState<{ id: string; title: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [students, setStudents] = useState<Student[]>([]);
