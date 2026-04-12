@@ -63,6 +63,7 @@ export async function fetchCourses(organizationId: string): Promise<Course[]> {
       training_form: course.training_form ?? "Очная",
       notify_on_completion: course.notify_on_completion ?? false,
       completion_notify_emails: course.completion_notify_emails ?? null,
+      cover_image_url: course.cover_image_url ?? null,
     };
   });
 }

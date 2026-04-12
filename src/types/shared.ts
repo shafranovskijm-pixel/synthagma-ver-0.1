@@ -15,6 +15,7 @@ export interface Course {
   duration?: string;
   category_id?: string | null;
   skip_video_identification?: boolean;
+  cover_image_url?: string | null;
 }
 
 export interface CourseCategory {

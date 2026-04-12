@@ -809,6 +809,122 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
     );
   };
 
+  // Catalog view: group by category
+  const catalogCoursesByCategory = useMemo(() => {
+    const groups: { category: CourseCategory | null; courses: Course[] }[] = [];
+    const catMap = new Map<string, Course[]>();
+    const uncategorized: Course[] = [];
+
+    filteredCourses.forEach(course => {
+      if (course.category_id) {
+        if (!catMap.has(course.category_id)) catMap.set(course.category_id, []);
+        catMap.get(course.category_id)!.push(course);
+      } else {
+        uncategorized.push(course);
+      }
+    });
+
+    categories.forEach(cat => {
+      const courses = catMap.get(cat.id);
+      if (courses && courses.length > 0) {
+        groups.push({ category: cat, courses });
+      }
+    });
+    if (uncategorized.length > 0) {
+      groups.push({ category: null, courses: uncategorized });
+    }
+    return groups;
+  }, [filteredCourses, categories]);
+
+  // Catalog-style course card
+  const renderCatalogCard = (course: Course) => (
+    <div
+      key={course.id}
+      className="bg-card rounded-2xl border border-border overflow-hidden hover:shadow-lg transition-all cursor-pointer relative group"
+      onClick={() => handleCourseClick(course)}
+    >
+      {/* Cover image */}
+      <div className="relative h-44 bg-gradient-to-br from-primary/10 via-muted to-accent/10 flex items-center justify-center overflow-hidden">
+        {course.cover_image_url ? (
+          <img src={course.cover_image_url} alt={course.title} className="w-full h-full object-cover" />
+        ) : (
+          <BookOpen className="w-12 h-12 text-primary/30" />
+        )}
+        {/* Hover three-dot menu */}
+        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
+              <Button variant="secondary" size="icon" className="h-8 w-8 rounded-lg shadow-md bg-card/90 backdrop-blur-sm">
+                <MoreVertical className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="rounded-xl">
+              <DropdownMenuItem onClick={e => { e.stopPropagation(); handleDuplicate(course.id); }}>
+                <Copy className="w-4 h-4 mr-2" />
+                Дублировать
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={e => { e.stopPropagation(); navigate(`/course-builder/${course.id}`); }}>
+                <Edit className="w-4 h-4 mr-2" />
+                Настроить
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+
+      <div className="p-4 space-y-2.5">
+        {/* Status badge */}
+        <div className="flex items-center gap-2">
+          <span className={`inline-flex items-center gap-1 text-xs font-medium ${
+            course.is_published ? 'text-sigma-green' : 'text-muted-foreground'
+          }`}>
+            {course.is_published && <CheckCircle className="w-3.5 h-3.5" />}
+            {course.is_published ? 'Опубликован' : 'Черновик'}
+          </span>
+        </div>
+
+        {/* Title */}
+        <h3 className="font-semibold text-base leading-snug line-clamp-2">{course.title}</h3>
+
+        {/* Description */}
+        {course.description && (
+          <p className="text-sm text-muted-foreground line-clamp-3">{course.description}</p>
+        )}
+
+        {/* Category badge */}
+        {getCategoryById(course.category_id) && (
+          <span
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium text-white"
+            style={{ backgroundColor: getCategoryById(course.category_id)?.color }}
+          >
+            {getCategoryById(course.category_id)?.name}
+          </span>
+        )}
+
+        {/* Stats */}
+        <div className="flex items-center gap-3 text-xs text-muted-foreground pt-1">
+          <div className="flex items-center gap-1">
+            <Users className="w-3.5 h-3.5" />
+            {course.studentsCount || 0} учеников
+          </div>
+          <div className="flex items-center gap-1">
+            <BookOpen className="w-3.5 h-3.5" />
+            {course.lessonsCount || 0} уроков
+          </div>
+        </div>
+
+        {/* Edit button */}
+        <Button
+          variant="outline"
+          className="w-full rounded-xl text-primary border-primary/30 hover:bg-primary/5 mt-1"
+          onClick={e => { e.stopPropagation(); navigate(`/course-builder/${course.id}`); }}
+        >
+          Редактировать курс
+        </Button>
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-4 lg:space-y-6">
       {/* Filters */}
@@ -818,7 +934,7 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
             <div className="relative flex-1 sm:flex-none">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input 
-                placeholder="Поиск курсов..." 
+                placeholder="Поиск..." 
                 value={searchQuery} 
                 onChange={e => setSearchQuery(e.target.value)} 
                 className="pl-10 w-full sm:w-48 lg:w-64 rounded-xl text-sm" 
@@ -878,6 +994,21 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
             </div>
           </div>
           <div className="flex items-center gap-2 self-end lg:self-auto">
+            {/* Настроить каталог */}
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-xl gap-1.5 text-xs hidden sm:flex"
+              onClick={() => {
+                setEditingCategory(null);
+                setNewCategoryName("");
+                setNewCategoryColor("#6366f1");
+                setShowCategoryDialog(true);
+              }}
+            >
+              <Filter className="w-4 h-4" />
+              Настроить каталог
+            </Button>
             <TooltipProvider delayDuration={300}>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -977,58 +1108,33 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
           )}
         </div>
       ) : viewMode === "grid" ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
-          {filteredCourses.map(course => (
-            <div 
-              key={course.id} 
-              className={`bg-card rounded-2xl border overflow-hidden hover:shadow-lg transition-shadow cursor-pointer relative ${
-                selectedCourseIds.has(course.id) ? 'border-primary ring-2 ring-primary/20' : 'border-border'
-              }`}
-              onClick={() => handleCourseClick(course)}
-            >
-              {/* Selection Checkbox */}
-              <div 
-                className="absolute top-3 left-3 z-10"
-                onClick={e => toggleCourseSelection(course.id, e)}
-              >
-                <Checkbox 
-                  checked={selectedCourseIds.has(course.id)}
-                  className="bg-background/80 backdrop-blur-sm"
-                />
-              </div>
-              <div className="h-32 bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
-                <BookOpen className="w-12 h-12 text-primary/50" />
-              </div>
-              <div className="p-5">
-                <div className="flex items-start justify-between mb-2">
-                  <h3 className="font-semibold text-lg line-clamp-1">{course.title}</h3>
-                  <span className={`text-xs px-2 py-1 rounded-full ${
-                    course.is_published ? 'bg-sigma-green/10 text-sigma-green' : 'bg-muted text-muted-foreground'
-                  }`}>
-                    {course.is_published ? 'Опубликован' : 'Черновик'}
-                  </span>
+        <div className="space-y-8">
+          {catalogCoursesByCategory.map(({ category, courses: groupCourses }) => (
+            <div key={category?.id || "uncategorized"}>
+              {/* Category header */}
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2.5">
+                  {category && (
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: category.color }} />
+                  )}
+                  <h3 className="font-semibold text-lg">{category?.name || "Без категории"}</h3>
+                  <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{groupCourses.length}</span>
                 </div>
-                {course.description && (
-                  <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{course.description}</p>
-                )}
-                {getCategoryById(course.category_id) && (
-                  <span 
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium text-white mb-3" 
-                    style={{ backgroundColor: getCategoryById(course.category_id)?.color }}
-                  >
-                    {getCategoryById(course.category_id)?.name}
-                  </span>
-                )}
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-1">
-                    <Users className="w-4 h-4" />
-                    {course.studentsCount || 0} учеников
+                {category && (
+                  <div className="flex items-center gap-1.5">
+                    <Button variant="ghost" size="sm" className="text-xs rounded-lg gap-1" onClick={() => openEditCategory(category)}>
+                      <Pencil className="w-3.5 h-3.5" />
+                      Порядок курсов
+                    </Button>
+                    <Button variant="ghost" size="sm" className="text-xs rounded-lg gap-1 text-destructive hover:text-destructive" onClick={() => handleDeleteCategory(category.id)}>
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Удалить категорию
+                    </Button>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <BookOpen className="w-4 h-4" />
-                    {course.lessonsCount || 0} уроков
-                  </div>
-                </div>
+                )}
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                {groupCourses.map(course => renderCatalogCard(course))}
               </div>
             </div>
           ))}
