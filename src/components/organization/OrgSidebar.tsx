@@ -2,7 +2,7 @@ import { useState, useCallback, useRef } from "react";
 import { 
   BookOpen, Users, Settings, LogOut, Upload,
   Building2, HardHat, HardDrive, CreditCard, Lock, MessageCircle, Wallet,
-  BarChart3, Link, ShoppingBag, FileText, ClipboardList, FileSpreadsheet, BookCheck
+  BarChart3, Link, ShoppingBag, FileText, ClipboardList, FileSpreadsheet, BookCheck, Radio
 } from "lucide-react";
 import { SigmaLogo } from "@/components/ui/SigmaLogo";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
