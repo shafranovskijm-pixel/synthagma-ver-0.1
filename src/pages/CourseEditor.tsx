@@ -736,7 +736,17 @@ const CourseEditor = () => {
         courseDescription={description}
       />
 
-      {/* GitHub Import Dialog */}
+      {/* Page Settings Dialog */}
+      {courseId && (
+        <CoursePageSettingsDialog
+          open={isPageSettingsOpen}
+          onOpenChange={setIsPageSettingsOpen}
+          courseId={courseId}
+          courseTitle={title}
+        />
+      )}
+
+
       <GitHubImportDialog
         isOpen={isGitHubImportOpen}
         onClose={() => setIsGitHubImportOpen(false)}
