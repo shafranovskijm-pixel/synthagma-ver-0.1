@@ -11,9 +11,13 @@ import { LandingBenefitsSection, BenefitItem } from "@/components/course-landing
 import { LandingCtaSection } from "@/components/course-landing/LandingCtaSection";
 import { LandingLearnSection, LearnItem } from "@/components/course-landing/LandingLearnSection";
 import { LandingProcessSection } from "@/components/course-landing/LandingProcessSection";
+import { LandingTeachersSection, TeacherItem } from "@/components/course-landing/LandingTeachersSection";
+import { LandingReviewsSection, ReviewItem } from "@/components/course-landing/LandingReviewsSection";
+import { LandingPricingSection, PricingTier } from "@/components/course-landing/LandingPricingSection";
+import { LandingFaqSection, FaqItem } from "@/components/course-landing/LandingFaqSection";
 import { SectionToolbar } from "@/components/course-landing/SectionToolbar";
 
-const ALL_SECTIONS = ["hero", "audience", "learn", "program", "process", "benefits", "cta"];
+const ALL_SECTIONS = ["hero", "audience", "learn", "program", "process", "benefits", "teachers", "reviews", "pricing", "faq", "cta"];
 
 const SECTION_LABELS: Record<string, string> = {
   hero: "Шапка",
@@ -22,6 +26,10 @@ const SECTION_LABELS: Record<string, string> = {
   program: "Программа",
   process: "Как проходит",
   benefits: "Преимущества",
+  teachers: "Преподаватели",
+  reviews: "Отзывы",
+  pricing: "Тарифы",
+  faq: "Вопросы и ответы",
   cta: "Призыв к действию",
 };
 
@@ -31,6 +39,10 @@ interface LandingData {
   learn: { title: string; description: string; items: LearnItem[] };
   process: { title: string; content: string };
   benefits: BenefitItem[];
+  teachers: { title: string; description: string; items: TeacherItem[] };
+  reviews: { title: string; items: ReviewItem[] };
+  pricing: { title: string; tiers: PricingTier[] };
+  faq: { title: string; items: FaqItem[] };
   cta: { title: string; subtitle: string };
   sections_order: string[];
   sections_hidden: string[];
@@ -65,6 +77,10 @@ const defaultLanding: LandingData = {
     { icon: "award", title: "Практика", description: "Реальные задания и кейсы" },
     { icon: "users", title: "Поддержка", description: "Обратная связь от экспертов" },
   ],
+  teachers: { title: "Преподаватели курса", description: "", items: [] },
+  reviews: { title: "Отзывы о курсе", items: [] },
+  pricing: { title: "Выберите подходящий тариф", tiers: [] },
+  faq: { title: "Часто задаваемые вопросы", items: [] },
   cta: { title: "Начните обучение сегодня", subtitle: "Заполните форму и мы свяжемся с вами" },
   sections_order: ALL_SECTIONS,
   sections_hidden: [],
@@ -115,6 +131,10 @@ export default function CourseLandingEditor() {
           learn: { ...defaultLanding.learn, ...existing.learn },
           process: { ...defaultLanding.process, ...existing.process },
           benefits: existing.benefits || defaultLanding.benefits,
+          teachers: { ...defaultLanding.teachers, ...existing.teachers },
+          reviews: { ...defaultLanding.reviews, ...existing.reviews },
+          pricing: { ...defaultLanding.pricing, ...existing.pricing },
+          faq: { ...defaultLanding.faq, ...existing.faq },
           cta: { ...defaultLanding.cta, ...existing.cta },
           sections_order: existing.sections_order || ALL_SECTIONS,
           sections_hidden: existing.sections_hidden || [],
@@ -234,6 +254,101 @@ export default function CourseLandingEditor() {
     setLanding((l) => ({ ...l, benefits: l.benefits.filter((_, i) => i !== index) }));
   };
 
+  // Teachers handlers
+  const updateTeacher = (index: number, field: keyof TeacherItem, value: string) => {
+    setLanding((l) => {
+      const items = [...l.teachers.items];
+      items[index] = { ...items[index], [field]: value };
+      return { ...l, teachers: { ...l.teachers, items } };
+    });
+  };
+  const addTeacher = () => {
+    setLanding((l) => ({
+      ...l,
+      teachers: { ...l.teachers, items: [...l.teachers.items, { name: "Имя преподавателя", role: "Должность", description: "Описание", photo_url: null }] },
+    }));
+  };
+  const removeTeacher = (index: number) => {
+    setLanding((l) => ({ ...l, teachers: { ...l.teachers, items: l.teachers.items.filter((_, i) => i !== index) } }));
+  };
+
+  // Reviews handlers
+  const updateReview = (index: number, field: keyof ReviewItem, value: string | number) => {
+    setLanding((l) => {
+      const items = [...l.reviews.items];
+      items[index] = { ...items[index], [field]: value };
+      return { ...l, reviews: { ...l.reviews, items } };
+    });
+  };
+  const addReview = () => {
+    setLanding((l) => ({
+      ...l,
+      reviews: { ...l.reviews, items: [...l.reviews.items, { name: "Имя", text: "Текст отзыва", rating: 5 }] },
+    }));
+  };
+  const removeReview = (index: number) => {
+    setLanding((l) => ({ ...l, reviews: { ...l.reviews, items: l.reviews.items.filter((_, i) => i !== index) } }));
+  };
+
+  // Pricing handlers
+  const updateTier = (index: number, field: keyof PricingTier, value: any) => {
+    setLanding((l) => {
+      const tiers = [...l.pricing.tiers];
+      tiers[index] = { ...tiers[index], [field]: value };
+      return { ...l, pricing: { ...l.pricing, tiers } };
+    });
+  };
+  const updateTierFeature = (tierIndex: number, featureIndex: number, value: string) => {
+    setLanding((l) => {
+      const tiers = [...l.pricing.tiers];
+      const features = [...tiers[tierIndex].features];
+      features[featureIndex] = value;
+      tiers[tierIndex] = { ...tiers[tierIndex], features };
+      return { ...l, pricing: { ...l.pricing, tiers } };
+    });
+  };
+  const addTierFeature = (tierIndex: number) => {
+    setLanding((l) => {
+      const tiers = [...l.pricing.tiers];
+      tiers[tierIndex] = { ...tiers[tierIndex], features: [...tiers[tierIndex].features, "Новый пункт"] };
+      return { ...l, pricing: { ...l.pricing, tiers } };
+    });
+  };
+  const removeTierFeature = (tierIndex: number, featureIndex: number) => {
+    setLanding((l) => {
+      const tiers = [...l.pricing.tiers];
+      tiers[tierIndex] = { ...tiers[tierIndex], features: tiers[tierIndex].features.filter((_, i) => i !== featureIndex) };
+      return { ...l, pricing: { ...l.pricing, tiers } };
+    });
+  };
+  const addTier = () => {
+    setLanding((l) => ({
+      ...l,
+      pricing: { ...l.pricing, tiers: [...l.pricing.tiers, { name: "Тариф", price: 0, features: ["Доступ к курсу"], is_popular: false }] },
+    }));
+  };
+  const removeTier = (index: number) => {
+    setLanding((l) => ({ ...l, pricing: { ...l.pricing, tiers: l.pricing.tiers.filter((_, i) => i !== index) } }));
+  };
+
+  // FAQ handlers
+  const updateFaqItem = (index: number, field: keyof FaqItem, value: string) => {
+    setLanding((l) => {
+      const items = [...l.faq.items];
+      items[index] = { ...items[index], [field]: value };
+      return { ...l, faq: { ...l.faq, items } };
+    });
+  };
+  const addFaqItem = () => {
+    setLanding((l) => ({
+      ...l,
+      faq: { ...l.faq, items: [...l.faq.items, { question: "Вопрос?", answer: "Ответ" }] },
+    }));
+  };
+  const removeFaqItem = (index: number) => {
+    setLanding((l) => ({ ...l, faq: { ...l.faq, items: l.faq.items.filter((_, i) => i !== index) } }));
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -351,6 +466,72 @@ export default function CourseLandingEditor() {
               onBenefitChange={updateBenefit}
               onAddBenefit={addBenefit}
               onRemoveBenefit={removeBenefit}
+            />
+          </div>
+        );
+      case "teachers":
+        return (
+          <div key={sectionId} className={wrapperClass}>
+            {toolbar}
+            <LandingTeachersSection
+              title={landing.teachers.title}
+              description={landing.teachers.description}
+              teachers={landing.teachers.items}
+              courseId={courseId}
+              isEditing
+              onTitleChange={(v) => setLanding((l) => ({ ...l, teachers: { ...l.teachers, title: v } }))}
+              onDescriptionChange={(v) => setLanding((l) => ({ ...l, teachers: { ...l.teachers, description: v } }))}
+              onTeacherChange={updateTeacher}
+              onAddTeacher={addTeacher}
+              onRemoveTeacher={removeTeacher}
+            />
+          </div>
+        );
+      case "reviews":
+        return (
+          <div key={sectionId} className={wrapperClass}>
+            {toolbar}
+            <LandingReviewsSection
+              title={landing.reviews.title}
+              reviews={landing.reviews.items}
+              isEditing
+              onTitleChange={(v) => setLanding((l) => ({ ...l, reviews: { ...l.reviews, title: v } }))}
+              onReviewChange={updateReview}
+              onAddReview={addReview}
+              onRemoveReview={removeReview}
+            />
+          </div>
+        );
+      case "pricing":
+        return (
+          <div key={sectionId} className={wrapperClass}>
+            {toolbar}
+            <LandingPricingSection
+              title={landing.pricing.title}
+              tiers={landing.pricing.tiers}
+              isEditing
+              onTitleChange={(v) => setLanding((l) => ({ ...l, pricing: { ...l.pricing, title: v } }))}
+              onTierChange={updateTier}
+              onTierFeatureChange={updateTierFeature}
+              onAddTierFeature={addTierFeature}
+              onRemoveTierFeature={removeTierFeature}
+              onAddTier={addTier}
+              onRemoveTier={removeTier}
+            />
+          </div>
+        );
+      case "faq":
+        return (
+          <div key={sectionId} className={wrapperClass}>
+            {toolbar}
+            <LandingFaqSection
+              title={landing.faq.title}
+              items={landing.faq.items}
+              isEditing
+              onTitleChange={(v) => setLanding((l) => ({ ...l, faq: { ...l.faq, title: v } }))}
+              onItemChange={updateFaqItem}
+              onAddItem={addFaqItem}
+              onRemoveItem={removeFaqItem}
             />
           </div>
         );

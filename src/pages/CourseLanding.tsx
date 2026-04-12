@@ -13,6 +13,10 @@ import { LandingBenefitsSection } from "@/components/course-landing/LandingBenef
 import { LandingCtaSection } from "@/components/course-landing/LandingCtaSection";
 import { LandingLearnSection } from "@/components/course-landing/LandingLearnSection";
 import { LandingProcessSection } from "@/components/course-landing/LandingProcessSection";
+import { LandingTeachersSection } from "@/components/course-landing/LandingTeachersSection";
+import { LandingReviewsSection } from "@/components/course-landing/LandingReviewsSection";
+import { LandingPricingSection } from "@/components/course-landing/LandingPricingSection";
+import { LandingFaqSection } from "@/components/course-landing/LandingFaqSection";
 
 interface CourseData {
   id: string;
@@ -202,8 +206,12 @@ export default function CourseLanding() {
   const learn = landingContent?.learn || { title: "", description: "", items: [] };
   const process = landingContent?.process || { title: "", content: "" };
   const benefits = landingContent?.benefits || [];
+  const teachers = landingContent?.teachers || { title: "Преподаватели курса", description: "", items: [] };
+  const reviews = landingContent?.reviews || { title: "Отзывы о курсе", items: [] };
+  const pricing = landingContent?.pricing || { title: "Выберите подходящий тариф", tiers: [] };
+  const faq = landingContent?.faq || { title: "Часто задаваемые вопросы", items: [] };
   const cta = landingContent?.cta || { title: "Начните обучение сегодня", subtitle: "Заполните форму и мы свяжемся с вами" };
-  const sectionsOrder: string[] = landingContent?.sections_order || ["hero", "audience", "learn", "program", "process", "benefits", "cta"];
+  const sectionsOrder: string[] = landingContent?.sections_order || ["hero", "audience", "learn", "program", "process", "benefits", "teachers", "reviews", "pricing", "faq", "cta"];
   const sectionsHidden: string[] = landingContent?.sections_hidden || [];
 
   // Migrate old string[] audience items
@@ -267,6 +275,22 @@ export default function CourseLanding() {
         ) : null;
       case "benefits":
         return benefits.length > 0 ? <LandingBenefitsSection key={sectionId} benefits={benefits} /> : null;
+      case "teachers":
+        return teachers.items?.length > 0 ? (
+          <LandingTeachersSection key={sectionId} title={teachers.title} description={teachers.description} teachers={teachers.items} />
+        ) : null;
+      case "reviews":
+        return reviews.items?.length > 0 ? (
+          <LandingReviewsSection key={sectionId} title={reviews.title} reviews={reviews.items} />
+        ) : null;
+      case "pricing":
+        return pricing.tiers?.length > 0 ? (
+          <LandingPricingSection key={sectionId} title={pricing.title} tiers={pricing.tiers} />
+        ) : null;
+      case "faq":
+        return faq.items?.length > 0 ? (
+          <LandingFaqSection key={sectionId} title={faq.title} items={faq.items} />
+        ) : null;
       case "cta":
         return (
           <LandingCtaSection
