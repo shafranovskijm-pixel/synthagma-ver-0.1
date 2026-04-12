@@ -1,36 +1,83 @@
 
 
-# Исправления пакетного импорта SkillSpace
+# Fix: SkillSpace parser not importing lesson content for some courses
 
-## Найденные проблемы
+## Problem
 
-1. **`getClaims()` не существует** в Supabase JS v2 — вызов падает с ошибкой, и функция возвращает 401. Нужно заменить на `auth.getUser()`.
+The "Школа Целительства" course imported 37 lessons but ALL have empty content ("Пустой урок"). The lesson API returns only ~487 bytes per lesson, while working courses return 15-55KB. This means `pagesPublished` and `pages` are empty in the response.
 
-2. **Счётчик «0 ссылок»** показывается на скриншоте, хотя в textarea есть placeholder-текст — это нормально (placeholder не является значением). Но стоит показывать счётчик только когда есть реальный ввод.
+Different SkillSpace schools/courses store content differently. Some embed pages directly in the lesson object, others store them separately and require an additional API call to fetch page content.
 
-3. **Авторизация клиента** — вызов идёт с `Bearer ${supabaseKey}` (anon key), а не с токеном пользователя. Edge-функция не сможет определить, кто вызывает. Нужно использовать `supabase.auth.getSession()` для получения настоящего токена.
+## Root Cause
 
-4. **Фоновая обработка** — Deno Edge Functions могут не гарантировать выполнение кода после `return response`. Нужно переделать: обрабатывать синхронно (не отвечая до завершения) или использовать `waitUntil`-подход. Более надёжно — вернуть ответ сразу и обрабатывать через отдельные вызовы, но проще всего использовать `EdgeRuntime.waitUntil` если доступен, или просто обработать всё до возврата ответа с периодическими обновлениями в БД.
+The parser fetches `/api/rest/school/lesson/{uuid}` and expects `pagesPublished` or `pages` to contain content blocks inline. For this course, those fields are empty arrays. The content needs to be fetched from a separate pages endpoint.
 
-## План исправлений
+## Plan
 
-### 1. Edge Function `batch-skillspace-import`
-- Заменить `getClaims()` на `auth.getUser()` для проверки авторизации
-- Убедиться что `created_by` берётся из `user.id`
-- Вместо фонового `(async () => {})()` — использовать последовательную обработку до возврата ответа (Edge Functions на Supabase поддерживают до 150с выполнения, каждый курс ~20-30с)
-- Для больших пакетов (>5 ссылок): вернуть batchId сразу, а для обработки вызывать себя же рекурсивно для следующей задачи
+### 1. Add fallback page fetching in `parse-skillspace-course/index.ts`
 
-### 2. Клиент `SkillspaceBatchImportDialog.tsx`
-- Использовать `supabase.auth.getSession()` и отправлять настоящий user token вместо anon key
-- Счётчик ссылок: скрывать когда 0
+When `pagesPublished` and `pages` are empty (no blocks found), try these additional endpoints to fetch page content:
 
-### 3. Надёжная фоновая обработка
-Архитектура: функция создаёт записи и сразу возвращает `batchId`. Затем вызывает себя рекурсивно (fire-and-forget fetch на свой же URL) с параметром `{ processBatchId }` — этот вызов берёт следующую pending-задачу, обрабатывает её и вызывает себя снова. Так каждый курс — отдельный invocation, нет риска таймаута.
+- `/api/rest/school/lesson/{uuid}/page/list`
+- `/api/rest/school/lesson/{uuid}/page`  
+- `/api/rest/school/step/{id}/page/list`
+- `/api/rest/school/step/{id}/page`
 
-## Файлы
+Also log the raw lesson keys and first 500 chars when content is empty for better debugging.
 
-| Действие | Файл |
-|----------|------|
-| Изменить | `supabase/functions/batch-skillspace-import/index.ts` — исправить auth, сделать рекурсивную обработку |
-| Изменить | `src/components/admin/SkillspaceBatchImportDialog.tsx` — использовать user token |
+### 2. Add raw response logging for empty lessons
+
+When a lesson returns ~487 bytes and no blocks are found, log the actual response body (truncated) so we can see the exact data structure SkillSpace returns. This helps diagnose future content extraction issues.
+
+### 3. Try `version: "published"` query parameter
+
+Some SkillSpace APIs require `?version=published` to return the published content. Add this parameter to the lesson fetch.
+
+### Technical Details
+
+**File**: `supabase/functions/parse-skillspace-course/index.ts`
+
+In the lesson content extraction section (around line 615-655), after failing to find blocks in `pagesPublished`/`pages`/`blocks`, add:
+
+```typescript
+// Fallback: fetch pages separately
+if (jsonBlocks.length === 0) {
+  const pagePaths = [
+    `/api/rest/school/lesson/${lesson.uuid}/page/list`,
+    `/api/rest/school/lesson/${lesson.uuid}/page`,
+    `/api/rest/school/step/${lesson.uuid}/page/list`,
+    `/api/rest/school/step/${lesson.id}/page/list`,
+  ];
+  for (const pagePath of pagePaths) {
+    const pageRes = await apiFetch(pagePath);
+    if (pageRes.ok && pageRes.data) {
+      // Extract blocks from pages response
+      const pagesArray = Array.isArray(pageRes.data) ? pageRes.data : 
+                         pageRes.data.pages || pageRes.data.list || [pageRes.data];
+      for (const page of pagesArray) {
+        const blocks = page.content?.blocks || page.blocks || [];
+        if (blocks.length > 0) {
+          jsonBlocks.push(...editorBlocksToJsonBlocks(blocks));
+        }
+      }
+      if (jsonBlocks.length > 0) {
+        log(`Fallback page fetch success via ${pagePath}: ${jsonBlocks.length} blocks`);
+        break;
+      }
+    }
+  }
+}
+
+// Log raw data when still empty for debugging
+if (jsonBlocks.length === 0) {
+  const rawKeys = Object.keys(lessonData).join(", ");
+  log(`Empty lesson "${lessonTitle}" keys: ${rawKeys}`);
+  // Log pagesPublished structure
+  if (lessonData.pagesPublished) {
+    log(`pagesPublished: ${JSON.stringify(lessonData.pagesPublished).substring(0, 300)}`);
+  }
+}
+```
+
+Also modify `apiFetch` to preserve raw text for small responses (under 2KB) so we can debug the actual response structure when lessons are empty.
 
