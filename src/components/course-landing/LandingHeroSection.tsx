@@ -119,6 +119,7 @@ export function LandingHeroSection({
               Показывать цену
             </label>
           )}
+        </div>
 
         <div className="flex gap-6 mt-6 text-white/60 text-sm">
           {duration && <span>⏱ {duration}</span>}
