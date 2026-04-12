@@ -296,7 +296,12 @@ export default function OrganizationProfile() {
             </div>
           </TabsContent>
 
-          {/* Tab 2: Notifications */}
+          {/* Tab 2: Settings */}
+          <TabsContent value="settings">
+            <SettingsTab />
+          </TabsContent>
+
+          {/* Tab 3: Notifications */}
           <TabsContent value="notifications">
             <Card className="rounded-2xl">
               <CardHeader>
