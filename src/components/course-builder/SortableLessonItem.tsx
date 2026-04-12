@@ -419,6 +419,22 @@ export function SortableLessonItem({
             </div>
           )}
 
+          {/* Homework */}
+          {lesson.type === "homework" && (
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Описание задания</Label>
+              <Textarea
+                value={lesson.content}
+                onChange={(e) => onUpdate({ content: e.target.value })}
+                placeholder="Опишите задание, которое должен выполнить ученик. Ученик сможет отправить текстовый ответ и прикрепить файлы."
+                className="rounded-xl min-h-[140px]"
+              />
+              <p className="text-xs text-muted-foreground">
+                📝 Ответы учеников будут доступны во вкладке «Проверка заданий» в панели управления организацией.
+              </p>
+            </div>
+          )}
+
           {/* Attachments for all lesson types */}
           <LessonAttachments
             lessonId={lesson.id}
