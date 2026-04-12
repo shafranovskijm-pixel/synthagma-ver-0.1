@@ -252,7 +252,7 @@ export function BroadcastManager() {
           continue;
         }
 
-        const publishedUrl = "https://synthagma-bloom.lovable.app";
+        const publishedUrl = "https://sintagma.com.ru";
         const actionUrl = `${publishedUrl}/email-response?token=${tokenData.id}`;
         const html = getEmailHtml(org.name, actionUrl);
         const subject = selectedTemplate === "inactive"

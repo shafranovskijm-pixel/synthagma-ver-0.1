@@ -12,11 +12,11 @@ const About = () => {
         <title>О платформе СИНТАГМА — СДО нового поколения</title>
         <meta name="description" content="Узнайте больше о платформе СИНТАГМА: история создания, команда разработчиков, преимущества для образовательных организаций." />
         <meta name="keywords" content="о нас, СИНТАГМА, образовательная платформа, команда разработчиков" />
-        <link rel="canonical" href="https://synthagma-bloom.lovable.app/about" />
+        <link rel="canonical" href="https://sintagma.com.ru/about" />
         <meta property="og:title" content="О платформе СИНТАГМА — СДО нового поколения" />
         <meta property="og:description" content="Узнайте больше о платформе СИНТАГМА: история создания, команда разработчиков, преимущества для образовательных организаций." />
-        <meta property="og:url" content="https://synthagma-bloom.lovable.app/about" />
-        <meta property="og:image" content="https://synthagma-bloom.lovable.app/og-image.png" />
+        <meta property="og:url" content="https://sintagma.com.ru/about" />
+        <meta property="og:image" content="https://sintagma.com.ru/og-image.png" />
       </Helmet>
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">

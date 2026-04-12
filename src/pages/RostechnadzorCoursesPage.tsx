@@ -238,8 +238,8 @@ const RostechnadzorCoursesPage = () => {
         <meta property="og:title" content="300+ готовых курсов для обучения — СИНТАГМА" />
         <meta property="og:description" content="Библиотека готовых курсов по 14 направлениям. Подключите к организации — не нужно разрабатывать контент с нуля." />
         <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://synthagma-bloom.lovable.app/rostechnadzor-courses" />
-        <link rel="canonical" href="https://synthagma-bloom.lovable.app/rostechnadzor-courses" />
+        <meta property="og:url" content="https://sintagma.com.ru/rostechnadzor-courses" />
+        <link rel="canonical" href="https://sintagma.com.ru/rostechnadzor-courses" />
         <script type="application/ld+json">{JSON.stringify({
           "@context": "https://schema.org",
           "@type": "ItemList",

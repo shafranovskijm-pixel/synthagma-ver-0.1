@@ -43,7 +43,7 @@ export function StudentHeader({
 
       <div className="flex items-center gap-3">
         {/* Help */}
-        <Button variant="ghost" size="icon" className="rounded-xl w-10 h-10" onClick={() => window.open('https://synthagma-bloom.lovable.app/blog', '_blank')}>
+        <Button variant="ghost" size="icon" className="rounded-xl w-10 h-10" onClick={() => window.open('https://sintagma.com.ru/blog', '_blank')}>
           <HelpCircle className="w-6 h-6 text-muted-foreground" />
         </Button>
 
