@@ -1527,8 +1527,10 @@ export type Database = {
       }
       enrollments: {
         Row: {
+          access_days: number | null
           completed_at: string | null
           course_id: string
+          expires_at: string | null
           id: string
           progress: number
           started_at: string
@@ -1537,8 +1539,10 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          access_days?: number | null
           completed_at?: string | null
           course_id: string
+          expires_at?: string | null
           id?: string
           progress?: number
           started_at?: string
@@ -1547,8 +1551,10 @@ export type Database = {
           user_id: string
         }
         Update: {
+          access_days?: number | null
           completed_at?: string | null
           course_id?: string
+          expires_at?: string | null
           id?: string
           progress?: number
           started_at?: string

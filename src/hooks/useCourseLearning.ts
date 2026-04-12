@@ -426,6 +426,17 @@ export function useCourseLearning() {
         if (createError) throw createError;
         enrollment = newEnrollment;
       }
+
+      // Check access expiration
+      if (enrollment && (enrollment as any).expires_at) {
+        const expiresAt = new Date((enrollment as any).expires_at);
+        if (expiresAt < new Date() && enrollment.status !== 'completed') {
+          toast.error('Доступ к курсу истёк', { description: 'Срок доступа к этому курсу закончился. Обратитесь к администратору.' });
+          navigate('/student');
+          return;
+        }
+      }
+
       if (enrollment) {
         setEnrollmentId(enrollment.id);
         // Log course access
