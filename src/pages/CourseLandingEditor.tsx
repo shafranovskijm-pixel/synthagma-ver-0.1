@@ -26,6 +26,10 @@ const SECTION_LABELS: Record<string, string> = {
   program: "Программа",
   process: "Как проходит",
   benefits: "Преимущества",
+  teachers: "Преподаватели",
+  reviews: "Отзывы",
+  pricing: "Тарифы",
+  faq: "Вопросы и ответы",
   cta: "Призыв к действию",
 };
 
