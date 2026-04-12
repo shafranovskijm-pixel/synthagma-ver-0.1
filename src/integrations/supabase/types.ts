@@ -4001,6 +4001,59 @@ export type Database = {
           },
         ]
       }
+      skillspace_import_jobs: {
+        Row: {
+          batch_id: string
+          created_at: string
+          created_by: string | null
+          error_message: string | null
+          id: string
+          login: string
+          organization_id: string
+          password: string
+          result: Json | null
+          status: string
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          batch_id?: string
+          created_at?: string
+          created_by?: string | null
+          error_message?: string | null
+          id?: string
+          login: string
+          organization_id: string
+          password: string
+          result?: Json | null
+          status?: string
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          batch_id?: string
+          created_at?: string
+          created_by?: string | null
+          error_message?: string | null
+          id?: string
+          login?: string
+          organization_id?: string
+          password?: string
+          result?: Json | null
+          status?: string
+          updated_at?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "skillspace_import_jobs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_consents: {
         Row: {
           address: string | null
