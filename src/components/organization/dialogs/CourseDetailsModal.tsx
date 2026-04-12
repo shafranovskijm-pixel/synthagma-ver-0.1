@@ -44,7 +44,11 @@ import {
   Search,
   UserPlus,
   FileSpreadsheet,
-  Bell
+  Bell,
+  Globe,
+  ShieldCheck,
+  Droplets,
+  ExternalLink
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useSubscriptionLimits } from "@/hooks/useSubscriptionLimits";
@@ -147,6 +151,11 @@ export function CourseDetailsModal({
   const [notifyOnCompletion, setNotifyOnCompletion] = useState<boolean>((course as any)?.notify_on_completion ?? false);
   const [completionNotifyEmails, setCompletionNotifyEmails] = useState<string | null>((course as any)?.completion_notify_emails ?? null);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
+  
+  // New extended settings from landing_content
+  const [copyProtection, setCopyProtection] = useState(false);
+  const [videoWatermark, setVideoWatermark] = useState(false);
+  const [externalCardUrl, setExternalCardUrl] = useState("");
   const [resetConfirmStudent, setResetConfirmStudent] = useState<Student | null>(null);
   const [isResetting, setIsResetting] = useState(false);
   
