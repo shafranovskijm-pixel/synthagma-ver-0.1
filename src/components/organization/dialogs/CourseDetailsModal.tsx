@@ -869,8 +869,29 @@ export function CourseDetailsModal({
 
             <TabsContent value="settings" className="mt-0 h-full">
               <div className="space-y-6">
+                {/* Landing page banner */}
+                <div 
+                  className="bg-gradient-to-r from-primary/10 to-accent/10 rounded-xl p-4 border border-primary/20 cursor-pointer hover:shadow-md transition-all"
+                  onClick={() => navigate(`/course/${course.id}/landing-editor`)}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-primary/20">
+                        <Globe className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-sm">Страница курса</h4>
+                        <p className="text-xs text-muted-foreground">Настройте продающую страницу курса с визуальным редактором</p>
+                      </div>
+                    </div>
+                    <Button variant="outline" size="sm" className="rounded-lg gap-2">
+                      <ExternalLink className="w-4 h-4" />
+                      Открыть редактор
+                    </Button>
+                  </div>
+                </div>
+
                 <h3 className="font-semibold">Настройки курса</h3>
-                
                 
                 <div className="bg-secondary/30 rounded-xl p-4 space-y-6">
                   {/* Skip video identification */}
@@ -940,6 +961,77 @@ export function CourseDetailsModal({
                       onCheckedChange={handleToggleAllowVideoSeek}
                       disabled={isSavingSettings}
                     />
+                  </div>
+
+                  {/* Copy protection */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-lg bg-emerald-500/10 mt-0.5">
+                        <ShieldCheck className="w-5 h-5 text-emerald-500" />
+                      </div>
+                      <div>
+                        <Label htmlFor="copy-protection" className="text-sm font-medium">
+                          Включить защиту от копирования текста
+                        </Label>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Запрет выделения и копирования текста уроков для учеников
+                        </p>
+                      </div>
+                    </div>
+                    <Switch
+                      id="copy-protection"
+                      checked={copyProtection}
+                      onCheckedChange={handleToggleCopyProtection}
+                      disabled={isSavingSettings}
+                    />
+                  </div>
+
+                  {/* Video watermark */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-lg bg-blue-500/10 mt-0.5">
+                        <Droplets className="w-5 h-5 text-blue-500" />
+                      </div>
+                      <div>
+                        <Label htmlFor="video-watermark" className="text-sm font-medium">
+                          Включить водяные знаки на видео
+                        </Label>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Полупрозрачный водяной знак с email ученика поверх видео
+                        </p>
+                      </div>
+                    </div>
+                    <Switch
+                      id="video-watermark"
+                      checked={videoWatermark}
+                      onCheckedChange={handleToggleVideoWatermark}
+                      disabled={isSavingSettings}
+                    />
+                  </div>
+
+                  {/* External card URL */}
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-lg bg-purple-500/10 mt-0.5">
+                        <ExternalLink className="w-5 h-5 text-purple-500" />
+                      </div>
+                      <div className="flex-1">
+                        <Label className="text-sm font-medium">
+                          Переход по внешней ссылке при клике на карточку
+                        </Label>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Если указано, клик по карточке курса в каталоге откроет эту ссылку
+                        </p>
+                        <Input
+                          value={externalCardUrl}
+                          onChange={(e) => setExternalCardUrl(e.target.value)}
+                          onBlur={(e) => handleUpdateExternalCardUrl(e.target.value)}
+                          placeholder="https://example.com/course-page"
+                          className="mt-2 rounded-lg"
+                          disabled={isSavingSettings}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
