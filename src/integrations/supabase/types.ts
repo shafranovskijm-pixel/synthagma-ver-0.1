@@ -3135,8 +3135,10 @@ export type Database = {
           organization_id: string | null
           phone: string | null
           student_group_id: string | null
+          telegram_link: string | null
           updated_at: string
           user_id: string
+          vk_link: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -3154,8 +3156,10 @@ export type Database = {
           organization_id?: string | null
           phone?: string | null
           student_group_id?: string | null
+          telegram_link?: string | null
           updated_at?: string
           user_id: string
+          vk_link?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -3173,8 +3177,10 @@ export type Database = {
           organization_id?: string | null
           phone?: string | null
           student_group_id?: string | null
+          telegram_link?: string | null
           updated_at?: string
           user_id?: string
+          vk_link?: string | null
         }
         Relationships: [
           {

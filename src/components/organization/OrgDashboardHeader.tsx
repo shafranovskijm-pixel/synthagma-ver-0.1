@@ -148,7 +148,7 @@ export function OrgDashboardHeader() {
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52 rounded-xl">
-              <DropdownMenuItem onClick={() => d.tabNavigation.setActiveTab("settings" as any)} className="rounded-lg gap-2.5 py-2.5">
+              <DropdownMenuItem onClick={() => navigate("/organization/profile")} className="rounded-lg gap-2.5 py-2.5">
                 <User className="w-4 h-4" />
                 Профиль
               </DropdownMenuItem>

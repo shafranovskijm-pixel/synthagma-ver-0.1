@@ -30,6 +30,7 @@ const RegisterOrganization = lazyWithRetry(() => import("./pages/RegisterOrganiz
 const StudentDashboard = lazyWithRetry(() => import("./pages/StudentDashboard"));
 const StudentProfile = lazyWithRetry(() => import("./pages/StudentProfile"));
 const OrganizationDashboard = lazyWithRetry(() => import("./pages/OrganizationDashboard"));
+const OrganizationProfile = lazyWithRetry(() => import("./pages/OrganizationProfile"));
 const CourseEditor = lazyWithRetry(() => import("./pages/CourseEditor"));
 const CourseBuilder = lazyWithRetry(() => import("./pages/CourseBuilder"));
 const CourseLearning = lazyWithRetry(() => import("./pages/CourseLearning"));
@@ -127,6 +128,11 @@ const App = () => (
                     <Route path="/organization" element={
                       <ProtectedRoute requiredRole="organization">
                         <OrganizationDashboard />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/organization/profile" element={
+                      <ProtectedRoute requiredRole="organization">
+                        <OrganizationProfile />
                       </ProtectedRoute>
                     } />
                     <Route path="/course/:courseId/edit" element={
