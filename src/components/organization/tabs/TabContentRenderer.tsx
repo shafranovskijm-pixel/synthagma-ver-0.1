@@ -158,6 +158,14 @@ export function TabContentRenderer() {
         <FRDOManager organizationId={organizationId} />
       )}
 
+      {/* Homework Review Tab */}
+      {activeTab === "homework-review" && <HomeworkReviewTab />}
+
+      {/* Staff Tab */}
+      {activeTab === ("staff" as any) && organizationId && (
+        <StaffManager organizationId={organizationId} />
+      )}
+
 
       {/* Course Store Tab */}
       {activeTab === "services" && organizationId && (
