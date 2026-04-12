@@ -285,15 +285,23 @@ export async function fetchCategories(organizationId: string): Promise<CourseCat
   const { data, error } = await supabase
     .from("course_categories")
     .select("*")
-    .eq("organization_id", organizationId)
-    .order("name");
+    .eq("organization_id", organizationId);
 
   if (error) {
     console.error("Error fetching categories:", error);
     return [];
   }
 
-  return data as CourseCategory[];
+  return ((data || []) as CourseCategory[]).sort((a, b) => {
+    const orderA = a.order_index ?? Number.MAX_SAFE_INTEGER;
+    const orderB = b.order_index ?? Number.MAX_SAFE_INTEGER;
+
+    if (orderA !== orderB) {
+      return orderA - orderB;
+    }
+
+    return a.name.localeCompare(b.name, "ru");
+  });
 }
 
 export async function createCategory(

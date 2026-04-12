@@ -28,6 +28,7 @@ export interface CourseCategory {
   color: string | null;
   organization_id: string;
   created_at: string;
+  order_index?: number | null;
 }
 
 export interface Lesson {

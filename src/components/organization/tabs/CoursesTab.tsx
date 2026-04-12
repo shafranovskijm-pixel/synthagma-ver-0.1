@@ -450,6 +450,14 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
     }
   };
 
+  const openCourseOrderMode = useCallback((category: CourseCategory) => {
+    setCategoryFilter(category.id);
+    setViewAndFolder("list", "flat");
+    toast.info(`Порядок курсов: ${category.name}`, {
+      description: "Перетаскивайте курс за иконку слева, чтобы изменить порядок внутри категории.",
+    });
+  }, [setCategoryFilter, setViewAndFolder]);
+
   const openEditCategory = (category: CourseCategory) => {
     setEditingCategory(category);
     setNewCategoryName(category.name);
@@ -1325,8 +1333,8 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
                 </div>
                 {category && (
                   <div className="flex items-center gap-1.5">
-                    <Button variant="ghost" size="sm" className="text-xs rounded-lg gap-1" onClick={() => openEditCategory(category)}>
-                      <Pencil className="w-3.5 h-3.5" />
+                    <Button variant="ghost" size="sm" className="text-xs rounded-lg gap-1" onClick={() => openCourseOrderMode(category)}>
+                      <GripVertical className="w-3.5 h-3.5" />
                       Порядок курсов
                     </Button>
                     <Button variant="ghost" size="sm" className="text-xs rounded-lg gap-1 text-destructive hover:text-destructive" onClick={() => handleDeleteCategory(category.id)}>
