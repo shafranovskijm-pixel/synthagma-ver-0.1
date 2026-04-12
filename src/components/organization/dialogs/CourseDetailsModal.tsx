@@ -62,6 +62,7 @@ import {
 } from "@/constants/frdo";
 import { CourseRemindersTab } from "@/components/organization/CourseRemindersTab";
 import { CourseGroupsTab } from "@/components/organization/CourseGroupsTab";
+import { CourseLandingEditorContent } from "@/pages/CourseLandingEditor";
 
 interface Course {
   id: string;
@@ -699,6 +700,10 @@ export function CourseDetailsModal({
               <TabsTrigger value="tests" className="rounded-lg gap-2">
                 <CheckSquare className="w-4 h-4" />
                 Тесты
+              </TabsTrigger>
+              <TabsTrigger value="landing" className="rounded-lg gap-2">
+                <Globe className="w-4 h-4" />
+                Страница курса
               </TabsTrigger>
               <TabsTrigger value="settings" className="rounded-lg gap-2">
                 <Settings className="w-4 h-4" />
