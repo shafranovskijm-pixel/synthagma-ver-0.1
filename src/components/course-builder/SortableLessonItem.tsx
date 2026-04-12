@@ -28,6 +28,7 @@ import {
   lessonIcons, lessonColors,
 } from "@/components/course-builder/LessonTypeConfig";
 import { VideoPreviewInline } from "@/components/course-builder/VideoPreviewInline";
+import { LazyMediaPreview } from "@/components/course-builder/LazyMediaPreview";
 import { SliderLessonEditor } from "@/components/course-builder/SliderLessonEditor";
 import { LessonAttachments } from "@/components/course-builder/LessonAttachments";
 import { TestAnswersDialog } from "@/components/course-builder/TestAnswersDialog";
