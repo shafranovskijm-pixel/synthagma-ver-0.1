@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, FileSpreadsheet, Menu, CreditCard, HelpCircle, User, LogOut, Handshake, Sparkles, ImagePlus } from "lucide-react";
+import { Plus, FileSpreadsheet, Menu, CreditCard, HelpCircle, User, LogOut, Handshake, Sparkles, ImagePlus, ShoppingBag } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { showLimitToast } from "@/utils/limitToast";
 import { useOrgDashboard } from "@/contexts/OrgDashboardContext";
@@ -246,7 +246,7 @@ export function OrgDashboardHeader() {
           )}
           {activeTab === "courses" && (
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" className="rounded-xl gap-2 text-xs" onClick={() => onTabChange?.("services")}>
+              <Button variant="outline" size="sm" className="rounded-xl gap-2 text-xs" onClick={() => d.tabNavigation.setActiveTab("services")}>
                 <ShoppingBag className="w-4 h-4" />
                 <span className="hidden sm:inline">Добавить из магазина</span>
               </Button>
