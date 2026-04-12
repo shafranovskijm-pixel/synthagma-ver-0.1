@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, CheckCircle2, AlertTriangle, Download, XCircle, Clock } from "lucide-react";
+import { Loader2, CheckCircle2, AlertTriangle, Download, XCircle, Clock, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface SkillspaceBatchImportDialogProps {
@@ -22,6 +22,7 @@ interface ImportJob {
   status: string;
   result: any;
   error_message: string | null;
+  organization_id?: string;
 }
 
 export function SkillspaceBatchImportDialog({
@@ -37,6 +38,7 @@ export function SkillspaceBatchImportDialog({
   const [error, setError] = useState<string | null>(null);
   const [batchId, setBatchId] = useState<string | null>(null);
   const [jobs, setJobs] = useState<ImportJob[]>([]);
+  const [reparsingJobId, setReparsingJobId] = useState<string | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Poll jobs when batchId is set
