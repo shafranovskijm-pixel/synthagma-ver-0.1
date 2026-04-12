@@ -391,7 +391,6 @@ export function StudentDocumentsUpload({
           </div>
         </div>
       </div>
-    </div>
   );
 
   if (embedded) {
