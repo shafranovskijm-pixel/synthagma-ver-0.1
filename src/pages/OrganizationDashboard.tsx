@@ -1,11 +1,12 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatedTabContent } from "@/components/ui/AnimatedTabContent";
 import { OrgSidebar } from "@/components/organization/OrgSidebar";
 import { TabContentRenderer } from "@/components/organization/tabs/TabContentRenderer";
 import { DialogsContainer } from "@/components/organization/dialogs/DialogsContainer";
-import { MissingCredentialsAlert } from "@/components/organization/MissingCredentialsAlert";
 import { OrgDashboardHeader } from "@/components/organization/OrgDashboardHeader";
+import { OrgDashboardFooter } from "@/components/organization/OrgDashboardFooter";
+import { OrgSupportChat } from "@/components/organization/OrgSupportChat";
 import { Button } from "@/components/ui/button";
 import { Eye, X } from "lucide-react";
 import { OnboardingDialog } from "@/components/onboarding/OnboardingDialog";
@@ -41,14 +42,14 @@ function OrganizationDashboardContent() {
         </div>
       )}
       
-      {/* Mobile Overlay */}
-      {d.isMobileSidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => d.setIsMobileSidebarOpen(false)} />}
-      
-      {/* Sidebar - no props needed */}
+      {/* Sidebar - 88px icon style */}
       <OrgSidebar />
 
       {/* Main content */}
-      <main ref={d.swipeRef} className={`flex-1 overflow-auto lg:ml-64 ${d.isAdminView ? 'mt-10' : ''}`}>
+      <main 
+        ref={d.swipeRef} 
+        className={`flex-1 flex flex-col min-w-0 lg:ml-[88px] ${d.isAdminView ? 'mt-10' : ''}`}
+      >
         {/* Cover Image */}
         {d.branding.brandingSettings.coverUrl && (
           <div className="relative w-full h-32 lg:h-48 overflow-hidden">
@@ -69,10 +70,10 @@ function OrganizationDashboardContent() {
           </div>
         )}
         
-        {/* Header - no props needed */}
+        {/* Header */}
         <OrgDashboardHeader />
 
-        <div className="p-4 lg:p-8 overflow-hidden">
+        <div className="flex-1 p-4 lg:p-8 overflow-hidden">
           <PlatformAnnouncementsBanner />
           
           <AnimatedTabContent tabKey={d.tabNavigation.activeTab} direction={d.tabNavigation.swipeDirection} isMobile={d.isMobile}>
@@ -80,27 +81,12 @@ function OrganizationDashboardContent() {
           </AnimatedTabContent>
         </div>
 
-        {/* Mobile Tab Indicator Dots */}
-        {d.isMobile && (
-          <div className="fixed bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-card/80 backdrop-blur-sm px-3 py-2 rounded-full border border-border shadow-lg z-40">
-            {d.tabNavigation.getVisibleTabs().map((tab, index) => (
-              <button
-                key={tab}
-                onClick={() => {
-                  d.tabNavigation.triggerHapticFeedback();
-                  const currentIndex = d.tabNavigation.getVisibleTabs().indexOf(d.tabNavigation.activeTab);
-                  d.tabNavigation.setSwipeDirection(index > currentIndex ? 1 : -1);
-                  d.tabNavigation.setActiveTab(tab);
-                }}
-                className={`transition-all duration-200 rounded-full ${
-                  tab === d.tabNavigation.activeTab ? 'w-6 h-2 bg-primary' : 'w-2 h-2 bg-muted-foreground/30 hover:bg-muted-foreground/50'
-                }`}
-                aria-label={`Перейти к вкладке ${tab}`}
-              />
-            ))}
-          </div>
-        )}
+        {/* Footer */}
+        <OrgDashboardFooter />
       </main>
+
+      {/* Floating support chat */}
+      <OrgSupportChat />
 
       {/* All Dialogs */}
       <DialogsContainer />

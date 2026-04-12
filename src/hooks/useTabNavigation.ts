@@ -47,14 +47,12 @@ export function useTabNavigation({
     if (menuSettings.showLibrary && isEnabled("library")) baseTabs.push("library");
     if (menuSettings.showStats) baseTabs.push("stats");
     if (menuSettings.showLinks && isEnabled("links")) baseTabs.push("links");
-    if (menuSettings.showDocuments && isEnabled("documents")) baseTabs.push("documents");
-    if (isEnabled("journals")) baseTabs.push("journals");
     if (isEnabled("labor_safety")) baseTabs.push("labor-safety");
     
-    if (isFrdoEnabled && isEnabled("frdo")) baseTabs.push("frdo");
+    baseTabs.push("payments");
     if (menuSettings.showSubscription !== false) baseTabs.push("subscription");
-    baseTabs.push("chats");
     if (menuSettings.showServices && isEnabled("services")) baseTabs.push("services");
+    baseTabs.push("chats");
     if (isEnabled("settings")) baseTabs.push("settings");
     
     return baseTabs;
