@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from "react";
 import { 
-  BookOpen, Users, Settings, LogOut, 
+  BookOpen, Users, Settings, LogOut, Upload,
   Building2, HardHat, HardDrive, CreditCard, Lock, MessageCircle, Wallet,
   BarChart3, Link, ShoppingBag, FileText, ClipboardList, FileSpreadsheet
 } from "lucide-react";
