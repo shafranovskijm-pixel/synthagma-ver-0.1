@@ -24,7 +24,8 @@ export type AdminTabType =
   | "updates"
   | "settings";
 
-const PLATFORM_TABS: AdminTabType[] = ["content", "ai", "devtools"];
+const PLATFORM_TABS: AdminTabType[] = ["content", "ai", "devtools", "updates"];
+const CHATS_TABS: AdminTabType[] = ["chats", "support", "broadcast"];
 
 interface AdminSidebarProps {
   activeTab: AdminTabType;
