@@ -133,9 +133,9 @@ export default function StudentProfile() {
       if (!user?.id) return null;
       const { data: p } = await supabase
         .from("profiles")
-        .select("full_name, organization_id, phone, city, bio, avatar_url")
+        .select("full_name, organization_id")
         .eq("user_id", user.id)
-        .maybeSingle();
+        .maybeSingle() as any;
       if (!p) return null;
       let orgName: string | null = null;
       if (p.organization_id) {
