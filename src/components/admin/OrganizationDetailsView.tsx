@@ -1654,37 +1654,87 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
                 />
               </div>
 
-              {/* Usage */}
+              {/* Editable Limits */}
               <div className="space-y-3">
-                <Label>Использование ресурсов</Label>
+                <Label>Лимиты ресурсов</Label>
+                <p className="text-sm text-muted-foreground">Оставьте пустым — будет использован лимит из тарифа. Введите -1 для безлимита.</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="flex items-center gap-1.5"><BookOpen className="w-3.5 h-3.5" /> Курсы</span>
-                      <span className="text-muted-foreground">{stats.totalCourses} / {planInfo.limits.maxCourses === -1 ? "∞" : planInfo.limits.maxCourses}</span>
+                    <div className="flex items-center gap-1.5 text-sm font-medium">
+                      <BookOpen className="w-3.5 h-3.5" /> Курсы
                     </div>
-                    <Progress value={planInfo.limits.maxCourses === -1 ? 0 : Math.min(100, (stats.totalCourses / planInfo.limits.maxCourses) * 100)} className="h-2" />
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        placeholder={String(planInfo.limits.maxCourses === -1 ? "∞" : planInfo.limits.maxCourses)}
+                        value={customLimits.maxCourses === null ? "" : customLimits.maxCourses}
+                        onChange={(e) => setCustomLimits(prev => ({ ...prev, maxCourses: e.target.value === "" ? null : Number(e.target.value) }))}
+                        className="w-28"
+                      />
+                      <span className="text-sm text-muted-foreground">использовано: {stats.totalCourses}</span>
+                    </div>
                   </div>
                   <div className="space-y-1.5">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5" /> Ученики</span>
-                      <span className="text-muted-foreground">{stats.totalStudents} / {planInfo.limits.maxStudents === -1 ? "∞" : planInfo.limits.maxStudents}</span>
+                    <div className="flex items-center gap-1.5 text-sm font-medium">
+                      <Users className="w-3.5 h-3.5" /> Ученики
                     </div>
-                    <Progress value={planInfo.limits.maxStudents === -1 ? 0 : Math.min(100, (stats.totalStudents / planInfo.limits.maxStudents) * 100)} className="h-2" />
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        placeholder={String(planInfo.limits.maxStudents === -1 ? "∞" : planInfo.limits.maxStudents)}
+                        value={customLimits.maxStudents === null ? "" : customLimits.maxStudents}
+                        onChange={(e) => setCustomLimits(prev => ({ ...prev, maxStudents: e.target.value === "" ? null : Number(e.target.value) }))}
+                        className="w-28"
+                      />
+                      <span className="text-sm text-muted-foreground">использовано: {stats.totalStudents}</span>
+                    </div>
                   </div>
                   <div className="space-y-1.5">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="flex items-center gap-1.5"><HardDrive className="w-3.5 h-3.5" /> Хранилище</span>
-                      <span className="text-muted-foreground">{formatBytes(usage.storage_bytes)} / {formatBytes(settings.storage_limit_bytes)}</span>
+                    <div className="flex items-center gap-1.5 text-sm font-medium">
+                      <Users className="w-3.5 h-3.5" /> Регистраций в месяц
                     </div>
-                    <Progress value={Math.min(100, storageLimitPercent)} className="h-2" />
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        placeholder={String(planInfo.limits.maxTrainedPerMonth === -1 ? "∞" : planInfo.limits.maxTrainedPerMonth)}
+                        value={customLimits.maxTrainedPerMonth === null ? "" : customLimits.maxTrainedPerMonth}
+                        onChange={(e) => setCustomLimits(prev => ({ ...prev, maxTrainedPerMonth: e.target.value === "" ? null : Number(e.target.value) }))}
+                        className="w-28"
+                      />
+                    </div>
                   </div>
                   <div className="space-y-1.5">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5" /> ИИ-генерации</span>
-                      <span className="text-muted-foreground">{usage.ai_generations_count} / {aiGenerationsLimit === Infinity ? "∞" : aiGenerationsLimit}</span>
+                    <div className="flex items-center gap-1.5 text-sm font-medium">
+                      <Sparkles className="w-3.5 h-3.5" /> ИИ-генерации
                     </div>
-                    <Progress value={aiGenerationsLimit === Infinity ? 0 : Math.min(100, aiGenerationsPercent)} className="h-2" />
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        placeholder={aiGenerationsLimit === Infinity ? "∞" : String(aiGenerationsLimit)}
+                        value={customLimits.aiGenerationsLimit === null ? "" : customLimits.aiGenerationsLimit}
+                        onChange={(e) => setCustomLimits(prev => ({ ...prev, aiGenerationsLimit: e.target.value === "" ? null : Number(e.target.value) }))}
+                        className="w-28"
+                      />
+                      <span className="text-sm text-muted-foreground">использовано: {usage.ai_generations_count}</span>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-1.5 text-sm font-medium">
+                      <HardDrive className="w-3.5 h-3.5" /> Хранилище (ГБ)
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        placeholder={String(Math.round(settings.storage_limit_bytes / 1073741824))}
+                        value={customLimits.storageLimitBytes === null ? "" : customLimits.storageLimitBytes === -1 ? -1 : Math.round(customLimits.storageLimitBytes / 1073741824)}
+                        onChange={(e) => {
+                          const val = e.target.value === "" ? null : Number(e.target.value);
+                          setCustomLimits(prev => ({ ...prev, storageLimitBytes: val === null ? null : val === -1 ? -1 : val * 1073741824 }));
+                        }}
+                        className="w-28"
+                      />
+                      <span className="text-sm text-muted-foreground">использовано: {formatBytes(usage.storage_bytes)}</span>
+                    </div>
                   </div>
                 </div>
               </div>
