@@ -1081,7 +1081,7 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
                     variant={folderViewMode === "flat" && viewMode === "grid" ? "secondary" : "ghost"} 
                     size="icon" 
                     className="h-8 w-8" 
-                    onClick={() => { setFolderViewModeLocal("flat"); persistedSetViewMode("grid"); saveViewPrefs("grid", "flat"); }}
+                    onClick={() => setViewAndFolder("grid", "flat")}
                   >
                     <LayoutGrid className="w-4 h-4" />
                   </Button>
@@ -1094,7 +1094,7 @@ export const CoursesTab = React.memo(function CoursesTab({ organizationId, onCou
                     variant={folderViewMode === "flat" && viewMode === "list" ? "secondary" : "ghost"} 
                     size="icon" 
                     className="h-8 w-8" 
-                    onClick={() => { setFolderViewModeLocal("flat"); persistedSetViewMode("list"); saveViewPrefs("list", "flat"); }}
+                    onClick={() => setViewAndFolder("list", "flat")}
                   >
                     <List className="w-4 h-4" />
                   </Button>
