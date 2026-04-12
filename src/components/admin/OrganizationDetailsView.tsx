@@ -572,6 +572,15 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
 
+  const fetchPendingEnrollmentsCount = async () => {
+    const { count } = await supabase
+      .from("pending_enrollments")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", organization.id)
+      .eq("status", "pending");
+    setPendingEnrollmentsCount(count || 0);
+  };
+
 
   const filteredStudents = students.filter(s => {
     if (!searchQuery) return true;
