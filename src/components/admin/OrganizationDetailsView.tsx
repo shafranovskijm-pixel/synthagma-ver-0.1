@@ -70,6 +70,7 @@ import { OrgBalanceManager } from "./OrgBalanceManager";
 import { OrgBillingDocsTab } from "./OrgBillingDocsTab";
 import { getPlanInfo, type SubscriptionPlan } from "@/constants/subscriptionPlans";
 import { SkillspaceImportDialog } from "./SkillspaceImportDialog";
+import { SkillspaceBatchImportDialog } from "./SkillspaceBatchImportDialog";
 
 interface Organization {
   id: string;
