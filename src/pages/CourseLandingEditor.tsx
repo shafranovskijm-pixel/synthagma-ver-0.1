@@ -617,12 +617,29 @@ export function CourseLandingEditorContent({ courseId, embedded = false }: Cours
     }
   };
 
+  const aiDialog = (
+    <LandingAIGenerateDialog
+      open={aiDialogOpen}
+      onOpenChange={setAiDialogOpen}
+      sectionId={aiDialogSection}
+      courseTitle={course.title}
+      courseDescription={course.description}
+      courseId={courseId}
+      onTextGenerated={handleAITextGenerated}
+      onImageGenerated={handleAIImageGenerated}
+    />
+  );
+
   if (embedded) {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="font-semibold">Редактор страницы курса</h3>
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => openAIDialog(null)} className="gap-1.5">
+              <Sparkles className="w-4 h-4" />
+              ИИ
+            </Button>
             <Button variant="outline" size="sm" onClick={() => window.open(publicUrl, "_blank")} className="gap-1.5">
               <ExternalLink className="w-4 h-4" />
               Просмотр
@@ -637,6 +654,7 @@ export function CourseLandingEditorContent({ courseId, embedded = false }: Cours
         <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleBackgroundUpload} />
 
         {landing.sections_order.map((sectionId, index) => renderSection(sectionId, index))}
+        {aiDialog}
       </div>
     );
   }
@@ -654,6 +672,10 @@ export function CourseLandingEditorContent({ courseId, embedded = false }: Cours
             <span className="text-sm font-medium text-muted-foreground hidden sm:block">{course.title}</span>
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => openAIDialog(null)} className="gap-1.5">
+              <Sparkles className="w-4 h-4" />
+              <span className="hidden sm:inline">Сгенерировать с ИИ</span>
+            </Button>
             <Button variant="outline" size="sm" onClick={() => window.open(publicUrl, "_blank")} className="gap-1.5">
               <ExternalLink className="w-4 h-4" />
               <span className="hidden sm:inline">Просмотр</span>
@@ -670,6 +692,7 @@ export function CourseLandingEditorContent({ courseId, embedded = false }: Cours
 
       {/* Sections in order */}
       {landing.sections_order.map((sectionId, index) => renderSection(sectionId, index))}
+      {aiDialog}
     </div>
   );
 }
