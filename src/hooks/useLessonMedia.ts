@@ -56,8 +56,10 @@ export function useLessonMedia(
   // Video upload
   const [videoUploadProgress, setVideoUploadProgress] = useState<number | null>(null);
   const [compressionProgress, setCompressionProgress] = useState<number | null>(null);
+  const [kinescopeUploadProgress, setKinescopeUploadProgress] = useState<number | null>(null);
   const videoUploadXhrRef = useRef<XMLHttpRequest | null>(null);
   const videoInputRef = useRef<HTMLInputElement | null>(null);
+  const kinescopeInputRef = useRef<HTMLInputElement | null>(null);
   const tusAbortRef = useRef<AbortController | null>(null);
 
   const getStorageConfig = useCallback(async () => {
@@ -199,9 +201,86 @@ export function useLessonMedia(
     if (videoUploadXhrRef.current) { videoUploadXhrRef.current.abort(); videoUploadXhrRef.current = null; }
     if (tusAbortRef.current) { tusAbortRef.current.abort(); tusAbortRef.current = null; }
     setVideoUploadProgress(null);
+    setKinescopeUploadProgress(null);
     if (videoInputRef.current) videoInputRef.current.value = '';
+    if (kinescopeInputRef.current) kinescopeInputRef.current.value = '';
     toast.info("Загрузка отменена");
   }, []);
+
+  // Kinescope upload
+  const handleKinescopeUpload = useCallback(async (file: File) => {
+    if (!courseId) { toast.error("Сначала сохраните курс"); return; }
+
+    setKinescopeUploadProgress(0);
+    try {
+      toast.info(`Загрузка в Kinescope: ${file.name} (${(file.size / 1024 / 1024).toFixed(0)} МБ)`, { duration: 3000 });
+
+      // 1. Init upload via edge function
+      const { data: initData, error: initError } = await supabase.functions.invoke("kinescope-proxy", {
+        body: {
+          action: "upload_init",
+          title: `${courseId}_${lessonId}_${file.name}`,
+          file_size: file.size,
+        },
+      });
+
+      if (initError || !initData?.upload_url) {
+        throw new Error(initData?.error || initError?.message || "Не удалось инициализировать загрузку");
+      }
+
+      const { video_id, upload_url, embed_url } = initData;
+
+      // 2. Upload via TUS directly to Kinescope
+      const CHUNK_SIZE = 50 * 1024 * 1024; // 50 MB
+      let offset = 0;
+      const fileSize = file.size;
+      const abortController = new AbortController();
+      tusAbortRef.current = abortController;
+
+      while (offset < fileSize) {
+        if (abortController.signal.aborted) throw new Error("Upload cancelled");
+
+        const end = Math.min(offset + CHUNK_SIZE, fileSize);
+        const chunk = file.slice(offset, end);
+
+        const patchRes = await fetch(upload_url, {
+          method: "PATCH",
+          headers: {
+            "Upload-Offset": String(offset),
+            "Content-Type": "application/offset+octet-stream",
+            "Tus-Resumable": "1.0.0",
+          },
+          body: chunk,
+          signal: abortController.signal,
+        });
+
+        if (!patchRes.ok) {
+          const errBody = await patchRes.text().catch(() => "");
+          throw new Error(`TUS PATCH failed (${patchRes.status}): ${errBody}`);
+        }
+
+        const newOffset = patchRes.headers.get("Upload-Offset");
+        offset = newOffset ? parseInt(newOffset, 10) : end;
+        setKinescopeUploadProgress(Math.round((offset / fileSize) * 100));
+      }
+
+      tusAbortRef.current = null;
+
+      // 3. Save kinescope:{videoId} as content
+      onUpdate({ content: `kinescope:${video_id}` });
+      toast.success("Видео загружено в Kinescope!");
+      setKinescopeUploadProgress(null);
+      if (kinescopeInputRef.current) kinescopeInputRef.current.value = '';
+    } catch (error: any) {
+      console.error("Kinescope upload error:", error);
+      if (!error.message?.includes("cancelled")) {
+        toast.error(`Ошибка загрузки: ${error.message}`);
+      }
+      setKinescopeUploadProgress(null);
+      tusAbortRef.current = null;
+      if (kinescopeInputRef.current) kinescopeInputRef.current.value = '';
+    }
+  }, [courseId, lessonId, onUpdate]);
 
   // AI content generation
   const [isGeneratingContent, setIsGeneratingContent] = useState(false);
