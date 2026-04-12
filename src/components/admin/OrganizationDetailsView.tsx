@@ -1636,6 +1636,12 @@ export function OrganizationDetailsView({ organization, onBack }: OrganizationDe
         onSuccess={() => fetchCourses()}
       />
     )}
+    <SkillspaceBatchImportDialog
+      open={showSkillspaceBatchImport}
+      onOpenChange={setShowSkillspaceBatchImport}
+      organizationId={organization.id}
+      onSuccess={() => fetchCourses()}
+    />
     </>
   );
 }
